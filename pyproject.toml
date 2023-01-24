@@ -1,0 +1,57 @@
+[tool.poetry]
+name = "clean_ioc"
+version = "0.0.1"
+description = "An IOC Container for Python 3.10+"
+authors = ["Peter Daly"]
+license = "MIT"
+homepage = "https://github.com/peter-daly/clean_ioc"
+repository = "https://github.com/peter-daly/clean_ioc"
+documentation = "https://github.com/peter-daly/clean_ioc"
+readme = "README.rst"
+classifiers = [
+    "Development Status :: 4 - Beta",
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^6.2.5"
+pytest-cov = "^4.0.0"
+black = "^22.3.0"
+flakeheaven = "^3.2.1"
+isort = "^5.10.1"
+mkdocs-material = "^8.5.11"
+wily = "^1.24.0"
+mkdocstrings-python = "^0.8.3"
+expects = "^0.9.0"
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.coverage.paths]
+source = ["clean_ioc", "*/site-packages"]
+tests = ["tests"]
+
+[tool.black]
+
+[tool.isort]
+profile = "black"
+
+[tool.flakeheaven]
+format = "grouped"
+show_source = true
+max_complexity = 10
+
+
+[tool.coverage.run]
+branch = true
+source = ["clean_ioc", "tests"]
+
+[build-system]
+requires = [
+    "setuptools >= 35.0.2",
+    "setuptools_scm >= 2.0.0, <3"
+]
+build-backend = "setuptools.build_meta"
+
