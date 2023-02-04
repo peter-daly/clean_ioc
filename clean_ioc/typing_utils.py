@@ -152,7 +152,7 @@ def get_generic_aliases(cls: type):
     return aliases
 
 
-def get_typevar_to_type_mapping(cls: type):
+def get_typevar_to_type_mapping(cls: type) -> dict[type, type]:
     generic_definitions = get_open_generic_aliases(cls)
     generic_implementations = get_generic_aliases(cls)
 

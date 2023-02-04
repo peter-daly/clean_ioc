@@ -4,9 +4,10 @@ from __future__ import annotations
 import abc
 from collections import defaultdict, deque
 from dataclasses import dataclass
+import sys
 import types
 from enum import IntEnum
-from typing import Any, get_type_hints
+from typing import Any, ForwardRef, get_type_hints
 from collections.abc import Callable
 from typing import _GenericAlias  # type: ignore
 from uuid import uuid4
@@ -117,13 +118,11 @@ class Dependency:
             return self.default_value
 
         if self.is_generic_list:
-            regs = context.find_registrations(self.service_type.__args__[0], self.settings.registration_filter)  # type: ignore
+            regs = context.find_registrations(self.service_type.__args__[0], self.settings.filter)  # type: ignore
             return [s.build(context) for s in regs]
         else:
             try:
-                reg = context.find_registration(
-                    self.service_type, self.settings.registration_filter
-                )
+                reg = context.find_registration(self.service_type, self.settings.filter)
                 return reg.build(context)
             except CannotResolveExpcetion as ex:
                 print(self.name)
@@ -174,7 +173,7 @@ class ImplementationCreator:
         dependencies_settings: dict[str, DependencySettings],
     ) -> dict[str, Dependency]:
         # signature = inspect.signature(creator_function)
-
+        args_infos = get_arg_info(creator_function)
         return {
             name: Dependency(
                 name=name,
@@ -183,7 +182,7 @@ class ImplementationCreator:
                 settings=dependencies_settings[name],
                 default_value=arg_info.default_value,
             )
-            for name, arg_info in get_arg_info(creator_function).items()
+            for name, arg_info in args_infos.items()
         }
 
     def create(self, context: ResolvingContext, **kwargs):
@@ -357,7 +356,7 @@ class ResolvingContext:
 
 class Resolver(abc.ABC):
     @abc.abstractmethod
-    def resolve(self, type, *args, **kwargs) -> Any:
+    def resolve(self, cls: type, filter: RegistartionFilter, *args, **kwargs) -> Any:
         pass
 
 
@@ -442,14 +441,33 @@ class ContainerScope(Scope):
                 )
             )
 
+    def _before_start(self):
+        pass
+
+    def _after_finish(self):
+        pass
+
+    def __enter__(self):
+        self._before_start()
+        return self
+
+    def __exit__(self):
+        self._after_finish()
+
     def get_registartions(self, service_tyep):
         return self._registrations[service_tyep]
 
     def add_scoped_instance(self, registration_id: str, instance: Any):
         self._scoped_instances[registration_id] = instance
 
-    def resolve(self, service_type: type):
-        return self._container.resolve(service_type=service_type, scope=self)
+    def resolve(
+        self,
+        service_type: type,
+        filter: RegistartionFilter = _all_registartions,
+    ):
+        return self._container.resolve(
+            service_type=service_type, filter=filter, scope=self
+        )
 
 
 class EmptyContainerScope(Scope):
@@ -523,6 +541,18 @@ class Container(Resolver):
                 )
             )
 
+    def register_subclasses(
+        self,
+        base_type: type,
+        lifestyle: LifestyleType = LifestyleType.once_per_graph,
+        type_filter: Callable[[type], bool] = constant(True),
+    ):
+        sub_classes = get_subclasses(base_type, type_filter)
+
+        for sc in sub_classes:
+            self.register(base_type, sc, lifestyle=lifestyle)
+            self.register(sc, lifestyle=lifestyle)
+
     def register_decorator(
         self,
         service_type: type,
@@ -558,6 +588,8 @@ class Container(Resolver):
         name: str | None = None,
         type_filter: Callable[[type], bool] = constant(True),
     ):
+        type_var_map = get_typevar_to_type_mapping(generic_service_type)
+
         full_type_filter = fn_and(fn_not(is_abstract), type_filter)
         subclasses = get_subclasses(generic_service_type, full_type_filter)
         for subclass in subclasses:
@@ -578,6 +610,8 @@ class Container(Resolver):
         generic_decorator_type: type,
         type_filter: Callable[[type], bool] = constant(True),
     ):
+        type_var_map = get_typevar_to_type_mapping(generic_service_type)
+
         full_type_filter = fn_and(fn_not(is_abstract), type_filter)
         subclasses = get_subclasses(generic_service_type, full_type_filter)
         for subclass in subclasses:
@@ -585,8 +619,8 @@ class Container(Resolver):
                 generic_service_type, subclass
             )
             if target_generic_base:
-
-                concrete_decorator = generic_decorator_type[get_generic_types(target_generic_base)]  # type: ignore
+                generic_values = get_generic_types(target_generic_base)
+                concrete_decorator = generic_decorator_type[generic_values]  # type: ignore
                 DecoratedType = types.new_class(
                     f"DecoratedGeneric_{concrete_decorator.__name__}",
                     (concrete_decorator,),
@@ -601,19 +635,22 @@ class Container(Resolver):
         filter: RegistartionFilter = _all_registartions,
         scope: Scope = EmptyContainerScope(),
     ) -> Any:
-        d = RootDependency(service_type, DependencySettings(registration_filter=filter))
+        d = RootDependency(service_type, DependencySettings(filter=filter))
         context = ResolvingContext(self.registry, scope)
         return d.resolve(context)
 
-    def new_scope(self):
-        return ContainerScope(self)
+    def new_scope(self, ScopeClass: type = ContainerScope, *args, **kwargs):
+        return ScopeClass(self, *args, **kwargs)
+
+    def apply_module(self, module_fn: Callable[[Container], None]):
+        module_fn(self)
 
 
 @dataclass
 class DependencySettings:
     value: Any = _empty
     use_default_paramater: bool = True
-    registration_filter: RegistartionFilter = _all_registartions
+    filter: RegistartionFilter = _all_registartions
 
 
 RegistartionFilter = Callable[[Registration], bool]

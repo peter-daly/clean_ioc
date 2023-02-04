@@ -11,3 +11,10 @@
     Support for list registartions
 
     Not tested for thread safety and performance yet
+
+
+0.0.2
+-----
+    Add support for subclass registartion
+    Add first support for modules
+    Add first README

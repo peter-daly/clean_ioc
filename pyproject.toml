@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "clean_ioc"
-version = "0.0.1"
+version = "0.0.2"
 description = "An IOC Container for Python 3.10+"
 authors = ["Peter Daly"]
 license = "MIT"
 homepage = "https://github.com/peter-daly/clean_ioc"
 repository = "https://github.com/peter-daly/clean_ioc"
 documentation = "https://github.com/peter-daly/clean_ioc"
-readme = "README.rst"
+readme = "README.md"
 classifiers = [
     "Development Status :: 4 - Beta",
 ]

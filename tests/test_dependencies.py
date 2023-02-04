@@ -1,3 +1,4 @@
+# from __future__ import annotations
 from typing import Generic, TypeVar
 from expects import equal, expect, have_length, raise_error
 from expects.matchers import Matcher
@@ -8,28 +9,7 @@ from clean_ioc import (
     LifestyleType,
 )
 from clean_ioc.registration_filters import with_implementation, with_name
-
-
-class be_same_instance_as(Matcher):
-    def __init__(self, expected):
-        self._expected = expected
-
-    def _match(self, subject):
-        return id(subject) == id(self._expected), []
-
-    def _match_negated(self, subject):
-        return id(subject) != id(self._expected), []
-
-
-class be_type(Matcher):
-    def __init__(self, expected):
-        self._expected = expected
-
-    def _match(self, subject):
-        return type(subject) == self._expected, []
-
-    def _match_negated(self, subject):
-        return type(subject) != self._expected, []
+from tests.matchers import be_same_instance_as, be_type
 
 
 def test_simple_implementation_registation():
@@ -167,7 +147,7 @@ def test_simple_decorator():
     class A:
         pass
 
-    class DecA(A):
+    class DecA:
         def __init__(self, a: A):
             self.a = a
             pass
@@ -416,3 +396,21 @@ def test_scope_registartions_overrides_container():
 
     expect(c.b).to_not(be_same_instance_as(c_scoped.b))
     expect(c.b.a).to(be_same_instance_as(c_scoped.b.a))
+
+
+def test_simple_module_registation():
+    class A:
+        pass
+
+    class B(A):
+        pass
+
+    def module(c: Container):
+        c.register(A, B)
+
+    container = Container()
+
+    container.apply_module(module)
+
+    a = container.resolve(A)
+    expect(a).to(be_type(B))
