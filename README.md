@@ -453,10 +453,10 @@ container.register(
     dependency_settings={"number": DependencySettings(use_default_paramater=False, filter=with_name("One"))}
 )
 
-client1 = container.resolve(Client, filter=("SetsValue"))
-client2 = container.resolve(Client, filter=("UsesDefaultValue"))
-client3 = container.resolve(Client, filter=("IgnoresDefaultParameterValue"))
-client4 = container.resolve(Client, filter=("UsesRegistartionFilter"))
+client1 = container.resolve(Client, filter=with_name("SetsValue"))
+client2 = container.resolve(Client, filter=with_name("UsesDefaultValue"))
+client3 = container.resolve(Client, filter=with_name("IgnoresDefaultParameterValue"))
+client4 = container.resolve(Client, filter=with_name("UsesRegistartionFilter"))
 
 
 client1.get_number() # returns 50
