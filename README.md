@@ -436,7 +436,7 @@ container.register(int, instance=2, name="Two")
 container.register(
     Client,
     name="SetsValue",
-    dependency_settings={"number": DependencySettings(value=50)}
+    dependency_config={"number": DependencySettings(value=50)}
 )
 container.register(
     Client,
@@ -445,12 +445,12 @@ container.register(
 container.register(
     Client,
     name="IgnoresDefaultParameterValue",
-    dependency_settings={"number": DependencySettings(use_default_paramater=False)}
+    dependency_config={"number": DependencySettings(use_default_paramater=False)}
 )
 container.register(
     Client,
     name="UsesRegistartionFilter",
-    dependency_settings={"number": DependencySettings(use_default_paramater=False, filter=with_name("One"))}
+    dependency_config={"number": DependencySettings(use_default_paramater=False, filter=with_name("One"))}
 )
 
 client1 = container.resolve(Client, filter=with_name("SetsValue"))

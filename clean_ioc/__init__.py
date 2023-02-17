@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import sys
 import types
 from enum import IntEnum
-from typing import Any, ForwardRef, get_type_hints
+from typing import Any, ForwardRef, Type, get_type_hints
 from collections.abc import Callable
 from typing import _GenericAlias  # type: ignore
 from uuid import uuid4
@@ -57,7 +57,7 @@ class LifestyleType(IntEnum):
     singleton = 3
 
 
-class CannotResolveExpcetion(Exception):
+class CannotResolveException(Exception):
     def __init__(self):
         self.stack = deque()
 
@@ -77,10 +77,10 @@ class CannotResolveExpcetion(Exception):
 
         root, *rest = self.stack
 
-        chain += f"\n{CannotResolveExpcetion.print_dependency(root)}\n"
+        chain += f"\n{CannotResolveException.print_dependency(root)}\n"
 
         for item in rest:
-            chain += f"{spaces}{vertical_line}\n{spaces}{horizontal_line}{CannotResolveExpcetion.print_dependency(item)}\n"
+            chain += f"{spaces}{vertical_line}\n{spaces}{horizontal_line}{CannotResolveException.print_dependency(item)}\n"
             spaces += "     "
 
         return chain
@@ -124,7 +124,7 @@ class Dependency:
             try:
                 reg = context.find_registration(self.service_type, self.settings.filter)
                 return reg.build(context)
-            except CannotResolveExpcetion as ex:
+            except CannotResolveException as ex:
                 print(self.name)
                 ex.append(self)
                 raise ex
@@ -149,14 +149,12 @@ class ImplementationCreator:
     def __init__(
         self,
         creator_function: Callable,
-        dependencies_settings: dict[str, DependencySettings] = {},
+        dependency_config: dict[str, DependencySettings] = {},
     ):
-        self.dependencies_settings = defaultdict(
-            DependencySettings, dependencies_settings
-        )
+        self.dependency_config = defaultdict(DependencySettings, dependency_config)
         self.creator_function = creator_function
         self.dependencies: dict[str, Dependency] = self._get_dependencies(
-            self.creator_function, self.dependencies_settings
+            self.creator_function, self.dependency_config
         )
 
     @classmethod
@@ -170,7 +168,7 @@ class ImplementationCreator:
     def _get_dependencies(
         cls,
         creator_function: Callable,
-        dependencies_settings: dict[str, DependencySettings],
+        dependency_config: dict[str, DependencySettings],
     ) -> dict[str, Dependency]:
         # signature = inspect.signature(creator_function)
         args_infos = get_arg_info(creator_function)
@@ -179,7 +177,7 @@ class ImplementationCreator:
                 name=name,
                 parent_implementation=creator_function,
                 service_type=arg_info.arg_type,
-                settings=dependencies_settings[name],
+                settings=dependency_config[name],
                 default_value=arg_info.default_value,
             )
             for name, arg_info in args_infos.items()
@@ -232,12 +230,12 @@ class Registration:
         implementation: Callable,
         lifestyle: LifestyleType,
         name: str | None = None,
-        dependency_settings: dict[str, DependencySettings] = {},
+        dependency_config: dict[str, DependencySettings] = {},
     ):
         self.service_type = service_type
         self.implementation = implementation
         self.creator = ImplementationCreator(
-            creator_function=implementation, dependencies_settings=dependency_settings
+            creator_function=implementation, dependency_config=dependency_config
         )
         self.lifestyle = lifestyle
         self.name = name
@@ -314,7 +312,7 @@ class ResolvingContext:
                 reg = self.try_generic_fallback(service_type)
             if reg is None:
                 print(f"{service_type} is None")
-                raise CannotResolveExpcetion()
+                raise CannotResolveException()
         return reg
 
     def find_registrations(
@@ -356,7 +354,13 @@ class ResolvingContext:
 
 class Resolver(abc.ABC):
     @abc.abstractmethod
-    def resolve(self, cls: type, filter: RegistartionFilter, *args, **kwargs) -> Any:
+    def resolve(
+        self,
+        cls: type,
+        filter: RegistartionFilter = _all_registartions,
+        *args,
+        **kwargs,
+    ) -> Any:
         pass
 
 
@@ -366,6 +370,12 @@ class Scope(Resolver):
     ):
         self._registrations = defaultdict(deque)
         self._scoped_instances = {}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        pass
 
     @abc.abstractmethod
     def add_scoped_instance(self, *args):
@@ -399,7 +409,7 @@ class ContainerScope(Scope):
         factory: Callable | None = None,
         instance: Any | None = None,
         name: str | None = None,
-        dependencies_settings: dict[str, DependencySettings] = {},
+        dependency_config: dict[str, DependencySettings] = {},
     ):
         if instance is not None:
             self._registrations[service_type].appendleft(
@@ -417,7 +427,7 @@ class ContainerScope(Scope):
                     implementation=factory,
                     lifestyle=LifestyleType.scoped,
                     name=name,
-                    dependency_settings=dependencies_settings,
+                    dependency_config=dependency_config,
                 )
             )
         elif impl_type is not None:
@@ -427,7 +437,7 @@ class ContainerScope(Scope):
                     implementation=impl_type,
                     lifestyle=LifestyleType.scoped,
                     name=name,
-                    dependency_settings=dependencies_settings,
+                    dependency_config=dependency_config,
                 )
             )
         else:
@@ -437,7 +447,7 @@ class ContainerScope(Scope):
                     implementation=service_type,
                     lifestyle=LifestyleType.scoped,
                     name=name,
-                    dependency_settings=dependencies_settings,
+                    dependency_config=dependency_config,
                 )
             )
 
@@ -451,7 +461,7 @@ class ContainerScope(Scope):
         self._before_start()
         return self
 
-    def __exit__(self):
+    def __exit__(self, *args, **kwargs):
         self._after_finish()
 
     def get_registartions(self, service_tyep):
@@ -498,14 +508,14 @@ class Container(Resolver):
         instance: Any | None = None,
         lifestyle: LifestyleType = LifestyleType.once_per_graph,
         name: str | None = None,
-        dependency_settings: dict[str, DependencySettings] = {},
+        dependency_config: dict[str, DependencySettings] = {},
     ):
         if instance is not None:
             self.registry.add_registration(
                 Registration(
                     service_type=service_type,
                     implementation=lambda: instance,
-                    dependency_settings=dependency_settings,
+                    dependency_config=dependency_config,
                     lifestyle=LifestyleType.singleton,
                     name=name,
                 )
@@ -515,7 +525,7 @@ class Container(Resolver):
                 Registration(
                     service_type=service_type,
                     implementation=factory,
-                    dependency_settings=dependency_settings,
+                    dependency_config=dependency_config,
                     lifestyle=lifestyle,
                     name=name,
                 )
@@ -525,7 +535,7 @@ class Container(Resolver):
                 Registration(
                     service_type=service_type,
                     implementation=impl_type,
-                    dependency_settings=dependency_settings,
+                    dependency_config=dependency_config,
                     lifestyle=lifestyle,
                     name=name,
                 )
@@ -535,7 +545,7 @@ class Container(Resolver):
                 Registration(
                     service_type=service_type,
                     implementation=service_type,
-                    dependency_settings=dependency_settings,
+                    dependency_config=dependency_config,
                     lifestyle=lifestyle,
                     name=name,
                 )
@@ -588,8 +598,6 @@ class Container(Resolver):
         name: str | None = None,
         type_filter: Callable[[type], bool] = constant(True),
     ):
-        type_var_map = get_typevar_to_type_mapping(generic_service_type)
-
         full_type_filter = fn_and(fn_not(is_abstract), type_filter)
         subclasses = get_subclasses(generic_service_type, full_type_filter)
         for subclass in subclasses:
@@ -610,8 +618,6 @@ class Container(Resolver):
         generic_decorator_type: type,
         type_filter: Callable[[type], bool] = constant(True),
     ):
-        type_var_map = get_typevar_to_type_mapping(generic_service_type)
-
         full_type_filter = fn_and(fn_not(is_abstract), type_filter)
         subclasses = get_subclasses(generic_service_type, full_type_filter)
         for subclass in subclasses:
@@ -639,7 +645,9 @@ class Container(Resolver):
         context = ResolvingContext(self.registry, scope)
         return d.resolve(context)
 
-    def new_scope(self, ScopeClass: type = ContainerScope, *args, **kwargs):
+    def new_scope(
+        self, ScopeClass: Type[ContainerScope] = ContainerScope, *args, **kwargs
+    ) -> Scope:
         return ScopeClass(self, *args, **kwargs)
 
     def apply_module(self, module_fn: Callable[[Container], None]):

@@ -4,7 +4,7 @@ from expects import equal, expect, have_length, raise_error
 from expects.matchers import Matcher
 from clean_ioc import (
     Container,
-    CannotResolveExpcetion,
+    CannotResolveException,
     DependencySettings,
     LifestyleType,
 )

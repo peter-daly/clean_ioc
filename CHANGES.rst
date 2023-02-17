@@ -18,3 +18,9 @@
     Add support for subclass registartion
     Add first support for modules
     Add first README
+
+
+0.0.3
+-----
+    Fixes around Scopes
+    replace dependency_settings with dependency_config in registartion

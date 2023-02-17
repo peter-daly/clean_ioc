@@ -4,7 +4,7 @@ from expects import equal, expect, have_length, raise_error
 from expects.matchers import Matcher
 from clean_ioc import (
     Container,
-    CannotResolveExpcetion,
+    CannotResolveException,
     DependencySettings,
     LifestyleType,
 )
@@ -193,7 +193,7 @@ def test_simple_open_generic_should_fail_when_no_implementation():
 
     container.register_open_generic(A)
 
-    expect(lambda: container.resolve(A[str])).to(raise_error(CannotResolveExpcetion))
+    expect(lambda: container.resolve(A[str])).to(raise_error(CannotResolveException))
 
 
 def test_simple_open_generic_with_fallback_should_not_fail():
@@ -264,15 +264,15 @@ def test_deep_dependencies_with_dependency_settings():
     container = Container()
 
     container.register(
-        A, dependency_settings={"s": DependencySettings(use_default_paramater=False)}
+        A, dependency_config={"s": DependencySettings(use_default_paramater=False)}
     )
     container.register(
         B,
-        dependency_settings={"x": DependencySettings(value=5)},
+        dependency_config={"x": DependencySettings(value=5)},
     )
     container.register(
         C,
-        dependency_settings={"y": DependencySettings(value=100)},
+        dependency_config={"y": DependencySettings(value=100)},
     )
     container.register(str, factory=str_fac)
     container.register(int, instance=const_int)
@@ -388,14 +388,14 @@ def test_scope_registartions_overrides_container():
     container.register(B, lifestyle=LifestyleType.once_per_graph)
     container.register(C, lifestyle=LifestyleType.scoped)
 
-    scope = container.new_scope()
-    scope.register(B)
+    with container.new_scope() as scope:
+        scope.register(B)
+        c_scoped: C = scope.resolve(C)
 
-    c_scoped: C = scope.resolve(C)
-    c: C = container.resolve(C)
+        c: C = container.resolve(C)
 
-    expect(c.b).to_not(be_same_instance_as(c_scoped.b))
-    expect(c.b.a).to(be_same_instance_as(c_scoped.b.a))
+        expect(c.b).to_not(be_same_instance_as(c_scoped.b))
+        expect(c.b.a).to(be_same_instance_as(c_scoped.b.a))
 
 
 def test_simple_module_registation():
