@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import sys
 import types
 from enum import IntEnum
-from typing import Any, ForwardRef, Type, get_type_hints
+from typing import Any, Type, get_type_hints
 from collections.abc import Callable
 from typing import _GenericAlias  # type: ignore
 from uuid import uuid4
@@ -37,9 +37,11 @@ class ArgInfo:
         )
 
 
-def get_arg_info(subject: Callable) -> dict[str, ArgInfo]:
+def get_arg_info(
+    subject: Callable, local_ns: dict = {}, global_ns: dict | None = None
+) -> dict[str, ArgInfo]:
     arg_spec_fn = subject if inspect.isfunction(subject) else subject.__init__
-    args = get_type_hints(arg_spec_fn, None, {})
+    args = get_type_hints(arg_spec_fn, global_ns, local_ns)
     signature = inspect.signature(subject)
     d: dict[str, ArgInfo] = {}
     for name, param in signature.parameters.items():
@@ -191,10 +193,13 @@ class ImplementationCreator:
 
 
 class DecoratorCreator(ImplementationCreator):
-    def __init__(self, service_type: type, decorator_type: type):
+    def __init__(
+        self, service_type: type, decorator_type: type, decorated_arg: str | None
+    ):
         self.service_type = service_type
         super().__init__(creator_function=decorator_type)
-        self.decorated_arg = next(
+
+        self.decorated_arg = decorated_arg or next(
             name
             for name, dep in self.dependencies.items()
             if dep.service_type == service_type
@@ -208,12 +213,18 @@ class DecoratorCreator(ImplementationCreator):
 
 class Decorator:
     def __init__(
-        self, service_type: type, decorator_type: type, filter: RegistartionFilter
+        self,
+        service_type: type,
+        decorator_type: type,
+        filter: RegistartionFilter,
+        decorated_arg: str | None,
     ):
         self.service_type = service_type
         self.decorator_type = decorator_type
         self.creator = DecoratorCreator(
-            service_type=service_type, decorator_type=decorator_type
+            service_type=service_type,
+            decorator_type=decorator_type,
+            decorated_arg=decorated_arg,
         )
         self.registartion_filter = filter
 
@@ -568,12 +579,14 @@ class Container(Resolver):
         service_type: type,
         decorator_type: type,
         registration_filter: Callable[[Registration], bool] = _all_registartions,
+        decorated_arg: str | None = None,
     ):
         self.registry.add_decorator(
             Decorator(
                 service_type=service_type,
                 decorator_type=decorator_type,
                 filter=registration_filter,
+                decorated_arg=decorated_arg,
             )
         )
 
@@ -617,6 +630,7 @@ class Container(Resolver):
         generic_service_type: type,
         generic_decorator_type: type,
         type_filter: Callable[[type], bool] = constant(True),
+        decorated_arg: str | None = None,
     ):
         full_type_filter = fn_and(fn_not(is_abstract), type_filter)
         subclasses = get_subclasses(generic_service_type, full_type_filter)
@@ -633,7 +647,9 @@ class Container(Resolver):
                     {},
                 )
 
-                self.register_decorator(target_generic_base, DecoratedType)
+                self.register_decorator(
+                    target_generic_base, DecoratedType, decorated_arg=decorated_arg
+                )
 
     def resolve(
         self,
@@ -654,6 +670,7 @@ class Container(Resolver):
         module_fn(self)
 
 
+@dataclass(kw_only=True)
 @dataclass
 class DependencySettings:
     value: Any = _empty
