@@ -4,7 +4,6 @@ from __future__ import annotations
 import abc
 from collections import defaultdict, deque
 from dataclasses import dataclass
-import sys
 import types
 from enum import IntEnum
 from typing import Any, Type, get_type_hints
@@ -18,6 +17,7 @@ from .typing_utils import (
     get_generic_types,
     get_subclasses,
     get_typevar_to_type_mapping,
+    is_open_generic_type,
     try_to_complete_generic,
 )
 import inspect
@@ -52,11 +52,55 @@ def get_arg_info(
 _all_registartions = constant(True)
 
 
-class LifestyleType(IntEnum):
+class Lifespan(IntEnum):
     transient = 0
     once_per_graph = 1
     scoped = 2
     singleton = 3
+
+
+class DependencyNode(abc.ABC):
+    service_type: type
+    implementation: type | Callable
+    parent: DependencyNode
+    decorated: DependencyNode
+
+    @property
+    def bottom_decorated(self):
+        bottom = self.implementation
+        decorated = self.decorated
+        while decorated:
+            bottom = decorated.implementation
+            decorated = decorated.decorated
+        return bottom
+
+
+class EmptyDependencyNode(DependencyNode):
+    def __init__(self):
+        self.service_type = _empty
+        self.implementation = _empty
+        self.parent = self
+        self.decorated = self
+
+    def __bool__(self):
+        return False
+
+
+@dataclass
+class FullDependencyNode(DependencyNode):
+    service_type: type
+    implementation: type | Callable
+    parent: DependencyNode = EmptyDependencyNode()
+    decorated: DependencyNode = EmptyDependencyNode()
+
+
+class DependencyContext:
+    def __init__(self, name: str, dependency_node: DependencyNode):
+        self.name = name
+        self.service_type = dependency_node.service_type
+        self.implementation = dependency_node.implementation
+        self.parent = dependency_node.parent
+        self.decorated = dependency_node.decorated
 
 
 class CannotResolveException(Exception):
@@ -109,25 +153,28 @@ class Dependency:
         else:
             self.service_type = service_type
         self.settings = settings
+        self.is_dependency_context = service_type == DependencyContext
         self.is_generic_list = getattr(self.service_type, "__origin__", None) == list
         self.default_value = default_value
 
-    def resolve(self, context: ResolvingContext):
+    def resolve(self, context: ResolvingContext, depedency_node: DependencyNode):
         if not self.settings.value == _empty:
             return self.settings.value
 
         if not self.default_value == _empty and self.settings.use_default_paramater:
             return self.default_value
 
+        if self.is_dependency_context:
+            return DependencyContext(name=self.name, dependency_node=depedency_node)
+
         if self.is_generic_list:
             regs = context.find_registrations(self.service_type.__args__[0], self.settings.filter)  # type: ignore
-            return [s.build(context) for s in regs]
+            return [s.build(context, depedency_node) for s in regs]
         else:
             try:
                 reg = context.find_registration(self.service_type, self.settings.filter)
-                return reg.build(context)
+                return reg.build(context, depedency_node)
             except CannotResolveException as ex:
-                print(self.name)
                 ex.append(self)
                 raise ex
 
@@ -172,7 +219,6 @@ class ImplementationCreator:
         creator_function: Callable,
         dependency_config: dict[str, DependencySettings],
     ) -> dict[str, Dependency]:
-        # signature = inspect.signature(creator_function)
         args_infos = get_arg_info(creator_function)
         return {
             name: Dependency(
@@ -185,9 +231,14 @@ class ImplementationCreator:
             for name, arg_info in args_infos.items()
         }
 
-    def create(self, context: ResolvingContext, **kwargs):
+    def create(
+        self,
+        context: ResolvingContext,
+        dependency_node: DependencyNode,
+        **kwargs,
+    ):
         for arg_name, arg_dep in self.dependencies.items():
-            kwargs[arg_name] = arg_dep.resolve(context)
+            kwargs[arg_name] = arg_dep.resolve(context, dependency_node)
         built_instance = self.creator_function(**kwargs)
         return built_instance
 
@@ -228,10 +279,15 @@ class Decorator:
         )
         self.registartion_filter = filter
 
-    def decorate(self, instance: Any, context: ResolvingContext):
+    def decorate(
+        self,
+        instance: Any,
+        context: ResolvingContext,
+        dependency_node: DependencyNode,
+    ):
         kwargs = {}
         kwargs[self.creator.decorated_arg] = instance
-        return self.creator.create(context, **kwargs)
+        return self.creator.create(context, dependency_node, **kwargs)
 
 
 class Registration:
@@ -239,7 +295,7 @@ class Registration:
         self,
         service_type: type,
         implementation: Callable,
-        lifestyle: LifestyleType,
+        lifespan: Lifespan,
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
     ):
@@ -248,7 +304,7 @@ class Registration:
         self.creator = ImplementationCreator(
             creator_function=implementation, dependency_config=dependency_config
         )
-        self.lifestyle = lifestyle
+        self.lifespan = lifespan
         self.name = name
         self._id = str(uuid4())
         self.generic_mapping = get_typevar_to_type_mapping(self.service_type)
@@ -257,16 +313,29 @@ class Registration:
     def is_named(self):
         return self.name is not None
 
-    def build(self, context: ResolvingContext):
+    def build(self, context: ResolvingContext, dependency_node: DependencyNode):
+        next_node = FullDependencyNode(
+            service_type=self.service_type,
+            implementation=self.implementation,
+            parent=dependency_node,
+        )
+
         cached_instance = context.get_cached(self._id)
         if not cached_instance == _empty:
             return cached_instance
-        built_instance = self.creator.create(context)
-
+        built_instance = self.creator.create(context, next_node)
+        decorated_node = next_node
         for dec in context.find_decorators_that_apply(self):
-            built_instance = dec.decorate(built_instance, context)
+            next_dec_node = FullDependencyNode(
+                service_type=self.service_type,
+                implementation=dec.decorator_type,
+                parent=dependency_node,
+                decorated=decorated_node,
+            )
+            built_instance = dec.decorate(built_instance, context, next_dec_node)
+            decorated_node = next_dec_node
 
-        context.new_instance_created(self._id, built_instance, self.lifestyle)
+        context.new_instance_created(self._id, built_instance, self.lifespan)
         return built_instance
 
 
@@ -280,7 +349,7 @@ class Registry:
         self._registrations[registartion.service_type].appendleft(registartion)
 
     def add_decorator(self, decorator: Decorator):
-        self._decorators[decorator.service_type].appendleft(decorator)
+        self._decorators[decorator.service_type].append(decorator)
 
     def add_singleton_instance(self, registartion_id: str, instance: Any):
         self._singletons[registartion_id] = instance
@@ -351,15 +420,13 @@ class ResolvingContext:
     def get_cached(self, reg_id: str):
         return self._cache.get(reg_id, _empty)
 
-    def new_instance_created(
-        self, reg_id: str, instance: Any, lifestyle: LifestyleType
-    ):
-        if lifestyle == LifestyleType.singleton:
+    def new_instance_created(self, reg_id: str, instance: Any, lifespan: Lifespan):
+        if lifespan == Lifespan.singleton:
             self.registry.add_singleton_instance(reg_id, instance)
-        elif lifestyle == LifestyleType.scoped:
+        elif lifespan == Lifespan.scoped:
             self.scope.add_scoped_instance(reg_id, instance)
 
-        if lifestyle >= LifestyleType.once_per_graph:
+        if lifespan >= Lifespan.once_per_graph:
             self._cache[reg_id] = instance
 
 
@@ -427,7 +494,7 @@ class ContainerScope(Scope):
                 Registration(
                     service_type=service_type,
                     implementation=lambda: instance,
-                    lifestyle=LifestyleType.scoped,
+                    lifespan=Lifespan.scoped,
                     name=name,
                 )
             )
@@ -436,7 +503,7 @@ class ContainerScope(Scope):
                 Registration(
                     service_type=service_type,
                     implementation=factory,
-                    lifestyle=LifestyleType.scoped,
+                    lifespan=Lifespan.scoped,
                     name=name,
                     dependency_config=dependency_config,
                 )
@@ -446,7 +513,7 @@ class ContainerScope(Scope):
                 Registration(
                     service_type=service_type,
                     implementation=impl_type,
-                    lifestyle=LifestyleType.scoped,
+                    lifespan=Lifespan.scoped,
                     name=name,
                     dependency_config=dependency_config,
                 )
@@ -456,7 +523,7 @@ class ContainerScope(Scope):
                 Registration(
                     service_type=service_type,
                     implementation=service_type,
-                    lifestyle=LifestyleType.scoped,
+                    lifespan=Lifespan.scoped,
                     name=name,
                     dependency_config=dependency_config,
                 )
@@ -505,6 +572,23 @@ class EmptyContainerScope(Scope):
         pass
 
 
+class NeedsScopedRegistrationError(Exception):
+    def __init__(self, service_type, name):
+        self.service_type = service_type
+        self.name = name
+
+    def __str__(self):
+        with_name = f" with {self.name}" if self.name else ""
+        return f"{self.service_type}{with_name} is expected to be used within a scope"
+
+
+def type_expected_to_be_scoped(service_type: type, name: str | None):
+    def raise_error():
+        raise NeedsScopedRegistrationError(service_type, name)
+
+    return raise_error
+
+
 class Container(Resolver):
     def __init__(self):
         self.registry = Registry()
@@ -517,7 +601,7 @@ class Container(Resolver):
         impl_type: type | None = None,
         factory: Callable | None = None,
         instance: Any | None = None,
-        lifestyle: LifestyleType = LifestyleType.once_per_graph,
+        lifespan: Lifespan = Lifespan.once_per_graph,
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
     ):
@@ -527,7 +611,7 @@ class Container(Resolver):
                     service_type=service_type,
                     implementation=lambda: instance,
                     dependency_config=dependency_config,
-                    lifestyle=LifestyleType.singleton,
+                    lifespan=Lifespan.singleton,
                     name=name,
                 )
             )
@@ -537,7 +621,7 @@ class Container(Resolver):
                     service_type=service_type,
                     implementation=factory,
                     dependency_config=dependency_config,
-                    lifestyle=lifestyle,
+                    lifespan=lifespan,
                     name=name,
                 )
             )
@@ -547,7 +631,7 @@ class Container(Resolver):
                     service_type=service_type,
                     implementation=impl_type,
                     dependency_config=dependency_config,
-                    lifestyle=lifestyle,
+                    lifespan=lifespan,
                     name=name,
                 )
             )
@@ -557,7 +641,7 @@ class Container(Resolver):
                     service_type=service_type,
                     implementation=service_type,
                     dependency_config=dependency_config,
-                    lifestyle=lifestyle,
+                    lifespan=lifespan,
                     name=name,
                 )
             )
@@ -565,14 +649,14 @@ class Container(Resolver):
     def register_subclasses(
         self,
         base_type: type,
-        lifestyle: LifestyleType = LifestyleType.once_per_graph,
+        lifespan: Lifespan = Lifespan.once_per_graph,
         type_filter: Callable[[type], bool] = constant(True),
     ):
         sub_classes = get_subclasses(base_type, type_filter)
 
         for sc in sub_classes:
-            self.register(base_type, sc, lifestyle=lifestyle)
-            self.register(sc, lifestyle=lifestyle)
+            self.register(base_type, sc, lifespan=lifespan)
+            self.register(sc, lifespan=lifespan)
 
     def register_decorator(
         self,
@@ -607,7 +691,7 @@ class Container(Resolver):
         self,
         generic_service_type: type,
         fallback_type: type | None = None,
-        lifestyle: LifestyleType = LifestyleType.once_per_graph,
+        lifespan: Lifespan = Lifespan.once_per_graph,
         name: str | None = None,
         type_filter: Callable[[type], bool] = constant(True),
     ):
@@ -618,11 +702,11 @@ class Container(Resolver):
                 generic_service_type, subclass
             )
             if target_generic_base:
-                self.register(target_generic_base, subclass, lifestyle=lifestyle)
+                self.register(target_generic_base, subclass, lifespan=lifespan)
 
         if fallback_type:
             self.register(
-                generic_service_type, fallback_type, lifestyle=lifestyle, name=name
+                generic_service_type, fallback_type, lifespan=lifespan, name=name
             )
 
     def register_open_generic_decorator(
@@ -634,22 +718,32 @@ class Container(Resolver):
     ):
         full_type_filter = fn_and(fn_not(is_abstract), type_filter)
         subclasses = get_subclasses(generic_service_type, full_type_filter)
+        decorator_is_open_generic = is_open_generic_type(generic_decorator_type)
+
         for subclass in subclasses:
+
             target_generic_base = self._get_target_generic_base(
                 generic_service_type, subclass
             )
             if target_generic_base:
-                generic_values = get_generic_types(target_generic_base)
-                concrete_decorator = generic_decorator_type[generic_values]  # type: ignore
-                DecoratedType = types.new_class(
-                    f"DecoratedGeneric_{concrete_decorator.__name__}",
-                    (concrete_decorator,),
-                    {},
-                )
+                if decorator_is_open_generic:
+                    generic_values = get_generic_types(target_generic_base)
+                    concrete_decorator = generic_decorator_type[generic_values]  # type: ignore
+                    DecoratedType = types.new_class(
+                        f"DecoratedGeneric_{concrete_decorator.__name__}",
+                        (concrete_decorator,),
+                        {},
+                    )
 
-                self.register_decorator(
-                    target_generic_base, DecoratedType, decorated_arg=decorated_arg
-                )
+                    self.register_decorator(
+                        target_generic_base, DecoratedType, decorated_arg=decorated_arg
+                    )
+                else:
+                    self.register_decorator(
+                        target_generic_base,
+                        generic_decorator_type,
+                        decorated_arg=decorated_arg,
+                    )
 
     def resolve(
         self,
@@ -658,20 +752,30 @@ class Container(Resolver):
         scope: Scope = EmptyContainerScope(),
     ) -> Any:
         d = RootDependency(service_type, DependencySettings(filter=filter))
+        dependency_node = FullDependencyNode(
+            service_type=Container, implementation=Container
+        )
+
         context = ResolvingContext(self.registry, scope)
-        return d.resolve(context)
+        return d.resolve(context, dependency_node)
 
     def new_scope(
         self, ScopeClass: Type[ContainerScope] = ContainerScope, *args, **kwargs
     ) -> Scope:
         return ScopeClass(self, *args, **kwargs)
 
+    def expect_to_be_scoped(self, service_type: type, name: str | None = None):
+        self.register(
+            service_type=service_type,
+            factory=type_expected_to_be_scoped(service_type, name),
+            name=name,
+        )
+
     def apply_module(self, module_fn: Callable[[Container], None]):
         module_fn(self)
 
 
 @dataclass(kw_only=True)
-@dataclass
 class DependencySettings:
     value: Any = _empty
     use_default_paramater: bool = True

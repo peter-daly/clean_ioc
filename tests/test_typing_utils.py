@@ -55,6 +55,7 @@ def test_typevar_type_mapping():
 
 
 def test_is_open_generic():
+    assert is_open_generic_type(HBase) == True
     assert is_open_generic_type(HBase[T1, T2]) == True
     assert is_open_generic_type(HBase[T1, int]) == True
     assert is_open_generic_type(HBase[int, T2]) == True

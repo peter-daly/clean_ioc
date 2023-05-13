@@ -190,6 +190,36 @@ client = container.resolve(Client)
 client.get_number() # returns 20
 ```
 
+
+Decorators are resolved in order of when first registered. So the first registered decorator is the deepest in the class tree
+
+
+```python
+    class Concrete:
+        pass
+
+    class DecoratorOne(Concrete):
+        def __init__(self, child: Concrete):
+            self.child = child
+
+    class DecoratorTwo(Concrete):
+        def __init__(self, child: Concrete):
+            self.child = child
+
+    container = Container()
+
+    container.register(Concrete)
+    container.register_decorator(Concrete, DecoratorOne)
+    container.register_decorator(Concrete, DecoratorTwo)
+
+    root = container.resolve(Concrete)
+
+    type(root) # returns DecoratorTwo
+    type(root.child) # returns DecoratorOne
+    type(root.child.child) # returns Concrete
+```
+
+
 ## Subclasses registration
 
 This feature allows registartion of all subclasses of a giveb type
@@ -224,15 +254,15 @@ client = container.resolve(list[Client]) ## [TwentyClient(), TenClient()]
 ```
 
 
-## Lifestyles
-Lifestyles configure how long and resolved object says alive for
-There are 4 lifestyle types
+## Lifespans
+Lifespans configure how long and resolved object says alive for
+There are 4 lifespan types
 
 ### transient
 Always create a new instance
 
 ```python
-container.register(Client, lifestyle=LifestyleType.transient)
+container.register(Client, lifespan=Lifespan.transient)
 ```
 
 
@@ -240,21 +270,21 @@ container.register(Client, lifestyle=LifestyleType.transient)
 Only create one instance throughout the resolve call
 
 ```python
-container.register(Client, lifestyle=LifestyleType.once_per_graph)
+container.register(Client, lifespan=Lifespan.once_per_graph)
 ```
 
 ### scoped
 Only create a new instance through the life a scope. When not in a scope the behaviour is the same as **once_per_graph**
 
 ```python
-container.register(Client, lifestyle=LifestyleType.scoped)
+container.register(Client, lifespan=Lifespan.scoped)
 ```
 
 ### singleton
 Only one instance of the object is created throughout the lifespan of the container
 
 ```python
-container.register(Client, lifestyle=LifestyleType.singleton)
+container.register(Client, lifespan=Lifespan.singleton)
 ```
 
 *Note:*
@@ -347,7 +377,7 @@ h2.handle(GoodbyeCommand()) # prints 'A VERY BIG\nGOODBYE'
 
 ## Scopes
 
-Scopes are a way to create a sub container that will live for a certain lifestyle.
+Scopes are a way to create a sub container that will live for a certain lifespan.
 Some good use cases for scope would be for the lifespan of handling a http request with a web server or a message/event if working on a message based system
 
 
@@ -563,13 +593,44 @@ class Client
         return self.dep.get_int()
 
 def client_module(c: Container):
-    container = Container()
-    container.register(ClientDependency)
-    container.register(Client)
+    c.register(ClientDependency)
+    c.register(Client)
 
 container.apply_module(client_module)
 
 client = container.resolve(Client)
 
 client.get_number() # returns 10
+```
+
+
+
+## DependencyContext (BETA feature)
+
+You can inject a special type into your dependants that allows you to inspect the current dependency tree. For instances you can check the parent of the current class you are constructing
+One example of where this becomes useful is if injecting a logger, you can get information about the loggers parent to add extra context
+
+```python
+class Logger
+    def __init__(self, module):
+        self.module = module
+
+class Client
+    def __init__(self, logger: Logger)
+        self.logger = logger
+
+def logger_fac(context: DependencyContext):
+    module = context.parent.__module__
+    return Logger(module)
+
+
+container = Container()
+container.register(Client)
+container.register(Logger, factory=logger_fac)
+
+container.apply_module(client_module)
+
+client = container.resolve(Client)
+
+
 ```

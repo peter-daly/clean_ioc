@@ -24,3 +24,11 @@
 -----
     Fixes around Scopes
     replace dependency_settings with dependency_config in registartion
+
+
+0.0.4
+-----
+    Lifestyles changed to Lifespans
+    Added support for the dependency nodes and dependency context
+    Improved Generic Decorators resolving
+    Added factory for a dictionary

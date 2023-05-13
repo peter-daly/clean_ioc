@@ -1,9 +1,12 @@
-from typing import _GenericAlias  # type: ignore
+from typing import _GenericAlias, _SpecialGenericAlias  # type: ignore
 from typing import Generic, TypeVar
 from collections.abc import Callable
 from typing import get_type_hints
+import types
 from queue import Queue
 import inspect
+
+typingGenericAlias = (_GenericAlias, _SpecialGenericAlias, types.GenericAlias)
 
 
 def get_subclasses(cls: type, filter: Callable[[type], bool] = lambda t: True):
@@ -52,9 +55,38 @@ def get_type_args(cls: type):
     return getattr(cls, "__args__", ())
 
 
+def is_generic_type(tp: type):
+    """Test if the given type is a generic type. This includes Generic itself, but
+    excludes special typing constructs such as Union, Tuple, Callable, ClassVar.
+    Examples::
+
+        is_generic_type(int) == False
+        is_generic_type(Union[int, str]) == False
+        is_generic_type(Union[int, T]) == False
+        is_generic_type(ClassVar[List[int]]) == False
+        is_generic_type(Callable[..., T]) == False
+
+        is_generic_type(Generic) == True
+        is_generic_type(Generic[T]) == True
+        is_generic_type(Iterable[int]) == True
+        is_generic_type(Mapping) == True
+        is_generic_type(MutableMapping[T, List[int]]) == True
+        is_generic_type(Sequence[Union[str, bytes]]) == True
+    """
+
+    return (
+        isinstance(tp, type)
+        and issubclass(tp, Generic)
+        or isinstance(tp, typingGenericAlias)
+    )
+
+
 def is_open_generic_type(cls: type):
     type_args = get_type_args(cls)
-    return any([isinstance(t, TypeVar) for t in type_args])
+    if type_args:
+        return any([isinstance(t, TypeVar) for t in type_args])
+    else:
+        return is_generic_type(cls)
 
 
 def get_generic_type_args(type: type):
@@ -177,6 +209,8 @@ def get_generic_types(cls: type):
 
 
 def try_to_complete_generic(open_type: _GenericAlias, closed_type: type) -> type:
+    if not getattr(open_type, "__args__", None):
+        return open_type
     if is_generic_type_closed(open_type):
         return open_type
 

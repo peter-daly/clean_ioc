@@ -1,10 +1,10 @@
 from . import Registration
-from .functional_utils import constant
+from .functional_utils import constant, fn_not
 
 all_registrations = constant(True)
 
 
-def with_name(name: str):
+def with_name(name: str | None):
     """
     Filter registartions equal the name
     """
@@ -46,6 +46,9 @@ def is_named(r: Registration):
     Filter registartions that have a name
     """
     return r.is_named
+
+
+is_not_named = with_name(None)
 
 
 def with_implementation(implementation: type):

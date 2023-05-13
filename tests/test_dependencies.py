@@ -1,14 +1,17 @@
 # from __future__ import annotations
-from typing import Generic, TypeVar
+from typing import Callable, Generic, TypeVar
 from expects import equal, expect, have_length, raise_error
 from expects.matchers import Matcher
+from traitlets import Any
 from clean_ioc import (
     Container,
     CannotResolveException,
+    DependencyContext,
     DependencySettings,
-    LifestyleType,
+    Lifespan,
+    NeedsScopedRegistrationError,
 )
-from clean_ioc.registration_filters import with_implementation, with_name
+from clean_ioc.registration_filters import with_implementation, with_name, is_not_named
 from tests.matchers import be_same_instance_as, be_type
 
 
@@ -143,6 +146,31 @@ def test_list_with_named_filter():
     expect(array[1]).to(be_same_instance_as(a1))
 
 
+def test_nested_decorators_should_be_in_order_of_when_first_registered():
+    class A:
+        pass
+
+    class DecALayer1:
+        def __init__(self, a: A):
+            self.a = a
+
+    class DecALayer2:
+        def __init__(self, a: A):
+            self.a = a
+
+    container = Container()
+
+    container.register(A)
+    container.register_decorator(A, DecALayer1)
+    container.register_decorator(A, DecALayer2)
+
+    a = container.resolve(A)
+
+    expect(a).to(be_type(DecALayer2))
+    expect(a.a).to(be_type(DecALayer1))
+    expect(a.a.a).to(be_type(A))
+
+
 def test_simple_decorator():
     class A:
         pass
@@ -150,7 +178,6 @@ def test_simple_decorator():
     class DecA:
         def __init__(self, a: A):
             self.a = a
-            pass
 
     container = Container()
 
@@ -160,6 +187,24 @@ def test_simple_decorator():
     a = container.resolve(A)
 
     expect(a).to(be_type(DecA))
+
+
+def test_decorator_with_decorated_arg_set():
+    class A:
+        pass
+
+    class DecAny:
+        def __init__(self, sub: Any):
+            self.sub = sub
+
+    container = Container()
+
+    container.register(A)
+    container.register_decorator(A, DecAny, decorated_arg="sub")
+
+    a = container.resolve(A)
+
+    expect(a).to(be_type(DecAny))
 
 
 def test_simple_open_generic():
@@ -240,6 +285,59 @@ def test_open_generic_decorators():
     expect(type(a).__name__).to(equal("DecoratedGeneric_ADec"))
 
 
+def test_open_generic_decorators_with_nongeneric_decorator():
+    T = TypeVar("T")
+
+    class A(Generic[T]):
+        pass
+
+    class ADec:
+        def __init__(self, a: A):
+            pass
+
+    class B(A[int]):
+        pass
+
+    container = Container()
+
+    container.register_open_generic(A)
+    container.register_open_generic_decorator(A, ADec, decorated_arg="a")
+
+    a = container.resolve(A[int])
+
+    expect(type(a).__name__).to(equal("ADec"))
+
+
+def test_open_generic_decorators_with_both_generic_and_nongeneric_decorator():
+    T = TypeVar("T")
+
+    class A(Generic[T]):
+        pass
+
+    class ADecNonGeneric:
+        def __init__(self, a: A):
+            self.a = a
+
+    class ADecGeneric(Generic[T]):
+        def __init__(self, a: A[T]):
+            self.a = a
+
+    class B(A[int]):
+        pass
+
+    container = Container()
+
+    container.register_open_generic(A)
+    container.register_open_generic_decorator(A, ADecNonGeneric, decorated_arg="a")
+    container.register_open_generic_decorator(A, ADecGeneric, decorated_arg="a")
+
+    a = container.resolve(A[int])
+
+    expect(type(a).__name__).to(equal("DecoratedGeneric_ADecGeneric"))
+    expect(type(a.a).__name__).to(equal("ADecNonGeneric"))
+    expect(type(a.a.a).__name__).to(equal("B"))
+
+
 def test_deep_dependencies_with_dependency_settings():
     class A:
         def __init__(self, s: str = "Hello"):
@@ -285,7 +383,7 @@ def test_deep_dependencies_with_dependency_settings():
     expect(c.z).to(equal(10))
 
 
-def test_lifestyles():
+def test_lifespans():
     class A:
         pass
 
@@ -309,11 +407,11 @@ def test_lifestyles():
 
     container = Container()
 
-    container.register(A, lifestyle=LifestyleType.singleton)
-    container.register(B, lifestyle=LifestyleType.once_per_graph)
-    container.register(C, lifestyle=LifestyleType.transient)
-    container.register(D, lifestyle=LifestyleType.transient)
-    container.register(E, lifestyle=LifestyleType.once_per_graph)
+    container.register(A, lifespan=Lifespan.singleton)
+    container.register(B, lifespan=Lifespan.once_per_graph)
+    container.register(C, lifespan=Lifespan.transient)
+    container.register(D, lifespan=Lifespan.transient)
+    container.register(E, lifespan=Lifespan.once_per_graph)
 
     e: E = container.resolve(E)
     a: A = container.resolve(A)
@@ -323,7 +421,7 @@ def test_lifestyles():
     expect(e.d.b).to(be_same_instance_as(e.d.c.b))
 
 
-def test_scopes_with_lifestyles():
+def test_scopes_with_lifespans():
     class A:
         pass
 
@@ -347,11 +445,11 @@ def test_scopes_with_lifestyles():
 
     container = Container()
 
-    container.register(A, lifestyle=LifestyleType.singleton)
-    container.register(B, lifestyle=LifestyleType.once_per_graph)
-    container.register(C, lifestyle=LifestyleType.transient)
-    container.register(D, lifestyle=LifestyleType.transient)
-    container.register(E, lifestyle=LifestyleType.scoped)
+    container.register(A, lifespan=Lifespan.singleton)
+    container.register(B, lifespan=Lifespan.once_per_graph)
+    container.register(C, lifespan=Lifespan.transient)
+    container.register(D, lifespan=Lifespan.transient)
+    container.register(E, lifespan=Lifespan.scoped)
 
     scope1 = container.new_scope()
     scope2 = container.new_scope()
@@ -384,9 +482,9 @@ def test_scope_registartions_overrides_container():
 
     container = Container()
 
-    container.register(A, lifestyle=LifestyleType.singleton)
-    container.register(B, lifestyle=LifestyleType.once_per_graph)
-    container.register(C, lifestyle=LifestyleType.scoped)
+    container.register(A, lifespan=Lifespan.singleton)
+    container.register(B, lifespan=Lifespan.once_per_graph)
+    container.register(C, lifespan=Lifespan.scoped)
 
     with container.new_scope() as scope:
         scope.register(B)
@@ -396,6 +494,46 @@ def test_scope_registartions_overrides_container():
 
         expect(c.b).to_not(be_same_instance_as(c_scoped.b))
         expect(c.b.a).to(be_same_instance_as(c_scoped.b.a))
+
+
+def test_expect_to_be_scoped():
+    class A:
+        pass
+
+    container = Container()
+
+    container.expect_to_be_scoped(A)
+
+    with container.new_scope() as scope:
+        scope.register(A)
+        a_scoped: A = scope.resolve(A)
+
+        expect(a_scoped).to(be_type(A))
+
+    expect(lambda: container.resolve(A)).to(raise_error(NeedsScopedRegistrationError))
+
+
+def test_expect_to_be_scoped_with_name():
+    class A:
+        pass
+
+    container = Container()
+
+    container.register(A)
+    container.expect_to_be_scoped(A, name="ScopedA")
+
+    with container.new_scope() as scope:
+        scope.register(A, name="ScopedA")
+        expect(lambda: container.resolve(A)).to(
+            raise_error(NeedsScopedRegistrationError)
+        )
+
+        a_scoped: A = scope.resolve(A, filter=with_name("ScopedA"))
+
+        expect(a_scoped).to(be_type(A))
+
+    a_unscoped = container.resolve(A, filter=is_not_named)
+    expect(a_unscoped).to(be_type(A))
 
 
 def test_simple_module_registation():
@@ -414,3 +552,74 @@ def test_simple_module_registation():
 
     a = container.resolve(A)
     expect(a).to(be_type(B))
+
+
+def test_dependency_context_with_parent():
+    class A:
+        def __init__(self, parent_type: type | Callable):
+            self.parent_type = parent_type
+
+    class B:
+        def __init__(self, a: A):
+            self.a = a
+
+    def a_fac(dependency_context: DependencyContext):
+        return A(parent_type=dependency_context.parent.implementation)
+
+    container = Container()
+    container.register(A, factory=a_fac)
+    container.register(B)
+
+    b = container.resolve(B)
+    expect(b.a.parent_type).to(equal(B))
+
+
+def test_dependency_context_with_decorators_and_deep_child():
+    class A:
+        def __init__(
+            self, parent_type: type | Callable, parent_type_undecorated: type | Callable
+        ):
+            self.parent_type = parent_type
+            self.parent_type_undecorated = parent_type_undecorated
+
+    class B:
+        def __init__(self, a: A):
+            self.a = a
+
+        def get_a(self) -> A:
+            return self.a
+
+    class BDecoratedLayer1(B):
+        def __init__(self, child: B, a: A):
+            self.child = child
+            self.a = a
+
+        def get_a(self) -> A:
+            return self.a
+
+    class BDecoratedLayer2:
+        def __init__(self, child: B):
+            self.child = child
+
+        def get_a(self) -> A:
+            return self.child.get_a()
+
+    def a_fac(dependency_context: DependencyContext):
+        parent_type = dependency_context.parent.implementation
+        parent_type_undecorated = dependency_context.parent.bottom_decorated
+        return A(
+            parent_type=parent_type, parent_type_undecorated=parent_type_undecorated
+        )
+
+    container = Container()
+    container.register(A, factory=a_fac, lifespan=Lifespan.transient)
+    container.register_decorator(B, BDecoratedLayer1)
+    container.register_decorator(B, BDecoratedLayer2)
+    container.register(B)
+
+    b: B = container.resolve(B)
+
+    a = b.get_a()
+
+    expect(a.parent_type).to(equal(BDecoratedLayer1))
+    expect(a.parent_type_undecorated).to(equal(B))
