@@ -349,7 +349,7 @@ class Registry:
         self._registrations[registartion.service_type].appendleft(registartion)
 
     def add_decorator(self, decorator: Decorator):
-        self._decorators[decorator.service_type].append(decorator)
+        self._decorators[decorator.service_type].appendleft(decorator)
 
     def add_singleton_instance(self, registartion_id: str, instance: Any):
         self._singletons[registartion_id] = instance
@@ -650,11 +650,11 @@ class Container(Resolver):
         self,
         base_type: type,
         lifespan: Lifespan = Lifespan.once_per_graph,
-        type_filter: Callable[[type], bool] = constant(True),
+        subclass_type_filter: Callable[[type], bool] = constant(True),
     ):
-        sub_classes = get_subclasses(base_type, type_filter)
+        subclasses = get_subclasses(base_type, subclass_type_filter)
 
-        for sc in sub_classes:
+        for sc in subclasses:
             self.register(base_type, sc, lifespan=lifespan)
             self.register(sc, lifespan=lifespan)
 
@@ -693,9 +693,9 @@ class Container(Resolver):
         fallback_type: type | None = None,
         lifespan: Lifespan = Lifespan.once_per_graph,
         name: str | None = None,
-        type_filter: Callable[[type], bool] = constant(True),
+        subclass_type_filter: Callable[[type], bool] = constant(True),
     ):
-        full_type_filter = fn_and(fn_not(is_abstract), type_filter)
+        full_type_filter = fn_and(fn_not(is_abstract), subclass_type_filter)
         subclasses = get_subclasses(generic_service_type, full_type_filter)
         for subclass in subclasses:
             target_generic_base = self._get_target_generic_base(
@@ -713,10 +713,10 @@ class Container(Resolver):
         self,
         generic_service_type: type,
         generic_decorator_type: type,
-        type_filter: Callable[[type], bool] = constant(True),
+        subclass_type_filter: Callable[[type], bool] = constant(True),
         decorated_arg: str | None = None,
     ):
-        full_type_filter = fn_and(fn_not(is_abstract), type_filter)
+        full_type_filter = fn_and(fn_not(is_abstract), subclass_type_filter)
         subclasses = get_subclasses(generic_service_type, full_type_filter)
         decorator_is_open_generic = is_open_generic_type(generic_decorator_type)
 

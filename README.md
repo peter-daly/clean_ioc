@@ -191,7 +191,7 @@ client.get_number() # returns 20
 ```
 
 
-Decorators are resolved in order of when first registered. So the first registered decorator is the deepest in the class tree
+Decorators are resolved in order of when first registered. So the first registered decorator is the highest in the class tree
 
 
 ```python
@@ -214,8 +214,8 @@ Decorators are resolved in order of when first registered. So the first register
 
     root = container.resolve(Concrete)
 
-    type(root) # returns DecoratorTwo
-    type(root.child) # returns DecoratorOne
+    type(root) # returns DecoratorOne
+    type(root.child) # returns DecoratorTwo
     type(root.child.child) # returns Concrete
 ```
 

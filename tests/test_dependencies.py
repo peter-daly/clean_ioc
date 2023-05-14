@@ -150,11 +150,11 @@ def test_nested_decorators_should_be_in_order_of_when_first_registered():
     class A:
         pass
 
-    class DecALayer1:
+    class DecALayer1(A):
         def __init__(self, a: A):
             self.a = a
 
-    class DecALayer2:
+    class DecALayer2(A):
         def __init__(self, a: A):
             self.a = a
 
@@ -166,8 +166,8 @@ def test_nested_decorators_should_be_in_order_of_when_first_registered():
 
     a = container.resolve(A)
 
-    expect(a).to(be_type(DecALayer2))
-    expect(a.a).to(be_type(DecALayer1))
+    expect(a).to(be_type(DecALayer1))
+    expect(a.a).to(be_type(DecALayer2))
     expect(a.a.a).to(be_type(A))
 
 
@@ -328,8 +328,8 @@ def test_open_generic_decorators_with_both_generic_and_nongeneric_decorator():
     container = Container()
 
     container.register_open_generic(A)
-    container.register_open_generic_decorator(A, ADecNonGeneric, decorated_arg="a")
     container.register_open_generic_decorator(A, ADecGeneric, decorated_arg="a")
+    container.register_open_generic_decorator(A, ADecNonGeneric, decorated_arg="a")
 
     a = container.resolve(A[int])
 
