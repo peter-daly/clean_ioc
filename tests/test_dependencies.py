@@ -1,6 +1,6 @@
 # from __future__ import annotations
 from typing import Callable, Generic, TypeVar
-from expects import equal, expect, have_length, raise_error
+from expects import equal, expect, have_length, raise_error, be_true, be_false
 from expects.matchers import Matcher
 from traitlets import Any
 from clean_ioc import (
@@ -623,3 +623,18 @@ def test_dependency_context_with_decorators_and_deep_child():
 
     expect(a.parent_type).to(equal(BDecoratedLayer1))
     expect(a.parent_type_undecorated).to(equal(B))
+
+
+def test_has_registrations():
+    class A:
+        pass
+
+    class B:
+        pass
+
+    container = Container()
+
+    container.register(A)
+
+    expect(container.has_registartion(A)).to(be_true)
+    expect(container.has_registartion(B)).to(be_false)

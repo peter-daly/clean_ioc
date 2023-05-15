@@ -32,3 +32,14 @@
     Added support for the dependency nodes and dependency context
     Improved Generic Decorators resolving
     Added factory for a dictionary
+
+0.0.5
+-----
+    Fixed decorator resolving order
+
+
+0.0.6
+-----
+    Added the has_registration to the container
+    Added depenency_settings to Decotator registration
+    Basics for DependencyGraph

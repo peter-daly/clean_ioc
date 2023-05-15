@@ -59,11 +59,13 @@ class Lifespan(IntEnum):
     singleton = 3
 
 
-class DependencyNode(abc.ABC):
+class __Node__:
     service_type: type
     implementation: type | Callable
-    parent: DependencyNode
-    decorated: DependencyNode
+    parent: __Node__
+    children: list[__Node__]
+    decorator: __Node__
+    decorated: __Node__
 
     @property
     def bottom_decorated(self):
@@ -75,7 +77,7 @@ class DependencyNode(abc.ABC):
         return bottom
 
 
-class EmptyDependencyNode(DependencyNode):
+class EmptyNode(__Node__):
     def __init__(self):
         self.service_type = _empty
         self.implementation = _empty
@@ -86,12 +88,26 @@ class EmptyDependencyNode(DependencyNode):
         return False
 
 
-@dataclass
-class FullDependencyNode(DependencyNode):
-    service_type: type
-    implementation: type | Callable
-    parent: DependencyNode = EmptyDependencyNode()
-    decorated: DependencyNode = EmptyDependencyNode()
+class DependencyNode(__Node__):
+    def __init__(
+        self, service_type: type, implementation: type | Callable, lifespan: Lifespan
+    ):
+        self.service_type = service_type
+        self.implementation = implementation
+        self.lifespan = lifespan
+        self.parent = EmptyNode()
+        self.children = []
+        self.decorated = EmptyNode()
+        self.decorator = EmptyNode()
+
+    def add_child(self, node: DependencyNode):
+        self.children.append(node)
+        node.parent = self
+
+    def add_decorator(self, node: DependencyNode):
+        self.decorator = node
+        node.decorated = self
+        node.parent = self.parent
 
 
 class DependencyContext:
@@ -101,6 +117,12 @@ class DependencyContext:
         self.implementation = dependency_node.implementation
         self.parent = dependency_node.parent
         self.decorated = dependency_node.decorated
+
+
+class DependencyGraph:
+    def __init__(self, root_node: DependencyNode, resolved_object: Any):
+        self.root_node = root_node
+        self.resolved_object = resolved_object
 
 
 class CannotResolveException(Exception):
@@ -169,7 +191,7 @@ class Dependency:
 
         if self.is_generic_list:
             regs = context.find_registrations(self.service_type.__args__[0], self.settings.filter)  # type: ignore
-            return [s.build(context, depedency_node) for s in regs]
+            return [r.build(context, depedency_node) for r in regs]
         else:
             try:
                 reg = context.find_registration(self.service_type, self.settings.filter)
@@ -192,6 +214,14 @@ class RootDependency(Dependency):
             settings=settings,
             default_value=_empty,
         )
+
+    def run_resolve(self, context: ResolvingContext) -> DependencyGraph:
+        root_node = DependencyNode(
+            RootDependency, self.parent_implementation, lifespan=Lifespan.transient
+        )
+        resolved_object = self.resolve(context=context, depedency_node=root_node)
+
+        return DependencyGraph(root_node=root_node, resolved_object=resolved_object)
 
 
 class ImplementationCreator:
@@ -245,10 +275,16 @@ class ImplementationCreator:
 
 class DecoratorCreator(ImplementationCreator):
     def __init__(
-        self, service_type: type, decorator_type: type, decorated_arg: str | None
+        self,
+        service_type: type,
+        decorator_type: type,
+        decorated_arg: str | None,
+        dependency_config: dict[str, DependencySettings] = {},
     ):
         self.service_type = service_type
-        super().__init__(creator_function=decorator_type)
+        super().__init__(
+            creator_function=decorator_type, dependency_config=dependency_config
+        )
 
         self.decorated_arg = decorated_arg or next(
             name
@@ -269,6 +305,7 @@ class Decorator:
         decorator_type: type,
         filter: RegistartionFilter,
         decorated_arg: str | None,
+        dependency_config: dict[str, DependencySettings] = {},
     ):
         self.service_type = service_type
         self.decorator_type = decorator_type
@@ -276,6 +313,7 @@ class Decorator:
             service_type=service_type,
             decorator_type=decorator_type,
             decorated_arg=decorated_arg,
+            dependency_config=dependency_config,
         )
         self.registartion_filter = filter
 
@@ -314,11 +352,13 @@ class Registration:
         return self.name is not None
 
     def build(self, context: ResolvingContext, dependency_node: DependencyNode):
-        next_node = FullDependencyNode(
+        next_node = DependencyNode(
             service_type=self.service_type,
             implementation=self.implementation,
-            parent=dependency_node,
+            lifespan=self.lifespan,
         )
+
+        dependency_node.add_child(next_node)
 
         cached_instance = context.get_cached(self._id)
         if not cached_instance == _empty:
@@ -326,12 +366,12 @@ class Registration:
         built_instance = self.creator.create(context, next_node)
         decorated_node = next_node
         for dec in context.find_decorators_that_apply(self):
-            next_dec_node = FullDependencyNode(
+            next_dec_node = DependencyNode(
                 service_type=self.service_type,
                 implementation=dec.decorator_type,
-                parent=dependency_node,
-                decorated=decorated_node,
+                lifespan=self.lifespan,
             )
+            decorated_node.add_decorator(next_dec_node)
             built_instance = dec.decorate(built_instance, context, next_dec_node)
             decorated_node = next_dec_node
 
@@ -664,6 +704,7 @@ class Container(Resolver):
         decorator_type: type,
         registration_filter: Callable[[Registration], bool] = _all_registartions,
         decorated_arg: str | None = None,
+        dependency_config: dict[str, DependencySettings] = {},
     ):
         self.registry.add_decorator(
             Decorator(
@@ -671,6 +712,7 @@ class Container(Resolver):
                 decorator_type=decorator_type,
                 filter=registration_filter,
                 decorated_arg=decorated_arg,
+                dependency_config=dependency_config,
             )
         )
 
@@ -715,6 +757,7 @@ class Container(Resolver):
         generic_decorator_type: type,
         subclass_type_filter: Callable[[type], bool] = constant(True),
         decorated_arg: str | None = None,
+        dependency_config: dict[str, DependencySettings] = {},
     ):
         full_type_filter = fn_and(fn_not(is_abstract), subclass_type_filter)
         subclasses = get_subclasses(generic_service_type, full_type_filter)
@@ -736,13 +779,17 @@ class Container(Resolver):
                     )
 
                     self.register_decorator(
-                        target_generic_base, DecoratedType, decorated_arg=decorated_arg
+                        target_generic_base,
+                        DecoratedType,
+                        decorated_arg=decorated_arg,
+                        dependency_config=dependency_config,
                     )
                 else:
                     self.register_decorator(
                         target_generic_base,
                         generic_decorator_type,
                         decorated_arg=decorated_arg,
+                        dependency_config=dependency_config,
                     )
 
     def resolve(
@@ -752,12 +799,9 @@ class Container(Resolver):
         scope: Scope = EmptyContainerScope(),
     ) -> Any:
         d = RootDependency(service_type, DependencySettings(filter=filter))
-        dependency_node = FullDependencyNode(
-            service_type=Container, implementation=Container
-        )
-
         context = ResolvingContext(self.registry, scope)
-        return d.resolve(context, dependency_node)
+        graph = d.run_resolve(context)
+        return graph.resolved_object
 
     def new_scope(
         self, ScopeClass: Type[ContainerScope] = ContainerScope, *args, **kwargs
@@ -773,6 +817,9 @@ class Container(Resolver):
 
     def apply_module(self, module_fn: Callable[[Container], None]):
         module_fn(self)
+
+    def has_registartion(self, service_type):
+        return len(self.registry.get_registartions(service_type)) > 0
 
 
 @dataclass(kw_only=True)
