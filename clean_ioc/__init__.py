@@ -123,6 +123,11 @@ class DependencyGraph:
     def __init__(self, root_node: DependencyNode, resolved_object: Any):
         self.root_node = root_node
         self.resolved_object = resolved_object
+        self.children: list[DependencyGraph] = []
+
+    def add_child(self, child_graph: DependencyGraph):
+        self.children.append(child_graph)
+        self.root_node.add_child(child_graph.root_node)
 
 
 class CannotResolveException(Exception):
@@ -215,12 +220,11 @@ class RootDependency(Dependency):
             default_value=_empty,
         )
 
-    def run_resolve(self, context: ResolvingContext) -> DependencyGraph:
+    def resolve_dependency_graph(self, context: ResolvingContext) -> DependencyGraph:
         root_node = DependencyNode(
             RootDependency, self.parent_implementation, lifespan=Lifespan.transient
         )
         resolved_object = self.resolve(context=context, depedency_node=root_node)
-
         return DependencyGraph(root_node=root_node, resolved_object=resolved_object)
 
 
@@ -404,19 +408,50 @@ class Registry:
         return self._singletons.get(registartion_id)
 
     @property
-    def singleton_items(self):
-        return self._singletons.items()
+    def singletons(self):
+        return self._singletons
+
+
+class DependencyCache:
+    def __init__(self, registry: Registry, scope: Scope):
+        self.registry = registry
+        self.scope = scope
+        self._current_items = {
+            **{k: v for k, v in registry.singletons.items()},
+            **{k: v for k, v in scope.scoped_instances.items()},
+        }
+
+    def get(self, registration_id: str):
+        instance = self._current_items.get(registration_id, _empty)
+        if instance is not _empty:
+            return instance
+
+        instance = self.registry.singletons.get(registration_id, _empty)
+        if instance is not _empty:
+            self._current_items[registration_id] = instance
+
+        instance = self.scope.scoped_instances.get(registration_id, _empty)
+        if instance is not _empty:
+            self._current_items[registration_id] = instance
+            return instance
+
+        return instance
+
+    def put(self, registration_id: str, instance: Any, lifespan: Lifespan):
+        if lifespan == Lifespan.singleton:
+            self.registry.add_singleton_instance(registration_id, instance)
+        elif lifespan == Lifespan.scoped:
+            self.scope.add_scoped_instance(registration_id, instance)
+
+        if lifespan >= Lifespan.once_per_graph:
+            self._current_items[registration_id] = instance
 
 
 class ResolvingContext:
     def __init__(self, registry: Registry, scope: Scope):
         self.registry = registry
         self.scope = scope
-        self._cache = {}
-        self._cache = {
-            **{k: v for k, v in registry.singleton_items},
-            **{k: v for k, v in scope.scoped_items},
-        }
+        self._cache = DependencyCache(registry=registry, scope=scope)
 
     def try_generic_fallback(self, service_type: _GenericAlias):
         return self.find_registration(service_type.__origin__, _all_registartions)
@@ -458,16 +493,10 @@ class ResolvingContext:
         ]
 
     def get_cached(self, reg_id: str):
-        return self._cache.get(reg_id, _empty)
+        return self._cache.get(reg_id)
 
     def new_instance_created(self, reg_id: str, instance: Any, lifespan: Lifespan):
-        if lifespan == Lifespan.singleton:
-            self.registry.add_singleton_instance(reg_id, instance)
-        elif lifespan == Lifespan.scoped:
-            self.scope.add_scoped_instance(reg_id, instance)
-
-        if lifespan >= Lifespan.once_per_graph:
-            self._cache[reg_id] = instance
+        self._cache.put(registration_id=reg_id, instance=instance, lifespan=lifespan)
 
 
 class Resolver(abc.ABC):
@@ -507,8 +536,8 @@ class Scope(Resolver):
         return self._registrations[service_tyep]
 
     @property
-    def scoped_items(self):
-        return self._scoped_instances.items()
+    def scoped_instances(self):
+        return self._scoped_instances
 
 
 class ContainerScope(Scope):
@@ -800,7 +829,7 @@ class Container(Resolver):
     ) -> Any:
         d = RootDependency(service_type, DependencySettings(filter=filter))
         context = ResolvingContext(self.registry, scope)
-        graph = d.run_resolve(context)
+        graph = d.resolve_dependency_graph(context)
         return graph.resolved_object
 
     def new_scope(

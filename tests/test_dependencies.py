@@ -1,7 +1,6 @@
 # from __future__ import annotations
 from typing import Callable, Generic, TypeVar
 from expects import equal, expect, have_length, raise_error, be_true, be_false
-from expects.matchers import Matcher
 from traitlets import Any
 from clean_ioc import (
     Container,
