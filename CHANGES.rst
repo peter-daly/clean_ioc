@@ -43,3 +43,14 @@
     Added the has_registration to the container
     Added depenency_settings to Decotator registration
     Basics for DependencyGraph
+
+
+0.1.0
+-----
+    Move from Beta to Production
+
+
+
+0.1.1
+-----
+    Add pre configurations

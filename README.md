@@ -620,7 +620,7 @@ class Client
         self.logger = logger
 
 def logger_fac(context: DependencyContext):
-    module = context.parent.__module__
+    module = context.parent.implementation.__module__
     return Logger(module)
 
 
@@ -628,7 +628,41 @@ container = Container()
 container.register(Client)
 container.register(Logger, factory=logger_fac)
 
-container.apply_module(client_module)
+client = container.resolve(Client)
+
+
+```
+
+
+## Pre-configurations
+
+Pre configurations run a side-effect for a type before the type gets resolved.
+This is useful if some python modules have some sort of module level functions that need to be called before the object get created
+
+```python
+import logging
+
+class Client
+    def __init__(self, logger: logging.Logger)
+        self.logger = logger
+
+    def do_a_thing(self):
+        self.logger.info('Doing a thing')
+
+def logger_fac(context: DependencyContext):
+    module = context.parent.implementation.__module__
+    return logging.getLogger(module)
+
+def configuring_logging():
+    logging.basicConfig()
+
+
+
+
+container = Container()
+container.register(Client)
+container.register(logging.Logger, factory=logger_fac)
+container.pre_configure(logging.Logger, configuring_logging)
 
 client = container.resolve(Client)
 

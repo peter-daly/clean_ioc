@@ -12,6 +12,7 @@ from clean_ioc import (
 )
 from clean_ioc.registration_filters import with_implementation, with_name, is_not_named
 from tests.matchers import be_same_instance_as, be_type
+from unittest.mock import Mock
 
 
 def test_simple_implementation_registation():
@@ -637,3 +638,30 @@ def test_has_registrations():
 
     expect(container.has_registartion(A)).to(be_true)
     expect(container.has_registartion(B)).to(be_false)
+
+
+def test_pre_configurations():
+
+    mock_method = Mock()
+
+    class A:
+        def name(self):
+            return "A"
+
+    class B:
+        pass
+
+    def pre_configure_b(a: A):
+        mock_method(a.name())
+
+    container = Container()
+
+    container.register(A)
+    container.register(B)
+    container.pre_configure(B, pre_configure_b)
+
+    container.resolve(B)
+    container.resolve(B)
+    container.resolve(B)
+
+    mock_method.assert_called_once_with("A")
