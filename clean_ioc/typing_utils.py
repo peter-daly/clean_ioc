@@ -1,4 +1,4 @@
-from typing import _GenericAlias, _SpecialGenericAlias  # type: ignore
+from typing import _GenericAlias, _SpecialGenericAlias, Protocol  # type: ignore
 from typing import Generic, TypeVar
 from collections.abc import Callable
 from typing import get_type_hints
@@ -153,7 +153,7 @@ def get_open_generic_aliases(cls: type):
 
     while not queue.empty():
         type_check = queue.get()
-        if getattr(type_check, "__origin__", None) == Generic:
+        if getattr(type_check, "__origin__", None) in (Generic, Protocol):
             aliases.append(type_check)
 
         for base in getattr(type_check, "__orig_bases__", ()):
@@ -184,7 +184,7 @@ def get_generic_aliases(cls: type):
     return aliases
 
 
-def get_typevar_to_type_mapping(cls: type) -> dict[type, type]:
+def get_typevar_to_type_mapping(cls: type) -> dict[type | TypeVar, type]:
     generic_definitions = get_open_generic_aliases(cls)
     generic_implementations = get_generic_aliases(cls)
 

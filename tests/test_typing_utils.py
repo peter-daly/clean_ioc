@@ -1,5 +1,5 @@
 from typing import TypeVar  # type: ignore
-from typing import Generic
+from typing import Generic, Protocol
 
 from clean_ioc.typing_utils import (
     get_subclasses,
@@ -41,17 +41,24 @@ class HChild1(HBase[int, T2], Generic[T2]):
     pass
 
 
+class JBase(Protocol[T1]):
+    def get_item(self, t: T1) -> T1:
+        ...
+
+
+class JChild(JBase[int]):
+    def get_item(self, t: int):
+        return t * 2
+
+
 def test_subclasses():
     x = get_subclasses(A)
     assert x == [B, C]
 
 
-def test_typevar_type_mapping():
-    m = get_typevar_to_type_mapping(GChild)
-    print(m)
-
-    m1 = get_typevar_to_type_mapping(GBase[str])
-    print(m1)
+def test_typevar_type_mapping_with_protocol():
+    m = get_typevar_to_type_mapping(JChild)
+    assert m[T1] == int
 
 
 def test_is_open_generic():

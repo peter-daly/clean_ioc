@@ -54,3 +54,10 @@
 0.1.1
 -----
     Add pre configurations
+
+
+0.1.2
+-----
+    Improve dependency graph modelling
+    Add ability for kwargs in dependency settings
+    Add generics detection for typing.Protocol

@@ -45,6 +45,8 @@ def get_arg_info(
     signature = inspect.signature(subject)
     d: dict[str, ArgInfo] = {}
     for name, param in signature.parameters.items():
+        if "*" in str(param):
+            continue
         d[name] = ArgInfo(name=name, arg_type=args[name], default_value=param.default)
     return d
 
@@ -83,6 +85,7 @@ class EmptyNode(__Node__):
         self.implementation = _empty
         self.parent = self
         self.decorated = self
+        self.configured_by = self
 
     def __bool__(self):
         return False
@@ -99,15 +102,21 @@ class DependencyNode(__Node__):
         self.children = []
         self.decorated = EmptyNode()
         self.decorator = EmptyNode()
+        self.configured_by = EmptyNode()
+        self.configures = EmptyNode()
 
-    def add_child(self, node: DependencyNode):
-        self.children.append(node)
-        node.parent = self
+    def add_child(self, child_node: DependencyNode):
+        self.children.append(child_node)
+        child_node.parent = self
 
-    def add_decorator(self, node: DependencyNode):
-        self.decorator = node
-        node.decorated = self
-        node.parent = self.parent
+    def add_decorator(self, decorator_node: DependencyNode):
+        self.decorator = decorator_node
+        decorator_node.decorated = self
+        self.parent = decorator_node
+
+    def add_pre_configuration(self, configuration_node: DependencyNode):
+        self.configured_by = configuration_node
+        configuration_node.configures = self
 
 
 class DependencyContext:
@@ -261,7 +270,7 @@ class ImplementationCreator:
         dependency_config: dict[str, DependencySettings],
     ) -> dict[str, Dependency]:
         args_infos = get_arg_info(creator_function)
-        return {
+        dependencies = {
             name: Dependency(
                 name=name,
                 parent_implementation=creator_function,
@@ -271,6 +280,17 @@ class ImplementationCreator:
             )
             for name, arg_info in args_infos.items()
         }
+
+        for extra_kwarg in set(dependency_config.keys()) ^ set(dependencies.keys()):
+            dependencies[extra_kwarg] = Dependency(
+                name=extra_kwarg,
+                parent_implementation=creator_function,
+                service_type=Any,
+                settings=dependency_config[extra_kwarg],
+                default_value=_empty,
+            )
+
+        return dependencies
 
     def create(
         self,
@@ -318,12 +338,12 @@ class PreConfiguration:
         dependency_config: dict[str, DependencySettings],
     ):
         self.service_type = service_type
-        self.pre_configuration = pre_configuration
+        self.configuration_fn = pre_configuration
         self.filter = registration_filter
         self.dependency_config = dependency_config
 
         self.creator = ImplementationCreator(
-            creator_function=self.pre_configuration,
+            creator_function=self.configuration_fn,
             dependency_config=self.dependency_config,
         )
 
@@ -387,25 +407,32 @@ class Registration:
     def is_named(self):
         return self.name is not None
 
-    def build(self, context: ResolvingContext, dependency_node: DependencyNode):
-        next_node = DependencyNode(
+    def build(self, context: ResolvingContext, parent_node: DependencyNode):
+        my_node = DependencyNode(
             service_type=self.service_type,
             implementation=self.implementation,
             lifespan=self.lifespan,
         )
 
-        dependency_node.add_child(next_node)
+        parent_node.add_child(my_node)
 
         pre_configurations = context.find_pre_configurations_that_apply(self)
 
         for pre_configuration in pre_configurations:
-            pre_configuration.run(context, dependency_node)
+            pre_configuration_node = DependencyNode(
+                self.service_type,
+                pre_configuration.configuration_fn,
+                lifespan=Lifespan.singleton,
+            )
+            my_node.add_pre_configuration(pre_configuration_node)
+
+            pre_configuration.run(context, pre_configuration_node)
 
         cached_instance = context.get_cached(self._id)
         if not cached_instance == _empty:
             return cached_instance
-        built_instance = self.creator.create(context, next_node)
-        decorated_node = next_node
+        built_instance = self.creator.create(context, my_node)
+        decorated_node = my_node
         for dec in context.find_decorators_that_apply(self):
             next_dec_node = DependencyNode(
                 service_type=self.service_type,
@@ -482,14 +509,14 @@ class DependencyCache:
         if instance is not _empty:
             return instance
 
-        instance = self.registry.singletons.get(registration_id, _empty)
-        if instance is not _empty:
-            self._current_items[registration_id] = instance
-
         instance = self.scope.scoped_instances.get(registration_id, _empty)
         if instance is not _empty:
             self._current_items[registration_id] = instance
             return instance
+
+        instance = self.registry.singletons.get(registration_id, _empty)
+        if instance is not _empty:
+            self._current_items[registration_id] = instance
 
         return instance
 

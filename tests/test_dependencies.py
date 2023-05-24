@@ -1,5 +1,5 @@
 # from __future__ import annotations
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Generic, Protocol, TypeVar
 from expects import equal, expect, have_length, raise_error, be_true, be_false
 from traitlets import Any
 from clean_ioc import (
@@ -225,6 +225,24 @@ def test_simple_open_generic():
     expect(a).to(be_type(B))
 
 
+def test_simple_open_generic_with_protocol():
+    T = TypeVar("T")
+
+    class A(Protocol[T]):
+        pass
+
+    class B(A[int]):
+        pass
+
+    container = Container()
+
+    container.register_open_generic(A)
+
+    a = container.resolve(A[int])
+
+    expect(a).to(be_type(B))
+
+
 def test_simple_open_generic_should_fail_when_no_implementation():
     T = TypeVar("T")
 
@@ -269,6 +287,29 @@ def test_open_generic_decorators():
         pass
 
     class ADec(Generic[T]):
+        def __init__(self, a: A[T]):
+            pass
+
+    class B(A[int]):
+        pass
+
+    container = Container()
+
+    container.register_open_generic(A)
+    container.register_open_generic_decorator(A, ADec)
+
+    a = container.resolve(A[int])
+
+    expect(type(a).__name__).to(equal("DecoratedGeneric_ADec"))
+
+
+def test_open_generic_decorators_with_protocol():
+    T = TypeVar("T")
+
+    class A(Protocol[T]):
+        pass
+
+    class ADec(A[T]):
         def __init__(self, a: A[T]):
             pass
 
@@ -381,6 +422,31 @@ def test_deep_dependencies_with_dependency_settings():
     expect(c.b.x).to(equal(5))
     expect(c.y).to(equal(100))
     expect(c.z).to(equal(10))
+
+
+def test_simple_self_regristation_with_constructor_with_positional_and_keyword_args():
+    class A:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    container = Container()
+    container.register(A)
+
+    a = container.resolve(A)
+    expect(a).to(be_type(A))
+
+
+def test_simple_self_regristation_with_constructor_with_positional_and_keyword_args():
+    class A:
+        def __init__(self, *args, **kwargs):
+            self.kw = kwargs
+
+    container = Container()
+    container.register(A, dependency_config={"x": DependencySettings(value=10)})
+
+    a = container.resolve(A)
+    expect(a).to(be_type(A))
+    expect(a.kw["x"]).to(equal(10))
 
 
 def test_lifespans():
