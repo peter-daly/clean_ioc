@@ -68,6 +68,8 @@ class __Node__:
     children: list[__Node__]
     decorator: __Node__
     decorated: __Node__
+    pre_configured_by: __Node__
+    pre_configures: __Node__
 
     @property
     def bottom_decorated(self):
@@ -85,7 +87,7 @@ class EmptyNode(__Node__):
         self.implementation = _empty
         self.parent = self
         self.decorated = self
-        self.configured_by = self
+        self.pre_configured_by = self
 
     def __bool__(self):
         return False
@@ -102,8 +104,8 @@ class DependencyNode(__Node__):
         self.children = []
         self.decorated = EmptyNode()
         self.decorator = EmptyNode()
-        self.configured_by = EmptyNode()
-        self.configures = EmptyNode()
+        self.pre_configured_by = EmptyNode()
+        self.pre_configures = EmptyNode()
 
     def add_child(self, child_node: DependencyNode):
         self.children.append(child_node)
@@ -114,9 +116,9 @@ class DependencyNode(__Node__):
         decorator_node.decorated = self
         self.parent = decorator_node
 
-    def add_pre_configuration(self, configuration_node: DependencyNode):
-        self.configured_by = configuration_node
-        configuration_node.configures = self
+    def add_pre_configuration(self, pre_configuration_node: DependencyNode):
+        self.pre_configured_by = pre_configuration_node
+        pre_configuration_node.pre_configures = self
 
 
 class DependencyContext:
