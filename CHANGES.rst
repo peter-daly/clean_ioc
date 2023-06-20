@@ -61,3 +61,7 @@
     Improve dependency graph modelling
     Add ability for kwargs in dependency settings
     Add generics detection for typing.Protocol
+
+0.1.3
+-----
+    Fix register method signature for scopes

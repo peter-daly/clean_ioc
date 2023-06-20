@@ -6,7 +6,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 import types
 from enum import IntEnum
-from typing import Any, Type, get_type_hints
+from typing import Any, Sequence, Type, get_type_hints
 from collections.abc import Callable
 from typing import _GenericAlias  # type: ignore
 from uuid import uuid4
@@ -625,7 +625,15 @@ class Scope(Resolver):
         pass
 
     @abc.abstractmethod
-    def register(self, *args):
+    def register(
+        self,
+        service_type: type,
+        impl_type: type | None = None,
+        factory: Callable | None = None,
+        instance: Any | None = None,
+        name: str | None = None,
+        dependency_config: dict[str, DependencySettings] = {},
+    ):
         pass
 
     def get_registartions(self, service_tyep):
