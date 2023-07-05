@@ -1,5 +1,5 @@
 from . import Registration
-from .functional_utils import constant, fn_not
+from .functional_utils import constant, fn_not, fn_or
 
 all_registrations = constant(True)
 
@@ -88,3 +88,12 @@ def has_tag(name: str, value: str | None = None):
         return r.has_tag(name, value)
 
     return predicate
+
+
+def has_tag_with_value_or_missing_tag(name: str, value: str):
+    return fn_or(has_tag(name, value), fn_not(has_tag(name)))
+
+
+def has_tag_with_value_in(name: str, *values: str):
+    predicates = [has_tag(name, v) for v in values]
+    return fn_or(*predicates)

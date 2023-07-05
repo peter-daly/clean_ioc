@@ -70,3 +70,7 @@
 -----
     Change default registration filter for dependencies from all registrations to is not named
     Add tags feature
+
+0.2.1
+-----
+    Add more registration filters for tags
