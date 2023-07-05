@@ -9,8 +9,14 @@ from clean_ioc import (
     DependencySettings,
     Lifespan,
     NeedsScopedRegistrationError,
+    Tag,
 )
-from clean_ioc.registration_filters import with_implementation, with_name, is_not_named
+from clean_ioc.functional_utils import fn_not
+from clean_ioc.registration_filters import (
+    has_tag,
+    with_implementation,
+    with_name,
+)
 from tests.matchers import be_same_instance_as, be_type
 from unittest.mock import Mock
 
@@ -123,6 +129,23 @@ def test_with_named_filter():
     a = container.resolve(A, filter=with_name("A1"))
 
     expect(a).to(be_same_instance_as(a1))
+
+
+def test_with_named_filter_unnamed_always_returned_first():
+    class A:
+        pass
+
+    container = Container()
+
+    unnamed_a = A()
+    named_a = A()
+
+    container.register(A, instance=unnamed_a)
+    container.register(A, instance=named_a, name="NamedA")
+
+    a = container.resolve(A)
+
+    expect(a).to(be_same_instance_as(unnamed_a))
 
 
 def test_list_with_named_filter():
@@ -534,7 +557,7 @@ def test_scopes_with_lifespans():
     expect(e2.d.c.b.a).to(be_same_instance_as(e2.d.c.b.a))
 
 
-def test_scope_registartions_overrides_container():
+def test_scope_registrations_overrides_container():
     class A:
         pass
 
@@ -590,7 +613,7 @@ def test_expect_to_be_scoped_with_name():
 
     with container.new_scope() as scope:
         scope.register(A, name="ScopedA")
-        expect(lambda: container.resolve(A)).to(
+        expect(lambda: container.resolve(A, filter=with_name("ScopedA"))).to(
             raise_error(NeedsScopedRegistrationError)
         )
 
@@ -598,7 +621,7 @@ def test_expect_to_be_scoped_with_name():
 
         expect(a_scoped).to(be_type(A))
 
-    a_unscoped = container.resolve(A, filter=is_not_named)
+    a_unscoped = container.resolve(A)
     expect(a_unscoped).to(be_type(A))
 
 
@@ -702,8 +725,8 @@ def test_has_registrations():
 
     container.register(A)
 
-    expect(container.has_registartion(A)).to(be_true)
-    expect(container.has_registartion(B)).to(be_false)
+    expect(container.has_registration(A)).to(be_true)
+    expect(container.has_registration(B)).to(be_false)
 
 
 def test_pre_configurations():
@@ -731,3 +754,72 @@ def test_pre_configurations():
     container.resolve(B)
 
     mock_method.assert_called_once_with("A")
+
+
+def test_registration_with_tags():
+    class A:
+        pass
+
+    a1 = A()
+    a2 = A()
+    a3 = A()
+
+    container = Container()
+
+    container.register(A, instance=a1, tags=[Tag("a", "a1")])
+    container.register(A, instance=a2, tags=[Tag("a")])
+    container.register(A, instance=a3)
+
+    ar1 = container.resolve(A, filter=has_tag("a", "a1"))
+    al1 = container.resolve(list[A], filter=has_tag("a"))
+    al2 = container.resolve(list[A], filter=has_tag("a", "a1"))
+    al3 = container.resolve(list[A], filter=fn_not(has_tag("a", "a1")))
+    al4 = container.resolve(list[A], filter=fn_not(has_tag("a")))
+    al5 = container.resolve(list[A])
+
+    expect(ar1).to(be_same_instance_as(a1))
+
+    expect(al1).to(have_length(2))
+    expect(al1[0]).to(be_same_instance_as(a2))
+    expect(al1[1]).to(be_same_instance_as(a1))
+
+    expect(al2).to(have_length(1))
+    expect(al2[0]).to(be_same_instance_as(a1))
+
+    expect(al3).to(have_length(2))
+    expect(al3[0]).to(be_same_instance_as(a3))
+    expect(al3[1]).to(be_same_instance_as(a2))
+
+    expect(al4).to(have_length(1))
+    expect(al4[0]).to(be_same_instance_as(a3))
+
+    expect(al5).to(have_length(3))
+    expect(al5[0]).to(be_same_instance_as(a3))
+    expect(al5[1]).to(be_same_instance_as(a2))
+    expect(al5[2]).to(be_same_instance_as(a1))
+
+
+def test_decorator_with_registration_filters():
+    class A:
+        pass
+
+    class DecA(A):
+        def __init__(self, a: A):
+            pass
+
+    a1 = A()
+    a2 = A()
+
+    container = Container()
+
+    container.register(A, instance=a1, name="a1")
+    container.register(A, instance=a2, name="a2", tags=[Tag("do_not_decorate")])
+    container.register_decorator(
+        A, DecA, registration_filter=fn_not(has_tag("do_not_decorate"))
+    )
+
+    ar1 = container.resolve(A, filter=with_name("a1"))
+    ar2 = container.resolve(A, filter=with_name("a2"))
+
+    expect(ar1).to(be_type(DecA))
+    expect(ar2).to(be_type(A))

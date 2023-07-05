@@ -6,7 +6,7 @@ all_registrations = constant(True)
 
 def with_name(name: str | None):
     """
-    Filter registartions equal the name
+    Filter registrations equal the name
     """
 
     def predicate(r: Registration):
@@ -17,7 +17,7 @@ def with_name(name: str | None):
 
 def name_starts_with(prefix: str):
     """
-    Filter registartions where the name starts the prefix
+    Filter registrations where the name starts the prefix
     """
 
     def predicate(r: Registration):
@@ -30,7 +30,7 @@ def name_starts_with(prefix: str):
 
 def name_ends_with(suffix: str):
     """
-    Filter registartions where the name ends the suffix
+    Filter registrations where the name ends the suffix
     """
 
     def predicate(r: Registration):
@@ -43,7 +43,7 @@ def name_ends_with(suffix: str):
 
 def is_named(r: Registration):
     """
-    Filter registartions that have a name
+    Filter registrations that have a name
     """
     return r.is_named
 
@@ -53,7 +53,7 @@ is_not_named = with_name(None)
 
 def with_implementation(implementation: type):
     """
-    Filter to registartions that have the implementation
+    Filter to registrations that have the implementation
     """
 
     def predicate(r: Registration):
@@ -64,7 +64,7 @@ def with_implementation(implementation: type):
 
 def has_generic_args_matching(pair: tuple[type, type]):
     """
-    Filter registartions where generic type arg matches
+    Filter registrations where generic type arg matches
     >>> TBar = TypeVar("TBar")
     >>> class Foo(Generic[TBar]):
     ...    pass
@@ -79,5 +79,12 @@ def has_generic_args_matching(pair: tuple[type, type]):
 
     def predicate(r: Registration):
         return r.generic_mapping.get(pair[0]) == pair[1]
+
+    return predicate
+
+
+def has_tag(name: str, value: str | None = None):
+    def predicate(r: Registration):
+        return r.has_tag(name, value)
 
     return predicate

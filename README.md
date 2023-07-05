@@ -222,7 +222,7 @@ Decorators are resolved in order of when first registered. So the first register
 
 ## Subclasses registration
 
-This feature allows registartion of all subclasses of a giveb type
+This feature allows registration of all subclasses of a giveb type
 
 ```python
 class Client(abc.ABC)
@@ -402,9 +402,9 @@ with container.get_scope() as scope:
     scoped_client.get_number() # returns 10
 ```
 
-## Named registartions & Registartion filters
+## Named registrations & Registration filters
 
-By default the last registration is what the container will return when resolve is called as below.
+By default the last unnamed registration is what the container will return when resolve is called as below.
 
 ```python
 
@@ -416,9 +416,9 @@ container.register(int, instance=3)
 number = container.resolve(int) # returns 3
 
 ```
-To be more selective of what we return we can add a name to the registration and apply a registartion filter when we resolve.
+To be more selective of what we return we can add a name to the registration and apply a registration filter when we resolve.
 
-A registartion filter is simply function that receives a **Registartion** and returns a **bool**
+A registration filter is simply function that receives a **Registration** and returns a **bool**
 
 For example if we wanted to get the int named **"One"** we do the following
 
@@ -431,11 +431,11 @@ container.register(int, instance=3, name="Three")
 number = container.resolve(int, filter=lambda r: r.name == "One") # returns 1
 ```
 
-Clean IOC comes with a set of in built registartion filters that can be found [here](./clean_ioc/registration_filters.py)
+Clean IOC comes with a set of in built registration filters that can be found [here](./clean_ioc/registration_filters.py)
 
 We can get the desired behaviour as above
 ```python
-from clean_ioc.registartion_filters import with_name
+from clean_ioc.registration_filters import with_name
 
 container = Container()
 container.register(int, instance=1, name="One")
@@ -447,7 +447,7 @@ number = container.resolve(int, filter=with_name("One")) # returns 1
 
 ## Dependency Settings
 
-Dependency settings are defined at registartion and allow you to define the selection or setting dependencies
+Dependency settings are defined at registration and allow you to define the selection or setting dependencies
 
 
 ```python
@@ -461,7 +461,7 @@ class Client
 container = Container()
 
 container.register(int, instance=1, name="One")
-container.register(int, instance=2, name="Two")
+container.register(int, instance=2)
 
 container.register(
     Client,
@@ -479,14 +479,14 @@ container.register(
 )
 container.register(
     Client,
-    name="UsesRegistartionFilter",
+    name="UsesRegistrationFilter",
     dependency_config={"number": DependencySettings(use_default_paramater=False, filter=with_name("One"))}
 )
 
 client1 = container.resolve(Client, filter=with_name("SetsValue"))
 client2 = container.resolve(Client, filter=with_name("UsesDefaultValue"))
 client3 = container.resolve(Client, filter=with_name("IgnoresDefaultParameterValue"))
-client4 = container.resolve(Client, filter=with_name("UsesRegistartionFilter"))
+client4 = container.resolve(Client, filter=with_name("UsesRegistrationFilter"))
 
 
 client1.get_number() # returns 50
@@ -510,8 +510,34 @@ The order of a dependant value is as follows
     ```python
     DependencySettings(use_default_paramater=False)
     ```
-3. Going to the container registry to find a registartion using the registration filter if, if there is a default value on the dependant paramater you must explicity set.
+3. Going to the container registry to find a registration using the registration filter if, if there is a default value on the dependant paramater you must explicity set.
 
+
+## Tags
+
+Tags can be added to registrations in order to support filtering. This can be useful as a means to filter registrations when resolving lists of a particular type
+
+```python
+class A:
+    pass
+
+a1 = A()
+a2 = A()
+a3 = A()
+
+container = Container()
+
+container.register(A, instance=a1, tags=[Tag("a", "a1")])
+container.register(A, instance=a2, tags=[Tag("a")])
+container.register(A, instance=a3)
+
+ar1 = container.resolve(A, filter=has_tag("a", "a1")) # returns a1
+al1 = container.resolve(list[A], filter=has_tag("a"))  # returns [a2, a1]
+al2 = container.resolve(list[A], filter=has_tag("a", "a1")) # returns [a1]
+al3 = container.resolve(list[A], filter=fn_not(has_tag("a", "a1")))  # returns [a3, a2]
+al4 = container.resolve(list[A], filter=fn_not(has_tag("a"))) # returns [a3]
+al5 = container.resolve(list[A]) # returns [a3, a2, a1]
+```
 ## Accessing the Container, Scope and Resolver within dependencies
 
 Accessing container directly
@@ -575,7 +601,7 @@ with container.get_scope() as scope:
 ```
 
 
-## Modules (BETA feature)
+## Modules
 
 
 A module is a just a function that accepts a container, it can be used to set up common elements on the container

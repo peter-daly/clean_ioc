@@ -6,7 +6,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 import types
 from enum import IntEnum
-from typing import Any, Sequence, Type, get_type_hints
+from typing import Any, Type, get_type_hints
 from collections.abc import Callable
 from typing import _GenericAlias  # type: ignore
 from uuid import uuid4
@@ -51,7 +51,14 @@ def get_arg_info(
     return d
 
 
-_all_registartions = constant(True)
+def _default_registration_filter(r: Registration) -> bool:
+    return not r.is_named
+
+
+@dataclass
+class Tag:
+    name: str
+    value: str | None = None
 
 
 class Lifespan(IntEnum):
@@ -336,7 +343,7 @@ class PreConfiguration:
         self,
         service_type: type,
         pre_configuration: Callable[..., None],
-        registration_filter: RegistartionFilter,
+        registration_filter: RegistrationFilter,
         dependency_config: dict[str, DependencySettings],
     ):
         self.service_type = service_type
@@ -361,7 +368,7 @@ class Decorator:
         self,
         service_type: type,
         decorator_type: type,
-        filter: RegistartionFilter,
+        filter: RegistrationFilter,
         decorated_arg: str | None,
         dependency_config: dict[str, DependencySettings] = {},
     ):
@@ -373,7 +380,7 @@ class Decorator:
             decorated_arg=decorated_arg,
             dependency_config=dependency_config,
         )
-        self.registartion_filter = filter
+        self.registration_filter = filter
 
     def decorate(
         self,
@@ -394,6 +401,7 @@ class Registration:
         lifespan: Lifespan,
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
+        tags: list[Tag] | None = None,
     ):
         self.service_type = service_type
         self.implementation = implementation
@@ -402,12 +410,19 @@ class Registration:
         )
         self.lifespan = lifespan
         self.name = name
+        self.tags = tuple(tags) if tags else tuple()
         self._id = str(uuid4())
         self.generic_mapping = get_typevar_to_type_mapping(self.service_type)
 
     @property
     def is_named(self):
         return self.name is not None
+
+    def has_tag(self, name: str, value: str | None):
+        if value is not None:
+            return any(t.name == name and t.value == value for t in self.tags)
+
+        return any(t.name == name for t in self.tags)
 
     def build(self, context: ResolvingContext, parent_node: DependencyNode):
         my_node = DependencyNode(
@@ -459,8 +474,8 @@ class Registry:
         self._singletons: dict[str, Any] = {}
         self._run_preconfigurations: list[str] = []
 
-    def add_registration(self, registartion: Registration):
-        self._registrations[registartion.service_type].appendleft(registartion)
+    def add_registration(self, registration: Registration):
+        self._registrations[registration.service_type].appendleft(registration)
 
     def add_decorator(self, decorator: Decorator):
         self._decorators[decorator.service_type].appendleft(decorator)
@@ -470,13 +485,13 @@ class Registry:
             pre_configuration
         )
 
-    def add_singleton_instance(self, registartion_id: str, instance: Any):
-        self._singletons[registartion_id] = instance
+    def add_singleton_instance(self, registration_id: str, instance: Any):
+        self._singletons[registration_id] = instance
 
     def mark_pre_configuration_as_run(self, pre_configuration_id):
         self._run_preconfigurations.append(pre_configuration_id)
 
-    def get_registartions(self, service_type: type):
+    def get_registrations(self, service_type: type):
         return self._registrations[service_type]
 
     def get_pre_configurations(self, service_type: type):
@@ -485,8 +500,8 @@ class Registry:
     def get_decorators(self, service_type: type):
         return self._decorators[service_type]
 
-    def get_singleton(self, registartion_id):
-        return self._singletons.get(registartion_id)
+    def get_singleton(self, registration_id):
+        return self._singletons.get(registration_id)
 
     @property
     def singletons(self):
@@ -539,7 +554,9 @@ class ResolvingContext:
         self._cache = DependencyCache(registry=registry, scope=scope)
 
     def try_generic_fallback(self, service_type: _GenericAlias):
-        return self.find_registration(service_type.__origin__, _all_registartions)
+        return self.find_registration(
+            service_type.__origin__, _default_registration_filter
+        )
 
     def find_registration(
         self, service_type: type, registration_finder: Callable
@@ -560,12 +577,12 @@ class ResolvingContext:
     ) -> list[Registration]:
         scoped_registrations = [
             r
-            for r in self.scope.get_registartions(service_type)
+            for r in self.scope.get_registrations(service_type)
             if registration_filter(r)
         ]
         container_registrations = [
             r
-            for r in self.registry.get_registartions(service_type)
+            for r in self.registry.get_registrations(service_type)
             if registration_filter(r)
         ]
         return scoped_registrations + container_registrations
@@ -574,7 +591,7 @@ class ResolvingContext:
         return [
             d
             for d in self.registry.get_decorators(registration.service_type)
-            if d.registartion_filter(registration)
+            if d.registration_filter(registration)
         ]
 
     def find_pre_configurations_that_apply(self, registration: Registration):
@@ -600,7 +617,7 @@ class Resolver(abc.ABC):
     def resolve(
         self,
         cls: type,
-        filter: RegistartionFilter = _all_registartions,
+        filter: RegistrationFilter = _default_registration_filter,
         *args,
         **kwargs,
     ) -> Any:
@@ -636,7 +653,7 @@ class Scope(Resolver):
     ):
         pass
 
-    def get_registartions(self, service_tyep):
+    def get_registrations(self, service_tyep):
         return self._registrations[service_tyep]
 
     @property
@@ -661,6 +678,7 @@ class ContainerScope(Scope):
         instance: Any | None = None,
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
+        tags: list[Tag] | None = None,
     ):
         if instance is not None:
             self._registrations[service_type].appendleft(
@@ -669,6 +687,7 @@ class ContainerScope(Scope):
                     implementation=lambda: instance,
                     lifespan=Lifespan.scoped,
                     name=name,
+                    tags=tags,
                 )
             )
         elif factory is not None:
@@ -679,6 +698,7 @@ class ContainerScope(Scope):
                     lifespan=Lifespan.scoped,
                     name=name,
                     dependency_config=dependency_config,
+                    tags=tags,
                 )
             )
         elif impl_type is not None:
@@ -689,6 +709,7 @@ class ContainerScope(Scope):
                     lifespan=Lifespan.scoped,
                     name=name,
                     dependency_config=dependency_config,
+                    tags=tags,
                 )
             )
         else:
@@ -699,6 +720,7 @@ class ContainerScope(Scope):
                     lifespan=Lifespan.scoped,
                     name=name,
                     dependency_config=dependency_config,
+                    tags=tags,
                 )
             )
 
@@ -715,7 +737,7 @@ class ContainerScope(Scope):
     def __exit__(self, *args, **kwargs):
         self._after_finish()
 
-    def get_registartions(self, service_tyep):
+    def get_registrations(self, service_tyep):
         return self._registrations[service_tyep]
 
     def add_scoped_instance(self, registration_id: str, instance: Any):
@@ -724,7 +746,7 @@ class ContainerScope(Scope):
     def resolve(
         self,
         service_type: type,
-        filter: RegistartionFilter = _all_registartions,
+        filter: RegistrationFilter = _default_registration_filter,
     ):
         return self._container.resolve(
             service_type=service_type, filter=filter, scope=self
@@ -772,7 +794,7 @@ class Container(Resolver):
         self,
         service_type: type,
         configuration_function: Callable[..., None],
-        registration_filter: RegistartionFilter = _all_registartions,
+        registration_filter: RegistrationFilter = _default_registration_filter,
         dependency_config: dict[str, DependencySettings] = {},
     ):
         self.registry.add_pre_configuration(
@@ -793,6 +815,7 @@ class Container(Resolver):
         lifespan: Lifespan = Lifespan.once_per_graph,
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
+        tags: list[Tag] | None = None,
     ):
         if instance is not None:
             self.registry.add_registration(
@@ -802,6 +825,7 @@ class Container(Resolver):
                     dependency_config=dependency_config,
                     lifespan=Lifespan.singleton,
                     name=name,
+                    tags=tags,
                 )
             )
         elif factory is not None:
@@ -812,6 +836,7 @@ class Container(Resolver):
                     dependency_config=dependency_config,
                     lifespan=lifespan,
                     name=name,
+                    tags=tags,
                 )
             )
         elif impl_type is not None:
@@ -822,6 +847,7 @@ class Container(Resolver):
                     dependency_config=dependency_config,
                     lifespan=lifespan,
                     name=name,
+                    tags=tags,
                 )
             )
         else:
@@ -832,6 +858,7 @@ class Container(Resolver):
                     dependency_config=dependency_config,
                     lifespan=lifespan,
                     name=name,
+                    tags=tags,
                 )
             )
 
@@ -841,19 +868,22 @@ class Container(Resolver):
         lifespan: Lifespan = Lifespan.once_per_graph,
         subclass_type_filter: Callable[[type], bool] = constant(True),
         get_registration_name: Callable[[type], str | None] = constant(None),
+        tags: list[Tag] | None = None,
     ):
         full_type_filter = fn_and(fn_not(is_abstract), subclass_type_filter)
         subclasses = get_subclasses(base_type, full_type_filter)
         for sc in subclasses:
             name = get_registration_name(sc)
-            self.register(base_type, sc, lifespan=lifespan, name=name)
-            self.register(sc, lifespan=lifespan)
+            self.register(base_type, sc, lifespan=lifespan, name=name, tags=tags)
+            self.register(sc, lifespan=lifespan, tags=tags)
 
     def register_decorator(
         self,
         service_type: type,
         decorator_type: type,
-        registration_filter: Callable[[Registration], bool] = _all_registartions,
+        registration_filter: Callable[
+            [Registration], bool
+        ] = _default_registration_filter,
         decorated_arg: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
     ):
@@ -888,6 +918,7 @@ class Container(Resolver):
         lifespan: Lifespan = Lifespan.once_per_graph,
         subclass_type_filter: Callable[[type], bool] = constant(True),
         get_registration_name: Callable[[type], str | None] = constant(None),
+        tags: list[Tag] | None = None,
     ):
         full_type_filter = fn_and(fn_not(is_abstract), subclass_type_filter)
         subclasses = get_subclasses(generic_service_type, full_type_filter)
@@ -898,7 +929,11 @@ class Container(Resolver):
             )
             if target_generic_base:
                 self.register(
-                    target_generic_base, subclass, lifespan=lifespan, name=name
+                    target_generic_base,
+                    subclass,
+                    lifespan=lifespan,
+                    name=name,
+                    tags=tags,
                 )
 
         if fallback_type:
@@ -907,6 +942,7 @@ class Container(Resolver):
                 fallback_type,
                 lifespan=lifespan,
                 name=fallback_name,
+                tags=tags,
             )
 
     def register_open_generic_decorator(
@@ -953,7 +989,7 @@ class Container(Resolver):
     def resolve(
         self,
         service_type,
-        filter: RegistartionFilter = _all_registartions,
+        filter: RegistrationFilter = _default_registration_filter,
         scope: Scope = EmptyContainerScope(),
     ) -> Any:
         d = RootDependency(service_type, DependencySettings(filter=filter))
@@ -975,15 +1011,15 @@ class Container(Resolver):
     def apply_module(self, module_fn: Callable[[Container], None]):
         module_fn(self)
 
-    def has_registartion(self, service_type):
-        return len(self.registry.get_registartions(service_type)) > 0
+    def has_registration(self, service_type):
+        return len(self.registry.get_registrations(service_type)) > 0
 
 
 @dataclass(kw_only=True)
 class DependencySettings:
     value: Any = _empty
     use_default_paramater: bool = True
-    filter: RegistartionFilter = _all_registartions
+    filter: RegistrationFilter = _default_registration_filter
 
 
-RegistartionFilter = Callable[[Registration], bool]
+RegistrationFilter = Callable[[Registration], bool]
