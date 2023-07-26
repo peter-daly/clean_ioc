@@ -1,11 +1,15 @@
 # from __future__ import annotations
+import asyncio
 from typing import Callable, Generic, Protocol, TypeVar
 from expects import equal, expect, have_length, raise_error, be_true, be_false
+import pytest
 from traitlets import Any
 from clean_ioc import (
     Container,
     CannotResolveException,
+    ContainerScope,
     DependencyContext,
+    ParentContext,
     DependencySettings,
     Lifespan,
     NeedsScopedRegistrationError,
@@ -17,6 +21,7 @@ from clean_ioc.registration_filters import (
     with_implementation,
     with_name,
 )
+from clean_ioc.parent_context_filters import parent_implementation_is
 from tests.matchers import be_same_instance_as, be_type
 from unittest.mock import Mock
 
@@ -190,15 +195,15 @@ def test_nested_decorators_should_be_in_order_of_when_first_registered():
     a = container.resolve(A)
 
     expect(a).to(be_type(DecALayer1))
-    expect(a.a).to(be_type(DecALayer2))
-    expect(a.a.a).to(be_type(A))
+    expect(a.a).to(be_type(DecALayer2))  # type: ignore
+    expect(a.a.a).to(be_type(A))  # type: ignore
 
 
 def test_simple_decorator():
     class A:
         pass
 
-    class DecA:
+    class DecA(A):
         def __init__(self, a: A):
             self.a = a
 
@@ -398,8 +403,8 @@ def test_open_generic_decorators_with_both_generic_and_nongeneric_decorator():
     a = container.resolve(A[int])
 
     expect(type(a).__name__).to(equal("DecoratedGeneric_ADecGeneric"))
-    expect(type(a.a).__name__).to(equal("ADecNonGeneric"))
-    expect(type(a.a.a).__name__).to(equal("B"))
+    expect(type(a.a).__name__).to(equal("ADecNonGeneric"))  # type: ignore
+    expect(type(a.a.a).__name__).to(equal("B"))  # type: ignore
 
 
 def test_deep_dependencies_with_dependency_settings():
@@ -447,7 +452,7 @@ def test_deep_dependencies_with_dependency_settings():
     expect(c.z).to(equal(10))
 
 
-def test_simple_self_regristation_with_constructor_with_positional_and_keyword_args():
+def test_simple_self_regristation_with_constructor_with_positional_and_keyword_args_no_args():
     class A:
         def __init__(self, *args, **kwargs):
             pass
@@ -823,3 +828,80 @@ def test_decorator_with_registration_filters():
 
     expect(ar1).to(be_type(DecA))
     expect(ar2).to(be_type(A))
+
+
+def test_scope_subclass_as_context_manager():
+    class A:
+        pass
+
+    a_instance = A()
+
+    class TestScope(ContainerScope):
+        def __init__(self, container: Container, a: A):
+            super().__init__(container)
+            self.a = a
+
+        def before_start(self):
+            self.register(A, instance=self.a)
+
+    container = Container()
+    with container.new_scope(TestScope, a_instance) as scope:
+        a_resolved = scope.resolve(A)
+        expect(a_resolved).to(be_same_instance_as(a_instance))
+
+
+@pytest.mark.asyncio()
+async def test_scope_subclass_as_async_context_manager():
+    hook_mock = Mock()
+    class_mock = Mock()
+
+    class A:
+        async def async_call(self):
+            class_mock()
+
+    class TestScope(ContainerScope):
+        async def after_finish_async(self):
+            hook_mock()
+            current_a_instances = self.get_resolved_instances(A)
+            await asyncio.gather(*[a.async_call() for a in current_a_instances])
+
+    container = Container()
+    container.register(A, lifespan=Lifespan.scoped)
+
+    async with container.new_scope(TestScope) as scope:
+        scope.resolve(A)
+
+    hook_mock.assert_called()
+    class_mock.assert_called()
+
+
+def test_parent_context_filter():
+    class A:
+        pass
+
+    class B(A):
+        pass
+
+    class C(A):
+        pass
+
+    class D:
+        def __init__(self, a: A):
+            self.a = a
+
+    class E:
+        def __init__(self, a: A):
+            self.a = a
+
+    container = Container()
+
+    container.register(A, B, parent_context_filter=parent_implementation_is(E))
+    container.register(A, C, parent_context_filter=parent_implementation_is(D))
+    container.register(D)
+    container.register(E)
+
+    e = container.resolve(E)
+    d = container.resolve(D)
+
+    expect(e.a).to(be_type(B))
+    expect(d.a).to(be_type(C))

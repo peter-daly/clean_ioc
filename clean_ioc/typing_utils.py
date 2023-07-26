@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import get_type_hints
 import types
 from queue import Queue
-import inspect
+
 
 typingGenericAlias = (_GenericAlias, _SpecialGenericAlias, types.GenericAlias)
 

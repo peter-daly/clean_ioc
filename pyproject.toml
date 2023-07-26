@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "clean_ioc"
-version = "0.2.1"
+version = "0.3.0"
 description = "An IOC Container for Python 3.10+"
 authors = ["Peter Daly"]
 license = "MIT"
@@ -16,8 +16,9 @@ classifiers = [
 python = "^3.10"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^6.2.5"
+pytest = "^7.0.0"
 pytest-cov = "^4.0.0"
+pytest-asyncio = "^0.21.1"
 black = "^22.3.0"
 flakeheaven = "^3.2.1"
 isort = "^5.10.1"

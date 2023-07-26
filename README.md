@@ -130,6 +130,8 @@ client.get_number() # returns 10
 
 ## List resolving
 
+If you have multiple dependencues you can simply define a dependency as a list[T] and you can return all of the instances.
+
 ```python
 
 class ClientDependency
@@ -538,6 +540,49 @@ al3 = container.resolve(list[A], filter=fn_not(has_tag("a", "a1")))  # returns [
 al4 = container.resolve(list[A], filter=fn_not(has_tag("a"))) # returns [a3]
 al5 = container.resolve(list[A]) # returns [a3, a2, a1]
 ```
+
+
+
+## Parent Context Filters
+
+Registrations can also specify that should only apply to certain parents objects by setting the parent_context_filter
+
+```python
+def test_parent_context_filter():
+    class A:
+        pass
+
+    class B(A):
+        pass
+
+    class C(A):
+        pass
+
+    class D:
+        def __init__(self, a: A):
+            self.a = a
+
+    class E:
+        def __init__(self, a: A):
+            self.a = a
+
+    container = Container()
+
+    container.register(A, B, parent_context_filter=parent_implementation_is(E))
+    container.register(A, C, parent_context_filter=parent_implementation_is(D))
+    container.register(D)
+    container.register(E)
+
+    e = container.resolve(E)
+    d = container.resolve(D)
+
+    type(e.a) # returns B
+    type(d.a) # returns C
+
+```
+
+
+
 ## Accessing the Container, Scope and Resolver within dependencies
 
 Accessing container directly
@@ -600,6 +645,19 @@ with container.get_scope() as scope:
     scoped_client.get_number() # returns 10
 ```
 
+Scopes can also be used as an async context manager
+
+```python
+class Client
+    async def get_number(self):
+        return 10
+
+container.register(Client)
+
+async with container.get_scope() as scope:
+    scoped_client = scope.resolve(Client)
+    await scoped_client.get_number() # returns 10
+```
 
 ## Modules
 
@@ -628,7 +686,6 @@ client = container.resolve(Client)
 
 client.get_number() # returns 10
 ```
-
 
 
 ## DependencyContext (BETA feature)

@@ -74,3 +74,11 @@
 0.2.1
 -----
     Add more registration filters for tags
+
+0.3.0
+-----
+    container.resolve, resolver.resolve and scope.resolve now have better type safety
+    Scopes can new be context manager and async context manager
+    Scopes now track all instances it created by service_type, this enables easy access from the functions on scope teardown
+    List reduction filters for list resolving
+    Added support for parent context filters
