@@ -14,7 +14,6 @@ classifiers = [
 packages = [
     { include = "clean_ioc" },
 ]
-[tool.poetry]
 include = ["CHANGES.rst"]
 
 [tool.poetry.dependencies]
