@@ -272,7 +272,7 @@ class RootDependency(Dependency):
 
     def resolve_dependency_graph(self, context: ResolvingContext) -> DependencyGraph:
         root_node = DependencyNode(
-            RootDependency, self.parent_implementation, lifespan=Lifespan.transient
+            RootDependency, self.parent_implementation, lifespan=Lifespan.once_per_graph
         )
         resolved_object = self.resolve(context=context, dependency_node=root_node)
         return DependencyGraph(root_node=root_node, resolved_object=resolved_object)

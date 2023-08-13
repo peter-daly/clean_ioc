@@ -687,6 +687,51 @@ client = container.resolve(Client)
 client.get_number() # returns 10
 ```
 
+### Helper for modules
+
+There is now a ```BaseModule``` class that gives you a bit more safety around running a module twice etc. Also you might want to pass in instances into the module.
+You can find the ```BaseModule``` in ```clean_ioc.modules``` module
+
+
+
+```python
+@dataclass
+class ClientConfig
+    url: str
+
+class Client
+    def __init__(self, config: ClientConfig)
+        self.base_url = config.url
+
+    def get_thing(self):
+        # Do some requests stuff here
+        pass
+
+
+
+class ClientModule(BaseModule):
+
+    def __init__(self, config: ClientConfig):
+        self.config = config
+
+    def run(self, c: Container):
+        c.register(ClientConfig, instance=self.config)
+        c.register(Client)
+
+
+
+client_config = ClientConfig(
+    url = "https://example.com"
+)
+
+container.apply_module(client_module)
+
+client = container.resolve(ClientModule(config=client_config))
+
+client.get_thing()
+```
+
+
 
 ## DependencyContext (BETA feature)
 

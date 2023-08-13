@@ -82,3 +82,8 @@
     Scopes now track all instances it created by service_type, this enables easy access from the functions on scope teardown
     List reduction filters for list resolving
     Added support for parent context filters
+
+0.3.1
+-----
+    Add a base module class
+    Add fastapi extension
