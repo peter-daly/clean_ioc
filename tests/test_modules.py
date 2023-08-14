@@ -9,7 +9,6 @@ def test_module_will_only_run_once_per_instance():
     class TestModule(BaseModule):
         def __init__(self, mock):
             self.mock = mock
-            super().__init__()
 
         def run(self, container: Container):
             self.mock()
@@ -32,7 +31,6 @@ def test_module_instance_can_be_called_multiple_times_when_allowed():
 
         def __init__(self, mock):
             self.mock = mock
-            super().__init__()
 
         def run(self, container: Container):
             self.mock()
@@ -54,7 +52,6 @@ def test_module_class_can_be_called_multiple_times_with_different_instances():
     class TestModule(BaseModule):
         def __init__(self, mock):
             self.mock = mock
-            super().__init__()
 
         def run(self, container: Container):
             self.mock()
@@ -81,7 +78,6 @@ def test_module_class_can_be_called_only_once_across_all_instances_when_set():
 
         def __init__(self, mock):
             self.mock = mock
-            super().__init__()
 
         def run(self, container: Container):
             self.mock()

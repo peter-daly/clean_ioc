@@ -11,8 +11,10 @@ class BaseModule(ABC):
     INSTANCE_RUN_ONCE: ClassVar[bool] = True
     CLASS_HAS_RUN: ClassVar[bool] = False
 
-    def __init__(self):
-        self.instance_has_run = False
+    def __new__(cls, *args, **kwargs):
+        instance = super().__new__(cls)
+        instance.instance_has_run = False
+        return instance
 
     @abstractmethod
     def run(self, container: Container):
