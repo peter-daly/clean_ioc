@@ -6,6 +6,7 @@ from clean_ioc.typing_utils import (
     get_typevar_to_type_mapping,
     is_open_generic_type,
 )
+from fluent_assertions import assert_that
 
 
 class A:
@@ -53,46 +54,46 @@ class JChild(JBase[int]):
 
 def test_subclasses():
     x = get_subclasses(A)
-    assert x == [B, C]
+    assert_that(x).matches([B, C])
 
 
 def test_typevar_type_mapping_with_protocol():
     m = get_typevar_to_type_mapping(JChild)
-    assert m[T1] == int
+    assert_that(m[T1]).matches(int)
 
 
 def test_is_open_generic():
-    assert is_open_generic_type(HBase) == True
-    assert is_open_generic_type(HBase[T1, T2]) == True
-    assert is_open_generic_type(HBase[T1, int]) == True
-    assert is_open_generic_type(HBase[int, T2]) == True
-    assert is_open_generic_type(HBase[int, int]) == False
+    assert_that(is_open_generic_type(HBase)).matches(True)
+    assert_that(is_open_generic_type(HBase[T1, T2])).matches(True)
+    assert_that(is_open_generic_type(HBase[T1, int])).matches(True)
+    assert_that(is_open_generic_type(HBase[int, T2])).matches(True)
+    assert_that(is_open_generic_type(HBase[int, int])).matches(False)
 
 
 def test_get_typevar_to_type_mapping():
     m1 = get_typevar_to_type_mapping(HBase[int, str])
 
-    assert m1[T1] == int
-    assert m1[T2] == str
+    assert_that(m1[T1]).matches(int)
+    assert_that(m1[T2]).matches(str)
 
     m2 = get_typevar_to_type_mapping(HBase)
 
-    assert m2[T1] == T1
-    assert m2[T2] == T2
+    assert_that(m2[T1]).matches(T1)
+    assert_that(m2[T2]).matches(T2)
 
     m3 = get_typevar_to_type_mapping(GChild)
 
-    assert m3[T1] == int
+    assert_that(m3[T1]).matches(int)
 
     m4 = get_typevar_to_type_mapping(HBase[int, int])
 
-    assert m4[T1] == int
-    assert m4[T2] == int
+    assert_that(m4[T1]).matches(int)
+    assert_that(m4[T2]).matches(int)
 
     m5 = get_typevar_to_type_mapping(HChild1[str])
 
-    assert m5[T1] == int
-    assert m5[T2] == str
+    assert_that(m5[T1]).matches(int)
+    assert_that(m5[T2]).matches(str)
 
     m6 = get_typevar_to_type_mapping(int)
-    assert m6 == {}
+    assert_that(m6).matches({})

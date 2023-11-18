@@ -87,3 +87,7 @@
 -----
     Add a base module class
     Add fastapi extension
+
+0.3.2
+-----
+    Change base module class to not need a child class to call super().__init__ 

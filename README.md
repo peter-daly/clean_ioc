@@ -739,26 +739,22 @@ You can inject a special type into your dependants that allows you to inspect th
 One example of where this becomes useful is if injecting a logger, you can get information about the loggers parent to add extra context
 
 ```python
-class Logger
-    def __init__(self, module):
-        self.module = module
-
 class Client
-    def __init__(self, logger: Logger)
+    def __init__(self, logger: logging.Logger)
         self.logger = logger
+
+    def do_a_thing(self):
+        self.logger.info('Doing a thing')
 
 def logger_fac(context: DependencyContext):
     module = context.parent.implementation.__module__
-    return Logger(module)
+    return logging.getLogger(module)
 
 
 container = Container()
 container.register(Client)
-container.register(Logger, factory=logger_fac)
-
+container.register(logging.Logger, factory=logger_fac, lifespan=Lifespan.transient)
 client = container.resolve(Client)
-
-
 ```
 
 
@@ -781,7 +777,7 @@ def logger_fac(context: DependencyContext):
     module = context.parent.implementation.__module__
     return logging.getLogger(module)
 
-def configuring_logging():
+def configure_logging():
     logging.basicConfig()
 
 
@@ -789,8 +785,8 @@ def configuring_logging():
 
 container = Container()
 container.register(Client)
-container.register(logging.Logger, factory=logger_fac)
-container.pre_configure(logging.Logger, configuring_logging)
+container.register(logging.Logger, factory=logger_fac, lifespan=Lifespan.transient)
+container.pre_configure(logging.Logger, configure_logging)
 
 client = container.resolve(Client)
 

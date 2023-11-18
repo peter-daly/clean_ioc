@@ -1,7 +1,6 @@
 # from __future__ import annotations
 import asyncio
 from typing import Callable, Generic, Protocol, TypeVar
-from expects import equal, expect, have_length, raise_error, be_true, be_false
 import pytest
 from traitlets import Any
 from clean_ioc import (
@@ -22,8 +21,17 @@ from clean_ioc.registration_filters import (
     with_name,
 )
 from clean_ioc.parent_context_filters import parent_implementation_is
-from tests.matchers import be_same_instance_as, be_type
 from unittest.mock import Mock
+from fluent_assertions import (
+    assert_that,
+    is_true,
+    is_false,
+    is_type,
+    is_exact_type,
+    is_same_instance_as,
+    has_length,
+    raises_exception,
+)
 
 
 def test_simple_implementation_registation():
@@ -37,7 +45,7 @@ def test_simple_implementation_registation():
     container.register(A, B)
 
     a = container.resolve(A)
-    expect(a).to(be_type(B))
+    assert_that(a).matches(is_exact_type(B))
 
 
 def test_simple_factory_registation():
@@ -54,7 +62,7 @@ def test_simple_factory_registation():
     container.register(A, factory=fac)
 
     a = container.resolve(A)
-    expect(a).to(be_type(B))
+    assert_that(a).matches(is_exact_type(B))
 
 
 def test_simple_instance_registation():
@@ -67,8 +75,8 @@ def test_simple_instance_registation():
     container.register(A, instance=instance)
 
     a = container.resolve(A)
-    expect(a).to(be_type(A))
-    expect(a).to(be_same_instance_as(instance))
+    assert_that(a).matches(is_exact_type(A))
+    assert_that(a).matches(is_same_instance_as(instance))
 
 
 def test_simple_self_registation():
@@ -79,7 +87,7 @@ def test_simple_self_registation():
     container.register(A)
 
     a = container.resolve(A)
-    expect(a).to(be_type(A))
+    assert_that(a).matches(is_exact_type(A))
 
 
 def test_list():
@@ -96,9 +104,9 @@ def test_list():
 
     array = container.resolve(list[A])
 
-    expect(array).to(have_length(2))
-    expect(array[0]).to(be_type(B))
-    expect(array[1]).to(be_type(A))
+    assert_that(array).matches(has_length(2))
+    assert_that(array[0]).matches(is_exact_type(B))
+    assert_that(array[1]).matches(is_exact_type(A))
 
 
 def test_list_with_filter():
@@ -115,8 +123,8 @@ def test_list_with_filter():
 
     array = container.resolve(list[A], filter=with_implementation(B))
 
-    expect(array).to(have_length(1))
-    expect(array[0]).to(be_type(B))
+    assert_that(array).matches(has_length(1))
+    assert_that(array[0]).matches(is_exact_type(B))
 
 
 def test_with_named_filter():
@@ -133,7 +141,7 @@ def test_with_named_filter():
 
     a = container.resolve(A, filter=with_name("A1"))
 
-    expect(a).to(be_same_instance_as(a1))
+    assert_that(a).matches(is_same_instance_as(a1))
 
 
 def test_with_named_filter_unnamed_always_returned_first():
@@ -150,7 +158,7 @@ def test_with_named_filter_unnamed_always_returned_first():
 
     a = container.resolve(A)
 
-    expect(a).to(be_same_instance_as(unnamed_a))
+    assert_that(a).matches(is_same_instance_as(unnamed_a))
 
 
 def test_list_with_named_filter():
@@ -169,9 +177,9 @@ def test_list_with_named_filter():
 
     array = container.resolve(list[A], filter=with_name("IN_LIST"))
 
-    expect(array).to(have_length(2))
-    expect(array[0]).to(be_same_instance_as(a3))
-    expect(array[1]).to(be_same_instance_as(a1))
+    assert_that(array).matches(has_length(2))
+    assert_that(array[0]).matches(is_same_instance_as(a3))
+    assert_that(array[1]).matches(is_same_instance_as(a1))
 
 
 def test_nested_decorators_should_be_in_order_of_when_first_registered():
@@ -194,9 +202,9 @@ def test_nested_decorators_should_be_in_order_of_when_first_registered():
 
     a = container.resolve(A)
 
-    expect(a).to(be_type(DecALayer1))
-    expect(a.a).to(be_type(DecALayer2))  # type: ignore
-    expect(a.a.a).to(be_type(A))  # type: ignore
+    assert_that(a).matches(is_exact_type(DecALayer1))
+    assert_that(a.a).matches(is_exact_type(DecALayer2))  # type: ignore
+    assert_that(a.a.a).matches(is_exact_type(A))  # type: ignore
 
 
 def test_simple_decorator():
@@ -214,7 +222,7 @@ def test_simple_decorator():
 
     a = container.resolve(A)
 
-    expect(a).to(be_type(DecA))
+    assert_that(a).matches(is_exact_type(DecA))
 
 
 def test_decorator_with_decorated_arg_set():
@@ -232,7 +240,7 @@ def test_decorator_with_decorated_arg_set():
 
     a = container.resolve(A)
 
-    expect(a).to(be_type(DecAny))
+    assert_that(a).matches(is_exact_type(DecAny))
 
 
 def test_simple_open_generic():
@@ -250,7 +258,7 @@ def test_simple_open_generic():
 
     a = container.resolve(A[int])
 
-    expect(a).to(be_type(B))
+    assert_that(a).matches(is_exact_type(B))
 
 
 def test_simple_open_generic_with_protocol():
@@ -268,7 +276,7 @@ def test_simple_open_generic_with_protocol():
 
     a = container.resolve(A[int])
 
-    expect(a).to(be_type(B))
+    assert_that(a).matches(is_exact_type(B))
 
 
 def test_simple_open_generic_should_fail_when_no_implementation():
@@ -284,7 +292,8 @@ def test_simple_open_generic_should_fail_when_no_implementation():
 
     container.register_open_generic(A)
 
-    expect(lambda: container.resolve(A[str])).to(raise_error(CannotResolveException))
+    with raises_exception(CannotResolveException):
+        container.resolve(A[str])
 
 
 def test_simple_open_generic_with_fallback_should_not_fail():
@@ -305,7 +314,7 @@ def test_simple_open_generic_with_fallback_should_not_fail():
 
     a = container.resolve(A[str])
 
-    expect(a).to(be_type(C))
+    assert_that(a).matches(is_exact_type(C))
 
 
 def test_open_generic_decorators():
@@ -328,7 +337,7 @@ def test_open_generic_decorators():
 
     a = container.resolve(A[int])
 
-    expect(type(a).__name__).to(equal("DecoratedGeneric_ADec"))
+    assert_that(type(a).__name__).matches("DecoratedGeneric_ADec")
 
 
 def test_open_generic_decorators_with_protocol():
@@ -351,7 +360,7 @@ def test_open_generic_decorators_with_protocol():
 
     a = container.resolve(A[int])
 
-    expect(type(a).__name__).to(equal("DecoratedGeneric_ADec"))
+    assert_that(type(a).__name__).matches("DecoratedGeneric_ADec")
 
 
 def test_open_generic_decorators_with_nongeneric_decorator():
@@ -374,7 +383,7 @@ def test_open_generic_decorators_with_nongeneric_decorator():
 
     a = container.resolve(A[int])
 
-    expect(type(a).__name__).to(equal("ADec"))
+    assert_that(type(a).__name__).matches("ADec")
 
 
 def test_open_generic_decorators_with_both_generic_and_nongeneric_decorator():
@@ -402,9 +411,9 @@ def test_open_generic_decorators_with_both_generic_and_nongeneric_decorator():
 
     a = container.resolve(A[int])
 
-    expect(type(a).__name__).to(equal("DecoratedGeneric_ADecGeneric"))
-    expect(type(a.a).__name__).to(equal("ADecNonGeneric"))  # type: ignore
-    expect(type(a.a.a).__name__).to(equal("B"))  # type: ignore
+    assert_that(type(a).__name__).matches("DecoratedGeneric_ADecGeneric")
+    assert_that(type(a.a).__name__).matches("ADecNonGeneric")  # type: ignore
+    assert_that(type(a.a.a).__name__).matches("B")  # type: ignore
 
 
 def test_deep_dependencies_with_dependency_settings():
@@ -446,10 +455,10 @@ def test_deep_dependencies_with_dependency_settings():
 
     c: C = container.resolve(C)
 
-    expect(c.b.a.s).to(equal("3"))
-    expect(c.b.x).to(equal(5))
-    expect(c.y).to(equal(100))
-    expect(c.z).to(equal(10))
+    assert_that(c.b.a.s).matches("3")
+    assert_that(c.b.x).matches(5)
+    assert_that(c.y).matches(100)
+    assert_that(c.z).matches(10)
 
 
 def test_simple_self_regristation_with_constructor_with_positional_and_keyword_args_no_args():
@@ -461,7 +470,7 @@ def test_simple_self_regristation_with_constructor_with_positional_and_keyword_a
     container.register(A)
 
     a = container.resolve(A)
-    expect(a).to(be_type(A))
+    assert_that(a).matches(is_exact_type(A))
 
 
 def test_simple_self_regristation_with_constructor_with_positional_and_keyword_args():
@@ -473,8 +482,8 @@ def test_simple_self_regristation_with_constructor_with_positional_and_keyword_a
     container.register(A, dependency_config={"x": DependencySettings(value=10)})
 
     a = container.resolve(A)
-    expect(a).to(be_type(A))
-    expect(a.kw["x"]).to(equal(10))
+    assert_that(a).matches(is_exact_type(A))
+    assert_that(a.kw["x"]).matches(10)
 
 
 def test_lifespans():
@@ -510,9 +519,9 @@ def test_lifespans():
     e: E = container.resolve(E)
     a: A = container.resolve(A)
 
-    expect(e.d.c.b.a).to(be_same_instance_as(a))
-    expect(e.d.c).to_not(be_same_instance_as(e.c))
-    expect(e.d.b).to(be_same_instance_as(e.d.c.b))
+    assert_that(e.d.c.b.a).matches(is_same_instance_as(a))
+    assert_that(e.d.c).does_not_match(is_same_instance_as(e.c))
+    assert_that(e.d.b).matches(is_same_instance_as(e.d.c.b))
 
 
 def test_scopes_with_lifespans():
@@ -556,10 +565,10 @@ def test_scopes_with_lifespans():
 
     e2_1: E = scope2.resolve(E)
 
-    expect(e1).to_not(be_same_instance_as(e2))
-    expect(a1).to(be_same_instance_as(a2))
-    expect(e2_1).to(be_same_instance_as(e2))
-    expect(e2.d.c.b.a).to(be_same_instance_as(e2.d.c.b.a))
+    assert_that(e1).does_not_match(is_same_instance_as(e2))
+    assert_that(a1).matches(is_same_instance_as(a2))
+    assert_that(e2_1).matches(is_same_instance_as(e2))
+    assert_that(e2.d.c.b.a).matches(is_same_instance_as(e2.d.c.b.a))
 
 
 def test_scope_registrations_overrides_container():
@@ -586,8 +595,8 @@ def test_scope_registrations_overrides_container():
 
         c: C = container.resolve(C)
 
-        expect(c.b).to_not(be_same_instance_as(c_scoped.b))
-        expect(c.b.a).to(be_same_instance_as(c_scoped.b.a))
+        assert_that(c.b).does_not_match(is_same_instance_as(c_scoped.b))
+        assert_that(c.b.a).matches(is_same_instance_as(c_scoped.b.a))
 
 
 def test_expect_to_be_scoped():
@@ -602,9 +611,10 @@ def test_expect_to_be_scoped():
         scope.register(A)
         a_scoped: A = scope.resolve(A)
 
-        expect(a_scoped).to(be_type(A))
+        assert_that(a_scoped).matches(is_exact_type(A))
 
-    expect(lambda: container.resolve(A)).to(raise_error(NeedsScopedRegistrationError))
+    with raises_exception(NeedsScopedRegistrationError):
+        container.resolve(A)
 
 
 def test_expect_to_be_scoped_with_name():
@@ -618,16 +628,16 @@ def test_expect_to_be_scoped_with_name():
 
     with container.new_scope() as scope:
         scope.register(A, name="ScopedA")
-        expect(lambda: container.resolve(A, filter=with_name("ScopedA"))).to(
-            raise_error(NeedsScopedRegistrationError)
+        assert_that(lambda: container.resolve(A, filter=with_name("ScopedA"))).matches(
+            raises_exception(NeedsScopedRegistrationError)
         )
 
         a_scoped: A = scope.resolve(A, filter=with_name("ScopedA"))
 
-        expect(a_scoped).to(be_type(A))
+        assert_that(a_scoped).matches(is_exact_type(A))
 
     a_unscoped = container.resolve(A)
-    expect(a_unscoped).to(be_type(A))
+    assert_that(a_unscoped).matches(is_exact_type(A))
 
 
 def test_simple_module_registation():
@@ -645,7 +655,7 @@ def test_simple_module_registation():
     container.apply_module(module)
 
     a = container.resolve(A)
-    expect(a).to(be_type(B))
+    assert_that(a).matches(is_exact_type(B))
 
 
 def test_dependency_context_with_parent():
@@ -665,7 +675,7 @@ def test_dependency_context_with_parent():
     container.register(B)
 
     b = container.resolve(B)
-    expect(b.a.parent_type).to(equal(B))
+    assert_that(b.a.parent_type).matches(B)
 
 
 def test_dependency_context_with_decorators_and_deep_child():
@@ -715,8 +725,8 @@ def test_dependency_context_with_decorators_and_deep_child():
 
     a = b.get_a()
 
-    expect(a.parent_type).to(equal(BDecoratedLayer1))
-    expect(a.parent_type_undecorated).to(equal(B))
+    assert_that(a.parent_type).matches(BDecoratedLayer1)
+    assert_that(a.parent_type_undecorated).matches(B)
 
 
 def test_has_registrations():
@@ -730,8 +740,8 @@ def test_has_registrations():
 
     container.register(A)
 
-    expect(container.has_registration(A)).to(be_true)
-    expect(container.has_registration(B)).to(be_false)
+    assert_that(container.has_registration(A)).matches(is_true())
+    assert_that(container.has_registration(B)).matches(is_false())
 
 
 def test_pre_configurations():
@@ -782,26 +792,26 @@ def test_registration_with_tags():
     al4 = container.resolve(list[A], filter=fn_not(has_tag("a")))
     al5 = container.resolve(list[A])
 
-    expect(ar1).to(be_same_instance_as(a1))
+    assert_that(ar1).matches(is_same_instance_as(a1))
 
-    expect(al1).to(have_length(2))
-    expect(al1[0]).to(be_same_instance_as(a2))
-    expect(al1[1]).to(be_same_instance_as(a1))
+    assert_that(al1).matches(has_length(2))
+    assert_that(al1[0]).matches(is_same_instance_as(a2))
+    assert_that(al1[1]).matches(is_same_instance_as(a1))
 
-    expect(al2).to(have_length(1))
-    expect(al2[0]).to(be_same_instance_as(a1))
+    assert_that(al2).matches(has_length(1))
+    assert_that(al2[0]).matches(is_same_instance_as(a1))
 
-    expect(al3).to(have_length(2))
-    expect(al3[0]).to(be_same_instance_as(a3))
-    expect(al3[1]).to(be_same_instance_as(a2))
+    assert_that(al3).matches(has_length(2))
+    assert_that(al3[0]).matches(is_same_instance_as(a3))
+    assert_that(al3[1]).matches(is_same_instance_as(a2))
 
-    expect(al4).to(have_length(1))
-    expect(al4[0]).to(be_same_instance_as(a3))
+    assert_that(al4).matches(has_length(1))
+    assert_that(al4[0]).matches(is_same_instance_as(a3))
 
-    expect(al5).to(have_length(3))
-    expect(al5[0]).to(be_same_instance_as(a3))
-    expect(al5[1]).to(be_same_instance_as(a2))
-    expect(al5[2]).to(be_same_instance_as(a1))
+    assert_that(al5).matches(has_length(3))
+    assert_that(al5[0]).matches(is_same_instance_as(a3))
+    assert_that(al5[1]).matches(is_same_instance_as(a2))
+    assert_that(al5[2]).matches(is_same_instance_as(a1))
 
 
 def test_decorator_with_registration_filters():
@@ -826,8 +836,8 @@ def test_decorator_with_registration_filters():
     ar1 = container.resolve(A, filter=with_name("a1"))
     ar2 = container.resolve(A, filter=with_name("a2"))
 
-    expect(ar1).to(be_type(DecA))
-    expect(ar2).to(be_type(A))
+    assert_that(ar1).matches(is_exact_type(DecA))
+    assert_that(ar2).matches(is_exact_type(A))
 
 
 def test_scope_subclass_as_context_manager():
@@ -847,7 +857,7 @@ def test_scope_subclass_as_context_manager():
     container = Container()
     with container.new_scope(TestScope, a_instance) as scope:
         a_resolved = scope.resolve(A)
-        expect(a_resolved).to(be_same_instance_as(a_instance))
+        assert_that(a_resolved).matches(is_same_instance_as(a_instance))
 
 
 @pytest.mark.asyncio()
@@ -903,5 +913,5 @@ def test_parent_context_filter():
     e = container.resolve(E)
     d = container.resolve(D)
 
-    expect(e.a).to(be_type(B))
-    expect(d.a).to(be_type(C))
+    assert_that(e.a).matches(is_exact_type(B))
+    assert_that(d.a).matches(is_exact_type(C))

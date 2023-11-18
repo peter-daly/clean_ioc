@@ -4,7 +4,7 @@ from clean_ioc.registration_filters import (
     has_tag_with_value_in,
 )
 from clean_ioc import Registration, Lifespan, Tag
-from expects import expect, be_true, be_false
+from fluent_assertions import assert_that, is_true, is_false
 
 
 def test_has_tag():
@@ -15,10 +15,10 @@ def test_has_tag():
         tags=[Tag("name", "value")],
     )
 
-    expect(has_tag("name")(registration)).to(be_true)
-    expect(has_tag("name", "value")(registration)).to(be_true)
-    expect(has_tag("name", "val")(registration)).to(be_false)
-    expect(has_tag("yourname")(registration)).to(be_false)
+    assert_that(has_tag("name")(registration)).matches(is_true())
+    assert_that(has_tag("name", "value")(registration)).matches(is_true())
+    assert_that(has_tag("name", "val")(registration)).matches(is_false())
+    assert_that(has_tag("yourname")(registration)).matches(is_false())
 
 
 def test_has_tag_with_value_or_missing_tag():
@@ -29,11 +29,15 @@ def test_has_tag_with_value_or_missing_tag():
         tags=[Tag("name", "value")],
     )
 
-    expect(has_tag_with_value_or_missing_tag("name", "value")(registration)).to(be_true)
-    expect(has_tag_with_value_or_missing_tag("name", "val")(registration)).to(be_false)
-    expect(has_tag_with_value_or_missing_tag("yourname", "yourvalue")(registration)).to(
-        be_true
+    assert_that(
+        has_tag_with_value_or_missing_tag("name", "value")(registration)
+    ).matches(is_true())
+    assert_that(has_tag_with_value_or_missing_tag("name", "val")(registration)).matches(
+        is_false()
     )
+    assert_that(
+        has_tag_with_value_or_missing_tag("yourname", "yourvalue")(registration)
+    ).matches(is_true())
 
 
 def test_has_tag_with_value_in():
@@ -44,6 +48,12 @@ def test_has_tag_with_value_in():
         tags=[Tag("name", "value")],
     )
 
-    expect(has_tag_with_value_in("name", "value", "value2")(registration)).to(be_true)
-    expect(has_tag_with_value_in("name", "val", "val2")(registration)).to(be_false)
-    expect(has_tag_with_value_in("yourname", "value", "val")(registration)).to(be_false)
+    assert_that(has_tag_with_value_in("name", "value", "value2")(registration)).matches(
+        is_true()
+    )
+    assert_that(has_tag_with_value_in("name", "val", "val2")(registration)).matches(
+        is_false()
+    )
+    assert_that(
+        has_tag_with_value_in("yourname", "value", "val")(registration)
+    ).matches(is_false())

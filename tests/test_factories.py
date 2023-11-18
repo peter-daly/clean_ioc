@@ -1,7 +1,5 @@
 # from __future__ import annotations
 from typing import Generic, TypeVar
-from expects import equal, expect, have_length, raise_error
-from expects.matchers import Matcher
 from clean_ioc import (
     Container,
     CannotResolveException,
@@ -11,8 +9,8 @@ from clean_ioc import (
 )
 from clean_ioc.factories import use_registered, create_type_mapping
 from clean_ioc.registration_filters import with_implementation, with_name
-from .matchers import be_type, be_same_instance_as
 from clean_ioc.registration_filters import with_name
+from fluent_assertions import assert_that, is_exact_type, is_same_instance_as, is_true
 
 
 def test_simple_use_registered():
@@ -38,11 +36,11 @@ def test_simple_use_registered():
     a = container.resolve(A)
     b = container.resolve(B)
 
-    expect(a).to(be_type(D))
-    expect(b).to(be_type(D))
+    assert_that(a).matches(is_exact_type(D))
+    assert_that(b).matches(is_exact_type(D))
 
-    expect(a).to(be_same_instance_as(d))
-    expect(b).to(be_same_instance_as(d))
+    assert_that(a).matches(is_same_instance_as(d))
+    assert_that(b).matches(is_same_instance_as(d))
 
 
 def test_use_registered_with_filters():
@@ -67,8 +65,8 @@ def test_use_registered_with_filters():
     a = container.resolve(A)
     b = container.resolve(B)
 
-    expect(a).to(be_same_instance_as(c1))
-    expect(b).to(be_same_instance_as(c2))
+    assert_that(a).matches(is_same_instance_as(c1))
+    assert_that(b).matches(is_same_instance_as(c2))
 
 
 def test_create_type_mapping():
@@ -101,9 +99,9 @@ def test_create_type_mapping():
 
     mapping = container.resolve(dict[str, A])
 
-    expect(mapping["B"]).to(be_type(B))
-    expect(mapping["C"]).to(be_type(C))
-    expect(mapping["D"]).to(be_type(D))
+    assert_that(mapping["B"]).matches(is_exact_type(B))
+    assert_that(mapping["C"]).matches(is_exact_type(C))
+    assert_that(mapping["D"]).matches(is_exact_type(D))
 
 
 def test_create_type_mapping_with_filter():
@@ -140,6 +138,6 @@ def test_create_type_mapping_with_filter():
 
     mapping: dict[str, A] = container.resolve(dict[str, A])
 
-    expect(mapping.get("B")).to(be_type(B))
-    expect(mapping.get("C")).to(equal(None))
-    expect(mapping.get("D")).to(be_type(D))
+    assert_that(mapping.get("B")).matches(is_exact_type(B))
+    assert_that(mapping.get("C")).matches(None)
+    assert_that(mapping.get("D")).matches(is_exact_type(D))

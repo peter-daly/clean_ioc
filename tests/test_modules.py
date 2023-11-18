@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 from clean_ioc import Container
 from clean_ioc.modules import BaseModule
+from fluent_assertions import assert_that, was_called
 
 
 def test_module_will_only_run_once_per_instance():
@@ -20,7 +21,7 @@ def test_module_will_only_run_once_per_instance():
     container.apply_module(test_module)
     container.apply_module(test_module)
 
-    spy.assert_called_once()
+    assert_that(spy).matches(was_called().once)
 
 
 def test_module_instance_can_be_called_multiple_times_when_allowed():
@@ -42,7 +43,7 @@ def test_module_instance_can_be_called_multiple_times_when_allowed():
     container.apply_module(test_module)
     container.apply_module(test_module)
 
-    assert spy.call_count == 3
+    assert_that(spy).matches(was_called().times(3))
 
 
 def test_module_class_can_be_called_multiple_times_with_different_instances():
@@ -65,8 +66,8 @@ def test_module_class_can_be_called_multiple_times_with_different_instances():
     container.apply_module(test_module1)
     container.apply_module(test_module2)
 
-    spy1.assert_called_once()
-    spy2.assert_called_once()
+    assert_that(spy1).matches(was_called().once)
+    assert_that(spy2).matches(was_called().once)
 
 
 def test_module_class_can_be_called_only_once_across_all_instances_when_set():
@@ -91,5 +92,5 @@ def test_module_class_can_be_called_only_once_across_all_instances_when_set():
     container.apply_module(test_module1)
     container.apply_module(test_module2)
 
-    spy1.assert_called_once()
-    spy2.assert_not_called()
+    assert_that(spy1).matches(was_called().once)
+    assert_that(spy2).matches(was_called().never)
