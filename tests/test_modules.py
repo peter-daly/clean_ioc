@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 from clean_ioc import Container
 from clean_ioc.modules import BaseModule
-from fluent_assertions import assert_that, was_called
+from assertive import assert_that, was_called
 
 
 def test_module_will_only_run_once_per_instance():

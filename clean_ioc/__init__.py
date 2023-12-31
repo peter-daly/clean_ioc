@@ -428,7 +428,11 @@ class Registration:
         dependency_config: dict[str, DependencySettings] = {},
         parent_context_filter: ParentContextFilter = _default_parent_context_filter,
         tags: list[Tag] | None = None,
+        scoped_teardown: Callable | None = None,
     ):
+        if scoped_teardown and not lifespan == Lifespan.scoped:
+            raise Exception("Scoped teardowns can only be used with scoped lifestyles")
+
         self.service_type = service_type
         self.implementation = implementation
         self.creator = ImplementationCreator(
@@ -440,6 +444,7 @@ class Registration:
         self.id = str(uuid4())
         self.generic_mapping = get_typevar_to_type_mapping(self.service_type)
         self.parent_context_filter = parent_context_filter
+        self.scoped_teardown = scoped_teardown
 
     @property
     def is_named(self):
@@ -569,7 +574,10 @@ class DependencyCache:
             self.registry.add_singleton_instance(registration.id, instance)
         elif registration.lifespan == Lifespan.scoped:
             self.scope.add_scoped_instance(
-                registration.id, registration.service_type, instance
+                registration.id,
+                registration.service_type,
+                instance,
+                registration.scoped_teardown,
             )
 
         if registration.lifespan >= Lifespan.once_per_graph:
@@ -687,12 +695,16 @@ class Scope(Resolver):
         self._registrations: dict[type, deque[Registration]] = defaultdict(deque)
         self._scoped_instances: dict[str, Any] = {}
         self._resolved_instances: dict[type, deque[Any]] = defaultdict(deque)
+        self._sync_teardowns: dict[str, Callable] = {}
+        self._async_teardowns: dict[str, Callable] = {}
 
     async def __aenter__(self):
         await self.before_start_async()
         return self
 
     async def __aexit__(self, *args, **kwargs):
+        await self._run_async_teardowns()
+        self._run_sync_teardowns()
         await self.after_finish_async()
 
     def __enter__(self):
@@ -700,6 +712,7 @@ class Scope(Resolver):
         return self
 
     def __exit__(self, *args, **kwargs):
+        self._run_sync_teardowns()
         self.after_finish()
 
     def before_start(self):
@@ -714,11 +727,31 @@ class Scope(Resolver):
     async def after_finish_async(self):
         pass
 
+    async def _run_async_teardowns(self):
+        for registration_id, teardown_fn in self._async_teardowns.items():
+            instance = self._scoped_instances[registration_id]
+            await teardown_fn(instance)
+
+    def _run_sync_teardowns(self):
+        for registration_id, teardown_fn in self._sync_teardowns.items():
+            instance = self._scoped_instances[registration_id]
+            teardown_fn(instance)
+
     def add_scoped_instance(
-        self, registration_id: str, service_type: type, instance: Any
+        self,
+        registration_id: str,
+        service_type: type,
+        instance: Any,
+        teardown: Callable | None,
     ):
         self._scoped_instances[registration_id] = instance
         self._resolved_instances[service_type].appendleft(instance)
+        if teardown:
+            is_async = inspect.iscoroutinefunction(teardown)
+            if is_async:
+                self._async_teardowns[registration_id] = teardown
+            else:
+                self._sync_teardowns[registration_id] = teardown
 
     @abc.abstractmethod
     def register(
@@ -755,14 +788,15 @@ class ContainerScope(Scope):
 
     def register(
         self,
-        service_type: type,
-        impl_type: type | None = None,
-        factory: Callable | None = None,
-        instance: Any | None = None,
+        service_type: type[TService],
+        impl_type: type[TService] | None = None,
+        factory: Callable[..., TService] | None = None,
+        instance: TService | None = None,
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
         tags: list[Tag] | None = None,
         parent_context_filter: ParentContextFilter = _default_parent_context_filter,
+        scoped_teardown: Callable[[TService], None] | None = None,
     ):
         if instance is not None:
             self._registrations[service_type].appendleft(
@@ -773,6 +807,7 @@ class ContainerScope(Scope):
                     name=name,
                     tags=tags,
                     parent_context_filter=parent_context_filter,
+                    scoped_teardown=scoped_teardown,
                 )
             )
         elif factory is not None:
@@ -785,6 +820,7 @@ class ContainerScope(Scope):
                     dependency_config=dependency_config,
                     tags=tags,
                     parent_context_filter=parent_context_filter,
+                    scoped_teardown=scoped_teardown,
                 )
             )
         elif impl_type is not None:
@@ -797,6 +833,7 @@ class ContainerScope(Scope):
                     dependency_config=dependency_config,
                     tags=tags,
                     parent_context_filter=parent_context_filter,
+                    scoped_teardown=scoped_teardown,
                 )
             )
         else:
@@ -809,6 +846,7 @@ class ContainerScope(Scope):
                     dependency_config=dependency_config,
                     tags=tags,
                     parent_context_filter=parent_context_filter,
+                    scoped_teardown=scoped_teardown,
                 )
             )
 
@@ -883,15 +921,16 @@ class Container(Resolver):
 
     def register(
         self,
-        service_type: type,
-        impl_type: type | None = None,
-        factory: Callable | None = None,
-        instance: Any | None = None,
+        service_type: type[TService],
+        impl_type: type[TService] | None = None,
+        factory: Callable[..., TService] | None = None,
+        instance: TService | None = None,
         lifespan: Lifespan = Lifespan.once_per_graph,
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
         tags: list[Tag] | None = None,
         parent_context_filter: ParentContextFilter = _default_parent_context_filter,
+        scoped_teardown: Callable[[TService], None] | None = None,
     ):
         if instance is not None:
             self.registry.add_registration(
@@ -903,6 +942,7 @@ class Container(Resolver):
                     name=name,
                     tags=tags,
                     parent_context_filter=parent_context_filter,
+                    scoped_teardown=scoped_teardown,
                 )
             )
         elif factory is not None:
@@ -915,6 +955,7 @@ class Container(Resolver):
                     name=name,
                     tags=tags,
                     parent_context_filter=parent_context_filter,
+                    scoped_teardown=scoped_teardown,
                 )
             )
         elif impl_type is not None:
@@ -927,6 +968,7 @@ class Container(Resolver):
                     name=name,
                     tags=tags,
                     parent_context_filter=parent_context_filter,
+                    scoped_teardown=scoped_teardown,
                 )
             )
         else:
@@ -939,6 +981,7 @@ class Container(Resolver):
                     name=name,
                     tags=tags,
                     parent_context_filter=parent_context_filter,
+                    scoped_teardown=scoped_teardown,
                 )
             )
 
@@ -1054,7 +1097,6 @@ class Container(Resolver):
         decorator_is_open_generic = is_open_generic_type(generic_decorator_type)
 
         for subclass in subclasses:
-
             target_generic_base = self._get_target_generic_base(
                 generic_service_type, subclass
             )

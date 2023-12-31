@@ -8,10 +8,10 @@ from clean_ioc import (
     CannotResolveException,
     ContainerScope,
     DependencyContext,
-    ParentContext,
     DependencySettings,
     Lifespan,
     NeedsScopedRegistrationError,
+    Scope,
     Tag,
 )
 from clean_ioc.functional_utils import fn_not
@@ -21,16 +21,15 @@ from clean_ioc.registration_filters import (
     with_name,
 )
 from clean_ioc.parent_context_filters import parent_implementation_is
-from unittest.mock import Mock
-from fluent_assertions import (
+from unittest.mock import AsyncMock, Mock
+from assertive import (
     assert_that,
-    is_true,
-    is_false,
-    is_type,
     is_exact_type,
     is_same_instance_as,
     has_length,
     raises_exception,
+    was_called_with,
+    was_called,
 )
 
 
@@ -740,12 +739,11 @@ def test_has_registrations():
 
     container.register(A)
 
-    assert_that(container.has_registration(A)).matches(is_true())
-    assert_that(container.has_registration(B)).matches(is_false())
+    assert_that(container.has_registration(A)).matches(True)
+    assert_that(container.has_registration(B)).matches(False)
 
 
 def test_pre_configurations():
-
     mock_method = Mock()
 
     class A:
@@ -915,3 +913,58 @@ def test_parent_context_filter():
 
     assert_that(e.a).matches(is_exact_type(B))
     assert_that(d.a).matches(is_exact_type(C))
+
+
+def test_scoped_teardowns():
+    class A:
+        pass
+
+    teardown = Mock()
+    container = Container()
+    container.register(A, lifespan=Lifespan.scoped, scoped_teardown=teardown)
+    with container.new_scope() as scope:
+        a = scope.resolve(A)
+
+    assert_that(teardown).matches(was_called_with(a))
+
+
+@pytest.mark.asyncio()
+async def test_sync_scoped_teardowns_are_called_for_in_scope():
+    class A:
+        pass
+
+    sync_teardown = Mock()
+    container = Container()
+    container.register(A, lifespan=Lifespan.scoped, scoped_teardown=sync_teardown)
+    async with container.new_scope() as scope:
+        a = scope.resolve(A)
+
+    assert_that(sync_teardown).matches(was_called_with(a))
+
+
+@pytest.mark.asyncio()
+async def test_async_scoped_teardowns_are_called_for_in_scope():
+    class A:
+        pass
+
+    async_teardown = AsyncMock()
+    container = Container()
+    container.register(A, lifespan=Lifespan.scoped, scoped_teardown=async_teardown)
+    async with container.new_scope() as scope:
+        a = scope.resolve(A)
+
+    assert_that(async_teardown).matches(was_called_with(a))
+
+
+def test_async_scoped_teardowns_dont_get_called_in_sync_context_manager():
+    class A:
+        pass
+
+    async_teardown = AsyncMock()
+    container = Container()
+
+    container.register(A, lifespan=Lifespan.scoped, scoped_teardown=async_teardown)
+    with container.new_scope() as scope:
+        scope.resolve(A)
+
+    assert_that(async_teardown).matches(was_called().never)

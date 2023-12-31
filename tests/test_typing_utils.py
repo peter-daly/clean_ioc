@@ -6,7 +6,7 @@ from clean_ioc.typing_utils import (
     get_typevar_to_type_mapping,
     is_open_generic_type,
 )
-from fluent_assertions import assert_that
+from assertive import assert_that
 
 
 class A:
@@ -97,3 +97,15 @@ def test_get_typevar_to_type_mapping():
 
     m6 = get_typevar_to_type_mapping(int)
     assert_that(m6).matches({})
+
+
+def test_3_12_generics():
+    class NewGeneric[X, Y]:
+        pass
+
+    class Impl(NewGeneric[int, str]):
+        pass
+
+    m1 = get_typevar_to_type_mapping(Impl)
+
+    print(m1)

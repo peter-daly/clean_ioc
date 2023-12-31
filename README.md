@@ -276,7 +276,7 @@ container.register(Client, lifespan=Lifespan.once_per_graph)
 ```
 
 ### scoped
-Only create a new instance through the life a scope. When not in a scope the behaviour is the same as **once_per_graph**
+Only create a new instance through the lifetime a [scope](#scopes). When not in a scope the behaviour is the same as **once_per_graph**.
 
 ```python
 container.register(Client, lifespan=Lifespan.scoped)
@@ -378,31 +378,67 @@ h2.handle(GoodbyeCommand()) # prints 'A VERY BIG\nGOODBYE'
 ```
 
 ## Scopes
-
-Scopes are a way to create a sub container that will live for a certain lifespan.
-Some good use cases for scope would be for the lifespan of handling a http request with a web server or a message/event if working on a message based system
-
+Scopes are a machanism where you guarantee that dependency can be temporarily a singleton within the scope. You can also register dependencies that that are only available withon the scope.
+Some good use cases for scope lifetimes are:
+ - http request in a web server
+ - message/event if working on a message based system
+For instance you could keep an single database connection open for the entire lifetime of the http request
 
 ```python
-class Client
-    def __init__(self, number: int)
-        return number
+class DbConnection:
+    def run_sql(self, statement):
+        # Done some sql Stuff
+        pass
 
-    def get_number(self):
-        return self.resolver.resolve(int)
-
-container.register(int, instance=2)
-
-container.register(Client)
-
-client = container.resolve(Client)
-client.get_number() # returns 2
+container.register(DbConnection, lifespan=Lifespan.scoped)
 
 with container.get_scope() as scope:
-    scope.register(int, instance=10)
-    scoped_client = scope.resolve(Client)
-    scoped_client.get_number() # returns 10
+    db_conn = scope.resolve(DbConnection)
+    db_conn.run_sql("UPDATE table SET column = 1")
 ```
+
+Scopes can also be use with asyncio
+
+```python
+class AsyncDbConnection:
+    async def run_sql(self, statement):
+        # Done some sql Stuff
+        pass
+
+container.register(AsyncDbConnection, lifespan=Lifespan.scoped)
+
+async with container.get_scope() as scope:
+    db_conn = scope.resolve(AsyncDbConnection)
+    await db_conn.run_sql("UPDATE table SET column = 1")
+```
+
+
+### Scoped Teardowns
+When you are finished with some dependenies within a scope you might want to perform some teardown action before you exit the scope. For example if we want to close our db connection.
+
+```python
+class AsyncDbConnection:
+    async def run_sql(self, statement):
+        # Done some sql Stuff
+        pass
+    async def close(self):
+        # Close the connection
+        pass
+
+async def close_connection(conn: AsyncDbConnection):
+    await conn.close()
+
+container.register(DbConnection, lifespan=Lifespan.scoped, scoped_teardown=close_connection)
+
+async with container.get_scope() as scope:
+    db_conn = scope.resolve(AsyncDbConnection)
+    await db_conn.run_sql("UPDATE table SET column = 1")
+
+# close connection is run when we exit the scope
+```
+
+***Note***: *When using the scope as an async context manager you need both sync and async teardowns are run, when a scope is used as a normal sync context manager async teardowns are ignored*
+
 
 ## Named registrations & Registration filters
 

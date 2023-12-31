@@ -1,16 +1,12 @@
 # from __future__ import annotations
-from typing import Generic, TypeVar
 from clean_ioc import (
     Container,
-    CannotResolveException,
-    DependencySettings,
-    Lifespan,
     Registration,
 )
 from clean_ioc.factories import use_registered, create_type_mapping
 from clean_ioc.registration_filters import with_implementation, with_name
 from clean_ioc.registration_filters import with_name
-from fluent_assertions import assert_that, is_exact_type, is_same_instance_as, is_true
+from assertive import assert_that, is_exact_type, is_same_instance_as
 
 
 def test_simple_use_registered():
