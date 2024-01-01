@@ -796,7 +796,7 @@ class ContainerScope(Scope):
         dependency_config: dict[str, DependencySettings] = {},
         tags: list[Tag] | None = None,
         parent_context_filter: ParentContextFilter = _default_parent_context_filter,
-        scoped_teardown: Callable[[TService], None] | None = None,
+        scoped_teardown: Callable[[TService], Any] | None = None,
     ):
         if instance is not None:
             self._registrations[service_type].appendleft(
@@ -930,7 +930,7 @@ class Container(Resolver):
         dependency_config: dict[str, DependencySettings] = {},
         tags: list[Tag] | None = None,
         parent_context_filter: ParentContextFilter = _default_parent_context_filter,
-        scoped_teardown: Callable[[TService], None] | None = None,
+        scoped_teardown: Callable[[TService], Any] | None = None,
     ):
         if instance is not None:
             self.registry.add_registration(

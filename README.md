@@ -769,7 +769,7 @@ client.get_thing()
 
 
 
-## DependencyContext (BETA feature)
+## Dependency Context (BETA feature)
 
 You can inject a special type into your dependants that allows you to inspect the current dependency tree. For instances you can check the parent of the current class you are constructing
 One example of where this becomes useful is if injecting a logger, you can get information about the loggers parent to add extra context
@@ -793,7 +793,7 @@ container.register(logging.Logger, factory=logger_fac, lifespan=Lifespan.transie
 client = container.resolve(Client)
 ```
 
-
+***Note*** *If using dependency context on your dependency it's recommended that you use a lifespan of **transient**, because any other lifespan will create only use the parent of the first resolved instance*
 ## Pre-configurations
 
 Pre configurations run a side-effect for a type before the type gets resolved.
