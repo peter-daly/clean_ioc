@@ -10,12 +10,12 @@ There are 4 basic modes of registering a new set of classes
 
 ```python
 
-class UserRepository(abc.ABC)
+class UserRepository(abc.ABC):
     @abc.abstractmethod
     def add(self, user):
         pass
 
-class InMemoryUserRepository(UserRepository)
+class InMemoryUserRepository(UserRepository):
 
     def __init__(self):
         self.users = []
@@ -24,7 +24,7 @@ class InMemoryUserRepository(UserRepository)
         # This is obviously terrible, but it's for demo purposes
         self.users.append(user)
 
-class SqlAlchemyUserRepository(UserRepository)
+class SqlAlchemyUserRepository(UserRepository):
 
     def __init__(self):
         # Do some db stuff here
@@ -46,12 +46,12 @@ repository = container.resolve(UserRepository) # This will return an InMemoryUse
 
 ```python
 
-class ClientDependency
+class ClientDependency:
     def get_int(self):
         return 10
 
-class Client
-    def __init__(self, dep: ClientDependency)
+class Client:
+    def __init__(self, dep: ClientDependency):
         self.dep = dep
 
     def get_number(self):
@@ -72,12 +72,12 @@ client.get_number() # returns 10
 
 ```python
 
-class ClientDependency
+class ClientDependency:
     def get_int(self):
         return 10
 
-class Client
-    def __init__(self, dep: ClientDependency)
+class Client:
+    def __init__(self, dep: ClientDependency):
         self.dep = dep
 
     def get_number(self):
@@ -102,15 +102,15 @@ client.get_number() # returns 10
 
 ```python
 
-class ClientDependency
+class ClientDependency:
     def __init__(self, num):
         self.num = num
 
     def get_int(self):
         return self.num
 
-class Client
-    def __init__(self, dep: ClientDependency)
+class Client:
+    def __init__(self, dep: ClientDependency):
         self.dep = dep
 
     def get_number(self):
@@ -134,15 +134,15 @@ If you have multiple dependencues you can simply define a dependency as a list[T
 
 ```python
 
-class ClientDependency
+class ClientDependency:
     def __init__(self, numbers: list[int]):
         self.numbers = numbers
 
     def get_numbers(self):
         return self.numbers
 
-class Client
-    def __init__(self, dep: ClientDependency)
+class Client:
+    def __init__(self, dep: ClientDependency):
         self.dep = dep
 
     def get_numbers(self):
@@ -167,8 +167,8 @@ Follows a object orientated decoration pattern, rather than a decoration annotat
 The main reason for this was to allow decotation of registered instances
 
 ```python
-class Client
-    def __init__(self, number: int)
+class Client:
+    def __init__(self, number: int):
         self.number = number
 
     def get_number(self):
@@ -227,17 +227,17 @@ Decorators are resolved in order of when first registered. So the first register
 This feature allows registration of all subclasses of a giveb type
 
 ```python
-class Client(abc.ABC)
+class Client(abc.ABC):
     @abc.abstractmethod
     def get_number(self):
         pass
 
 
-class TenClient(Client)
+class TenClient(Client):
     def get_number(self):
         return 10
 
-class TwentyClient(Client)
+class TwentyClient(Client):
     def get_number(self):
         return 20
 
@@ -489,8 +489,8 @@ Dependency settings are defined at registration and allow you to define the sele
 
 
 ```python
-class Client
-    def __init__(self, number=10)
+class Client:
+    def __init__(self, number=10):
         self.number = number
 
     def get_number(self):
@@ -540,8 +540,8 @@ The order of a dependant value is as follows
     ```
 2. Using the default parameter value if it exisis the dependency value explicitly
     ```python
-    class Client
-    def __init__(self, number=10)
+    class Client:
+    def __init__(self, number=10):
         self.number = number
     ```
     If you don't want to use the default parameter value you can set it to false in the dependency setting
@@ -584,36 +584,35 @@ al5 = container.resolve(list[A]) # returns [a3, a2, a1]
 Registrations can also specify that should only apply to certain parents objects by setting the parent_context_filter
 
 ```python
-def test_parent_context_filter():
-    class A:
-        pass
+class A:
+    pass
 
-    class B(A):
-        pass
+class B(A):
+    pass
 
-    class C(A):
-        pass
+class C(A):
+    pass
 
-    class D:
-        def __init__(self, a: A):
-            self.a = a
+class D:
+    def __init__(self, a: A):
+        self.a = a
 
-    class E:
-        def __init__(self, a: A):
-            self.a = a
+class E:
+    def __init__(self, a: A):
+        self.a = a
 
-    container = Container()
+container = Container()
 
-    container.register(A, B, parent_context_filter=parent_implementation_is(E))
-    container.register(A, C, parent_context_filter=parent_implementation_is(D))
-    container.register(D)
-    container.register(E)
+container.register(A, B, parent_context_filter=parent_implementation_is(E))
+container.register(A, C, parent_context_filter=parent_implementation_is(D))
+container.register(D)
+container.register(E)
 
-    e = container.resolve(E)
-    d = container.resolve(D)
+e = container.resolve(E)
+d = container.resolve(D)
 
-    type(e.a) # returns B
-    type(d.a) # returns C
+type(e.a) # returns B
+type(d.a) # returns C
 
 ```
 
@@ -624,8 +623,8 @@ def test_parent_context_filter():
 Accessing container directly
 
 ```python
-class Client
-    def __init__(self, container: Container)
+class Client:
+    def __init__(self, container: Container):
         self.container = container
 
     def get_number(self):
@@ -643,8 +642,8 @@ Accessing Resolver also returns the container
 
 ```python
 
-class Client
-    def __init__(self, resolver: Resolver)
+class Client:
+    def __init__(self, resolver: Resolver):
         self.resolver = resolver
 
     def get_number(self):
@@ -661,8 +660,8 @@ client.get_number() # returns 2
 When within a scope, Resolver returns the current scope rather than the container
 
 ```python
-class Client
-    def __init__(self, resolver: Resolver)
+class Client:
+    def __init__(self, resolver: Resolver):
         self.resolver = resolver
 
     def get_number(self):
@@ -684,7 +683,7 @@ with container.get_scope() as scope:
 Scopes can also be used as an async context manager
 
 ```python
-class Client
+class Client:
     async def get_number(self):
         return 10
 
@@ -701,12 +700,12 @@ async with container.get_scope() as scope:
 A module is a just a function that accepts a container, it can be used to set up common elements on the container
 
 ```python
-class ClientDependency
+class ClientDependency:
     def get_int(self):
         return 10
 
-class Client
-    def __init__(self, dep: ClientDependency)
+class Client:
+    def __init__(self, dep: ClientDependency):
         self.dep = dep
 
     def get_number(self):
@@ -732,11 +731,11 @@ You can find the ```BaseModule``` in ```clean_ioc.modules``` module
 
 ```python
 @dataclass
-class ClientConfig
+class ClientConfig:
     url: str
 
-class Client
-    def __init__(self, config: ClientConfig)
+class Client:
+    def __init__(self, config: ClientConfig):
         self.base_url = config.url
 
     def get_thing(self):
@@ -775,8 +774,8 @@ You can inject a special type into your dependants that allows you to inspect th
 One example of where this becomes useful is if injecting a logger, you can get information about the loggers parent to add extra context
 
 ```python
-class Client
-    def __init__(self, logger: logging.Logger)
+class Client:
+    def __init__(self, logger: logging.Logger):
         self.logger = logger
 
     def do_a_thing(self):
@@ -802,8 +801,8 @@ This is useful if some python modules have some sort of module level functions t
 ```python
 import logging
 
-class Client
-    def __init__(self, logger: logging.Logger)
+class Client:
+    def __init__(self, logger: logging.Logger):
         self.logger = logger
 
     def do_a_thing(self):
