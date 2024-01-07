@@ -216,7 +216,13 @@ class Dependency:
             self.service_type = service_type
         self.settings = settings
         self.is_dependency_context = service_type == DependencyContext
-        self.is_generic_list = getattr(self.service_type, "__origin__", None) == list
+        generic_origin = getattr(self.service_type, "__origin__", None)
+
+        if generic_origin and generic_origin in (list, tuple, set):
+            self.generic_collection_type = generic_origin
+        else:
+            self.generic_collection_type = None
+
         self.default_value = default_value
 
     def resolve(self, context: ResolvingContext, dependency_node: DependencyNode):
@@ -231,25 +237,27 @@ class Dependency:
         if self.is_dependency_context:
             return DependencyContext(name=self.name, dependency_node=dependency_node)
 
-        if self.is_generic_list:
+        if self.generic_collection_type:
             regs = context.find_registrations(
                 service_type=self.service_type.__args__[0],  # type: ignore
                 registration_filter=self.settings.filter,
                 registration_list_reducing_filter=self.settings.list_reducing_filter,
                 parent_context=parent_context,
             )
-            return [r.build(context, dependency_node) for r in regs]
-        else:
-            try:
-                reg = context.find_registration(
-                    service_type=self.service_type,
-                    registration_filter=self.settings.filter,
-                    parent_context=parent_context,
-                )
-                return reg.build(context, dependency_node)
-            except CannotResolveException as ex:
-                ex.append(self)
-                raise ex
+            generator = (r.build(context, dependency_node) for r in regs)
+            return self.generic_collection_type(generator)
+            # return [r.build(context, dependency_node) for r in regs]
+
+        try:
+            reg = context.find_registration(
+                service_type=self.service_type,
+                registration_filter=self.settings.filter,
+                parent_context=parent_context,
+            )
+            return reg.build(context, dependency_node)
+        except CannotResolveException as ex:
+            ex.append(self)
+            raise ex
 
 
 class RootDependency(Dependency):
