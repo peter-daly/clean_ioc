@@ -11,13 +11,11 @@ build:
   tools:
     python: "3.10"
   jobs:
-    post_install:
-      - pip install pipx
-      - pipx install poetry
-      - export PATH="$HOME/.poetry/bin:$PATH"
+    post_create_environment:
+      - pip install poetry
       - poetry config virtualenvs.create false
+    post_install:
       - poetry install --with docs
 
 mkdocs:
   configuration: mkdocs.yml
-
