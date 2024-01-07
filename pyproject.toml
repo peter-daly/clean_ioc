@@ -35,6 +35,7 @@ assertive = "^0.0.1"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.5.3"
+mkdocstrings = {version = "^0.24.0", extras = ["python"]}
 
 
 [tool.poetry.group.dev]
