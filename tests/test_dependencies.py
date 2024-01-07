@@ -17,6 +17,7 @@ from clean_ioc import (
 from clean_ioc.functional_utils import fn_not
 from clean_ioc.registration_filters import (
     has_tag,
+    has_tag_with_value_in,
     with_implementation,
     with_name,
 )
@@ -30,6 +31,7 @@ from assertive import (
     raises_exception,
     was_called_with,
     was_called,
+    is_type,
 )
 
 
@@ -179,6 +181,29 @@ def test_list_with_named_filter():
     assert_that(array).matches(has_length(2))
     assert_that(array[0]).matches(is_same_instance_as(a3))
     assert_that(array[1]).matches(is_same_instance_as(a1))
+
+
+def test_different_collection_types():
+    class A:
+        pass
+
+    container = Container()
+
+    a1 = A()
+    a2 = A()
+    a3 = A()
+
+    container.register(A, instance=a1, tags=[Tag("number", "one")])
+    container.register(A, instance=a2, tags=[Tag("number", "two")])
+    container.register(A, instance=a3, tags=[Tag("number", "three")])
+
+    a_set = container.resolve(set[A])
+    a_tuple = container.resolve(tuple[A], has_tag_with_value_in("number", "one", "two"))
+    a_list = container.resolve(list[A])
+
+    assert_that(a_set).matches(has_length(3))
+    assert_that(a_tuple).matches(has_length(2))
+    assert_that(a_list).matches(has_length(3))
 
 
 def test_nested_decorators_should_be_in_order_of_when_first_registered():

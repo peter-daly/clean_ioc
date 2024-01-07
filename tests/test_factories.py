@@ -56,7 +56,7 @@ def test_use_registered_with_filters():
     container.register(C, instance=c1, name="C1")
     container.register(C, instance=c2, name="C2")
     container.register(A, factory=use_registered(C, with_name("C1")))
-    container.register(B, factory=use_registered(C))
+    container.register(B, factory=use_registered(C, with_name("C2")))
 
     a = container.resolve(A)
     b = container.resolve(B)

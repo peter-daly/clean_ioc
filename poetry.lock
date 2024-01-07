@@ -805,6 +805,7 @@ Markdown = ">=3.3"
 MarkupSafe = ">=1.1"
 mkdocs = ">=1.4"
 mkdocs-autorefs = ">=0.3.1"
+mkdocstrings-python = {version = ">=0.5.2", optional = true, markers = "extra == \"python\""}
 platformdirs = ">=2.2.0"
 pymdown-extensions = ">=6.3"
 
@@ -1658,4 +1659,4 @@ fastapi = ["fastapi"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "fd7f2a02dac36bda99e0abde35afbcab1f55b4163e4b7378523333fc0c4426b1"
+content-hash = "505fb8233bdb91c224920336513d2d1fdb8b0f0a592095dfb8bf9594e9b10473"

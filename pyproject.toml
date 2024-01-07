@@ -32,7 +32,11 @@ wily = "^1.24.0"
 mkdocstrings-python = "^0.8.3"
 expects = "^0.9.0"
 assertive = "^0.0.1"
+
+[tool.poetry.group.docs.dependencies]
 mkdocs = "^1.5.3"
+mkdocstrings = {version = "^0.24.0", extras = ["python"]}
+
 
 [tool.poetry.group.dev]
 optional = true
