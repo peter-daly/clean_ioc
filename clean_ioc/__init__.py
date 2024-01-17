@@ -6,6 +6,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 from functools import reduce
 import types
+from clean_ioc.utils import deprecated
 from enum import IntEnum
 from typing import Any, Sequence, Type, TypeVar, get_type_hints
 from collections.abc import Callable
@@ -1154,8 +1155,12 @@ class Container(Resolver):
             name=name,
         )
 
+    @deprecated("Use container.apply_bundle() instead")
     def apply_module(self, module_fn: Callable[[Container], None]):
         module_fn(self)
+
+    def apply_bundle(self, bundle_fn: Callable[[Container], None]):
+        bundle_fn(self)
 
     def has_registration(
         self, service_type, filter: RegistrationFilter = _default_registration_filter
