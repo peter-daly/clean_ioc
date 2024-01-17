@@ -3,9 +3,15 @@ from clean_ioc import Container
 from abc import ABC, abstractmethod
 import logging
 
+from clean_ioc.utils import deprecated, send_deprecation_warning
+
 logger = logging.getLogger(__name__)
 
 
+send_deprecation_warning("clean_ioc.modules should be replaced by clean_ioc.bundles")
+
+
+@deprecated("Use BaseBundle instead")
 class BaseModule(ABC):
     CLASS_RUN_ONCE: ClassVar[bool] = False
     INSTANCE_RUN_ONCE: ClassVar[bool] = True

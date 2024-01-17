@@ -694,10 +694,10 @@ async with container.get_scope() as scope:
     await scoped_client.get_number() # returns 10
 ```
 
-## Modules
+## Bundles
 
 
-A module is a just a function that accepts a container, it can be used to set up common elements on the container
+A bundle is a just a function that accepts a container, it can be used to set up related registrations on the container
 
 ```python
 class ClientDependency:
@@ -711,21 +711,21 @@ class Client:
     def get_number(self):
         return self.dep.get_int()
 
-def client_module(c: Container):
+def client_bundle(c: Container):
     c.register(ClientDependency)
     c.register(Client)
 
-container.apply_module(client_module)
+container.apply_bundle(client_bundle)
 
 client = container.resolve(Client)
 
 client.get_number() # returns 10
 ```
 
-### Helper for modules
+### Helper for bundles
 
-There is now a ```BaseModule``` class that gives you a bit more safety around running a module twice etc. Also you might want to pass in instances into the module.
-You can find the ```BaseModule``` in ```clean_ioc.modules``` module
+There is now a ```BaseBundle``` class that gives you a bit more safety around running a module twice etc. Also you might want to pass in instances into the module.
+You can find the ```BaseBundle``` in ```clean_ioc.bundles``` module
 
 
 
@@ -744,12 +744,12 @@ class Client:
 
 
 
-class ClientModule(BaseModule):
+class ClientBundle(BaseBundle):
 
     def __init__(self, config: ClientConfig):
         self.config = config
 
-    def run(self, c: Container):
+    def apply(self, c: Container):
         c.register(ClientConfig, instance=self.config)
         c.register(Client)
 
@@ -759,13 +759,12 @@ client_config = ClientConfig(
     url = "https://example.com"
 )
 
-container.apply_module(client_module)
+container.apply_bundle(ClientBundle(config=client_config))
 
-client = container.resolve(ClientModule(config=client_config))
+client = container.resolve(Client)
 
 client.get_thing()
 ```
-
 
 
 ## Dependency Context (BETA feature)
