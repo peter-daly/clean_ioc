@@ -1,8 +1,7 @@
 # from __future__ import annotations
 import asyncio
-from typing import Callable, Generic, Protocol, TypeVar
+from typing import Callable, Generic, Protocol, TypeVar, Any
 import pytest
-from traitlets import Any
 from clean_ioc import (
     Container,
     CannotResolveException,
@@ -11,7 +10,6 @@ from clean_ioc import (
     DependencySettings,
     Lifespan,
     NeedsScopedRegistrationError,
-    Scope,
     Tag,
 )
 from clean_ioc.functional_utils import fn_not
@@ -31,7 +29,10 @@ from assertive import (
     raises_exception,
     was_called_with,
     was_called,
-    is_type,
+)
+from clean_ioc.value_factories import (
+    set_value,
+    dont_use_default_parameter,
 )
 
 
@@ -361,7 +362,7 @@ def test_open_generic_decorators():
 
     a = container.resolve(A[int])
 
-    assert_that(type(a).__name__).matches("DecoratedGeneric_ADec")
+    assert_that(type(a).__name__).matches("__DecoratedGeneric__ADec")
 
 
 def test_open_generic_decorators_with_protocol():
@@ -384,7 +385,7 @@ def test_open_generic_decorators_with_protocol():
 
     a = container.resolve(A[int])
 
-    assert_that(type(a).__name__).matches("DecoratedGeneric_ADec")
+    assert_that(type(a).__name__).matches("__DecoratedGeneric__ADec")
 
 
 def test_open_generic_decorators_with_nongeneric_decorator():
@@ -435,7 +436,7 @@ def test_open_generic_decorators_with_both_generic_and_nongeneric_decorator():
 
     a = container.resolve(A[int])
 
-    assert_that(type(a).__name__).matches("DecoratedGeneric_ADecGeneric")
+    assert_that(type(a).__name__).matches("__DecoratedGeneric__ADecGeneric")
     assert_that(type(a.a).__name__).matches("ADecNonGeneric")  # type: ignore
     assert_that(type(a.a.a).__name__).matches("B")  # type: ignore
 
@@ -464,15 +465,18 @@ def test_deep_dependencies_with_dependency_settings():
     container = Container()
 
     container.register(
-        A, dependency_config={"s": DependencySettings(use_default_paramater=False)}
+        A,
+        dependency_config={
+            "s": DependencySettings(value_factory=dont_use_default_parameter)
+        },
     )
     container.register(
         B,
-        dependency_config={"x": DependencySettings(value=5)},
+        dependency_config={"x": DependencySettings(value_factory=set_value(5))},
     )
     container.register(
         C,
-        dependency_config={"y": DependencySettings(value=100)},
+        dependency_config={"y": DependencySettings(value_factory=set_value(100))},
     )
     container.register(str, factory=str_fac)
     container.register(int, instance=const_int)
@@ -483,6 +487,53 @@ def test_deep_dependencies_with_dependency_settings():
     assert_that(c.b.x).matches(5)
     assert_that(c.y).matches(100)
     assert_that(c.z).matches(10)
+
+
+def test_a_dependency_value_factory_with_a_dependency_context_filter():
+    def greeting_value_factory(default_value: Any, context: DependencyContext):
+        if class_greeting := getattr(context.parent.service_type, "GREETING", None):
+            return class_greeting
+        return default_value
+
+    class A:
+        def __init__(self, greeting: str = "AAAAA"):
+            self.greeting = greeting
+
+    class B:
+        GREETING = "BBBBB"
+
+        def __init__(self, a: A):
+            self.a = a
+
+    class C:
+        GREETING = "CCCCC"
+
+        def __init__(self, a: A):
+            self.a = a
+
+    class D:
+        def __init__(self, a: A):
+            self.a = a
+
+    container = Container()
+
+    container.register(
+        A,
+        dependency_config={
+            "greeting": DependencySettings(value_factory=greeting_value_factory)
+        },
+    )
+    container.register(B)
+    container.register(C)
+    container.register(D)
+
+    b = container.resolve(B)
+    c = container.resolve(C)
+    d = container.resolve(D)
+
+    assert_that(b.a.greeting).matches("BBBBB")
+    assert_that(c.a.greeting).matches("CCCCC")
+    assert_that(d.a.greeting).matches("AAAAA")
 
 
 def test_simple_self_regristation_with_constructor_with_positional_and_keyword_args_no_args():
@@ -503,7 +554,9 @@ def test_simple_self_regristation_with_constructor_with_positional_and_keyword_a
             self.kw = kwargs
 
     container = Container()
-    container.register(A, dependency_config={"x": DependencySettings(value=10)})
+    container.register(
+        A, dependency_config={"x": DependencySettings(value_factory=set_value(10))}
+    )
 
     a = container.resolve(A)
     assert_that(a).matches(is_exact_type(A))

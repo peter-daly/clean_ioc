@@ -1,5 +1,4 @@
 from . import Resolver, RegistrationFilter, _default_registration_filter
-from .registration_filters import all_registrations
 from typing import Any, Callable, TypeVar
 
 

@@ -1,4 +1,5 @@
 from typing import ClassVar
+from collections import defaultdict
 from clean_ioc import Container
 from abc import ABC, abstractmethod
 import logging
@@ -35,23 +36,26 @@ class OnlyRunOncePerInstanceBundle(BaseBundle):
 
 
 class OnlyRunOncePerClassBundle(BaseBundle):
-    CLASS_HAS_RUN: ClassVar[bool] = False
+    CONTAINERS_WHERE_CLASS_HAS_RUN: ClassVar[dict[type, list[int]]] = defaultdict(list)
 
-    def __new__(cls, *args, **kwargs):
-        instance = super().__new__(cls)
-        cls.class_has_run = False
-        return instance
+    @classmethod
+    def module_has_run_in_container(cls, container: Container):
+        return id(container) in cls.CONTAINERS_WHERE_CLASS_HAS_RUN[cls]
+
+    @classmethod
+    def mark_module_as_ran_in_container(cls, container: Container):
+        cls.CONTAINERS_WHERE_CLASS_HAS_RUN[cls].append(id(container))
 
     @abstractmethod
     def apply(self, container: Container):
         ...
 
     def __call__(self, container: Container):
-        if self.__class__.CLASS_HAS_RUN:
+        if self.__class__.module_has_run_in_container(container):
             logging.warning(
                 "Module class %s attempted to run more than once", type(self)
             )
             return
 
         self.apply(container=container)
-        self.__class__.CLASS_HAS_RUN = True
+        self.__class__.mark_module_as_ran_in_container(container)

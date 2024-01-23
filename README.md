@@ -504,7 +504,7 @@ container.register(int, instance=2)
 container.register(
     Client,
     name="SetsValue",
-    dependency_config={"number": DependencySettings(value=50)}
+    dependency_config={"number": DependencySettings(value_factory=set_value(50))}
 )
 container.register(
     Client,
@@ -513,12 +513,12 @@ container.register(
 container.register(
     Client,
     name="IgnoresDefaultParameterValue",
-    dependency_config={"number": DependencySettings(use_default_paramater=False)}
+    dependency_config={"number": DependencySettings(value_factory=dont_use_default_parameter)}
 )
 container.register(
     Client,
     name="UsesRegistrationFilter",
-    dependency_config={"number": DependencySettings(use_default_paramater=False, filter=with_name("One"))}
+    dependency_config={"number": DependencySettings(value_factory=dont_use_default_parameter, filter=with_name("One"))}
 )
 
 client1 = container.resolve(Client, filter=with_name("SetsValue"))
@@ -534,21 +534,21 @@ client4.get_number() # returns 1
 ```
 
 The order of a dependant value is as follows
-1. Setting the dependency value explicitly
+1. Setting the dependency value_factory to an explicit value
     ```python
-    DependencySettings(value=50)
+    DependencySettings(value_factory=set_value(50))
     ```
-2. Using the default parameter value if it exisis the dependency value explicitly
+    If the falue is a default parameter then the default value factory will use that default parameter value
     ```python
     class Client:
-    def __init__(self, number=10):
-        self.number = number
+        def __init__(self, number=10):
+            self.number = number
     ```
-    If you don't want to use the default parameter value you can set it to false in the dependency setting
+    If you don't want to use the default parameter value you can change the value_factory to pybass it
     ```python
-    DependencySettings(use_default_paramater=False)
+        DependencySettings(value_factory=dont_use_default_parameter)
     ```
-3. Going to the container registry to find a registration using the registration filter if, if there is a default value on the dependant paramater you must explicity set.
+2. Going to the container registry to find a registration using the registration filter if, if there is a default value on the dependant paramater you must explicity set.
 
 
 ## Tags
