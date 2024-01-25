@@ -30,4 +30,4 @@ def set_value(value: Any):
     return constant(value)
 
 
-dont_use_default_parameter = constant(_empty)
+dont_use_default_parameter = constant(_empty())

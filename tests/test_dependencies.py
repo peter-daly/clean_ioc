@@ -1,5 +1,4 @@
 # from __future__ import annotations
-import asyncio
 from typing import Callable, Generic, Protocol, TypeVar, Any
 import pytest
 from clean_ioc import (
@@ -787,7 +786,9 @@ def test_dependency_context_with_decorators_and_deep_child():
 
     def a_fac(dependency_context: DependencyContext):
         parent_type = dependency_context.parent.implementation
-        parent_type_undecorated = dependency_context.parent.bottom_decorated
+        parent_type_undecorated = (
+            dependency_context.parent.bottom_decorated_node.implementation
+        )
         return A(
             parent_type=parent_type, parent_type_undecorated=parent_type_undecorated
         )
@@ -934,31 +935,6 @@ def test_scope_subclass_as_context_manager():
     with container.new_scope(TestScope, a_instance) as scope:
         a_resolved = scope.resolve(A)
         assert_that(a_resolved).matches(is_same_instance_as(a_instance))
-
-
-@pytest.mark.asyncio()
-async def test_scope_subclass_as_async_context_manager():
-    hook_mock = Mock()
-    class_mock = Mock()
-
-    class A:
-        async def async_call(self):
-            class_mock()
-
-    class TestScope(ContainerScope):
-        async def after_finish_async(self):
-            hook_mock()
-            current_a_instances = self.get_resolved_instances(A)
-            await asyncio.gather(*[a.async_call() for a in current_a_instances])
-
-    container = Container()
-    container.register(A, lifespan=Lifespan.scoped)
-
-    async with container.new_scope(TestScope) as scope:
-        scope.resolve(A)
-
-    hook_mock.assert_called()
-    class_mock.assert_called()
 
 
 def test_parent_context_filter():

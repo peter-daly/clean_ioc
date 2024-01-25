@@ -28,9 +28,28 @@ import inspect
 TService = TypeVar("TService")
 
 
-class _empty:
+class SingletonMeta(type):
+    __INSTANCE__ = None
+
+    def __call__(cls, *args, **kwargs):
+        if cls.__INSTANCE__ is None:
+            cls.__INSTANCE__ = super().__call__(*args, **kwargs)
+
+        return cls.__INSTANCE__
+
+
+class _empty(metaclass=SingletonMeta):
     def __bool__(self):
         return False
+
+
+class _unknown(metaclass=SingletonMeta):
+    def __bool__(self):
+        return False
+
+
+EMPTY = _empty()
+UNKNOWN = _unknown()
 
 
 class ArgInfo:
@@ -38,7 +57,7 @@ class ArgInfo:
         self.name = name
         self.arg_type = arg_type
         self.default_value = (
-            _empty if default_value == inspect._empty else default_value
+            _empty() if default_value == inspect._empty else default_value
         )
 
 
@@ -92,19 +111,36 @@ class __Node__:
     pre_configured_by: __Node__
     pre_configures: __Node__
     registration_name: str | None = None
+    instance: Any = UNKNOWN
+    lifespan: Lifespan
+
+    @property
+    def implementation_type(self):
+        return (
+            self.implementation
+            if isinstance(self.implementation, type)
+            else type(self.implementation)
+        )
+
+    @property
+    def instance_type(self):
+        return type(self.instance)
 
     @property
     def generic_mapping(self):
         return get_typevar_to_type_mapping(self.service_type)
 
     @property
-    def bottom_decorated(self):
-        bottom = self.implementation
-        decorated = self.decorated
-        while decorated:
-            bottom = decorated.implementation
-            decorated = decorated.decorated
-        return bottom
+    def bottom_decorated_node(self):
+        if not self.decorated:
+            return self
+        return self.decorated.bottom_decorated_node
+
+    @property
+    def top_decorated_node(self):
+        if not self.decorator:
+            return self
+        return self.decorator.top_decorated_node
 
     def has_dependant_service_type(self, service_type: type) -> bool:
         for child in self.children:
@@ -113,6 +149,25 @@ class __Node__:
             if child.has_dependant_service_type(service_type):
                 return True
         return False
+
+    def has_dependant_implementation_type(self, implementation_type: type) -> bool:
+        for child in self.children:
+            if child.implementation_type == implementation_type:
+                return True
+            if child.has_dependant_implementation_type(implementation_type):
+                return True
+        return False
+
+    def has_dependant_instance_type(self, instance_type: type) -> bool:
+        for child in self.children:
+            if child.instance_type == instance_type:
+                return True
+            if child.has_dependant_instance_type(instance_type):
+                return True
+        return False
+
+    def __repr__(self) -> str:
+        return f"{self.service_type}--{self.implementation}"
 
 
 class EmptyNode(__Node__):
@@ -123,6 +178,8 @@ class EmptyNode(__Node__):
         self.decorated = self
         self.pre_configured_by = self
         self.registration_name = None
+        self.instance = EMPTY
+        self.lifespan = Lifespan.singleton
 
     def __bool__(self):
         return False
@@ -150,6 +207,13 @@ class DependencyNode(__Node__):
         self.decorator = EmptyNode()
         self.pre_configured_by = EmptyNode()
         self.pre_configures = EmptyNode()
+        self.instance = UNKNOWN
+
+    def set_instance(self, instance: Any):
+        if self.instance is UNKNOWN:
+            self.instance = instance
+        else:
+            raise Exception("Cannot set instance on a node that already has one")
 
     def add_child(self, child_node: DependencyNode):
         self.children.append(child_node)
@@ -159,10 +223,27 @@ class DependencyNode(__Node__):
         self.decorator = decorator_node
         decorator_node.decorated = self
         decorator_node.parent = self.parent
+        self.parent.children.append(decorator_node)
+        self.parent.children.remove(self)
 
     def add_pre_configuration(self, pre_configuration_node: DependencyNode):
         self.pre_configured_by = pre_configuration_node
         pre_configuration_node.pre_configures = self
+
+
+class RootNode(DependencyNode):
+    def __init__(self, root_dependency: RootDependency):
+        self.root_dependency = root_dependency
+        super().__init__(
+            service_type=root_dependency.service_type,
+            implementation=root_dependency.parent_implementation,
+            lifespan=Lifespan.once_per_graph,
+        )
+
+    def resolve(self, context: ResolvingContext):
+        self.root_dependency.resolve(context, self)
+        self.set_instance(self.children[0].instance)
+        return self
 
 
 class DependencyContext:
@@ -183,18 +264,6 @@ class ParentContext:
 class DecoratorContext:
     def __init__(self, decorated: DependencyNode):
         self.decorated = decorated
-
-
-class DependencyGraph:
-    def __init__(self, root_node: DependencyNode, resolved_object: Any):
-        self.root_node = root_node
-        self.resolved_instance = resolved_object
-        self.children: list[DependencyGraph] = []
-
-    def has_dependant_service_type(self, service_type: type) -> bool:
-        if self.root_node.service_type == service_type:
-            return True
-        return self.root_node.has_dependant_service_type(service_type)
 
 
 class CannotResolveException(Exception):
@@ -267,7 +336,7 @@ class Dependency:
         )
         value = self.settings.value_factory(self.default_value, dependency_context)
 
-        if not value == _empty:
+        if value is not EMPTY:
             return value
 
         if self.is_dependency_context:
@@ -280,8 +349,19 @@ class Dependency:
                 registration_list_reducing_filter=self.settings.list_reducing_filter,
                 parent_context=parent_context,
             )
-            generator = (r.build(context, dependency_node) for r in regs)
-            return self.generic_collection_type(generator)
+            sequence_node = DependencyNode(
+                service_type=self.service_type,
+                implementation=self.generic_collection_type,
+                lifespan=Lifespan.transient,
+            )
+
+            dependency_node.add_child(sequence_node)
+
+            generator = (r.build(context, sequence_node) for r in regs)
+            collection = self.generic_collection_type(generator)
+            sequence_node.set_instance(collection)
+
+            return collection
         try:
             reg = context.find_registration(
                 service_type=self.service_type,
@@ -305,19 +385,16 @@ class RootDependency(Dependency):
             parent_implementation=RootDependency.__PARENT_ROOT__,
             service_type=service_type,
             settings=settings,
-            default_value=_empty,
+            default_value=_empty(),
         )
 
     def resolve_instance(self, context: ResolvingContext) -> Any:
-        graph = self.resolve_dependency_graph(context)
-        return graph.resolved_instance
+        root_node = self.resolve_dependency_graph(context)
+        return root_node.instance
 
-    def resolve_dependency_graph(self, context: ResolvingContext) -> DependencyGraph:
-        root_node = DependencyNode(
-            RootDependency, self.parent_implementation, lifespan=Lifespan.once_per_graph
-        )
-        resolved_object = self.resolve(context=context, dependency_node=root_node)
-        return DependencyGraph(root_node=root_node, resolved_object=resolved_object)
+    def resolve_dependency_graph(self, context: ResolvingContext) -> RootNode:
+        root_node = RootNode(self)
+        return root_node.resolve(context)
 
 
 class ImplementationCreator:
@@ -334,8 +411,8 @@ class ImplementationCreator:
 
     @classmethod
     def _get_default_value(cls, paramater: inspect.Parameter):
-        default_value = _empty
-        if not paramater.default == inspect._empty:
+        default_value = EMPTY
+        if not paramater.default == inspect._empty():
             default_value = paramater.default
         return default_value
 
@@ -363,7 +440,7 @@ class ImplementationCreator:
                 parent_implementation=creator_function,
                 service_type=Any,
                 settings=dependency_config[extra_kwarg],
-                default_value=_empty,
+                default_value=_empty(),
             )
 
         return dependencies
@@ -504,14 +581,19 @@ class Registration:
         return any(t.name == name for t in self.tags)
 
     def build(self, context: ResolvingContext, parent_node: DependencyNode):
-        my_node = DependencyNode(
+        cached_node = context.get_cached(self.id)
+        if cached_node:
+            parent_node.add_child(cached_node)
+            return cached_node.instance
+
+        new_instance_node = DependencyNode(
             service_type=self.service_type,
             implementation=self.implementation,
             lifespan=self.lifespan,
             registration_name=self.name,
         )
 
-        parent_node.add_child(my_node)
+        parent_node.add_child(new_instance_node)
 
         pre_configurations = context.find_pre_configurations_that_apply(self)
 
@@ -521,27 +603,30 @@ class Registration:
                 pre_configuration.configuration_fn,
                 lifespan=Lifespan.singleton,
             )
-            my_node.add_pre_configuration(pre_configuration_node)
+            new_instance_node.add_pre_configuration(pre_configuration_node)
 
             pre_configuration.run(context, pre_configuration_node)
+            pre_configuration_node.set_instance(pre_configuration)
 
-        cached_instance = context.get_cached(self.id)
-        if not cached_instance == _empty:
-            return cached_instance
-        built_instance = self.creator.create(context, my_node)
-        decorator_context = DecoratorContext(decorated=my_node)
-        decorated_node = my_node
+        built_instance = self.creator.create(context, new_instance_node)
+
+        new_instance_node.set_instance(built_instance)
+
+        decorator_context = DecoratorContext(decorated=new_instance_node)
+        top_decorated_node = new_instance_node
+
         for dec in context.find_decorators_that_apply(self, decorator_context):
-            next_dec_node = DependencyNode(
+            next_decorated_node = DependencyNode(
                 service_type=self.service_type,
                 implementation=dec.decorator_type,
                 lifespan=self.lifespan,
             )
-            decorated_node.add_decorator(next_dec_node)
-            built_instance = dec.decorate(built_instance, context, next_dec_node)
-            decorated_node = next_dec_node
+            top_decorated_node.add_decorator(next_decorated_node)
+            built_instance = dec.decorate(built_instance, context, next_decorated_node)
+            next_decorated_node.set_instance(built_instance)
+            top_decorated_node = next_decorated_node
 
-        context.new_instance_created(self, built_instance, decorated_node)
+        context.new_instance_created(self, top_decorated_node)
         return built_instance
 
 
@@ -552,7 +637,7 @@ class Registry:
         self._pre_configurations: dict[type, deque[PreConfiguration]] = defaultdict(
             deque
         )
-        self._singletons: dict[str, Any] = {}
+        self._singletons: dict[str, DependencyNode] = {}
         self._run_preconfigurations: list[str] = []
 
     def add_registration(self, registration: Registration):
@@ -566,8 +651,8 @@ class Registry:
             pre_configuration
         )
 
-    def add_singleton_instance(self, registration_id: str, instance: Any):
-        self._singletons[registration_id] = instance
+    def add_singleton_instance(self, registration: Registration, node: DependencyNode):
+        self._singletons[registration.id] = node
 
     def mark_pre_configuration_as_run(self, pre_configuration_id):
         self._run_preconfigurations.append(pre_configuration_id)
@@ -597,45 +682,39 @@ class DependencyCache:
     def __init__(self, registry: Registry, scope: Scope):
         self.registry = registry
         self.scope = scope
-        self._current_items = {
+        self._current_items: dict[str, DependencyNode] = {
             **{k: v for k, v in registry.singletons.items()},
             **{k: v for k, v in scope.scoped_instances.items()},
         }
 
-    def get(self, registration_id: str):
-        instance = self._current_items.get(registration_id, _empty)
-        if instance is not _empty:
-            return instance
+    def get(self, registration_id: str) -> DependencyNode | None:
+        node = self._current_items.get(registration_id)
+        if node:
+            return node
 
-        instance = self.scope.scoped_instances.get(registration_id, _empty)
-        if instance is not _empty:
-            self._current_items[registration_id] = instance
-            return instance
+        node = self.scope.scoped_instances.get(registration_id)
+        if node:
+            self._current_items[registration_id] = node
+            return node
 
-        instance = self.registry.singletons.get(registration_id, _empty)
-        if instance is not _empty:
-            self._current_items[registration_id] = instance
+        node = self.registry.singletons.get(registration_id)
+        if node:
+            self._current_items[registration_id] = node
+            return node
 
-        return instance
+        return None
 
-    def put(
-        self, registration: Registration, instance: Any, dependency_node: DependencyNode
-    ):
+    def put(self, registration: Registration, dependency_node: DependencyNode):
         if registration.lifespan == Lifespan.singleton:
-            self.registry.add_singleton_instance(
-                registration_id=registration.id,
-                instance=instance,
-            )
+            self.registry.add_singleton_instance(registration, dependency_node)
         elif registration.lifespan == Lifespan.scoped:
             self.scope.add_scoped_instance(
-                registration.id,
-                registration.service_type,
-                instance,
-                registration.scoped_teardown,
+                registration,
+                dependency_node,
             )
 
         if registration.lifespan >= Lifespan.once_per_graph:
-            self._current_items[registration.id] = instance
+            self._current_items[registration.id] = dependency_node
 
 
 class ResolvingContext:
@@ -723,17 +802,11 @@ class ResolvingContext:
             and c.filter(registration)
         ]
 
-    def get_cached(self, reg_id: str) -> Any:
+    def get_cached(self, reg_id: str) -> DependencyNode | None:
         return self._cache.get(reg_id)
 
-    def new_instance_created(
-        self, registration: Registration, instance: Any, dependency_node: DependencyNode
-    ):
-        self._cache.put(
-            registration=registration,
-            instance=instance,
-            dependency_node=dependency_node,
-        )
+    def new_instance_created(self, registration: Registration, node: DependencyNode):
+        self._cache.put(registration=registration, dependency_node=node)
 
     def mark_pre_configuration_as_ran(self, preconfiguration_id: str):
         self.registry.mark_pre_configuration_as_run(preconfiguration_id)
@@ -756,8 +829,7 @@ class Scope(Resolver):
         self,
     ):
         self._registrations: dict[type, deque[Registration]] = defaultdict(deque)
-        self._scoped_instances: dict[str, Any] = {}
-        self._resolved_instances: dict[type, deque[Any]] = defaultdict(deque)
+        self._scoped_instances: dict[str, DependencyNode] = {}
         self._sync_teardowns: dict[str, Callable] = {}
         self._async_teardowns: dict[str, Callable] = {}
 
@@ -792,29 +864,22 @@ class Scope(Resolver):
 
     async def _run_async_teardowns(self):
         for registration_id, teardown_fn in self._async_teardowns.items():
-            instance = self._scoped_instances[registration_id]
-            await teardown_fn(instance)
+            cached_dependency = self._scoped_instances[registration_id]
+            await teardown_fn(cached_dependency.instance)
 
     def _run_sync_teardowns(self):
         for registration_id, teardown_fn in self._sync_teardowns.items():
-            instance = self._scoped_instances[registration_id]
-            teardown_fn(instance)
+            cached_dependency = self._scoped_instances[registration_id]
+            teardown_fn(cached_dependency.instance)
 
-    def add_scoped_instance(
-        self,
-        registration_id: str,
-        service_type: type,
-        instance: Any,
-        teardown: Callable | None,
-    ):
-        self._scoped_instances[registration_id] = instance
-        self._resolved_instances[service_type].appendleft(instance)
-        if teardown:
-            is_async = inspect.iscoroutinefunction(teardown)
+    def add_scoped_instance(self, registration: Registration, node: DependencyNode):
+        self._scoped_instances[registration.id] = node
+        if registration.scoped_teardown:
+            is_async = inspect.iscoroutinefunction(registration.scoped_teardown)
             if is_async:
-                self._async_teardowns[registration_id] = teardown
+                self._async_teardowns[registration.id] = registration.scoped_teardown
             else:
-                self._sync_teardowns[registration_id] = teardown
+                self._sync_teardowns[registration.id] = registration.scoped_teardown
 
     @abc.abstractmethod
     def register(
@@ -835,11 +900,6 @@ class Scope(Resolver):
     @property
     def scoped_instances(self):
         return self._scoped_instances
-
-    def get_resolved_instances(
-        self, service_type: type[TService]
-    ) -> Sequence[TService]:
-        return self._resolved_instances[service_type]
 
 
 class ContainerScope(Scope):
@@ -1213,10 +1273,10 @@ class Container(Resolver):
 
     def resolve_dependency_graph(
         self,
-        service_type: type[TService],
+        service_type: type,
         filter: RegistrationFilter = _default_registration_filter,
         scope: Scope = EmptyContainerScope(),
-    ) -> DependencyGraph:
+    ) -> __Node__:
         d = RootDependency(service_type, DependencySettings(filter=filter))
         context = ResolvingContext(self.registry, scope)
         return d.resolve_dependency_graph(context)
