@@ -716,7 +716,7 @@ def test_expect_to_be_scoped_with_name():
     assert_that(a_unscoped).matches(is_exact_type(A))
 
 
-def test_simple_module_registation():
+def test_simple_bundle_registation():
     class A:
         pass
 
@@ -728,7 +728,7 @@ def test_simple_module_registation():
 
     container = Container()
 
-    container.apply_module(module)
+    container.apply_bundle(module)
 
     a = container.resolve(A)
     assert_that(a).matches(is_exact_type(B))

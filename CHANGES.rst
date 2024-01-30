@@ -91,3 +91,19 @@
 0.3.2
 -----
     Change base module class to not need a child class to call super().__init__ 
+
+
+0.9.0
+-----
+    Add support for scoped teardowns
+    Add parent decorator contexts
+    Make dependency graphs and object graphs uniform with each other
+
+0.10.0
+-----
+    Add py.typed files
+
+0.11.0
+-----
+    Remove deprecated container.append_module()
+    Add unparenting to cached nodes after resolving context is complete to avoid potential memory leaks

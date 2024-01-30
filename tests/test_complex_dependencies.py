@@ -1,11 +1,9 @@
 # from __future__ import annotations
 from typing import Generic, TypeVar, Any
-import pytest
 from clean_ioc import (
     Container,
     DependencyContext,
     DependencySettings,
-    Lifespan,
     Registration,
 )
 from clean_ioc.type_filters import (

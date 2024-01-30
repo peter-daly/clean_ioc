@@ -114,6 +114,15 @@ class __Node__:
     instance: Any = UNKNOWN
     lifespan: Lifespan
 
+    def unparent(self):
+        self.parent = EmptyNode()
+        if decorated := self.decorated:
+            decorated.unparent()
+
+        if pre_configures := self.pre_configured_by:
+            pre_configures.pre_configures = EmptyNode()
+            self.pre_configured_by = EmptyNode()
+
     @property
     def implementation_type(self):
         return (
@@ -170,7 +179,7 @@ class __Node__:
         return f"{self.service_type}--{self.implementation}"
 
 
-class EmptyNode(__Node__):
+class EmptyNode(__Node__, metaclass=SingletonMeta):
     def __init__(self):
         self.service_type = _empty
         self.implementation = _empty
@@ -716,6 +725,12 @@ class DependencyCache:
         if registration.lifespan >= Lifespan.once_per_graph:
             self._current_items[registration.id] = dependency_node
 
+    def clean_up_parents(self):
+        for node in self.registry.singletons.values():
+            node.unparent()
+        for node in self.scope.scoped_instances.values():
+            node.unparent()
+
 
 class ResolvingContext:
     def __init__(self, registry: Registry, scope: Scope):
@@ -810,6 +825,9 @@ class ResolvingContext:
 
     def mark_pre_configuration_as_ran(self, preconfiguration_id: str):
         self.registry.mark_pre_configuration_as_run(preconfiguration_id)
+
+    def __del__(self):
+        self._cache.clean_up_parents()
 
 
 class Resolver(abc.ABC):
@@ -1267,9 +1285,8 @@ class Container(Resolver):
         filter: RegistrationFilter = _default_registration_filter,
         scope: Scope = EmptyContainerScope(),
     ) -> TService:
-        d = RootDependency(service_type, DependencySettings(filter=filter))
-        context = ResolvingContext(self.registry, scope)
-        return d.resolve_instance(context)
+        graph = self.resolve_dependency_graph(service_type, filter, scope)
+        return graph.instance
 
     def resolve_dependency_graph(
         self,
@@ -1279,7 +1296,9 @@ class Container(Resolver):
     ) -> __Node__:
         d = RootDependency(service_type, DependencySettings(filter=filter))
         context = ResolvingContext(self.registry, scope)
-        return d.resolve_dependency_graph(context)
+        root_node = d.resolve_dependency_graph(context)
+        del context
+        return root_node
 
     def new_scope(
         self, ScopeClass: Type[ContainerScope] = ContainerScope, *args, **kwargs
@@ -1292,10 +1311,6 @@ class Container(Resolver):
             factory=type_expected_to_be_scoped(service_type, name),
             name=name,
         )
-
-    @deprecated("Use container.apply_bundle() instead")
-    def apply_module(self, module_fn: Callable[[Container], None]):
-        module_fn(self)
 
     def apply_bundle(self, bundle_fn: Callable[[Container], None]):
         bundle_fn(self)

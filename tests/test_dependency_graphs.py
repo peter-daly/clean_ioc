@@ -128,3 +128,27 @@ def test_dependency_graph_knows_is_instance_types():
     assert a_graph.has_dependant_service_type(A)
     assert not a_graph.has_dependant_implementation_type(B)
     assert a_graph.has_dependant_instance_type(B)
+
+
+def test_once_per_graph_keeps_parentage():
+    class A:
+        pass
+
+    class B:
+        def __init__(self, a: A):
+            self.a = a
+
+    class C:
+        def __init__(self, a: A, b: B):
+            self.a = a
+            self.b = b
+
+    container = Container()
+
+    container.register(A)
+    container.register(B)
+    container.register(C)
+
+    c_graph = container.resolve_dependency_graph(C)
+
+    assert c_graph.has_dependant_service_type(A)
