@@ -12,13 +12,13 @@ from typing import Any, Sequence, Type, TypeVar, get_type_hints
 from collections.abc import Callable
 from typing import _GenericAlias  # type: ignore
 from uuid import uuid4
-from .functional_utils import constant, fn_and, fn_not
+from .functional_utils import constant, always_true
 from .type_filters import is_abstract, name_starts_with
 from .typing_utils import (
+    GenericTypeMap,
     get_generic_bases,
     get_generic_types,
     get_subclasses,
-    get_typevar_to_type_mapping,
     is_open_generic_type,
     try_to_complete_generic,
 )
@@ -137,7 +137,7 @@ class __Node__:
 
     @property
     def generic_mapping(self):
-        return get_typevar_to_type_mapping(self.service_type)
+        return GenericTypeMap.from_type(self.service_type)
 
     @property
     def bottom_decorated_node(self):
@@ -577,7 +577,7 @@ class Registration:
 
     @property
     def generic_mapping(self):
-        return get_typevar_to_type_mapping(self.service_type)
+        return GenericTypeMap.from_type(self.service_type)
 
     @property
     def is_named(self):
@@ -1130,12 +1130,12 @@ class Container(Resolver):
         self,
         base_type: type,
         lifespan: Lifespan = Lifespan.once_per_graph,
-        subclass_type_filter: Callable[[type], bool] = constant(True),
+        subclass_type_filter: Callable[[type], bool] = always_true,
         get_registration_name: Callable[[type], str | None] = constant(None),
         tags: list[Tag] | None = None,
         parent_context_filter: ParentContextFilter = _default_parent_context_filter,
     ):
-        full_type_filter = fn_and(fn_not(is_abstract), subclass_type_filter)
+        full_type_filter = ~(is_abstract) & subclass_type_filter
         subclasses = get_subclasses(base_type, full_type_filter)
         for sc in subclasses:
             name = get_registration_name(sc)
@@ -1195,12 +1195,12 @@ class Container(Resolver):
         fallback_type: type | None = None,
         fallback_name: str | None = None,
         lifespan: Lifespan = Lifespan.once_per_graph,
-        subclass_type_filter: Callable[[type], bool] = constant(True),
+        subclass_type_filter: Callable[[type], bool] = always_true,
         get_registration_name: Callable[[type], str | None] = constant(None),
         tags: list[Tag] | None = None,
         parent_context_filter: ParentContextFilter = _default_parent_context_filter,
     ):
-        full_type_filter = fn_and(fn_not(is_abstract), subclass_type_filter)
+        full_type_filter = ~is_abstract & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, full_type_filter)
         for subclass in subclasses:
             name = get_registration_name(subclass)
@@ -1231,7 +1231,7 @@ class Container(Resolver):
         self,
         generic_service_type: type,
         generic_decorator_type: type,
-        subclass_type_filter: Callable[[type], bool] = constant(True),
+        subclass_type_filter: Callable[[type], bool] = always_true,
         decorated_arg: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
         registration_filter: Callable[
@@ -1239,10 +1239,10 @@ class Container(Resolver):
         ] = _default_registration_filter,
         decorator_context_filter: DecoratorContextFilter = _default_decorator_context_filter,
     ):
-        full_type_filter = fn_and(
-            fn_not(is_abstract),
-            fn_not(name_starts_with("__DecoratedGeneric__")),
-            subclass_type_filter,
+        full_type_filter = (
+            ~is_abstract
+            & ~name_starts_with("__DecoratedGeneric__")
+            & subclass_type_filter
         )
         subclasses = get_subclasses(generic_service_type, full_type_filter)
         decorator_is_open_generic = is_open_generic_type(generic_decorator_type)
@@ -1299,6 +1299,13 @@ class Container(Resolver):
         root_node = d.resolve_dependency_graph(context)
         del context
         return root_node
+
+    def force_run_pre_configuration(
+        self,
+        service_type: type,
+        registration_filter: RegistrationFilter = _default_registration_filter,
+    ):
+        self.resolve(service_type, filter=registration_filter)
 
     def new_scope(
         self, ScopeClass: Type[ContainerScope] = ContainerScope, *args, **kwargs

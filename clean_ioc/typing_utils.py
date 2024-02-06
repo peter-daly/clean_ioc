@@ -9,6 +9,69 @@ from queue import Queue
 typingGenericAlias = (_GenericAlias, _SpecialGenericAlias, types.GenericAlias)
 
 
+class GenericTypeMap:
+    def __init__(self, initial_map: dict[TypeVar | str, type | TypeVar] = {}):
+        self.inner_map: dict[str, TypeVar | type] = {}
+
+        for k, v in initial_map.items():
+            self[k] = v
+
+    @staticmethod
+    def from_type(type_cls: type):
+        generic_definitions = get_open_generic_aliases(type_cls)
+
+        generic_implementations = get_generic_aliases(type_cls)
+
+        generic_implementations = generic_implementations[: len(generic_definitions)]
+
+        generic_definitions.reverse()
+        generic_implementations.reverse()
+
+        mapping = {}
+
+        for idx, definition in enumerate(generic_definitions):
+            implementation = generic_implementations[idx]
+            additions = dict(zip(definition.__args__, implementation.__args__))
+            mapping = {**mapping, **additions}
+
+        return GenericTypeMap(mapping)
+
+    @classmethod
+    def _lookup_key(cls, key: TypeVar | str) -> str:
+        if isinstance(key, TypeVar):
+            return key.__name__
+        return key
+
+    def is_generic_mapping_open(self):
+        for k, v in self.inner_map.items():
+            if k == v.__name__:
+                return True
+        return False
+
+    def is_generic_mapping_closed(self):
+        return not self.is_generic_mapping_open()
+
+    def __getitem__(self, key: TypeVar | str):
+        return self.inner_map[self._lookup_key(key)]
+
+    def __setitem__(self, key: TypeVar | str, value: type | TypeVar):
+        self.inner_map[self._lookup_key(key)] = value
+
+    def values(self):
+        return self.inner_map.values()
+
+    def get(self, key: TypeVar | str, default=None):
+        return self.inner_map.get(self._lookup_key(key), default)
+
+    def items(self):
+        return self.inner_map.items()
+
+    def __eq__(self, __value: object) -> bool:
+        if not isinstance(__value, GenericTypeMap):
+            return False
+        return self.inner_map == __value.inner_map
+
+
 def get_subclasses(cls: type, filter: Callable[[type], bool] = lambda t: True):
     queue = Queue()
     queue.put(cls)
@@ -44,11 +107,8 @@ def get_generic_bases(cls: type, filter: Callable[[type], bool] = lambda t: True
 
 
 def is_generic_type_closed(cls: type):
-    m = get_typevar_to_type_mapping(cls)
-    for k, v in m.items():
-        if k == v:
-            return False
-    return True
+    m = GenericTypeMap.from_type(cls)
+    return m.is_generic_mapping_closed()
 
 
 def get_type_args(cls: type):
@@ -105,43 +165,6 @@ def get_generic_type_args(type: type):
     return ()
 
 
-## OLD
-def get_closed_open_generic_alias(cls: type):
-    queue = Queue()
-    queue.put(cls)
-
-    while not queue.empty():
-        type_check = queue.get()
-        if type(type_check) == _GenericAlias:
-            return type_check
-
-        for base in getattr(type_check, "__orig_bases__", ()):
-            queue.put(base)
-            queue.put(base.__origin__)
-
-    return None
-
-
-def get_first_open_generic_alias(cls: type):
-    queue = Queue()
-    queue.put(cls)
-
-    if root_origin := (getattr(cls, "__origin__", None)):
-        queue.put(root_origin)
-
-    while not queue.empty():
-        type_check = queue.get()
-        if getattr(type_check, "__origin__", None) == Generic:
-            return type_check
-
-        for base in getattr(type_check, "__orig_bases__", ()):
-            queue.put(base)
-            if orig := getattr(base, "__origin__", None):
-                queue.put(orig)
-
-    return None
-
-
 ## NEW
 def get_open_generic_aliases(cls: type):
     queue = Queue()
@@ -184,27 +207,12 @@ def get_generic_aliases(cls: type):
     return aliases
 
 
-def get_typevar_to_type_mapping(cls: type) -> dict[type | TypeVar, type]:
-    generic_definitions = get_open_generic_aliases(cls)
-    generic_implementations = get_generic_aliases(cls)
-
-    generic_implementations = generic_implementations[: len(generic_definitions)]
-
-    generic_definitions.reverse()
-    generic_implementations.reverse()
-
-    mapping = {}
-
-    for idx, definition in enumerate(generic_definitions):
-        implementation = generic_implementations[idx]
-        additions = dict(zip(definition.__args__, implementation.__args__))
-        mapping = {**mapping, **additions}
-
-    return mapping
+# def get_typevar_to_type_mapping(cls: type) -> GenericTypeMap:
+#     return GenericTypeMap.from_type(cls)
 
 
 def get_generic_types(cls: type):
-    mapping = get_typevar_to_type_mapping(cls)
+    mapping = GenericTypeMap.from_type(cls)
     return tuple(mapping.values())
 
 
@@ -214,7 +222,7 @@ def try_to_complete_generic(open_type: _GenericAlias, closed_type: type) -> type
     if is_generic_type_closed(open_type):
         return open_type
 
-    mapping = get_typevar_to_type_mapping(closed_type)
+    mapping = GenericTypeMap.from_type(closed_type)
     new_args = tuple([mapping.get(a, a) for a in open_type.__args__])
     return open_type[new_args]
 

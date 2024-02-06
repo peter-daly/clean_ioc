@@ -17,33 +17,41 @@ class BaseBundle(ABC):
 
 
 class OnlyRunOncePerInstanceBundle(BaseBundle):
+    containers_where_instance_has_run: list[int]
+
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
-        instance.instance_has_run = False
+        instance.containers_where_instance_has_run = []
         return instance
+
+    def bundle_has_run_in_container(self, container: Container):
+        return id(container) in self.containers_where_instance_has_run
+
+    def mark_bundle_as_ran_in_container(self, container: Container):
+        self.containers_where_instance_has_run.append(id(container))
 
     @abstractmethod
     def apply(self, container: Container):
         ...
 
     def __call__(self, container: Container):
-        if self.instance_has_run:
+        if self.bundle_has_run_in_container(container):
             logging.warning("Module instance %s attempted to run more than once", self)
             return
 
         self.apply(container=container)
-        self.instance_has_run = True
+        self.mark_bundle_as_ran_in_container(container)
 
 
 class OnlyRunOncePerClassBundle(BaseBundle):
     CONTAINERS_WHERE_CLASS_HAS_RUN: ClassVar[dict[type, list[int]]] = defaultdict(list)
 
     @classmethod
-    def module_has_run_in_container(cls, container: Container):
+    def bundle_has_run_in_container(cls, container: Container):
         return id(container) in cls.CONTAINERS_WHERE_CLASS_HAS_RUN[cls]
 
     @classmethod
-    def mark_module_as_ran_in_container(cls, container: Container):
+    def mark_bundle_as_ran_in_container(cls, container: Container):
         cls.CONTAINERS_WHERE_CLASS_HAS_RUN[cls].append(id(container))
 
     @abstractmethod
@@ -51,11 +59,11 @@ class OnlyRunOncePerClassBundle(BaseBundle):
         ...
 
     def __call__(self, container: Container):
-        if self.__class__.module_has_run_in_container(container):
+        if self.__class__.bundle_has_run_in_container(container):
             logging.warning(
                 "Module class %s attempted to run more than once", type(self)
             )
             return
 
         self.apply(container=container)
-        self.__class__.mark_module_as_ran_in_container(container)
+        self.__class__.mark_bundle_as_ran_in_container(container)

@@ -1,25 +1,9 @@
 # from __future__ import annotations
-from typing import Generic, TypeVar, Any
-import pytest
+from typing import Generic, TypeVar
+
 from clean_ioc import (
     Container,
-    DependencyContext,
-    DependencySettings,
     Lifespan,
-    Registration,
-)
-from clean_ioc.type_filters import (
-    name_end_with,
-)
-
-from clean_ioc.functional_utils import fn_not
-from clean_ioc.registration_filters import (
-    with_implementation,
-)
-from assertive import (
-    assert_that,
-    is_exact_type,
-    is_none,
 )
 
 

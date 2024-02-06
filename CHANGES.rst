@@ -107,3 +107,9 @@
 -----
     Remove deprecated container.append_module()
     Add unparenting to cached nodes after resolving context is complete to avoid potential memory leaks
+
+0.12.0
+-----
+    Added predicates for registration filters
+    Fix bug with OnlyRunOncePerInstanceBundle
+    Added future support for python 3.12 generics

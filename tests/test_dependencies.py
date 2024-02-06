@@ -380,7 +380,7 @@ def test_open_generic_decorators_with_protocol():
     container = Container()
 
     container.register_open_generic(A)
-    container.register_open_generic_decorator(A, ADec)
+    container.register_open_generic_decorator(A, ADec, decorated_arg="a")
 
     a = container.resolve(A[int])
 

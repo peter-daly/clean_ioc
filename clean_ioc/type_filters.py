@@ -1,33 +1,37 @@
 import inspect
+from .functional_utils import predicate
 
 
 def named(name: str):
-    def predicate(t: type):
+    def inner(t: type):
         return t.__name__ == name
 
-    return predicate
+    return predicate(inner)
 
 
 def name_starts_with(name: str):
-    def predicate(t: type):
+    def inner(t: type):
         return t.__name__.startswith(name)
 
-    return predicate
+    return predicate(inner)
 
 
 def name_end_with(name: str):
-    def predicate(t: type):
+    def inner(t: type):
         return t.__name__.endswith(name)
 
-    return predicate
+    return predicate(inner)
 
 
 def is_in_module(*module_names: str):
-    def predicate(t: type):
+    def inner(t: type):
         return any([t.__module__ == m for m in module_names])
 
-    return predicate
+    return predicate(inner)
 
 
-def is_abstract(t: type):
+def _is_abstract(t: type):
     return inspect.isabstract(t)
+
+
+is_abstract = predicate(_is_abstract)
