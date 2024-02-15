@@ -1,4 +1,4 @@
-from . import Resolver, RegistrationFilter, _default_registration_filter
+from .core import Resolver, RegistrationFilter, _default_registration_filter
 from typing import Any, Callable, TypeVar
 
 

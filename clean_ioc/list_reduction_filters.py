@@ -1,5 +1,5 @@
 from typing import Any, Callable
-from . import Registration
+from .core import Registration
 from .functional_utils import constant
 
 all_items = constant(True)

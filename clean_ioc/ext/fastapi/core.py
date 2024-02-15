@@ -1,6 +1,6 @@
 from typing import Annotated, AsyncGenerator
 
-from clean_ioc import (
+from clean_ioc.core import (
     Container,
     RegistrationFilter,
     Scope,

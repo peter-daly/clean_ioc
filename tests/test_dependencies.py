@@ -278,7 +278,7 @@ def test_simple_open_generic():
 
     container = Container()
 
-    container.register_open_generic(A)
+    container.register_generic_subclasses(A)
 
     a = container.resolve(A[int])
 
@@ -296,7 +296,7 @@ def test_simple_open_generic_with_protocol():
 
     container = Container()
 
-    container.register_open_generic(A)
+    container.register_generic_subclasses(A)
 
     a = container.resolve(A[int])
 
@@ -314,7 +314,7 @@ def test_simple_open_generic_should_fail_when_no_implementation():
 
     container = Container()
 
-    container.register_open_generic(A)
+    container.register_generic_subclasses(A)
 
     with raises_exception(CannotResolveException):
         container.resolve(A[str])
@@ -334,7 +334,7 @@ def test_simple_open_generic_with_fallback_should_not_fail():
 
     container = Container()
 
-    container.register_open_generic(A, fallback_type=C)
+    container.register_generic_subclasses(A, fallback_type=C)
 
     a = container.resolve(A[str])
 
@@ -356,8 +356,8 @@ def test_open_generic_decorators():
 
     container = Container()
 
-    container.register_open_generic(A)
-    container.register_open_generic_decorator(A, ADec)
+    container.register_generic_subclasses(A)
+    container.register_generic_decorator(A, ADec)
 
     a = container.resolve(A[int])
 
@@ -379,8 +379,8 @@ def test_open_generic_decorators_with_protocol():
 
     container = Container()
 
-    container.register_open_generic(A)
-    container.register_open_generic_decorator(A, ADec, decorated_arg="a")
+    container.register_generic_subclasses(A)
+    container.register_generic_decorator(A, ADec, decorated_arg="a")
 
     a = container.resolve(A[int])
 
@@ -402,8 +402,8 @@ def test_open_generic_decorators_with_nongeneric_decorator():
 
     container = Container()
 
-    container.register_open_generic(A)
-    container.register_open_generic_decorator(A, ADec, decorated_arg="a")
+    container.register_generic_subclasses(A)
+    container.register_generic_decorator(A, ADec, decorated_arg="a")
 
     a = container.resolve(A[int])
 
@@ -429,9 +429,9 @@ def test_open_generic_decorators_with_both_generic_and_nongeneric_decorator():
 
     container = Container()
 
-    container.register_open_generic(A)
-    container.register_open_generic_decorator(A, ADecGeneric, decorated_arg="a")
-    container.register_open_generic_decorator(A, ADecNonGeneric, decorated_arg="a")
+    container.register_generic_subclasses(A)
+    container.register_generic_decorator(A, ADecGeneric, decorated_arg="a")
+    container.register_generic_decorator(A, ADecNonGeneric, decorated_arg="a")
 
     a = container.resolve(A[int])
 

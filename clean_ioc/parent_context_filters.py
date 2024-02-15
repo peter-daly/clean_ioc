@@ -1,4 +1,4 @@
-from . import ParentContext
+from .core import ParentContext
 from .functional_utils import constant, predicate
 
 yes = constant(True)

@@ -62,7 +62,7 @@ def test_graphs_contain_dependency_logic_after_first_registration_is_cached():
     container.register(DocRepository, lifespan=Lifespan.singleton)
     container.register(SqlRepository, lifespan=Lifespan.singleton)
 
-    container.register_open_generic(MessageHandler)
+    container.register_generic_subclasses(MessageHandler)
 
     a_graph = container.resolve_dependency_graph(MessageHandler[MessageA])
     b_graph = container.resolve_dependency_graph(MessageHandler[MessageB])
