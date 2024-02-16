@@ -415,6 +415,7 @@ class ImplementationCreator:
         self.dependencies: dict[str, Dependency] = self._get_dependencies(
             self.creator_function, self.dependency_config
         )
+        self.is_generator = inspect.isgeneratorfunction(self.creator_function)
 
     @classmethod
     def _get_default_value(cls, paramater: inspect.Parameter):
@@ -452,6 +453,16 @@ class ImplementationCreator:
 
         return dependencies
 
+    @classmethod
+    def _generator_close(cls, generator: types.GeneratorType):
+        def inner():
+            try:
+                next(generator)
+            except StopIteration:
+                pass
+
+        return inner
+
     def create(
         self,
         context: ResolvingContext,
@@ -460,8 +471,13 @@ class ImplementationCreator:
     ):
         for arg_name, arg_dep in self.dependencies.items():
             kwargs[arg_name] = arg_dep.resolve(context, dependency_node)
-        built_instance = self.creator_function(**kwargs)
-        return built_instance
+        if self.is_generator:
+            generator = self.creator_function(**kwargs)
+            instance = next(generator)
+            context.add_generator(self._generator_close(generator))
+            return instance
+
+        return self.creator_function(**kwargs)
 
 
 class DecoratorCreator(ImplementationCreator):
@@ -559,8 +575,12 @@ class Registration:
         scoped_teardown: Callable | None = None,
     ):
         if scoped_teardown and not lifespan == Lifespan.scoped:
-            raise Exception("Scoped teardowns can only be used with scoped lifestyles")
+            raise ValueError("Scoped teardowns can only be used with scoped lifestyles")
 
+        if lifespan == Lifespan.singleton and inspect.isgeneratorfunction(
+            implementation
+        ):
+            raise ValueError("Generators cannot be singletons")
         self.service_type = service_type
         self.implementation = implementation
         self.creator = ImplementationCreator(
@@ -818,6 +838,9 @@ class ResolvingContext:
             and c.filter(registration)
         ]
 
+    def add_generator(self, generator: Callable):
+        self.scope.add_generator(generator)
+
     def get_cached(self, reg_id: str) -> DependencyNode | None:
         return self._cache.get(reg_id)
 
@@ -851,6 +874,7 @@ class Scope(Resolver):
         self._scoped_instances: dict[str, DependencyNode] = {}
         self._sync_teardowns: dict[str, Callable] = {}
         self._async_teardowns: dict[str, Callable] = {}
+        self._generators: deque[Callable] = deque()
 
     async def __aenter__(self):
         await self.before_start_async()
@@ -860,6 +884,7 @@ class Scope(Resolver):
         await self._run_async_teardowns()
         self._run_sync_teardowns()
         await self.after_finish_async()
+        self._close_generators()
 
     def __enter__(self):
         self.before_start()
@@ -868,6 +893,7 @@ class Scope(Resolver):
     def __exit__(self, *args, **kwargs):
         self._run_sync_teardowns()
         self.after_finish()
+        self._close_generators()
 
     def before_start(self):
         pass
@@ -880,6 +906,13 @@ class Scope(Resolver):
 
     async def after_finish_async(self):
         pass
+
+    def add_generator(self, generator: Callable):
+        self._generators.appendleft(generator)
+
+    def _close_generators(self):
+        for generator in self._generators:
+            generator()
 
     async def _run_async_teardowns(self):
         for registration_id, teardown_fn in self._async_teardowns.items():

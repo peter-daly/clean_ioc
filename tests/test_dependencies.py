@@ -1,4 +1,5 @@
 # from __future__ import annotations
+from datetime import datetime
 from typing import Callable, Generic, Protocol, TypeVar, Any
 import pytest
 from clean_ioc import (
@@ -19,7 +20,7 @@ from clean_ioc.registration_filters import (
     with_name,
 )
 from clean_ioc.parent_context_filters import parent_implementation_is
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock
 from assertive import (
     assert_that,
     is_exact_type,
@@ -28,6 +29,7 @@ from assertive import (
     raises_exception,
     was_called_with,
     was_called,
+    is_greater_than,
 )
 from clean_ioc.value_factories import (
     set_value,
@@ -1022,3 +1024,118 @@ def test_async_scoped_teardowns_dont_get_called_in_sync_context_manager():
         scope.resolve(A)
 
     assert_that(async_teardown).matches(was_called().never)
+
+
+def test_generator_factory():
+    mock = Mock()
+
+    def generator(x: int):
+        yield str(x)
+        mock(x)
+
+    container = Container()
+    container.register(int, instance=5)
+    container.register(str, factory=generator, lifespan=Lifespan.scoped)
+
+    with container.new_scope() as scope:
+        s = scope.resolve(str)
+        assert_that(s).matches("5")
+        assert_that(mock).matches(was_called().never)
+    assert_that(mock).matches(was_called_with(5))
+
+
+def test_generator_factory_works_in_a_scope_without_scoped_objects():
+    mock = Mock()
+
+    def generator(x: int):
+        yield str(x)
+        mock(x)
+
+    container = Container()
+    container.register(int, instance=5)
+    container.register(str, factory=generator)
+
+    with container.new_scope() as scope:
+        s = scope.resolve(str)
+        assert_that(s).matches("5")
+        assert_that(mock).matches(was_called().never)
+    assert_that(mock).matches(was_called_with(5))
+
+
+def test_generator_doesnt_finish_when_not_in_a_scope():
+    mock = Mock()
+
+    def generator(x: int):
+        yield str(x)
+        mock(x)
+
+    container = Container()
+    container.register(int, instance=5)
+
+    container.register(str, factory=generator)
+    result = container.resolve(str)
+
+    assert_that(result).matches("5")
+    assert_that(mock).matches(was_called().never)
+
+
+def test_generator_raises_value_error_when_registered_as_a_singleton():
+    mock = Mock()
+
+    def generator(x: int):
+        yield str(x)
+        mock(x)
+
+    container = Container()
+    container.register(int, instance=5)
+    with raises_exception(ValueError):
+        container.register(str, factory=generator, lifespan=Lifespan.singleton)
+
+
+def test_generator_factory_with_a_context_manager():
+    mock = MagicMock()
+
+    def generator(x: int):
+        with mock:
+            yield str(x)
+
+    container = Container()
+    container.register(int, instance=5)
+    container.register(str, factory=generator, lifespan=Lifespan.scoped)
+
+    with container.new_scope() as scope:
+        s = scope.resolve(str)
+        assert_that(s).matches("5")
+        assert_that(mock.__enter__).matches(was_called().once)
+        assert_that(mock.__exit__).matches(was_called().never)
+    assert_that(mock.__enter__).matches(was_called().once)
+    assert_that(mock.__exit__).matches(was_called().once)
+
+
+def test_generators_can_depend_on_other_generators():
+    int_mock = MagicMock()
+    str_mock = MagicMock()
+
+    def generator_int():
+        yield 5
+        int_mock(datetime.utcnow())
+
+    def generator_str(x: int):
+        yield str(x)
+        str_mock(datetime.utcnow())
+
+    container = Container()
+    container.register(int, factory=generator_int)
+    container.register(str, factory=generator_str)
+
+    with container.new_scope() as scope:
+        s = scope.resolve(str)
+        assert_that(s).matches("5")
+
+    int_mock_call_arg = int_mock.mock_calls[0].args[0]
+    str_mock_call_arg = str_mock.mock_calls[0].args[0]
+
+    assert_that(int_mock_call_arg).matches(is_exact_type(datetime))
+    assert_that(str_mock_call_arg).matches(is_exact_type(datetime))
+
+    assert_that(int_mock_call_arg).matches(is_greater_than(str_mock_call_arg))
