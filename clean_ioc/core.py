@@ -2,6 +2,7 @@
 """
 from __future__ import annotations
 import abc
+import asyncio
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from functools import reduce
@@ -12,7 +13,7 @@ from typing import Any, Sequence, Type, TypeVar, get_type_hints
 from collections.abc import Callable
 from typing import _GenericAlias  # type: ignore
 from uuid import uuid4
-from .functional_utils import constant, always_true, predicate
+from .functional_utils import constant, always_true
 from .type_filters import is_abstract, name_starts_with
 from .typing_utils import (
     GenericTypeMap,
@@ -240,18 +241,35 @@ class DependencyNode(__Node__):
         pre_configuration_node.pre_configures = self
 
 
-class RootNode(DependencyNode):
-    def __init__(self, root_dependency: RootDependency):
-        self.root_dependency = root_dependency
+class DependencyGraph(DependencyNode):
+    @staticmethod
+    def __ROOT__():
+        pass
+
+    def __init__(self, service_type: type, filter: RegistrationFilter):
+        dependency_settings = DependencySettings(filter=filter)
+        self.root_dependency = Dependency(
+            name="__ROOT__",
+            parent_implementation=DependencyGraph.__ROOT__,
+            service_type=service_type,
+            settings=dependency_settings,
+            default_value=_empty(),
+        )
+
         super().__init__(
-            service_type=root_dependency.service_type,
-            implementation=root_dependency.parent_implementation,
+            service_type=service_type,
+            implementation=DependencyGraph.__ROOT__,
             lifespan=Lifespan.once_per_graph,
         )
 
     def resolve(self, context: ResolvingContext):
-        self.root_dependency.resolve(context, self)
-        self.set_instance(self.children[0].instance)
+        instance = self.root_dependency.resolve(context, self)
+        self.set_instance(instance)
+        return self
+
+    async def resolve_async(self, context: ResolvingContext):
+        instance = await self.root_dependency.resolve_async(context, self)
+        self.set_instance(instance)
         return self
 
 
@@ -276,37 +294,46 @@ class DecoratorContext:
 
 class CannotResolveException(Exception):
     def __init__(self):
-        self.stack = deque()
+        self.dependencies: list[Dependency] = []
 
     def append(self, d: Dependency):
-        self.stack.appendleft(d)
+        self.dependencies.append(d)
 
     @staticmethod
     def print_dependency(d: Dependency):
-        return f"implementation={d.parent_implementation}, dependant={{name={d.name}, type={d.service_type}}}))"
+        # Format the dependency information with ASCII box
+        content = f"implementation: {d.parent_implementation}\ndependency_name: {d.name}\nservice_type: {d.service_type}"
+        content_lines = content.split("\n")
+        width = max(len(line) for line in content_lines)
+        top_border = "┌" + "─" * (width + 2) + "┐"
+        bottom_border = "└" + "─" * (width + 2) + "┘"
+        padded_content = "\n".join(
+            "│ " + line.ljust(width) + " │" for line in content_lines
+        )
+        return f"{top_border}\n{padded_content}\n{bottom_border}"
 
     @property
     def message(self):
+        top_dependency = self.dependencies[0]
+        return f"Failed to resolve {top_dependency.parent_implementation} could not find {top_dependency.service_type}"
+
+    @property
+    def dependency_chain(self):
         chain = ""
-        horizontal_line = "\u2514\u2500\u2500>"
-        vertical_line = "\u2502"
-        spaces = " "
+        arrow = "↑\n↑\n↑\n"
 
-        root, *rest = self.stack
-
-        chain += f"\n{CannotResolveException.print_dependency(root)}\n"
-
-        for item in rest:
+        for index, item in enumerate(self.dependencies):
             printer_item = CannotResolveException.print_dependency(item)
-            chain += (
-                f"{spaces}{vertical_line}\n{spaces}{horizontal_line}{printer_item}\n"
-            )
-            spaces += "     "
+            if index == 0:
+                chain += f"{printer_item}\n"
+            else:
+                # Adding fixed spacing before arrow for alignment, then adding the dependency
+                chain += f"{arrow}{printer_item}\n"
 
         return chain
 
     def __str__(self):
-        return self.message
+        return f"\n{self.message}\n\n{"Dependency chain:"}\n{self.dependency_chain}"
 
 
 class Dependency:
@@ -380,28 +407,187 @@ class Dependency:
             ex.append(self)
             raise ex
 
-
-class RootDependency(Dependency):
-    @staticmethod
-    def __PARENT_ROOT__():
-        pass
-
-    def __init__(self, service_type: type, settings: DependencySettings):
-        super().__init__(
-            name="__ROOT__",
-            parent_implementation=RootDependency.__PARENT_ROOT__,
-            service_type=service_type,
-            settings=settings,
-            default_value=_empty(),
+    async def resolve_async(
+        self, context: ResolvingContext, dependency_node: DependencyNode
+    ):
+        dependency_context = DependencyContext(
+            name=self.name, dependency_node=dependency_node
         )
+        value = self.settings.value_factory(self.default_value, dependency_context)
 
-    def resolve_instance(self, context: ResolvingContext) -> Any:
-        root_node = self.resolve_dependency_graph(context)
-        return root_node.instance
+        if value is not EMPTY:
+            return value
 
-    def resolve_dependency_graph(self, context: ResolvingContext) -> RootNode:
-        root_node = RootNode(self)
-        return root_node.resolve(context)
+        if self.is_dependency_context:
+            return DependencyContext(name=self.name, dependency_node=dependency_node)
+
+        if self.generic_collection_type:
+            regs = context.find_registrations(
+                service_type=self.service_type.__args__[0],  # type: ignore
+                registration_filter=self.settings.filter,
+                registration_list_reducing_filter=self.settings.list_reducing_filter,
+                parent_node=dependency_node,
+            )
+            sequence_node = DependencyNode(
+                service_type=self.service_type,
+                implementation=self.generic_collection_type,
+                lifespan=Lifespan.transient,
+            )
+
+            dependency_node.add_child(sequence_node)
+
+            generator = (r.build_async(context, sequence_node) for r in regs)
+            items = await asyncio.gather(*generator)
+            collection = self.generic_collection_type(items)
+            sequence_node.set_instance(collection)
+
+            return collection
+        try:
+            reg = context.find_registration(
+                service_type=self.service_type,
+                registration_filter=self.settings.filter,
+                parent_node=dependency_node,
+            )
+            return await reg.build_async(context, dependency_node)
+        except CannotResolveException as ex:
+            ex.append(self)
+            raise ex
+
+
+class ImplementationCreate(abc.ABC):
+    @classmethod
+    def create(
+        cls,
+        factory: Callable,
+        resolved_dependencies: dict[str, Any],
+        context: ResolvingContext,
+    ) -> Any:
+        ...
+
+    @classmethod
+    def create_async(
+        cls,
+        factory: Callable,
+        resolved_dependencies: dict[str, Any],
+        context: ResolvingContext,
+    ) -> Any:
+        ...
+
+
+class FactoryCreate(ImplementationCreate):
+    @classmethod
+    def create(
+        cls,
+        factory: Callable,
+        resolved_dependencies: dict[str, Any],
+        context: ResolvingContext,
+    ):
+        return factory(**resolved_dependencies)
+
+    @classmethod
+    async def create_async(
+        cls,
+        factory: Callable,
+        resolved_dependencies: dict[str, Any],
+        context: ResolvingContext,
+    ):
+        return cls.create(factory, resolved_dependencies, context)
+
+
+class GeneratorCreate(ImplementationCreate):
+    @classmethod
+    def _generator_close(cls, generator: types.GeneratorType):
+        def inner():
+            try:
+                next(generator)
+            except StopIteration:
+                pass
+
+        return inner
+
+    @classmethod
+    def create(
+        cls,
+        factory: Callable,
+        resolved_dependencies: dict[str, Any],
+        context: ResolvingContext,
+    ):
+        generator = factory(**resolved_dependencies)
+        instance = next(generator)
+        context.add_generator(cls._generator_close(generator))
+        return instance
+
+    @classmethod
+    async def create_async(
+        cls,
+        factory: Callable,
+        resolved_dependencies: dict[str, Any],
+        context: ResolvingContext,
+    ):
+        return cls.create(factory, resolved_dependencies, context)
+
+
+class AsyncFactoryCreate(ImplementationCreate):
+    @classmethod
+    def _generator_close(cls, generator: types.GeneratorType):
+        def inner():
+            try:
+                next(generator)
+            except StopIteration:
+                pass
+
+        return inner
+
+    @classmethod
+    def create(
+        cls,
+        factory: Callable,
+        resolved_dependencies: dict[str, Any],
+        context: ResolvingContext,
+    ):
+        raise Exception("Only async allowed")
+
+    @classmethod
+    async def create_async(
+        cls,
+        factory: Callable,
+        resolved_dependencies: dict[str, Any],
+        context: ResolvingContext,
+    ):
+        return await factory(**resolved_dependencies)
+
+
+class AsyncGeneratorCreate(ImplementationCreate):
+    @classmethod
+    def _generator_close(cls, generator: types.AsyncGeneratorType):
+        async def inner():
+            try:
+                await anext(generator)
+            except StopAsyncIteration:
+                pass
+
+        return inner
+
+    @classmethod
+    def create(
+        cls,
+        factory: Callable,
+        resolved_dependencies: dict[str, Any],
+        context: ResolvingContext,
+    ):
+        raise Exception("Only async allowed")
+
+    @classmethod
+    async def create_async(
+        cls,
+        factory: Callable,
+        resolved_dependencies: dict[str, Any],
+        context: ResolvingContext,
+    ):
+        generator = factory(**resolved_dependencies)
+        instance = await anext(generator)
+        context.add_generator(cls._generator_close(generator))
+        return instance
 
 
 class ImplementationCreator:
@@ -415,7 +601,19 @@ class ImplementationCreator:
         self.dependencies: dict[str, Dependency] = self._get_dependencies(
             self.creator_function, self.dependency_config
         )
-        self.is_generator = inspect.isgeneratorfunction(self.creator_function)
+        self.create_class = self._get_create_class(creator_function)
+
+    @classmethod
+    def _get_create_class(
+        cls, creator_function: Callable
+    ) -> type[ImplementationCreate]:
+        if inspect.iscoroutinefunction(creator_function):
+            return AsyncFactoryCreate
+        if inspect.isasyncgenfunction(creator_function):
+            return AsyncGeneratorCreate
+        if inspect.isgeneratorfunction(creator_function):
+            return GeneratorCreate
+        return FactoryCreate
 
     @classmethod
     def _get_default_value(cls, paramater: inspect.Parameter):
@@ -453,16 +651,6 @@ class ImplementationCreator:
 
         return dependencies
 
-    @classmethod
-    def _generator_close(cls, generator: types.GeneratorType):
-        def inner():
-            try:
-                next(generator)
-            except StopIteration:
-                pass
-
-        return inner
-
     def create(
         self,
         context: ResolvingContext,
@@ -471,13 +659,21 @@ class ImplementationCreator:
     ):
         for arg_name, arg_dep in self.dependencies.items():
             kwargs[arg_name] = arg_dep.resolve(context, dependency_node)
-        if self.is_generator:
-            generator = self.creator_function(**kwargs)
-            instance = next(generator)
-            context.add_generator(self._generator_close(generator))
-            return instance
 
-        return self.creator_function(**kwargs)
+        return self.create_class.create(self.creator_function, kwargs, context)
+
+    async def create_async(
+        self,
+        context: ResolvingContext,
+        dependency_node: DependencyNode,
+        **kwargs,
+    ):
+        for arg_name, arg_dep in self.dependencies.items():
+            kwargs[arg_name] = await arg_dep.resolve_async(context, dependency_node)
+
+        return await self.create_class.create_async(
+            self.creator_function, kwargs, context
+        )
 
 
 class DecoratorCreator(ImplementationCreator):
@@ -527,6 +723,12 @@ class PreConfiguration:
 
     def run(self, context: ResolvingContext, dependency_node: DependencyNode):
         self.creator.create(context=context, dependency_node=dependency_node)
+        context.mark_pre_configuration_as_ran(self.id)
+
+    async def run_async(
+        self, context: ResolvingContext, dependency_node: DependencyNode
+    ):
+        await self.creator.create(context=context, dependency_node=dependency_node)
         context.mark_pre_configuration_as_ran(self.id)
 
 
@@ -608,12 +810,16 @@ class Registration:
 
         return any(t.name == name for t in self.tags)
 
-    def build(self, context: ResolvingContext, parent_node: DependencyNode):
+    def _try_find_cached_node(
+        self, context: ResolvingContext, parent_node: DependencyNode
+    ):
         cached_node = context.get_cached(self.id)
         if cached_node:
             parent_node.add_child(cached_node)
             return cached_node.instance
+        return None
 
+    def _create_new_dependency_node(self, parent_node: DependencyNode):
         new_instance_node = DependencyNode(
             service_type=self.service_type,
             implementation=self.implementation,
@@ -622,22 +828,14 @@ class Registration:
         )
 
         parent_node.add_child(new_instance_node)
+        return new_instance_node
 
-        pre_configurations = context.find_pre_configurations_that_apply(self)
-
-        for pre_configuration in pre_configurations:
-            pre_configuration_node = DependencyNode(
-                self.service_type,
-                pre_configuration.configuration_fn,
-                lifespan=Lifespan.singleton,
-            )
-            new_instance_node.add_pre_configuration(pre_configuration_node)
-
-            pre_configuration.run(context, pre_configuration_node)
-            pre_configuration_node.set_instance(pre_configuration)
-
-        built_instance = self.creator.create(context, new_instance_node)
-
+    def _finish_preparing_instance(
+        self,
+        built_instance: Any,
+        context: ResolvingContext,
+        new_instance_node: DependencyNode,
+    ):
         new_instance_node.set_instance(built_instance)
 
         decorator_context = DecoratorContext(decorated=new_instance_node)
@@ -657,6 +855,60 @@ class Registration:
         context.new_instance_created(self, top_decorated_node)
         self.was_used = True
         return built_instance
+
+    def build(self, context: ResolvingContext, parent_node: DependencyNode):
+        if cached_node := self._try_find_cached_node(context, parent_node):
+            return cached_node
+
+        new_instance_node = self._create_new_dependency_node(parent_node)
+
+        pre_configurations = context.find_pre_configurations_that_apply(self)
+
+        for pre_configuration in pre_configurations:
+            pre_configuration_node = DependencyNode(
+                self.service_type,
+                pre_configuration.configuration_fn,
+                lifespan=Lifespan.singleton,
+            )
+            new_instance_node.add_pre_configuration(pre_configuration_node)
+
+            pre_configuration.run(context, pre_configuration_node)
+            pre_configuration_node.set_instance(pre_configuration)
+
+        built_instance = self.creator.create(context, new_instance_node)
+
+        return self._finish_preparing_instance(
+            built_instance=built_instance,
+            context=context,
+            new_instance_node=new_instance_node,
+        )
+
+    async def build_async(self, context: ResolvingContext, parent_node: DependencyNode):
+        if cached_node := self._try_find_cached_node(context, parent_node):
+            return cached_node
+
+        new_instance_node = self._create_new_dependency_node(parent_node)
+
+        pre_configurations = context.find_pre_configurations_that_apply(self)
+
+        for pre_configuration in pre_configurations:
+            pre_configuration_node = DependencyNode(
+                self.service_type,
+                pre_configuration.configuration_fn,
+                lifespan=Lifespan.singleton,
+            )
+            new_instance_node.add_pre_configuration(pre_configuration_node)
+
+            await pre_configuration.run_async(context, pre_configuration_node)
+            pre_configuration_node.set_instance(pre_configuration)
+
+        built_instance = await self.creator.create_async(context, new_instance_node)
+
+        return self._finish_preparing_instance(
+            built_instance=built_instance,
+            context=context,
+            new_instance_node=new_instance_node,
+        )
 
 
 class Registry:
@@ -865,6 +1117,16 @@ class Resolver(abc.ABC):
     ) -> TService:
         pass
 
+    @abc.abstractmethod
+    async def resolve_async(
+        self,
+        service_type: type[TService],
+        filter: RegistrationFilter = _default_registration_filter,
+        *args,
+        **kwargs,
+    ) -> TService:
+        pass
+
 
 class Scope(Resolver):
     def __init__(
@@ -884,7 +1146,7 @@ class Scope(Resolver):
         await self._run_async_teardowns()
         self._run_sync_teardowns()
         await self.after_finish_async()
-        self._close_generators()
+        await self._async_close_generators()
 
     def __enter__(self):
         self.before_start()
@@ -913,6 +1175,13 @@ class Scope(Resolver):
     def _close_generators(self):
         for generator in self._generators:
             generator()
+
+    async def _async_close_generators(self):
+        for generator in self._generators:
+            if inspect.iscoroutinefunction(generator):
+                await generator()
+            else:
+                generator()
 
     async def _run_async_teardowns(self):
         for registration_id, teardown_fn in self._async_teardowns.items():
@@ -1034,6 +1303,15 @@ class ContainerScope(Scope):
             service_type=service_type, filter=filter, scope=self
         )
 
+    async def resolve_async(
+        self,
+        service_type: type[TService],
+        filter: RegistrationFilter = _default_registration_filter,
+    ) -> TService:
+        return await self._container.resolve_async(
+            service_type=service_type, filter=filter, scope=self
+        )
+
 
 class EmptyContainerScope(Scope):
     def __init__(self):
@@ -1043,6 +1321,9 @@ class EmptyContainerScope(Scope):
         pass
 
     def resolve(self, *args):
+        pass
+
+    async def resolve_async(self, *args):
         pass
 
     def get_resolved_instances(
@@ -1368,15 +1649,36 @@ class Container(Resolver):
         graph = self.resolve_dependency_graph(service_type, filter, scope)
         return graph.instance
 
+    async def resolve_async(
+        self,
+        service_type: type[TService],
+        filter: RegistrationFilter = _default_registration_filter,
+        scope: Scope = EmptyContainerScope(),
+    ) -> TService:
+        graph = await self.resolve_dependency_graph_async(service_type, filter, scope)
+        return graph.instance
+
     def resolve_dependency_graph(
         self,
         service_type: type,
         filter: RegistrationFilter = _default_registration_filter,
         scope: Scope = EmptyContainerScope(),
     ) -> __Node__:
-        d = RootDependency(service_type, DependencySettings(filter=filter))
+        graph = DependencyGraph(service_type=service_type, filter=filter)
         context = ResolvingContext(self.registry, scope)
-        root_node = d.resolve_dependency_graph(context)
+        root_node = graph.resolve(context)
+        del context
+        return root_node
+
+    async def resolve_dependency_graph_async(
+        self,
+        service_type: type,
+        filter: RegistrationFilter = _default_registration_filter,
+        scope: Scope = EmptyContainerScope(),
+    ) -> __Node__:
+        graph = DependencyGraph(service_type=service_type, filter=filter)
+        context = ResolvingContext(self.registry, scope)
+        root_node = await graph.resolve_async(context)
         del context
         return root_node
 

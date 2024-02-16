@@ -3,14 +3,19 @@ import pytest
 from fastapi import FastAPI, Depends
 from clean_ioc import Container
 from clean_ioc.ext.fastapi import add_container_to_app, Resolve
-from clean_ioc.ext.fastapi.dependencies import add_request_header_reader_to_scope, add_response_header_writer_to_scope, ResponseHeaderWriter, RequestHeaderReader
+from clean_ioc.ext.fastapi.dependencies import (
+    add_request_header_reader_to_scope,
+    add_response_header_writer_to_scope,
+    ResponseHeaderWriter,
+    RequestHeaderReader,
+)
 
 
 def test_response_writer_writes_a_header_to_response():
-
     class MyDependency:
         HEADER_NAME = "X-Action"
         HEADER_VALUE = "my-action"
+
         def __init__(self, header_writer: ResponseHeaderWriter):
             self.header_writer = header_writer
 
@@ -21,6 +26,7 @@ def test_response_writer_writes_a_header_to_response():
     container.register(MyDependency)
     app = FastAPI(dependencies=[Depends(add_response_header_writer_to_scope)])
     add_container_to_app(app, container)
+
     @app.get("/")
     def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
         my_dependency.do_action()
@@ -33,9 +39,9 @@ def test_response_writer_writes_a_header_to_response():
 
 
 def test_request_header_reader_reads_headers():
-
     class MyDependency:
         HEADER_NAME = "X-Action"
+
         def __init__(self, header_reader: RequestHeaderReader):
             self.header_reader = header_reader
 
@@ -46,6 +52,7 @@ def test_request_header_reader_reads_headers():
     container.register(MyDependency)
     app = FastAPI(dependencies=[Depends(add_request_header_reader_to_scope)])
     add_container_to_app(app, container)
+
     @app.get("/")
     def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
         header_value = my_dependency.do_action()

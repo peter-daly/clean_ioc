@@ -40,6 +40,6 @@ def Resolve(
     filter: RegistrationFilter = _default_registration_filter,
 ) -> Annotated[TService, params.Depends]:
     async def resolver(scope: Annotated[Scope, Depends(get_scope)]):
-        return scope.resolve(cls, filter=filter)
+        return await scope.resolve_async(cls, filter=filter)
 
     return Depends(resolver)
