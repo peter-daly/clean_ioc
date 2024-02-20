@@ -30,10 +30,5 @@ jobs:
     - name: Install dependencies with Poetry
       run: |
         poetry install --with docs
-
-    - name: Build and deploy MkDocs site
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        deploy_branch: gh-pages  # This is the target branch for GitHub Pages
-        publish_dir: ./site  # Directory where MkDocs builds the site
+  
+    - run: mkdocs gh-deploy --force
