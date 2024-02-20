@@ -3,6 +3,10 @@ name: Deploy MkDocs to GitHub Pages
 on:
   workflow_dispatch:
 
+
+permissions: 
+  contents: write  # Grants write access to the repository
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
