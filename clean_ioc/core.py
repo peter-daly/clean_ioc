@@ -720,16 +720,17 @@ class PreConfiguration:
         )
 
         self.id = str(uuid4())
+        self.has_run = False
 
     def run(self, context: ResolvingContext, dependency_node: DependencyNode):
         self.creator.create(context=context, dependency_node=dependency_node)
-        context.mark_pre_configuration_as_ran(self.id)
+        self.has_run = True
 
     async def run_async(
         self, context: ResolvingContext, dependency_node: DependencyNode
     ):
         await self.creator.create(context=context, dependency_node=dependency_node)
-        context.mark_pre_configuration_as_ran(self.id)
+        self.has_run = True
 
 
 class Decorator:
@@ -919,7 +920,6 @@ class Registry:
             deque
         )
         self._singletons: dict[str, DependencyNode] = {}
-        self._run_preconfigurations: list[str] = []
 
     def add_registration(self, registration: Registration):
         self._registrations[registration.service_type].appendleft(registration)
@@ -934,9 +934,6 @@ class Registry:
 
     def add_singleton_instance(self, registration: Registration, node: DependencyNode):
         self._singletons[registration.id] = node
-
-    def mark_pre_configuration_as_run(self, pre_configuration_id):
-        self._run_preconfigurations.append(pre_configuration_id)
 
     def get_registrations(self, service_type: type):
         return self._registrations[service_type]
@@ -953,10 +950,6 @@ class Registry:
     @property
     def singletons(self):
         return self._singletons
-
-    @property
-    def run_pre_configurations(self):
-        return self._run_preconfigurations
 
 
 class DependencyCache:
@@ -1086,8 +1079,7 @@ class ResolvingContext:
         return [
             c
             for c in self.registry.get_pre_configurations(registration.service_type)
-            if c.id not in self.registry.run_pre_configurations
-            and c.filter(registration)
+            if not c.has_run and c.filter(registration)
         ]
 
     def add_generator(self, generator: Callable):
@@ -1098,9 +1090,6 @@ class ResolvingContext:
 
     def new_instance_created(self, registration: Registration, node: DependencyNode):
         self._cache.put(registration=registration, dependency_node=node)
-
-    def mark_pre_configuration_as_ran(self, preconfiguration_id: str):
-        self.registry.mark_pre_configuration_as_run(preconfiguration_id)
 
     def __del__(self):
         self._cache.clean_up_parents()
@@ -1466,6 +1455,7 @@ class Container(Resolver):
                 sc,
                 lifespan=lifespan,
                 tags=tags,
+                name=name,
                 parent_context_filter=parent_context_filter,
             )
 
@@ -1663,24 +1653,24 @@ class Container(Resolver):
         service_type: type,
         filter: RegistrationFilter = _default_registration_filter,
         scope: Scope = EmptyContainerScope(),
-    ) -> __Node__:
+    ) -> DependencyGraph:
         graph = DependencyGraph(service_type=service_type, filter=filter)
         context = ResolvingContext(self.registry, scope)
-        root_node = graph.resolve(context)
+        graph.resolve(context)
         del context
-        return root_node
+        return graph
 
     async def resolve_dependency_graph_async(
         self,
         service_type: type,
         filter: RegistrationFilter = _default_registration_filter,
         scope: Scope = EmptyContainerScope(),
-    ) -> __Node__:
+    ) -> DependencyGraph:
         graph = DependencyGraph(service_type=service_type, filter=filter)
         context = ResolvingContext(self.registry, scope)
-        root_node = await graph.resolve_async(context)
+        await graph.resolve_async(context)
         del context
-        return root_node
+        return graph
 
     def force_run_pre_configuration(
         self,
@@ -1688,6 +1678,13 @@ class Container(Resolver):
         registration_filter: RegistrationFilter = _default_registration_filter,
     ):
         self.resolve(service_type, filter=registration_filter)
+
+    async def force_run_pre_configuration_async(
+        self,
+        service_type: type,
+        registration_filter: RegistrationFilter = _default_registration_filter,
+    ):
+        await self.resolve_async(service_type, filter=registration_filter)
 
     def new_scope(
         self, ScopeClass: Type[ContainerScope] = ContainerScope, *args, **kwargs
