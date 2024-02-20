@@ -82,8 +82,8 @@ def test_value_factories_with_generic_decorators():
 
     container = Container()
 
-    container.register_open_generic(MessageHandler)
-    container.register_open_generic_decorator(
+    container.register_generic_subclasses(MessageHandler)
+    container.register_generic_decorator(
         MessageHandler, TransactionMessageHandlerDecorator, decorated_arg="child"
     )
 
@@ -165,8 +165,8 @@ def test_generic_decorators_where_we_want_to_filter_away_on_certain_generic_type
 
     container = Container()
 
-    container.register_open_generic(MessageHandler)
-    container.register_open_generic_decorator(
+    container.register_generic_subclasses(MessageHandler)
+    container.register_generic_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
@@ -233,8 +233,8 @@ def test_generic_decorators_with_different_implementations_of_the_same_dependenc
 
     container = Container()
 
-    container.register_open_generic(MessageHandler)
-    container.register_open_generic_decorator(
+    container.register_generic_subclasses(MessageHandler)
+    container.register_generic_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
@@ -347,10 +347,10 @@ def test_decorator_chooses_dependency_based_on_decorated_dependencies():
     container.register(DocRepository)
     container.register(SqlRepository)
 
-    container.register_open_generic(
+    container.register_generic_subclasses(
         MessageHandler, subclass_type_filter=fn_not(name_end_with("Decorator"))
     )
-    container.register_open_generic_decorator(
+    container.register_generic_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
@@ -364,7 +364,7 @@ def test_decorator_chooses_dependency_based_on_decorated_dependencies():
         ),
     )
 
-    container.register_open_generic_decorator(
+    container.register_generic_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",

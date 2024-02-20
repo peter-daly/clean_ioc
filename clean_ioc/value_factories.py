@@ -1,5 +1,5 @@
 from typing import Any
-from . import _empty
+from .core import _empty
 from .functional_utils import constant
 
 all_registrations = constant(True)

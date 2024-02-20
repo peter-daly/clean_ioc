@@ -2,4 +2,8 @@ site_name: Clean IoC
 site_url: https://example.com/
 nav:
   - Home: index.md
-theme: readthedocs
+  - Simple Uses: simple-uses.md
+  - Factories: factories.md
+  - Lifespans: lifespans.md
+  - Generics: generics.md
+theme: material

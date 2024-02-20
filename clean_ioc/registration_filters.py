@@ -1,5 +1,6 @@
-from . import Registration
-from .functional_utils import constant, fn_or, predicate, always_false
+from typing import TypeVar
+from .core import Registration
+from .functional_utils import constant, predicate, always_false
 
 all_registrations = constant(True)
 
@@ -63,7 +64,7 @@ def with_implementation(implementation: type):
     return predicate(inner)
 
 
-def has_generic_args_matching(pair: tuple[type, type]):
+def has_generic_args_matching(pair: tuple[TypeVar | str, type]):
     """
     Filter registrations where generic type arg matches
     >>> TBar = TypeVar("TBar")
