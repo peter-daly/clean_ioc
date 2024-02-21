@@ -1,4 +1,5 @@
 from typing import Any
+
 from .core import _empty
 from .functional_utils import constant
 

@@ -1,8 +1,9 @@
-from typing import ClassVar
-from collections import defaultdict
-from clean_ioc import Container
-from abc import ABC, abstractmethod
 import logging
+from abc import ABC, abstractmethod
+from collections import defaultdict
+from typing import ClassVar
+
+from clean_ioc import Container
 
 logger = logging.getLogger(__name__)
 

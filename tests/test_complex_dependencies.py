@@ -1,23 +1,25 @@
 # from __future__ import annotations
-from typing import Generic, TypeVar, Any
+from typing import Any, Generic, TypeVar
+
+from assertive import (
+    assert_that,
+    is_exact_type,
+    is_none,
+)
+
 from clean_ioc import (
     Container,
     DependencyContext,
     DependencySettings,
     Registration,
 )
-from clean_ioc.type_filters import (
-    name_end_with,
-)
-
+from clean_ioc.core import ParentContext
 from clean_ioc.functional_utils import fn_not
 from clean_ioc.registration_filters import (
     with_implementation,
 )
-from assertive import (
-    assert_that,
-    is_exact_type,
-    is_none,
+from clean_ioc.type_filters import (
+    name_end_with,
 )
 
 
@@ -26,7 +28,7 @@ def test_value_factories_with_generic_decorators():
         pass
 
     TMessage = TypeVar("TMessage", bound=Message)
-    ISOLATION_CLASS_ATTRIBUTE = "__ISOLATION_LEVEL__"
+    ISOLATION_CLASS_ATTRIBUTE = "__ISOLATION_LEVEL__"  # noqa: N806
 
     def isolation_level_factory(default_value: Any, context: DependencyContext):
         message_type = context.parent.generic_mapping[TMessage]
@@ -113,7 +115,7 @@ def test_generic_decorators_where_we_want_to_filter_away_on_certain_generic_type
         pass
 
     TMessage = TypeVar("TMessage", bound=Message)
-    ISOLATION_CLASS_ATTRIBUTE = "__ISOLATION_LEVEL__"
+    ISOLATION_CLASS_ATTRIBUTE = "__ISOLATION_LEVEL__"  # noqa: N806
 
     def decorator_registration_filter(registration: Registration):
         message_type = registration.generic_mapping[TMessage]
@@ -231,6 +233,12 @@ def test_generic_decorators_with_different_implementations_of_the_same_dependenc
         def handle(self, message: TMessage):
             self.child.handle(message)
 
+    def parents_message_type_is(message_type: type):
+        def inner(parent_context: ParentContext):
+            return parent_context.parent.generic_mapping[TMessage] == message_type
+
+        return inner
+
     container = Container()
 
     container.register_generic_subclasses(MessageHandler)
@@ -243,18 +251,12 @@ def test_generic_decorators_with_different_implementations_of_the_same_dependenc
     container.register(
         TransactionManager,
         SqlTransactionManager,
-        parent_context_filter=lambda parent_context: parent_context.parent.generic_mapping[
-            TMessage
-        ]
-        == MessageA,
+        parent_context_filter=parents_message_type_is(MessageA),
     )
     container.register(
         TransactionManager,
         DocDbTransactionManager,
-        parent_context_filter=lambda parent_context: parent_context.parent.generic_mapping[
-            TMessage
-        ]
-        == MessageB,
+        parent_context_filter=parents_message_type_is(MessageB),
     )
     handler_a = container.resolve(MessageHandler[MessageA])
     handler_b = container.resolve(MessageHandler[MessageB])

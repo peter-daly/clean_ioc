@@ -32,6 +32,7 @@ expects = "^0.9.0"
 assertive = "^0.0.1"
 fastapi = "^0.101.0"
 httpx = "^0.26.0"
+ruff = "^0.2.2"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.5.3"
@@ -55,10 +56,45 @@ tests = ["tests"]
 [tool.isort]
 profile = "black"
 
-[tool.flakeheaven]
-format = "grouped"
-show_source = true
-max_complexity = 10
+
+[tool.ruff]
+extend-exclude = ["docs", ".tox"]
+target-version = "py38"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle
+    "W",  # pycodestyle
+    "F",  # pyflakes
+    "I",  # isort
+    "N",  # pep8-naming
+    "S",  # flake8-bandit
+    "RUF",  # ruff-specific-rules
+]
+# Ignoring rules problematic with formatter
+# https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+ignore = [
+    "W191",
+    "E111",
+    "E114",
+    "E117",
+    "D206",
+    "D300",
+    "Q000",
+    "Q001",
+    "Q002",
+    "Q003",
+    "COM812",
+    "COM819",
+    "ISC001",
+    "ISC002",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]  # Ignore unused imports on init files
+"tests/**/*.py" = ["S101"]  # Allow assert usage on tests
+
 
 
 [tool.coverage.run]

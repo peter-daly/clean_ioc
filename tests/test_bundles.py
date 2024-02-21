@@ -1,11 +1,13 @@
 from unittest.mock import Mock
+
+from assertive import assert_that, was_called, was_called_with
+
 from clean_ioc import Container
 from clean_ioc.bundles import (
+    BaseBundle,
     OnlyRunOncePerClassBundle,
     OnlyRunOncePerInstanceBundle,
-    BaseBundle,
 )
-from assertive import assert_that, was_called, was_called_with
 
 
 def test_only_run_once_per_instance_bundle_will_only_run_once_per_instance():

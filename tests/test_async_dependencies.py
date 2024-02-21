@@ -1,39 +1,15 @@
 # from __future__ import annotations
-from datetime import datetime
-from typing import Callable, Generic, Protocol, TypeVar, Any
+from unittest.mock import MagicMock
+
 import pytest
-from clean_ioc import (
-    Container,
-    CannotResolveException,
-    ContainerScope,
-    DependencyContext,
-    DependencySettings,
-    Lifespan,
-    NeedsScopedRegistrationError,
-    Tag,
-)
-from clean_ioc.functional_utils import fn_not
-from clean_ioc.registration_filters import (
-    has_tag,
-    has_tag_with_value_in,
-    with_implementation,
-    with_name,
-)
-from clean_ioc.parent_context_filters import parent_implementation_is
-from unittest.mock import AsyncMock, MagicMock, Mock
 from assertive import (
     assert_that,
     is_exact_type,
-    is_same_instance_as,
-    has_length,
-    raises_exception,
-    was_called_with,
     was_called,
-    is_greater_than,
 )
-from clean_ioc.value_factories import (
-    set_value,
-    dont_use_default_parameter,
+
+from clean_ioc import (
+    Container,
 )
 
 

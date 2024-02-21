@@ -1,6 +1,7 @@
 from typing import TypeVar
+
 from .core import Registration
-from .functional_utils import constant, predicate, always_false
+from .functional_utils import constant, predicate
 
 all_registrations = constant(True)
 

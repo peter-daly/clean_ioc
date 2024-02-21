@@ -1,12 +1,16 @@
-from typing import TypeVar  # type: ignore
-from typing import Generic, Protocol
+from typing import (
+    Generic,
+    Protocol,
+    TypeVar,  # type: ignore
+)
+
+from assertive import assert_that
 
 from clean_ioc.typing_utils import (
+    GenericTypeMap,
     get_subclasses,
     is_open_generic_type,
-    GenericTypeMap,
 )
-from assertive import assert_that
 
 
 class A:

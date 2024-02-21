@@ -1,10 +1,23 @@
 # from __future__ import annotations
 from datetime import datetime
-from typing import Callable, Generic, Protocol, TypeVar, Any
+from typing import Any, Callable, Generic, Protocol, TypeVar
+from unittest.mock import AsyncMock, MagicMock, Mock
+
 import pytest
+from assertive import (
+    assert_that,
+    has_length,
+    is_exact_type,
+    is_greater_than,
+    is_same_instance_as,
+    raises_exception,
+    was_called,
+    was_called_with,
+)
+
 from clean_ioc import (
+    CannotResolveError,
     Container,
-    CannotResolveException,
     ContainerScope,
     DependencyContext,
     DependencySettings,
@@ -13,27 +26,16 @@ from clean_ioc import (
     Tag,
 )
 from clean_ioc.functional_utils import fn_not
+from clean_ioc.parent_context_filters import parent_implementation_is
 from clean_ioc.registration_filters import (
     has_tag,
     has_tag_with_value_in,
     with_implementation,
     with_name,
 )
-from clean_ioc.parent_context_filters import parent_implementation_is
-from unittest.mock import AsyncMock, MagicMock, Mock
-from assertive import (
-    assert_that,
-    is_exact_type,
-    is_same_instance_as,
-    has_length,
-    raises_exception,
-    was_called_with,
-    was_called,
-    is_greater_than,
-)
 from clean_ioc.value_factories import (
-    set_value,
     dont_use_default_parameter,
+    set_value,
 )
 
 
@@ -318,7 +320,7 @@ def test_simple_open_generic_should_fail_when_no_implementation():
 
     container.register_generic_subclasses(A)
 
-    with raises_exception(CannotResolveException):
+    with raises_exception(CannotResolveError):
         container.resolve(A[str])
 
 

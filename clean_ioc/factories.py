@@ -1,5 +1,6 @@
-from .core import Resolver, RegistrationFilter, _default_registration_filter
 from typing import Any, Callable, TypeVar
+
+from .core import RegistrationFilter, Resolver, _default_registration_filter
 
 
 def use_registered(

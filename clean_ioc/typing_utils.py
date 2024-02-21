@@ -1,12 +1,16 @@
-from typing import _GenericAlias, _SpecialGenericAlias, Protocol  # type: ignore
-from typing import Generic, TypeVar
-from collections.abc import Callable
-from typing import get_type_hints
 import types
+from collections.abc import Callable
 from queue import Queue
+from typing import (  # type: ignore
+    Generic,
+    Protocol,
+    TypeVar,
+    _GenericAlias,
+    _SpecialGenericAlias,
+    get_type_hints,
+)
 
-
-typingGenericAlias = (_GenericAlias, _SpecialGenericAlias, types.GenericAlias)
+TypingGenericAlias = (_GenericAlias, _SpecialGenericAlias, types.GenericAlias)
 
 
 class GenericTypeMap:
@@ -134,11 +138,7 @@ def is_generic_type(tp: type):
         is_generic_type(Sequence[Union[str, bytes]]) == True
     """
 
-    return (
-        isinstance(tp, type)
-        and issubclass(tp, Generic)
-        or isinstance(tp, typingGenericAlias)
-    )
+    return isinstance(tp, type) and issubclass(tp, Generic) or isinstance(tp, TypingGenericAlias)
 
 
 def is_open_generic_type(cls: type):
@@ -205,10 +205,6 @@ def get_generic_aliases(cls: type):
                 queue.put(base_orig)
 
     return aliases
-
-
-# def get_typevar_to_type_mapping(cls: type) -> GenericTypeMap:
-#     return GenericTypeMap.from_type(cls)
 
 
 def get_generic_types(cls: type):

@@ -1,5 +1,5 @@
-from typing import TypeVar
 from collections.abc import Callable
+from typing import TypeVar
 
 TArg = TypeVar("TArg")
 

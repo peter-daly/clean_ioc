@@ -1,4 +1,5 @@
 from typing import Any, Callable
+
 from .core import Registration
 from .functional_utils import constant
 

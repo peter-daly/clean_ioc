@@ -1,13 +1,13 @@
+from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-import pytest
-from fastapi import FastAPI, Depends
+
 from clean_ioc import Container
-from clean_ioc.ext.fastapi import add_container_to_app, Resolve
+from clean_ioc.ext.fastapi import Resolve, add_container_to_app
 from clean_ioc.ext.fastapi.dependencies import (
+    RequestHeaderReader,
+    ResponseHeaderWriter,
     add_request_header_reader_to_scope,
     add_response_header_writer_to_scope,
-    ResponseHeaderWriter,
-    RequestHeaderReader,
 )
 
 

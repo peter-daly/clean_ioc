@@ -1,19 +1,29 @@
 """Simple IOC container.
 """
 from __future__ import annotations
+
 import abc
 import asyncio
-from collections import defaultdict, deque
-from dataclasses import dataclass
-from functools import reduce
+import inspect
 import types
-from clean_ioc.utils import deprecated
-from enum import IntEnum
-from typing import Any, Sequence, Type, TypeVar, get_type_hints
+from collections import defaultdict, deque
 from collections.abc import Callable
-from typing import _GenericAlias  # type: ignore
+from dataclasses import dataclass
+from enum import IntEnum
+from functools import reduce
+from typing import (
+    Any,
+    Sequence,
+    Type,
+    TypeVar,
+    _GenericAlias,  # type: ignore
+    get_type_hints,
+)
 from uuid import uuid4
-from .functional_utils import constant, always_true
+
+from clean_ioc.utils import deprecated
+
+from .functional_utils import always_true, constant
 from .type_filters import is_abstract, name_starts_with
 from .typing_utils import (
     GenericTypeMap,
@@ -23,8 +33,6 @@ from .typing_utils import (
     is_open_generic_type,
     try_to_complete_generic,
 )
-import inspect
-
 
 TService = TypeVar("TService")
 
@@ -39,12 +47,12 @@ class SingletonMeta(type):
         return cls.__INSTANCE__
 
 
-class _empty(metaclass=SingletonMeta):
+class _empty(metaclass=SingletonMeta):  # noqa: N801
     def __bool__(self):
         return False
 
 
-class _unknown(metaclass=SingletonMeta):
+class _unknown(metaclass=SingletonMeta):  # noqa: N801
     def __bool__(self):
         return False
 
@@ -57,14 +65,10 @@ class ArgInfo:
     def __init__(self, name: str, arg_type: type, default_value: Any):
         self.name = name
         self.arg_type = arg_type
-        self.default_value = (
-            _empty() if default_value == inspect._empty else default_value
-        )
+        self.default_value = _empty() if default_value == inspect._empty else default_value
 
 
-def get_arg_info(
-    subject: Callable, local_ns: dict = {}, global_ns: dict | None = None
-) -> dict[str, ArgInfo]:
+def get_arg_info(subject: Callable, local_ns: dict = {}, global_ns: dict | None = None) -> dict[str, ArgInfo]:
     arg_spec_fn = subject if inspect.isfunction(subject) else subject.__init__
     args = get_type_hints(arg_spec_fn, global_ns, local_ns)
     signature = inspect.signature(subject)
@@ -102,15 +106,15 @@ class Lifespan(IntEnum):
     singleton = 3
 
 
-class __Node__:
+class Node:
     service_type: type
     implementation: type | Callable
-    parent: __Node__
-    children: list[__Node__]
-    decorator: __Node__
-    decorated: __Node__
-    pre_configured_by: __Node__
-    pre_configures: __Node__
+    parent: Node
+    children: list[Node]
+    decorator: Node
+    decorated: Node
+    pre_configured_by: Node
+    pre_configures: Node
     registration_name: str | None = None
     instance: Any = UNKNOWN
     lifespan: Lifespan
@@ -126,11 +130,7 @@ class __Node__:
 
     @property
     def implementation_type(self):
-        return (
-            self.implementation
-            if isinstance(self.implementation, type)
-            else type(self.implementation)
-        )
+        return self.implementation if isinstance(self.implementation, type) else type(self.implementation)
 
     @property
     def instance_type(self):
@@ -180,7 +180,7 @@ class __Node__:
         return f"{self.service_type}--{self.implementation}"
 
 
-class EmptyNode(__Node__, metaclass=SingletonMeta):
+class EmptyNode(Node, metaclass=SingletonMeta):
     def __init__(self):
         self.service_type = _empty
         self.implementation = _empty
@@ -199,7 +199,7 @@ class EmptyNode(__Node__, metaclass=SingletonMeta):
         return ()
 
 
-class DependencyNode(__Node__):
+class DependencyNode(Node):
     def __init__(
         self,
         service_type: type,
@@ -242,15 +242,11 @@ class DependencyNode(__Node__):
 
 
 class DependencyGraph(DependencyNode):
-    @staticmethod
-    def __ROOT__():
-        pass
-
     def __init__(self, service_type: type, filter: RegistrationFilter):
         dependency_settings = DependencySettings(filter=filter)
         self.root_dependency = Dependency(
             name="__ROOT__",
-            parent_implementation=DependencyGraph.__ROOT__,
+            parent_implementation=DependencyGraph,
             service_type=service_type,
             settings=dependency_settings,
             default_value=_empty(),
@@ -258,7 +254,7 @@ class DependencyGraph(DependencyNode):
 
         super().__init__(
             service_type=service_type,
-            implementation=DependencyGraph.__ROOT__,
+            implementation=DependencyGraph,
             lifespan=Lifespan.once_per_graph,
         )
 
@@ -292,7 +288,7 @@ class DecoratorContext:
         self.decorated = decorated
 
 
-class CannotResolveException(Exception):
+class CannotResolveError(Exception):
     def __init__(self):
         self.dependencies: list[Dependency] = []
 
@@ -302,14 +298,14 @@ class CannotResolveException(Exception):
     @staticmethod
     def print_dependency(d: Dependency):
         # Format the dependency information with ASCII box
-        content = f"implementation: {d.parent_implementation}\ndependency_name: {d.name}\nservice_type: {d.service_type}"
+        content = (
+            f"implementation: {d.parent_implementation}\ndependency_name: {d.name}\nservice_type: {d.service_type}"
+        )
         content_lines = content.split("\n")
         width = max(len(line) for line in content_lines)
         top_border = "┌" + "─" * (width + 2) + "┐"
         bottom_border = "└" + "─" * (width + 2) + "┘"
-        padded_content = "\n".join(
-            "│ " + line.ljust(width) + " │" for line in content_lines
-        )
+        padded_content = "\n".join("│ " + line.ljust(width) + " │" for line in content_lines)
         return f"{top_border}\n{padded_content}\n{bottom_border}"
 
     @property
@@ -323,7 +319,7 @@ class CannotResolveException(Exception):
         arrow = "↑\n↑\n↑\n"
 
         for index, item in enumerate(self.dependencies):
-            printer_item = CannotResolveException.print_dependency(item)
+            printer_item = CannotResolveError.print_dependency(item)
             if index == 0:
                 chain += f"{printer_item}\n"
             else:
@@ -348,9 +344,7 @@ class Dependency:
         self.name = name
         self.parent_implementation = parent_implementation
         if isinstance(parent_implementation, type):
-            self.service_type = try_to_complete_generic(
-                service_type, parent_implementation
-            )
+            self.service_type = try_to_complete_generic(service_type, parent_implementation)
         else:
             self.service_type = service_type
         self.settings = settings
@@ -365,9 +359,7 @@ class Dependency:
         self.default_value = default_value
 
     def resolve(self, context: ResolvingContext, dependency_node: DependencyNode):
-        dependency_context = DependencyContext(
-            name=self.name, dependency_node=dependency_node
-        )
+        dependency_context = DependencyContext(name=self.name, dependency_node=dependency_node)
         value = self.settings.value_factory(self.default_value, dependency_context)
 
         if value is not EMPTY:
@@ -403,16 +395,12 @@ class Dependency:
                 parent_node=dependency_node,
             )
             return reg.build(context, dependency_node)
-        except CannotResolveException as ex:
+        except CannotResolveError as ex:
             ex.append(self)
             raise ex
 
-    async def resolve_async(
-        self, context: ResolvingContext, dependency_node: DependencyNode
-    ):
-        dependency_context = DependencyContext(
-            name=self.name, dependency_node=dependency_node
-        )
+    async def resolve_async(self, context: ResolvingContext, dependency_node: DependencyNode):
+        dependency_context = DependencyContext(name=self.name, dependency_node=dependency_node)
         value = self.settings.value_factory(self.default_value, dependency_context)
 
         if value is not EMPTY:
@@ -449,7 +437,7 @@ class Dependency:
                 parent_node=dependency_node,
             )
             return await reg.build_async(context, dependency_node)
-        except CannotResolveException as ex:
+        except CannotResolveError as ex:
             ex.append(self)
             raise ex
 
@@ -598,15 +586,11 @@ class ImplementationCreator:
     ):
         self.dependency_config = defaultdict(DependencySettings, dependency_config)
         self.creator_function = creator_function
-        self.dependencies: dict[str, Dependency] = self._get_dependencies(
-            self.creator_function, self.dependency_config
-        )
+        self.dependencies: dict[str, Dependency] = self._get_dependencies(self.creator_function, self.dependency_config)
         self.create_class = self._get_create_class(creator_function)
 
     @classmethod
-    def _get_create_class(
-        cls, creator_function: Callable
-    ) -> type[ImplementationCreate]:
+    def _get_create_class(cls, creator_function: Callable) -> type[ImplementationCreate]:
         if inspect.iscoroutinefunction(creator_function):
             return AsyncFactoryCreate
         if inspect.isasyncgenfunction(creator_function):
@@ -671,9 +655,7 @@ class ImplementationCreator:
         for arg_name, arg_dep in self.dependencies.items():
             kwargs[arg_name] = await arg_dep.resolve_async(context, dependency_node)
 
-        return await self.create_class.create_async(
-            self.creator_function, kwargs, context
-        )
+        return await self.create_class.create_async(self.creator_function, kwargs, context)
 
 
 class DecoratorCreator(ImplementationCreator):
@@ -685,20 +667,12 @@ class DecoratorCreator(ImplementationCreator):
         dependency_config: dict[str, DependencySettings] = {},
     ):
         self.service_type = service_type
-        super().__init__(
-            creator_function=decorator_type, dependency_config=dependency_config
-        )
+        super().__init__(creator_function=decorator_type, dependency_config=dependency_config)
 
         self.decorated_arg = decorated_arg or next(
-            name
-            for name, dep in self.dependencies.items()
-            if dep.service_type == service_type
+            name for name, dep in self.dependencies.items() if dep.service_type == service_type
         )
-        self.dependencies = {
-            name: dep
-            for name, dep in self.dependencies.items()
-            if name != self.decorated_arg
-        }
+        self.dependencies = {name: dep for name, dep in self.dependencies.items() if name != self.decorated_arg}
 
 
 class PreConfiguration:
@@ -726,9 +700,7 @@ class PreConfiguration:
         self.creator.create(context=context, dependency_node=dependency_node)
         self.has_run = True
 
-    async def run_async(
-        self, context: ResolvingContext, dependency_node: DependencyNode
-    ):
+    async def run_async(self, context: ResolvingContext, dependency_node: DependencyNode):
         await self.creator.create(context=context, dependency_node=dependency_node)
         self.has_run = True
 
@@ -780,15 +752,11 @@ class Registration:
         if scoped_teardown and not lifespan == Lifespan.scoped:
             raise ValueError("Scoped teardowns can only be used with scoped lifestyles")
 
-        if lifespan == Lifespan.singleton and inspect.isgeneratorfunction(
-            implementation
-        ):
+        if lifespan == Lifespan.singleton and inspect.isgeneratorfunction(implementation):
             raise ValueError("Generators cannot be singletons")
         self.service_type = service_type
         self.implementation = implementation
-        self.creator = ImplementationCreator(
-            creator_function=implementation, dependency_config=dependency_config
-        )
+        self.creator = ImplementationCreator(creator_function=implementation, dependency_config=dependency_config)
         self.lifespan = lifespan
         self.name = name
         self.tags = tuple(tags) if tags else tuple()
@@ -811,9 +779,7 @@ class Registration:
 
         return any(t.name == name for t in self.tags)
 
-    def _try_find_cached_node(
-        self, context: ResolvingContext, parent_node: DependencyNode
-    ):
+    def _try_find_cached_node(self, context: ResolvingContext, parent_node: DependencyNode):
         cached_node = context.get_cached(self.id)
         if cached_node:
             parent_node.add_child(cached_node)
@@ -916,9 +882,7 @@ class Registry:
     def __init__(self):
         self._registrations: dict[type, deque[Registration]] = defaultdict(deque)
         self._decorators: dict[type, deque[Decorator]] = defaultdict(deque)
-        self._pre_configurations: dict[type, deque[PreConfiguration]] = defaultdict(
-            deque
-        )
+        self._pre_configurations: dict[type, deque[PreConfiguration]] = defaultdict(deque)
         self._singletons: dict[str, DependencyNode] = {}
 
     def add_registration(self, registration: Registration):
@@ -928,9 +892,7 @@ class Registry:
         self._decorators[decorator.service_type].appendleft(decorator)
 
     def add_pre_configuration(self, pre_configuration: PreConfiguration):
-        self._pre_configurations[pre_configuration.service_type].appendleft(
-            pre_configuration
-        )
+        self._pre_configurations[pre_configuration.service_type].appendleft(pre_configuration)
 
     def add_singleton_instance(self, registration: Registration, node: DependencyNode):
         self._singletons[registration.id] = node
@@ -1003,9 +965,7 @@ class ResolvingContext:
         self.scope = scope
         self._cache = DependencyCache(registry=registry, scope=scope)
 
-    def try_generic_fallback(
-        self, service_type: _GenericAlias, parent_node: DependencyNode
-    ):
+    def try_generic_fallback(self, service_type: _GenericAlias, parent_node: DependencyNode):
         return self.find_registration(
             service_type=service_type.__origin__,
             registration_filter=_default_registration_filter,
@@ -1031,16 +991,14 @@ class ResolvingContext:
                 reg = self.try_generic_fallback(service_type, parent_node)
             if reg is None:
                 print(f"{service_type} is None")
-                raise CannotResolveException()
+                raise CannotResolveError()
         return reg
 
     def find_registrations(
         self,
         service_type: type,
         registration_filter: Callable[[Registration], bool],
-        registration_list_reducing_filter: Callable[
-            [Registration, Sequence[Registration]], bool
-        ],
+        registration_list_reducing_filter: Callable[[Registration, Sequence[Registration]], bool],
         parent_node: DependencyNode,
     ) -> list[Registration]:
         parent_context = ParentContext(parent=parent_node)
@@ -1056,9 +1014,7 @@ class ResolvingContext:
         ]
         combined_registrations = scoped_registrations + container_registrations
 
-        def reducer(
-            accumulator: list[Registration], registration: Registration
-        ) -> list[Registration]:
+        def reducer(accumulator: list[Registration], registration: Registration) -> list[Registration]:
             if registration_list_reducing_filter(registration, accumulator):
                 accumulator.append(registration)
             return accumulator
@@ -1071,8 +1027,7 @@ class ResolvingContext:
         return [
             d
             for d in self.registry.get_decorators(registration.service_type)
-            if d.registration_filter(registration)
-            and d.decorator_context_filter(decorator_context)
+            if d.registration_filter(registration) and d.decorator_context_filter(decorator_context)
         ]
 
     def find_pre_configurations_that_apply(self, registration: Registration):
@@ -1288,18 +1243,14 @@ class ContainerScope(Scope):
         service_type: type[TService],
         filter: RegistrationFilter = _default_registration_filter,
     ) -> TService:
-        return self._container.resolve(
-            service_type=service_type, filter=filter, scope=self
-        )
+        return self._container.resolve(service_type=service_type, filter=filter, scope=self)
 
     async def resolve_async(
         self,
         service_type: type[TService],
         filter: RegistrationFilter = _default_registration_filter,
     ) -> TService:
-        return await self._container.resolve_async(
-            service_type=service_type, filter=filter, scope=self
-        )
+        return await self._container.resolve_async(service_type=service_type, filter=filter, scope=self)
 
 
 class EmptyContainerScope(Scope):
@@ -1315,9 +1266,7 @@ class EmptyContainerScope(Scope):
     async def resolve_async(self, *args):
         pass
 
-    def get_resolved_instances(
-        self, service_type: type[TService]
-    ) -> Sequence[TService]:
+    def get_resolved_instances(self, service_type: type[TService]) -> Sequence[TService]:
         return []
 
     @property
@@ -1463,9 +1412,7 @@ class Container(Resolver):
         self,
         service_type: type,
         decorator_type: type,
-        registration_filter: Callable[
-            [Registration], bool
-        ] = _default_registration_filter,
+        registration_filter: Callable[[Registration], bool] = _default_registration_filter,
         decorator_context_filter: DecoratorContextFilter = _default_decorator_context_filter,
         decorated_arg: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
@@ -1532,9 +1479,7 @@ class Container(Resolver):
         subclasses = get_subclasses(generic_service_type, full_type_filter)
         for subclass in subclasses:
             name = get_registration_name(subclass)
-            target_generic_base = self._get_target_generic_base(
-                generic_service_type, subclass
-            )
+            target_generic_base = self._get_target_generic_base(generic_service_type, subclass)
             if target_generic_base:
                 self.register(
                     target_generic_base,
@@ -1563,9 +1508,7 @@ class Container(Resolver):
         subclass_type_filter: Callable[[type], bool] = always_true,
         decorated_arg: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
-        registration_filter: Callable[
-            [Registration], bool
-        ] = _default_registration_filter,
+        registration_filter: Callable[[Registration], bool] = _default_registration_filter,
         decorator_context_filter: DecoratorContextFilter = _default_decorator_context_filter,
     ):
         self.register_generic_decorator(
@@ -1585,28 +1528,20 @@ class Container(Resolver):
         subclass_type_filter: Callable[[type], bool] = always_true,
         decorated_arg: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
-        registration_filter: Callable[
-            [Registration], bool
-        ] = _default_registration_filter,
+        registration_filter: Callable[[Registration], bool] = _default_registration_filter,
         decorator_context_filter: DecoratorContextFilter = _default_decorator_context_filter,
     ):
-        full_type_filter = (
-            ~is_abstract
-            & ~name_starts_with("__DecoratedGeneric__")
-            & subclass_type_filter
-        )
+        full_type_filter = ~is_abstract & ~name_starts_with("__DecoratedGeneric__") & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, full_type_filter)
         decorator_is_open_generic = is_open_generic_type(generic_decorator_type)
 
         for subclass in subclasses:
-            target_generic_base = self._get_target_generic_base(
-                generic_service_type, subclass
-            )
+            target_generic_base = self._get_target_generic_base(generic_service_type, subclass)
             if target_generic_base:
                 if decorator_is_open_generic:
                     generic_values = get_generic_types(target_generic_base)
                     concrete_decorator = generic_decorator_type[generic_values]  # type: ignore
-                    DecoratedType = types.new_class(
+                    DecoratedType = types.new_class(  # noqa: N806
                         f"__DecoratedGeneric__{concrete_decorator.__name__}",
                         (concrete_decorator,),
                         {},
@@ -1686,9 +1621,7 @@ class Container(Resolver):
     ):
         await self.resolve_async(service_type, filter=registration_filter)
 
-    def new_scope(
-        self, ScopeClass: Type[ContainerScope] = ContainerScope, *args, **kwargs
-    ) -> Scope:
+    def new_scope(self, ScopeClass: Type[ContainerScope] = ContainerScope, *args, **kwargs) -> Scope:  # noqa: N803
         return ScopeClass(self, *args, **kwargs)
 
     def expect_to_be_scoped(self, service_type: type, name: str | None = None):
@@ -1701,12 +1634,8 @@ class Container(Resolver):
     def apply_bundle(self, bundle_fn: Callable[[Container], None]):
         bundle_fn(self)
 
-    def has_registration(
-        self, service_type, filter: RegistrationFilter = _default_registration_filter
-    ):
-        found_registrations = [
-            r for r in self.registry.get_registrations(service_type) if filter(r)
-        ]
+    def has_registration(self, service_type, filter: RegistrationFilter = _default_registration_filter):
+        found_registrations = [r for r in self.registry.get_registrations(service_type) if filter(r)]
         return len(found_registrations) > 0
 
 
@@ -1714,9 +1643,7 @@ class Container(Resolver):
 class DependencySettings:
     value_factory: DependencyValueFactory = _default_dependency_value_factory
     filter: RegistrationFilter = _default_registration_filter
-    list_reducing_filter: RegistrationListReducingFilter = (
-        _default_registration_list_reducing_filter
-    )
+    list_reducing_filter: RegistrationListReducingFilter = _default_registration_list_reducing_filter
 
 
 RegistrationFilter = Callable[[Registration], bool]

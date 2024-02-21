@@ -1,4 +1,5 @@
 import inspect
+
 from .functional_utils import predicate
 
 

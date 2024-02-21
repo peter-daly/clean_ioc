@@ -1,10 +1,11 @@
+from assertive import assert_that
+
+from clean_ioc import Lifespan, Registration, Tag
 from clean_ioc.registration_filters import (
     has_tag,
-    has_tag_with_value_or_missing_tag,
     has_tag_with_value_in,
+    has_tag_with_value_or_missing_tag,
 )
-from clean_ioc import Registration, Lifespan, Tag
-from assertive import assert_that
 
 
 def test_has_tag():

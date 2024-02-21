@@ -2,9 +2,9 @@ from typing import Annotated, AsyncGenerator
 
 from clean_ioc.core import (
     Container,
+    ContainerScope,
     RegistrationFilter,
     Scope,
-    ContainerScope,
     TService,
     _default_registration_filter,
 )
@@ -35,7 +35,7 @@ async def get_scope(
         yield scope
 
 
-def Resolve(
+def Resolve(  # noqa: N802
     cls: type[TService],
     filter: RegistrationFilter = _default_registration_filter,
 ) -> Annotated[TService, params.Depends]:
