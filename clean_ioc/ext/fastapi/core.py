@@ -6,7 +6,7 @@ from clean_ioc.core import (
     RegistrationFilter,
     Scope,
     TService,
-    _default_registration_filter,
+    default_registration_filter,
 )
 from fastapi import Depends, FastAPI, Request, params
 
@@ -37,7 +37,7 @@ async def get_scope(
 
 def Resolve(  # noqa: N802
     cls: type[TService],
-    filter: RegistrationFilter = _default_registration_filter,
+    filter: RegistrationFilter = default_registration_filter,
 ) -> Annotated[TService, params.Depends]:
     async def resolver(scope: Annotated[Scope, Depends(get_scope)]):
         return await scope.resolve_async(cls, filter=filter)

@@ -63,3 +63,40 @@ def test_request_header_reader_reads_headers():
         body = response.json()
         assert response.status_code == 200
         assert body["action"] == "my-action"
+
+
+def test_with_async_generator_dependency():
+    class MyDependency:
+        HEADER_NAME = "X-Action"
+
+        def __init__(self, header_reader: RequestHeaderReader):
+            self.header_reader = header_reader
+
+        def do_action(self) -> str:
+            return self.header_reader.read(self.HEADER_NAME)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return self
+
+    async def my_dependency_factory(header_reader: RequestHeaderReader):
+        async with MyDependency(header_reader=header_reader) as dep:
+            yield dep
+
+    container = Container()
+    container.register(MyDependency, factory=my_dependency_factory)
+    app = FastAPI(dependencies=[Depends(add_request_header_reader_to_scope)])
+    add_container_to_app(app, container)
+
+    @app.get("/")
+    async def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
+        header_value = my_dependency.do_action()
+        return {"action": header_value}
+
+    with TestClient(app) as test_client:
+        response = test_client.get("/", headers={"X-Action": "my-action"})
+        body = response.json()
+        assert response.status_code == 200
+        assert body["action"] == "my-action"

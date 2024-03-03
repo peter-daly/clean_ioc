@@ -1,4 +1,5 @@
 # from __future__ import annotations
+from collections.abc import MutableSequence, Sequence
 from datetime import datetime
 from typing import Any, Callable, Generic, Protocol, TypeVar
 from unittest.mock import AsyncMock, MagicMock, Mock
@@ -112,6 +113,44 @@ def test_list():
     assert_that(array).matches(has_length(2))
     assert_that(array[0]).matches(is_exact_type(B))
     assert_that(array[1]).matches(is_exact_type(A))
+
+
+def test_sequence():
+    class A:
+        pass
+
+    class B(A):
+        pass
+
+    container = Container()
+
+    container.register(A)
+    container.register(A, B)
+
+    array = container.resolve(Sequence[A])
+
+    assert_that(array).matches(has_length(2))
+    assert_that(array[0]).matches(is_exact_type(B))  # type: ignore
+    assert_that(array[1]).matches(is_exact_type(A))  # type: ignore
+
+
+def test_mutable_sequence():
+    class A:
+        pass
+
+    class B(A):
+        pass
+
+    container = Container()
+
+    container.register(A)
+    container.register(A, B)
+
+    array = container.resolve(MutableSequence[A])
+
+    assert_that(array).matches(has_length(2))
+    assert_that(array[0]).matches(is_exact_type(B))  # type: ignore
+    assert_that(array[1]).matches(is_exact_type(A))  # type: ignore
 
 
 def test_list_with_filter():
@@ -469,9 +508,7 @@ def test_deep_dependencies_with_dependency_settings():
 
     container.register(
         A,
-        dependency_config={
-            "s": DependencySettings(value_factory=dont_use_default_parameter)
-        },
+        dependency_config={"s": DependencySettings(value_factory=dont_use_default_parameter)},
     )
     container.register(
         B,
@@ -522,9 +559,7 @@ def test_a_dependency_value_factory_with_a_dependency_context_filter():
 
     container.register(
         A,
-        dependency_config={
-            "greeting": DependencySettings(value_factory=greeting_value_factory)
-        },
+        dependency_config={"greeting": DependencySettings(value_factory=greeting_value_factory)},
     )
     container.register(B)
     container.register(C)
@@ -557,9 +592,7 @@ def test_simple_self_regristation_with_constructor_with_positional_and_keyword_a
             self.kw = kwargs
 
     container = Container()
-    container.register(
-        A, dependency_config={"x": DependencySettings(value_factory=set_value(10))}
-    )
+    container.register(A, dependency_config={"x": DependencySettings(value_factory=set_value(10))})
 
     a = container.resolve(A)
     assert_that(a).matches(is_exact_type(A))
@@ -760,9 +793,7 @@ def test_dependency_context_with_parent():
 
 def test_dependency_context_with_decorators_and_deep_child():
     class A:
-        def __init__(
-            self, parent_type: type | Callable, parent_type_undecorated: type | Callable
-        ):
+        def __init__(self, parent_type: type | Callable, parent_type_undecorated: type | Callable):
             self.parent_type = parent_type
             self.parent_type_undecorated = parent_type_undecorated
 
@@ -790,12 +821,8 @@ def test_dependency_context_with_decorators_and_deep_child():
 
     def a_fac(dependency_context: DependencyContext):
         parent_type = dependency_context.parent.implementation
-        parent_type_undecorated = (
-            dependency_context.parent.bottom_decorated_node.implementation
-        )
-        return A(
-            parent_type=parent_type, parent_type_undecorated=parent_type_undecorated
-        )
+        parent_type_undecorated = dependency_context.parent.bottom_decorated_node.implementation
+        return A(parent_type=parent_type, parent_type_undecorated=parent_type_undecorated)
 
     container = Container()
     container.register(A, factory=a_fac, lifespan=Lifespan.transient)
@@ -910,9 +937,7 @@ def test_decorator_with_registration_filters():
 
     container.register(A, instance=a1, name="a1")
     container.register(A, instance=a2, name="a2", tags=[Tag("do_not_decorate")])
-    container.register_decorator(
-        A, DecA, registration_filter=fn_not(has_tag("do_not_decorate"))
-    )
+    container.register_decorator(A, DecA, registration_filter=fn_not(has_tag("do_not_decorate")))
 
     ar1 = container.resolve(A, filter=with_name("a1"))
     ar2 = container.resolve(A, filter=with_name("a2"))

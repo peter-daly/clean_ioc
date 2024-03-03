@@ -15,9 +15,7 @@ from clean_ioc import (
 )
 from clean_ioc.core import ParentContext
 from clean_ioc.functional_utils import fn_not
-from clean_ioc.registration_filters import (
-    with_implementation,
-)
+from clean_ioc.registration_filters import with_implementation, with_name
 from clean_ioc.type_filters import (
     name_end_with,
 )
@@ -68,9 +66,7 @@ def test_value_factories_with_generic_decorators():
         def __init__(self, isolation_level: str | None = None):
             self.isolation_level = isolation_level
 
-    class TransactionMessageHandlerDecorator(
-        MessageHandler[TMessage], Generic[TMessage]
-    ):
+    class TransactionMessageHandlerDecorator(MessageHandler[TMessage], Generic[TMessage]):
         def __init__(
             self,
             child: MessageHandler[TMessage],
@@ -85,16 +81,12 @@ def test_value_factories_with_generic_decorators():
     container = Container()
 
     container.register_generic_subclasses(MessageHandler)
-    container.register_generic_decorator(
-        MessageHandler, TransactionMessageHandlerDecorator, decorated_arg="child"
-    )
+    container.register_generic_decorator(MessageHandler, TransactionMessageHandlerDecorator, decorated_arg="child")
 
     container.register(
         TransactionManager,
         SqlTransactionManager,
-        dependency_config={
-            "isolation_level": DependencySettings(value_factory=isolation_level_factory)
-        },
+        dependency_config={"isolation_level": DependencySettings(value_factory=isolation_level_factory)},
     )
     handler_a: TransactionMessageHandlerDecorator[MessageA] = container.resolve(
         MessageHandler[MessageA]  # type: ignore
@@ -151,9 +143,7 @@ def test_generic_decorators_where_we_want_to_filter_away_on_certain_generic_type
     class SqlTransactionManager(TransactionManager):
         pass
 
-    class TransactionMessageHandlerDecorator(
-        MessageHandler[TMessage], Generic[TMessage]
-    ):
+    class TransactionMessageHandlerDecorator(MessageHandler[TMessage], Generic[TMessage]):
         def __init__(
             self,
             child: MessageHandler[TMessage],
@@ -183,9 +173,7 @@ def test_generic_decorators_where_we_want_to_filter_away_on_certain_generic_type
     handler_b = container.resolve(MessageHandler[MessageB])
 
     assert_that(handler_a).matches(is_exact_type(AHandler))
-    assert_that(type(handler_b).__name__).matches(
-        "__DecoratedGeneric__TransactionMessageHandlerDecorator"
-    )
+    assert_that(type(handler_b).__name__).matches("__DecoratedGeneric__TransactionMessageHandlerDecorator")
 
 
 def test_generic_decorators_with_different_implementations_of_the_same_dependency():
@@ -219,9 +207,7 @@ def test_generic_decorators_with_different_implementations_of_the_same_dependenc
     class DocDbTransactionManager(TransactionManager):
         pass
 
-    class TransactionMessageHandlerDecorator(
-        MessageHandler[TMessage], Generic[TMessage]
-    ):
+    class TransactionMessageHandlerDecorator(MessageHandler[TMessage], Generic[TMessage]):
         def __init__(
             self,
             child: MessageHandler[TMessage],
@@ -311,9 +297,7 @@ def test_decorator_chooses_dependency_based_on_decorated_dependencies():
             self.repository = repository
 
     class CHandler(MessageHandler[MessageC]):
-        def __init__(
-            self, sql_repository: SqlRepository, doc_repository: DocRepository
-        ):
+        def __init__(self, sql_repository: SqlRepository, doc_repository: DocRepository):
             self.sql_repository = sql_repository
             self.doc_repository = doc_repository
 
@@ -326,9 +310,7 @@ def test_decorator_chooses_dependency_based_on_decorated_dependencies():
     class DocDbTransactionManager(TransactionManager):
         pass
 
-    class TransactionMessageHandlerDecorator(
-        MessageHandler[TMessage], Generic[TMessage]
-    ):
+    class TransactionMessageHandlerDecorator(MessageHandler[TMessage], Generic[TMessage]):
         def __init__(
             self,
             child: MessageHandler[TMessage],
@@ -349,21 +331,15 @@ def test_decorator_chooses_dependency_based_on_decorated_dependencies():
     container.register(DocRepository)
     container.register(SqlRepository)
 
-    container.register_generic_subclasses(
-        MessageHandler, subclass_type_filter=fn_not(name_end_with("Decorator"))
-    )
+    container.register_generic_subclasses(MessageHandler, subclass_type_filter=fn_not(name_end_with("Decorator")))
     container.register_generic_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
         dependency_config={
-            "transaction_manager": DependencySettings(
-                filter=with_implementation(DocDbTransactionManager)
-            )
+            "transaction_manager": DependencySettings(filter=with_implementation(DocDbTransactionManager))
         },
-        decorator_context_filter=lambda context: context.decorated.has_dependant_service_type(
-            DocDbConnection
-        ),
+        decorator_context_filter=lambda context: context.decorated.has_dependant_service_type(DocDbConnection),
     )
 
     container.register_generic_decorator(
@@ -371,31 +347,39 @@ def test_decorator_chooses_dependency_based_on_decorated_dependencies():
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
         dependency_config={
-            "transaction_manager": DependencySettings(
-                filter=with_implementation(SqlTransactionManager)
-            )
+            "transaction_manager": DependencySettings(filter=with_implementation(SqlTransactionManager))
         },
-        decorator_context_filter=lambda context: context.decorated.has_dependant_service_type(
-            SqlDbConnection
-        ),
+        decorator_context_filter=lambda context: context.decorated.has_dependant_service_type(SqlDbConnection),
     )
 
     handler_a: Any = container.resolve(MessageHandler[MessageA])
     handler_b: Any = container.resolve(MessageHandler[MessageB])
     handler_c: Any = container.resolve(MessageHandler[MessageC])
 
-    assert_that(handler_a.transaction_manager).matches(
-        is_exact_type(SqlTransactionManager)
-    )
+    assert_that(handler_a.transaction_manager).matches(is_exact_type(SqlTransactionManager))
     assert_that(handler_a.child).matches(is_exact_type(AHandler))
-    assert_that(handler_b.transaction_manager).matches(
-        is_exact_type(DocDbTransactionManager)
-    )
+    assert_that(handler_b.transaction_manager).matches(is_exact_type(DocDbTransactionManager))
     assert_that(handler_b.child).matches(is_exact_type(BHandler))
-    assert_that(handler_c.transaction_manager).matches(
-        is_exact_type(DocDbTransactionManager)
-    )
-    assert_that(handler_c.child.transaction_manager).matches(
-        is_exact_type(SqlTransactionManager)
-    )
+    assert_that(handler_c.transaction_manager).matches(is_exact_type(DocDbTransactionManager))
+    assert_that(handler_c.child.transaction_manager).matches(is_exact_type(SqlTransactionManager))
     assert_that(handler_c.child.child).matches(is_exact_type(CHandler))
+
+
+def test_can_filter_parent_context_based_on_registration_name():
+    class Dependency:
+        def __init__(self, x: int):
+            self.x = x
+
+    container = Container()
+
+    container.register(Dependency, name="FIVE")
+    container.register(Dependency, name="TEN")
+
+    container.register(int, instance=5, parent_context_filter=lambda pc: pc.parent.registration_name == "FIVE")
+    container.register(int, instance=10, parent_context_filter=lambda pc: pc.parent.registration_name == "TEN")
+
+    five = container.resolve(Dependency, filter=with_name("FIVE"))
+    ten = container.resolve(Dependency, filter=with_name("TEN"))
+
+    assert_that(five.x).matches(5)
+    assert_that(ten.x).matches(10)

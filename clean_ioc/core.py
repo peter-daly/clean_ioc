@@ -1,5 +1,5 @@
-"""Simple IOC container.
-"""
+"""Simple IOC container."""
+
 from __future__ import annotations
 
 import abc
@@ -7,18 +7,22 @@ import asyncio
 import inspect
 import types
 from collections import defaultdict, deque
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Iterable, MutableSequence, Sequence
 from dataclasses import dataclass
 from enum import IntEnum
 from functools import reduce
 from typing import (
     Any,
-    Sequence,
+    ClassVar,
     Type,
     TypeVar,
     _GenericAlias,  # type: ignore
     get_type_hints,
 )
+from typing import Collection as TypingCollection
+from typing import Iterable as TypingIterable
+from typing import MutableSequence as TypingMutableSequence
+from typing import Sequence as TypingSequence
 from uuid import uuid4
 
 from clean_ioc.utils import deprecated
@@ -80,17 +84,21 @@ def get_arg_info(subject: Callable, local_ns: dict = {}, global_ns: dict | None 
     return d
 
 
-def _default_registration_filter(r: Registration) -> bool:
+def default_registration_filter(r: Registration) -> bool:
     return not r.is_named
 
 
-def _default_dependency_value_factory(default_value: Any, _: DependencyContext) -> Any:
+# Here for backwards compatibility
+_default_registration_filter = default_registration_filter
+
+
+def default_dependency_value_factory(default_value: Any, _: DependencyContext) -> Any:
     return default_value
 
 
-_default_registration_list_reducing_filter = constant(True)
-_default_parent_context_filter = constant(True)
-_default_decorator_context_filter = constant(True)
+default_registration_list_reducing_filter = constant(True)
+default_parent_context_filter = constant(True)
+default_decorator_context_filter = constant(True)
 
 
 @dataclass
@@ -329,10 +337,34 @@ class CannotResolveError(Exception):
         return chain
 
     def __str__(self):
-        return f"\n{self.message}\n\n{"Dependency chain:"}\n{self.dependency_chain}"
+        return f"\n{self.message}\n\nDependency chain:\n{self.dependency_chain}"
 
 
 class Dependency:
+    GENERIC_COLLECTION_MAPPINGS: ClassVar[dict[type, type]] = {
+        tuple: tuple,
+        list: list,
+        set: set,
+        Sequence: tuple,
+        TypingSequence: tuple,
+        Iterable: tuple,
+        TypingCollection: tuple,
+        TypingIterable: tuple,
+        Collection: tuple,
+        MutableSequence: list,
+        TypingMutableSequence: list,
+    }
+
+    __slots__ = (
+        "name",
+        "parent_implementation",
+        "service_type",
+        "settings",
+        "default_value",
+        "is_dependency_context",
+        "generic_collection_type",
+    )
+
     def __init__(
         self,
         name: str,
@@ -351,8 +383,8 @@ class Dependency:
         self.is_dependency_context = service_type == DependencyContext
         generic_origin = getattr(self.service_type, "__origin__", None)
 
-        if generic_origin and generic_origin in (list, tuple, set):
-            self.generic_collection_type = generic_origin
+        if generic_origin and generic_origin in self.GENERIC_COLLECTION_MAPPINGS:
+            self.generic_collection_type = self.GENERIC_COLLECTION_MAPPINGS[generic_origin]
         else:
             self.generic_collection_type = None
 
@@ -442,29 +474,27 @@ class Dependency:
             raise ex
 
 
-class ImplementationCreate(abc.ABC):
+class Activator(abc.ABC):
     @classmethod
-    def create(
+    def activate(
         cls,
         factory: Callable,
         resolved_dependencies: dict[str, Any],
         context: ResolvingContext,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     @classmethod
-    def create_async(
+    def activate_async(
         cls,
         factory: Callable,
         resolved_dependencies: dict[str, Any],
         context: ResolvingContext,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
-class FactoryCreate(ImplementationCreate):
+class FactoryActivator(Activator):
     @classmethod
-    def create(
+    def activate(
         cls,
         factory: Callable,
         resolved_dependencies: dict[str, Any],
@@ -473,16 +503,16 @@ class FactoryCreate(ImplementationCreate):
         return factory(**resolved_dependencies)
 
     @classmethod
-    async def create_async(
+    async def activate_async(
         cls,
         factory: Callable,
         resolved_dependencies: dict[str, Any],
         context: ResolvingContext,
     ):
-        return cls.create(factory, resolved_dependencies, context)
+        return cls.activate(factory, resolved_dependencies, context)
 
 
-class GeneratorCreate(ImplementationCreate):
+class GeneratorActivator(Activator):
     @classmethod
     def _generator_close(cls, generator: types.GeneratorType):
         def inner():
@@ -494,7 +524,7 @@ class GeneratorCreate(ImplementationCreate):
         return inner
 
     @classmethod
-    def create(
+    def activate(
         cls,
         factory: Callable,
         resolved_dependencies: dict[str, Any],
@@ -506,16 +536,16 @@ class GeneratorCreate(ImplementationCreate):
         return instance
 
     @classmethod
-    async def create_async(
+    async def activate_async(
         cls,
         factory: Callable,
         resolved_dependencies: dict[str, Any],
         context: ResolvingContext,
     ):
-        return cls.create(factory, resolved_dependencies, context)
+        return cls.activate(factory, resolved_dependencies, context)
 
 
-class AsyncFactoryCreate(ImplementationCreate):
+class AsyncFactoryActivator(Activator):
     @classmethod
     def _generator_close(cls, generator: types.GeneratorType):
         def inner():
@@ -527,7 +557,7 @@ class AsyncFactoryCreate(ImplementationCreate):
         return inner
 
     @classmethod
-    def create(
+    def activate(
         cls,
         factory: Callable,
         resolved_dependencies: dict[str, Any],
@@ -536,7 +566,7 @@ class AsyncFactoryCreate(ImplementationCreate):
         raise Exception("Only async allowed")
 
     @classmethod
-    async def create_async(
+    async def activate_async(
         cls,
         factory: Callable,
         resolved_dependencies: dict[str, Any],
@@ -545,7 +575,7 @@ class AsyncFactoryCreate(ImplementationCreate):
         return await factory(**resolved_dependencies)
 
 
-class AsyncGeneratorCreate(ImplementationCreate):
+class AsyncGeneratorActivator(Activator):
     @classmethod
     def _generator_close(cls, generator: types.AsyncGeneratorType):
         async def inner():
@@ -557,7 +587,7 @@ class AsyncGeneratorCreate(ImplementationCreate):
         return inner
 
     @classmethod
-    def create(
+    def activate(
         cls,
         factory: Callable,
         resolved_dependencies: dict[str, Any],
@@ -566,7 +596,7 @@ class AsyncGeneratorCreate(ImplementationCreate):
         raise Exception("Only async allowed")
 
     @classmethod
-    async def create_async(
+    async def activate_async(
         cls,
         factory: Callable,
         resolved_dependencies: dict[str, Any],
@@ -579,6 +609,8 @@ class AsyncGeneratorCreate(ImplementationCreate):
 
 
 class ImplementationCreator:
+    __slots__ = ("dependency_config", "creator_function", "dependencies", "activator_class")
+
     def __init__(
         self,
         creator_function: Callable,
@@ -587,17 +619,17 @@ class ImplementationCreator:
         self.dependency_config = defaultdict(DependencySettings, dependency_config)
         self.creator_function = creator_function
         self.dependencies: dict[str, Dependency] = self._get_dependencies(self.creator_function, self.dependency_config)
-        self.create_class = self._get_create_class(creator_function)
+        self.activator_class = self._get_create_class(creator_function)
 
     @classmethod
-    def _get_create_class(cls, creator_function: Callable) -> type[ImplementationCreate]:
+    def _get_create_class(cls, creator_function: Callable) -> type[Activator]:
         if inspect.iscoroutinefunction(creator_function):
-            return AsyncFactoryCreate
+            return AsyncFactoryActivator
         if inspect.isasyncgenfunction(creator_function):
-            return AsyncGeneratorCreate
+            return AsyncGeneratorActivator
         if inspect.isgeneratorfunction(creator_function):
-            return GeneratorCreate
-        return FactoryCreate
+            return GeneratorActivator
+        return FactoryActivator
 
     @classmethod
     def _get_default_value(cls, paramater: inspect.Parameter):
@@ -644,7 +676,7 @@ class ImplementationCreator:
         for arg_name, arg_dep in self.dependencies.items():
             kwargs[arg_name] = arg_dep.resolve(context, dependency_node)
 
-        return self.create_class.create(self.creator_function, kwargs, context)
+        return self.activator_class.activate(self.creator_function, kwargs, context)
 
     async def create_async(
         self,
@@ -655,10 +687,12 @@ class ImplementationCreator:
         for arg_name, arg_dep in self.dependencies.items():
             kwargs[arg_name] = await arg_dep.resolve_async(context, dependency_node)
 
-        return await self.create_class.create_async(self.creator_function, kwargs, context)
+        return await self.activator_class.activate_async(self.creator_function, kwargs, context)
 
 
 class DecoratorCreator(ImplementationCreator):
+    __slots__ = ("service_type", "decorated_arg")
+
     def __init__(
         self,
         service_type: type,
@@ -736,8 +770,32 @@ class Decorator:
         kwargs[self.creator.decorated_arg] = instance
         return self.creator.create(context, dependency_node, **kwargs)
 
+    async def decorate_async(
+        self,
+        instance: Any,
+        context: ResolvingContext,
+        dependency_node: DependencyNode,
+    ):
+        kwargs = {}
+        kwargs[self.creator.decorated_arg] = instance
+        return await self.creator.create_async(context, dependency_node, **kwargs)
+
 
 class Registration:
+    __slots__ = (
+        "service_type",
+        "implementation",
+        "lifespan",
+        "name",
+        "dependency_config",
+        "parent_context_filter",
+        "tags",
+        "scoped_teardown",
+        "creator",
+        "id",
+        "was_used",
+    )
+
     def __init__(
         self,
         service_type: type,
@@ -745,7 +803,7 @@ class Registration:
         lifespan: Lifespan,
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
-        parent_context_filter: ParentContextFilter = _default_parent_context_filter,
+        parent_context_filter: ParentContextFilter = default_parent_context_filter,
         tags: list[Tag] | None = None,
         scoped_teardown: Callable | None = None,
     ):
@@ -797,32 +855,6 @@ class Registration:
         parent_node.add_child(new_instance_node)
         return new_instance_node
 
-    def _finish_preparing_instance(
-        self,
-        built_instance: Any,
-        context: ResolvingContext,
-        new_instance_node: DependencyNode,
-    ):
-        new_instance_node.set_instance(built_instance)
-
-        decorator_context = DecoratorContext(decorated=new_instance_node)
-        top_decorated_node = new_instance_node
-
-        for dec in context.find_decorators_that_apply(self, decorator_context):
-            next_decorated_node = DependencyNode(
-                service_type=self.service_type,
-                implementation=dec.decorator_type,
-                lifespan=self.lifespan,
-            )
-            top_decorated_node.add_decorator(next_decorated_node)
-            built_instance = dec.decorate(built_instance, context, next_decorated_node)
-            next_decorated_node.set_instance(built_instance)
-            top_decorated_node = next_decorated_node
-
-        context.new_instance_created(self, top_decorated_node)
-        self.was_used = True
-        return built_instance
-
     def build(self, context: ResolvingContext, parent_node: DependencyNode):
         if cached_node := self._try_find_cached_node(context, parent_node):
             return cached_node
@@ -843,12 +875,25 @@ class Registration:
             pre_configuration_node.set_instance(pre_configuration)
 
         built_instance = self.creator.create(context, new_instance_node)
+        new_instance_node.set_instance(built_instance)
 
-        return self._finish_preparing_instance(
-            built_instance=built_instance,
-            context=context,
-            new_instance_node=new_instance_node,
-        )
+        decorator_context = DecoratorContext(decorated=new_instance_node)
+        top_decorated_node = new_instance_node
+
+        for dec in context.find_decorators_that_apply(self, decorator_context):
+            next_decorated_node = DependencyNode(
+                service_type=self.service_type,
+                implementation=dec.decorator_type,
+                lifespan=self.lifespan,
+            )
+            top_decorated_node.add_decorator(next_decorated_node)
+            built_instance = dec.decorate(built_instance, context, next_decorated_node)
+            next_decorated_node.set_instance(built_instance)
+            top_decorated_node = next_decorated_node
+
+        context.new_instance_created(self, top_decorated_node)
+        self.was_used = True
+        return built_instance
 
     async def build_async(self, context: ResolvingContext, parent_node: DependencyNode):
         if cached_node := self._try_find_cached_node(context, parent_node):
@@ -870,12 +915,25 @@ class Registration:
             pre_configuration_node.set_instance(pre_configuration)
 
         built_instance = await self.creator.create_async(context, new_instance_node)
+        new_instance_node.set_instance(built_instance)
 
-        return self._finish_preparing_instance(
-            built_instance=built_instance,
-            context=context,
-            new_instance_node=new_instance_node,
-        )
+        decorator_context = DecoratorContext(decorated=new_instance_node)
+        top_decorated_node = new_instance_node
+
+        for dec in context.find_decorators_that_apply(self, decorator_context):
+            next_decorated_node = DependencyNode(
+                service_type=self.service_type,
+                implementation=dec.decorator_type,
+                lifespan=self.lifespan,
+            )
+            top_decorated_node.add_decorator(next_decorated_node)
+            built_instance = await dec.decorate_async(built_instance, context, next_decorated_node)
+            next_decorated_node.set_instance(built_instance)
+            top_decorated_node = next_decorated_node
+
+        context.new_instance_created(self, top_decorated_node)
+        self.was_used = True
+        return built_instance
 
 
 class Registry:
@@ -968,7 +1026,7 @@ class ResolvingContext:
     def try_generic_fallback(self, service_type: _GenericAlias, parent_node: DependencyNode):
         return self.find_registration(
             service_type=service_type.__origin__,
-            registration_filter=_default_registration_filter,
+            registration_filter=default_registration_filter,
             parent_node=parent_node,
         )
 
@@ -990,7 +1048,6 @@ class ResolvingContext:
             if type(service_type) == _GenericAlias:
                 reg = self.try_generic_fallback(service_type, parent_node)
             if reg is None:
-                print(f"{service_type} is None")
                 raise CannotResolveError()
         return reg
 
@@ -1055,7 +1112,7 @@ class Resolver(abc.ABC):
     def resolve(
         self,
         service_type: type[TService],
-        filter: RegistrationFilter = _default_registration_filter,
+        filter: RegistrationFilter = default_registration_filter,
         *args,
         **kwargs,
     ) -> TService:
@@ -1065,7 +1122,7 @@ class Resolver(abc.ABC):
     async def resolve_async(
         self,
         service_type: type[TService],
-        filter: RegistrationFilter = _default_registration_filter,
+        filter: RegistrationFilter = default_registration_filter,
         *args,
         **kwargs,
     ) -> TService:
@@ -1155,7 +1212,7 @@ class Scope(Resolver):
         instance: TService | None = None,
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
-        parent_context_filter: ParentContextFilter = _default_parent_context_filter,
+        parent_context_filter: ParentContextFilter = default_parent_context_filter,
     ):
         pass
 
@@ -1183,14 +1240,14 @@ class ContainerScope(Scope):
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
         tags: list[Tag] | None = None,
-        parent_context_filter: ParentContextFilter = _default_parent_context_filter,
+        parent_context_filter: ParentContextFilter = default_parent_context_filter,
         scoped_teardown: Callable[[TService], Any] | None = None,
     ):
         if instance is not None:
             self._registrations[service_type].appendleft(
                 Registration(
                     service_type=service_type,
-                    implementation=lambda: instance,
+                    implementation=constant(instance),
                     lifespan=Lifespan.scoped,
                     name=name,
                     tags=tags,
@@ -1241,14 +1298,14 @@ class ContainerScope(Scope):
     def resolve(
         self,
         service_type: type[TService],
-        filter: RegistrationFilter = _default_registration_filter,
+        filter: RegistrationFilter = default_registration_filter,
     ) -> TService:
         return self._container.resolve(service_type=service_type, filter=filter, scope=self)
 
     async def resolve_async(
         self,
         service_type: type[TService],
-        filter: RegistrationFilter = _default_registration_filter,
+        filter: RegistrationFilter = default_registration_filter,
     ) -> TService:
         return await self._container.resolve_async(service_type=service_type, filter=filter, scope=self)
 
@@ -1301,7 +1358,7 @@ class Container(Resolver):
         self,
         service_type: type,
         configuration_function: Callable[..., None],
-        registration_filter: RegistrationFilter = _default_registration_filter,
+        registration_filter: RegistrationFilter = default_registration_filter,
         dependency_config: dict[str, DependencySettings] = {},
     ):
         self.registry.add_pre_configuration(
@@ -1323,14 +1380,14 @@ class Container(Resolver):
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
         tags: list[Tag] | None = None,
-        parent_context_filter: ParentContextFilter = _default_parent_context_filter,
+        parent_context_filter: ParentContextFilter = default_parent_context_filter,
         scoped_teardown: Callable[[TService], Any] | None = None,
     ):
         if instance is not None:
             self.registry.add_registration(
                 Registration(
                     service_type=service_type,
-                    implementation=lambda: instance,
+                    implementation=constant(instance),
                     dependency_config=dependency_config,
                     lifespan=Lifespan.singleton,
                     name=name,
@@ -1386,7 +1443,7 @@ class Container(Resolver):
         subclass_type_filter: Callable[[type], bool] = always_true,
         get_registration_name: Callable[[type], str | None] = constant(None),
         tags: list[Tag] | None = None,
-        parent_context_filter: ParentContextFilter = _default_parent_context_filter,
+        parent_context_filter: ParentContextFilter = default_parent_context_filter,
     ):
         full_type_filter = ~(is_abstract) & subclass_type_filter
         subclasses = get_subclasses(base_type, full_type_filter)
@@ -1412,8 +1469,8 @@ class Container(Resolver):
         self,
         service_type: type,
         decorator_type: type,
-        registration_filter: Callable[[Registration], bool] = _default_registration_filter,
-        decorator_context_filter: DecoratorContextFilter = _default_decorator_context_filter,
+        registration_filter: Callable[[Registration], bool] = default_registration_filter,
+        decorator_context_filter: DecoratorContextFilter = default_decorator_context_filter,
         decorated_arg: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
     ):
@@ -1451,7 +1508,7 @@ class Container(Resolver):
         subclass_type_filter: Callable[[type], bool] = always_true,
         get_registration_name: Callable[[type], str | None] = constant(None),
         tags: list[Tag] | None = None,
-        parent_context_filter: ParentContextFilter = _default_parent_context_filter,
+        parent_context_filter: ParentContextFilter = default_parent_context_filter,
     ):
         self.register_generic_subclasses(
             generic_service_type=generic_service_type,
@@ -1473,7 +1530,7 @@ class Container(Resolver):
         subclass_type_filter: Callable[[type], bool] = always_true,
         get_registration_name: Callable[[type], str | None] = constant(None),
         tags: list[Tag] | None = None,
-        parent_context_filter: ParentContextFilter = _default_parent_context_filter,
+        parent_context_filter: ParentContextFilter = default_parent_context_filter,
     ):
         full_type_filter = ~is_abstract & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, full_type_filter)
@@ -1508,8 +1565,8 @@ class Container(Resolver):
         subclass_type_filter: Callable[[type], bool] = always_true,
         decorated_arg: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
-        registration_filter: Callable[[Registration], bool] = _default_registration_filter,
-        decorator_context_filter: DecoratorContextFilter = _default_decorator_context_filter,
+        registration_filter: Callable[[Registration], bool] = default_registration_filter,
+        decorator_context_filter: DecoratorContextFilter = default_decorator_context_filter,
     ):
         self.register_generic_decorator(
             generic_service_type=generic_service_type,
@@ -1528,8 +1585,8 @@ class Container(Resolver):
         subclass_type_filter: Callable[[type], bool] = always_true,
         decorated_arg: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
-        registration_filter: Callable[[Registration], bool] = _default_registration_filter,
-        decorator_context_filter: DecoratorContextFilter = _default_decorator_context_filter,
+        registration_filter: Callable[[Registration], bool] = default_registration_filter,
+        decorator_context_filter: DecoratorContextFilter = default_decorator_context_filter,
     ):
         full_type_filter = ~is_abstract & ~name_starts_with("__DecoratedGeneric__") & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, full_type_filter)
@@ -1568,7 +1625,7 @@ class Container(Resolver):
     def resolve(
         self,
         service_type: type[TService],
-        filter: RegistrationFilter = _default_registration_filter,
+        filter: RegistrationFilter = default_registration_filter,
         scope: Scope = EmptyContainerScope(),
     ) -> TService:
         graph = self.resolve_dependency_graph(service_type, filter, scope)
@@ -1577,7 +1634,7 @@ class Container(Resolver):
     async def resolve_async(
         self,
         service_type: type[TService],
-        filter: RegistrationFilter = _default_registration_filter,
+        filter: RegistrationFilter = default_registration_filter,
         scope: Scope = EmptyContainerScope(),
     ) -> TService:
         graph = await self.resolve_dependency_graph_async(service_type, filter, scope)
@@ -1586,7 +1643,7 @@ class Container(Resolver):
     def resolve_dependency_graph(
         self,
         service_type: type,
-        filter: RegistrationFilter = _default_registration_filter,
+        filter: RegistrationFilter = default_registration_filter,
         scope: Scope = EmptyContainerScope(),
     ) -> DependencyGraph:
         graph = DependencyGraph(service_type=service_type, filter=filter)
@@ -1598,7 +1655,7 @@ class Container(Resolver):
     async def resolve_dependency_graph_async(
         self,
         service_type: type,
-        filter: RegistrationFilter = _default_registration_filter,
+        filter: RegistrationFilter = default_registration_filter,
         scope: Scope = EmptyContainerScope(),
     ) -> DependencyGraph:
         graph = DependencyGraph(service_type=service_type, filter=filter)
@@ -1610,14 +1667,14 @@ class Container(Resolver):
     def force_run_pre_configuration(
         self,
         service_type: type,
-        registration_filter: RegistrationFilter = _default_registration_filter,
+        registration_filter: RegistrationFilter = default_registration_filter,
     ):
         self.resolve(service_type, filter=registration_filter)
 
     async def force_run_pre_configuration_async(
         self,
         service_type: type,
-        registration_filter: RegistrationFilter = _default_registration_filter,
+        registration_filter: RegistrationFilter = default_registration_filter,
     ):
         await self.resolve_async(service_type, filter=registration_filter)
 
@@ -1634,16 +1691,16 @@ class Container(Resolver):
     def apply_bundle(self, bundle_fn: Callable[[Container], None]):
         bundle_fn(self)
 
-    def has_registration(self, service_type, filter: RegistrationFilter = _default_registration_filter):
+    def has_registration(self, service_type, filter: RegistrationFilter = default_registration_filter):
         found_registrations = [r for r in self.registry.get_registrations(service_type) if filter(r)]
         return len(found_registrations) > 0
 
 
 @dataclass(kw_only=True)
 class DependencySettings:
-    value_factory: DependencyValueFactory = _default_dependency_value_factory
-    filter: RegistrationFilter = _default_registration_filter
-    list_reducing_filter: RegistrationListReducingFilter = _default_registration_list_reducing_filter
+    value_factory: DependencyValueFactory = default_dependency_value_factory
+    filter: RegistrationFilter = default_registration_filter
+    list_reducing_filter: RegistrationListReducingFilter = default_registration_list_reducing_filter
 
 
 RegistrationFilter = Callable[[Registration], bool]
