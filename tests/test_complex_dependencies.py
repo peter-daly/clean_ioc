@@ -7,18 +7,16 @@ from assertive import (
     is_none,
 )
 
+import clean_ioc.node_filters as nf
+import clean_ioc.registration_filters as rf
+import clean_ioc.type_filters as tf
 from clean_ioc import (
     Container,
     DependencyContext,
     DependencySettings,
     Registration,
 )
-from clean_ioc.core import ParentContext
-from clean_ioc.functional_utils import fn_not
-from clean_ioc.registration_filters import with_implementation, with_name
-from clean_ioc.type_filters import (
-    name_end_with,
-)
+from clean_ioc.core import Node, Tag
 
 
 def test_value_factories_with_generic_decorators():
@@ -220,8 +218,8 @@ def test_generic_decorators_with_different_implementations_of_the_same_dependenc
             self.child.handle(message)
 
     def parents_message_type_is(message_type: type):
-        def inner(parent_context: ParentContext):
-            return parent_context.parent.generic_mapping[TMessage] == message_type
+        def inner(parent: Node):
+            return parent.generic_mapping[TMessage] == message_type
 
         return inner
 
@@ -237,12 +235,12 @@ def test_generic_decorators_with_different_implementations_of_the_same_dependenc
     container.register(
         TransactionManager,
         SqlTransactionManager,
-        parent_context_filter=parents_message_type_is(MessageA),
+        parent_node_filter=parents_message_type_is(MessageA),
     )
     container.register(
         TransactionManager,
         DocDbTransactionManager,
-        parent_context_filter=parents_message_type_is(MessageB),
+        parent_node_filter=parents_message_type_is(MessageB),
     )
     handler_a = container.resolve(MessageHandler[MessageA])
     handler_b = container.resolve(MessageHandler[MessageB])
@@ -331,15 +329,15 @@ def test_decorator_chooses_dependency_based_on_decorated_dependencies():
     container.register(DocRepository)
     container.register(SqlRepository)
 
-    container.register_generic_subclasses(MessageHandler, subclass_type_filter=fn_not(name_end_with("Decorator")))
+    container.register_generic_subclasses(MessageHandler, subclass_type_filter=~tf.name_end_with("Decorator"))
     container.register_generic_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
         dependency_config={
-            "transaction_manager": DependencySettings(filter=with_implementation(DocDbTransactionManager))
+            "transaction_manager": DependencySettings(filter=rf.with_implementation(DocDbTransactionManager))
         },
-        decorator_context_filter=lambda context: context.decorated.has_dependant_service_type(DocDbConnection),
+        decorated_node_filter=nf.has_dependant_service_type(DocDbConnection),
     )
 
     container.register_generic_decorator(
@@ -347,9 +345,9 @@ def test_decorator_chooses_dependency_based_on_decorated_dependencies():
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
         dependency_config={
-            "transaction_manager": DependencySettings(filter=with_implementation(SqlTransactionManager))
+            "transaction_manager": DependencySettings(filter=rf.with_implementation(SqlTransactionManager))
         },
-        decorator_context_filter=lambda context: context.decorated.has_dependant_service_type(SqlDbConnection),
+        decorated_node_filter=nf.has_dependant_service_type(SqlDbConnection),
     )
 
     handler_a: Any = container.resolve(MessageHandler[MessageA])
@@ -375,11 +373,31 @@ def test_can_filter_parent_context_based_on_registration_name():
     container.register(Dependency, name="FIVE")
     container.register(Dependency, name="TEN")
 
-    container.register(int, instance=5, parent_context_filter=lambda pc: pc.parent.registration_name == "FIVE")
-    container.register(int, instance=10, parent_context_filter=lambda pc: pc.parent.registration_name == "TEN")
+    container.register(int, instance=5, parent_node_filter=nf.registration_name_is("FIVE"))
+    container.register(int, instance=10, parent_node_filter=nf.registration_name_is("TEN"))
 
-    five = container.resolve(Dependency, filter=with_name("FIVE"))
-    ten = container.resolve(Dependency, filter=with_name("TEN"))
+    five = container.resolve(Dependency, filter=rf.with_name("FIVE"))
+    ten = container.resolve(Dependency, filter=rf.with_name("TEN"))
+
+    assert_that(five.x).matches(5)
+    assert_that(ten.x).matches(10)
+
+
+def test_can_filter_parent_context_based_on_registration_tags():
+    class Dependency:
+        def __init__(self, x: int):
+            self.x = x
+
+    container = Container()
+
+    container.register(Dependency, tags=[Tag("number", "FIVE")])
+    container.register(Dependency, tags=[Tag("number", "TEN")])
+
+    container.register(int, instance=5, parent_node_filter=nf.has_registartion_tag("number", "FIVE"))
+    container.register(int, instance=10, parent_node_filter=nf.has_registartion_tag("number", "TEN"))
+
+    five = container.resolve(Dependency, filter=rf.has_tag("number", "FIVE"))
+    ten = container.resolve(Dependency, filter=rf.has_tag("number", "TEN"))
 
     assert_that(five.x).matches(5)
     assert_that(ten.x).matches(10)

@@ -88,17 +88,13 @@ def default_registration_filter(r: Registration) -> bool:
     return not r.is_named
 
 
-# Here for backwards compatibility
-_default_registration_filter = default_registration_filter
-
-
 def default_dependency_value_factory(default_value: Any, _: DependencyContext) -> Any:
     return default_value
 
 
 default_registration_list_reducing_filter = constant(True)
-default_parent_context_filter = constant(True)
-default_decorator_context_filter = constant(True)
+default_parent_node_filter = constant(True)
+default_decorated_node_filter = constant(True)
 
 
 @dataclass
@@ -124,8 +120,15 @@ class Node:
     pre_configured_by: Node
     pre_configures: Node
     registration_name: str | None = None
+    registration_tags: Sequence[Tag] = ()
     instance: Any = UNKNOWN
     lifespan: Lifespan
+
+    def has_registration_tag(self, name: str, value: str | None):
+        if value is not None:
+            return any(t.name == name and t.value == value for t in self.registration_tags)
+
+        return any(t.name == name for t in self.registration_tags)
 
     def unparent(self):
         self.parent = EmptyNode()
@@ -196,6 +199,7 @@ class EmptyNode(Node, metaclass=SingletonMeta):
         self.decorated = self
         self.pre_configured_by = self
         self.registration_name = None
+        self.registration_tags = ()
         self.instance = EMPTY
         self.lifespan = Lifespan.singleton
 
@@ -214,11 +218,13 @@ class DependencyNode(Node):
         implementation: type | Callable,
         lifespan: Lifespan,
         registration_name: str | None = None,
+        registration_tags: Sequence[Tag] = (),
     ):
         self.service_type = service_type
         self.implementation = implementation
         self.lifespan = lifespan
         self.registration_name: str | None = registration_name
+        self.registration_tags = registration_tags
         self.parent = EmptyNode()
         self.children = []
         self.decorated = EmptyNode()
@@ -286,14 +292,14 @@ class DependencyContext:
         self.decorated = dependency_node.decorated
 
 
-class ParentContext:
-    def __init__(self, parent: DependencyNode):
-        self.parent = parent
+# class ParentContext:
+#     def __init__(self, parent: DependencyNode):
+#         self.parent = parent
 
 
-class DecoratorContext:
-    def __init__(self, decorated: DependencyNode):
-        self.decorated = decorated
+# class DecoratorContext:
+#     def __init__(self, decorated: DependencyNode):
+#         self.decorated = decorated
 
 
 class CannotResolveError(Exception):
@@ -390,7 +396,7 @@ class Dependency:
 
         self.default_value = default_value
 
-    def resolve(self, context: ResolvingContext, dependency_node: DependencyNode):
+    def resolve(self, context: ResolvingContext, dependency_node: DependencyNode) -> Any:
         dependency_context = DependencyContext(name=self.name, dependency_node=dependency_node)
         value = self.settings.value_factory(self.default_value, dependency_context)
 
@@ -431,7 +437,7 @@ class Dependency:
             ex.append(self)
             raise ex
 
-    async def resolve_async(self, context: ResolvingContext, dependency_node: DependencyNode):
+    async def resolve_async(self, context: ResolvingContext, dependency_node: DependencyNode) -> Any:
         dependency_context = DependencyContext(name=self.name, dependency_node=dependency_node)
         value = self.settings.value_factory(self.default_value, dependency_context)
 
@@ -518,6 +524,7 @@ class GeneratorActivator(Activator):
         def inner():
             try:
                 next(generator)
+                generator.close()
             except StopIteration:
                 pass
 
@@ -532,7 +539,7 @@ class GeneratorActivator(Activator):
     ):
         generator = factory(**resolved_dependencies)
         instance = next(generator)
-        context.add_generator(cls._generator_close(generator))
+        context.add_generator_finalizer(cls._generator_close(generator))
         return instance
 
     @classmethod
@@ -546,16 +553,6 @@ class GeneratorActivator(Activator):
 
 
 class AsyncFactoryActivator(Activator):
-    @classmethod
-    def _generator_close(cls, generator: types.GeneratorType):
-        def inner():
-            try:
-                next(generator)
-            except StopIteration:
-                pass
-
-        return inner
-
     @classmethod
     def activate(
         cls,
@@ -581,6 +578,7 @@ class AsyncGeneratorActivator(Activator):
         async def inner():
             try:
                 await anext(generator)
+                await generator.aclose()
             except StopAsyncIteration:
                 pass
 
@@ -604,7 +602,7 @@ class AsyncGeneratorActivator(Activator):
     ):
         generator = factory(**resolved_dependencies)
         instance = await anext(generator)
-        context.add_generator(cls._generator_close(generator))
+        context.add_generator_finalizer(cls._generator_close(generator))
         return instance
 
 
@@ -745,7 +743,7 @@ class Decorator:
         service_type: type,
         decorator_type: type,
         registration_filter: RegistrationFilter,
-        decorator_context_filter: DecoratorContextFilter,
+        decorator_node_filter: NodeFilter,
         decorated_arg: str | None,
         dependency_config: dict[str, DependencySettings] = {},
     ):
@@ -758,7 +756,7 @@ class Decorator:
             dependency_config=dependency_config,
         )
         self.registration_filter = registration_filter
-        self.decorator_context_filter = decorator_context_filter
+        self.decorated_node_filter = decorator_node_filter
 
     def decorate(
         self,
@@ -788,7 +786,7 @@ class Registration:
         "lifespan",
         "name",
         "dependency_config",
-        "parent_context_filter",
+        "parent_node_filter",
         "tags",
         "scoped_teardown",
         "creator",
@@ -803,8 +801,8 @@ class Registration:
         lifespan: Lifespan,
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
-        parent_context_filter: ParentContextFilter = default_parent_context_filter,
-        tags: list[Tag] | None = None,
+        parent_node_filter: NodeFilter = default_parent_node_filter,
+        tags: Sequence[Tag] | None = None,
         scoped_teardown: Callable | None = None,
     ):
         if scoped_teardown and not lifespan == Lifespan.scoped:
@@ -819,7 +817,7 @@ class Registration:
         self.name = name
         self.tags = tuple(tags) if tags else tuple()
         self.id = str(uuid4())
-        self.parent_context_filter = parent_context_filter
+        self.parent_node_filter = parent_node_filter
         self.scoped_teardown = scoped_teardown
         self.was_used = False
 
@@ -850,6 +848,7 @@ class Registration:
             implementation=self.implementation,
             lifespan=self.lifespan,
             registration_name=self.name,
+            registration_tags=self.tags,
         )
 
         parent_node.add_child(new_instance_node)
@@ -877,10 +876,8 @@ class Registration:
         built_instance = self.creator.create(context, new_instance_node)
         new_instance_node.set_instance(built_instance)
 
-        decorator_context = DecoratorContext(decorated=new_instance_node)
         top_decorated_node = new_instance_node
-
-        for dec in context.find_decorators_that_apply(self, decorator_context):
+        for dec in context.find_decorators_that_apply(self, decorated_instance_node=new_instance_node):
             next_decorated_node = DependencyNode(
                 service_type=self.service_type,
                 implementation=dec.decorator_type,
@@ -917,10 +914,9 @@ class Registration:
         built_instance = await self.creator.create_async(context, new_instance_node)
         new_instance_node.set_instance(built_instance)
 
-        decorator_context = DecoratorContext(decorated=new_instance_node)
         top_decorated_node = new_instance_node
 
-        for dec in context.find_decorators_that_apply(self, decorator_context):
+        for dec in context.find_decorators_that_apply(self, decorated_instance_node=new_instance_node):
             next_decorated_node = DependencyNode(
                 service_type=self.service_type,
                 implementation=dec.decorator_type,
@@ -1058,16 +1054,15 @@ class ResolvingContext:
         registration_list_reducing_filter: Callable[[Registration, Sequence[Registration]], bool],
         parent_node: DependencyNode,
     ) -> list[Registration]:
-        parent_context = ParentContext(parent=parent_node)
         scoped_registrations = [
             r
             for r in self.scope.get_registrations(service_type)
-            if registration_filter(r) and r.parent_context_filter(parent_context)
+            if registration_filter(r) and r.parent_node_filter(parent_node)
         ]
         container_registrations = [
             r
             for r in self.registry.get_registrations(service_type)
-            if registration_filter(r) and r.parent_context_filter(parent_context)
+            if registration_filter(r) and r.parent_node_filter(parent_node)
         ]
         combined_registrations = scoped_registrations + container_registrations
 
@@ -1079,12 +1074,12 @@ class ResolvingContext:
         return reduce(reducer, combined_registrations, [])
 
     def find_decorators_that_apply(
-        self, registration: Registration, decorator_context: DecoratorContext
+        self, registration: Registration, decorated_instance_node: DependencyNode
     ) -> list[Decorator]:
         return [
             d
             for d in self.registry.get_decorators(registration.service_type)
-            if d.registration_filter(registration) and d.decorator_context_filter(decorator_context)
+            if d.registration_filter(registration) and d.decorated_node_filter(decorated_instance_node)
         ]
 
     def find_pre_configurations_that_apply(self, registration: Registration):
@@ -1094,8 +1089,8 @@ class ResolvingContext:
             if not c.has_run and c.filter(registration)
         ]
 
-    def add_generator(self, generator: Callable):
-        self.scope.add_generator(generator)
+    def add_generator_finalizer(self, generator: Callable):
+        self.scope.add_generator_finalizer(generator)
 
     def get_cached(self, reg_id: str) -> DependencyNode | None:
         return self._cache.get(reg_id)
@@ -1137,7 +1132,7 @@ class Scope(Resolver):
         self._scoped_instances: dict[str, DependencyNode] = {}
         self._sync_teardowns: dict[str, Callable] = {}
         self._async_teardowns: dict[str, Callable] = {}
-        self._generators: deque[Callable] = deque()
+        self._generator_finalizers: deque[Callable] = deque()
 
     async def __aenter__(self):
         await self.before_start_async()
@@ -1170,19 +1165,19 @@ class Scope(Resolver):
     async def after_finish_async(self):
         pass
 
-    def add_generator(self, generator: Callable):
-        self._generators.appendleft(generator)
+    def add_generator_finalizer(self, generator: Callable):
+        self._generator_finalizers.appendleft(generator)
 
     def _close_generators(self):
-        for generator in self._generators:
+        for generator in self._generator_finalizers:
             generator()
 
     async def _async_close_generators(self):
-        for generator in self._generators:
-            if inspect.iscoroutinefunction(generator):
-                await generator()
+        for finalizer in self._generator_finalizers:
+            if inspect.iscoroutinefunction(finalizer):
+                await finalizer()
             else:
-                generator()
+                finalizer()
 
     async def _run_async_teardowns(self):
         for registration_id, teardown_fn in self._async_teardowns.items():
@@ -1212,7 +1207,7 @@ class Scope(Resolver):
         instance: TService | None = None,
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
-        parent_context_filter: ParentContextFilter = default_parent_context_filter,
+        parent_node_filter: NodeFilter = default_parent_node_filter,
     ):
         pass
 
@@ -1240,7 +1235,7 @@ class ContainerScope(Scope):
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
         tags: list[Tag] | None = None,
-        parent_context_filter: ParentContextFilter = default_parent_context_filter,
+        parent_node_filter: NodeFilter = default_parent_node_filter,
         scoped_teardown: Callable[[TService], Any] | None = None,
     ):
         if instance is not None:
@@ -1251,7 +1246,7 @@ class ContainerScope(Scope):
                     lifespan=Lifespan.scoped,
                     name=name,
                     tags=tags,
-                    parent_context_filter=parent_context_filter,
+                    parent_node_filter=parent_node_filter,
                     scoped_teardown=scoped_teardown,
                 )
             )
@@ -1264,7 +1259,7 @@ class ContainerScope(Scope):
                     name=name,
                     dependency_config=dependency_config,
                     tags=tags,
-                    parent_context_filter=parent_context_filter,
+                    parent_node_filter=parent_node_filter,
                     scoped_teardown=scoped_teardown,
                 )
             )
@@ -1277,7 +1272,7 @@ class ContainerScope(Scope):
                     name=name,
                     dependency_config=dependency_config,
                     tags=tags,
-                    parent_context_filter=parent_context_filter,
+                    parent_node_filter=parent_node_filter,
                     scoped_teardown=scoped_teardown,
                 )
             )
@@ -1290,7 +1285,7 @@ class ContainerScope(Scope):
                     name=name,
                     dependency_config=dependency_config,
                     tags=tags,
-                    parent_context_filter=parent_context_filter,
+                    parent_node_filter=parent_node_filter,
                     scoped_teardown=scoped_teardown,
                 )
             )
@@ -1379,8 +1374,8 @@ class Container(Resolver):
         lifespan: Lifespan = Lifespan.once_per_graph,
         name: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
-        tags: list[Tag] | None = None,
-        parent_context_filter: ParentContextFilter = default_parent_context_filter,
+        tags: Sequence[Tag] | None = None,
+        parent_node_filter: NodeFilter = default_parent_node_filter,
         scoped_teardown: Callable[[TService], Any] | None = None,
     ):
         if instance is not None:
@@ -1392,7 +1387,7 @@ class Container(Resolver):
                     lifespan=Lifespan.singleton,
                     name=name,
                     tags=tags,
-                    parent_context_filter=parent_context_filter,
+                    parent_node_filter=parent_node_filter,
                     scoped_teardown=scoped_teardown,
                 )
             )
@@ -1405,7 +1400,7 @@ class Container(Resolver):
                     lifespan=lifespan,
                     name=name,
                     tags=tags,
-                    parent_context_filter=parent_context_filter,
+                    parent_node_filter=parent_node_filter,
                     scoped_teardown=scoped_teardown,
                 )
             )
@@ -1418,7 +1413,7 @@ class Container(Resolver):
                     lifespan=lifespan,
                     name=name,
                     tags=tags,
-                    parent_context_filter=parent_context_filter,
+                    parent_node_filter=parent_node_filter,
                     scoped_teardown=scoped_teardown,
                 )
             )
@@ -1431,7 +1426,7 @@ class Container(Resolver):
                     lifespan=lifespan,
                     name=name,
                     tags=tags,
-                    parent_context_filter=parent_context_filter,
+                    parent_node_filter=parent_node_filter,
                     scoped_teardown=scoped_teardown,
                 )
             )
@@ -1443,7 +1438,7 @@ class Container(Resolver):
         subclass_type_filter: Callable[[type], bool] = always_true,
         get_registration_name: Callable[[type], str | None] = constant(None),
         tags: list[Tag] | None = None,
-        parent_context_filter: ParentContextFilter = default_parent_context_filter,
+        parent_node_filter: NodeFilter = default_parent_node_filter,
     ):
         full_type_filter = ~(is_abstract) & subclass_type_filter
         subclasses = get_subclasses(base_type, full_type_filter)
@@ -1455,14 +1450,14 @@ class Container(Resolver):
                 lifespan=lifespan,
                 name=name,
                 tags=tags,
-                parent_context_filter=parent_context_filter,
+                parent_node_filter=parent_node_filter,
             )
             self.register(
                 sc,
                 lifespan=lifespan,
                 tags=tags,
                 name=name,
-                parent_context_filter=parent_context_filter,
+                parent_node_filter=parent_node_filter,
             )
 
     def register_decorator(
@@ -1470,7 +1465,7 @@ class Container(Resolver):
         service_type: type,
         decorator_type: type,
         registration_filter: Callable[[Registration], bool] = default_registration_filter,
-        decorator_context_filter: DecoratorContextFilter = default_decorator_context_filter,
+        decorator_node_filter: NodeFilter = default_decorated_node_filter,
         decorated_arg: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
     ):
@@ -1479,7 +1474,7 @@ class Container(Resolver):
                 service_type=service_type,
                 decorator_type=decorator_type,
                 registration_filter=registration_filter,
-                decorator_context_filter=decorator_context_filter,
+                decorator_node_filter=decorator_node_filter,
                 decorated_arg=decorated_arg,
                 dependency_config=dependency_config,
             )
@@ -1498,29 +1493,6 @@ class Container(Resolver):
             None,
         )
 
-    @deprecated("Use register_generic_subclasses instead")
-    def register_open_generic(
-        self,
-        generic_service_type: type,
-        fallback_type: type | None = None,
-        fallback_name: str | None = None,
-        lifespan: Lifespan = Lifespan.once_per_graph,
-        subclass_type_filter: Callable[[type], bool] = always_true,
-        get_registration_name: Callable[[type], str | None] = constant(None),
-        tags: list[Tag] | None = None,
-        parent_context_filter: ParentContextFilter = default_parent_context_filter,
-    ):
-        self.register_generic_subclasses(
-            generic_service_type=generic_service_type,
-            fallback_type=fallback_type,
-            fallback_name=fallback_name,
-            lifespan=lifespan,
-            subclass_type_filter=subclass_type_filter,
-            get_registration_name=get_registration_name,
-            tags=tags,
-            parent_context_filter=parent_context_filter,
-        )
-
     def register_generic_subclasses(
         self,
         generic_service_type: type,
@@ -1530,7 +1502,7 @@ class Container(Resolver):
         subclass_type_filter: Callable[[type], bool] = always_true,
         get_registration_name: Callable[[type], str | None] = constant(None),
         tags: list[Tag] | None = None,
-        parent_context_filter: ParentContextFilter = default_parent_context_filter,
+        parent_node_filter: NodeFilter = default_parent_node_filter,
     ):
         full_type_filter = ~is_abstract & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, full_type_filter)
@@ -1544,7 +1516,7 @@ class Container(Resolver):
                     lifespan=lifespan,
                     name=name,
                     tags=tags,
-                    parent_context_filter=parent_context_filter,
+                    parent_node_filter=parent_node_filter,
                 )
 
         if fallback_type:
@@ -1554,29 +1526,8 @@ class Container(Resolver):
                 lifespan=lifespan,
                 name=fallback_name,
                 tags=tags,
-                parent_context_filter=parent_context_filter,
+                parent_node_filter=parent_node_filter,
             )
-
-    @deprecated("Use register_generic_decorator instead")
-    def register_open_generic_decorator(
-        self,
-        generic_service_type: type,
-        generic_decorator_type: type,
-        subclass_type_filter: Callable[[type], bool] = always_true,
-        decorated_arg: str | None = None,
-        dependency_config: dict[str, DependencySettings] = {},
-        registration_filter: Callable[[Registration], bool] = default_registration_filter,
-        decorator_context_filter: DecoratorContextFilter = default_decorator_context_filter,
-    ):
-        self.register_generic_decorator(
-            generic_service_type=generic_service_type,
-            generic_decorator_type=generic_decorator_type,
-            subclass_type_filter=subclass_type_filter,
-            decorated_arg=decorated_arg,
-            dependency_config=dependency_config,
-            registration_filter=registration_filter,
-            decorator_context_filter=decorator_context_filter,
-        )
 
     def register_generic_decorator(
         self,
@@ -1586,7 +1537,7 @@ class Container(Resolver):
         decorated_arg: str | None = None,
         dependency_config: dict[str, DependencySettings] = {},
         registration_filter: Callable[[Registration], bool] = default_registration_filter,
-        decorator_context_filter: DecoratorContextFilter = default_decorator_context_filter,
+        decorated_node_filter: NodeFilter = default_decorated_node_filter,
     ):
         full_type_filter = ~is_abstract & ~name_starts_with("__DecoratedGeneric__") & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, full_type_filter)
@@ -1610,7 +1561,7 @@ class Container(Resolver):
                         decorated_arg=decorated_arg,
                         dependency_config=dependency_config,
                         registration_filter=registration_filter,
-                        decorator_context_filter=decorator_context_filter,
+                        decorator_node_filter=decorated_node_filter,
                     )
                 else:
                     self.register_decorator(
@@ -1619,7 +1570,7 @@ class Container(Resolver):
                         decorated_arg=decorated_arg,
                         dependency_config=dependency_config,
                         registration_filter=registration_filter,
-                        decorator_context_filter=decorator_context_filter,
+                        decorator_node_filter=decorated_node_filter,
                     )
 
     def resolve(
@@ -1705,6 +1656,5 @@ class DependencySettings:
 
 RegistrationFilter = Callable[[Registration], bool]
 RegistrationListReducingFilter = Callable[[Registration, Sequence[Registration]], bool]
-ParentContextFilter = Callable[[ParentContext], bool]
+NodeFilter = Callable[[Node], bool]
 DependencyValueFactory = Callable[[Any, DependencyContext], Any]
-DecoratorContextFilter = Callable[[DecoratorContext], bool]

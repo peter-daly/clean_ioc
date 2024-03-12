@@ -572,16 +572,16 @@ container.register(A, instance=a3)
 ar1 = container.resolve(A, filter=has_tag("a", "a1")) # returns a1
 al1 = container.resolve(list[A], filter=has_tag("a"))  # returns [a2, a1]
 al2 = container.resolve(list[A], filter=has_tag("a", "a1")) # returns [a1]
-al3 = container.resolve(list[A], filter=fn_not(has_tag("a", "a1")))  # returns [a3, a2]
-al4 = container.resolve(list[A], filter=fn_not(has_tag("a"))) # returns [a3]
+al3 = container.resolve(list[A], filter=~has_tag("a", "a1"))  # returns [a3, a2]
+al4 = container.resolve(list[A], filter=~has_tag("a")) # returns [a3]
 al5 = container.resolve(list[A]) # returns [a3, a2, a1]
 ```
 
 
 
-## Parent Context Filters
+## Parent Node Filters
 
-Registrations can also specify that should only apply to certain parents objects by setting the parent_context_filter
+Registrations can also specify that should only apply to certain parents objects by setting the parent_node_filter
 
 ```python
 class A:
@@ -603,8 +603,8 @@ class E:
 
 container = Container()
 
-container.register(A, B, parent_context_filter=parent_implementation_is(E))
-container.register(A, C, parent_context_filter=parent_implementation_is(D))
+container.register(A, B, parent_node_filter=implementation_type_is(E))
+container.register(A, C, parent_node_filter=implementation_type_is(D))
 container.register(D)
 container.register(E)
 

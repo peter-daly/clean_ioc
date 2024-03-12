@@ -113,3 +113,13 @@
     Added predicates for registration filters
     Fix bug with OnlyRunOncePerInstanceBundle
     Added future support for python 3.12 generics
+
+0.16.0
+-----
+    BREAKING CHANGES:
+    Removed ParentContext and DecoratorContext and just use Nodes directly
+    DecoratorContextFilter replaced with NodeFilter
+    ParentContextFilter replaced with NodeFilter
+    clean_ioc.dependency_context_filters replaces with clean_ioc.node_filters
+    parent_context_filter arg replaced with parent_node_filter in all registartion methods
+    decorator_context_filter arg replaced with decorator_node_filter in all decorator methods

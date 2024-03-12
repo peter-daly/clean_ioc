@@ -26,8 +26,7 @@ from clean_ioc import (
     NeedsScopedRegistrationError,
     Tag,
 )
-from clean_ioc.functional_utils import fn_not
-from clean_ioc.parent_context_filters import parent_implementation_is
+from clean_ioc.node_filters import implementation_type_is
 from clean_ioc.registration_filters import (
     has_tag,
     has_tag_with_value_in,
@@ -896,8 +895,8 @@ def test_registration_with_tags():
     ar1 = container.resolve(A, filter=has_tag("a", "a1"))
     al1 = container.resolve(list[A], filter=has_tag("a"))
     al2 = container.resolve(list[A], filter=has_tag("a", "a1"))
-    al3 = container.resolve(list[A], filter=fn_not(has_tag("a", "a1")))
-    al4 = container.resolve(list[A], filter=fn_not(has_tag("a")))
+    al3 = container.resolve(list[A], filter=~has_tag("a", "a1"))
+    al4 = container.resolve(list[A], filter=~has_tag("a"))
     al5 = container.resolve(list[A])
 
     assert_that(ar1).matches(is_same_instance_as(a1))
@@ -937,7 +936,7 @@ def test_decorator_with_registration_filters():
 
     container.register(A, instance=a1, name="a1")
     container.register(A, instance=a2, name="a2", tags=[Tag("do_not_decorate")])
-    container.register_decorator(A, DecA, registration_filter=fn_not(has_tag("do_not_decorate")))
+    container.register_decorator(A, DecA, registration_filter=~has_tag("do_not_decorate"))
 
     ar1 = container.resolve(A, filter=with_name("a1"))
     ar2 = container.resolve(A, filter=with_name("a2"))
@@ -986,8 +985,8 @@ def test_parent_context_filter():
 
     container = Container()
 
-    container.register(A, B, parent_context_filter=parent_implementation_is(E))
-    container.register(A, C, parent_context_filter=parent_implementation_is(D))
+    container.register(A, B, parent_node_filter=implementation_type_is(E))
+    container.register(A, C, parent_node_filter=implementation_type_is(D))
     container.register(D)
     container.register(E)
 

@@ -4,32 +4,11 @@ from typing import TypeVar
 TArg = TypeVar("TArg")
 
 
-def no_op(*args, **kwargs):
-    pass
-
-
-def identity(val: TArg) -> TArg:
-    return val
-
-
 def constant(val: TArg) -> Callable[..., TArg]:
     def fun(*_):
         return val
 
     return fun
-
-
-def compose(*funcs: Callable):
-    backwards = list(reversed(funcs))
-    initial, *rest = backwards
-
-    def composed_function(*args, **kwargs):
-        value = initial(*args, **kwargs)
-        for func in rest:
-            value = func(value)
-        return value
-
-    return composed_function
 
 
 def fn_not(func: Callable[..., bool]):
