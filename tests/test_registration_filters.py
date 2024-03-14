@@ -30,15 +30,9 @@ def test_has_tag_with_value_or_missing_tag():
         tags=[Tag("name", "value")],
     )
 
-    assert_that(
-        has_tag_with_value_or_missing_tag("name", "value")(registration)
-    ).matches(True)
-    assert_that(has_tag_with_value_or_missing_tag("name", "val")(registration)).matches(
-        False
-    )
-    assert_that(
-        has_tag_with_value_or_missing_tag("yourname", "yourvalue")(registration)
-    ).matches(True)
+    assert_that(has_tag_with_value_or_missing_tag("name", "value")(registration)).matches(True)
+    assert_that(has_tag_with_value_or_missing_tag("name", "val")(registration)).matches(False)
+    assert_that(has_tag_with_value_or_missing_tag("yourname", "yourvalue")(registration)).matches(True)
 
 
 def test_has_tag_with_value_in():
@@ -49,12 +43,30 @@ def test_has_tag_with_value_in():
         tags=[Tag("name", "value")],
     )
 
-    assert_that(has_tag_with_value_in("name", "value", "value2")(registration)).matches(
-        True
+    assert_that(has_tag_with_value_in("name", "value", "value2")(registration)).matches(True)
+    assert_that(has_tag_with_value_in("name", "val", "val2")(registration)).matches(False)
+    assert_that(has_tag_with_value_in("yourname", "value", "val")(registration)).matches(False)
+
+
+def test_tags_can_be_destructured_into_the_filter():
+    tag = Tag("name", "value")
+    registration = Registration(
+        service_type=int,
+        implementation=lambda: 5,
+        lifespan=Lifespan.once_per_graph,
+        tags=[tag],
     )
-    assert_that(has_tag_with_value_in("name", "val", "val2")(registration)).matches(
-        False
+
+    assert_that(has_tag(*tag)(registration)).matches(True)
+
+
+def test_name_only_tags_can_be_destructured_into_the_filter():
+    tag = Tag("name")
+    registration = Registration(
+        service_type=int,
+        implementation=lambda: 5,
+        lifespan=Lifespan.once_per_graph,
+        tags=[tag],
     )
-    assert_that(
-        has_tag_with_value_in("yourname", "value", "val")(registration)
-    ).matches(False)
+
+    assert_that(has_tag(*tag)(registration)).matches(True)

@@ -123,3 +123,8 @@
     clean_ioc.dependency_context_filters replaces with clean_ioc.node_filters
     parent_context_filter arg replaced with parent_node_filter in all registartion methods
     decorator_context_filter arg replaced with decorator_node_filter in all decorator methods
+
+
+0.16.1
+-----
+    make Tag class destructurable for filter functions

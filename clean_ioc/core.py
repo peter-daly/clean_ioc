@@ -102,6 +102,11 @@ class Tag:
     name: str
     value: str | None = None
 
+    def __iter__(self):
+        yield self.name
+        if self.value is not None:
+            yield self.value
+
 
 class Lifespan(IntEnum):
     transient = 0
@@ -120,7 +125,7 @@ class Node:
     pre_configured_by: Node
     pre_configures: Node
     registration_name: str | None = None
-    registration_tags: Sequence[Tag] = ()
+    registration_tags: Iterable[Tag] = ()
     instance: Any = UNKNOWN
     lifespan: Lifespan
 
@@ -218,7 +223,7 @@ class DependencyNode(Node):
         implementation: type | Callable,
         lifespan: Lifespan,
         registration_name: str | None = None,
-        registration_tags: Sequence[Tag] = (),
+        registration_tags: Iterable[Tag] = (),
     ):
         self.service_type = service_type
         self.implementation = implementation
@@ -290,16 +295,6 @@ class DependencyContext:
         self.implementation = dependency_node.implementation
         self.parent = dependency_node.parent
         self.decorated = dependency_node.decorated
-
-
-# class ParentContext:
-#     def __init__(self, parent: DependencyNode):
-#         self.parent = parent
-
-
-# class DecoratorContext:
-#     def __init__(self, decorated: DependencyNode):
-#         self.decorated = decorated
 
 
 class CannotResolveError(Exception):
@@ -482,6 +477,7 @@ class Dependency:
 
 class Activator(abc.ABC):
     @classmethod
+    @abc.abstractmethod
     def activate(
         cls,
         factory: Callable,
@@ -490,6 +486,7 @@ class Activator(abc.ABC):
     ) -> Any: ...
 
     @classmethod
+    @abc.abstractmethod
     def activate_async(
         cls,
         factory: Callable,
@@ -612,7 +609,7 @@ class ImplementationCreator:
     def __init__(
         self,
         creator_function: Callable,
-        dependency_config: dict[str, DependencySettings] = {},
+        dependency_config: DependencyConfig = {},
     ):
         self.dependency_config = defaultdict(DependencySettings, dependency_config)
         self.creator_function = creator_function
@@ -640,7 +637,7 @@ class ImplementationCreator:
     def _get_dependencies(
         cls,
         creator_function: Callable,
-        dependency_config: dict[str, DependencySettings],
+        dependency_config: DependencyConfig,
     ) -> dict[str, Dependency]:
         args_infos = get_arg_info(creator_function)
         dependencies = {
@@ -696,7 +693,7 @@ class DecoratorCreator(ImplementationCreator):
         service_type: type,
         decorator_type: type,
         decorated_arg: str | None,
-        dependency_config: dict[str, DependencySettings] = {},
+        dependency_config: DependencyConfig = {},
     ):
         self.service_type = service_type
         super().__init__(creator_function=decorator_type, dependency_config=dependency_config)
@@ -713,7 +710,7 @@ class PreConfiguration:
         service_type: type,
         pre_configuration: Callable[..., None],
         registration_filter: RegistrationFilter,
-        dependency_config: dict[str, DependencySettings],
+        dependency_config: DependencyConfig,
     ):
         self.service_type = service_type
         self.configuration_fn = pre_configuration
@@ -745,7 +742,7 @@ class Decorator:
         registration_filter: RegistrationFilter,
         decorator_node_filter: NodeFilter,
         decorated_arg: str | None,
-        dependency_config: dict[str, DependencySettings] = {},
+        dependency_config: DependencyConfig = {},
     ):
         self.service_type = service_type
         self.decorator_type = decorator_type
@@ -800,9 +797,9 @@ class Registration:
         implementation: Callable,
         lifespan: Lifespan,
         name: str | None = None,
-        dependency_config: dict[str, DependencySettings] = {},
+        dependency_config: DependencyConfig = {},
         parent_node_filter: NodeFilter = default_parent_node_filter,
-        tags: Sequence[Tag] | None = None,
+        tags: Iterable[Tag] | None = None,
         scoped_teardown: Callable | None = None,
     ):
         if scoped_teardown and not lifespan == Lifespan.scoped:
@@ -1051,7 +1048,7 @@ class ResolvingContext:
         self,
         service_type: type,
         registration_filter: Callable[[Registration], bool],
-        registration_list_reducing_filter: Callable[[Registration, Sequence[Registration]], bool],
+        registration_list_reducing_filter: Callable[[Registration, Iterable[Registration]], bool],
         parent_node: DependencyNode,
     ) -> list[Registration]:
         scoped_registrations = [
@@ -1206,7 +1203,7 @@ class Scope(Resolver):
         factory: Callable[..., TService] | None = None,
         instance: TService | None = None,
         name: str | None = None,
-        dependency_config: dict[str, DependencySettings] = {},
+        dependency_config: DependencyConfig = {},
         parent_node_filter: NodeFilter = default_parent_node_filter,
     ):
         pass
@@ -1233,7 +1230,7 @@ class ContainerScope(Scope):
         factory: Callable[..., TService] | None = None,
         instance: TService | None = None,
         name: str | None = None,
-        dependency_config: dict[str, DependencySettings] = {},
+        dependency_config: DependencyConfig = {},
         tags: list[Tag] | None = None,
         parent_node_filter: NodeFilter = default_parent_node_filter,
         scoped_teardown: Callable[[TService], Any] | None = None,
@@ -1318,7 +1315,7 @@ class EmptyContainerScope(Scope):
     async def resolve_async(self, *args):
         pass
 
-    def get_resolved_instances(self, service_type: type[TService]) -> Sequence[TService]:
+    def get_resolved_instances(self, service_type: type[TService]) -> Iterable[TService]:
         return []
 
     @property
@@ -1354,7 +1351,7 @@ class Container(Resolver):
         service_type: type,
         configuration_function: Callable[..., None],
         registration_filter: RegistrationFilter = default_registration_filter,
-        dependency_config: dict[str, DependencySettings] = {},
+        dependency_config: DependencyConfig = {},
     ):
         self.registry.add_pre_configuration(
             PreConfiguration(
@@ -1373,8 +1370,8 @@ class Container(Resolver):
         instance: TService | None = None,
         lifespan: Lifespan = Lifespan.once_per_graph,
         name: str | None = None,
-        dependency_config: dict[str, DependencySettings] = {},
-        tags: Sequence[Tag] | None = None,
+        dependency_config: DependencyConfig = {},
+        tags: Iterable[Tag] | None = None,
         parent_node_filter: NodeFilter = default_parent_node_filter,
         scoped_teardown: Callable[[TService], Any] | None = None,
     ):
@@ -1467,7 +1464,7 @@ class Container(Resolver):
         registration_filter: Callable[[Registration], bool] = default_registration_filter,
         decorator_node_filter: NodeFilter = default_decorated_node_filter,
         decorated_arg: str | None = None,
-        dependency_config: dict[str, DependencySettings] = {},
+        dependency_config: DependencyConfig = {},
     ):
         self.registry.add_decorator(
             Decorator(
@@ -1535,7 +1532,7 @@ class Container(Resolver):
         generic_decorator_type: type,
         subclass_type_filter: Callable[[type], bool] = always_true,
         decorated_arg: str | None = None,
-        dependency_config: dict[str, DependencySettings] = {},
+        dependency_config: DependencyConfig = {},
         registration_filter: Callable[[Registration], bool] = default_registration_filter,
         decorated_node_filter: NodeFilter = default_decorated_node_filter,
     ):
@@ -1654,7 +1651,8 @@ class DependencySettings:
     list_reducing_filter: RegistrationListReducingFilter = default_registration_list_reducing_filter
 
 
+DependencyConfig = dict[str, DependencySettings]
 RegistrationFilter = Callable[[Registration], bool]
-RegistrationListReducingFilter = Callable[[Registration, Sequence[Registration]], bool]
+RegistrationListReducingFilter = Callable[[Registration, Iterable[Registration]], bool]
 NodeFilter = Callable[[Node], bool]
 DependencyValueFactory = Callable[[Any, DependencyContext], Any]
