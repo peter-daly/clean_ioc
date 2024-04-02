@@ -128,3 +128,12 @@
 0.16.1
 -----
     make Tag class destructurable for filter functions
+
+0.17.0
+-----
+    improvements to how generic type args are mapped in generic dependencies
+    export fast api extension dependencies as already wrapped in Depends
+    Remove dynamic name generation when regestering subclasses
+    more node filters
+    more registration filters
+    improve typing for nodes

@@ -253,7 +253,7 @@ def test_generic_decorators_with_different_implementations_of_the_same_dependenc
     )
 
 
-def test_decorator_chooses_dependency_based_on_decorated_dependencies():
+def test_generic_decorator_can_set_the_generic_args_of_a_dependency_with_different_generic_args():
     class Message:
         pass
 
@@ -363,7 +363,7 @@ def test_decorator_chooses_dependency_based_on_decorated_dependencies():
     assert_that(handler_c.child.child).matches(is_exact_type(CHandler))
 
 
-def test_can_filter_parent_context_based_on_registration_name():
+def test_can_filter_parent_based_on_registration_name():
     class Dependency:
         def __init__(self, x: int):
             self.x = x
@@ -383,7 +383,7 @@ def test_can_filter_parent_context_based_on_registration_name():
     assert_that(ten.x).matches(10)
 
 
-def test_can_filter_parent_context_based_on_registration_tags():
+def test_can_filter_parent_based_on_registration_tags():
     class Dependency:
         def __init__(self, x: int):
             self.x = x
@@ -401,3 +401,111 @@ def test_can_filter_parent_context_based_on_registration_tags():
 
     assert_that(five.x).matches(5)
     assert_that(ten.x).matches(10)
+
+
+def test_generic_shared_dependency_among_different_generic_decorator_types_with_different_fallbacks():
+    class Command:
+        pass
+
+    TCommand = TypeVar("TCommand", bound=Command)
+
+    class Query:
+        pass
+
+    TQuery = TypeVar("TQuery", bound=Query)
+
+    class CommandA(Command):
+        pass
+
+    class CommandB(Command):
+        pass
+
+    class QueryC(Query):
+        pass
+
+    class QueryD(Query):
+        pass
+
+    class CommandHandler(Generic[TCommand]):
+        pass
+
+    class QueryHandler(Generic[TQuery]):
+        pass
+
+    class AHandler(CommandHandler[CommandA]):
+        pass
+
+    class BHandler(CommandHandler[CommandB]):
+        pass
+
+    class CHandler(QueryHandler[QueryC]):
+        pass
+
+    class DHandler(QueryHandler[QueryD]):
+        pass
+
+    TContext = TypeVar("TContext")
+
+    class ContextGetter(Generic[TContext]):
+        pass
+
+    class BasicCommandContextGetter(ContextGetter[Command]):
+        pass
+
+    class CommandAContextGetter(ContextGetter[CommandA]):
+        pass
+
+    class BasicQueryContextGetter(ContextGetter[Query]):
+        pass
+
+    class QueryDContextGetter(ContextGetter[QueryD]):
+        pass
+
+    class CommandContextDecorator(Generic[TCommand]):
+        def __init__(self, handler: CommandHandler[TCommand], context_getter: ContextGetter[TCommand]):
+            self.handler = handler
+            self.context_getter = context_getter
+            pass
+
+    class QueryContextDecorator(Generic[TQuery]):
+        def __init__(self, handler: QueryHandler[TQuery], context_getter: ContextGetter[TQuery]):
+            self.handler = handler
+            self.context_getter = context_getter
+            pass
+
+    container = Container()
+
+    container.register_generic_subclasses(
+        ContextGetter,
+        fallback_type=BasicCommandContextGetter,
+        parent_node_filter=nf.implementation_matches_type_filter(tf.is_subclass_of(CommandContextDecorator)),
+    )
+
+    container.register_generic_subclasses(
+        ContextGetter,
+        fallback_type=BasicQueryContextGetter,
+        parent_node_filter=nf.implementation_matches_type_filter(tf.is_subclass_of(QueryContextDecorator)),
+    )
+
+    container.register_generic_subclasses(CommandHandler)
+    container.register_generic_subclasses(QueryHandler)
+
+    container.register_generic_decorator(CommandHandler, CommandContextDecorator)
+    container.register_generic_decorator(QueryHandler, QueryContextDecorator)
+
+    command_handler_a: CommandContextDecorator = container.resolve(CommandHandler[CommandA])  # type: ignore
+    command_handler_b: CommandContextDecorator = container.resolve(CommandHandler[CommandB])  # type: ignore
+    query_handler_c: QueryContextDecorator = container.resolve(QueryHandler[QueryC])  # type: ignore
+    query_handler_d: QueryContextDecorator = container.resolve(QueryHandler[QueryD])  # type: ignore
+
+    assert command_handler_a.context_getter == is_exact_type(CommandAContextGetter)
+    assert command_handler_a.handler == is_exact_type(AHandler)
+
+    assert command_handler_b.context_getter == is_exact_type(BasicCommandContextGetter)
+    assert command_handler_b.handler == is_exact_type(BHandler)
+
+    assert query_handler_c.context_getter == is_exact_type(BasicQueryContextGetter)
+    assert query_handler_c.handler == is_exact_type(CHandler)
+
+    assert query_handler_d.context_getter == is_exact_type(QueryDContextGetter)
+    assert query_handler_d.handler == is_exact_type(DHandler)

@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from clean_ioc import Container
@@ -24,7 +24,7 @@ def test_response_writer_writes_a_header_to_response():
 
     container = Container()
     container.register(MyDependency)
-    app = FastAPI(dependencies=[Depends(add_response_header_writer_to_scope)])
+    app = FastAPI(dependencies=[add_response_header_writer_to_scope])
     add_container_to_app(app, container)
 
     @app.get("/")
@@ -50,7 +50,7 @@ def test_request_header_reader_reads_headers():
 
     container = Container()
     container.register(MyDependency)
-    app = FastAPI(dependencies=[Depends(add_request_header_reader_to_scope)])
+    app = FastAPI(dependencies=[add_request_header_reader_to_scope])
     add_container_to_app(app, container)
 
     @app.get("/")
@@ -87,7 +87,7 @@ def test_with_async_generator_dependency():
 
     container = Container()
     container.register(MyDependency, factory=my_dependency_factory)
-    app = FastAPI(dependencies=[Depends(add_request_header_reader_to_scope)])
+    app = FastAPI(dependencies=[add_request_header_reader_to_scope])
     add_container_to_app(app, container)
 
     @app.get("/")

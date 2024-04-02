@@ -34,7 +34,7 @@ from clean_ioc.registration_filters import (
     with_name,
 )
 from clean_ioc.value_factories import (
-    dont_use_default_parameter,
+    dont_use_default_value,
     set_value,
 )
 
@@ -507,7 +507,7 @@ def test_deep_dependencies_with_dependency_settings():
 
     container.register(
         A,
-        dependency_config={"s": DependencySettings(value_factory=dont_use_default_parameter)},
+        dependency_config={"s": DependencySettings(value_factory=dont_use_default_value)},
     )
     container.register(
         B,

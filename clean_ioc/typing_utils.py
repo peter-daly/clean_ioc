@@ -48,7 +48,7 @@ class GenericTypeMap:
 
     def is_generic_mapping_open(self):
         for k, v in self.inner_map.items():
-            if k == v.__name__:
+            if isinstance(v, TypeVar):
                 return True
         return False
 

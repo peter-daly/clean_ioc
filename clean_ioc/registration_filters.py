@@ -1,4 +1,5 @@
-from typing import TypeVar
+import inspect
+from typing import Callable, TypeVar
 
 from .core import Registration
 from .functional_utils import constant, predicate
@@ -61,6 +62,32 @@ def with_implementation(implementation: type):
 
     def inner(r: Registration):
         return r.implementation == implementation
+
+    return predicate(inner)
+
+
+def with_implementation_matching_filter(type_filter: Callable[[type], bool]):
+    """
+    Returns a filter function that checks if the implementation of a given registration matches a specified type filter.
+
+    Parameters:
+        type_filter (Callable[[type], bool]): A function that takes a type and returns a boolean indicating whether the type matches a specific criteria.
+
+    Returns:
+        Callable[[Registration], bool]: A filter function that takes a registration and returns True if the implementation of the registration matches the specified type filter, False otherwise.
+
+    Example:
+        >>> type_filter = lambda x: issubclass(x, int)
+        >>> registration = Registration(implementation=123)
+        >>> with_implementation_matching_filter(type_filter)(registration)
+        True
+    """
+
+    def inner(r: Registration):
+        if inspect.isfunction(r.implementation):
+            return False
+
+        return type_filter(r.implementation)  # type: ignore
 
     return predicate(inner)
 

@@ -3,8 +3,6 @@ from typing import Any
 from .core import _empty
 from .functional_utils import constant
 
-all_registrations = constant(True)
-
 
 def use_default_value(default_value: Any, *_):
     """
@@ -31,4 +29,4 @@ def set_value(value: Any):
     return constant(value)
 
 
-dont_use_default_parameter = constant(_empty())
+dont_use_default_value = constant(_empty())

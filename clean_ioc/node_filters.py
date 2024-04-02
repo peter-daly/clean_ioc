@@ -1,3 +1,5 @@
+from typing import Callable
+
 from .core import Node, NodeFilter
 from .functional_utils import constant, predicate
 
@@ -7,6 +9,20 @@ yes = constant(True)
 def implementation_type_is(cls: type):
     def inner(node: Node):
         return node.implementation == cls
+
+    return predicate(inner)
+
+
+def service_type_matches_type_filter(type_filter: Callable[[type], bool]):
+    def inner(node: Node):
+        return type_filter(node.service_type)
+
+    return predicate(inner)
+
+
+def implementation_matches_type_filter(type_filter: Callable[[type], bool]):
+    def inner(node: Node):
+        return type_filter(node.implementation_type)  # type: ignore
 
     return predicate(inner)
 

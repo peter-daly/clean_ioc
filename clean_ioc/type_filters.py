@@ -36,3 +36,10 @@ def _is_abstract(t: type):
 
 
 is_abstract = predicate(_is_abstract)
+
+
+def is_subclass_of(cls: type):
+    def inner(t: type):
+        return issubclass(t, cls)
+
+    return predicate(inner)

@@ -65,6 +65,14 @@ EMPTY = _empty()
 UNKNOWN = _unknown()
 
 
+def create_generic_decorator_type(concrete_decorator: type):
+    return types.new_class(  # noqa: N806
+        f"__DecoratedGeneric__{concrete_decorator.__name__}",
+        (concrete_decorator,),
+        {},
+    )
+
+
 class ArgInfo:
     def __init__(self, name: str, arg_type: type, default_value: Any):
         self.name = name
@@ -116,18 +124,19 @@ class Lifespan(IntEnum):
 
 
 class Node:
-    service_type: type
-    implementation: type | Callable
-    parent: Node
-    children: list[Node]
-    decorator: Node
-    decorated: Node
-    pre_configured_by: Node
-    pre_configures: Node
-    registration_name: str | None = None
-    registration_tags: Iterable[Tag] = ()
-    instance: Any = UNKNOWN
-    lifespan: Lifespan
+    def __init__(self):
+        self.service_type: type
+        self.implementation: type | Callable
+        self.parent: Node
+        self.children: list[Node]
+        self.decorator: Node
+        self.decorated: Node
+        self.pre_configured_by: Node
+        self.pre_configures: Node
+        self.registration_name: str | None = None
+        self.registration_tags: Iterable[Tag] = ()
+        self.instance: Any = UNKNOWN
+        self.lifespan: Lifespan
 
     def has_registration_tag(self, name: str, value: str | None):
         if value is not None:
@@ -789,6 +798,8 @@ class Registration:
         "creator",
         "id",
         "was_used",
+        "is_named",
+        "generic_mapping",
     )
 
     def __init__(
@@ -817,14 +828,8 @@ class Registration:
         self.parent_node_filter = parent_node_filter
         self.scoped_teardown = scoped_teardown
         self.was_used = False
-
-    @property
-    def generic_mapping(self):
-        return GenericTypeMap.from_type(self.service_type)
-
-    @property
-    def is_named(self):
-        return self.name is not None
+        self.is_named = name is not None
+        self.generic_mapping = GenericTypeMap.from_type(self.service_type)
 
     def has_tag(self, name: str, value: str | None):
         if value is not None:
@@ -1350,6 +1355,7 @@ class Container(Resolver):
         self,
         service_type: type,
         configuration_function: Callable[..., None],
+        *,
         registration_filter: RegistrationFilter = default_registration_filter,
         dependency_config: DependencyConfig = {},
     ):
@@ -1366,6 +1372,7 @@ class Container(Resolver):
         self,
         service_type: type[TService],
         impl_type: type[TService] | None = None,
+        *,
         factory: Callable[..., TService] | None = None,
         instance: TService | None = None,
         lifespan: Lifespan = Lifespan.once_per_graph,
@@ -1431,16 +1438,16 @@ class Container(Resolver):
     def register_subclasses(
         self,
         base_type: type,
+        *,
         lifespan: Lifespan = Lifespan.once_per_graph,
         subclass_type_filter: Callable[[type], bool] = always_true,
-        get_registration_name: Callable[[type], str | None] = constant(None),
+        name: str | None = None,
         tags: list[Tag] | None = None,
         parent_node_filter: NodeFilter = default_parent_node_filter,
     ):
         full_type_filter = ~(is_abstract) & subclass_type_filter
         subclasses = get_subclasses(base_type, full_type_filter)
         for sc in subclasses:
-            name = get_registration_name(sc)
             self.register(
                 base_type,
                 sc,
@@ -1461,6 +1468,7 @@ class Container(Resolver):
         self,
         service_type: type,
         decorator_type: type,
+        *,
         registration_filter: Callable[[Registration], bool] = default_registration_filter,
         decorator_node_filter: NodeFilter = default_decorated_node_filter,
         decorated_arg: str | None = None,
@@ -1493,18 +1501,17 @@ class Container(Resolver):
     def register_generic_subclasses(
         self,
         generic_service_type: type,
+        *,
         fallback_type: type | None = None,
-        fallback_name: str | None = None,
         lifespan: Lifespan = Lifespan.once_per_graph,
         subclass_type_filter: Callable[[type], bool] = always_true,
-        get_registration_name: Callable[[type], str | None] = constant(None),
+        name: str | None = None,
         tags: list[Tag] | None = None,
         parent_node_filter: NodeFilter = default_parent_node_filter,
     ):
         full_type_filter = ~is_abstract & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, full_type_filter)
         for subclass in subclasses:
-            name = get_registration_name(subclass)
             target_generic_base = self._get_target_generic_base(generic_service_type, subclass)
             if target_generic_base:
                 self.register(
@@ -1521,7 +1528,7 @@ class Container(Resolver):
                 generic_service_type,
                 fallback_type,
                 lifespan=lifespan,
-                name=fallback_name,
+                name=name,
                 tags=tags,
                 parent_node_filter=parent_node_filter,
             )
@@ -1530,6 +1537,7 @@ class Container(Resolver):
         self,
         generic_service_type: type,
         generic_decorator_type: type,
+        *,
         subclass_type_filter: Callable[[type], bool] = always_true,
         decorated_arg: str | None = None,
         dependency_config: DependencyConfig = {},
@@ -1546,11 +1554,7 @@ class Container(Resolver):
                 if decorator_is_open_generic:
                     generic_values = get_generic_types(target_generic_base)
                     concrete_decorator = generic_decorator_type[generic_values]  # type: ignore
-                    DecoratedType = types.new_class(  # noqa: N806
-                        f"__DecoratedGeneric__{concrete_decorator.__name__}",
-                        (concrete_decorator,),
-                        {},
-                    )
+                    DecoratedType = create_generic_decorator_type(concrete_decorator)  # noqa: N806
 
                     self.register_decorator(
                         target_generic_base,
