@@ -53,6 +53,20 @@ def test_simple_implementation_registation():
     assert_that(a).matches(is_exact_type(B))
 
 
+def test_simple_implementation_registation_can_also_resolve_from_implementation_type():
+    class A:
+        pass
+
+    class B(A):
+        pass
+
+    container = Container()
+    container.register(A, B)
+
+    b = container.resolve(B)
+    assert_that(b).matches(is_exact_type(B))
+
+
 def test_simple_factory_registation():
     class A:
         pass

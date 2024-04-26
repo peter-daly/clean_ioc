@@ -25,8 +25,6 @@ from typing import MutableSequence as TypingMutableSequence
 from typing import Sequence as TypingSequence
 from uuid import uuid4
 
-from clean_ioc.utils import deprecated
-
 from .functional_utils import always_true, constant
 from .type_filters import is_abstract, name_starts_with
 from .typing_utils import (
@@ -66,7 +64,7 @@ UNKNOWN = _unknown()
 
 
 def create_generic_decorator_type(concrete_decorator: type):
-    return types.new_class(  # noqa: N806
+    return types.new_class(
         f"__DecoratedGeneric__{concrete_decorator.__name__}",
         (concrete_decorator,),
         {},
@@ -1278,6 +1276,18 @@ class ContainerScope(Scope):
                     scoped_teardown=scoped_teardown,
                 )
             )
+            self._registrations[service_type].appendleft(
+                Registration(
+                    service_type=impl_type,
+                    implementation=impl_type,
+                    lifespan=Lifespan.scoped,
+                    name=name,
+                    dependency_config=dependency_config,
+                    tags=tags,
+                    parent_node_filter=parent_node_filter,
+                    scoped_teardown=scoped_teardown,
+                )
+            )
         else:
             self._registrations[service_type].appendleft(
                 Registration(
@@ -1421,6 +1431,18 @@ class Container(Resolver):
                     scoped_teardown=scoped_teardown,
                 )
             )
+            self.registry.add_registration(
+                Registration(
+                    service_type=impl_type,
+                    implementation=impl_type,
+                    dependency_config=dependency_config,
+                    lifespan=lifespan,
+                    name=name,
+                    tags=tags,
+                    parent_node_filter=parent_node_filter,
+                    scoped_teardown=scoped_teardown,
+                )
+            )
         else:
             self.registry.add_registration(
                 Registration(
@@ -1454,13 +1476,6 @@ class Container(Resolver):
                 lifespan=lifespan,
                 name=name,
                 tags=tags,
-                parent_node_filter=parent_node_filter,
-            )
-            self.register(
-                sc,
-                lifespan=lifespan,
-                tags=tags,
-                name=name,
                 parent_node_filter=parent_node_filter,
             )
 

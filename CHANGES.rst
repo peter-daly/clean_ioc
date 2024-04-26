@@ -137,3 +137,9 @@
     more node filters
     more registration filters
     improve typing for nodes
+
+
+0.18.0
+-----
+    container.register(ServiceType, ImplementationType) now allows resolving from implementation types
+        container.resolve(ServiceType) and container.resolve(ImplementationType) both work for resolving.

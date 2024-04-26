@@ -1,5 +1,5 @@
 # from __future__ import annotations
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Protocol, TypeVar
 
 from assertive import (
     assert_that,
@@ -426,7 +426,7 @@ def test_generic_shared_dependency_among_different_generic_decorator_types_with_
     class QueryD(Query):
         pass
 
-    class CommandHandler(Generic[TCommand]):
+    class CommandHandler(Protocol[TCommand]):
         pass
 
     class QueryHandler(Generic[TQuery]):
