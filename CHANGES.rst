@@ -143,3 +143,7 @@
 -----
     container.register(ServiceType, ImplementationType) now allows resolving from implementation types
         container.resolve(ServiceType) and container.resolve(ImplementationType) both work for resolving.
+
+0.18.1
+-----
+    FIX: pre_configurations failed wehen run in async mode.
