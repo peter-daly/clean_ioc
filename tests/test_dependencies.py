@@ -19,7 +19,6 @@ from assertive import (
 from clean_ioc import (
     CannotResolveError,
     Container,
-    ContainerScope,
     DependencyContext,
     DependencySettings,
     Lifespan,
@@ -421,7 +420,7 @@ def test_open_generic_decorators():
 
 
 def test_open_generic_decorators_with_protocol():
-    T = TypeVar("T")
+    T = TypeVar("T", covariant=True)
 
     class A(Protocol[T]):
         pass
@@ -892,6 +891,59 @@ def test_pre_configurations():
     mock_method.assert_called_once_with("A")
 
 
+def test_pre_configurations_with_collections():
+    mock_method = Mock()
+
+    class A:
+        def name(self):
+            return "A"
+
+    class B:
+        pass
+
+    class C:
+        pass
+
+    def pre_configure(a: A):
+        mock_method(a.name())
+
+    container = Container()
+
+    container.register(A)
+    container.register(B)
+    container.register(C)
+    container.pre_configure((B, C), pre_configure)
+
+    container.resolve(C)
+    container.resolve(B)
+
+    mock_method.assert_called_once_with("A")
+
+
+async def test_pre_configurations_async():
+    mock_method = Mock()
+
+    class A:
+        def name(self):
+            return "A"
+
+    class B:
+        pass
+
+    def pre_configure(a: A):
+        mock_method(a.name())
+
+    container = Container()
+
+    container.register(A)
+    container.register(B)
+    container.pre_configure(B, pre_configure)
+
+    await container.resolve_async(B)
+
+    mock_method.assert_called_once_with("A")
+
+
 def test_registration_with_tags():
     class A:
         pass
@@ -957,26 +1009,6 @@ def test_decorator_with_registration_filters():
 
     assert_that(ar1).matches(is_exact_type(DecA))
     assert_that(ar2).matches(is_exact_type(A))
-
-
-def test_scope_subclass_as_context_manager():
-    class A:
-        pass
-
-    a_instance = A()
-
-    class TestScope(ContainerScope):
-        def __init__(self, container: Container, a: A):
-            super().__init__(container)
-            self.a = a
-
-        def before_start(self):
-            self.register(A, instance=self.a)
-
-    container = Container()
-    with container.new_scope(TestScope, a_instance) as scope:
-        a_resolved = scope.resolve(A)
-        assert_that(a_resolved).matches(is_same_instance_as(a_instance))
 
 
 def test_parent_context_filter():
@@ -1119,19 +1151,6 @@ def test_generator_doesnt_finish_when_not_in_a_scope():
     assert_that(mock).matches(was_called().never)
 
 
-def test_generator_raises_value_error_when_registered_as_a_singleton():
-    mock = Mock()
-
-    def generator(x: int):
-        yield str(x)
-        mock(x)
-
-    container = Container()
-    container.register(int, instance=5)
-    with raises_exception(ValueError):
-        container.register(str, factory=generator, lifespan=Lifespan.singleton)
-
-
 def test_generator_factory_with_a_context_manager():
     mock = MagicMock()
 
@@ -1158,11 +1177,11 @@ def test_generators_can_depend_on_other_generators():
 
     def generator_int():
         yield 5
-        int_mock(datetime.utcnow())
+        int_mock(datetime.now())
 
     def generator_str(x: int):
         yield str(x)
-        str_mock(datetime.utcnow())
+        str_mock(datetime.now())
 
     container = Container()
     container.register(int, factory=generator_int)
@@ -1179,3 +1198,167 @@ def test_generators_can_depend_on_other_generators():
     assert_that(str_mock_call_arg).matches(is_exact_type(datetime))
 
     assert_that(int_mock_call_arg).matches(is_greater_than(str_mock_call_arg))
+
+
+def test_nested_scopes():
+    container = Container()
+    container.register(int, instance=5)
+    container.register(str, instance="hello")
+
+    with container.new_scope() as outer_scope:
+        outer_scope.register(int, instance=10)
+        with outer_scope.new_scope() as inner_scope:
+            inner_scope.register(int, instance=15)
+            inner_scope.register(str, instance="goodbye")
+            container_int = container.resolve(int)
+            outer_int = outer_scope.resolve(int)
+            inner_int = inner_scope.resolve(int)
+
+            container_str = container.resolve(str)
+            outer_str = outer_scope.resolve(str)
+            inner_str = inner_scope.resolve(str)
+
+            assert container_int == 5
+            assert outer_int == 10
+            assert inner_int == 15
+
+            assert container_str == "hello"
+            assert outer_str == "hello"
+            assert inner_str == "goodbye"
+
+
+def test_nested_scopes_with_scoped_registrations():
+    with Container() as container:
+        container.register(int, instance=5)
+        container_int = container.resolve(int)
+        with container.new_scope() as outer_scope:
+            outer_scope.register(int, instance=10)
+            outer_int = outer_scope.resolve(int)
+            with outer_scope.new_scope() as inner_scope:
+                inner_scope.register(int, instance=15)
+                inner_scope.register(str, instance="goodbye")
+                inner_int = inner_scope.resolve(int)
+
+    assert inner_int == 15
+    assert outer_int == 10
+    assert container_int == 5
+
+
+def test_generators_across_scopes():
+    int_mock = MagicMock()
+    str_mock = MagicMock()
+    float_mock = MagicMock()
+
+    def generator_int():
+        with int_mock:
+            yield 5
+
+    def generator_str(x: int):
+        with str_mock:
+            yield str(x)
+
+    def generator_float(y: str):
+        with float_mock:
+            yield float(y)
+
+    with Container() as container:
+        with container.new_scope() as outer_scope:
+            outer_scope.register(str, factory=generator_str, lifespan=Lifespan.singleton)
+            outer_scope.register(float, factory=generator_float, lifespan=Lifespan.scoped)
+            outer_scope.register(int, factory=generator_int, lifespan=Lifespan.scoped)
+
+            with outer_scope.new_scope() as inner_scope:
+                inner_x = inner_scope.resolve(float)
+                assert inner_x == 5.0
+
+                assert_that(int_mock.__enter__).matches(was_called().once)
+                assert_that(int_mock.__exit__).matches(was_called().never)
+                assert_that(str_mock.__enter__).matches(was_called().once)
+                assert_that(str_mock.__exit__).matches(was_called().never)
+                assert_that(float_mock.__enter__).matches(was_called().once)
+                assert_that(float_mock.__exit__).matches(was_called().never)
+
+            assert_that(int_mock.__enter__).matches(was_called().once)
+            assert_that(int_mock.__exit__).matches(was_called().once)
+            assert_that(str_mock.__enter__).matches(was_called().once)
+            assert_that(str_mock.__exit__).matches(was_called().never)
+            assert_that(float_mock.__enter__).matches(was_called().once)
+            assert_that(float_mock.__exit__).matches(was_called().once)
+
+        # Exit outer scope
+        assert_that(int_mock.__enter__).matches(was_called().once)
+        assert_that(int_mock.__exit__).matches(was_called().once)
+        assert_that(str_mock.__enter__).matches(was_called().once)
+        assert_that(str_mock.__exit__).matches(was_called().never)
+        assert_that(float_mock.__enter__).matches(was_called().once)
+        assert_that(float_mock.__exit__).matches(was_called().once)
+
+    # Exit container
+    assert_that(int_mock.__enter__).matches(was_called().once)
+    assert_that(int_mock.__exit__).matches(was_called().once)
+    assert_that(str_mock.__enter__).matches(was_called().once)
+    assert_that(str_mock.__exit__).matches(was_called().once)
+    assert_that(float_mock.__enter__).matches(was_called().once)
+    assert_that(float_mock.__exit__).matches(was_called().once)
+
+
+def test_singleton_implementation_and_service_type_resolve_to_same_instance():
+    class A:
+        pass
+
+    class B(A):
+        pass
+
+    container = Container()
+    container.register(A, B, lifespan=Lifespan.singleton)
+
+    a = container.resolve(A)
+    b = container.resolve(B)
+
+    assert a is b
+
+
+def test_pre_configuration_on_error_raises_error():
+    class A:
+        pass
+
+    def pre_configure():
+        raise ValueError()
+
+    container = Container()
+    container.register(A)
+    container.pre_configure(A, pre_configure)
+
+    with pytest.raises(ValueError):
+        container.resolve(A)
+
+
+async def test_pre_configuration_on_error_raises_error_async():
+    class A:
+        pass
+
+    async def pre_configure():
+        raise ValueError()
+
+    container = Container()
+    container.register(A)
+    container.pre_configure(A, pre_configure)
+
+    with pytest.raises(ValueError):
+        await container.resolve_async(A)
+
+
+def test_pre_configuration_on_error_continues_when_continue_on_failure_is_true():
+    class A:
+        pass
+
+    def pre_configure():
+        raise ValueError()
+
+    container = Container()
+    container.register(A)
+    container.pre_configure(A, pre_configure, continue_on_failure=True)
+
+    a = container.resolve(A)
+
+    assert a == is_exact_type(A)

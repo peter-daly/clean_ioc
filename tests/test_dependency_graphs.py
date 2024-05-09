@@ -49,9 +49,7 @@ def test_graphs_contain_dependency_logic_after_first_registration_is_cached():
             self.repository = repository
 
     class CHandler(MessageHandler[MessageC]):
-        def __init__(
-            self, sql_repository: SqlRepository, doc_repository: DocRepository
-        ):
+        def __init__(self, sql_repository: SqlRepository, doc_repository: DocRepository):
             self.sql_repository = sql_repository
             self.doc_repository = doc_repository
 

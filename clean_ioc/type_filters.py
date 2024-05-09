@@ -4,10 +4,15 @@ from .functional_utils import predicate
 
 
 def named(name: str):
-    def inner(t: type):
+    """
+    A function that takes a string 'name' and returns a predicate function that checks if the input type's
+    name matches the given 'name'.
+    """
+
+    def _named(t: type):
         return t.__name__ == name
 
-    return predicate(inner)
+    return predicate(_named)
 
 
 def name_starts_with(name: str):

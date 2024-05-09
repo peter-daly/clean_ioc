@@ -89,6 +89,9 @@ class Predicate:
     def __invert__(self):
         return Predicate(_predicate_not(self.func))
 
+    def __repr__(self) -> str:
+        return f"predicate({self.func.__name__})"
+
 
 def predicate(func: Callable[..., bool]):
     if isinstance(func, Predicate):

@@ -17,11 +17,7 @@ def deprecated(custom_message=None):
 
             @functools.wraps(orig_init)
             def new_init(self, *args, **kwargs):
-                message = (
-                    custom_message
-                    if custom_message
-                    else f"Call to deprecated class {obj.__name__}."
-                )
+                message = custom_message if custom_message else f"Call to deprecated class {obj.__name__}."
                 send_deprecation_warning(message)
                 orig_init(self, *args, **kwargs)
 
@@ -31,14 +27,31 @@ def deprecated(custom_message=None):
             # Function deprecation
             @functools.wraps(obj)
             def new_func(*args, **kwargs):
-                message = (
-                    custom_message
-                    if custom_message
-                    else f"Call to deprecated function {obj.__name__}."
-                )
+                message = custom_message if custom_message else f"Call to deprecated function {obj.__name__}."
                 send_deprecation_warning(message)
                 return obj(*args, **kwargs)
 
             return new_func
 
     return decorator
+
+
+def singleton(cls):
+    """
+    A singleton decorator. Returns a wrapper objects. A call on that object
+    returns a single instance object of decorated class. Use the __wrapped__
+    attribute to access decorated class directly in unit tests
+    """
+
+    cls.__INSTANCE__ = None
+
+    def singleton_new(singleton_cls):
+        if cls.__INSTANCE__ is None:
+            # If no instance exists yet, create one
+            cls.__INSTANCE__ = super(cls, cls).__new__(cls)
+        # Return the single instance
+        return cls.__INSTANCE__
+
+    cls.__new__ = singleton_new
+
+    return cls

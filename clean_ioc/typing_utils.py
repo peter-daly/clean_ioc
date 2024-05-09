@@ -5,8 +5,8 @@ from typing import (  # type: ignore
     Generic,
     Protocol,
     TypeVar,
-    _GenericAlias,
-    _SpecialGenericAlias,
+    _GenericAlias,  # type: ignore
+    _SpecialGenericAlias,  # type: ignore
     get_type_hints,
 )
 

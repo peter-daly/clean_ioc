@@ -2,46 +2,45 @@ from typing import Annotated, AsyncGenerator
 
 from clean_ioc.core import (
     Container,
-    ContainerScope,
     RegistrationFilter,
     Scope,
     TService,
     default_registration_filter,
 )
-from fastapi import Depends, FastAPI, Request, Response, params
+from fastapi import Depends, FastAPI, Request, params
 
 
-class FastAPIScope(ContainerScope):
-    def __init__(self, container: Container, request: Request, response: Response):
-        super().__init__(container)
-        self.request = request
-        self.response = response
-
-
-def add_container_to_app(
-    app: FastAPI,
-    container: Container,
-    default_scope_cls: type[FastAPIScope] = FastAPIScope,
-):
+def add_container_to_app(app: FastAPI, container: Container):
     """
     Adds a container to the given FastAPI app.
 
     Args:
         app (FastAPI): The FastAPI app to add the container to.
         container (Container): The container to be added.
-        default_scope_cls (type[FastAPIScope], optional): The default scope class. Defaults to FastAPIScope.
     """
-    app.state.clean_ioc_container = container
-    app.state.clean_ioc_scope_cls = default_scope_cls
+    add_root_scope_to_app(app, container)
+
+
+def add_root_scope_to_app(app: FastAPI, root_scope: Scope):
+    """
+    Adds the root scope to the given FastAPI app.
+
+    Args:
+        app (FastAPI): The FastAPI app to add the container to.
+        root_scope (Scope): The scope to be added.
+    """
+    app.state.root_scope = root_scope
+
+
+def get_root_scope_from_app(app: FastAPI) -> Scope:
+    return app.state.root_scope
 
 
 async def get_scope(
     request: Request,
-    response: Response,
 ) -> AsyncGenerator[Scope, None]:
-    container: Container = request.app.state.clean_ioc_container
-    scope_cls: type[FastAPIScope] = request.app.state.clean_ioc_scope_cls
-    async with container.new_scope(ScopeClass=scope_cls, request=request, response=response) as scope:
+    root_scope: Scope = get_root_scope_from_app(request.app)
+    async with root_scope.new_scope() as scope:
         yield scope
 
 
