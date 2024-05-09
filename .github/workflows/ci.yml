@@ -33,7 +33,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-        poetry install --with=dev
+          poetry install --with=dev
       - name: Run CI
         run: |
           make ci
