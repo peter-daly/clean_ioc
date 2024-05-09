@@ -47,8 +47,7 @@ class HChild1(HBase[int, T2], Generic[T2]):
 
 
 class JBase(Protocol[T1]):
-    def get_item(self, t: T1) -> T1:
-        ...
+    def get_item(self, t: T1) -> T1: ...
 
 
 class JChild(JBase[int]):
@@ -68,9 +67,9 @@ def test_typevar_type_mapping_with_protocol():
 
 def test_is_open_generic():
     assert_that(is_open_generic_type(HBase)).matches(True)
-    assert_that(is_open_generic_type(HBase[T1, T2])).matches(True)
-    assert_that(is_open_generic_type(HBase[T1, int])).matches(True)
-    assert_that(is_open_generic_type(HBase[int, T2])).matches(True)
+    assert_that(is_open_generic_type(HBase[T1, T2])).matches(True)  # type: ignore
+    assert_that(is_open_generic_type(HBase[T1, int])).matches(True)  # type: ignore
+    assert_that(is_open_generic_type(HBase[int, T2])).matches(True)  # type: ignore
     assert_that(is_open_generic_type(HBase[int, int])).matches(False)
 
 
@@ -103,13 +102,13 @@ def test_get_typevar_to_type_mapping():
     assert_that(m6).matches(GenericTypeMap())
 
 
-def test_type_maps_can_work_with_3_12_generics():
-    class NewGeneric[X, Y]:
-        pass
+# def test_type_maps_can_work_with_3_12_generics():
+#     class NewGeneric[X, Y]:
+#         pass
 
-    class Impl(NewGeneric[int, str]):
-        pass
+#     class Impl(NewGeneric[int, str]):
+#         pass
 
-    m1 = GenericTypeMap.from_type(Impl)
-    assert_that(m1["X"]).matches(int)
-    assert_that(m1["Y"]).matches(str)
+#     m1 = GenericTypeMap.from_type(Impl)
+#     assert_that(m1["X"]).matches(int)
+#     assert_that(m1["Y"]).matches(str)

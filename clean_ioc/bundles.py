@@ -10,8 +10,7 @@ logger = logging.getLogger(__name__)
 
 class BaseBundle(ABC):
     @abstractmethod
-    def apply(self, container: Container):
-        ...
+    def apply(self, container: Container): ...
 
     def __call__(self, container: Container):
         self.apply(container=container)
@@ -32,8 +31,7 @@ class OnlyRunOncePerInstanceBundle(BaseBundle):
         self.containers_where_instance_has_run.append(id(container))
 
     @abstractmethod
-    def apply(self, container: Container):
-        ...
+    def apply(self, container: Container): ...
 
     def __call__(self, container: Container):
         if self.bundle_has_run_in_container(container):
@@ -56,14 +54,11 @@ class OnlyRunOncePerClassBundle(BaseBundle):
         cls.CONTAINERS_WHERE_CLASS_HAS_RUN[cls].append(id(container))
 
     @abstractmethod
-    def apply(self, container: Container):
-        ...
+    def apply(self, container: Container): ...
 
     def __call__(self, container: Container):
         if self.__class__.bundle_has_run_in_container(container):
-            logging.warning(
-                "Module class %s attempted to run more than once", type(self)
-            )
+            logging.warning("Module class %s attempted to run more than once", type(self))
             return
 
         self.apply(container=container)

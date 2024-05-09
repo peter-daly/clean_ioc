@@ -1,6 +1,6 @@
 from typing import Any
 
-from .core import _empty
+from .core import EMPTY
 from .functional_utils import constant
 
 
@@ -29,4 +29,4 @@ def set_value(value: Any):
     return constant(value)
 
 
-dont_use_default_value = constant(_empty())
+dont_use_default_value = constant(EMPTY)

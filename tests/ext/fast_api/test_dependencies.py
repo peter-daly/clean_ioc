@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -22,10 +24,14 @@ def test_response_writer_writes_a_header_to_response():
         def do_action(self):
             self.header_writer.write(self.HEADER_NAME, self.HEADER_VALUE)
 
-    container = Container()
-    container.register(MyDependency)
-    app = FastAPI(dependencies=[add_response_header_writer_to_scope])
-    add_container_to_app(app, container)
+    @asynccontextmanager
+    async def lifespan(a):
+        with Container() as container:
+            container.register(MyDependency)
+            add_container_to_app(a, container)
+            yield
+
+    app = FastAPI(lifespan=lifespan, dependencies=[add_response_header_writer_to_scope])
 
     @app.get("/")
     def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
@@ -48,10 +54,14 @@ def test_request_header_reader_reads_headers():
         def do_action(self) -> str:
             return self.header_reader.read(self.HEADER_NAME)
 
-    container = Container()
-    container.register(MyDependency)
-    app = FastAPI(dependencies=[add_request_header_reader_to_scope])
-    add_container_to_app(app, container)
+    @asynccontextmanager
+    async def lifespan(a):
+        with Container() as container:
+            container.register(MyDependency)
+            add_container_to_app(a, container)
+            yield
+
+    app = FastAPI(lifespan=lifespan, dependencies=[add_request_header_reader_to_scope])
 
     @app.get("/")
     def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
@@ -85,10 +95,14 @@ def test_with_async_generator_dependency():
         async with MyDependency(header_reader=header_reader) as dep:
             yield dep
 
-    container = Container()
-    container.register(MyDependency, factory=my_dependency_factory)
-    app = FastAPI(dependencies=[add_request_header_reader_to_scope])
-    add_container_to_app(app, container)
+    @asynccontextmanager
+    async def lifespan(a):
+        with Container() as container:
+            container.register(MyDependency, factory=my_dependency_factory)
+            add_container_to_app(a, container)
+            yield
+
+    app = FastAPI(lifespan=lifespan, dependencies=[add_request_header_reader_to_scope])
 
     @app.get("/")
     async def read_root(my_dependency: MyDependency = Resolve(MyDependency)):

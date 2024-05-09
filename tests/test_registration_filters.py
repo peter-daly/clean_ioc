@@ -1,6 +1,6 @@
 from assertive import assert_that
 
-from clean_ioc import Lifespan, Registration, Tag
+from clean_ioc.core import FactoryActivator, Lifespan, Tag, _Registration
 from clean_ioc.registration_filters import (
     has_tag,
     has_tag_with_value_in,
@@ -9,11 +9,12 @@ from clean_ioc.registration_filters import (
 
 
 def test_has_tag():
-    registration = Registration(
+    registration = _Registration(
         service_type=int,
         implementation=lambda: 5,
         lifespan=Lifespan.once_per_graph,
         tags=[Tag("name", "value")],
+        activator_class=FactoryActivator,
     )
 
     assert_that(has_tag("name")(registration)).matches(True)
@@ -23,11 +24,12 @@ def test_has_tag():
 
 
 def test_has_tag_with_value_or_missing_tag():
-    registration = Registration(
+    registration = _Registration(
         service_type=int,
         implementation=lambda: 5,
         lifespan=Lifespan.once_per_graph,
         tags=[Tag("name", "value")],
+        activator_class=FactoryActivator,
     )
 
     assert_that(has_tag_with_value_or_missing_tag("name", "value")(registration)).matches(True)
@@ -36,11 +38,12 @@ def test_has_tag_with_value_or_missing_tag():
 
 
 def test_has_tag_with_value_in():
-    registration = Registration(
+    registration = _Registration(
         service_type=int,
         implementation=lambda: 5,
         lifespan=Lifespan.once_per_graph,
         tags=[Tag("name", "value")],
+        activator_class=FactoryActivator,
     )
 
     assert_that(has_tag_with_value_in("name", "value", "value2")(registration)).matches(True)
@@ -50,11 +53,12 @@ def test_has_tag_with_value_in():
 
 def test_tags_can_be_destructured_into_the_filter():
     tag = Tag("name", "value")
-    registration = Registration(
+    registration = _Registration(
         service_type=int,
         implementation=lambda: 5,
         lifespan=Lifespan.once_per_graph,
         tags=[tag],
+        activator_class=FactoryActivator,
     )
 
     assert_that(has_tag(*tag)(registration)).matches(True)
@@ -62,11 +66,12 @@ def test_tags_can_be_destructured_into_the_filter():
 
 def test_name_only_tags_can_be_destructured_into_the_filter():
     tag = Tag("name")
-    registration = Registration(
+    registration = _Registration(
         service_type=int,
         implementation=lambda: 5,
         lifespan=Lifespan.once_per_graph,
         tags=[tag],
+        activator_class=FactoryActivator,
     )
 
     assert_that(has_tag(*tag)(registration)).matches(True)
