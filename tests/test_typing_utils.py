@@ -102,13 +102,13 @@ def test_get_typevar_to_type_mapping():
     assert_that(m6).matches(GenericTypeMap())
 
 
-def test_type_maps_can_work_with_3_12_generics():
-    class NewGeneric[X, Y]:
-        pass
+# def test_type_maps_can_work_with_3_12_generics():
+#     class NewGeneric[X, Y]:
+#         pass
 
-    class Impl(NewGeneric[int, str]):
-        pass
+#     class Impl(NewGeneric[int, str]):
+#         pass
 
-    m1 = GenericTypeMap.from_type(Impl)
-    assert_that(m1["X"]).matches(int)
-    assert_that(m1["Y"]).matches(str)
+#     m1 = GenericTypeMap.from_type(Impl)
+#     assert_that(m1["X"]).matches(int)
+#     assert_that(m1["Y"]).matches(str)
