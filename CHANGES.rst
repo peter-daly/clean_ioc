@@ -147,3 +147,17 @@
 0.18.1
 -----
     FIX: pre_configurations failed wehen run in async mode.
+
+1.0.0
+-----
+    First proper release
+    Scopes can now spawn new scopes.
+    Pre configrations api has been improved
+    Scoped lifespan now acts as a singleton in a container
+    Container can now be used as a context manager the same way scopes can.
+    Container can now how scoped teardowns and generator factories on sigletons the same way scopes can.
+
+1.1.0
+-----
+    Decorators can now be functions or generators
+    Pre-configurations can now be functions or generators
