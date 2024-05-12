@@ -8,8 +8,8 @@ It achieves this with what would look traditionally like an Object Oriantated de
 
     There are a few reasons for this:
 
-    1. It means we can focus deocating the abstraction rather then the concrete implementation for a registration
-    2. Allows decorators to have their own dependencies that can be resolved
+    1. It means we can focus deocating the abstraction of the Service Type rather then the Implementation/Concrete Type for a registration
+    2. Allows decorators to have their own dependencies that are registered within the container.
     3. When we just register an instances, it can also be deocrated.
     4. Allows us to selectivly apply decorators
 
@@ -17,8 +17,10 @@ It achieves this with what would look traditionally like an Object Oriantated de
 
 !!! question "Are you suggesting that python should change how it tradionally does decoration for cross cutting concerns?"
 
-    Absolutly not. When adding cross cutting concerns to classes and functions in python, tradional python deocorators work fantastically. They do start to fail to get tricky when the deocorator needs dependencies from an ioc container.
+    Absolutly not. When adding cross cutting concerns to classes and functions in python, tradional python deocorators work fantastically. In fact if you juse want a decorator that mutates a class then use traditional decorators.
 
+
+Here is an example of using a decorator.
 
 ```python
 class NumberGetter:
@@ -77,7 +79,3 @@ getter.get_number() # returns 20
     type(root.child.child) # returns Concrete
 ```
 
-
-## Filtering Decorators
-
-You can also filter decorators like you can with regular registrations.

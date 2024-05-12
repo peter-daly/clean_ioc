@@ -7,6 +7,14 @@ nav:
   - Lifespans: lifespans.md
   - Generics: generics.md
   - Decorators: decorators.md
+  - Scopes: scopes.md
+  - Pre-Configurations: pre-configurations.md
+  - Bundles: bundles.md
+  - Background:
+    - Inversion of Control: inversion-of-control.md
+    - Dependency Injection: dependency-injection.md
+    - SOLID: solid.md
+
 theme:
   name: material
 markdown_extensions:

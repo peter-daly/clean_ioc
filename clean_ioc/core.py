@@ -182,17 +182,17 @@ class Node(Protocol):
     lifespan: Lifespan
     generic_mapping: GenericTypeMap
 
-    def has_registration_tag(self, name: str, value: str | None): ...
+    def has_registration_tag(self, name: str, value: str | None) -> bool: ...
     def unparent(self): ...
     @property
-    def implementation_type(self): ...
+    def implementation_type(self) -> type: ...
     @property
-    def instance_type(self): ...
+    def instance_type(self) -> type: ...
 
     @property
-    def bottom_decorated_node(self): ...
+    def bottom_decorated_node(self) -> Node: ...
     @property
-    def top_decorated_node(self): ...
+    def top_decorated_node(self) -> Node: ...
     def has_dependant_service_type(self, service_type: type) -> bool: ...
 
     def has_dependant_implementation_type(self, implementation_type: type) -> bool: ...
@@ -733,13 +733,13 @@ class PreConfiguration:
     def run(self, context: _ResolvingContext, dependency_node: DependencyNode):
         resolved_dependencies = _resolve_dependencies(self.dependencies, context, dependency_node)
         with self._run_safely():
-            self.activator_class.activate(self.configuration_fn, resolved_dependencies, context, Lifespan.transient)
+            self.activator_class.activate(self.configuration_fn, resolved_dependencies, context, Lifespan.scoped)
 
     async def run_async(self, context: _ResolvingContext, dependency_node: DependencyNode):
         resolved_dependencies = await _resolve_dependencies_async(self.dependencies, context, dependency_node)
         with self._run_safely():
             await self.activator_class.activate_async(
-                self.configuration_fn, resolved_dependencies, context, Lifespan.transient
+                self.configuration_fn, resolved_dependencies, context, Lifespan.scoped
             )
 
 
@@ -752,12 +752,15 @@ class Decorator:
         "decorated_arg",
         "registration_filter",
         "dependencies",
+        "activator_class",
     )
 
     def __init__(
         self,
         service_type: type,
-        decorator_type: type,
+        decorator_type: type | Callable,
+        *,
+        activator_class: type[Activator],
         registration_filter: RegistrationFilter,
         decorator_node_filter: NodeFilter,
         decorated_arg: str | None,
@@ -773,35 +776,30 @@ class Decorator:
         )
         self.registration_filter = registration_filter
         self.decorated_node_filter = decorator_node_filter
+        self.activator_class = activator_class
 
         del dependencies[self.decorated_arg]
 
         self.dependencies: dict[str, Dependency] = dependencies
 
     def decorate(
-        self,
-        instance: Any,
-        context: _ResolvingContext,
-        dependency_node: DependencyNode,
+        self, instance: Any, context: _ResolvingContext, dependency_node: DependencyNode, registration: Registration
     ):
         resolved_dependencies = _resolve_dependencies(self.dependencies, context, dependency_node)
         resolved_dependencies[self.decorated_arg] = instance
 
-        return FactoryActivator.activate(
-            self.decorator_type, resolved_dependencies, context, lifespan=Lifespan.transient
+        return self.activator_class.activate(
+            self.decorator_type, resolved_dependencies, context, lifespan=registration.lifespan
         )
 
     async def decorate_async(
-        self,
-        instance: Any,
-        context: _ResolvingContext,
-        dependency_node: DependencyNode,
+        self, instance: Any, context: _ResolvingContext, dependency_node: DependencyNode, registration: Registration
     ):
         resolved_dependencies = await _resolve_dependencies_async(self.dependencies, context, dependency_node)
         resolved_dependencies[self.decorated_arg] = instance
 
-        return await FactoryActivator.activate_async(
-            self.decorator_type, resolved_dependencies, context, lifespan=Lifespan.transient
+        return await self.activator_class.activate_async(
+            self.decorator_type, resolved_dependencies, context, lifespan=registration.lifespan
         )
 
 
@@ -925,7 +923,7 @@ class _Registration(Registration):
                 lifespan=self.lifespan,
             )
             top_decorated_node.add_decorator(next_decorated_node)
-            built_instance = dec.decorate(built_instance, context, next_decorated_node)
+            built_instance = dec.decorate(built_instance, context, next_decorated_node, self)
             next_decorated_node.set_instance(built_instance)
             top_decorated_node = next_decorated_node
 
@@ -967,7 +965,7 @@ class _Registration(Registration):
                 lifespan=self.lifespan,
             )
             top_decorated_node.add_decorator(next_decorated_node)
-            built_instance = await dec.decorate_async(built_instance, context, next_decorated_node)
+            built_instance = await dec.decorate_async(built_instance, context, next_decorated_node, self)
             next_decorated_node.set_instance(built_instance)
             top_decorated_node = next_decorated_node
 
@@ -1009,7 +1007,7 @@ class _Registry:
         self._registrations[service_type].appendleft(registration)
         self._registrations[implementation].appendleft(registration)
 
-    def register_as_self(
+    def register_concrete(
         self,
         *,
         service_type: type[TService],
@@ -1099,7 +1097,7 @@ class _Registry:
         self,
         *,
         service_type: type,
-        decorator_type: type,
+        decorator_type: type | Callable,
         registration_filter: Callable[[_Registration], bool],
         decorator_node_filter: NodeFilter,
         decorated_arg: str | None,
@@ -1109,6 +1107,7 @@ class _Registry:
             service_type=service_type,
             decorator_type=decorator_type,
             registration_filter=registration_filter,
+            activator_class=self._get_activator_class(decorator_type),
             decorator_node_filter=decorator_node_filter,
             decorated_arg=decorated_arg,
             dependency_config=dependency_config,
@@ -1403,7 +1402,7 @@ class Scope(Resolver, Registrator, ScopeCreator):
                 scoped_teardown=scoped_teardown,
             )
         else:
-            self._registry.register_as_self(
+            self._registry.register_concrete(
                 service_type=service_type,
                 lifespan=lifespan,
                 name=name,
@@ -1433,7 +1432,7 @@ class Scope(Resolver, Registrator, ScopeCreator):
     def register_decorator(
         self,
         service_type: type,
-        decorator_type: type,
+        decorator_type: type | Callable,
         *,
         registration_filter: Callable[[_Registration], bool] = default_registration_filter,
         decorator_node_filter: NodeFilter = default_decorated_node_filter,

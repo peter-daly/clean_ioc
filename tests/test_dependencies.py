@@ -1362,3 +1362,85 @@ def test_pre_configuration_on_error_continues_when_continue_on_failure_is_true()
     a = container.resolve(A)
 
     assert a == is_exact_type(A)
+
+
+def test_pre_configuration_as_a_generator():
+    class A:
+        pass
+
+    spy = Mock()
+
+    def pre_configure():
+        spy()
+        yield
+        spy()
+
+    container = Container()
+    with container:
+        container.pre_configure(A, pre_configure)
+        container.register(A)
+        container.resolve(A)
+        assert spy == was_called().once
+
+    assert spy == was_called().twice
+
+
+def test_decorator_as_a_function():
+    class A:
+        pass
+
+    def decorator_fn(instance: A):
+        setattr(instance, "decorated", True)
+        return instance
+
+    container = Container()
+    container.register(A)
+    container.register_decorator(A, decorator_fn)
+
+    a = container.resolve(A)
+
+    assert getattr(a, "decorated", False)
+
+
+def test_decorator_as_a_generator():
+    class A:
+        pass
+
+    spy = Mock()
+
+    def decorator_fn(instance: A):
+        spy(instance)
+        yield instance
+        spy(instance)
+
+    container = Container()
+    container.register(A)
+    container.register_decorator(A, decorator_fn)
+
+    with container:
+        a = container.resolve(A)
+        assert spy == was_called_with(a).once
+
+    assert spy == was_called_with(a).twice
+
+
+async def test_decorator_as_an_async_generator():
+    class A:
+        pass
+
+    spy = AsyncMock()
+
+    async def decorator_fn(instance: A):
+        await spy(instance)
+        yield instance
+        await spy(instance)
+
+    container = Container()
+    container.register(A)
+    container.register_decorator(A, decorator_fn)
+
+    async with container:
+        a = await container.resolve_async(A)
+        assert spy == was_called_with(a).once
+
+    assert spy == was_called_with(a).twice

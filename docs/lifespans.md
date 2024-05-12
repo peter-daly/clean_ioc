@@ -18,7 +18,7 @@ container.register(Client, lifespan=Lifespan.once_per_graph)
 ```
 
 ### scoped
-Only create a new instance through the lifetime a [scope](#scopes). When not in a scope the behaviour is the same as **once_per_graph**.
+Only create a new instance through the lifetime a [scope](#scopes). When not in a scope the behaviour is the same as **singleton**.
 
 ```python
 container.register(Client, lifespan=Lifespan.scoped)

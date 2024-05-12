@@ -1,5 +1,10 @@
 .PHONY: lint format test ci
 
+typecheck:
+	@echo "Typechecking"
+	@poetry run ruff check .
+
+
 lint:
 	@echo "Linting with Ruff..."
 	@poetry run ruff check .
@@ -12,7 +17,7 @@ test:
 	@echo "Running tests..."
 	@poetry run pytest .
 
-ci: lint format test
+ci: lint format typecheck test
 
 publish:
 	@echo "Publishing to PyPI..."

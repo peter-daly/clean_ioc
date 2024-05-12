@@ -183,7 +183,3 @@ h2 = container.resolve(CommandHandler[GoodbyeCommand])
 h1.handle(HelloCommand()) # prints 'A VERY HAPPY\nHELLO'
 h2.handle(GoodbyeCommand()) # prints 'A VERY SAD\nGOODBYE'
 ```
-
-
-### TODO
-Show generic fallbacks
