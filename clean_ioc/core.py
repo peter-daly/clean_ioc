@@ -1044,11 +1044,13 @@ class _Registry:
         parent_node_filter: NodeFilter,
         scoped_teardown: Callable[[TService], Any] | None,
     ):
+        instance_lifespan = lifespan if lifespan == Lifespan.singleton else Lifespan.scoped
+
         registration = _Registration(
             activator_class=FactoryActivator,
             service_type=service_type,
             implementation=constant(instance),
-            lifespan=lifespan,
+            lifespan=instance_lifespan,
             name=name,
             dependency_config=dependency_config,
             parent_node_filter=parent_node_filter,
@@ -1312,10 +1314,6 @@ class Scope(Resolver, Registrator, ScopeCreator):
         self.register(Registrator, instance=self)
         self.register(Scope, instance=self)
 
-    @classmethod
-    def _instance_lifespan(cls):
-        raise NotImplementedError("Scope._instance_lifespan")
-
     def resolve(
         self,
         service_type: type[TService],
@@ -1372,7 +1370,7 @@ class Scope(Resolver, Registrator, ScopeCreator):
             self._registry.register_instance(
                 service_type=service_type,
                 instance=instance,
-                lifespan=self._instance_lifespan(),
+                lifespan=lifespan,
                 name=name,
                 tags=tags,
                 dependency_config=dependency_config,
@@ -1545,10 +1543,6 @@ class ChildScope(Scope):
         super().__init__()
         self._parent_scope = parent_scope
 
-    @classmethod
-    def _instance_lifespan(cls) -> Lifespan:
-        return Lifespan.scoped
-
     def add_singleton_node(self, registration: _Registration, node: DependencyNode):
         self._parent_scope.add_singleton_node(registration, node)
 
@@ -1619,10 +1613,6 @@ class Container(Scope):
         super().__init__()
         self._singletons: dict[str, DependencyNode] = {}
         self.register(Container, instance=self)
-
-    @classmethod
-    def _instance_lifespan(cls) -> Lifespan:
-        return Lifespan.singleton
 
     def register_subclasses(
         self,

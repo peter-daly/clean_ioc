@@ -26,15 +26,19 @@ class ResponseHeaderWriter:
         self.response.headers[key] = value
 
 
-def _add_request_header_reader_to_scope(request: Request, scope: Scope = Depends(get_scope)):
+def add_request_to_scope(request: Request, scope: Scope = Depends(get_scope)):
+    scope.register(Request, instance=request)
+
+
+def add_response_to_scope(response: Response, scope: Scope = Depends(get_scope)):
+    scope.register(Response, instance=response)
+
+
+def add_request_header_reader_to_scope(request: Request, scope: Scope = Depends(get_scope)):
     reader = RequestHeaderReader(request)
     scope.register(RequestHeaderReader, instance=reader)
 
 
-def _add_response_header_writer_to_scope(response: Response, scope: Scope = Depends(get_scope)):
+def add_response_header_writer_to_scope(response: Response, scope: Scope = Depends(get_scope)):
     writer = ResponseHeaderWriter(response)
     scope.register(ResponseHeaderWriter, instance=writer)
-
-
-add_request_header_reader_to_scope = Depends(_add_request_header_reader_to_scope)
-add_response_header_writer_to_scope = Depends(_add_response_header_writer_to_scope)

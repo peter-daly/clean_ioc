@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from clean_ioc import Container
@@ -28,10 +28,10 @@ def test_response_writer_writes_a_header_to_response():
     async def lifespan(a):
         with Container() as container:
             container.register(MyDependency)
-            add_container_to_app(a, container)
-            yield
+            async with add_container_to_app(a, container):
+                yield
 
-    app = FastAPI(lifespan=lifespan, dependencies=[add_response_header_writer_to_scope])
+    app = FastAPI(lifespan=lifespan, dependencies=[Depends(add_response_header_writer_to_scope)])
 
     @app.get("/")
     def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
@@ -58,10 +58,10 @@ def test_request_header_reader_reads_headers():
     async def lifespan(a):
         with Container() as container:
             container.register(MyDependency)
-            add_container_to_app(a, container)
-            yield
+            async with add_container_to_app(a, container):
+                yield
 
-    app = FastAPI(lifespan=lifespan, dependencies=[add_request_header_reader_to_scope])
+    app = FastAPI(lifespan=lifespan, dependencies=[Depends(add_request_header_reader_to_scope)])
 
     @app.get("/")
     def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
@@ -99,10 +99,10 @@ def test_with_async_generator_dependency():
     async def lifespan(a):
         with Container() as container:
             container.register(MyDependency, factory=my_dependency_factory)
-            add_container_to_app(a, container)
-            yield
+            async with add_container_to_app(a, container):
+                yield
 
-    app = FastAPI(lifespan=lifespan, dependencies=[add_request_header_reader_to_scope])
+    app = FastAPI(lifespan=lifespan, dependencies=[Depends(add_request_header_reader_to_scope)])
 
     @app.get("/")
     async def read_root(my_dependency: MyDependency = Resolve(MyDependency)):

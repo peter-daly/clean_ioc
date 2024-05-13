@@ -377,68 +377,6 @@ h2.handle(GoodbyeCommand()) # prints 'A VERY BIG\nGOODBYE'
 
 ```
 
-## Scopes
-Scopes are a machanism where you guarantee that dependency can be temporarily a singleton within the scope. You can also register dependencies that that are only available withon the scope.
-Some good use cases for scope lifetimes are:
- - http request in a web server
- - message/event if working on a message based system
-For instance you could keep an single database connection open for the entire lifetime of the http request
-
-```python
-class DbConnection:
-    def run_sql(self, statement):
-        # Done some sql Stuff
-        pass
-
-container.register(DbConnection, lifespan=Lifespan.scoped)
-
-with container.get_scope() as scope:
-    db_conn = scope.resolve(DbConnection)
-    db_conn.run_sql("UPDATE table SET column = 1")
-```
-
-Scopes can also be use with asyncio
-
-```python
-class AsyncDbConnection:
-    async def run_sql(self, statement):
-        # Done some sql Stuff
-        pass
-
-container.register(AsyncDbConnection, lifespan=Lifespan.scoped)
-
-async with container.get_scope() as scope:
-    db_conn = scope.resolve(AsyncDbConnection)
-    await db_conn.run_sql("UPDATE table SET column = 1")
-```
-
-
-### Scoped Teardowns
-When you are finished with some dependenies within a scope you might want to perform some teardown action before you exit the scope. For example if we want to close our db connection.
-
-```python
-class AsyncDbConnection:
-    async def run_sql(self, statement):
-        # Done some sql Stuff
-        pass
-    async def close(self):
-        # Close the connection
-        pass
-
-async def close_connection(conn: AsyncDbConnection):
-    await conn.close()
-
-container.register(DbConnection, lifespan=Lifespan.scoped, scoped_teardown=close_connection)
-
-async with container.get_scope() as scope:
-    db_conn = scope.resolve(AsyncDbConnection)
-    await db_conn.run_sql("UPDATE table SET column = 1")
-
-# close connection is run when we exit the scope
-```
-
-***Note***: *When using the scope as an async context manager you need both sync and async teardowns are run, when a scope is used as a normal sync context manager async teardowns are ignored*
-
 
 ## Named registrations & Registration filters
 
@@ -792,37 +730,7 @@ client = container.resolve(Client)
 ```
 
 ***Note*** *If using dependency context on your dependency it's recommended that you use a lifespan of **transient**, because any other lifespan will create only use the parent of the first resolved instance*
-## Pre-configurations
 
-Pre configurations run a side-effect for a type before the type gets resolved.
-This is useful if some python modules have some sort of module level functions that need to be called before the object get created
-
-```python
-import logging
-
-class Client:
-    def __init__(self, logger: logging.Logger):
-        self.logger = logger
-
-    def do_a_thing(self):
-        self.logger.info('Doing a thing')
-
-def logger_fac(context: DependencyContext):
-    module = context.parent.implementation.__module__
-    return logging.getLogger(module)
-
-def configure_logging():
-    logging.basicConfig()
-
-
-
-
-container = Container()
-container.register(Client)
-container.register(logging.Logger, factory=logger_fac, lifespan=Lifespan.transient)
-container.pre_configure(logging.Logger, configure_logging)
-
-client = container.resolve(Client)
 
 
 ```

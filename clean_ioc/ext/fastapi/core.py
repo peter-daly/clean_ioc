@@ -1,3 +1,5 @@
+import logging
+from contextlib import asynccontextmanager
 from typing import Annotated, AsyncGenerator
 
 from clean_ioc.core import (
@@ -9,8 +11,11 @@ from clean_ioc.core import (
 )
 from fastapi import Depends, FastAPI, Request, params
 
+logger = logging.getLogger(__name__)
 
-def add_container_to_app(app: FastAPI, container: Container):
+
+@asynccontextmanager
+async def add_container_to_app(app: FastAPI, container: Container):
     """
     Adds a container to the given FastAPI app.
 
@@ -18,10 +23,12 @@ def add_container_to_app(app: FastAPI, container: Container):
         app (FastAPI): The FastAPI app to add the container to.
         container (Container): The container to be added.
     """
-    add_root_scope_to_app(app, container)
+    async with add_root_scope_to_app(app, container):
+        yield
 
 
-def add_root_scope_to_app(app: FastAPI, root_scope: Scope):
+@asynccontextmanager
+async def add_root_scope_to_app(app: FastAPI, root_scope: Scope):
     """
     Adds the root scope to the given FastAPI app.
 
@@ -29,7 +36,11 @@ def add_root_scope_to_app(app: FastAPI, root_scope: Scope):
         app (FastAPI): The FastAPI app to add the container to.
         root_scope (Scope): The scope to be added.
     """
-    app.state.root_scope = root_scope
+    async with root_scope:
+        logger.debug("adding root scope to the fast api app")
+        app.state.root_scope = root_scope
+        yield
+        logger.debug("releasing root scope from the fast api app")
 
 
 def get_root_scope_from_app(app: FastAPI) -> Scope:

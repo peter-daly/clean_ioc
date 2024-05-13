@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "clean_ioc"
-version = "1.1.0"
+version = "1.2.0"
 description = "An IOC Container for Python 3.10+"
 authors = ["Peter Daly"]
 license = "MIT"
@@ -11,6 +11,7 @@ readme = "README.md"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
 ]
+keywords = ["dependency", "injection", "ioc", "inversion of control", "type", "hints", "typing"]
 packages = [
     { include = "clean_ioc" },
 ]

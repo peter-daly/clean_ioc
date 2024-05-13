@@ -7,11 +7,13 @@ It achieves this with what would look traditionally like an Object Oriantated de
 !!! question "Why use a different decorator pattern?. This looks like Java"
 
     There are a few reasons for this:
-
-    1. It means we can focus deocating the abstraction of the Service Type rather then the Implementation/Concrete Type for a registration
-    2. Allows decorators to have their own dependencies that are registered within the container.
+    1. It allows the decorators to have their own dependencies that are registered within the container
+    2. It allows you to focus on decorating the abstract type rather then the implementation type
     3. When we just register an instances, it can also be deocrated.
     4. Allows us to selectivly apply decorators
+
+!!! note "Python class deocrators mutate or wrap the decorated class"
+    Python class decorators wither mutate or wrap the decorated class in order to add new dependencies to the decorastor it woould have to dynamically change the the classes __init__ function, but since we can seperate the Service Type from the Implementation Type changing the __init__ function would just becomes messy.
 
 
 

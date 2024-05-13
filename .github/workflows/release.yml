@@ -2,6 +2,11 @@ name: Release
 
 on:
   workflow_dispatch
+
+permissions:
+  # Required for tagging
+  contents: write
+
 jobs:
   release:
     name: Release
@@ -25,5 +30,21 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
 
+      - name: Extract version from pyproject.toml
+        id: get_version
+        run: echo "PACKAGE_VERSION=$(poetry version -s)" >> $GITHUB_ENV
+
       - name: Publish package on PyPI
-        run: poetry publish --build -u __token__ -p ${{ secrets.PYPI_TOKEN }}
+        run: |
+          poetry publish --build -u __token__ -p ${{ secrets.PYPI_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+      - name: Create Git tag
+        run: git tag v${{ env.PACKAGE_VERSION }}
+
+      - name: Push tag
+        run: git push origin v${{ env.PACKAGE_VERSION }}

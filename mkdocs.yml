@@ -1,5 +1,7 @@
 site_name: Clean IoC
 site_url: https://example.com/
+repo_name: peter-daly/clean_ioc
+repo_url: https://github.com/peter-daly/clean_ioc
 nav:
   - Home: index.md
   - Simple Uses: simple-uses.md
@@ -10,6 +12,8 @@ nav:
   - Scopes: scopes.md
   - Pre-Configurations: pre-configurations.md
   - Bundles: bundles.md
+  - Extensions:
+    - FastAPI: extensions/fastapi.md
   - Background:
     - Inversion of Control: inversion-of-control.md
     - Dependency Injection: dependency-injection.md
