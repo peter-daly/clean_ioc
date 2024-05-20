@@ -12,7 +12,6 @@ from collections.abc import Callable, Collection, Iterable, MutableSequence, Seq
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import IntEnum
-from functools import reduce
 from typing import (
     Any,
     ClassVar,
@@ -136,15 +135,14 @@ async def _resolve_dependencies_async(
     return kwargs
 
 
-def default_registration_filter(r: _Registration) -> bool:
-    return not r.is_named
+def default_registration_filter(r: Registration) -> bool:
+    return r.name is None
 
 
-def default_dependency_value_factory(default_value: Any, _: DependencyContext) -> Any:
+def default_parameter_value_factory(default_value: Any, _: DependencyContext) -> Any:
     return default_value
 
 
-default_registration_list_reducing_filter = constant(True)
 default_parent_node_filter = constant(True)
 default_decorated_node_filter = constant(True)
 
@@ -507,7 +505,6 @@ class Dependency:
             regs = context.find_registrations(
                 service_type=self.service_type.__args__[0],  # type: ignore
                 registration_filter=self.settings.filter,
-                registration_list_reducing_filter=self.settings.list_reducing_filter,
                 parent_node=dependency_node,
             )
             sequence_node = DependencyNode(
@@ -548,7 +545,6 @@ class Dependency:
             regs = context.find_registrations(
                 service_type=self.service_type.__args__[0],  # type: ignore
                 registration_filter=self.settings.filter,
-                registration_list_reducing_filter=self.settings.list_reducing_filter,
                 parent_node=dependency_node,
             )
             sequence_node = DependencyNode(
@@ -808,10 +804,6 @@ class Registration(Protocol):
     implementation: Callable
     lifespan: Lifespan
     name: str | None
-    is_named: bool
-    parent_node_filter: NodeFilter
-    tags: Iterable[Tag]
-    scoped_teardown: Callable | None
     generic_mapping: GenericTypeMap
 
     def has_tag(self, name: str, value: Any) -> bool: ...
@@ -1211,7 +1203,6 @@ class _ResolvingContext:
         regs = self.find_registrations(
             service_type=service_type,
             registration_filter=registration_filter,
-            registration_list_reducing_filter=constant(True),
             parent_node=parent_node,
         )
         reg = next(iter(regs), None)
@@ -1227,19 +1218,12 @@ class _ResolvingContext:
         self,
         service_type: type,
         registration_filter: Callable[[_Registration], bool],
-        registration_list_reducing_filter: Callable[[_Registration, Iterable[_Registration]], bool],
         parent_node: DependencyNode,
     ) -> list[_Registration]:
         registrations = self.scope.find_registrations(
             service_type=service_type, parent_node=parent_node, filter=registration_filter
         )
-
-        def reducer(accumulator: list[_Registration], registration: _Registration) -> list[_Registration]:
-            if registration_list_reducing_filter(registration, accumulator):
-                accumulator.append(registration)
-            return accumulator
-
-        return reduce(reducer, registrations, [])
+        return registrations
 
     def find_decorators_that_apply(
         self, registration: _Registration, decorated_instance_node: DependencyNode
@@ -1769,13 +1753,11 @@ class Container(Scope):
 
 @dataclass(kw_only=True)
 class DependencySettings:
-    value_factory: DependencyValueFactory = default_dependency_value_factory
+    value_factory: ParameterValueFactory = default_parameter_value_factory
     filter: RegistrationFilter = default_registration_filter
-    list_reducing_filter: RegistrationListReducingFilter = default_registration_list_reducing_filter
 
 
 DependencyConfig = dict[str, DependencySettings]
 RegistrationFilter = Callable[[_Registration], bool]
-RegistrationListReducingFilter = Callable[[_Registration, Iterable[_Registration]], bool]
 NodeFilter = Callable[[Node], bool]
-DependencyValueFactory = Callable[[Any, DependencyContext], Any]
+ParameterValueFactory = Callable[[Any, DependencyContext], Any]

@@ -31,7 +31,7 @@ user = repo.get_user(10)
 ```
 
 
-## Async Function
+## Async Function (Coroutine)
 
 
 !!! warning
@@ -48,7 +48,7 @@ class DbUserRepository:
         pass
 
 async def connection_factory():
-    ## Do some asyncIO operations
+    ## Do some asyncio operations
     return Connection()
 
 

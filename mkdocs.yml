@@ -12,6 +12,8 @@ nav:
   - Scopes: scopes.md
   - Pre-Configurations: pre-configurations.md
   - Bundles: bundles.md
+  - Advanced:
+      - Filtering: advanced/filtering.md
   - Extensions:
     - FastAPI: extensions/fastapi.md
   - Background:
@@ -21,6 +23,18 @@ nav:
 
 theme:
   name: material
+plugins:
+  - glightbox
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_root_heading: true
+            show_symbol_type_toc: true
+            show_if_no_docstring: true
+          rendering:
+            show_source: true
+
 markdown_extensions:
   - admonition
   - pymdownx.highlight:
@@ -30,3 +44,8 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
+  - attr_list
+  - md_in_html
+
+extra_css:
+  - assets/stylesheets/extra.css

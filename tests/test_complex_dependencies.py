@@ -393,8 +393,8 @@ def test_can_filter_parent_based_on_registration_tags():
     container.register(Dependency, tags=[Tag("number", "FIVE")])
     container.register(Dependency, tags=[Tag("number", "TEN")])
 
-    container.register(int, instance=5, parent_node_filter=nf.has_registartion_tag("number", "FIVE"))
-    container.register(int, instance=10, parent_node_filter=nf.has_registartion_tag("number", "TEN"))
+    container.register(int, instance=5, parent_node_filter=nf.has_registration_tag("number", "FIVE"))
+    container.register(int, instance=10, parent_node_filter=nf.has_registration_tag("number", "TEN"))
 
     five = container.resolve(Dependency, filter=rf.has_tag("number", "FIVE"))
     ten = container.resolve(Dependency, filter=rf.has_tag("number", "TEN"))

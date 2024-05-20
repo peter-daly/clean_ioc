@@ -161,7 +161,7 @@ client = container.resolve(list[Client]) ## [TwentyClient(), TenClient()]
 
 ## Collection resolving
 
-If you have multiple dependencues you can simply define a dependency as a list[T] and you can return all of the instances.
+If you have multiple dependencues you can simply define a collection type such as list[T], tuple[T] or set[T] and you can return all of the instances.
 
 ```python
 
@@ -191,3 +191,53 @@ client = container.resolve(Client)
 client.get_numbers() # returns [3, 2, 1]
 ```
 
+!!! note "Supported collection types"
+    The following table shows what collection types are supported and what gets used at run time.
+
+    | Defined Collection Type | Used Collection Type |
+    | :---------: | :----------------------------------: |
+    | **list**                              | list  |
+    | **set**                               | set   |
+    | **tuple**                             | tuple |
+    | **typing.Sequence**                   | tuple |
+    | **collections.abc.Sequence**          | tuple |
+    | **typing.Iterable**                   | tuple |
+    | **collections.abc.Iterable**          | tuple |
+    | **typing.Collection**                 | tuple |
+    | **collections.abc.Collection**        | tuple |
+    | **typing.MutableSequence**            | list |
+    | **collections.abc.MutableSequence**   | list |
+
+
+## Asyncio
+
+You can also resolve dependencies using ***asyncio*** and ***Coroutines***
+This can be done with ```container.resolve_async()```.
+
+Using async resolving is needed if you need async functions or async generators in your factory functions. For more details on factories look [here](./factories.md)
+
+```python
+
+
+
+class UserServiceClient:
+    def __init__(self, http_client: httpx.AsyncClient):
+        self.http_client = http_client
+
+    def get_user(self, user_id: int):
+        return await http_client.get(f"https://myservice.domain/user/{user_id}")
+
+async def http_client_factory():
+    async with httpx.AsyncClient() as client:
+        yield client
+
+
+container = Container()
+container.register(UserServiceClient)
+container.register(httpx.AsyncClient, factory=http_client_factory)
+
+async with container:
+    client = await container.resolve_async(UserServiceClient)
+    user = await client.get_user(123)
+
+```

@@ -41,7 +41,7 @@ def registration_name_is(name: str):
     return predicate(inner)
 
 
-def has_registartion_tag(name: str, value: str | None = None):
+def has_registration_tag(name: str, value: str | None = None):
     def inner(node: Node):
         return node.has_registration_tag(name, value)
 

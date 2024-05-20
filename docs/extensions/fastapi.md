@@ -38,7 +38,7 @@ async def app_lifespan(a: FastAPI):
     async with add_container_to_app(a, container):
         yield
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=app_lifespan)
 
 @app.post("/")
 async def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
@@ -72,7 +72,7 @@ async def app_lifespan(a: FastAPI):
     async with add_container_to_app(a, container):
         yield
 
-app = FastAPI(lifespan=lifespan, dependencies=[Depends(add_request_to_scope)])
+app = FastAPI(lifespan=app_lifespan, dependencies=[Depends(add_request_to_scope)])
 
 @app.post("/")
 async def read_root(my_dependency: MyDependency = Resolve(MyDependency)):

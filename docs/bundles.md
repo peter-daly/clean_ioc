@@ -1,8 +1,9 @@
 
 ## Bundles
+As objects grow bigger it's you will find that you have a lot of cohesive sets of components that you want to register. For example if you want to have a sqlalchemy Session you will likely want a sqlalchemy Engine. This is where bundles come in to plat
 
-
-A bundle is a just a function that accepts a container, it can be used to set up related registrations on the container
+A bundle is a just a ```Callable[[Container], None]``` with a container, it can be used to set up related registrations on the container.
+The simples type of bundle is a simple function that takes a container as a argument.
 
 ```python
 class ClientDependency:
@@ -29,9 +30,14 @@ client.get_number() # returns 10
 
 ### Helper for bundles
 
-There is now a ```BaseBundle``` class that gives you a bit more safety around running a module twice etc. Also you might want to pass in instances into the module.
-You can find the ```BaseBundle``` in ```clean_ioc.bundles``` module
+There are now a set Bundle classes that can be used to set up bundles
+    - ```BaseBundle```: Basic callable for containers
+    - ```OnlyRunOncePerInstanceBundle```: Only run the bundle once in the container instance
+    - ```OnlyRunOncePerClassBundle```: Only run this bundle class once in a container
 
+You can find these classes in the `clean_ioc.bundles` module.
+
+These bundle classes are also useful if you want to pass instances of dependencies with your bundle.
 
 
 ```python
@@ -43,13 +49,13 @@ class Client:
     def __init__(self, config: ClientConfig):
         self.base_url = config.url
 
-    def get_thing(self):
+    def get_user(self):
         # Do some requests stuff here
         pass
 
 
 
-class ClientBundle(BaseBundle):
+class ClientBundle(OnlyRunOncePerClassBundle):
 
     def __init__(self, config: ClientConfig):
         self.config = config
@@ -64,9 +70,10 @@ client_config = ClientConfig(
     url = "https://example.com"
 )
 
-container.apply_bundle(ClientBundle(config=client_config))
+container.apply_bundle(ClientBundle(config=client_config)) # Gets applied
+container.apply_bundle(ClientBundle(config=client_config)) # Does not get applied
 
 client = container.resolve(Client)
 
-client.get_thing()
+user = client.get_user()
 ```
