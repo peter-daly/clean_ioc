@@ -16,50 +16,38 @@ class BaseBundle(ABC):
         self.apply(container=container)
 
 
-class OnlyRunOncePerInstanceBundle(BaseBundle):
-    containers_where_instance_has_run: list[int]
-
-    def __new__(cls, *args, **kwargs):
-        instance = super().__new__(cls)
-        instance.containers_where_instance_has_run = []
-        return instance
-
-    def bundle_has_run_in_container(self, container: Container):
-        return id(container) in self.containers_where_instance_has_run
-
-    def mark_bundle_as_ran_in_container(self, container: Container):
-        self.containers_where_instance_has_run.append(id(container))
+class RunOnceBundle(BaseBundle):
+    BUNDLE_RUN_HISTORY: ClassVar[dict[str, list[int]]] = defaultdict(list)
 
     @abstractmethod
     def apply(self, container: Container): ...
 
+    @abstractmethod
+    def get_bundle_identifier(self) -> str: ...
+
     def __call__(self, container: Container):
-        if self.bundle_has_run_in_container(container):
-            logging.warning("Module instance %s attempted to run more than once", self)
+        bundle_identifier = self.get_bundle_identifier()
+        bundle_containers = self.__class__.BUNDLE_RUN_HISTORY[bundle_identifier]
+        container_id = id(container)
+
+        if container_id in bundle_containers:
+            logging.warning("Module %s attempted to run more than once", type(self))
             return
 
         self.apply(container=container)
-        self.mark_bundle_as_ran_in_container(container)
+        bundle_containers.append(container_id)
 
 
-class OnlyRunOncePerClassBundle(BaseBundle):
-    CONTAINERS_WHERE_CLASS_HAS_RUN: ClassVar[dict[type, list[int]]] = defaultdict(list)
-
-    @classmethod
-    def bundle_has_run_in_container(cls, container: Container):
-        return id(container) in cls.CONTAINERS_WHERE_CLASS_HAS_RUN[cls]
-
-    @classmethod
-    def mark_bundle_as_ran_in_container(cls, container: Container):
-        cls.CONTAINERS_WHERE_CLASS_HAS_RUN[cls].append(id(container))
-
+class OnlyRunOncePerInstanceBundle(RunOnceBundle):
     @abstractmethod
     def apply(self, container: Container): ...
 
-    def __call__(self, container: Container):
-        if self.__class__.bundle_has_run_in_container(container):
-            logging.warning("Module class %s attempted to run more than once", type(self))
-            return
+    def get_bundle_identifier(self) -> str:
+        return str(id(self))
 
-        self.apply(container=container)
-        self.__class__.mark_bundle_as_ran_in_container(container)
+
+class OnlyRunOncePerClassBundle(RunOnceBundle):
+    def get_bundle_identifier(self) -> str:
+        module = self.__class__.__module__
+        class_name = self.__class__.__name__
+        return f"{module}.{class_name}"

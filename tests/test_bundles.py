@@ -7,6 +7,7 @@ from clean_ioc.bundles import (
     BaseBundle,
     OnlyRunOncePerClassBundle,
     OnlyRunOncePerInstanceBundle,
+    RunOnceBundle,
 )
 
 
@@ -121,3 +122,33 @@ def test_bundle_class_can_be_called_only_once_across_all_instances_when_set():
 
     assert_that(spy1).matches(was_called().once)
     assert_that(spy2).matches(was_called().never)
+
+
+def test_custom_run_once_bundle():
+    spy1 = Mock()
+    spy2 = Mock()
+    spy3 = Mock()
+
+    class TestBundle(RunOnceBundle):
+        def __init__(self, name: str, mock):
+            self.name = name
+            self.mock = mock
+
+        def get_bundle_identifier(self) -> str:
+            return f"{self.__class__.__name__}-{self.name}"
+
+        def apply(self, container: Container):
+            self.mock()
+
+    container = Container()
+    test_bundle1 = TestBundle("ME", spy1)
+    test_bundle2 = TestBundle("YOU", spy2)
+    test_bundle3 = TestBundle("ME", spy3)
+
+    container.apply_bundle(test_bundle1)
+    container.apply_bundle(test_bundle2)
+    container.apply_bundle(test_bundle3)
+
+    assert_that(spy1).matches(was_called().once)
+    assert_that(spy2).matches(was_called().once)
+    assert_that(spy3).matches(was_called().never)

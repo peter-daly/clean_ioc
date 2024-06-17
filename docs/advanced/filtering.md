@@ -378,7 +378,7 @@ This is where top down filtering and bottom up filtering comes in to play.
 Top down filtering is the filtering method of registrations defining filtering for their children. This is achieved by defining **dependency config** on our **Registration**
 
 
-### Dependency Config & Dependency Settings
+#### Dependency Config & Dependency Settings
 Dependency settings allow you to define what child dependencies to filter for.
 
 Here is the definition of dependency config in Clean Ioc.
