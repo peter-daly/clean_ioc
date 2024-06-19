@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "clean_ioc"
-version = "1.4.1"
+version = "1.4.2"
 description = "An IOC Container for Python 3.10+"
 authors = ["Peter Daly"]
 license = "MIT"
