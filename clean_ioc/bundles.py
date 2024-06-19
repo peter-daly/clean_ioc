@@ -32,7 +32,7 @@ class RunOnceBundle(BaseBundle):
 
         if container_id in bundle_containers:
             logging.warning(
-                "Bundle %s attempted to run more than once on container %s", type(bundle_identifier), container_id
+                "Bundle %s attempted to run more than once on container %s", bundle_identifier, container_id
             )
             return
 
