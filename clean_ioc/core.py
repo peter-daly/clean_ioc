@@ -1287,6 +1287,7 @@ class Scope(Resolver, Registrator, ScopeCreator):
     def __init__(
         self,
     ):
+        self._id = str(uuid4())
         self._registry = _Registry()
         self._scoped_instances: dict[str, DependencyNode] = {}
         self._sync_teardowns: dict[str, Callable] = {}
@@ -1297,6 +1298,10 @@ class Scope(Resolver, Registrator, ScopeCreator):
         self.register(Resolver, instance=self)
         self.register(Registrator, instance=self)
         self.register(Scope, instance=self)
+
+    @property
+    def id(self):
+        return self._id
 
     def resolve(
         self,

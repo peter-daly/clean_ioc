@@ -17,7 +17,7 @@ class BaseBundle(ABC):
 
 
 class RunOnceBundle(BaseBundle):
-    BUNDLE_RUN_HISTORY: ClassVar[dict[str, list[int]]] = defaultdict(list)
+    BUNDLE_RUN_HISTORY: ClassVar[dict[str, list[str]]] = defaultdict(list)
 
     @abstractmethod
     def apply(self, container: Container): ...
@@ -28,7 +28,7 @@ class RunOnceBundle(BaseBundle):
     def __call__(self, container: Container):
         bundle_identifier = self.get_bundle_identifier()
         bundle_containers = self.__class__.BUNDLE_RUN_HISTORY[bundle_identifier]
-        container_id = id(container)
+        container_id = container.id
 
         if container_id in bundle_containers:
             logging.warning(
@@ -45,7 +45,10 @@ class OnlyRunOncePerInstanceBundle(RunOnceBundle):
     def apply(self, container: Container): ...
 
     def get_bundle_identifier(self) -> str:
-        return str(id(self))
+        instance_id = id(self)
+        module = self.__class__.__module__
+        class_name = self.__class__.__name__
+        return f"{module}.{class_name}-{instance_id}"
 
 
 class OnlyRunOncePerClassBundle(RunOnceBundle):
