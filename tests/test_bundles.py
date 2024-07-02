@@ -35,8 +35,6 @@ def test_bundle_instance_can_be_called_multiple_times_when_allowed():
     spy = Mock()
 
     class TestBundle(BaseBundle):
-        INSTANCE_RUN_ONCE = False
-
         def __init__(self, mock):
             self.mock = mock
 

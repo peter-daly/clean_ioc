@@ -2,6 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import ClassVar
+from uuid import uuid4
 
 from clean_ioc import Container
 
@@ -41,14 +42,15 @@ class RunOnceBundle(BaseBundle):
 
 
 class OnlyRunOncePerInstanceBundle(RunOnceBundle):
-    @abstractmethod
-    def apply(self, container: Container): ...
+    def __new__(cls, *args, **kwargs):
+        instance = super().__new__(cls)
+        instance._instance_id = str(uuid4())  # type: ignore
+        return instance
 
     def get_bundle_identifier(self) -> str:
-        instance_id = id(self)
         module = self.__class__.__module__
         class_name = self.__class__.__name__
-        return f"{module}.{class_name}-{instance_id}"
+        return f"{module}.{class_name}-{self._instance_id}"  # type: ignore
 
 
 class OnlyRunOncePerClassBundle(RunOnceBundle):
