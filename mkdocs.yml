@@ -16,7 +16,7 @@ nav:
       - Filtering: advanced/filtering.md
       - Value Factories: advanced/value-factories.md
       - Dependency Context: advanced/dependency-context.md
-      - CleanIoc Inside Dependencies: advanced/accessing-clean-ioc-within-dependency.md
+      - Clean Ioc Inside Dependencies: advanced/accessing-clean-ioc-within-dependency.md
   - Extensions:
     - FastAPI: extensions/fastapi.md
   - Background:
