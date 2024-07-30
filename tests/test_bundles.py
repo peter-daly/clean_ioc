@@ -95,7 +95,7 @@ def test_bundle_class_same_instance_can_run_on_multiple_containers():
 
     assert_that(spy).matches(was_called_once_with(container1))
     assert_that(spy).matches(was_called_once_with(container2))
-    assert_that(spy).matches(was_called().twice)
+    assert_that(spy).matches(was_called().twice())
 
 
 def test_bundle_class_can_be_called_only_once_across_all_instances_when_set():

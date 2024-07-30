@@ -9,7 +9,7 @@ from assertive import (
     assert_that,
     has_length,
     is_exact_type,
-    is_greater_than,
+    is_gt,
     is_same_instance_as,
     raises_exception,
     was_called,
@@ -1095,7 +1095,7 @@ def test_async_scoped_teardowns_dont_get_called_in_sync_context_manager():
     with container.new_scope() as scope:
         scope.resolve(A)
 
-    assert_that(async_teardown).matches(was_called().never)
+    assert_that(async_teardown).matches(was_called().never())
 
 
 def test_generator_factory():
@@ -1112,7 +1112,7 @@ def test_generator_factory():
     with container.new_scope() as scope:
         s = scope.resolve(str)
         assert_that(s).matches("5")
-        assert_that(mock).matches(was_called().never)
+        assert_that(mock).matches(was_called().never())
     assert_that(mock).matches(was_called_with(5))
 
 
@@ -1130,7 +1130,7 @@ def test_generator_factory_works_in_a_scope_without_scoped_objects():
     with container.new_scope() as scope:
         s = scope.resolve(str)
         assert_that(s).matches("5")
-        assert_that(mock).matches(was_called().never)
+        assert_that(mock).matches(was_called().never())
     assert_that(mock).matches(was_called_with(5))
 
 
@@ -1148,7 +1148,7 @@ def test_generator_doesnt_finish_when_not_in_a_scope():
     result = container.resolve(str)
 
     assert_that(result).matches("5")
-    assert_that(mock).matches(was_called().never)
+    assert_that(mock).matches(was_called().never())
 
 
 def test_generator_factory_with_a_context_manager():
@@ -1165,10 +1165,10 @@ def test_generator_factory_with_a_context_manager():
     with container.new_scope() as scope:
         s = scope.resolve(str)
         assert_that(s).matches("5")
-        assert_that(mock.__enter__).matches(was_called().once)
-        assert_that(mock.__exit__).matches(was_called().never)
-    assert_that(mock.__enter__).matches(was_called().once)
-    assert_that(mock.__exit__).matches(was_called().once)
+        assert_that(mock.__enter__).matches(was_called().once())
+        assert_that(mock.__exit__).matches(was_called().never())
+    assert_that(mock.__enter__).matches(was_called().once())
+    assert_that(mock.__exit__).matches(was_called().once())
 
 
 def test_generators_can_depend_on_other_generators():
@@ -1197,7 +1197,7 @@ def test_generators_can_depend_on_other_generators():
     assert_that(int_mock_call_arg).matches(is_exact_type(datetime))
     assert_that(str_mock_call_arg).matches(is_exact_type(datetime))
 
-    assert_that(int_mock_call_arg).matches(is_greater_than(str_mock_call_arg))
+    assert_that(int_mock_call_arg).matches(is_gt(str_mock_call_arg))
 
 
 def test_nested_scopes():
@@ -1271,35 +1271,35 @@ def test_generators_across_scopes():
                 inner_x = inner_scope.resolve(float)
                 assert inner_x == 5.0
 
-                assert_that(int_mock.__enter__).matches(was_called().once)
-                assert_that(int_mock.__exit__).matches(was_called().never)
-                assert_that(str_mock.__enter__).matches(was_called().once)
-                assert_that(str_mock.__exit__).matches(was_called().never)
-                assert_that(float_mock.__enter__).matches(was_called().once)
-                assert_that(float_mock.__exit__).matches(was_called().never)
+                assert_that(int_mock.__enter__).matches(was_called().once())
+                assert_that(int_mock.__exit__).matches(was_called().never())
+                assert_that(str_mock.__enter__).matches(was_called().once())
+                assert_that(str_mock.__exit__).matches(was_called().never())
+                assert_that(float_mock.__enter__).matches(was_called().once())
+                assert_that(float_mock.__exit__).matches(was_called().never())
 
-            assert_that(int_mock.__enter__).matches(was_called().once)
-            assert_that(int_mock.__exit__).matches(was_called().once)
-            assert_that(str_mock.__enter__).matches(was_called().once)
-            assert_that(str_mock.__exit__).matches(was_called().never)
-            assert_that(float_mock.__enter__).matches(was_called().once)
-            assert_that(float_mock.__exit__).matches(was_called().once)
+            assert_that(int_mock.__enter__).matches(was_called().once())
+            assert_that(int_mock.__exit__).matches(was_called().once())
+            assert_that(str_mock.__enter__).matches(was_called().once())
+            assert_that(str_mock.__exit__).matches(was_called().never())
+            assert_that(float_mock.__enter__).matches(was_called().once())
+            assert_that(float_mock.__exit__).matches(was_called().once())
 
         # Exit outer scope
-        assert_that(int_mock.__enter__).matches(was_called().once)
-        assert_that(int_mock.__exit__).matches(was_called().once)
-        assert_that(str_mock.__enter__).matches(was_called().once)
-        assert_that(str_mock.__exit__).matches(was_called().never)
-        assert_that(float_mock.__enter__).matches(was_called().once)
-        assert_that(float_mock.__exit__).matches(was_called().once)
+        assert_that(int_mock.__enter__).matches(was_called().once())
+        assert_that(int_mock.__exit__).matches(was_called().once())
+        assert_that(str_mock.__enter__).matches(was_called().once())
+        assert_that(str_mock.__exit__).matches(was_called().never())
+        assert_that(float_mock.__enter__).matches(was_called().once())
+        assert_that(float_mock.__exit__).matches(was_called().once())
 
     # Exit container
-    assert_that(int_mock.__enter__).matches(was_called().once)
-    assert_that(int_mock.__exit__).matches(was_called().once)
-    assert_that(str_mock.__enter__).matches(was_called().once)
-    assert_that(str_mock.__exit__).matches(was_called().once)
-    assert_that(float_mock.__enter__).matches(was_called().once)
-    assert_that(float_mock.__exit__).matches(was_called().once)
+    assert_that(int_mock.__enter__).matches(was_called().once())
+    assert_that(int_mock.__exit__).matches(was_called().once())
+    assert_that(str_mock.__enter__).matches(was_called().once())
+    assert_that(str_mock.__exit__).matches(was_called().once())
+    assert_that(float_mock.__enter__).matches(was_called().once())
+    assert_that(float_mock.__exit__).matches(was_called().once())
 
 
 def test_singleton_implementation_and_service_type_resolve_to_same_instance():
@@ -1380,9 +1380,9 @@ def test_pre_configuration_as_a_generator():
         container.pre_configure(A, pre_configure)
         container.register(A)
         container.resolve(A)
-        assert spy == was_called().once
+        assert spy == was_called().once()
 
-    assert spy == was_called().twice
+    assert spy == was_called().twice()
 
 
 def test_decorator_as_a_function():
@@ -1419,9 +1419,9 @@ def test_decorator_as_a_generator():
 
     with container:
         a = container.resolve(A)
-        assert spy == was_called_with(a).once
+        assert spy == was_called_with(a).once()
 
-    assert spy == was_called_with(a).twice
+    assert spy == was_called_with(a).twice()
 
 
 async def test_decorator_as_an_async_generator():
@@ -1441,6 +1441,6 @@ async def test_decorator_as_an_async_generator():
 
     async with container:
         a = await container.resolve_async(A)
-        assert spy == was_called_with(a).once
+        assert spy == was_called_with(a).once()
 
-    assert spy == was_called_with(a).twice
+    assert spy == was_called_with(a).twice()

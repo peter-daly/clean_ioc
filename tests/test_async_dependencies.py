@@ -65,12 +65,12 @@ async def test_async_factory_generator_registration():
 
     async with container.new_scope() as scope:
         a = await scope.resolve_async(A)
-        assert_that(mock.__aenter__).matches(was_called().once)
-        assert_that(mock.__aexit__).matches(was_called().never)
+        assert_that(mock.__aenter__).matches(was_called().once())
+        assert_that(mock.__aexit__).matches(was_called().never())
         assert_that(a).matches(is_exact_type(B))
 
-    assert_that(mock.__aenter__).matches(was_called().once)
-    assert_that(mock.__aexit__).matches(was_called().once)
+    assert_that(mock.__aenter__).matches(was_called().once())
+    assert_that(mock.__aexit__).matches(was_called().once())
 
 
 @pytest.mark.asyncio
@@ -101,16 +101,16 @@ async def test_async_factory_generator_registration_with_dependencies():
 
     async with container.new_scope() as scope:
         c = await scope.resolve_async(C)
-        assert_that(a_mock.__aenter__).matches(was_called().once)
-        assert_that(a_mock.__aexit__).matches(was_called().never)
-        assert_that(c_mock.__enter__).matches(was_called().once)
-        assert_that(c_mock.__exit__).matches(was_called().never)
+        assert_that(a_mock.__aenter__).matches(was_called().once())
+        assert_that(a_mock.__aexit__).matches(was_called().never())
+        assert_that(c_mock.__enter__).matches(was_called().once())
+        assert_that(c_mock.__exit__).matches(was_called().never())
         assert_that(c).matches(is_exact_type(C))
 
-    assert_that(a_mock.__aenter__).matches(was_called().once)
-    assert_that(a_mock.__aexit__).matches(was_called().once)
-    assert_that(c_mock.__enter__).matches(was_called().once)
-    assert_that(c_mock.__exit__).matches(was_called().once)
+    assert_that(a_mock.__aenter__).matches(was_called().once())
+    assert_that(a_mock.__aexit__).matches(was_called().once())
+    assert_that(c_mock.__enter__).matches(was_called().once())
+    assert_that(c_mock.__exit__).matches(was_called().once())
 
 
 @pytest.mark.asyncio
