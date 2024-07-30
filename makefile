@@ -2,7 +2,7 @@
 
 typecheck:
 	@echo "Typechecking"
-	@poetry run ruff check .
+	@poetry run pyright .
 
 
 lint:

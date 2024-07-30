@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from assertive import assert_that, was_called, was_called_with
+from assertive import assert_that, was_called, was_called_once, was_called_once_with, was_not_called
 
 from clean_ioc import Container
 from clean_ioc.bundles import (
@@ -28,7 +28,7 @@ def test_only_run_once_per_instance_bundle_will_only_run_once_per_instance():
     container.apply_bundle(test_bundle)
     container.apply_bundle(test_bundle)
 
-    assert_that(spy).matches(was_called().once)
+    assert_that(spy).matches(was_called_once())
 
 
 def test_bundle_instance_can_be_called_multiple_times_when_allowed():
@@ -71,8 +71,8 @@ def test_bundle_class_can_be_called_multiple_times_with_different_instances():
     container.apply_bundle(test_bundle1)
     container.apply_bundle(test_bundle2)
 
-    assert_that(spy1).matches(was_called().once)
-    assert_that(spy2).matches(was_called().once)
+    assert_that(spy1).matches(was_called_once())
+    assert_that(spy2).matches(was_called_once())
 
 
 def test_bundle_class_same_instance_can_run_on_multiple_containers():
@@ -93,8 +93,8 @@ def test_bundle_class_same_instance_can_run_on_multiple_containers():
     container2.apply_bundle(test_bundle)
     container1.apply_bundle(test_bundle)
 
-    assert_that(spy).matches(was_called_with(container1).once)
-    assert_that(spy).matches(was_called_with(container2).once)
+    assert_that(spy).matches(was_called_once_with(container1))
+    assert_that(spy).matches(was_called_once_with(container2))
     assert_that(spy).matches(was_called().twice)
 
 
@@ -118,8 +118,8 @@ def test_bundle_class_can_be_called_only_once_across_all_instances_when_set():
     container.apply_bundle(test_bundle1)
     container.apply_bundle(test_bundle2)
 
-    assert_that(spy1).matches(was_called().once)
-    assert_that(spy2).matches(was_called().never)
+    assert_that(spy1).matches(was_called_once())
+    assert_that(spy2).matches(was_not_called())
 
 
 def test_custom_run_once_bundle():
@@ -147,6 +147,6 @@ def test_custom_run_once_bundle():
     container.apply_bundle(test_bundle2)
     container.apply_bundle(test_bundle3)
 
-    assert_that(spy1).matches(was_called().once)
-    assert_that(spy2).matches(was_called().once)
-    assert_that(spy3).matches(was_called().never)
+    assert_that(spy1).matches(was_called_once())
+    assert_that(spy2).matches(was_called_once())
+    assert_that(spy3).matches(was_not_called())

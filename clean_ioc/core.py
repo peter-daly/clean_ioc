@@ -499,7 +499,7 @@ class Dependency:
             return value
 
         if self.is_dependency_context:
-            return DependencyContext(name=self.name, dependency_node=dependency_node)
+            return dependency_context
 
         if self.generic_collection_type:
             regs = context.find_registrations(
