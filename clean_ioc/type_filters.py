@@ -1,6 +1,6 @@
 import inspect
 
-from .functional_utils import predicate
+from theutilitybelt.functional.predicate import predicate
 
 
 def named(name: str):

@@ -1,7 +1,9 @@
 from typing import Callable
 
+from theutilitybelt.functional.predicate import predicate
+from theutilitybelt.functional.utils import constant
+
 from .core import Node, NodeFilter
-from .functional_utils import constant, predicate
 
 yes = constant(True)
 

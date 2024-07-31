@@ -1,7 +1,8 @@
 from typing import Any, Callable
 
+from theutilitybelt.functional.utils import constant
+
 from .core import Registration
-from .functional_utils import constant
 
 all_items = constant(True)
 

@@ -1,7 +1,8 @@
 from typing import Any
 
+from theutilitybelt.functional.utils import constant
+
 from .core import EMPTY
-from .functional_utils import constant
 
 
 def use_default_value(default_value: Any, *_):

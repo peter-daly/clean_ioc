@@ -912,13 +912,13 @@ extra = ["pygments (>=2.12)"]
 
 [[package]]
 name = "pyright"
-version = "1.1.373"
+version = "1.1.374"
 description = "Command line wrapper for pyright"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pyright-1.1.373-py3-none-any.whl", hash = "sha256:b805413227f2c209f27b14b55da27fe5e9fb84129c9f1eb27708a5d12f6f000e"},
-    {file = "pyright-1.1.373.tar.gz", hash = "sha256:f41bcfc8b9d1802b09921a394d6ae1ce19694957b628bc657629688daf8a83ff"},
+    {file = "pyright-1.1.374-py3-none-any.whl", hash = "sha256:55752bcf7a3646d293cd76710a983b71e16f6128aab2d42468e6eb7e46c0a70d"},
+    {file = "pyright-1.1.374.tar.gz", hash = "sha256:d01b2daf864ba5e0362e56b844984865970d7204158e61eb685e2dab7804cb82"},
 ]
 
 [package.dependencies]
@@ -1249,6 +1249,17 @@ anyio = ">=3.4.0,<5"
 full = ["httpx (>=0.22.0)", "itsdangerous", "jinja2", "python-multipart", "pyyaml"]
 
 [[package]]
+name = "the-utility-belt"
+version = "0.0.4"
+description = ""
+optional = false
+python-versions = "<4.0,>=3.10"
+files = [
+    {file = "the_utility_belt-0.0.4-py3-none-any.whl", hash = "sha256:fb5fe33a5f3c712e72fcb3e6b116731c6ee2ce03d2c7b7afb134c5fefc2b1d78"},
+    {file = "the_utility_belt-0.0.4.tar.gz", hash = "sha256:8114231c2972035e79a9ccdaa564edce45a5e89c23e8217618de001ac54dcf1b"},
+]
+
+[[package]]
 name = "tomli"
 version = "2.0.1"
 description = "A lil' TOML parser"
@@ -1337,4 +1348,4 @@ fastapi = ["fastapi"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "2424b7b694dd2b3490a331cb6bc2ee2fccc7b71a5c60df8d9fe4490b81af0468"
+content-hash = "0910c481169364a03c464d198345aba4233fb8f8a5b69e56d5c8980f6fe1f539"
