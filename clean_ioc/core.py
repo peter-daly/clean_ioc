@@ -26,18 +26,20 @@ from typing import MutableSequence as TypingMutableSequence
 from typing import Sequence as TypingSequence
 from uuid import uuid4
 
-from clean_ioc.utils import singleton
-
-from .functional_utils import always_true, constant
-from .type_filters import is_abstract, name_starts_with
-from .typing_utils import (
+from theutilitybelt.functional.predicate import always_true
+from theutilitybelt.functional.utils import constant
+from theutilitybelt.typing.generics import (
     GenericTypeMap,
     get_generic_bases,
     get_generic_types,
-    get_subclasses,
-    is_open_generic_type,
+    is_generic_type_open,
     try_to_complete_generic,
 )
+from theutilitybelt.typing.utils import get_subclasses
+
+from clean_ioc.utils import singleton
+
+from .type_filters import is_abstract, name_starts_with
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +215,7 @@ class EmptyNode(Node):
         self.instance = EMPTY
         self.lifespan = Lifespan.singleton
         self.children = []
-        self.generic_mapping = GenericTypeMap.from_type(_empty)
+        self.generic_mapping = GenericTypeMap(_empty)
 
     def __bool__(self):
         return False
@@ -274,7 +276,7 @@ class DependencyNode(Node):
         self.pre_configured_by = EmptyNode()
         self.pre_configures = EmptyNode()
         self.instance = UNKNOWN
-        self.generic_mapping = GenericTypeMap.from_type(service_type)
+        self.generic_mapping = GenericTypeMap(service_type)
 
     def set_instance(self, instance: Any):
         if self.instance is UNKNOWN:
@@ -853,7 +855,7 @@ class _Registration(Registration):
         self.scoped_teardown = scoped_teardown
         self.was_used = False
         self.is_named = name is not None
-        self.generic_mapping = GenericTypeMap.from_type(self.service_type)
+        self.generic_mapping = GenericTypeMap(self.service_type)
         self.dependencies: dict[str, Dependency] = _set_up_dependencies(implementation, dependency_config)
 
     def has_tag(self, name: str, value: str | None):
@@ -1614,7 +1616,7 @@ class Container(Scope):
         parent_node_filter: NodeFilter = default_parent_node_filter,
     ):
         full_type_filter = ~(is_abstract) & subclass_type_filter
-        subclasses = get_subclasses(base_type, full_type_filter)
+        subclasses = get_subclasses(base_type, filter=full_type_filter)
         for sc in subclasses:
             self.register(
                 base_type,
@@ -1650,7 +1652,7 @@ class Container(Scope):
         parent_node_filter: NodeFilter = default_parent_node_filter,
     ):
         full_type_filter = ~is_abstract & subclass_type_filter
-        subclasses = get_subclasses(generic_service_type, full_type_filter)
+        subclasses = get_subclasses(generic_service_type, filter=full_type_filter)
         for subclass in subclasses:
             target_generic_base = self._get_target_generic_base(generic_service_type, subclass)
             if target_generic_base:
@@ -1685,8 +1687,8 @@ class Container(Scope):
         decorated_node_filter: NodeFilter = default_decorated_node_filter,
     ):
         full_type_filter = ~is_abstract & ~name_starts_with("__DecoratedGeneric__") & subclass_type_filter
-        subclasses = get_subclasses(generic_service_type, full_type_filter)
-        decorator_is_open_generic = is_open_generic_type(generic_decorator_type)
+        subclasses = get_subclasses(generic_service_type, filter=full_type_filter)
+        decorator_is_open_generic = is_generic_type_open(generic_decorator_type)
 
         for subclass in subclasses:
             target_generic_base = self._get_target_generic_base(generic_service_type, subclass)
