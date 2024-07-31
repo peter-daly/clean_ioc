@@ -25,7 +25,7 @@ the-utility-belt = "^0.0.4"
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0.0"
 pytest-cov = "^4.0.0"
-pytest-asyncio = "^0.21.1"
+pytest-asyncio = ">=0.21.1,<0.24.0"
 assertive = "^0.2.1"
 fastapi = "^0.101.0"
 httpx = "^0.26.0"
