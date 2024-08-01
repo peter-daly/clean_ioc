@@ -968,10 +968,28 @@ class _Registration(Registration):
         return built_instance
 
 
+class _DecoratorStore:
+    def __init__(self):
+        self._decorators: list[tuple[int, Decorator]] = []
+        self.next_index = 0
+
+    def add_decorator(self, decorator: Decorator):
+        self._decorators.append((self.next_index, decorator))
+        self.next_index += 1
+        self._decorators.sort(key=lambda x: x[0])
+
+    def __len__(self):
+        return len(self._decorators)
+
+    def __iter__(self):
+        for _, decorator in self._decorators:
+            yield decorator
+
+
 class _Registry:
     def __init__(self):
         self._registrations: dict[type, deque[_Registration]] = defaultdict(deque)
-        self._decorators: dict[type, deque[Decorator]] = defaultdict(deque)
+        self._decorators: dict[type, _DecoratorStore] = defaultdict(_DecoratorStore)
         self._pre_configurations: dict[type, deque[PreConfiguration]] = defaultdict(deque)
 
     def register_implementation(
@@ -1108,7 +1126,7 @@ class _Registry:
             decorated_arg=decorated_arg,
             dependency_config=dependency_config,
         )
-        self._decorators[service_type].appendleft(decorator)
+        self._decorators[service_type].add_decorator(decorator)
 
     def register_pre_configuration(
         self,
