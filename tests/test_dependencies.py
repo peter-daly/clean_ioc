@@ -286,6 +286,48 @@ def test_nested_decorators_should_be_in_order_of_when_first_registered():
     assert_that(a.a.a).matches(is_exact_type(A))  # type: ignore
 
 
+def test_nested_decorators_with_sort_index():
+    class A:
+        pass
+
+    class D1(A):
+        def __init__(self, a: A):
+            self.a = a
+
+    class D2(A):
+        def __init__(self, a: A):
+            self.a = a
+
+    class D3(A):
+        def __init__(self, a: A):
+            self.a = a
+
+    class D4(A):
+        def __init__(self, a: A):
+            self.a = a
+
+    class D5(A):
+        def __init__(self, a: A):
+            self.a = a
+
+    container = Container()
+
+    container.register(A)
+    container.register_decorator(A, D1)
+    container.register_decorator(A, D2)
+    container.register_decorator(A, D3, position=10)
+    container.register_decorator(A, D4, position=-10)
+    container.register_decorator(A, D5, position=10)
+
+    a: Any = container.resolve(A)
+
+    assert a == is_exact_type(D3)
+    assert a.a == is_exact_type(D5)
+    assert a.a.a == is_exact_type(D1)
+    assert a.a.a.a == is_exact_type(D2)
+    assert a.a.a.a.a == is_exact_type(D4)
+
+
 def test_simple_decorator():
     class A:
         pass
