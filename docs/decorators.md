@@ -48,11 +48,8 @@ sender = container.resolve(MessageSender)
 sender.send("HELLO") # logs while sending
 ```
 
-
-
-
 ## Decorator ordering
-Decorators are resolved in order of when first registered. So the first registered decorator is the highest in the class tree
+By default decorators are resolved in order of when first registered. So the first registered decorator is the highest the object tree.
 
 ```python
     class Abstract:
@@ -81,6 +78,51 @@ Decorators are resolved in order of when first registered. So the first register
     type(root.child) # returns DecoratorTwo
     type(root.child.child) # returns Concrete
 ```
+
+However if you want more control over his you can also set the `position` arg when registering the decorator.
+The `position` arg is an integer.
+
+!!! info
+    The higher the `position` number the higher the position in the tree.
+    By default `position` is 0.
+
+```python
+
+    class Abstract:
+        pass
+
+    class Concrete:
+        pass
+
+    class DecoratorHigh(Abstract):
+        def __init__(self, child: Abstract):
+            self.child = child
+
+    class DecoratorMid(Abstract):
+        def __init__(self, child: Abstract):
+            self.child = child
+
+    class DecoratorLow(Abstract):
+        def __init__(self, child: Abstract):
+            self.child = child
+
+    container = Container()
+
+    container.register(Abstract, Concrete)
+    container.register_decorator(Abstract, DecoratorMid)
+    container.register_decorator(Abstract, DecoratorLow, position=-10)
+    container.register_decorator(Abstract, DecoratorHigh, position=10)
+
+    root = container.resolve(Abstract)
+
+    type(root) # returns DecoratorHigh
+    type(root.child) # returns DecoratorMid
+    type(root.child.child) # returns DecoratorLow
+    type(root.child.child.child) # returns Concrete
+```
+
+
+
 
 ## Manually setting decorated arg
 

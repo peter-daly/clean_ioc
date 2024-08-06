@@ -751,6 +751,7 @@ class Decorator:
         "registration_filter",
         "dependencies",
         "activator_class",
+        "position",
     )
 
     def __init__(
@@ -763,6 +764,7 @@ class Decorator:
         decorator_node_filter: NodeFilter,
         decorated_arg: str | None,
         dependency_config: DependencyConfig = {},
+        position: int = 0,
     ):
         self.service_type = service_type
         self.decorator_type = decorator_type
@@ -775,6 +777,7 @@ class Decorator:
         self.registration_filter = registration_filter
         self.decorated_node_filter = decorator_node_filter
         self.activator_class = activator_class
+        self.position = position
 
         del dependencies[self.decorated_arg]
 
@@ -968,10 +971,34 @@ class _Registration(Registration):
         return built_instance
 
 
+class _DecoratorStore:
+    def __init__(self):
+        self._decorators: list[tuple[int, Decorator]] = []
+        self.next_index = 0
+
+    @classmethod
+    def sort_key(cls, item: tuple[int, Decorator]):
+        insert_index, decorator = item
+        sort_index = decorator.position
+        return (sort_index, -insert_index)
+
+    def add_decorator(self, decorator: Decorator):
+        self._decorators.append((self.next_index, decorator))
+        self.next_index += 1
+        self._decorators.sort(key=self.sort_key)
+
+    def __len__(self):
+        return len(self._decorators)
+
+    def __iter__(self):
+        for _, decorator in self._decorators:
+            yield decorator
+
+
 class _Registry:
     def __init__(self):
         self._registrations: dict[type, deque[_Registration]] = defaultdict(deque)
-        self._decorators: dict[type, deque[Decorator]] = defaultdict(deque)
+        self._decorators: dict[type, _DecoratorStore] = defaultdict(_DecoratorStore)
         self._pre_configurations: dict[type, deque[PreConfiguration]] = defaultdict(deque)
 
     def register_implementation(
@@ -1098,6 +1125,7 @@ class _Registry:
         decorator_node_filter: NodeFilter,
         decorated_arg: str | None,
         dependency_config: DependencyConfig,
+        position: int,
     ):
         decorator = Decorator(
             service_type=service_type,
@@ -1107,8 +1135,9 @@ class _Registry:
             decorator_node_filter=decorator_node_filter,
             decorated_arg=decorated_arg,
             dependency_config=dependency_config,
+            position=position,
         )
-        self._decorators[service_type].appendleft(decorator)
+        self._decorators[service_type].add_decorator(decorator)
 
     def register_pre_configuration(
         self,
@@ -1427,6 +1456,7 @@ class Scope(Resolver, Registrator, ScopeCreator):
         decorator_node_filter: NodeFilter = default_decorated_node_filter,
         decorated_arg: str | None = None,
         dependency_config: DependencyConfig = {},
+        position: int = 0,
     ):
         self._registry.register_decorator(
             service_type=service_type,
@@ -1435,6 +1465,7 @@ class Scope(Resolver, Registrator, ScopeCreator):
             decorator_node_filter=decorator_node_filter,
             decorated_arg=decorated_arg,
             dependency_config=dependency_config,
+            position=position,
         )
 
     def add_singleton_node(self, registration: _Registration, node: DependencyNode): ...
@@ -1685,6 +1716,7 @@ class Container(Scope):
         dependency_config: DependencyConfig = {},
         registration_filter: Callable[[_Registration], bool] = default_registration_filter,
         decorated_node_filter: NodeFilter = default_decorated_node_filter,
+        position: int = 0,
     ):
         full_type_filter = ~is_abstract & ~name_starts_with("__DecoratedGeneric__") & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, filter=full_type_filter)
@@ -1705,6 +1737,7 @@ class Container(Scope):
                         dependency_config=dependency_config,
                         registration_filter=registration_filter,
                         decorator_node_filter=decorated_node_filter,
+                        position=position,
                     )
                 else:
                     self.register_decorator(
@@ -1714,6 +1747,7 @@ class Container(Scope):
                         dependency_config=dependency_config,
                         registration_filter=registration_filter,
                         decorator_node_filter=decorated_node_filter,
+                        position=position,
                     )
 
     def force_run_pre_configuration(
