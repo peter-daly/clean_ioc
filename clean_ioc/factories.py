@@ -1,6 +1,6 @@
 from typing import Any, Callable, TypeVar
 
-from .core import RegistrationFilter, Resolver, default_registration_filter
+from .core import CurrentGraph, RegistrationFilter, Resolver, default_registration_filter
 
 
 def use_registered(cls: type, filter: RegistrationFilter = default_registration_filter):
@@ -13,6 +13,20 @@ def use_registered(cls: type, filter: RegistrationFilter = default_registration_
 def use_registered_async(cls: type, filter: RegistrationFilter = default_registration_filter):
     async def factory(resolver: Resolver):
         return await resolver.resolve_async(cls, filter=filter)
+
+    return factory
+
+
+def use_from_current_graph(cls: type, filter: RegistrationFilter = default_registration_filter):
+    def factory(current_graph: CurrentGraph):
+        return current_graph.resolve(cls, filter=filter)
+
+    return factory
+
+
+def use_from_current_graph_async(cls: type, filter: RegistrationFilter = default_registration_filter):
+    async def factory(current_graph: CurrentGraph):
+        return await current_graph.resolve_async(cls, filter=filter)
 
     return factory
 

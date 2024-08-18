@@ -25,6 +25,7 @@ from clean_ioc import (
     NeedsScopedRegistrationError,
     Tag,
 )
+from clean_ioc.factories import use_from_current_graph
 from clean_ioc.node_filters import implementation_type_is
 from clean_ioc.registration_filters import (
     has_tag,
@@ -1486,3 +1487,28 @@ async def test_decorator_as_an_async_generator():
         assert spy == was_called_with(a).once()
 
     assert spy == was_called_with(a).twice()
+
+
+def test_using_current_graph_finds_dependencies_from_within():
+    class A(Protocol):
+        pass
+
+    class B(Protocol):
+        pass
+
+    class AB(A, B):
+        pass
+
+    class C:
+        def __init__(self, a: A, b: B):
+            self.a = a
+            self.b = b
+
+    container = Container()
+
+    container.register(A, AB)
+    container.register(B, factory=use_from_current_graph(AB))
+    container.register(C)
+    c = container.resolve(C)
+
+    assert c.a is c.b

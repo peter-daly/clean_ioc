@@ -16,7 +16,8 @@ from clean_ioc import (
     DependencySettings,
     Registration,
 )
-from clean_ioc.core import Node, Tag
+from clean_ioc.core import Lifespan, Node, Tag
+from clean_ioc.factories import use_registered
 
 
 def test_value_factories_with_generic_decorators():
@@ -509,3 +510,30 @@ def test_generic_shared_dependency_among_different_generic_decorator_types_with_
 
     assert query_handler_d.context_getter == is_exact_type(QueryDContextGetter)
     assert query_handler_d.handler == is_exact_type(DHandler)
+
+
+def test_use_registered_factory_with_multiple_base_classes():
+    class A(Protocol):
+        pass
+
+    class B(Protocol):
+        pass
+
+    class AB(A, B):
+        pass
+
+    class C:
+        def __init__(self, a: A, b: B):
+            self.a = a
+            self.b = b
+
+    container = Container()
+
+    container.register(A, AB, lifespan=Lifespan.scoped)
+    container.register(B, factory=use_registered(AB), lifespan=Lifespan.scoped)
+    container.register(C, lifespan=Lifespan.scoped)
+
+    with container.new_scope() as scope:
+        c = scope.resolve(C)
+
+        assert c.a is c.b
