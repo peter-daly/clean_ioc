@@ -15,7 +15,7 @@ nav:
   - Advanced:
       - Filtering: advanced/filtering.md
       - Value Factories: advanced/value-factories.md
-      - Dependency Context: advanced/dependency-context.md
+      - Special Dependency Types: advanced/special-dependency-types.md
       - Clean Ioc Inside Dependencies: advanced/accessing-clean-ioc-within-dependency.md
   - Extensions:
     - FastAPI: extensions/fastapi.md

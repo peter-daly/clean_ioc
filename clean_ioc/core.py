@@ -399,6 +399,47 @@ class DependencyContext:
         self.decorated = dependency_node.decorated
 
 
+class CurrentGraph:
+    def __init__(self, parent_node: DependencyNode, resolving_context: _ResolvingContext):
+        self.parent_node = parent_node
+        self.resolving_context = resolving_context
+
+    def _get_dependency_and_graph_node(
+        self, service_type: type[TService], filter: RegistrationFilter = default_registration_filter
+    ):
+        current_graph_node = DependencyNode(
+            service_type=CurrentGraph,
+            implementation=CurrentGraph,
+            lifespan=Lifespan.transient,
+        )
+        self.parent_node.add_child(current_graph_node)
+        dependency_settings = DependencySettings(filter=filter)
+
+        dependency = Dependency(
+            name="__CURRENT_GRAPH__",
+            parent_implementation=CurrentGraph,
+            service_type=service_type,
+            settings=dependency_settings,
+            default_value=EMPTY,
+        )
+
+        return dependency, current_graph_node
+
+    def resolve(
+        self, service_type: type[TService], filter: RegistrationFilter = default_registration_filter
+    ) -> TService:
+        dependency, current_graph_node = self._get_dependency_and_graph_node(service_type, filter)
+
+        return dependency.resolve(self.resolving_context, current_graph_node)
+
+    async def resolve_async(
+        self, service_type: type[TService], filter: RegistrationFilter = default_registration_filter
+    ) -> TService:
+        dependency, current_graph_node = self._get_dependency_and_graph_node(service_type, filter)
+
+        return await dependency.resolve_async(self.resolving_context, current_graph_node)
+
+
 class CannotResolveError(Exception):
     def __init__(self):
         self.dependencies: list[Dependency] = []
@@ -466,6 +507,7 @@ class Dependency:
         "default_value",
         "is_dependency_context",
         "generic_collection_type",
+        "is_current_graph",
     )
 
     def __init__(
@@ -476,6 +518,9 @@ class Dependency:
         settings: DependencySettings,
         default_value: Any,
     ):
+        self.is_dependency_context = False
+        self.is_current_graph = False
+
         self.name = name
         self.parent_implementation = parent_implementation
         if isinstance(parent_implementation, type):
@@ -483,7 +528,6 @@ class Dependency:
         else:
             self.service_type = service_type
         self.settings = settings
-        self.is_dependency_context = service_type == DependencyContext
         generic_origin = getattr(self.service_type, "__origin__", None)
 
         if generic_origin and generic_origin in self.GENERIC_COLLECTION_MAPPINGS:
@@ -492,6 +536,11 @@ class Dependency:
             self.generic_collection_type = None
 
         self.default_value = default_value
+
+        if self.service_type == DependencyContext:
+            self.is_dependency_context = True
+        elif self.service_type == CurrentGraph:
+            self.is_current_graph = True
 
     def resolve(self, context: _ResolvingContext, dependency_node: DependencyNode) -> Any:
         dependency_context = DependencyContext(name=self.name, dependency_node=dependency_node)
@@ -502,6 +551,9 @@ class Dependency:
 
         if self.is_dependency_context:
             return dependency_context
+
+        if self.is_current_graph:
+            return CurrentGraph(parent_node=dependency_node, resolving_context=context)
 
         if self.generic_collection_type:
             regs = context.find_registrations(
