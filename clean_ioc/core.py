@@ -180,7 +180,6 @@ class Node(Protocol):
     registration_tags: Iterable[Tag]
     instance: Any = UNKNOWN
     lifespan: Lifespan
-    generic_mapping: GenericTypeMap
 
     def has_registration_tag(self, name: str, value: str | None) -> bool: ...
     def unparent(self): ...
@@ -199,9 +198,14 @@ class Node(Protocol):
 
     def has_dependant_instance_type(self, instance_type: type) -> bool: ...
 
+    @property
+    def generic_mapping(self) -> GenericTypeMap: ...
+
 
 @singleton
 class EmptyNode(Node):
+    _GENERIC_MAPPING: GenericTypeMap | None = None
+
     def __init__(self):
         self.service_type = _empty
         self.implementation = _empty
@@ -215,7 +219,6 @@ class EmptyNode(Node):
         self.instance = EMPTY
         self.lifespan = Lifespan.singleton
         self.children = []
-        self.generic_mapping = GenericTypeMap(_empty)
 
     def __bool__(self):
         return False
@@ -241,6 +244,13 @@ class EmptyNode(Node):
     @property
     def top_decorated_node(self):
         return self
+
+    @property
+    def generic_mapping(self):
+        if not self.__class__._GENERIC_MAPPING:
+            self.__class__._GENERIC_MAPPING = GenericTypeMap(_empty)
+
+        return self.__class__._GENERIC_MAPPING
 
     def has_dependant_service_type(self, service_type: type) -> bool:
         return False
@@ -276,7 +286,8 @@ class DependencyNode(Node):
         self.pre_configured_by = EmptyNode()
         self.pre_configures = EmptyNode()
         self.instance = UNKNOWN
-        self.generic_mapping = GenericTypeMap(service_type)
+
+        self._generic_mapping: GenericTypeMap | None = None
 
     def set_instance(self, instance: Any):
         if self.instance is UNKNOWN:
@@ -333,6 +344,13 @@ class DependencyNode(Node):
         if not self.decorator:
             return self
         return self.decorator.top_decorated_node
+
+    @property
+    def generic_mapping(self):
+        if not self._generic_mapping:
+            self._generic_mapping = GenericTypeMap(self.service_type)
+
+        return self._generic_mapping
 
     def has_dependant_service_type(self, service_type: type) -> bool:
         for child in self.children:
@@ -861,9 +879,11 @@ class Registration(Protocol):
     implementation: Callable
     lifespan: Lifespan
     name: str | None
-    generic_mapping: GenericTypeMap
 
     def has_tag(self, name: str, value: Any) -> bool: ...
+
+    @property
+    def generic_mapping(self) -> GenericTypeMap: ...
 
 
 class _Registration(Registration):
@@ -878,7 +898,7 @@ class _Registration(Registration):
         "id",
         "was_used",
         "is_named",
-        "generic_mapping",
+        "_generic_mapping",
         "dependencies",
         "activator_class",
     )
@@ -910,14 +930,22 @@ class _Registration(Registration):
         self.scoped_teardown = scoped_teardown
         self.was_used = False
         self.is_named = name is not None
-        self.generic_mapping = GenericTypeMap(self.service_type)
         self.dependencies: dict[str, Dependency] = _set_up_dependencies(implementation, dependency_config)
+
+        self._generic_mapping: GenericTypeMap | None = None
 
     def has_tag(self, name: str, value: str | None):
         if value is not None:
             return any(t.name == name and t.value == value for t in self.tags)
 
         return any(t.name == name for t in self.tags)
+
+    @property
+    def generic_mapping(self):
+        if not self._generic_mapping:
+            self._generic_mapping = GenericTypeMap(self.service_type)
+
+        return self._generic_mapping
 
     def _try_find_cached_node(self, context: _ResolvingContext, parent_node: DependencyNode):
         cached_node = context.get_cached(self.id)
