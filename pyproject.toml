@@ -28,7 +28,7 @@ pytest-cov = "^4.0.0"
 pytest-asyncio = "^0.21.1"
 assertive = "^0.2.1"
 fastapi = "^0.101.0"
-httpx = "^0.26.0"
+httpx = ">=0.26,<0.28"
 pyright = "^1.1.362"
 ruff = "^0.4.3"
 
