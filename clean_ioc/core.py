@@ -1394,7 +1394,7 @@ class ScopeCreator(Protocol):
     ) -> Scope: ...
 
 
-class Scope(Resolver, Registrator, ScopeCreator):
+class Scope:
     def __init__(
         self,
     ):
