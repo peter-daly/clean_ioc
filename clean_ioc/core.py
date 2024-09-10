@@ -1319,7 +1319,7 @@ class _ResolvingContext:
         reg = next(iter(regs), None)
 
         if reg is None:
-            if type(service_type) == _GenericAlias:
+            if type(service_type) is _GenericAlias:
                 reg = self.try_generic_fallback(service_type, parent_node)
             if reg is None:
                 raise CannotResolveError()
@@ -1385,7 +1385,7 @@ class Registrator(Protocol):
         tags: Iterable[Tag] | None = None,
         parent_node_filter: NodeFilter = default_parent_node_filter,
         scoped_teardown: Callable[[TService], Any] | None = None,
-    ) -> None: ...
+    ): ...
 
 
 class ScopeCreator(Protocol):
@@ -1465,7 +1465,7 @@ class Scope:
         tags: Iterable[Tag] | None = None,
         parent_node_filter: NodeFilter = default_parent_node_filter,
         scoped_teardown: Callable[[TService], Any] | None = None,
-    ):
+    ) -> Scope:
         if instance is not None:
             self._registry.register_instance(
                 service_type=service_type,
@@ -1510,6 +1510,8 @@ class Scope:
                 scoped_teardown=scoped_teardown,
             )
 
+        return self
+
     def pre_configure(
         self,
         service_type: type | Iterable[type],
@@ -1518,7 +1520,7 @@ class Scope:
         registration_filter: RegistrationFilter = default_registration_filter,
         dependency_config: DependencyConfig = {},
         continue_on_failure: bool = False,
-    ):
+    ) -> Scope:
         self._registry.register_pre_configuration(
             service_type=service_type,
             configuration_function=configuration_function,
@@ -1526,6 +1528,8 @@ class Scope:
             dependency_config=dependency_config,
             continue_on_failure=continue_on_failure,
         )
+
+        return self
 
     def register_decorator(
         self,
@@ -1537,7 +1541,7 @@ class Scope:
         decorated_arg: str | None = None,
         dependency_config: DependencyConfig = {},
         position: int = 0,
-    ):
+    ) -> Scope:
         self._registry.register_decorator(
             service_type=service_type,
             decorator_type=decorator_type,
@@ -1548,7 +1552,9 @@ class Scope:
             position=position,
         )
 
-    def add_singleton_node(self, registration: _Registration, node: DependencyNode): ...
+        return self
+
+    def add_singleton_node(self, registration: _Registration, node: DependencyNode) -> Scope: ...
 
     def find_singleton_node(self, registration_id: str) -> DependencyNode | None: ...
 
@@ -1597,8 +1603,9 @@ class Scope:
         self._run_sync_teardowns()
         self._close_generators()
 
-    def add_generator_finalizer(self, lifespan: Lifespan, generator: Callable):
+    def add_generator_finalizer(self, lifespan: Lifespan, generator: Callable) -> Scope:
         self._generator_finalizers.appendleft(generator)
+        return self
 
     def _close_generators(self):
         for generator in self._generator_finalizers:
@@ -1621,7 +1628,7 @@ class Scope:
             cached_dependency = self._scoped_instances[registration_id]
             teardown_fn(cached_dependency.instance)
 
-    def add_scoped_node(self, registration: _Registration, node: DependencyNode):
+    def add_scoped_node(self, registration: _Registration, node: DependencyNode) -> Scope:
         self._scoped_instances[registration.id] = node
         if registration.scoped_teardown:
             is_async = inspect.iscoroutinefunction(registration.scoped_teardown)
@@ -1629,6 +1636,8 @@ class Scope:
                 self._async_teardowns[registration.id] = registration.scoped_teardown
             else:
                 self._sync_teardowns[registration.id] = registration.scoped_teardown
+
+        return self
 
     @property
     def scoped_instances(self) -> dict[str, DependencyNode]:
@@ -1645,8 +1654,13 @@ class ChildScope(Scope):
         super().__init__()
         self._parent_scope = parent_scope
 
-    def add_singleton_node(self, registration: _Registration, node: DependencyNode):
+    def add_singleton_node(
+        self,
+        registration: _Registration,
+        node: DependencyNode,
+    ) -> ChildScope:
         self._parent_scope.add_singleton_node(registration, node)
+        return self
 
     def find_singleton_node(self, registration_id: str) -> DependencyNode | None:
         return self._parent_scope.find_singleton_node(registration_id)
@@ -1678,12 +1692,13 @@ class ChildScope(Scope):
         pre_configurations = super().find_pre_configurations(registration=registration)
         return pre_configurations + self._parent_scope.find_pre_configurations(registration=registration)
 
-    def add_generator_finalizer(self, lifespan: Lifespan, generator: Callable):
+    def add_generator_finalizer(self, lifespan: Lifespan, generator: Callable) -> ChildScope:
         if lifespan == Lifespan.singleton:
             self._parent_scope.add_generator_finalizer(lifespan, generator)
-            return
+            return self
 
         super().add_generator_finalizer(lifespan, generator)
+        return self
 
     @property
     def singleton_instances(self) -> dict[str, DependencyNode]:
@@ -1761,7 +1776,7 @@ class Container(Scope):
         name: str | None = None,
         tags: list[Tag] | None = None,
         parent_node_filter: NodeFilter = default_parent_node_filter,
-    ):
+    ) -> Container:
         full_type_filter = ~is_abstract & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, filter=full_type_filter)
         for subclass in subclasses:
@@ -1786,6 +1801,8 @@ class Container(Scope):
                 parent_node_filter=parent_node_filter,
             )
 
+        return self
+
     def register_generic_decorator(
         self,
         generic_service_type: type,
@@ -1797,7 +1814,7 @@ class Container(Scope):
         registration_filter: Callable[[_Registration], bool] = default_registration_filter,
         decorated_node_filter: NodeFilter = default_decorated_node_filter,
         position: int = 0,
-    ):
+    ) -> Container:
         full_type_filter = ~is_abstract & ~name_starts_with("__DecoratedGeneric__") & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, filter=full_type_filter)
         decorator_is_open_generic = is_generic_type_open(generic_decorator_type)
@@ -1830,6 +1847,8 @@ class Container(Scope):
                         position=position,
                     )
 
+        return self
+
     def force_run_pre_configuration(
         self,
         service_type: type,
@@ -1844,22 +1863,34 @@ class Container(Scope):
     ):
         await self.resolve_async(service_type, filter=registration_filter)
 
-    def expect_to_be_scoped(self, service_type: type, name: str | None = None):
+    def expect_to_be_scoped(self, service_type: type, name: str | None = None) -> Container:
         self.register(
             service_type=service_type,
             factory=type_expected_to_be_scoped(service_type, name),
             name=name,
         )
+        return self
 
-    def apply_bundle(self, bundle_fn: Callable[[Container], None]):
+    def apply_bundle(
+        self,
+        bundle_fn: Callable[[Container], None],
+    ) -> Container:
         bundle_fn(self)
+
+        return self
 
     def has_registration(self, service_type, filter: RegistrationFilter = default_registration_filter):
         found_registrations = [r for r in self._registry.get_registrations(service_type) if filter(r)]
         return len(found_registrations) > 0
 
-    def add_singleton_node(self, registration: _Registration, node: DependencyNode):
+    def add_singleton_node(
+        self,
+        registration: _Registration,
+        node: DependencyNode,
+    ) -> Container:
         self._singletons[registration.id] = node
+
+        return self
 
     def find_singleton_node(self, registration_id: str) -> DependencyNode | None:
         return self._singletons.get(registration_id)

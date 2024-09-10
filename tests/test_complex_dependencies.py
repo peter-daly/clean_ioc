@@ -408,7 +408,7 @@ def test_generic_shared_dependency_among_different_generic_decorator_types_with_
     class Command:
         pass
 
-    TCommand = TypeVar("TCommand", bound=Command)
+    TCommand = TypeVar("TCommand", bound=Command, covariant=True)
 
     class Query:
         pass

@@ -14,7 +14,7 @@ from clean_ioc import (
 
 
 @pytest.mark.asyncio
-async def test_simple_implementation_registation():
+async def test_simple_implementation_registration():
     class A:
         pass
 
@@ -26,6 +26,29 @@ async def test_simple_implementation_registation():
 
     a = await container.resolve_async(A)
     assert_that(a).matches(is_exact_type(B))
+
+
+@pytest.mark.asyncio
+async def test_simple_chained_implementation_registration():
+    class A:
+        pass
+
+    class B(A):
+        pass
+
+    class C:
+        pass
+
+    class D(C):
+        pass
+
+    container = Container().register(A, B).register(C, D)
+
+    a = await container.resolve_async(A)
+    assert_that(a).matches(is_exact_type(B))
+
+    c = await container.resolve_async(C)
+    assert_that(c).matches(is_exact_type(D))
 
 
 @pytest.mark.asyncio

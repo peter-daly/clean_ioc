@@ -384,7 +384,7 @@ def test_simple_open_generic():
 
 
 def test_simple_open_generic_with_protocol():
-    T = TypeVar("T")
+    T = TypeVar("T", covariant=True)
 
     class A(Protocol[T]):
         pass
