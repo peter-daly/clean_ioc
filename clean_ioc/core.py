@@ -1385,7 +1385,7 @@ class Registrator(Protocol):
         tags: Iterable[Tag] | None = None,
         parent_node_filter: NodeFilter = default_parent_node_filter,
         scoped_teardown: Callable[[TService], Any] | None = None,
-    ) -> Scope: ...
+    ): ...
 
 
 class ScopeCreator(Protocol):
