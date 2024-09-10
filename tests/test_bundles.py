@@ -31,6 +31,23 @@ def test_only_run_once_per_instance_bundle_will_only_run_once_per_instance():
     assert_that(spy).matches(was_called_once())
 
 
+def test_apply_bundle_can_be_chained():
+    spy = Mock()
+
+    class TestBundle(OnlyRunOncePerInstanceBundle):
+        def __init__(self, mock):
+            self.mock = mock
+
+        def apply(self, container: Container):
+            self.mock()
+
+    test_bundle = TestBundle(spy)
+
+    (Container().apply_bundle(test_bundle).apply_bundle(test_bundle).apply_bundle(test_bundle))
+
+    assert_that(spy).matches(was_called_once())
+
+
 def test_bundle_instance_can_be_called_multiple_times_when_allowed():
     spy = Mock()
 
