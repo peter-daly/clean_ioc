@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from clean_ioc import Container
+from clean_ioc.core import Lifespan
 from clean_ioc.ext.fastapi import Resolve, add_container_to_app
 from clean_ioc.ext.fastapi.dependencies import (
     RequestHeaderReader,
@@ -114,3 +116,35 @@ def test_with_async_generator_dependency():
         body = response.json()
         assert response.status_code == 200
         assert body["action"] == "my-action"
+
+
+def test_scope_is_unique_per_request():
+    class MyDependency:
+        def __init__(self):
+            self.uid = str(uuid4())
+
+        def do_thing(self) -> str:
+            return self.uid
+
+    @asynccontextmanager
+    async def lifespan(a):
+        with Container() as container:
+            container.register(MyDependency, lifespan=Lifespan.scoped)
+            async with add_container_to_app(a, container):
+                yield
+
+    app = FastAPI(lifespan=lifespan)
+
+    @app.get("/")
+    async def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
+        uid = my_dependency.do_thing()
+        return {"uid": uid}
+
+    with TestClient(app) as test_client:
+        response_1 = test_client.get("/")
+        response_2 = test_client.get("/")
+
+        body_1 = response_1.json()
+        body_2 = response_2.json()
+
+        assert body_1["uid"] != body_2["uid"]

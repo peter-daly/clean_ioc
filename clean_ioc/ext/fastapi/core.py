@@ -51,8 +51,13 @@ async def get_scope(
     request: Request,
 ) -> AsyncGenerator[Scope, None]:
     root_scope: Scope = get_root_scope_from_app(request.app)
-    async with root_scope.new_scope() as scope:
-        yield scope
+
+    if "current_scope" in request.state._state:
+        yield request.state.current_scope
+    else:
+        async with root_scope.new_scope() as scope:
+            request.state.current_scope = scope
+            yield scope
 
 
 def Resolve(  # noqa: N802
