@@ -34,7 +34,7 @@ ruff = "^0.4.3"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.5.3"
-mkdocstrings = {version = "^0.25.0", extras = ["python"]}
+mkdocstrings = {version = ">=0.25,<0.27", extras = ["python"]}
 mkdocs-material = "^9.5.9"
 mkdocs-glightbox = "^0.4.0"
 
