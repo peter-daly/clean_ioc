@@ -1,10 +1,10 @@
 # Factories
 
-Factories are just Callables that can be return your dependency. Factories can be useful if you need to your implementation to be dynamic based on the context/state of your application or current dependencies in the graph.
-Factories can also have dependencies.
+Factories are just Callables that can be return the instance of your dependency. Factories can be useful if you need to your implementation to be evaluated dynamically based on the context/state of your application or current dependencies in the graph.
+Factories can also have their dependencies.
 
 ## Function
-The most basic factory is using a function
+The most basic factory is a simple function.
 
 ```python
 
@@ -63,7 +63,7 @@ user = await repo.get_user(10)
 
 ## Generator
 
-You can also use a generator as your factory callable.
+You can also use a generator as your factory.
 This enables you to run some teardown tasks then the scope or container is ending.
 
 ```python
