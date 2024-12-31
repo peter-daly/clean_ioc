@@ -1,11 +1,11 @@
 # Fast API
 
-Clean IoC comes with helpers to help you easily integrate it woth Fast API. If you are using Clean IoC with other application types and wanting that same experience in Fast API development you can add it as a container to Fast API.
+Clean IoC comes with helpers to help you easily integrate it with Fast API. If you are using Clean IoC with other application types and wanting that same experience in Fast API development you can add your container to Fast API.
 
 
 ## How it works
 
-The app works by giving you a Clean IoC scope with every FastAPI request allowing you to leverage scoped lifetimes. This makses it easy for you to have a single SqlAlchemy connection per app if you want to.
+The extension works by giving you a Clean IoC scope with every FastAPI request allowing you to leverage scoped lifetimes. This makses it easy for you to have a single SqlAlchemy session per request as an example.
 
 
 ## Setting it up
@@ -18,7 +18,7 @@ It's best to the wiring up within a lifespan.
 
 
 When you want to access a dependnecy in your routes you can use the **Resolve** helper function.
-This gives you a  very similar experience to using **Depends** in Fast API, the only difference is that you provider the type you want to resolve rather then the the resolver function.
+This gives you a very similar experience to using **Depends** in Fast API. The only difference is that you provide the type you want to resolve rather then the resolver function.
 
 ||| note "add_container_to_app" is also asynccontextmanager"
     The **add_container_to_app** function will use the container as an ***asynccontextmanager***, meaning you won't have to manually do that yourself.
@@ -48,7 +48,7 @@ async def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
 
 ## Accessinng Fast API objects inside container dependencies.
 
-You can fast api Dependencies to the scope of the request using the **get_scope** helper.
+You can add fast api Dependencies to the scope of the request using the **get_scope** helper.
 Create a new function that depends on **get_scope** and add items to the scope.
 
 ```python
