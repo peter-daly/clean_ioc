@@ -6,18 +6,18 @@ It achieves this with what would look traditionally like an Object Orientated de
 
 !!! question "Why use a different decorator pattern?. This looks like Java"
 
-    Python class decorators wither mutate or wrap the decorated class in order to add new dependencies to the decorators it would have to dynamically change the the classes __init__ function, but since we can define a separate  Service Type from the Implementation Type changing the `__init__` method just becomes messy.
+    Python class decorators either mutate or wrap the decorated class in order to add new dependencies to the decorators it would have to dynamically change the the classes __init__ function, but since we can define a separate  Service Type from the Implementation Type changing the `__init__` method just becomes messy.
     In Clean IoC we decorate the instance rather than the class itself, this has the following advantages.
 
-    1. It allows the decorators to have their own dependencies that are registered within the container
-    2. It allows you to focus on decorating the abstract type rather then the implementation type
+    1. It allows the decorators to have their own dependencies that are registered within the container.
+    2. It allows you to focus on decorating the abstract type rather then the implementation type.
     3. When we just register an instances, it can also be decorated.
-    4. Allows us to selectively apply decorators
+    4. Allows us to selectively apply decorators.
 
 
 !!! question "Are you suggesting that python should change how it traditionally does decoration for cross cutting concerns?"
 
-    Nope. When adding cross cutting concerns to classes and functions in python, traditional python decorators can work fantastically. It's also not a case of one or the other. For example if you want to register `dataclasses` and also add decorators instance of those classes you can absolutely  do that.
+    Nope. When adding cross cutting concerns to classes and functions in python, traditional python decorators work fantastically. It's also not a case of one or the other. For example if you want to register `dataclasses` and also add decorators instance of those classes you can absolutely do that.
 
 
 ```python
@@ -79,7 +79,7 @@ By default decorators are resolved in order of when first registered. So the fir
     type(root.child.child) # returns Concrete
 ```
 
-However if you want more control over his you can also set the `position` arg when registering the decorator.
+However if you want more control over the ordering you can also set the `position` arg when registering the decorator.
 The `position` arg is an integer.
 
 !!! info
@@ -126,7 +126,7 @@ The `position` arg is an integer.
 
 ## Manually setting decorated arg
 
-Clean IoC will try to work out the decorated arg on the decorator based on the arg types.
+Clean IoC will try to work out the decorated arg in the decorator based on the arg type annotations.
 If for any reason that doesn't work you can fallback to setting it explicitly
 
 Taking our previous message sending example.
