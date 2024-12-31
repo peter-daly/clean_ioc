@@ -1,7 +1,7 @@
 # Scopes
 
 Scopes allow you to define a dependency that will stay alive for a period of time (while the scope is alive).
-Some examples where scopes are useful are:
+Some appropriate use cases for scopes are:
  - http request in a web server
  - message/event if working on a message based system
  - a thread cotext
@@ -95,8 +95,9 @@ async with container.get_scope() as scope:
 ```
 
 
-!!! Question "Should I use factory generators or scoped teardowns is there any difference?"
-    For the purposes above both serve the same purpose so it's really up the the user's taste to see what they want to use. Generators come in useful if the object being returned is a context manager or async context manager, which can be the case in a lot of db connection libraries.
+!!! Question "Should I use f
+generators or scoped teardowns is there any difference?"
+    For the examples above, both serve the same purpose so it's really up the your own personal taste. Generators come in useful if the object being returned is a context manager or async context manager, which can be the case in a lot of db connection libraries.
 
     ```python
     class AsyncDbConnection:
@@ -178,7 +179,7 @@ container.resolve(float) # returns 1.0
 
 ## The container is just the root scope
 
-As you may have noticed the a lot of the things you can do in a container you can do in a scope, this is because the container is just the root scope. If you use the container a context manager or async context manager then you can apply teardowns to objects from the container.
+As you may have noticed the a lot of the things you can do in a container you can do in a scope, this is because the container is the root scope. If you use the container a context manager or async context manager then you can apply teardowns to objects from the container.
 
 ```python
 class AsyncDbConnection:
