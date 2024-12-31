@@ -1,6 +1,6 @@
 # Generics
 
-Clean IoC has powerful generic features allowing you to use Generics to auto register all subclases.
+Clean IoC has powerful generic features that allow you to use Generics to auto register all subclases.
 This allows you to use homogonous class structures that can be automatically registered within the container. Some features where this can be useful is in building event handlers or message handlers.
 
 ## Generic Subclasses
@@ -39,7 +39,7 @@ h2.handle(GoodbyeCommand()) # prints 'GOODBYE'
 
 ```
 
-To add another CommandHandler we simplly just declare the Command type and Handler class
+To add another CommandHandler we simply just declare the Command type and Handler class
 
 ```python
 class AlohaCommand:
@@ -84,7 +84,7 @@ dispatcher.dispatch(AlohaCommand()) # prints 'ALOHA'
 
 ## Generic Decorators
 
-There is also a special function in Clean IoC for handling generic decorators. This allows you to decorate your generic subclasses bit also have a concrete implementation of the decorator for that concrete generic type.
+There is also a special function in Clean IoC for handling generic decorators. This allows you to decorate your generic subclasses, but also have a concrete implementation of the decorator for that concrete generic type.
 
 ```python
 T = TypeVar("T")
