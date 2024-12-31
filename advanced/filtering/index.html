@@ -1,0 +1,2277 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://example.com/advanced/filtering/">
+      
+      
+        <link rel="prev" href="../../bundles/">
+      
+      
+        <link rel="next" href="../value-factories/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.34">
+    
+    
+      
+        <title>Filtering - Clean IoC</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.35f28582.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+   <link href="../../assets/stylesheets/glightbox.min.css" rel="stylesheet"/><style>
+    html.glightbox-open { overflow: initial; height: 100%; }
+    .gslide-title { margin-top: 0px; user-select: text; }
+    .gslide-desc { color: #666; user-select: text; }
+    .gslide-image img { background: white; }
+    .gscrollbar-fixer { padding-right: 15px; }
+    .gdesc-inner { font-size: 0.75rem; }
+    body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color);}
+    body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color);}
+    body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color);}</style> <script src="../../assets/javascripts/glightbox.min.js"></script></head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#filtering" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Clean IoC" class="md-header__button md-logo" aria-label="Clean IoC" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Clean IoC
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Filtering
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/peter-daly/clean_ioc" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    peter-daly/clean_ioc
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Clean IoC" class="md-nav__button md-logo" aria-label="Clean IoC" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Clean IoC
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/peter-daly/clean_ioc" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    peter-daly/clean_ioc
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../simple-uses/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Simple Uses
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../factories/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Factories
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lifespans/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Lifespans
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../generics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Generics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decorators/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Decorators
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scopes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Scopes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pre-configurations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pre-Configurations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bundles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Bundles
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Advanced
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            Advanced
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Filtering
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Filtering
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-registering-and-resolving-works-in-clean_ioc" class="md-nav__link">
+    <span class="md-ellipsis">
+      How registering and resolving works in clean_ioc
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How registering and resolving works in clean_ioc">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-registering-the-inmemoryrepository" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Registering the InMemoryRepository
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-registering-the-sqlalchemyuserrepository" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Registering the SqlAlchemyUserRepository
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-registering-the-sqlalchemy-session-with-a-factory" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Registering the sqlalchemy Session with a factory
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-resolving-the-userrepository-and-creating-a-dependency-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Resolving the UserRepository and creating a Dependency Graph
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-find-our-registration-for-userrepository" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Find our registration for UserRepository
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-creates-the-next-node-in-the-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Creates the next Node in the Graph
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-find-the-next-dependency" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Find the next dependency
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-turn-the-dependency-graph-to-build-your-object" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Turn the dependency graph to build your object
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filtering-registrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Filtering registrations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Filtering registrations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#registrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Registrations
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clean_ioc.core.Registration" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;Registration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" Registration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#registration-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      Registration Name
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registration-tags" class="md-nav__link">
+    <span class="md-ellipsis">
+      Registration Tags
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registration-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Registration Filters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-registration-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Registration Filters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resolving-with-a-named-filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resolving with a named filter
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resolving with a named filter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-registering-the-inmemoryrepository_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Registering the InMemoryRepository
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-resolving-and-filtering-by-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Resolving and filtering by name
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-returns-an-inmemoryuserrepository" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Returns an InMemoryUserRepository
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#applying-registration-filters-deeper-in-the-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      Applying registration filters deeper in the graph.
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Applying registration filters deeper in the graph.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#top-down-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      Top down filtering
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Top down filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dependency-config-dependency-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dependency Config &amp; Dependency Settings
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clean_ioc.core.DependencySettings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;DependencySettings
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bottom-up-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      Bottom Up Filtering
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Bottom Up Filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parent-node-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parent Node Filters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clean_ioc.core.Node" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;Node
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#an-example-of-top-down-filtering-combined-with-bottom-up-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      An example of top down filtering combined with bottom up filtering
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="An example of top down filtering combined with bottom up filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-registering-our-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Registering our dependencies
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-resolving-the-userrepository" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Resolving the UserRepository
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-finding-the-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Finding the session
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-finding-the-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Finding the config
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-building-the-object" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Building the object
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../value-factories/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Value Factories
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../special-dependency-types/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Special Dependency Types
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../accessing-clean-ioc-within-dependency/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Clean Ioc Inside Dependencies
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Extensions
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            Extensions
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extensions/fastapi/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    FastAPI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Background
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            Background
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../inversion-of-control/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Inversion of Control
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dependency-injection/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Dependency Injection
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../solid/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOLID
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-registering-and-resolving-works-in-clean_ioc" class="md-nav__link">
+    <span class="md-ellipsis">
+      How registering and resolving works in clean_ioc
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How registering and resolving works in clean_ioc">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-registering-the-inmemoryrepository" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Registering the InMemoryRepository
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-registering-the-sqlalchemyuserrepository" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Registering the SqlAlchemyUserRepository
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-registering-the-sqlalchemy-session-with-a-factory" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Registering the sqlalchemy Session with a factory
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-resolving-the-userrepository-and-creating-a-dependency-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Resolving the UserRepository and creating a Dependency Graph
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-find-our-registration-for-userrepository" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Find our registration for UserRepository
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-creates-the-next-node-in-the-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Creates the next Node in the Graph
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-find-the-next-dependency" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Find the next dependency
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-turn-the-dependency-graph-to-build-your-object" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Turn the dependency graph to build your object
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filtering-registrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Filtering registrations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Filtering registrations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#registrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Registrations
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clean_ioc.core.Registration" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;Registration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" Registration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#registration-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      Registration Name
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registration-tags" class="md-nav__link">
+    <span class="md-ellipsis">
+      Registration Tags
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registration-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Registration Filters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-registration-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Registration Filters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resolving-with-a-named-filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resolving with a named filter
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resolving with a named filter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-registering-the-inmemoryrepository_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Registering the InMemoryRepository
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-resolving-and-filtering-by-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Resolving and filtering by name
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-returns-an-inmemoryuserrepository" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Returns an InMemoryUserRepository
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#applying-registration-filters-deeper-in-the-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      Applying registration filters deeper in the graph.
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Applying registration filters deeper in the graph.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#top-down-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      Top down filtering
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Top down filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dependency-config-dependency-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dependency Config &amp; Dependency Settings
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clean_ioc.core.DependencySettings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;DependencySettings
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bottom-up-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      Bottom Up Filtering
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Bottom Up Filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parent-node-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parent Node Filters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clean_ioc.core.Node" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;Node
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#an-example-of-top-down-filtering-combined-with-bottom-up-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      An example of top down filtering combined with bottom up filtering
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="An example of top down filtering combined with bottom up filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-registering-our-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Registering our dependencies
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-resolving-the-userrepository" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Resolving the UserRepository
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-finding-the-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Finding the session
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-finding-the-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Finding the config
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-building-the-object" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Building the object
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="filtering">Filtering</h1>
+<p>Filtering allows you to be more selective on how the container will select the desired dependencies that you want.
+For instances if I have two registrations of the same class with slight differences it allows you to select which if those registered dependencies that you want.</p>
+<p>To get a good mental picture on how filtering works it's best to get a grasp on how registering a nd resolving works in Clean IoC.</p>
+<h2 id="how-registering-and-resolving-works-in-clean_ioc">How registering and resolving works in clean_ioc</h2>
+<p>The steps below are just an simplified model on how registering and resolving works in Clean IoC. Decorators, Pre-Configurations and Scopes have been omitted for simplicity.
+Clean Ioc is just based on two simple concepts.</p>
+<p>When you register a dependency it get's stored in a registry.
+When you want to resolve an object from the container you create you build a dependency graph and query the registry recursively for the next dependency in the graph.</p>
+<h3 id="1-registering-the-inmemoryrepository">1. Registering the InMemoryRepository</h3>
+<div class="grid">
+<div>
+<p>A <code>UserRepository</code> is registered with an <code>InMemoryUserRepository</code>
+This creates a <strong>registration</strong> in the <strong>registry</strong> mapping <code>UserRepository</code> to <code>InMemoryUserRepository</code></p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/resolving/01.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/resolving/01.png" /></a></p>
+</div>
+<h3 id="2-registering-the-sqlalchemyuserrepository">2. Registering the SqlAlchemyUserRepository</h3>
+<div class="grid">
+<div>
+<p>Now a <code>SqlAlchemyUserRepository</code> is registered for a <code>UserRepository</code>. The registry orders it's registrations by LIFO so when we resolve a <code>UserRepository</code> we get a <code>SqlAlchemyUserRepository</code></p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span><span class="p">)</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/resolving/02.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/resolving/02.png" /></a></p>
+</div>
+<h3 id="3-registering-the-sqlalchemy-session-with-a-factory">3. Registering the sqlalchemy Session with a factory</h3>
+<div class="grid">
+<div>
+<p>We now create a factory to create a <code>sqlalchemy.Session</code>, this gets placed in the registry user <code>sqlalchemy.Session</code>.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">def</span> <span class="nf">create_session</span><span class="p">():</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="c1">## This does not the correct way to create a session, just here for demo purposes</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="k">return</span> <span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span><span class="p">)</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">)</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/resolving/03.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/resolving/03.png" /></a></p>
+</div>
+<h3 id="4-resolving-the-userrepository-and-creating-a-dependency-graph">4. Resolving the UserRepository and creating a Dependency Graph</h3>
+<div class="grid">
+<div>
+<p>When we try to resolve UserRepository we create a <strong>dependency graph</strong>, the graph initially contains one root node with a dependency <code>UserRepository</code>. The graph now tries to resolve it's dependencies by checking the <strong>registry</strong> for any matching <strong>registrations</strong>.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">def</span> <span class="nf">create_session</span><span class="p">():</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="c1">## This does not the correct way to create a session, just here for demo purposes</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="k">return</span> <span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span><span class="p">)</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">)</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">)</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="n">user_repo</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/resolving/04.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/resolving/04.png" /></a></p>
+</div>
+<h3 id="5-find-our-registration-for-userrepository">5. Find our registration for UserRepository</h3>
+<div class="grid">
+<div>
+<p>The <strong>registry</strong> finds a <code>SqlAlchemyUserRepository</code> for <code>UserRepository</code></p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">def</span> <span class="nf">create_session</span><span class="p">():</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="c1">## This does not the correct way to create a session, just here for demo purposes</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="k">return</span> <span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span><span class="p">)</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">)</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">)</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="n">user_repo</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/resolving/05.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/resolving/05.png" /></a></p>
+</div>
+<h3 id="6-creates-the-next-node-in-the-graph">6. Creates the next Node in the Graph</h3>
+<div class="grid">
+<div>
+<p>Next a new node is created in the graph for <code>SqlAlchemyUserRepository</code></p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">def</span> <span class="nf">create_session</span><span class="p">():</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="c1">## This does not the correct way to create a session, just here for demo purposes</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="k">return</span> <span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span><span class="p">)</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">)</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">)</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="n">user_repo</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/resolving/06.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/resolving/06.png" /></a></p>
+</div>
+<h3 id="7-find-the-next-dependency">7. Find the next dependency</h3>
+<div class="grid">
+<div>
+<p>Next the graph wants to find the <code>sqlalchemy.Session</code> and queries the <strong>registry</strong> for it.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">def</span> <span class="nf">create_session</span><span class="p">():</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="c1">## This does not the correct way to create a session, just here for demo purposes</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="k">return</span> <span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span><span class="p">)</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">)</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">)</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="n">user_repo</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/resolving/07.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/resolving/07.png" /></a></p>
+</div>
+<h3 id="8-turn-the-dependency-graph-to-build-your-object">8. Turn the dependency graph to build your object</h3>
+<div class="grid">
+<div>
+<p>Once all dependencies are solved for the graph, the graph traverses upwards to create the object with the solved dependencies</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">def</span> <span class="nf">create_session</span><span class="p">():</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="c1">## This does not the correct way to create a session, just here for demo purposes</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="k">return</span> <span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span><span class="p">)</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">)</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">)</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="n">user_repo</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/resolving/08.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/resolving/08.png" /></a></p>
+</div>
+<h2 id="filtering-registrations">Filtering registrations</h2>
+<h3 id="registrations">Registrations</h3>
+<p>When a new dependency is registered to the container it's stored in the registry as a <strong>Registration</strong>.
+Here is the definition of the registration:</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="clean_ioc.core.Registration"></a>
+    <div class="doc doc-contents first">
+
+
+              <details class="quote">
+                <summary>Source code in <code>clean_ioc/core.py</code></summary>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-877">877</a></span>
+<span class="normal"><a href="#__codelineno-0-878">878</a></span>
+<span class="normal"><a href="#__codelineno-0-879">879</a></span>
+<span class="normal"><a href="#__codelineno-0-880">880</a></span>
+<span class="normal"><a href="#__codelineno-0-881">881</a></span>
+<span class="normal"><a href="#__codelineno-0-882">882</a></span>
+<span class="normal"><a href="#__codelineno-0-883">883</a></span>
+<span class="normal"><a href="#__codelineno-0-884">884</a></span>
+<span class="normal"><a href="#__codelineno-0-885">885</a></span>
+<span class="normal"><a href="#__codelineno-0-886">886</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-877"><a id="__codelineno-0-877" name="__codelineno-0-877"></a><span class="k">class</span> <span class="nc">Registration</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+</span><span id="__span-0-878"><a id="__codelineno-0-878" name="__codelineno-0-878"></a>    <span class="n">service_type</span><span class="p">:</span> <span class="nb">type</span>
+</span><span id="__span-0-879"><a id="__codelineno-0-879" name="__codelineno-0-879"></a>    <span class="n">implementation</span><span class="p">:</span> <span class="n">Callable</span>
+</span><span id="__span-0-880"><a id="__codelineno-0-880" name="__codelineno-0-880"></a>    <span class="n">lifespan</span><span class="p">:</span> <span class="n">Lifespan</span>
+</span><span id="__span-0-881"><a id="__codelineno-0-881" name="__codelineno-0-881"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+</span><span id="__span-0-882"><a id="__codelineno-0-882" name="__codelineno-0-882"></a>
+</span><span id="__span-0-883"><a id="__codelineno-0-883" name="__codelineno-0-883"></a>    <span class="k">def</span> <span class="nf">has_tag</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span>
+</span><span id="__span-0-884"><a id="__codelineno-0-884" name="__codelineno-0-884"></a>
+</span><span id="__span-0-885"><a id="__codelineno-0-885" name="__codelineno-0-885"></a>    <span class="nd">@property</span>
+</span><span id="__span-0-886"><a id="__codelineno-0-886" name="__codelineno-0-886"></a>    <span class="k">def</span> <span class="nf">generic_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GenericTypeMap</span><span class="p">:</span> <span class="o">...</span>
+</span></code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h4 id="registration-name">Registration Name</h4>
+<p>When defining registrations you can add a name to the registration.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;One&quot;</span><span class="p">)</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Two&quot;</span><span class="p">)</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Three&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<h4 id="registration-tags">Registration Tags</h4>
+<p>Registration tags can be either set as keys or key/value pairs</p>
+<p>Tags as keys</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;odd&quot;</span><span class="p">)])</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;even&quot;</span><span class="p">)])</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;odd&quot;</span><span class="p">)])</span>
+</span></code></pre></div>
+<p>Tags as key value/value pairs</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;parity&quot;</span><span class="p">,</span> <span class="s2">&quot;odd&quot;</span><span class="p">)])</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;parity&quot;</span><span class="p">,</span> <span class="s2">&quot;even&quot;</span><span class="p">)])</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;parity&quot;</span><span class="p">,</span> <span class="s2">&quot;odd&quot;</span><span class="p">)])</span>
+</span></code></pre></div>
+<h4 id="registration-filters">Registration Filters</h4>
+<p>Registration filters are defined a <strong>Callable</strong> that receives a registration and returns a boolean.</p>
+<p>For example here is a filter for only returning registrations that are Singletons</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">def</span> <span class="nf">only_singletons</span><span class="p">(</span><span class="n">registration</span><span class="p">:</span> <span class="n">Registration</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="k">return</span> <span class="n">registration</span><span class="o">.</span><span class="n">lifespan</span> <span class="o">==</span> <span class="n">Lifespan</span><span class="o">.</span><span class="n">singleton</span>
+</span></code></pre></div>
+<h4 id="using-registration-filters">Using Registration Filters</h4>
+<p>Here is an example of using registration filters</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;One&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;odd&quot;</span><span class="p">)])</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Two&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;even&quot;</span><span class="p">)])</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Three&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;odd&quot;</span><span class="p">)])</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;Two&quot;</span><span class="p">)</span> <span class="c1"># returns 2</span>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s2">&quot;odd&quot;</span><span class="p">))</span> <span class="c1"># returns 3</span>
+</span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;One&quot;</span><span class="p">)</span> <span class="c1"># returns 1</span>
+</span></code></pre></div>
+<p>Clean Ioc comes with builtin registration filters for convenience.</p>
+<p>Here is the same code above as but using the inbuilt filters
+<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">import</span> <span class="nn">clean_ioc.registration_filters</span> <span class="k">as</span> <span class="nn">rf</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;One&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;odd&quot;</span><span class="p">)])</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Two&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;even&quot;</span><span class="p">)])</span>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Three&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;odd&quot;</span><span class="p">)])</span>
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>
+</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>
+</span><span id="__span-13-9"><a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="s2">&quot;Two&quot;</span><span class="p">))</span> <span class="c1"># returns 2</span>
+</span><span id="__span-13-10"><a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s2">&quot;odd&quot;</span><span class="p">))</span> <span class="c1"># returns 3</span>
+</span><span id="__span-13-11"><a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="s2">&quot;One&quot;</span><span class="p">))</span> <span class="c1"># returns 1</span>
+</span></code></pre></div></p>
+<div class="admonition info">
+<p class="admonition-title">Named registration filtering</p>
+<p>The default filtering behavior of resolving is to look for unnamed registrations
+if you name a registration you have to explicitly filter for it.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Two&quot;</span><span class="p">)</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="c1"># returns 1</span>
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="s2">&quot;Two&quot;</span><span class="p">))</span> <span class="c1"># returns 2</span>
+</span></code></pre></div>
+</div>
+<h2 id="resolving-with-a-named-filter">Resolving with a named filter</h2>
+<h3 id="1-registering-the-inmemoryrepository_1">1. Registering the InMemoryRepository</h3>
+<div class="grid">
+<div>
+<p>Same as the previous example we now but we now register our <strong>InMemoryUserRepository</strong> with a name</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="k">def</span> <span class="nf">create_session</span><span class="p">():</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    <span class="c1"># DO DB STUFF</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    <span class="k">pass</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">)</span>
+</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>
+</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">)</span>
+</span><span id="__span-15-10"><a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;IN_MEM&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/name_filtering/01.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/name_filtering/01.png" /></a></p>
+</div>
+<h3 id="2-resolving-and-filtering-by-name">2. Resolving and filtering by name</h3>
+<div class="grid">
+<div>
+<p>We resolve but this time filter for the name=="IN_MEM"
+<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="k">def</span> <span class="nf">create_session</span><span class="p">():</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>    <span class="c1"># DO DB STUFF</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    <span class="k">pass</span>
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>
+</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">)</span>
+</span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>
+</span><span id="__span-16-9"><a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">)</span>
+</span><span id="__span-16-10"><a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;IN_MEM&quot;</span><span class="p">)</span>
+</span><span id="__span-16-11"><a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>
+</span><span id="__span-16-12"><a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="n">repo</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="s2">&quot;IN_MEM&quot;</span><span class="p">))</span>
+</span></code></pre></div></p>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/name_filtering/02.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/name_filtering/02.png" /></a></p>
+</div>
+<h3 id="3-returns-an-inmemoryuserrepository">3. Returns an InMemoryUserRepository</h3>
+<div class="grid">
+<div>
+<p>An instance of <strong>InMemoryUserRepository</strong> is returned
+<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="k">def</span> <span class="nf">create_session</span><span class="p">():</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>    <span class="c1"># DO DB STUFF</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    <span class="k">pass</span>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>
+</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">)</span>
+</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>
+</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">)</span>
+</span><span id="__span-17-10"><a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;IN_MEM&quot;</span><span class="p">)</span>
+</span><span id="__span-17-11"><a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>
+</span><span id="__span-17-12"><a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a><span class="n">repo</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="s2">&quot;IN_MEM&quot;</span><span class="p">))</span>
+</span></code></pre></div></p>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/name_filtering/03.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/name_filtering/03.png" /></a></p>
+</div>
+<h2 id="applying-registration-filters-deeper-in-the-graph">Applying registration filters deeper in the graph.</h2>
+<p>The previous example showed us how to filter a registration in the resolve method, but we will often need to filter a registration based on a dependency that is deeper in the dependency graph.
+This is where top down filtering and bottom up filtering comes in to play.</p>
+<h3 id="top-down-filtering">Top down filtering</h3>
+<p>Top down filtering is the filtering method of registrations defining filtering for their children. This is achieved by defining <strong>dependency config</strong> on our <strong>Registration</strong></p>
+<h4 id="dependency-config-dependency-settings">Dependency Config &amp; Dependency Settings</h4>
+<p>Dependency settings allow you to define what child dependencies to filter for.</p>
+<p>Here is the definition of dependency config in Clean Ioc.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="clean_ioc.core.DependencySettings"></a>
+    <div class="doc doc-contents first">
+
+
+              <details class="quote">
+                <summary>Source code in <code>clean_ioc/core.py</code></summary>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1906">1906</a></span>
+<span class="normal"><a href="#__codelineno-0-1907">1907</a></span>
+<span class="normal"><a href="#__codelineno-0-1908">1908</a></span>
+<span class="normal"><a href="#__codelineno-0-1909">1909</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1906"><a id="__codelineno-0-1906" name="__codelineno-0-1906"></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-0-1907"><a id="__codelineno-0-1907" name="__codelineno-0-1907"></a><span class="k">class</span> <span class="nc">DependencySettings</span><span class="p">:</span>
+</span><span id="__span-0-1908"><a id="__codelineno-0-1908" name="__codelineno-0-1908"></a>    <span class="n">value_factory</span><span class="p">:</span> <span class="n">ParameterValueFactory</span> <span class="o">=</span> <span class="n">default_parameter_value_factory</span>
+</span><span id="__span-0-1909"><a id="__codelineno-0-1909" name="__codelineno-0-1909"></a>    <span class="nb">filter</span><span class="p">:</span> <span class="n">RegistrationFilter</span> <span class="o">=</span> <span class="n">default_registration_filter</span>
+</span></code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><p>Dependency config is a dict of string to <strong>DependencySettings</strong> where the key is the parameter name in the <code>__init__</code> function or function in the case of a factory.
+<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="k">class</span> <span class="nc">Greeter</span><span class="p">:</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    <span class="k">def</span> <span class="nf">get_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>
+</span><span id="__span-18-8"><a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-18-9"><a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>
+</span><span id="__span-18-10"><a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="s2">&quot;Hello&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Hi&quot;</span><span class="p">)</span>
+</span><span id="__span-18-11"><a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="s2">&quot;Goodbye&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Bye&quot;</span><span class="p">)</span>
+</span><span id="__span-18-12"><a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>
+</span><span id="__span-18-13"><a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span>
+</span><span id="__span-18-14"><a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a>    <span class="n">Greeter</span><span class="p">,</span>
+</span><span id="__span-18-15"><a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;SaysHello&quot;</span><span class="p">,</span>
+</span><span id="__span-18-16"><a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a>    <span class="n">dependency_config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="n">DependencySettings</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">with_name</span><span class="p">(</span><span class="s2">&quot;Hi&quot;</span><span class="p">))}</span>
+</span><span id="__span-18-17"><a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a><span class="p">)</span>
+</span><span id="__span-18-18"><a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a>
+</span><span id="__span-18-19"><a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a>
+</span><span id="__span-18-20"><a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span>
+</span><span id="__span-18-21"><a id="__codelineno-18-21" name="__codelineno-18-21" href="#__codelineno-18-21"></a>    <span class="n">Greeter</span><span class="p">,</span>
+</span><span id="__span-18-22"><a id="__codelineno-18-22" name="__codelineno-18-22" href="#__codelineno-18-22"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;SaysGoodbye&quot;</span><span class="p">,</span>
+</span><span id="__span-18-23"><a id="__codelineno-18-23" name="__codelineno-18-23" href="#__codelineno-18-23"></a>    <span class="n">dependency_config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="n">DependencySettings</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">with_name</span><span class="p">(</span><span class="s2">&quot;Bye&quot;</span><span class="p">))}</span>
+</span><span id="__span-18-24"><a id="__codelineno-18-24" name="__codelineno-18-24" href="#__codelineno-18-24"></a><span class="p">)</span>
+</span><span id="__span-18-25"><a id="__codelineno-18-25" name="__codelineno-18-25" href="#__codelineno-18-25"></a>
+</span><span id="__span-18-26"><a id="__codelineno-18-26" name="__codelineno-18-26" href="#__codelineno-18-26"></a><span class="n">greeter_1</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">Client</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="n">with_name</span><span class="p">(</span><span class="s2">&quot;SaysHello&quot;</span><span class="p">))</span>
+</span><span id="__span-18-27"><a id="__codelineno-18-27" name="__codelineno-18-27" href="#__codelineno-18-27"></a><span class="n">greeter_2</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">Client</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="n">with_name</span><span class="p">(</span><span class="s2">&quot;SaysGoodbye&quot;</span><span class="p">))</span>
+</span><span id="__span-18-28"><a id="__codelineno-18-28" name="__codelineno-18-28" href="#__codelineno-18-28"></a>
+</span><span id="__span-18-29"><a id="__codelineno-18-29" name="__codelineno-18-29" href="#__codelineno-18-29"></a><span class="n">greeter_1</span><span class="o">.</span><span class="n">get_message</span><span class="p">(</span><span class="s2">&quot;Joe&quot;</span><span class="p">)</span> <span class="c1"># Hello Joe</span>
+</span><span id="__span-18-30"><a id="__codelineno-18-30" name="__codelineno-18-30" href="#__codelineno-18-30"></a><span class="n">greeter_2</span><span class="o">.</span><span class="n">get_message</span><span class="p">(</span><span class="s2">&quot;Joe&quot;</span><span class="p">)</span> <span class="c1"># Goodbye Joe</span>
+</span></code></pre></div></p>
+<h3 id="bottom-up-filtering">Bottom Up Filtering</h3>
+<p>Bottom up filtering is the method of allowing child dependencies filter out parents based on the state of the dependency graph</p>
+<h4 id="parent-node-filters">Parent Node Filters</h4>
+<p>Parent node filters are a callable take a Node as a parameter and return a boolean.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="clean_ioc.core.Node"></a>
+    <div class="doc doc-contents first">
+
+
+              <details class="quote">
+                <summary>Source code in <code>clean_ioc/core.py</code></summary>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-170">170</a></span>
+<span class="normal"><a href="#__codelineno-0-171">171</a></span>
+<span class="normal"><a href="#__codelineno-0-172">172</a></span>
+<span class="normal"><a href="#__codelineno-0-173">173</a></span>
+<span class="normal"><a href="#__codelineno-0-174">174</a></span>
+<span class="normal"><a href="#__codelineno-0-175">175</a></span>
+<span class="normal"><a href="#__codelineno-0-176">176</a></span>
+<span class="normal"><a href="#__codelineno-0-177">177</a></span>
+<span class="normal"><a href="#__codelineno-0-178">178</a></span>
+<span class="normal"><a href="#__codelineno-0-179">179</a></span>
+<span class="normal"><a href="#__codelineno-0-180">180</a></span>
+<span class="normal"><a href="#__codelineno-0-181">181</a></span>
+<span class="normal"><a href="#__codelineno-0-182">182</a></span>
+<span class="normal"><a href="#__codelineno-0-183">183</a></span>
+<span class="normal"><a href="#__codelineno-0-184">184</a></span>
+<span class="normal"><a href="#__codelineno-0-185">185</a></span>
+<span class="normal"><a href="#__codelineno-0-186">186</a></span>
+<span class="normal"><a href="#__codelineno-0-187">187</a></span>
+<span class="normal"><a href="#__codelineno-0-188">188</a></span>
+<span class="normal"><a href="#__codelineno-0-189">189</a></span>
+<span class="normal"><a href="#__codelineno-0-190">190</a></span>
+<span class="normal"><a href="#__codelineno-0-191">191</a></span>
+<span class="normal"><a href="#__codelineno-0-192">192</a></span>
+<span class="normal"><a href="#__codelineno-0-193">193</a></span>
+<span class="normal"><a href="#__codelineno-0-194">194</a></span>
+<span class="normal"><a href="#__codelineno-0-195">195</a></span>
+<span class="normal"><a href="#__codelineno-0-196">196</a></span>
+<span class="normal"><a href="#__codelineno-0-197">197</a></span>
+<span class="normal"><a href="#__codelineno-0-198">198</a></span>
+<span class="normal"><a href="#__codelineno-0-199">199</a></span>
+<span class="normal"><a href="#__codelineno-0-200">200</a></span>
+<span class="normal"><a href="#__codelineno-0-201">201</a></span>
+<span class="normal"><a href="#__codelineno-0-202">202</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-170"><a id="__codelineno-0-170" name="__codelineno-0-170"></a><span class="k">class</span> <span class="nc">Node</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+</span><span id="__span-0-171"><a id="__codelineno-0-171" name="__codelineno-0-171"></a>    <span class="n">service_type</span><span class="p">:</span> <span class="nb">type</span>
+</span><span id="__span-0-172"><a id="__codelineno-0-172" name="__codelineno-0-172"></a>    <span class="n">implementation</span><span class="p">:</span> <span class="nb">type</span> <span class="o">|</span> <span class="n">Callable</span>
+</span><span id="__span-0-173"><a id="__codelineno-0-173" name="__codelineno-0-173"></a>    <span class="n">parent</span><span class="p">:</span> <span class="n">Node</span>
+</span><span id="__span-0-174"><a id="__codelineno-0-174" name="__codelineno-0-174"></a>    <span class="n">children</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Node</span><span class="p">]</span>
+</span><span id="__span-0-175"><a id="__codelineno-0-175" name="__codelineno-0-175"></a>    <span class="n">decorator</span><span class="p">:</span> <span class="n">Node</span>
+</span><span id="__span-0-176"><a id="__codelineno-0-176" name="__codelineno-0-176"></a>    <span class="n">decorated</span><span class="p">:</span> <span class="n">Node</span>
+</span><span id="__span-0-177"><a id="__codelineno-0-177" name="__codelineno-0-177"></a>    <span class="n">pre_configured_by</span><span class="p">:</span> <span class="n">Node</span>
+</span><span id="__span-0-178"><a id="__codelineno-0-178" name="__codelineno-0-178"></a>    <span class="n">pre_configures</span><span class="p">:</span> <span class="n">Node</span>
+</span><span id="__span-0-179"><a id="__codelineno-0-179" name="__codelineno-0-179"></a>    <span class="n">registration_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+</span><span id="__span-0-180"><a id="__codelineno-0-180" name="__codelineno-0-180"></a>    <span class="n">registration_tags</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Tag</span><span class="p">]</span>
+</span><span id="__span-0-181"><a id="__codelineno-0-181" name="__codelineno-0-181"></a>    <span class="n">instance</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">UNKNOWN</span>
+</span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182"></a>    <span class="n">lifespan</span><span class="p">:</span> <span class="n">Lifespan</span>
+</span><span id="__span-0-183"><a id="__codelineno-0-183" name="__codelineno-0-183"></a>
+</span><span id="__span-0-184"><a id="__codelineno-0-184" name="__codelineno-0-184"></a>    <span class="k">def</span> <span class="nf">has_registration_tag</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span>
+</span><span id="__span-0-185"><a id="__codelineno-0-185" name="__codelineno-0-185"></a>    <span class="k">def</span> <span class="nf">unparent</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="o">...</span>
+</span><span id="__span-0-186"><a id="__codelineno-0-186" name="__codelineno-0-186"></a>    <span class="nd">@property</span>
+</span><span id="__span-0-187"><a id="__codelineno-0-187" name="__codelineno-0-187"></a>    <span class="k">def</span> <span class="nf">implementation_type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">:</span> <span class="o">...</span>
+</span><span id="__span-0-188"><a id="__codelineno-0-188" name="__codelineno-0-188"></a>    <span class="nd">@property</span>
+</span><span id="__span-0-189"><a id="__codelineno-0-189" name="__codelineno-0-189"></a>    <span class="k">def</span> <span class="nf">instance_type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">:</span> <span class="o">...</span>
+</span><span id="__span-0-190"><a id="__codelineno-0-190" name="__codelineno-0-190"></a>
+</span><span id="__span-0-191"><a id="__codelineno-0-191" name="__codelineno-0-191"></a>    <span class="nd">@property</span>
+</span><span id="__span-0-192"><a id="__codelineno-0-192" name="__codelineno-0-192"></a>    <span class="k">def</span> <span class="nf">bottom_decorated_node</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Node</span><span class="p">:</span> <span class="o">...</span>
+</span><span id="__span-0-193"><a id="__codelineno-0-193" name="__codelineno-0-193"></a>    <span class="nd">@property</span>
+</span><span id="__span-0-194"><a id="__codelineno-0-194" name="__codelineno-0-194"></a>    <span class="k">def</span> <span class="nf">top_decorated_node</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Node</span><span class="p">:</span> <span class="o">...</span>
+</span><span id="__span-0-195"><a id="__codelineno-0-195" name="__codelineno-0-195"></a>    <span class="k">def</span> <span class="nf">has_dependant_service_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">service_type</span><span class="p">:</span> <span class="nb">type</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span>
+</span><span id="__span-0-196"><a id="__codelineno-0-196" name="__codelineno-0-196"></a>
+</span><span id="__span-0-197"><a id="__codelineno-0-197" name="__codelineno-0-197"></a>    <span class="k">def</span> <span class="nf">has_dependant_implementation_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">implementation_type</span><span class="p">:</span> <span class="nb">type</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span>
+</span><span id="__span-0-198"><a id="__codelineno-0-198" name="__codelineno-0-198"></a>
+</span><span id="__span-0-199"><a id="__codelineno-0-199" name="__codelineno-0-199"></a>    <span class="k">def</span> <span class="nf">has_dependant_instance_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance_type</span><span class="p">:</span> <span class="nb">type</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span>
+</span><span id="__span-0-200"><a id="__codelineno-0-200" name="__codelineno-0-200"></a>
+</span><span id="__span-0-201"><a id="__codelineno-0-201" name="__codelineno-0-201"></a>    <span class="nd">@property</span>
+</span><span id="__span-0-202"><a id="__codelineno-0-202" name="__codelineno-0-202"></a>    <span class="k">def</span> <span class="nf">generic_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GenericTypeMap</span><span class="p">:</span> <span class="o">...</span>
+</span></code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">import</span> <span class="nn">clean_ioc.node_filters</span> <span class="k">as</span> <span class="nn">nf</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>    <span class="k">pass</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="k">class</span> <span class="nc">B</span><span class="p">(</span><span class="n">A</span><span class="p">):</span>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>    <span class="k">pass</span>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>
+</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="k">class</span> <span class="nc">C</span><span class="p">(</span><span class="n">A</span><span class="p">):</span>
+</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>    <span class="k">pass</span>
+</span><span id="__span-19-11"><a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>
+</span><span id="__span-19-12"><a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a><span class="k">class</span> <span class="nc">D</span><span class="p">:</span>
+</span><span id="__span-19-13"><a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="n">A</span><span class="p">):</span>
+</span><span id="__span-19-14"><a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="n">a</span>
+</span><span id="__span-19-15"><a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>
+</span><span id="__span-19-16"><a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a><span class="k">class</span> <span class="nc">E</span><span class="p">:</span>
+</span><span id="__span-19-17"><a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="n">A</span><span class="p">):</span>
+</span><span id="__span-19-18"><a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="n">a</span>
+</span><span id="__span-19-19"><a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a>
+</span><span id="__span-19-20"><a id="__codelineno-19-20" name="__codelineno-19-20" href="#__codelineno-19-20"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-19-21"><a id="__codelineno-19-21" name="__codelineno-19-21" href="#__codelineno-19-21"></a>
+</span><span id="__span-19-22"><a id="__codelineno-19-22" name="__codelineno-19-22" href="#__codelineno-19-22"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">parent_node_filter</span><span class="o">=</span><span class="n">nf</span><span class="o">.</span><span class="n">implementation_type_is</span><span class="p">(</span><span class="n">E</span><span class="p">))</span>
+</span><span id="__span-19-23"><a id="__codelineno-19-23" name="__codelineno-19-23" href="#__codelineno-19-23"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">parent_node_filter</span><span class="o">=</span><span class="n">nf</span><span class="o">.</span><span class="n">implementation_type_is</span><span class="p">(</span><span class="n">D</span><span class="p">))</span>
+</span><span id="__span-19-24"><a id="__codelineno-19-24" name="__codelineno-19-24" href="#__codelineno-19-24"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">D</span><span class="p">)</span>
+</span><span id="__span-19-25"><a id="__codelineno-19-25" name="__codelineno-19-25" href="#__codelineno-19-25"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>
+</span><span id="__span-19-26"><a id="__codelineno-19-26" name="__codelineno-19-26" href="#__codelineno-19-26"></a>
+</span><span id="__span-19-27"><a id="__codelineno-19-27" name="__codelineno-19-27" href="#__codelineno-19-27"></a><span class="n">e</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">E</span><span class="p">)</span>
+</span><span id="__span-19-28"><a id="__codelineno-19-28" name="__codelineno-19-28" href="#__codelineno-19-28"></a><span class="n">d</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">D</span><span class="p">)</span>
+</span><span id="__span-19-29"><a id="__codelineno-19-29" name="__codelineno-19-29" href="#__codelineno-19-29"></a>
+</span><span id="__span-19-30"><a id="__codelineno-19-30" name="__codelineno-19-30" href="#__codelineno-19-30"></a><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">a</span><span class="p">)</span> <span class="c1"># returns type of B</span>
+</span><span id="__span-19-31"><a id="__codelineno-19-31" name="__codelineno-19-31" href="#__codelineno-19-31"></a><span class="nb">type</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">a</span><span class="p">)</span> <span class="c1"># returns type of C</span>
+</span></code></pre></div>
+<h2 id="an-example-of-top-down-filtering-combined-with-bottom-up-filtering">An example of top down filtering combined with bottom up filtering</h2>
+<p>Were now going to use a more complex example of our repositories pattern.
+We are going to add a product repository type and also set it up that the user repository and product repository point to two different databases.</p>
+<h3 id="1-registering-our-dependencies">1. Registering our dependencies</h3>
+<div class="grid">
+<div>
+<p>Registering the repositories and their respective database config.
+The repositories filter the session top down and the database config filter the session bottom up.
+<div class="language-python highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="nd">@dataclass</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="k">class</span> <span class="nc">DbConnectionConfig</span><span class="p">:</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>    <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>    <span class="n">database_name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>    <span class="n">username</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>    <span class="n">password</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-20-7"><a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>
+</span><span id="__span-20-8"><a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-20-9"><a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>
+</span><span id="__span-20-10"><a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a><span class="k">def</span> <span class="nf">create_session</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">DbConnectionConfig</span><span class="p">):</span>
+</span><span id="__span-20-11"><a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a>    <span class="c1"># DO DB STUFF</span>
+</span><span id="__span-20-12"><a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>    <span class="k">pass</span>
+</span><span id="__span-20-13"><a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a>
+</span><span id="__span-20-14"><a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a><span class="n">user_db_settings</span> <span class="o">=</span> <span class="n">DbConnectionConfig</span><span class="p">(</span>
+</span><span id="__span-20-15"><a id="__codelineno-20-15" name="__codelineno-20-15" href="#__codelineno-20-15"></a>    <span class="n">hostname</span><span class="o">=</span><span class="s2">&quot;db_server&quot;</span><span class="p">,</span>
+</span><span id="__span-20-16"><a id="__codelineno-20-16" name="__codelineno-20-16" href="#__codelineno-20-16"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;users&quot;</span><span class="p">,</span>
+</span><span id="__span-20-17"><a id="__codelineno-20-17" name="__codelineno-20-17" href="#__codelineno-20-17"></a>    <span class="n">username</span><span class="o">=</span><span class="s2">&quot;SecureName&quot;</span><span class="p">,</span>
+</span><span id="__span-20-18"><a id="__codelineno-20-18" name="__codelineno-20-18" href="#__codelineno-20-18"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;NotVerySecurePassword&quot;</span><span class="p">,</span>
+</span><span id="__span-20-19"><a id="__codelineno-20-19" name="__codelineno-20-19" href="#__codelineno-20-19"></a><span class="p">)</span>
+</span><span id="__span-20-20"><a id="__codelineno-20-20" name="__codelineno-20-20" href="#__codelineno-20-20"></a>
+</span><span id="__span-20-21"><a id="__codelineno-20-21" name="__codelineno-20-21" href="#__codelineno-20-21"></a><span class="n">product_db_settings</span> <span class="o">=</span> <span class="n">DbConnectionConfig</span><span class="p">(</span>
+</span><span id="__span-20-22"><a id="__codelineno-20-22" name="__codelineno-20-22" href="#__codelineno-20-22"></a>    <span class="n">hostname</span><span class="o">=</span><span class="s2">&quot;db_server&quot;</span><span class="p">,</span>
+</span><span id="__span-20-23"><a id="__codelineno-20-23" name="__codelineno-20-23" href="#__codelineno-20-23"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;products&quot;</span><span class="p">,</span>
+</span><span id="__span-20-24"><a id="__codelineno-20-24" name="__codelineno-20-24" href="#__codelineno-20-24"></a>    <span class="n">username</span><span class="o">=</span><span class="s2">&quot;SecureName&quot;</span><span class="p">,</span>
+</span><span id="__span-20-25"><a id="__codelineno-20-25" name="__codelineno-20-25" href="#__codelineno-20-25"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;NotVerySecurePassword&quot;</span><span class="p">,</span>
+</span><span id="__span-20-26"><a id="__codelineno-20-26" name="__codelineno-20-26" href="#__codelineno-20-26"></a><span class="p">)</span>
+</span><span id="__span-20-27"><a id="__codelineno-20-27" name="__codelineno-20-27" href="#__codelineno-20-27"></a>
+</span><span id="__span-20-28"><a id="__codelineno-20-28" name="__codelineno-20-28" href="#__codelineno-20-28"></a>
+</span><span id="__span-20-29"><a id="__codelineno-20-29" name="__codelineno-20-29" href="#__codelineno-20-29"></a>
+</span><span id="__span-20-30"><a id="__codelineno-20-30" name="__codelineno-20-30" href="#__codelineno-20-30"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))</span>
+</span><span id="__span-20-31"><a id="__codelineno-20-31" name="__codelineno-20-31" href="#__codelineno-20-31"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))</span>
+</span><span id="__span-20-32"><a id="__codelineno-20-32" name="__codelineno-20-32" href="#__codelineno-20-32"></a>
+</span><span id="__span-20-33"><a id="__codelineno-20-33" name="__codelineno-20-33" href="#__codelineno-20-33"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">,</span> <span class="n">dependency_config</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;session&quot;</span><span class="p">:</span> <span class="n">DependencySettings</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))})</span>
+</span><span id="__span-20-34"><a id="__codelineno-20-34" name="__codelineno-20-34" href="#__codelineno-20-34"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;IN_MEM&quot;</span><span class="p">)</span>
+</span><span id="__span-20-35"><a id="__codelineno-20-35" name="__codelineno-20-35" href="#__codelineno-20-35"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">ProductRepository</span><span class="p">,</span> <span class="n">SqlAlchemyProductRepository</span><span class="p">,</span> <span class="n">dependency_config</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;session&quot;</span><span class="p">:</span> <span class="n">DependencySettings</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))})</span>
+</span><span id="__span-20-36"><a id="__codelineno-20-36" name="__codelineno-20-36" href="#__codelineno-20-36"></a>
+</span><span id="__span-20-37"><a id="__codelineno-20-37" name="__codelineno-20-37" href="#__codelineno-20-37"></a>
+</span><span id="__span-20-38"><a id="__codelineno-20-38" name="__codelineno-20-38" href="#__codelineno-20-38"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">DbConnectionConfig</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="n">user_db_settings</span><span class="p">,</span> <span class="n">parent_node_filter</span><span class="o">=</span><span class="n">nf</span><span class="o">.</span><span class="n">has_registration_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))</span>
+</span><span id="__span-20-39"><a id="__codelineno-20-39" name="__codelineno-20-39" href="#__codelineno-20-39"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">DbConnectionConfig</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="n">product_db_settings</span><span class="p">,</span> <span class="n">parent_node_filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_registration_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))</span>
+</span></code></pre></div></p>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/node_filtering/01.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/node_filtering/01.png" /></a></p>
+</div>
+<h3 id="2-resolving-the-userrepository">2. Resolving the UserRepository</h3>
+<div class="grid">
+<div>
+<p>InMemoryUserRepository is skipped because it is named</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nd">@dataclass</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="k">class</span> <span class="nc">DbConnectionConfig</span><span class="p">:</span>
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>    <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    <span class="n">database_name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>    <span class="n">username</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>    <span class="n">password</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-21-7"><a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>
+</span><span id="__span-21-8"><a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-21-9"><a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>
+</span><span id="__span-21-10"><a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a><span class="k">def</span> <span class="nf">create_session</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">DbConnectionConfig</span><span class="p">):</span>
+</span><span id="__span-21-11"><a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>    <span class="c1"># DO DB STUFF</span>
+</span><span id="__span-21-12"><a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>    <span class="k">pass</span>
+</span><span id="__span-21-13"><a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>
+</span><span id="__span-21-14"><a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a><span class="n">user_db_settings</span> <span class="o">=</span> <span class="n">DbConnectionConfig</span><span class="p">(</span>
+</span><span id="__span-21-15"><a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a>    <span class="n">hostname</span><span class="o">=</span><span class="s2">&quot;db_server&quot;</span><span class="p">,</span>
+</span><span id="__span-21-16"><a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;users&quot;</span><span class="p">,</span>
+</span><span id="__span-21-17"><a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a>    <span class="n">username</span><span class="o">=</span><span class="s2">&quot;SecureName&quot;</span><span class="p">,</span>
+</span><span id="__span-21-18"><a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;NotVerySecurePassword&quot;</span><span class="p">,</span>
+</span><span id="__span-21-19"><a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a><span class="p">)</span>
+</span><span id="__span-21-20"><a id="__codelineno-21-20" name="__codelineno-21-20" href="#__codelineno-21-20"></a>
+</span><span id="__span-21-21"><a id="__codelineno-21-21" name="__codelineno-21-21" href="#__codelineno-21-21"></a><span class="n">product_db_settings</span> <span class="o">=</span> <span class="n">DbConnectionConfig</span><span class="p">(</span>
+</span><span id="__span-21-22"><a id="__codelineno-21-22" name="__codelineno-21-22" href="#__codelineno-21-22"></a>    <span class="n">hostname</span><span class="o">=</span><span class="s2">&quot;db_server&quot;</span><span class="p">,</span>
+</span><span id="__span-21-23"><a id="__codelineno-21-23" name="__codelineno-21-23" href="#__codelineno-21-23"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;products&quot;</span><span class="p">,</span>
+</span><span id="__span-21-24"><a id="__codelineno-21-24" name="__codelineno-21-24" href="#__codelineno-21-24"></a>    <span class="n">username</span><span class="o">=</span><span class="s2">&quot;SecureName&quot;</span><span class="p">,</span>
+</span><span id="__span-21-25"><a id="__codelineno-21-25" name="__codelineno-21-25" href="#__codelineno-21-25"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;NotVerySecurePassword&quot;</span><span class="p">,</span>
+</span><span id="__span-21-26"><a id="__codelineno-21-26" name="__codelineno-21-26" href="#__codelineno-21-26"></a><span class="p">)</span>
+</span><span id="__span-21-27"><a id="__codelineno-21-27" name="__codelineno-21-27" href="#__codelineno-21-27"></a>
+</span><span id="__span-21-28"><a id="__codelineno-21-28" name="__codelineno-21-28" href="#__codelineno-21-28"></a>
+</span><span id="__span-21-29"><a id="__codelineno-21-29" name="__codelineno-21-29" href="#__codelineno-21-29"></a>
+</span><span id="__span-21-30"><a id="__codelineno-21-30" name="__codelineno-21-30" href="#__codelineno-21-30"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))</span>
+</span><span id="__span-21-31"><a id="__codelineno-21-31" name="__codelineno-21-31" href="#__codelineno-21-31"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))</span>
+</span><span id="__span-21-32"><a id="__codelineno-21-32" name="__codelineno-21-32" href="#__codelineno-21-32"></a>
+</span><span id="__span-21-33"><a id="__codelineno-21-33" name="__codelineno-21-33" href="#__codelineno-21-33"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">,</span> <span class="n">dependency_config</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;session&quot;</span><span class="p">:</span> <span class="n">DependencySettings</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))})</span>
+</span><span id="__span-21-34"><a id="__codelineno-21-34" name="__codelineno-21-34" href="#__codelineno-21-34"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;IN_MEM&quot;</span><span class="p">)</span>
+</span><span id="__span-21-35"><a id="__codelineno-21-35" name="__codelineno-21-35" href="#__codelineno-21-35"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">ProductRepository</span><span class="p">,</span> <span class="n">SqlAlchemyProductRepository</span><span class="p">,</span> <span class="n">dependency_config</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;session&quot;</span><span class="p">:</span> <span class="n">DependencySettings</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))})</span>
+</span><span id="__span-21-36"><a id="__codelineno-21-36" name="__codelineno-21-36" href="#__codelineno-21-36"></a>
+</span><span id="__span-21-37"><a id="__codelineno-21-37" name="__codelineno-21-37" href="#__codelineno-21-37"></a>
+</span><span id="__span-21-38"><a id="__codelineno-21-38" name="__codelineno-21-38" href="#__codelineno-21-38"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">DbConnectionConfig</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="n">user_db_settings</span><span class="p">,</span> <span class="n">parent_node_filter</span><span class="o">=</span><span class="n">nf</span><span class="o">.</span><span class="n">has_registration_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))</span>
+</span><span id="__span-21-39"><a id="__codelineno-21-39" name="__codelineno-21-39" href="#__codelineno-21-39"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">DbConnectionConfig</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="n">product_db_settings</span><span class="p">,</span> <span class="n">parent_node_filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_registration_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))</span>
+</span><span id="__span-21-40"><a id="__codelineno-21-40" name="__codelineno-21-40" href="#__codelineno-21-40"></a>
+</span><span id="__span-21-41"><a id="__codelineno-21-41" name="__codelineno-21-41" href="#__codelineno-21-41"></a>
+</span><span id="__span-21-42"><a id="__codelineno-21-42" name="__codelineno-21-42" href="#__codelineno-21-42"></a><span class="n">user_repo</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/node_filtering/02.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/node_filtering/02.png" /></a></p>
+</div>
+<h3 id="3-finding-the-session">3. Finding the session</h3>
+<div class="grid">
+<div>
+<p>The correct db session is found because we look for a tag matching <code>"Database"=="UserDb"</code></p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="nd">@dataclass</span>
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="k">class</span> <span class="nc">DbConnectionConfig</span><span class="p">:</span>
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>    <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>    <span class="n">database_name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-22-5"><a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>    <span class="n">username</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-22-6"><a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>    <span class="n">password</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-22-7"><a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>
+</span><span id="__span-22-8"><a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-22-9"><a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>
+</span><span id="__span-22-10"><a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a><span class="k">def</span> <span class="nf">create_session</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">DbConnectionConfig</span><span class="p">):</span>
+</span><span id="__span-22-11"><a id="__codelineno-22-11" name="__codelineno-22-11" href="#__codelineno-22-11"></a>    <span class="c1"># DO DB STUFF</span>
+</span><span id="__span-22-12"><a id="__codelineno-22-12" name="__codelineno-22-12" href="#__codelineno-22-12"></a>    <span class="k">pass</span>
+</span><span id="__span-22-13"><a id="__codelineno-22-13" name="__codelineno-22-13" href="#__codelineno-22-13"></a>
+</span><span id="__span-22-14"><a id="__codelineno-22-14" name="__codelineno-22-14" href="#__codelineno-22-14"></a><span class="n">user_db_settings</span> <span class="o">=</span> <span class="n">DbConnectionConfig</span><span class="p">(</span>
+</span><span id="__span-22-15"><a id="__codelineno-22-15" name="__codelineno-22-15" href="#__codelineno-22-15"></a>    <span class="n">hostname</span><span class="o">=</span><span class="s2">&quot;db_server&quot;</span><span class="p">,</span>
+</span><span id="__span-22-16"><a id="__codelineno-22-16" name="__codelineno-22-16" href="#__codelineno-22-16"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;users&quot;</span><span class="p">,</span>
+</span><span id="__span-22-17"><a id="__codelineno-22-17" name="__codelineno-22-17" href="#__codelineno-22-17"></a>    <span class="n">username</span><span class="o">=</span><span class="s2">&quot;SecureName&quot;</span><span class="p">,</span>
+</span><span id="__span-22-18"><a id="__codelineno-22-18" name="__codelineno-22-18" href="#__codelineno-22-18"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;NotVerySecurePassword&quot;</span><span class="p">,</span>
+</span><span id="__span-22-19"><a id="__codelineno-22-19" name="__codelineno-22-19" href="#__codelineno-22-19"></a><span class="p">)</span>
+</span><span id="__span-22-20"><a id="__codelineno-22-20" name="__codelineno-22-20" href="#__codelineno-22-20"></a>
+</span><span id="__span-22-21"><a id="__codelineno-22-21" name="__codelineno-22-21" href="#__codelineno-22-21"></a><span class="n">product_db_settings</span> <span class="o">=</span> <span class="n">DbConnectionConfig</span><span class="p">(</span>
+</span><span id="__span-22-22"><a id="__codelineno-22-22" name="__codelineno-22-22" href="#__codelineno-22-22"></a>    <span class="n">hostname</span><span class="o">=</span><span class="s2">&quot;db_server&quot;</span><span class="p">,</span>
+</span><span id="__span-22-23"><a id="__codelineno-22-23" name="__codelineno-22-23" href="#__codelineno-22-23"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;products&quot;</span><span class="p">,</span>
+</span><span id="__span-22-24"><a id="__codelineno-22-24" name="__codelineno-22-24" href="#__codelineno-22-24"></a>    <span class="n">username</span><span class="o">=</span><span class="s2">&quot;SecureName&quot;</span><span class="p">,</span>
+</span><span id="__span-22-25"><a id="__codelineno-22-25" name="__codelineno-22-25" href="#__codelineno-22-25"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;NotVerySecurePassword&quot;</span><span class="p">,</span>
+</span><span id="__span-22-26"><a id="__codelineno-22-26" name="__codelineno-22-26" href="#__codelineno-22-26"></a><span class="p">)</span>
+</span><span id="__span-22-27"><a id="__codelineno-22-27" name="__codelineno-22-27" href="#__codelineno-22-27"></a>
+</span><span id="__span-22-28"><a id="__codelineno-22-28" name="__codelineno-22-28" href="#__codelineno-22-28"></a>
+</span><span id="__span-22-29"><a id="__codelineno-22-29" name="__codelineno-22-29" href="#__codelineno-22-29"></a>
+</span><span id="__span-22-30"><a id="__codelineno-22-30" name="__codelineno-22-30" href="#__codelineno-22-30"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))</span>
+</span><span id="__span-22-31"><a id="__codelineno-22-31" name="__codelineno-22-31" href="#__codelineno-22-31"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))</span>
+</span><span id="__span-22-32"><a id="__codelineno-22-32" name="__codelineno-22-32" href="#__codelineno-22-32"></a>
+</span><span id="__span-22-33"><a id="__codelineno-22-33" name="__codelineno-22-33" href="#__codelineno-22-33"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">,</span> <span class="n">dependency_config</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;session&quot;</span><span class="p">:</span> <span class="n">DependencySettings</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))})</span>
+</span><span id="__span-22-34"><a id="__codelineno-22-34" name="__codelineno-22-34" href="#__codelineno-22-34"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;IN_MEM&quot;</span><span class="p">)</span>
+</span><span id="__span-22-35"><a id="__codelineno-22-35" name="__codelineno-22-35" href="#__codelineno-22-35"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">ProductRepository</span><span class="p">,</span> <span class="n">SqlAlchemyProductRepository</span><span class="p">,</span> <span class="n">dependency_config</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;session&quot;</span><span class="p">:</span> <span class="n">DependencySettings</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))})</span>
+</span><span id="__span-22-36"><a id="__codelineno-22-36" name="__codelineno-22-36" href="#__codelineno-22-36"></a>
+</span><span id="__span-22-37"><a id="__codelineno-22-37" name="__codelineno-22-37" href="#__codelineno-22-37"></a>
+</span><span id="__span-22-38"><a id="__codelineno-22-38" name="__codelineno-22-38" href="#__codelineno-22-38"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">DbConnectionConfig</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="n">user_db_settings</span><span class="p">,</span> <span class="n">parent_node_filter</span><span class="o">=</span><span class="n">nf</span><span class="o">.</span><span class="n">has_registration_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))</span>
+</span><span id="__span-22-39"><a id="__codelineno-22-39" name="__codelineno-22-39" href="#__codelineno-22-39"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">DbConnectionConfig</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="n">product_db_settings</span><span class="p">,</span> <span class="n">parent_node_filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_registration_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))</span>
+</span><span id="__span-22-40"><a id="__codelineno-22-40" name="__codelineno-22-40" href="#__codelineno-22-40"></a>
+</span><span id="__span-22-41"><a id="__codelineno-22-41" name="__codelineno-22-41" href="#__codelineno-22-41"></a>
+</span><span id="__span-22-42"><a id="__codelineno-22-42" name="__codelineno-22-42" href="#__codelineno-22-42"></a><span class="n">user_repo</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/node_filtering/03.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/node_filtering/03.png" /></a></p>
+</div>
+<h3 id="4-finding-the-config">4. Finding the config</h3>
+<div class="grid">
+<div>
+<p>We find the correct config because we looking for a parent with tag <code>"Database"=="UserDb"</code></p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="nd">@dataclass</span>
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="k">class</span> <span class="nc">DbConnectionConfig</span><span class="p">:</span>
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>    <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>    <span class="n">database_name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>    <span class="n">username</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-23-6"><a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>    <span class="n">password</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-23-7"><a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>
+</span><span id="__span-23-8"><a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-23-9"><a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>
+</span><span id="__span-23-10"><a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a><span class="k">def</span> <span class="nf">create_session</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">DbConnectionConfig</span><span class="p">):</span>
+</span><span id="__span-23-11"><a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>    <span class="c1"># DO DB STUFF</span>
+</span><span id="__span-23-12"><a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a>    <span class="k">pass</span>
+</span><span id="__span-23-13"><a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a>
+</span><span id="__span-23-14"><a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a><span class="n">user_db_settings</span> <span class="o">=</span> <span class="n">DbConnectionConfig</span><span class="p">(</span>
+</span><span id="__span-23-15"><a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a>    <span class="n">hostname</span><span class="o">=</span><span class="s2">&quot;db_server&quot;</span><span class="p">,</span>
+</span><span id="__span-23-16"><a id="__codelineno-23-16" name="__codelineno-23-16" href="#__codelineno-23-16"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;users&quot;</span><span class="p">,</span>
+</span><span id="__span-23-17"><a id="__codelineno-23-17" name="__codelineno-23-17" href="#__codelineno-23-17"></a>    <span class="n">username</span><span class="o">=</span><span class="s2">&quot;SecureName&quot;</span><span class="p">,</span>
+</span><span id="__span-23-18"><a id="__codelineno-23-18" name="__codelineno-23-18" href="#__codelineno-23-18"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;NotVerySecurePassword&quot;</span><span class="p">,</span>
+</span><span id="__span-23-19"><a id="__codelineno-23-19" name="__codelineno-23-19" href="#__codelineno-23-19"></a><span class="p">)</span>
+</span><span id="__span-23-20"><a id="__codelineno-23-20" name="__codelineno-23-20" href="#__codelineno-23-20"></a>
+</span><span id="__span-23-21"><a id="__codelineno-23-21" name="__codelineno-23-21" href="#__codelineno-23-21"></a><span class="n">product_db_settings</span> <span class="o">=</span> <span class="n">DbConnectionConfig</span><span class="p">(</span>
+</span><span id="__span-23-22"><a id="__codelineno-23-22" name="__codelineno-23-22" href="#__codelineno-23-22"></a>    <span class="n">hostname</span><span class="o">=</span><span class="s2">&quot;db_server&quot;</span><span class="p">,</span>
+</span><span id="__span-23-23"><a id="__codelineno-23-23" name="__codelineno-23-23" href="#__codelineno-23-23"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;products&quot;</span><span class="p">,</span>
+</span><span id="__span-23-24"><a id="__codelineno-23-24" name="__codelineno-23-24" href="#__codelineno-23-24"></a>    <span class="n">username</span><span class="o">=</span><span class="s2">&quot;SecureName&quot;</span><span class="p">,</span>
+</span><span id="__span-23-25"><a id="__codelineno-23-25" name="__codelineno-23-25" href="#__codelineno-23-25"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;NotVerySecurePassword&quot;</span><span class="p">,</span>
+</span><span id="__span-23-26"><a id="__codelineno-23-26" name="__codelineno-23-26" href="#__codelineno-23-26"></a><span class="p">)</span>
+</span><span id="__span-23-27"><a id="__codelineno-23-27" name="__codelineno-23-27" href="#__codelineno-23-27"></a>
+</span><span id="__span-23-28"><a id="__codelineno-23-28" name="__codelineno-23-28" href="#__codelineno-23-28"></a>
+</span><span id="__span-23-29"><a id="__codelineno-23-29" name="__codelineno-23-29" href="#__codelineno-23-29"></a>
+</span><span id="__span-23-30"><a id="__codelineno-23-30" name="__codelineno-23-30" href="#__codelineno-23-30"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))</span>
+</span><span id="__span-23-31"><a id="__codelineno-23-31" name="__codelineno-23-31" href="#__codelineno-23-31"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))</span>
+</span><span id="__span-23-32"><a id="__codelineno-23-32" name="__codelineno-23-32" href="#__codelineno-23-32"></a>
+</span><span id="__span-23-33"><a id="__codelineno-23-33" name="__codelineno-23-33" href="#__codelineno-23-33"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">,</span> <span class="n">dependency_config</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;session&quot;</span><span class="p">:</span> <span class="n">DependencySettings</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))})</span>
+</span><span id="__span-23-34"><a id="__codelineno-23-34" name="__codelineno-23-34" href="#__codelineno-23-34"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;IN_MEM&quot;</span><span class="p">)</span>
+</span><span id="__span-23-35"><a id="__codelineno-23-35" name="__codelineno-23-35" href="#__codelineno-23-35"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">ProductRepository</span><span class="p">,</span> <span class="n">SqlAlchemyProductRepository</span><span class="p">,</span> <span class="n">dependency_config</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;session&quot;</span><span class="p">:</span> <span class="n">DependencySettings</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))})</span>
+</span><span id="__span-23-36"><a id="__codelineno-23-36" name="__codelineno-23-36" href="#__codelineno-23-36"></a>
+</span><span id="__span-23-37"><a id="__codelineno-23-37" name="__codelineno-23-37" href="#__codelineno-23-37"></a>
+</span><span id="__span-23-38"><a id="__codelineno-23-38" name="__codelineno-23-38" href="#__codelineno-23-38"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">DbConnectionConfig</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="n">user_db_settings</span><span class="p">,</span> <span class="n">parent_node_filter</span><span class="o">=</span><span class="n">nf</span><span class="o">.</span><span class="n">has_registration_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))</span>
+</span><span id="__span-23-39"><a id="__codelineno-23-39" name="__codelineno-23-39" href="#__codelineno-23-39"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">DbConnectionConfig</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="n">product_db_settings</span><span class="p">,</span> <span class="n">parent_node_filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_registration_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))</span>
+</span><span id="__span-23-40"><a id="__codelineno-23-40" name="__codelineno-23-40" href="#__codelineno-23-40"></a>
+</span><span id="__span-23-41"><a id="__codelineno-23-41" name="__codelineno-23-41" href="#__codelineno-23-41"></a>
+</span><span id="__span-23-42"><a id="__codelineno-23-42" name="__codelineno-23-42" href="#__codelineno-23-42"></a><span class="n">user_repo</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/node_filtering/04.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/node_filtering/04.png" /></a></p>
+</div>
+<h3 id="5-building-the-object">5. Building the object</h3>
+<div class="grid">
+<div>
+<p>Finally we build and return user repository with the correct database session.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="nd">@dataclass</span>
+</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="k">class</span> <span class="nc">DbConnectionConfig</span><span class="p">:</span>
+</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>    <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-24-4"><a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>    <span class="n">database_name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-24-5"><a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>    <span class="n">username</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-24-6"><a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>    <span class="n">password</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-24-7"><a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>
+</span><span id="__span-24-8"><a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a><span class="n">container</span> <span class="o">=</span> <span class="n">Container</span><span class="p">()</span>
+</span><span id="__span-24-9"><a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>
+</span><span id="__span-24-10"><a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a><span class="k">def</span> <span class="nf">create_session</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">DbConnectionConfig</span><span class="p">):</span>
+</span><span id="__span-24-11"><a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a>    <span class="c1"># DO DB STUFF</span>
+</span><span id="__span-24-12"><a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a>    <span class="k">pass</span>
+</span><span id="__span-24-13"><a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a>
+</span><span id="__span-24-14"><a id="__codelineno-24-14" name="__codelineno-24-14" href="#__codelineno-24-14"></a><span class="n">user_db_settings</span> <span class="o">=</span> <span class="n">DbConnectionConfig</span><span class="p">(</span>
+</span><span id="__span-24-15"><a id="__codelineno-24-15" name="__codelineno-24-15" href="#__codelineno-24-15"></a>    <span class="n">hostname</span><span class="o">=</span><span class="s2">&quot;db_server&quot;</span><span class="p">,</span>
+</span><span id="__span-24-16"><a id="__codelineno-24-16" name="__codelineno-24-16" href="#__codelineno-24-16"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;users&quot;</span><span class="p">,</span>
+</span><span id="__span-24-17"><a id="__codelineno-24-17" name="__codelineno-24-17" href="#__codelineno-24-17"></a>    <span class="n">username</span><span class="o">=</span><span class="s2">&quot;SecureName&quot;</span><span class="p">,</span>
+</span><span id="__span-24-18"><a id="__codelineno-24-18" name="__codelineno-24-18" href="#__codelineno-24-18"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;NotVerySecurePassword&quot;</span><span class="p">,</span>
+</span><span id="__span-24-19"><a id="__codelineno-24-19" name="__codelineno-24-19" href="#__codelineno-24-19"></a><span class="p">)</span>
+</span><span id="__span-24-20"><a id="__codelineno-24-20" name="__codelineno-24-20" href="#__codelineno-24-20"></a>
+</span><span id="__span-24-21"><a id="__codelineno-24-21" name="__codelineno-24-21" href="#__codelineno-24-21"></a><span class="n">product_db_settings</span> <span class="o">=</span> <span class="n">DbConnectionConfig</span><span class="p">(</span>
+</span><span id="__span-24-22"><a id="__codelineno-24-22" name="__codelineno-24-22" href="#__codelineno-24-22"></a>    <span class="n">hostname</span><span class="o">=</span><span class="s2">&quot;db_server&quot;</span><span class="p">,</span>
+</span><span id="__span-24-23"><a id="__codelineno-24-23" name="__codelineno-24-23" href="#__codelineno-24-23"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;products&quot;</span><span class="p">,</span>
+</span><span id="__span-24-24"><a id="__codelineno-24-24" name="__codelineno-24-24" href="#__codelineno-24-24"></a>    <span class="n">username</span><span class="o">=</span><span class="s2">&quot;SecureName&quot;</span><span class="p">,</span>
+</span><span id="__span-24-25"><a id="__codelineno-24-25" name="__codelineno-24-25" href="#__codelineno-24-25"></a>    <span class="n">database_name</span><span class="o">=</span><span class="s2">&quot;NotVerySecurePassword&quot;</span><span class="p">,</span>
+</span><span id="__span-24-26"><a id="__codelineno-24-26" name="__codelineno-24-26" href="#__codelineno-24-26"></a><span class="p">)</span>
+</span><span id="__span-24-27"><a id="__codelineno-24-27" name="__codelineno-24-27" href="#__codelineno-24-27"></a>
+</span><span id="__span-24-28"><a id="__codelineno-24-28" name="__codelineno-24-28" href="#__codelineno-24-28"></a>
+</span><span id="__span-24-29"><a id="__codelineno-24-29" name="__codelineno-24-29" href="#__codelineno-24-29"></a>
+</span><span id="__span-24-30"><a id="__codelineno-24-30" name="__codelineno-24-30" href="#__codelineno-24-30"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))</span>
+</span><span id="__span-24-31"><a id="__codelineno-24-31" name="__codelineno-24-31" href="#__codelineno-24-31"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sqlalchemy</span><span class="o">.</span><span class="n">Session</span><span class="p">,</span> <span class="n">factory</span><span class="o">=</span><span class="n">create_session</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">Tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))</span>
+</span><span id="__span-24-32"><a id="__codelineno-24-32" name="__codelineno-24-32" href="#__codelineno-24-32"></a>
+</span><span id="__span-24-33"><a id="__codelineno-24-33" name="__codelineno-24-33" href="#__codelineno-24-33"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">SqlAlchemyUserRepository</span><span class="p">,</span> <span class="n">dependency_config</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;session&quot;</span><span class="p">:</span> <span class="n">DependencySettings</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))})</span>
+</span><span id="__span-24-34"><a id="__codelineno-24-34" name="__codelineno-24-34" href="#__codelineno-24-34"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">,</span> <span class="n">InMemoryUserRepository</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;IN_MEM&quot;</span><span class="p">)</span>
+</span><span id="__span-24-35"><a id="__codelineno-24-35" name="__codelineno-24-35" href="#__codelineno-24-35"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">ProductRepository</span><span class="p">,</span> <span class="n">SqlAlchemyProductRepository</span><span class="p">,</span> <span class="n">dependency_config</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;session&quot;</span><span class="p">:</span> <span class="n">DependencySettings</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))})</span>
+</span><span id="__span-24-36"><a id="__codelineno-24-36" name="__codelineno-24-36" href="#__codelineno-24-36"></a>
+</span><span id="__span-24-37"><a id="__codelineno-24-37" name="__codelineno-24-37" href="#__codelineno-24-37"></a>
+</span><span id="__span-24-38"><a id="__codelineno-24-38" name="__codelineno-24-38" href="#__codelineno-24-38"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">DbConnectionConfig</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="n">user_db_settings</span><span class="p">,</span> <span class="n">parent_node_filter</span><span class="o">=</span><span class="n">nf</span><span class="o">.</span><span class="n">has_registration_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDb&quot;</span><span class="p">))</span>
+</span><span id="__span-24-39"><a id="__codelineno-24-39" name="__codelineno-24-39" href="#__codelineno-24-39"></a><span class="n">container</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">DbConnectionConfig</span><span class="p">,</span> <span class="n">instance</span><span class="o">=</span><span class="n">product_db_settings</span><span class="p">,</span> <span class="n">parent_node_filter</span><span class="o">=</span><span class="n">rf</span><span class="o">.</span><span class="n">has_registration_tag</span><span class="p">(</span><span class="s2">&quot;Database&quot;</span><span class="p">,</span> <span class="s2">&quot;ProductDb&quot;</span><span class="p">))</span>
+</span><span id="__span-24-40"><a id="__codelineno-24-40" name="__codelineno-24-40" href="#__codelineno-24-40"></a>
+</span><span id="__span-24-41"><a id="__codelineno-24-41" name="__codelineno-24-41" href="#__codelineno-24-41"></a>
+</span><span id="__span-24-42"><a id="__codelineno-24-42" name="__codelineno-24-42" href="#__codelineno-24-42"></a><span class="n">user_repo</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">UserRepository</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p><a class="glightbox" href="../../assets/img/filters/node_filtering/05.png" data-type="image" data-width="auto" data-height="auto" data-desc-position="bottom"><img alt="Image title" src="../../assets/img/filters/node_filtering/05.png" /></a></p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.07f07601.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.56dfad97.min.js"></script>
+      
+    
+  <script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(() => { lightbox.reload() });
+</script></body>
+</html>
