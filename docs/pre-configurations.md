@@ -1,8 +1,8 @@
 # Pre-configurations
 
-Pre-configurations allow the container or scope to execute a side effect function the first time an instance is resolved.
+Pre-configurations allow the container or scope to execute a side effect function the first time an instance of a type is resolved.
 
-An example where this might be usefule is if you want to inject loggers as a dependency into you components, the first time a logger is resoled then the pre-configuration can configure the logger.
+An example where this might be usefule is if you want to inject loggers as a dependency into you components, the first time a logger is resolved, the pre-configuration can configure the logger.
 
 Pre-configuration functions can also have dependencies from the container.
 
