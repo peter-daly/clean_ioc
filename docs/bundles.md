@@ -1,9 +1,9 @@
 
 ## Bundles
-As objects grow bigger it's you will find that you have a lot of cohesive sets of components that you want to register. For example if you want to have a sqlalchemy Session you will likely want a sqlalchemy Engine. This is where bundles come in to plat
+As the number of classes and objects grow you may find that you will create more complex dependency graphs. You will have a groups of components that you will want to register together. For example if you want to have a sqlalchemy Session you will likely want a sqlalchemy Engine. This is where bundles come in to play.
 
-A bundle is a just a ```Callable[[Container], None]``` with a container, it can be used to set up related registrations on the container.
-The simples type of bundle is a simple function that takes a container as a argument.
+At it's minimal a bundle is a just a ```Callable[[Container], None]``` that can be used to set up related registrations on the container.
+The simplest type of bundle is a simple function that takes a container as a argument.
 
 ```python
 class ClientDependency:
@@ -28,10 +28,10 @@ client = container.resolve(Client)
 client.get_number() # returns 10
 ```
 
-### Helper for bundles
+### Helpers for bundles
 
-There are now a set Bundle classes that can be used to set up bundles
-    - ```BaseBundle```: Basic callable for containers
+There are a set of base Bundle classes that can be used to set up bundles
+    - ```BaseBundle```: Basic callable
     - ```OnlyRunOncePerInstanceBundle```: Only run the bundle once in the container instance
     - ```OnlyRunOncePerClassBundle```: Only run this bundle class once in a container
 
