@@ -1,6 +1,6 @@
 # Factories
 
-Factories are just Callables that can be return the instance of your dependency. Factories can be useful if you need to your implementation to be evaluated dynamically based on the context/state of your application or current dependencies in the graph.
+Factories are just Callables that return an instance of your dependency. Factories can be useful if you need to your implementation to be evaluated dynamically based on the context/state of your application or current dependencies in the graph.
 Factories can also have their dependencies.
 
 ## Function
