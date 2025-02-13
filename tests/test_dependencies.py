@@ -23,8 +23,8 @@ from clean_ioc import (
     DependencySettings,
     Lifespan,
     NeedsScopedRegistrationError,
-    Tag,
     Registration,
+    Tag,
 )
 from clean_ioc.factories import use_from_current_graph
 from clean_ioc.node_filters import implementation_type_is

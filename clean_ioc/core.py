@@ -738,7 +738,7 @@ class AsyncGeneratorActivator(Activator):
     def _generator_close(cls, generator: types.AsyncGeneratorType):
         async def inner():
             try:
-                await anext(generator)  # noqa: F821
+                await anext(generator)
                 await generator.aclose()
             except StopAsyncIteration:
                 pass
