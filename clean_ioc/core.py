@@ -145,6 +145,10 @@ def default_parameter_value_factory(default_value: Any, _: DependencyContext) ->
     return default_value
 
 
+def default_registration_list_modifier(registrations: list[Registration]) -> list[Registration]:
+    return registrations
+
+
 default_parent_node_filter = constant(True)
 default_decorated_node_filter = constant(True)
 
@@ -578,6 +582,7 @@ class Dependency:
                 service_type=self.service_type.__args__[0],  # type: ignore
                 registration_filter=self.settings.filter,
                 parent_node=dependency_node,
+                registration_list_modifier=self.settings.list_modifier,
             )
             sequence_node = DependencyNode(
                 service_type=self.service_type,
@@ -618,6 +623,7 @@ class Dependency:
                 service_type=self.service_type.__args__[0],  # type: ignore
                 registration_filter=self.settings.filter,
                 parent_node=dependency_node,
+                registration_list_modifier=self.settings.list_modifier,
             )
             sequence_node = DependencyNode(
                 service_type=self.service_type,
@@ -1315,6 +1321,7 @@ class _ResolvingContext:
             service_type=service_type,
             registration_filter=registration_filter,
             parent_node=parent_node,
+            registration_list_modifier=default_registration_list_modifier,
         )
         reg = next(iter(regs), None)
 
@@ -1329,10 +1336,14 @@ class _ResolvingContext:
         self,
         service_type: type,
         registration_filter: Callable[[_Registration], bool],
+        registration_list_modifier: RegistrationListModifier,
         parent_node: DependencyNode,
     ) -> list[_Registration]:
         registrations = self.scope.find_registrations(
-            service_type=service_type, parent_node=parent_node, filter=registration_filter
+            service_type=service_type,
+            parent_node=parent_node,
+            filter=registration_filter,
+            list_modifier=registration_list_modifier,
         )
         return registrations
 
@@ -1566,11 +1577,13 @@ class Scope:
         *,
         service_type,
         filter: RegistrationFilter = default_registration_filter,
+        list_modifier: RegistrationListModifier = default_registration_list_modifier,
         parent_node: Node,
     ) -> list[_Registration]:
-        return [
+        registrations = [
             r for r in self._registry.get_registrations(service_type) if filter(r) and r.parent_node_filter(parent_node)
         ]
+        return list_modifier(registrations)  # type: ignore
 
     def find_decorators(
         self, *, registration: _Registration, decorated_instance_node: DependencyNode
@@ -1671,13 +1684,18 @@ class ChildScope(Scope):
         return self._parent_scope.find_scoped_node(registration_id)
 
     def find_registrations(
-        self, *, service_type, filter: Callable[[_Registration], bool] = default_registration_filter, parent_node: Node
+        self,
+        *,
+        service_type,
+        filter: Callable[[_Registration], bool] = default_registration_filter,
+        list_modifier=default_registration_list_modifier,
+        parent_node: Node,
     ) -> list[_Registration]:
         registrations = super().find_registrations(service_type=service_type, filter=filter, parent_node=parent_node)
         from_parent = self._parent_scope.find_registrations(
             service_type=service_type, filter=filter, parent_node=parent_node
         )
-        return registrations + from_parent
+        return list_modifier(registrations + from_parent)  # type: ignore
 
     def find_decorators(
         self, *, registration: _Registration, decorated_instance_node: DependencyNode
@@ -1907,9 +1925,11 @@ class Container(Scope):
 class DependencySettings:
     value_factory: ParameterValueFactory = default_parameter_value_factory
     filter: RegistrationFilter = default_registration_filter
+    list_modifier: RegistrationListModifier = default_registration_list_modifier
 
 
 DependencyConfig = dict[str, DependencySettings]
 RegistrationFilter = Callable[[_Registration], bool]
 NodeFilter = Callable[[Node], bool]
 ParameterValueFactory = Callable[[Any, DependencyContext], Any]
+RegistrationListModifier = Callable[[list[Registration]], list[Registration]]

@@ -23,6 +23,7 @@ from clean_ioc import (
     DependencySettings,
     Lifespan,
     NeedsScopedRegistrationError,
+    Registration,
     Tag,
 )
 from clean_ioc.factories import use_from_current_graph
@@ -1512,3 +1513,40 @@ def test_using_current_graph_finds_dependencies_from_within():
     c = container.resolve(C)
 
     assert c.a is c.b
+
+
+def test_registartion_list_modifiers():
+    class A:
+        pass
+
+    class B(A):
+        NUMBER = 1
+
+    class C(A):
+        NUMBER = 5
+
+    class D(A):
+        NUMBER = 3
+
+    class E:
+        def __init__(self, alist: list[A]):
+            self.alist = alist
+
+    def modifier(regs: list[Registration]):
+        return sorted(regs, key=lambda r: getattr(r.implementation, "NUMBER"))
+
+    container = Container()
+
+    container.register(A, B)
+    container.register(A, C)
+    container.register(A, D)
+
+    container.register(E, dependency_config={"alist": DependencySettings(list_modifier=modifier)})
+
+    e = container.resolve(E)
+
+    assert e.alist == has_length(3)
+
+    assert e.alist[0] == is_exact_type(B)
+    assert e.alist[1] == is_exact_type(D)
+    assert e.alist[2] == is_exact_type(C)
