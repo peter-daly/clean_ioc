@@ -1289,13 +1289,13 @@ full = ["httpx (>=0.22.0)", "itsdangerous", "jinja2", "python-multipart", "pyyam
 
 [[package]]
 name = "the-utility-belt"
-version = "0.0.7"
+version = "0.1.0"
 description = ""
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "the_utility_belt-0.0.7-py3-none-any.whl", hash = "sha256:2dd8399e5121af818c64abb4537860bed16e5ffbc11e4666236fd5585963532a"},
-    {file = "the_utility_belt-0.0.7.tar.gz", hash = "sha256:9fee9873dc9d545e96db256e1121b43e65eb3297f462b77a7d04caa8b80cad74"},
+    {file = "the_utility_belt-0.1.0-py3-none-any.whl", hash = "sha256:f3e619c281b12f756a740ae08e4f1da03e29ad1d90c0ae9f77d4e3fb86e79bbc"},
+    {file = "the_utility_belt-0.1.0.tar.gz", hash = "sha256:3b6bd24a17f042985c1ad76fbc6180d52ed42164ed1d046eac6d086a6a6e4346"},
 ]
 
 [[package]]
@@ -1415,4 +1415,4 @@ fastapi = ["fastapi"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "8f1a50f7ac3ae449654e935f7b4bf04959109686cb6b71c82a4b6cd34cf90662"
+content-hash = "3caa30fa7f4e7a7953058612aa044632eb74aaf536cf48e4cd68f685da98362c"

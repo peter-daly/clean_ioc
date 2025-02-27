@@ -1515,6 +1515,31 @@ def test_using_current_graph_finds_dependencies_from_within():
     assert c.a is c.b
 
 
+async def test_using_current_graph_async_finds_dependencies_from_within():
+    class A(Protocol):
+        pass
+
+    class B(Protocol):
+        pass
+
+    class AB(A, B):
+        pass
+
+    class C:
+        def __init__(self, a: A, b: B):
+            self.a = a
+            self.b = b
+
+    container = Container()
+
+    container.register(A, AB)
+    container.register(B, factory=use_from_current_graph(AB))
+    container.register(C)
+    c = container.resolve(C)
+
+    assert c.a is c.b
+
+
 def test_registartion_list_modifiers():
     class A:
         pass

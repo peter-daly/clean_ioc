@@ -618,6 +618,9 @@ class Dependency:
         if self.is_dependency_context:
             return DependencyContext(name=self.name, dependency_node=dependency_node)
 
+        if self.is_current_graph:
+            return CurrentGraph(parent_node=dependency_node, resolving_context=context)
+
         if self.generic_collection_type:
             regs = context.find_registrations(
                 service_type=self.service_type.__args__[0],  # type: ignore
