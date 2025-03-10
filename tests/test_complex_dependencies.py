@@ -651,9 +651,6 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes_can_hav
     class ThingDoer(Generic[TThing]):
         pass
 
-    class DefaultThingDoer(ThingDoer[Any]):
-        pass
-
     TOperation = TypeVar("TOperation")
     TOperationResult = TypeVar("TOperationResult")
 
