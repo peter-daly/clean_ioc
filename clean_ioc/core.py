@@ -28,13 +28,7 @@ from uuid import uuid4
 
 from theutilitybelt.functional.predicate import always_true
 from theutilitybelt.functional.utils import constant
-from theutilitybelt.typing.generics import (
-    GenericTypeMap,
-    get_generic_bases,
-    get_generic_types,
-    is_generic_type_open,
-    try_to_complete_generic,
-)
+from theutilitybelt.typing.generics import GenericTypeMap, get_generic_bases, try_to_map_generic_args_to_open_type
 from theutilitybelt.typing.utils import get_subclasses
 
 from clean_ioc.utils import singleton
@@ -546,7 +540,7 @@ class Dependency:
         self.name = name
         self.parent_implementation = parent_implementation
         if isinstance(parent_implementation, type):
-            self.service_type = try_to_complete_generic(service_type, parent_implementation)
+            self.service_type = try_to_map_generic_args_to_open_type(service_type, parent_implementation)
         else:
             self.service_type = service_type
         self.settings = settings
@@ -1778,7 +1772,7 @@ class Container(Scope):
     def _get_target_generic_base(generic_service_type: type, subclass: type):
         return next(
             (
-                try_to_complete_generic(b, subclass)
+                try_to_map_generic_args_to_open_type(b, subclass)
                 for b in get_generic_bases(
                     subclass,
                     lambda t: getattr(t, "__origin__", None) == generic_service_type,
@@ -1838,14 +1832,14 @@ class Container(Scope):
     ) -> Container:
         full_type_filter = ~is_abstract & ~name_starts_with("__DecoratedGeneric__") & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, filter=full_type_filter)
-        decorator_is_open_generic = is_generic_type_open(generic_decorator_type)
+        decorator_generic_map = GenericTypeMap(generic_decorator_type)
+        decorator_is_open_generic = decorator_generic_map.is_generic_mapping_open()
 
         for subclass in subclasses:
-            target_generic_base = self._get_target_generic_base(generic_service_type, subclass)
+            target_generic_base = try_to_map_generic_args_to_open_type(generic_service_type, subclass)
             if target_generic_base:
                 if decorator_is_open_generic:
-                    generic_values = get_generic_types(target_generic_base)
-                    concrete_decorator = generic_decorator_type[generic_values]  # type: ignore
+                    concrete_decorator = try_to_map_generic_args_to_open_type(generic_decorator_type, subclass)
                     DecoratedType = create_generic_decorator_type(concrete_decorator)  # noqa: N806
 
                     self.register_decorator(

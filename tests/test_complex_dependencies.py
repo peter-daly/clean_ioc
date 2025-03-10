@@ -537,3 +537,108 @@ def test_use_registered_factory_with_multiple_base_classes():
         c = scope.resolve(C)
 
         assert c.a is c.b
+
+
+def test_generic_decorator_when_decorator_decoprates_common_base_classes():
+    TThing = TypeVar("TThing")
+
+    class ThingDoer(Generic[TThing]):
+        pass
+
+    class DefaultThingDoer(ThingDoer[Any]):
+        pass
+
+    TOperation = TypeVar("TOperation")
+    TOperationResult = TypeVar("TOperationResult")
+
+    class OperationHandler(Protocol[TOperation, TOperationResult]):
+        def handle(self, operation: TOperation, /) -> TOperationResult: ...
+
+    class OperationDecorator(Generic[TOperation, TOperationResult]):
+        def __init__(self, handler: OperationHandler[TOperation, TOperationResult], thing_doer: ThingDoer[TOperation]):
+            self.handler = handler
+            self.thing_doer = thing_doer
+
+        def handle(self, operation: TOperation) -> TOperationResult:
+            return self.handler.handle(operation)
+
+    class Command:
+        pass
+
+    class CommandResult:
+        pass
+
+    TCommand = TypeVar("TCommand", bound=Command)
+
+    class ACommand(Command):
+        pass
+
+    class CommandHandler(OperationHandler[TCommand, CommandResult], Protocol[TCommand]):
+        def handle(self, command: TCommand) -> CommandResult: ...
+
+    class AHandler(CommandHandler[ACommand]):
+        def handle(self, command: ACommand) -> CommandResult:
+            return CommandResult()
+
+    class Query:
+        pass
+
+    class QueryResult:
+        pass
+
+    TQuery = TypeVar("TQuery", bound=Query)
+    TQueryResult = TypeVar("TQueryResult", bound=QueryResult)
+
+    class QueryHandler(OperationHandler[TQuery, TQueryResult], Protocol[TQuery, TQueryResult]):
+        def handle(self, query: TQuery) -> TQueryResult: ...
+
+    class BQuery(Query):
+        pass
+
+    class BResult(QueryResult):
+        pass
+
+    class BHandler(QueryHandler[BQuery, BResult]):
+        def handle(self, query: BQuery) -> BResult:
+            return BResult()
+
+    class Event:
+        pass
+
+    TEvent = TypeVar("TEvent", bound=Event)
+
+    class EventHandler(OperationHandler[TEvent, None], Protocol[TEvent]):
+        def handle(self, event: TEvent) -> None: ...
+
+    class CEvent(Event):
+        pass
+
+    class CHandler(EventHandler[CEvent]):
+        def handle(self, event: CEvent) -> None:
+            pass
+
+    class DoAThingWithCEvent(ThingDoer[CEvent]):
+        pass
+
+    container = Container()
+
+    container.register_generic_subclasses(CommandHandler)
+    container.register_generic_subclasses(QueryHandler)
+    container.register_generic_subclasses(EventHandler)
+    container.register_generic_subclasses(ThingDoer, fallback_type=DefaultThingDoer)
+
+    container.register_generic_decorator(CommandHandler, OperationDecorator, decorated_arg="handler")
+    container.register_generic_decorator(QueryHandler, OperationDecorator, decorated_arg="handler")
+    container.register_generic_decorator(EventHandler, OperationDecorator, decorated_arg="handler")
+
+    command_handler: OperationDecorator = container.resolve(CommandHandler[ACommand])  # type: ignore
+    query_handler: OperationDecorator = container.resolve(QueryHandler[BQuery, BResult])  # type: ignore
+    event_handler: OperationDecorator = container.resolve(EventHandler[CEvent])  # type: ignore
+
+    assert command_handler.thing_doer == is_exact_type(DefaultThingDoer)
+    assert query_handler.thing_doer == is_exact_type(DefaultThingDoer)
+    assert event_handler.thing_doer == is_exact_type(DoAThingWithCEvent)
+
+    assert command_handler.handler == is_exact_type(AHandler)
+    assert query_handler.handler == is_exact_type(BHandler)
+    assert event_handler.handler == is_exact_type(CHandler)
