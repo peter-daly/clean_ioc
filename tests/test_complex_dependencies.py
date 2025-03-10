@@ -6,6 +6,7 @@ from assertive import (
     is_exact_type,
     is_none,
 )
+from theutilitybelt.typing.generics import GenericTypeMap
 
 import clean_ioc.node_filters as nf
 import clean_ioc.registration_filters as rf
@@ -642,3 +643,136 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes():
     assert command_handler.handler == is_exact_type(AHandler)
     assert query_handler.handler == is_exact_type(BHandler)
     assert event_handler.handler == is_exact_type(CHandler)
+
+
+def test_generic_decorator_when_decorator_decoprates_common_base_classes_can_have_different_dependencies():
+    TThing = TypeVar("TThing")
+
+    class ThingDoer(Generic[TThing]):
+        pass
+
+    class DefaultThingDoer(ThingDoer[Any]):
+        pass
+
+    TOperation = TypeVar("TOperation")
+    TOperationResult = TypeVar("TOperationResult")
+
+    class OperationHandler(Protocol[TOperation, TOperationResult]):
+        def handle(self, operation: TOperation, /) -> TOperationResult: ...
+
+    class OperationDecorator(Generic[TOperation, TOperationResult]):
+        def __init__(self, handler: OperationHandler[TOperation, TOperationResult], thing_doer: ThingDoer[TOperation]):
+            self.handler = handler
+            self.thing_doer = thing_doer
+
+        def handle(self, operation: TOperation) -> TOperationResult:
+            return self.handler.handle(operation)
+
+    class Command:
+        pass
+
+    class CommandResult:
+        pass
+
+    TCommand = TypeVar("TCommand", bound=Command)
+
+    class ACommand(Command):
+        pass
+
+    class BCommand(Command):
+        pass
+
+    class CommandHandler(OperationHandler[TCommand, CommandResult], Protocol[TCommand]):
+        def handle(self, command: TCommand) -> CommandResult: ...
+
+    class AHandler(CommandHandler[ACommand]):
+        def handle(self, command: ACommand) -> CommandResult:
+            return CommandResult()
+
+    class BHandler(CommandHandler[BCommand]):
+        def handle(self, command: BCommand) -> CommandResult:
+            return CommandResult()
+
+    class Event:
+        pass
+
+    TEvent = TypeVar("TEvent", bound=Event)
+
+    class EventHandler(OperationHandler[TEvent, None], Protocol[TEvent]):
+        def handle(self, event: TEvent) -> None: ...
+
+    class CEvent(Event):
+        pass
+
+    class DEvent(Event):
+        pass
+
+    class CHandler(EventHandler[CEvent]):
+        def handle(self, event: CEvent) -> None:
+            pass
+
+    class DHandler(EventHandler[DEvent]):
+        def handle(self, event: DEvent) -> None:
+            pass
+
+    class DoAThingWithCommand(ThingDoer[Command]):
+        pass
+
+    class DoAThingWithBCommand(ThingDoer[BCommand]):
+        pass
+
+    class DoAThingWithEvent(ThingDoer[Event]):
+        pass
+
+    class DoAThingWithCEvent(ThingDoer[CEvent]):
+        pass
+
+    def thing_doer_type_filter(parent: type):
+        def is_subclass_of_parent(subclass: type):
+            generic_type_map = GenericTypeMap(subclass)
+            generic_type = generic_type_map["TThing"]
+            return issubclass(generic_type, parent)  # type: ignore
+
+        return is_subclass_of_parent
+
+    container = Container()
+
+    container.register_generic_subclasses(
+        ThingDoer,
+        fallback_type=DoAThingWithCommand,
+        subclass_type_filter=thing_doer_type_filter(Command),
+        tags=[Tag("command")],
+    )
+
+    container.register_generic_subclasses(
+        ThingDoer,
+        fallback_type=DoAThingWithEvent,
+        subclass_type_filter=thing_doer_type_filter(Event),
+        tags=[Tag("event")],
+    )
+
+    container.register_generic_subclasses(CommandHandler)
+    container.register_generic_subclasses(EventHandler)
+    container.register_generic_decorator(
+        CommandHandler,
+        OperationDecorator,
+        decorated_arg="handler",
+        dependency_config={"thing_doer": DependencySettings(filter=rf.has_tag("command"))},
+    )
+
+    container.register_generic_decorator(
+        EventHandler,
+        OperationDecorator,
+        decorated_arg="handler",
+        dependency_config={"thing_doer": DependencySettings(filter=rf.has_tag("event"))},
+    )
+
+    a_handler: OperationDecorator = container.resolve(CommandHandler[ACommand])  # type: ignore
+    b_handler: OperationDecorator = container.resolve(CommandHandler[BCommand])  # type: ignore
+    c_handler: OperationDecorator = container.resolve(EventHandler[CEvent])  # type: ignore
+    d_handler: OperationDecorator = container.resolve(EventHandler[DEvent])  # type: ignore
+
+    assert a_handler.thing_doer == is_exact_type(DoAThingWithCommand)
+    assert b_handler.thing_doer == is_exact_type(DoAThingWithBCommand)
+    assert c_handler.thing_doer == is_exact_type(DoAThingWithCEvent)
+    assert d_handler.thing_doer == is_exact_type(DoAThingWithEvent)

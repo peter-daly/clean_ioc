@@ -1,5 +1,11 @@
-.PHONY: lint format test ci
+.PHONY: fixup lint format test ci
 
+
+fixup:
+	@echo "Fixing up..."
+	@poetry run ruff check . --fix
+	@poetry run ruff format .
+	
 typecheck:
 	@echo "Typechecking"
 	@poetry run pyright .

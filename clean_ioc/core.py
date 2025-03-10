@@ -1301,10 +1301,12 @@ class _ResolvingContext:
         self.scope = scope
         self._cache = _DependencyCache(scope=scope)
 
-    def try_generic_fallback(self, service_type: _GenericAlias, parent_node: DependencyNode):
+    def try_generic_fallback(
+        self, service_type: _GenericAlias, parent_node: DependencyNode, registration_filter: RegistrationFilter
+    ):
         return self.find_registration(
             service_type=service_type.__origin__,
-            registration_filter=default_registration_filter,
+            registration_filter=registration_filter,
             parent_node=parent_node,
         )
 
@@ -1324,7 +1326,7 @@ class _ResolvingContext:
 
         if reg is None:
             if type(service_type) is _GenericAlias:
-                reg = self.try_generic_fallback(service_type, parent_node)
+                reg = self.try_generic_fallback(service_type, parent_node, registration_filter)
             if reg is None:
                 raise CannotResolveError()
         return reg
