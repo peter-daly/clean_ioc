@@ -9,7 +9,7 @@ import logging
 import types
 from collections import defaultdict, deque
 from collections.abc import Callable, Collection, Iterable, MutableSequence, Sequence
-from contextlib import contextmanager
+from contextlib import _AsyncGeneratorContextManager, _GeneratorContextManager, contextmanager
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import (
@@ -664,16 +664,48 @@ class Activator(abc.ABC):
 
 class FactoryActivator(Activator):
     @classmethod
+    def _contextmanager_finalizer(cls, cm: _GeneratorContextManager):
+        def inner():
+            try:
+                cm.__exit__(None, None, None)
+            except Exception as ex:
+                logger.warning(f"Failed to close context manager {cm} with exception {ex}")
+
+        return inner
+
+    @classmethod
+    def _asynccontextmanager_finalizer(cls, cm: _AsyncGeneratorContextManager):
+        async def inner():
+            try:
+                await cm.__aexit__(None, None, None)
+            except Exception as ex:
+                logger.warning(f"Failed to close async context manager {cm} with exception {ex}")
+
+        return inner
+
+    @classmethod
     def activate(
         cls, factory: Callable, resolved_dependencies: dict[str, Any], context: _ResolvingContext, lifespan: Lifespan
     ):
-        return factory(**resolved_dependencies)
+        instance = factory(**resolved_dependencies)
+
+        if isinstance(instance, _GeneratorContextManager):
+            context.add_finalizer(lifespan, cls._contextmanager_finalizer(instance))
+            return instance.__enter__()
+
+        return instance
 
     @classmethod
     async def activate_async(
         cls, factory: Callable, resolved_dependencies: dict[str, Any], context: _ResolvingContext, lifespan: Lifespan
     ):
-        return cls.activate(factory, resolved_dependencies, context, lifespan)
+        instance = cls.activate(factory, resolved_dependencies, context, lifespan)
+
+        if isinstance(instance, _AsyncGeneratorContextManager):
+            context.add_finalizer(lifespan, cls._asynccontextmanager_finalizer(instance))
+            return await instance.__aenter__()
+
+        return instance
 
 
 class GeneratorActivator(Activator):
@@ -698,7 +730,7 @@ class GeneratorActivator(Activator):
     ):
         generator = factory(**resolved_dependencies)
         instance = next(generator)
-        context.add_generator_finalizer(lifespan, cls._generator_close(generator))
+        context.add_finalizer(lifespan, cls._generator_close(generator))
         return instance
 
     @classmethod
@@ -762,7 +794,7 @@ class AsyncGeneratorActivator(Activator):
     ):
         generator = factory(**resolved_dependencies)
         instance = await anext(generator)
-        context.add_generator_finalizer(lifespan, cls._generator_close(generator))
+        context.add_finalizer(lifespan, cls._generator_close(generator))
         return instance
 
 
@@ -1354,8 +1386,8 @@ class _ResolvingContext:
     def find_pre_configurations_that_apply(self, registration: _Registration):
         return self.scope.find_pre_configurations(registration=registration)
 
-    def add_generator_finalizer(self, lifespan: Lifespan, generator: Callable):
-        self.scope.add_generator_finalizer(lifespan, generator)
+    def add_finalizer(self, lifespan: Lifespan, generator: Callable):
+        self.scope.add_finalizer(lifespan, generator)
 
     def get_cached(self, reg_id: str) -> DependencyNode | None:
         return self._cache.get(reg_id)
@@ -1413,7 +1445,7 @@ class Scope:
         self._scoped_instances: dict[str, DependencyNode] = {}
         self._sync_teardowns: dict[str, Callable] = {}
         self._async_teardowns: dict[str, Callable] = {}
-        self._generator_finalizers: deque[Callable] = deque()
+        self._finalizers: deque[Callable] = deque()
 
         self.register(ScopeCreator, instance=self)
         self.register(Resolver, instance=self)
@@ -1606,25 +1638,25 @@ class Scope:
     async def __aexit__(self, *args, **kwargs):
         await self._run_async_teardowns()
         self._run_sync_teardowns()
-        await self._async_close_generators()
+        await self._async_close_finalizers()
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args, **kwargs):
         self._run_sync_teardowns()
-        self._close_generators()
+        self._close_finalizers()
 
-    def add_generator_finalizer(self, lifespan: Lifespan, generator: Callable) -> Scope:
-        self._generator_finalizers.appendleft(generator)
+    def add_finalizer(self, lifespan: Lifespan, finalizer: Callable) -> Scope:
+        self._finalizers.appendleft(finalizer)
         return self
 
-    def _close_generators(self):
-        for generator in self._generator_finalizers:
-            generator()
+    def _close_finalizers(self):
+        for finalizer in self._finalizers:
+            finalizer()
 
-    async def _async_close_generators(self):
-        for finalizer in self._generator_finalizers:
+    async def _async_close_finalizers(self):
+        for finalizer in self._finalizers:
             if inspect.iscoroutinefunction(finalizer):
                 await finalizer()
             else:
@@ -1709,12 +1741,12 @@ class ChildScope(Scope):
         pre_configurations = super().find_pre_configurations(registration=registration)
         return pre_configurations + self._parent_scope.find_pre_configurations(registration=registration)
 
-    def add_generator_finalizer(self, lifespan: Lifespan, generator: Callable) -> ChildScope:
+    def add_finalizer(self, lifespan: Lifespan, finalizer: Callable) -> ChildScope:
         if lifespan == Lifespan.singleton:
-            self._parent_scope.add_generator_finalizer(lifespan, generator)
+            self._parent_scope.add_finalizer(lifespan, finalizer)
             return self
 
-        super().add_generator_finalizer(lifespan, generator)
+        super().add_finalizer(lifespan, finalizer)
         return self
 
     @property

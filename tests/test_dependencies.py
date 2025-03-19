@@ -1,5 +1,6 @@
 # from __future__ import annotations
 from collections.abc import MutableSequence, Sequence
+from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime
 from typing import Any, Callable, Generic, Protocol, TypeVar
 from unittest.mock import AsyncMock, MagicMock, Mock
@@ -13,7 +14,9 @@ from assertive import (
     is_same_instance_as,
     raises_exception,
     was_called,
+    was_called_once,
     was_called_with,
+    was_not_called,
 )
 
 from clean_ioc import (
@@ -1575,3 +1578,50 @@ def test_registartion_list_modifiers():
     assert e.alist[0] == is_exact_type(B)
     assert e.alist[1] == is_exact_type(D)
     assert e.alist[2] == is_exact_type(C)
+
+
+def test_context_manager_factory_with_generator():
+    class A:
+        def __init__(self):
+            self.spy = MagicMock()
+
+        def __enter__(self):
+            self.spy.enter()
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            self.spy.exit()
+            pass
+
+    container = Container()
+
+    @contextmanager
+    def generator():
+        with A() as a:
+            yield a
+
+    container.register(A, factory=generator)
+
+    with container:
+        a = container.resolve(A)
+        assert a == is_exact_type(A)
+        assert a.spy.enter == was_called_once()
+        assert a.spy.exit == was_not_called()
+    assert a.spy.exit == was_called_once()
+
+
+async def test_async_context_manager_with_generator_generator():
+    class A:
+        pass
+
+    container = Container()
+
+    @asynccontextmanager
+    async def generator():
+        yield A()
+
+    container.register(A, factory=generator)
+
+    async with container:
+        a = await container.resolve_async(A)
+        assert_that(a).matches(is_exact_type(A))

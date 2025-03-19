@@ -549,8 +549,8 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes():
     class DefaultThingDoer(ThingDoer[Any]):
         pass
 
-    TOperation = TypeVar("TOperation")
-    TOperationResult = TypeVar("TOperationResult")
+    TOperation = TypeVar("TOperation", contravariant=True)
+    TOperationResult = TypeVar("TOperationResult", covariant=True)
 
     class OperationHandler(Protocol[TOperation, TOperationResult]):
         def handle(self, operation: TOperation, /) -> TOperationResult: ...
@@ -569,7 +569,7 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes():
     class CommandResult:
         pass
 
-    TCommand = TypeVar("TCommand", bound=Command)
+    TCommand = TypeVar("TCommand", bound=Command, contravariant=True)
 
     class ACommand(Command):
         pass
@@ -587,8 +587,8 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes():
     class QueryResult:
         pass
 
-    TQuery = TypeVar("TQuery", bound=Query)
-    TQueryResult = TypeVar("TQueryResult", bound=QueryResult)
+    TQuery = TypeVar("TQuery", bound=Query, contravariant=True)
+    TQueryResult = TypeVar("TQueryResult", bound=QueryResult, covariant=True)
 
     class QueryHandler(OperationHandler[TQuery, TQueryResult], Protocol[TQuery, TQueryResult]):
         def handle(self, query: TQuery) -> TQueryResult: ...
@@ -606,7 +606,7 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes():
     class Event:
         pass
 
-    TEvent = TypeVar("TEvent", bound=Event)
+    TEvent = TypeVar("TEvent", bound=Event, contravariant=True)
 
     class EventHandler(OperationHandler[TEvent, None], Protocol[TEvent]):
         def handle(self, event: TEvent) -> None: ...
@@ -651,8 +651,8 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes_can_hav
     class ThingDoer(Generic[TThing]):
         pass
 
-    TOperation = TypeVar("TOperation")
-    TOperationResult = TypeVar("TOperationResult")
+    TOperation = TypeVar("TOperation", contravariant=True)
+    TOperationResult = TypeVar("TOperationResult", covariant=True)
 
     class OperationHandler(Protocol[TOperation, TOperationResult]):
         def handle(self, operation: TOperation, /) -> TOperationResult: ...
@@ -671,7 +671,7 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes_can_hav
     class CommandResult:
         pass
 
-    TCommand = TypeVar("TCommand", bound=Command)
+    TCommand = TypeVar("TCommand", bound=Command, contravariant=True)
 
     class ACommand(Command):
         pass
@@ -693,7 +693,7 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes_can_hav
     class Event:
         pass
 
-    TEvent = TypeVar("TEvent", bound=Event)
+    TEvent = TypeVar("TEvent", bound=Event, contravariant=True)
 
     class EventHandler(OperationHandler[TEvent, None], Protocol[TEvent]):
         def handle(self, event: TEvent) -> None: ...
