@@ -38,6 +38,7 @@ from .type_filters import is_abstract, name_starts_with
 logger = logging.getLogger(__name__)
 
 TService = TypeVar("TService")
+TReturn = TypeVar("TReturn")
 
 
 @singleton
@@ -516,14 +517,14 @@ class Dependency:
     }
 
     __slots__ = (
+        "default_value",
+        "generic_collection_type",
+        "is_current_graph",
+        "is_dependency_context",
         "name",
         "parent_implementation",
         "service_type",
         "settings",
-        "default_value",
-        "is_dependency_context",
-        "generic_collection_type",
-        "is_current_graph",
     )
 
     def __init__(
@@ -800,12 +801,12 @@ class AsyncGeneratorActivator(Activator):
 
 class PreConfiguration:
     __slots__ = (
-        "configuration_fn",
         "activator_class",
-        "registration_filter",
-        "has_run",
-        "dependencies",
+        "configuration_fn",
         "continue_on_failure",
+        "dependencies",
+        "has_run",
+        "registration_filter",
     )
 
     def __init__(
@@ -848,15 +849,15 @@ class PreConfiguration:
 
 class Decorator:
     __slots__ = (
-        "service_type",
-        "decorated_node_filter",
-        "parent_node_filter",
-        "decorator_type",
-        "decorated_arg",
-        "registration_filter",
-        "dependencies",
         "activator_class",
+        "decorated_arg",
+        "decorated_node_filter",
+        "decorator_type",
+        "dependencies",
+        "parent_node_filter",
         "position",
+        "registration_filter",
+        "service_type",
     )
 
     def __init__(
@@ -923,19 +924,19 @@ class Registration(Protocol):
 
 class _Registration(Registration):
     __slots__ = (
-        "service_type",
+        "_generic_mapping",
+        "activator_class",
+        "dependencies",
+        "id",
         "implementation",
+        "is_named",
         "lifespan",
         "name",
         "parent_node_filter",
-        "tags",
         "scoped_teardown",
-        "id",
+        "service_type",
+        "tags",
         "was_used",
-        "is_named",
-        "_generic_mapping",
-        "dependencies",
-        "activator_class",
     )
 
     def __init__(
@@ -1471,6 +1472,19 @@ class Scope:
     ) -> TService:
         graph = await self.resolve_dependency_graph_async(service_type, filter)
         return graph.instance
+
+    def call(self, fn: Callable[..., TReturn]) -> TReturn:
+        name: str = str(uuid4())
+        with self.new_scope() as scope:
+            return scope.register(Callable, fn, name=name).resolve(Callable, filter=lambda r: r.name == name)  # type: ignore  # type: ignore
+
+    async def call_async(self, fn: Callable[..., TReturn]) -> TReturn:
+        name: str = str(uuid4())
+        with self.new_scope() as scope:
+            return await scope.register(Callable, fn, name=name).resolve_async(  # type: ignore
+                Callable,  # type: ignore
+                filter=lambda r: r.name == name,
+            )
 
     def resolve_dependency_graph(
         self,
