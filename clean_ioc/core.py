@@ -915,6 +915,7 @@ class Registration(Protocol):
     implementation: Callable
     lifespan: Lifespan
     name: str | None
+    id: str
 
     def has_tag(self, name: str, value: Any) -> bool: ...
 
@@ -1508,6 +1509,26 @@ class Scope:
         del context
         return graph
 
+    def resolve_from_registration_id(self, service_type: type[TService], registration_id: str):
+        """
+        Resolve a service from a registration ID.
+        This is useful for advanced use cases where you need to resolve a specific registration
+        """
+        return self.resolve(
+            service_type,
+            filter=lambda r: r.id == registration_id,
+        )
+
+    async def resolve_from_registration_id_async(self, service_type: type[TService], registration_id: str):
+        """
+        Resolve a service from a registration ID.
+        This is useful for advanced use cases where you need to resolve a specific registration
+        """
+        return await self.resolve_async(
+            service_type,
+            filter=lambda r: r.id == registration_id,
+        )
+
     def register(
         self,
         service_type: type[TService],
@@ -1616,6 +1637,22 @@ class Scope:
 
     def find_scoped_node(self, registration_id: str) -> DependencyNode | None:
         return self._scoped_instances.get(registration_id)
+
+    def get_registration_ids(
+        self,
+        service_type,
+        *,
+        filter: RegistrationFilter = default_registration_filter,
+        list_modifier: RegistrationListModifier = default_registration_list_modifier,
+    ) -> list[str]:
+        """
+        Get the registration IDs for a specific service type.
+        This is for more advanced use cases where you need to know more about the internals of the Scope
+        """
+
+        registrations = [r for r in self._registry.get_registrations(service_type) if filter(r)]
+        registrations = list_modifier(registrations)  # type: ignore
+        return [r.id for r in registrations]
 
     def find_registrations(
         self,

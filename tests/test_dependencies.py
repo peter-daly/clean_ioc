@@ -1625,3 +1625,22 @@ async def test_async_context_manager_with_generator_generator():
     async with container:
         a = await container.resolve_async(A)
         assert_that(a).matches(is_exact_type(A))
+
+
+def test_resolve_from_registration_ids():
+    class A:
+        pass
+
+    a1 = A()
+    a2 = A()
+
+    container = Container()
+    container.register(A, instance=a1)
+    container.register(A, instance=a2)
+
+    ids = container.get_registration_ids(A)
+
+    resolved_a1 = container.resolve_from_registration_id(A, ids[1])
+    resolved_a2 = container.resolve_from_registration_id(A, ids[0])
+    assert resolved_a1 is a1
+    assert resolved_a2 is a2
