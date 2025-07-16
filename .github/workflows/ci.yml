@@ -37,7 +37,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv sync --with=dev
+          make install-dev-deps
       - name: Run CI
         run: |
           make ci

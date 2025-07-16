@@ -37,7 +37,12 @@ jobs:
 
       - name: Publish package on PyPI
         run: |
+          make install-deps
+
+      - name: Publish package on PyPI
+        run: |
           make publish
+
       - name: Configure Git
         run: |
           git config user.name github-actions

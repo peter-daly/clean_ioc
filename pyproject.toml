@@ -27,12 +27,6 @@ Repository = "https://github.com/peter-daly/clean_ioc"
 Documentation = "https://peter-daly.github.io/clean_ioc/"
 
 [dependency-groups]
-docs = [
-    "mkdocs>=1.5.3,<2",
-    "mkdocstrings[python]>=0.25.0,<0.26",
-    "mkdocs-material>=9.5.9,<10",
-    "mkdocs-glightbox>=0.4.0,<0.5",
-]
 dev = [
     "pytest>=7.0.0,<8",
     "pytest-cov>=4.0.0,<5",
@@ -42,11 +36,15 @@ dev = [
     "httpx>=0.26.0,<0.27",
     "pyright>=1.1.362,<2",
     "ruff>=0.4.3,<0.5",
+    "mkdocs>=1.5.3,<2",
+    "mkdocstrings[python]>=0.25.0,<0.26",
+    "mkdocs-material>=9.5.9,<10",
+    "mkdocs-glightbox>=0.4.0,<0.5",
+
 ]
 
 [tool.uv]
 default-groups = [
-    "docs",
     "dev",
 ]
 

@@ -1,6 +1,16 @@
 .PHONY: fixup lint format test ci
 
 
+install-deps:
+	@echo "Installing dependencies..."
+	@uv sync --no-dev
+
+
+install-dev-deps:
+	@echo "Installing development dependencies..."
+	@uv sync
+
+
 fixup:
 	@echo "Fixing up..."
 	@uv run ruff check . --fix

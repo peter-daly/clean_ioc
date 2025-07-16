@@ -145,17 +145,15 @@ dev = [
     { name = "assertive" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "mkdocs" },
+    { name = "mkdocs-glightbox" },
+    { name = "mkdocs-material" },
+    { name = "mkdocstrings", extra = ["python"] },
     { name = "pyright" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "ruff" },
-]
-docs = [
-    { name = "mkdocs" },
-    { name = "mkdocs-glightbox" },
-    { name = "mkdocs-material" },
-    { name = "mkdocstrings", extra = ["python"] },
 ]
 
 [package.metadata]
@@ -170,17 +168,15 @@ dev = [
     { name = "assertive", specifier = ">=0.2.1,<0.3" },
     { name = "fastapi", specifier = ">=0.101.0,<0.102" },
     { name = "httpx", specifier = ">=0.26.0,<0.27" },
+    { name = "mkdocs", specifier = ">=1.5.3,<2" },
+    { name = "mkdocs-glightbox", specifier = ">=0.4.0,<0.5" },
+    { name = "mkdocs-material", specifier = ">=9.5.9,<10" },
+    { name = "mkdocstrings", extras = ["python"], specifier = ">=0.25.0,<0.26" },
     { name = "pyright", specifier = ">=1.1.362,<2" },
     { name = "pytest", specifier = ">=7.0.0,<8" },
     { name = "pytest-asyncio", specifier = ">=0.21.1,<0.22" },
     { name = "pytest-cov", specifier = ">=4.0.0,<5" },
     { name = "ruff", specifier = ">=0.4.3,<0.5" },
-]
-docs = [
-    { name = "mkdocs", specifier = ">=1.5.3,<2" },
-    { name = "mkdocs-glightbox", specifier = ">=0.4.0,<0.5" },
-    { name = "mkdocs-material", specifier = ">=9.5.9,<10" },
-    { name = "mkdocstrings", extras = ["python"], specifier = ">=0.25.0,<0.26" },
 ]
 
 [[package]]
