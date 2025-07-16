@@ -1,30 +1,42 @@
 .PHONY: fixup lint format test ci
 
 
+install-deps:
+	@echo "Installing dependencies..."
+	@uv sync --no-dev
+
+
+install-dev-deps:
+	@echo "Installing development dependencies..."
+	@uv sync
+
+
 fixup:
 	@echo "Fixing up..."
-	@poetry run ruff check . --fix
-	@poetry run ruff format .
-	
+	@uv run ruff check . --fix
+	@uv run ruff format .
+
 typecheck:
 	@echo "Typechecking"
-	@poetry run pyright .
+	@uv run pyright .
 
 
 lint:
 	@echo "Linting with Ruff..."
-	@poetry run ruff check .
+	@uv run ruff check .
 
 format:
 	@echo "Formatting with Ruff..."
-	@poetry run ruff format .
+	@uv run ruff format .
 
 test:
 	@echo "Running tests..."
-	@poetry run pytest .
+	@uv run pytest .
 
 ci: lint format typecheck test
 
 publish:
+	@echo "Building the package..."
+	@uv build
 	@echo "Publishing to PyPI..."
-	@poetry publish --build --username __token__ --password $PYPI_TOKEN
+	@uv publish --token $$PYPI_TOKEN
