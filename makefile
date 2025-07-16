@@ -3,28 +3,30 @@
 
 fixup:
 	@echo "Fixing up..."
-	@poetry run ruff check . --fix
-	@poetry run ruff format .
-	
+	@uv ruff check . --fix
+	@uv ruff format .
+
 typecheck:
 	@echo "Typechecking"
-	@poetry run pyright .
+	@uv pyright .
 
 
 lint:
 	@echo "Linting with Ruff..."
-	@poetry run ruff check .
+	@uv ruff check .
 
 format:
 	@echo "Formatting with Ruff..."
-	@poetry run ruff format .
+	@uv ruff format .
 
 test:
 	@echo "Running tests..."
-	@poetry run pytest .
+	@uv pytest .
 
 ci: lint format typecheck test
 
 publish:
+	@echo "Building the package..."
+	@uv build
 	@echo "Publishing to PyPI..."
-	@poetry publish --build --username __token__ --password $PYPI_TOKEN
+	@uv publish --token $$PYPI_TOKEN
