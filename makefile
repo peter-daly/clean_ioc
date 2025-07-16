@@ -3,25 +3,25 @@
 
 fixup:
 	@echo "Fixing up..."
-	@uv ruff check . --fix
-	@uv ruff format .
+	@uv run ruff check . --fix
+	@uv run ruff format .
 
 typecheck:
 	@echo "Typechecking"
-	@uv pyright .
+	@uv run pyright .
 
 
 lint:
 	@echo "Linting with Ruff..."
-	@uv ruff check .
+	@uv run ruff check .
 
 format:
 	@echo "Formatting with Ruff..."
-	@uv ruff format .
+	@uv run ruff format .
 
 test:
 	@echo "Running tests..."
-	@uv pytest .
+	@uv run pytest .
 
 ci: lint format typecheck test
 
