@@ -1,4 +1,7 @@
+from collections.abc import Callable
+
 from clean_ioc.core import Scope
+from clean_ioc.functional_utils import constant
 from fastapi import Depends, Request, Response
 
 from .core import get_scope
@@ -16,6 +19,9 @@ class RequestHeaderReader:
 
     def __iter__(self):
         return self.request.headers.__iter__()
+
+    def as_dict(self, filter_keys: Callable[[str], bool] = constant(True)) -> dict:
+        return {k: v for k, v in self.request.headers.items() if filter_keys(k)}
 
 
 class ResponseHeaderWriter:
