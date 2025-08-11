@@ -65,6 +65,18 @@ def create_generic_decorator_type(concrete_decorator: type):
     )
 
 
+def dependency_config_to_subdependencies(dependency_config: DependencyConfig) -> SubDependencies:
+    dependencies = {}
+
+    for name, settings in dependency_config.items():
+        if isinstance(settings, DependencySettings):
+            dependencies[name] = settings
+        else:
+            dependencies[name] = DependencySettings(value_factory=constant(settings))
+
+    return dependencies
+
+
 class ArgInfo:
     def __init__(self, name: str, arg_type: type, default_value: Any):
         self.name = name
@@ -86,7 +98,7 @@ def _get_arg_info(subject: Callable, local_ns: dict = {}, global_ns: dict | None
 
 def _set_up_dependencies(
     creator_function: Callable,
-    dependency_config: DependencyConfig,
+    dependency_config: SubDependencies,
 ) -> dict[str, Dependency]:
     args_infos = _get_arg_info(creator_function)
     defaulted_dependency_config = defaultdict(DependencySettings, dependency_config)
@@ -814,13 +826,13 @@ class PreConfiguration:
         pre_configuration: Callable[..., None],
         activator_class: type[Activator],
         registration_filter: RegistrationFilter,
-        dependency_config: DependencyConfig,
+        sub_dependencies: SubDependencies,
         continue_on_failure: bool = False,
     ):
         self.configuration_fn = pre_configuration
         self.activator_class = activator_class
         self.registration_filter = registration_filter
-        self.dependencies = _set_up_dependencies(pre_configuration, dependency_config)
+        self.dependencies = _set_up_dependencies(pre_configuration, sub_dependencies)
         self.continue_on_failure = continue_on_failure
         self.has_run = False
 
@@ -869,13 +881,13 @@ class Decorator:
         registration_filter: RegistrationFilter,
         decorator_node_filter: NodeFilter,
         decorated_arg: str | None,
-        dependency_config: DependencyConfig = {},
+        sub_dependencies: SubDependencies = {},
         position: int = 0,
     ):
         self.service_type = service_type
         self.decorator_type = decorator_type
 
-        dependencies = _set_up_dependencies(decorator_type, dependency_config)
+        dependencies = _set_up_dependencies(decorator_type, sub_dependencies)
 
         self.decorated_arg = decorated_arg or next(
             name for name, dep in dependencies.items() if dep.service_type == service_type
@@ -948,7 +960,7 @@ class _Registration(Registration):
         implementation: Callable,
         lifespan: Lifespan,
         name: str | None = None,
-        dependency_config: DependencyConfig = {},
+        sub_dependencies: SubDependencies = {},
         parent_node_filter: NodeFilter = default_parent_node_filter,
         tags: Iterable[Tag] | None = None,
         scoped_teardown: Callable | None = None,
@@ -967,7 +979,7 @@ class _Registration(Registration):
         self.scoped_teardown = scoped_teardown
         self.was_used = False
         self.is_named = name is not None
-        self.dependencies: dict[str, Dependency] = _set_up_dependencies(implementation, dependency_config)
+        self.dependencies: dict[str, Dependency] = _set_up_dependencies(implementation, sub_dependencies)
 
         self._generic_mapping: GenericTypeMap | None = None
 
@@ -1129,14 +1141,14 @@ class _Registry:
         tags: Iterable[Tag] | None,
         parent_node_filter: NodeFilter,
         scoped_teardown: Callable[[TService], Any] | None,
-    ):
+    ) -> str:
         registration = _Registration(
             activator_class=FactoryActivator,
             service_type=service_type,
             implementation=implementation,
             lifespan=lifespan,
             name=name,
-            dependency_config=dependency_config,
+            sub_dependencies=dependency_config_to_subdependencies(dependency_config),
             parent_node_filter=parent_node_filter,
             scoped_teardown=scoped_teardown,
             tags=tags,
@@ -1144,6 +1156,7 @@ class _Registry:
 
         self._registrations[service_type].appendleft(registration)
         self._registrations[implementation].appendleft(registration)
+        return registration.id
 
     def register_concrete(
         self,
@@ -1155,20 +1168,21 @@ class _Registry:
         tags: Iterable[Tag] | None,
         parent_node_filter: NodeFilter,
         scoped_teardown: Callable[[TService], Any] | None,
-    ):
+    ) -> str:
         registration = _Registration(
             activator_class=FactoryActivator,
             service_type=service_type,
             implementation=service_type,
             lifespan=lifespan,
             name=name,
-            dependency_config=dependency_config,
+            sub_dependencies=dependency_config_to_subdependencies(dependency_config),
             parent_node_filter=parent_node_filter,
             scoped_teardown=scoped_teardown,
             tags=tags,
         )
 
         self._registrations[service_type].appendleft(registration)
+        return registration.id
 
     def register_instance(
         self,
@@ -1181,7 +1195,7 @@ class _Registry:
         tags: Iterable[Tag] | None,
         parent_node_filter: NodeFilter,
         scoped_teardown: Callable[[TService], Any] | None,
-    ):
+    ) -> str:
         instance_lifespan = lifespan if lifespan == Lifespan.singleton else Lifespan.scoped
 
         registration = _Registration(
@@ -1190,12 +1204,13 @@ class _Registry:
             implementation=constant(instance),
             lifespan=instance_lifespan,
             name=name,
-            dependency_config=dependency_config,
+            sub_dependencies=dependency_config_to_subdependencies(dependency_config),
             parent_node_filter=parent_node_filter,
             scoped_teardown=scoped_teardown,
             tags=tags,
         )
         self._registrations[service_type].appendleft(registration)
+        return registration.id
 
     @classmethod
     def _get_activator_class(cls, creator_function: Callable) -> type[Activator]:
@@ -1218,20 +1233,22 @@ class _Registry:
         tags: Iterable[Tag] | None,
         parent_node_filter: NodeFilter,
         scoped_teardown: Callable[[TService], Any] | None,
-    ):
+    ) -> str:
         registration = _Registration(
             activator_class=self._get_activator_class(factory),
             service_type=service_type,
             implementation=factory,
             lifespan=lifespan,
             name=name,
-            dependency_config=dependency_config,
+            sub_dependencies=dependency_config_to_subdependencies(dependency_config),
             parent_node_filter=parent_node_filter,
             scoped_teardown=scoped_teardown,
             tags=tags,
         )
 
         self._registrations[service_type].appendleft(registration)
+
+        return registration.id
 
     def register_decorator(
         self,
@@ -1251,7 +1268,7 @@ class _Registry:
             activator_class=self._get_activator_class(decorator_type),
             decorator_node_filter=decorator_node_filter,
             decorated_arg=decorated_arg,
-            dependency_config=dependency_config,
+            sub_dependencies=dependency_config_to_subdependencies(dependency_config),
             position=position,
         )
         self._decorators[service_type].add_decorator(decorator)
@@ -1269,7 +1286,7 @@ class _Registry:
             pre_configuration=configuration_function,
             activator_class=self._get_activator_class(configuration_function),
             registration_filter=registration_filter,
-            dependency_config=dependency_config,
+            sub_dependencies=dependency_config_to_subdependencies(dependency_config),
             continue_on_failure=continue_on_failure,
         )
 
@@ -1429,7 +1446,7 @@ class Registrator(Protocol):
         tags: Iterable[Tag] | None = None,
         parent_node_filter: NodeFilter = default_parent_node_filter,
         scoped_teardown: Callable[[TService], Any] | None = None,
-    ): ...
+    ) -> str: ...
 
 
 class ScopeCreator(Protocol):
@@ -1477,12 +1494,15 @@ class Scope:
     def call(self, fn: Callable[..., TReturn]) -> TReturn:
         name: str = str(uuid4())
         with self.new_scope() as scope:
-            return scope.register(Callable, fn, name=name).resolve(Callable, filter=lambda r: r.name == name)  # type: ignore  # type: ignore
+            scope.register(Callable, fn, name=name)  # type: ignore
+            return scope.resolve(Callable, filter=lambda r: r.name == name)  # type: ignore
 
     async def call_async(self, fn: Callable[..., TReturn]) -> TReturn:
         name: str = str(uuid4())
         with self.new_scope() as scope:
-            return await scope.register(Callable, fn, name=name).resolve_async(  # type: ignore
+            scope.register(Callable, fn, name=name)  # type: ignore
+
+            return await scope.resolve_async(  # type: ignore
                 Callable,  # type: ignore
                 filter=lambda r: r.name == name,
             )
@@ -1542,9 +1562,9 @@ class Scope:
         tags: Iterable[Tag] | None = None,
         parent_node_filter: NodeFilter = default_parent_node_filter,
         scoped_teardown: Callable[[TService], Any] | None = None,
-    ) -> Scope:
+    ) -> str:
         if instance is not None:
-            self._registry.register_instance(
+            return self._registry.register_instance(
                 service_type=service_type,
                 instance=instance,
                 lifespan=lifespan,
@@ -1554,8 +1574,8 @@ class Scope:
                 parent_node_filter=parent_node_filter,
                 scoped_teardown=scoped_teardown,
             )
-        elif factory is not None:
-            self._registry.register_factory(
+        if factory is not None:
+            return self._registry.register_factory(
                 service_type=service_type,
                 factory=factory,
                 lifespan=lifespan,
@@ -1565,8 +1585,8 @@ class Scope:
                 parent_node_filter=parent_node_filter,
                 scoped_teardown=scoped_teardown,
             )
-        elif implementation_type is not None:
-            self._registry.register_implementation(
+        if implementation_type is not None:
+            return self._registry.register_implementation(
                 service_type=service_type,
                 implementation=implementation_type,
                 lifespan=lifespan,
@@ -1576,18 +1596,16 @@ class Scope:
                 parent_node_filter=parent_node_filter,
                 scoped_teardown=scoped_teardown,
             )
-        else:
-            self._registry.register_concrete(
-                service_type=service_type,
-                lifespan=lifespan,
-                name=name,
-                tags=tags,
-                dependency_config=dependency_config,
-                parent_node_filter=parent_node_filter,
-                scoped_teardown=scoped_teardown,
-            )
 
-        return self
+        return self._registry.register_concrete(
+            service_type=service_type,
+            lifespan=lifespan,
+            name=name,
+            tags=tags,
+            dependency_config=dependency_config,
+            parent_node_filter=parent_node_filter,
+            scoped_teardown=scoped_teardown,
+        )
 
     def pre_configure(
         self,
@@ -1597,7 +1615,7 @@ class Scope:
         registration_filter: RegistrationFilter = default_registration_filter,
         dependency_config: DependencyConfig = {},
         continue_on_failure: bool = False,
-    ) -> Scope:
+    ) -> None:
         self._registry.register_pre_configuration(
             service_type=service_type,
             configuration_function=configuration_function,
@@ -1605,8 +1623,6 @@ class Scope:
             dependency_config=dependency_config,
             continue_on_failure=continue_on_failure,
         )
-
-        return self
 
     def register_decorator(
         self,
@@ -1618,7 +1634,7 @@ class Scope:
         decorated_arg: str | None = None,
         dependency_config: DependencyConfig = {},
         position: int = 0,
-    ) -> Scope:
+    ) -> None:
         self._registry.register_decorator(
             service_type=service_type,
             decorator_type=decorator_type,
@@ -1628,8 +1644,6 @@ class Scope:
             dependency_config=dependency_config,
             position=position,
         )
-
-        return self
 
     def add_singleton_node(self, registration: _Registration, node: DependencyNode) -> Scope: ...
 
@@ -1840,11 +1854,13 @@ class Container(Scope):
         name: str | None = None,
         tags: list[Tag] | None = None,
         parent_node_filter: NodeFilter = default_parent_node_filter,
-    ):
+    ) -> list[str]:
+        ids: list[str] = []
+
         full_type_filter = ~(is_abstract) & subclass_type_filter
         subclasses = get_subclasses(base_type, filter=full_type_filter)
         for sc in subclasses:
-            self.register(
+            reg_id = self.register(
                 base_type,
                 sc,
                 lifespan=lifespan,
@@ -1852,6 +1868,9 @@ class Container(Scope):
                 tags=tags,
                 parent_node_filter=parent_node_filter,
             )
+            ids.append(reg_id)
+
+        return ids
 
     @staticmethod
     def _get_target_generic_base(generic_service_type: type, subclass: type):
@@ -1876,13 +1895,15 @@ class Container(Scope):
         name: str | None = None,
         tags: list[Tag] | None = None,
         parent_node_filter: NodeFilter = default_parent_node_filter,
-    ) -> Container:
+    ) -> list[str]:
+        ids: list[str] = []
+
         full_type_filter = ~is_abstract & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, filter=full_type_filter)
         for subclass in subclasses:
             target_generic_base = self._get_target_generic_base(generic_service_type, subclass)
             if target_generic_base:
-                self.register(
+                reg_id = self.register(
                     target_generic_base,
                     subclass,
                     lifespan=lifespan,
@@ -1890,6 +1911,8 @@ class Container(Scope):
                     tags=tags,
                     parent_node_filter=parent_node_filter,
                 )
+
+                ids.append(reg_id)
 
         if fallback_type:
             self.register(
@@ -1901,7 +1924,7 @@ class Container(Scope):
                 parent_node_filter=parent_node_filter,
             )
 
-        return self
+        return ids
 
     def register_generic_decorator(
         self,
@@ -1914,7 +1937,7 @@ class Container(Scope):
         registration_filter: Callable[[_Registration], bool] = default_registration_filter,
         decorated_node_filter: NodeFilter = default_decorated_node_filter,
         position: int = 0,
-    ) -> Container:
+    ) -> None:
         full_type_filter = ~is_abstract & ~name_starts_with("__DecoratedGeneric__") & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, filter=full_type_filter)
         decorator_generic_map = GenericTypeMap(generic_decorator_type)
@@ -1947,8 +1970,6 @@ class Container(Scope):
                         position=position,
                     )
 
-        return self
-
     def force_run_pre_configuration(
         self,
         service_type: type,
@@ -1974,10 +1995,8 @@ class Container(Scope):
     def apply_bundle(
         self,
         bundle_fn: Callable[[Container], None],
-    ) -> Container:
+    ) -> None:
         bundle_fn(self)
-
-        return self
 
     def has_registration(self, service_type, filter: RegistrationFilter = default_registration_filter):
         found_registrations = [r for r in self._registry.get_registrations(service_type) if filter(r)]
@@ -2010,7 +2029,8 @@ class DependencySettings:
     list_modifier: RegistrationListModifier = default_registration_list_modifier
 
 
-DependencyConfig = dict[str, DependencySettings]
+DependencyConfig = dict[str, Any]
+SubDependencies = dict[str, DependencySettings]
 RegistrationFilter = Callable[[_Registration], bool]
 NodeFilter = Callable[[Node], bool]
 ParameterValueFactory = Callable[[Any, DependencyContext], Any]

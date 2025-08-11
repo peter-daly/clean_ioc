@@ -1644,3 +1644,57 @@ def test_resolve_from_registration_ids():
     resolved_a2 = container.resolve_from_registration_id(A, ids[0])
     assert resolved_a1 is a1
     assert resolved_a2 is a2
+
+
+def test_setting_dependency_config_can_accept_values():
+    class A:
+        pass
+
+    class B:
+        def __init__(self, a: A, x: int, y: int = 99):
+            self.a = a
+            self.x = x
+            self.y = y
+
+    container = Container()
+    container.register(A)
+
+    container.register(B, dependency_config={"x": 42})
+
+    item = container.resolve(B)
+
+    assert item.x == 42
+    assert item.y == 99
+
+
+def test_setting_dependency_config_can_accept_values_and_will_override_default_properties_when_set():
+    class A:
+        pass
+
+    class B:
+        def __init__(self, a: A, x: int, y: int = 99):
+            self.a = a
+            self.x = x
+            self.y = y
+
+    container = Container()
+    container.register(A)
+
+    container.register(B, dependency_config={"x": 42, "y": 25})
+
+    item = container.resolve(B)
+
+    assert item.x == 42
+    assert item.y == 25
+
+
+def test_using_registration_id_returned_from_registration():
+    class A:
+        pass
+
+    container = Container()
+    reg_id = container.register(A)
+
+    resolved_a = container.resolve(A, filter=lambda r: r.id == reg_id)
+
+    assert resolved_a is not None
