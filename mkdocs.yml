@@ -27,6 +27,7 @@ nav:
 theme:
   name: material
 plugins:
+  - autorefs
   - glightbox
   - mkdocstrings:
       handlers:
