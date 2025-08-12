@@ -4,6 +4,7 @@ Factories are just Callables that return an instance of your dependency. Factori
 Factories can also have their dependencies.
 
 ## Function
+
 The most basic factory is a simple function.
 
 ```python
@@ -30,9 +31,7 @@ repo = container.resolve(UserRepository)
 user = repo.get_user(10)
 ```
 
-
 ## Async Function (Coroutine)
-
 
 !!! warning
     Async function factories must only run when using ***resolve_async***
@@ -92,7 +91,6 @@ repo = container.resolve(UserRepository)
 user = repo.get_user(10)
 ```
 
-
 ## Async Generator
 
 !!! warning
@@ -123,7 +121,6 @@ repo = await container.resolve_async(UserRepository)
 
 user = await repo.get_user(10)
 ```
-
 
 ## Generator as a context manager
 
@@ -156,7 +153,6 @@ repo = container.resolve(UserRepository)
 
 user = repo.get_user(10)
 ```
-
 
 ## Async Generator as an async context manager
 

@@ -1,4 +1,5 @@
 # Filtering
+
 Filtering allows you to be more selective on how the container will select the desired dependencies that you want.
 For instances if I have two registrations of the same class with slight differences it allows you to select which if those registered dependencies that you want.
 
@@ -12,9 +13,6 @@ Clean Ioc is just based on two simple concepts.
 When you register a dependency it get's stored in a registry.
 When you want to resolve an object from the container you create you build a dependency graph and query the registry recursively for the next dependency in the graph.
 
-
-
-
 ### 1. Registering the InMemoryRepository
 
 <div class="grid" markdown>
@@ -26,6 +24,7 @@ This creates a **registration** in the **registry** mapping `UserRepository` to 
 container = Container()
 container.register(UserRepository, InMemoryUserRepository)
 ```
+
 </div>
 ![Image title](../assets/img/filters/resolving/01.png)
 
@@ -42,6 +41,7 @@ container = Container()
 container.register(UserRepository, InMemoryUserRepository)
 container.register(UserRepository, SqlAlchemyUserRepository)
 ```
+
 </div>
 ![Image title](../assets/img/filters/resolving/02.png)
 
@@ -63,6 +63,7 @@ container.register(UserRepository, InMemoryUserRepository)
 container.register(UserRepository, SqlAlchemyUserRepository)
 container.register(sqlalchemy.Session, factory=create_session)
 ```
+
 </div>
 ![Image title](../assets/img/filters/resolving/03.png)
 
@@ -87,6 +88,7 @@ container.register(sqlalchemy.Session, factory=create_session)
 
 user_repo = container.resolve(UserRepository)
 ```
+
 </div>
 ![Image title](../assets/img/filters/resolving/04.png)
 
@@ -110,6 +112,7 @@ container.register(sqlalchemy.Session, factory=create_session)
 
 user_repo = container.resolve(UserRepository)
 ```
+
 </div>
 ![Image title](../assets/img/filters/resolving/05.png)
 
@@ -133,6 +136,7 @@ container.register(sqlalchemy.Session, factory=create_session)
 
 user_repo = container.resolve(UserRepository)
 ```
+
 </div>
 ![Image title](../assets/img/filters/resolving/06.png)
 
@@ -156,6 +160,7 @@ container.register(sqlalchemy.Session, factory=create_session)
 
 user_repo = container.resolve(UserRepository)
 ```
+
 </div>
 ![Image title](../assets/img/filters/resolving/07.png)
 
@@ -179,11 +184,11 @@ container.register(sqlalchemy.Session, factory=create_session)
 
 user_repo = container.resolve(UserRepository)
 ```
+
 </div>
 ![Image title](../assets/img/filters/resolving/08.png)
 
 </div>
-
 
 ## Filtering registrations
 
@@ -211,7 +216,6 @@ container.register(int, instance=1, name="One")
 container.register(int, instance=2, name="Two")
 container.register(int, instance=3, name="Three")
 ```
-
 
 #### Registration Tags
 
@@ -247,6 +251,7 @@ def only_singletons(registration: Registration) -> bool:
 ```
 
 #### Using Registration Filters
+
 Here is an example of using registration filters
 
 ```python
@@ -264,6 +269,7 @@ container.resolve(int, filter=lambda r: r.name == "One") # returns 1
 Clean Ioc comes with builtin registration filters for convenience.
 
 Here is the same code above as but using the inbuilt filters
+
 ```python
 import clean_ioc.registration_filters as rf
 
@@ -278,7 +284,6 @@ container.resolve(int, filter=rf.has_tag("odd")) # returns 3
 container.resolve(int, filter=rf.with_name("One")) # returns 1
 ```
 
-
 !!! info "Named registration filtering"
     The default filtering behavior of resolving is to look for unnamed registrations
     if you name a registration you have to explicitly filter for it.
@@ -292,9 +297,7 @@ container.resolve(int, filter=rf.with_name("One")) # returns 1
     container.resolve(int, filter=rf.with_name("Two")) # returns 2
     ```
 
-
 ## Resolving with a named filter
-
 
 ### 1. Registering the InMemoryRepository
 
@@ -319,7 +322,6 @@ container.register(UserRepository, InMemoryUserRepository name="IN_MEM")
 ![Image title](../assets/img/filters/name_filtering/01.png)
 </div>
 
-
 ### 2. Resolving and filtering by name
 
 <div class="grid" markdown>
@@ -338,6 +340,7 @@ container.register(UserRepository, SqlAlchemyUserRepository)
 container.register(UserRepository, InMemoryUserRepository name="IN_MEM")
 
 repo = container.resolve(UserRepository, filter=rf.with_name("IN_MEM"))
+
 ```
 
 </div>
@@ -369,16 +372,17 @@ repo = container.resolve(UserRepository, filter=rf.with_name("IN_MEM"))
 ![Image title](../assets/img/filters/name_filtering/03.png)
 </div>
 
+## Applying registration filters deeper in the graph
 
-## Applying registration filters deeper in the graph.
 The previous example showed us how to filter a registration in the resolve method, but we will often need to filter a registration based on a dependency that is deeper in the dependency graph.
 This is where top down filtering and bottom up filtering comes in to play.
 
 ### Top down filtering
+
 Top down filtering is the filtering method of registrations defining filtering for their children. This is achieved by defining **dependency config** on our **Registration**
 
-
 #### Dependency Config & Dependency Settings
+
 Dependency settings allow you to define what child dependencies to filter for.
 
 Here is the definition of dependency config in Clean Ioc.
@@ -392,8 +396,8 @@ Here is the definition of dependency config in Clean Ioc.
       members: false
       show_bases: false
 
-
 Dependency config is a dict of string to **DependencySettings** where the key is the parameter name in the `__init__` function or function in the case of a factory.
+
 ```python
 class Greeter:
     def __init__(self, message: str):
@@ -444,7 +448,6 @@ Parent node filters are a callable take a Node as a parameter and return a boole
       members: false
       show_bases: false
 
-
 ```python
 import clean_ioc.node_filters as nf
 
@@ -479,7 +482,6 @@ type(e.a) # returns type of B
 type(d.a) # returns type of C
 
 ```
-
 
 ## An example of top down filtering combined with bottom up filtering
 
@@ -521,15 +523,12 @@ product_db_settings = DbConnectionConfig(
     database_name="NotVerySecurePassword",
 )
 
-
-
 container.register(sqlalchemy.Session, factory=create_session, tags=Tag("Database", "UserDb"))
 container.register(sqlalchemy.Session, factory=create_session, tags=Tag("Database", "ProductDb"))
 
 container.register(UserRepository, SqlAlchemyUserRepository, dependency_config: {"session": DependencySettings(filter=rf.has_tag("Database", "UserDb"))})
 container.register(UserRepository, InMemoryUserRepository name="IN_MEM")
 container.register(ProductRepository, SqlAlchemyProductRepository, dependency_config: {"session": DependencySettings(filter=rf.has_tag("Database", "ProductDb"))})
-
 
 container.register(DbConnectionConfig, instance=user_db_settings, parent_node_filter=nf.has_registration_tag("Database", "UserDb"))
 container.register(DbConnectionConfig, instance=product_db_settings, parent_node_filter=rf.has_registration_tag("Database", "ProductDb"))
@@ -599,8 +598,6 @@ user_repo = container.resolve(UserRepository)
 ![Image title](../assets/img/filters/node_filtering/02.png)
 </div>
 
-
-
 ### 3. Finding the session
 
 <div class="grid" markdown>
@@ -656,10 +653,6 @@ user_repo = container.resolve(UserRepository)
 </div>
 ![Image title](../assets/img/filters/node_filtering/03.png)
 </div>
-
-
-
-
 
 ### 4. Finding the config
 
@@ -717,10 +710,6 @@ user_repo = container.resolve(UserRepository)
 ![Image title](../assets/img/filters/node_filtering/04.png)
 </div>
 
-
-
-
-
 ### 5. Building the object
 
 <div class="grid" markdown>
@@ -776,4 +765,3 @@ user_repo = container.resolve(UserRepository)
 </div>
 ![Image title](../assets/img/filters/node_filtering/05.png)
 </div>
-

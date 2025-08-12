@@ -1,0 +1,19 @@
+# Lax on line-length and specific formatting best practices
+# We mostly just want to ensure that it's formatted so that it renders properly on the docs site
+config:
+  line_length:
+    code_blocks: false
+    heading_line_length: 600
+    headings: true
+    line_length: 600
+    stern: false
+    strict: false
+    tables: true
+  no-inline-html: false
+  code-block-style: false
+  no-duplicate-heading: false
+  fenced-code-language: false
+  descriptive-link-text: false
+
+globs:
+  - "**/*.md"

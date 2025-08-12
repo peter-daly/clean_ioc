@@ -1,8 +1,8 @@
-## Basic Registering and resolving
+# Basic Registering and resolving
 
 There are 4 basic modes of registering a new set of classes
 
-### Implementation
+## Implementation
 
 ```python
 
@@ -38,7 +38,7 @@ repository = container.resolve(UserRepository) # This will return an InMemoryUse
 
 ```
 
-### Concrete Class
+## Concrete Class
 
 ```python
 
@@ -64,7 +64,7 @@ client.get_number() # returns 10
 
 ```
 
-### Factory
+## Factory
 
 ```python
 
@@ -93,7 +93,7 @@ client.get_number() # returns 10
 
 ```
 
-### Instance
+## Instance
 
 ```python
 
@@ -122,7 +122,6 @@ client = container.resolve(Client)
 client.get_number() # returns 10
 
 ```
-
 
 ## Subclasses registration
 
@@ -153,11 +152,9 @@ ten_client.get_number() # returns 10
 twenty_client = container.resolve(TwentyClient)
 twenty_client.get_number() # returns 20
 
-# Resolve all subsclasses of Client
+ Resolve all subsclasses of Client
 client = container.resolve(list[Client]) ## [TwentyClient(), TenClient()]
 ```
-
-
 
 ## Collection resolving
 
@@ -207,7 +204,6 @@ client.get_numbers() # returns [3, 2, 1]
     | **collections.abc.Collection**        | tuple |
     | **typing.MutableSequence**            | list |
     | **collections.abc.MutableSequence**   | list |
-
 
 ## Asyncio
 

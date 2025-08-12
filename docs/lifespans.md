@@ -1,14 +1,15 @@
-## Lifespans
+# Lifespans
+
 Lifespans configure how long and resolved object says alive for
 There are 4 lifespan types
 
-### transient
+## transient
+
 Always create a new instance when a registration is matched.
 
 ```python
 container.register(Client, lifespan=Lifespan.transient)
 ```
-
 
 ```python
 class A:
@@ -38,14 +39,13 @@ d.b.a == d.c.a # FALSE
 
 ```
 
+## once_per_graph (Default behaviour)
 
-### once_per_graph (Default behaviour)
 Only create a new instance once during a resolve call.
 
 ```python
 container.register(Client, lifespan=Lifespan.once_per_graph)
 ```
-
 
 ```python
 class A:
@@ -76,14 +76,13 @@ d.b.a == d.c.a # TRUE
 d.b.a == a # FALSE
 ```
 
+## singleton
 
-### singleton
 Only one instance of the object is created throughout the lifetime of the the container
 
 ```python
 container.register(Client, lifespan=Lifespan.singleton)
 ```
-
 
 ```python
 class A:
@@ -114,8 +113,8 @@ d.b.a == d.c.a # TRUE
 d.b.a == a # TRUE
 ```
 
+## scoped
 
-### scoped
 Only create a new instance throughout the lifetime a [scope](./scopes.md). When an object is resolved outside of a scope then the behaviour is the same as **singleton**.
 
 ```python

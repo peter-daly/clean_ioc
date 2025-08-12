@@ -1,5 +1,5 @@
+# Bundles
 
-## Bundles
 As the number of classes and objects grow you may find that you will create more complex dependency graphs. You will have a groups of components that you will want to register together. For example if you want to have a sqlalchemy Session you will likely want a sqlalchemy Engine. This is where bundles come in to play.
 
 At it's minimal a bundle is a just a ```Callable[[Container], None]``` that can be used to set up related registrations on the container.
@@ -28,7 +28,7 @@ client = container.resolve(Client)
 client.get_number() # returns 10
 ```
 
-### Helpers for bundles
+## Helpers for bundles
 
 There are a set of base Bundle classes that can be used to set up bundles
     - ```BaseBundle```: Basic callable
@@ -38,7 +38,6 @@ There are a set of base Bundle classes that can be used to set up bundles
 You can find these classes in the `clean_ioc.bundles` module.
 
 These bundle classes are also useful if you want to pass instances of dependencies with your bundle.
-
 
 ```python
 @dataclass

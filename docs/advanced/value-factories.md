@@ -11,13 +11,11 @@ clean ioc comes with a set of built in value factories
 - `set_value(value: Any)`: Set a constant value
 - `dont_use_default_value`: Skip the default parameter
 
-
 A value factory has the following signature: `Callable[[Any, DependencyContext], Any]`. When needed you can write your own custom one.
 
 If a value factory returns an instance of `clean_ioc._empty` it will then try to resolve the dependency from the registry
 
-
-## Simple example of setting a static value.
+## Simple example of setting a static value
 
 ```python
 import clean_ioc.value_factories as vf
@@ -40,9 +38,6 @@ client = container.resolve(Client)
 
 client.get_number() # returns 50
 ```
-
-
-
 
 ## Dealing with default parameter values
 

@@ -5,26 +5,30 @@
 The SOLID principles are a set of five design guidelines intended to improve software development projects, making them more understandable, flexible, and maintainable. Coined by Robert C. Martin, also known as Uncle Bob, these principles provide a framework for writing software that is easy to manage and extend over time. Here’s a brief explainer on each of the five principles:
 
 ### 1. Single Responsibility Principle (SRP)
+
 **Single Responsibility Principle** states that a class should have only one reason to change, meaning it should have only one job or responsibility. This principle reduces the complexity of each class and makes it easier to pinpoint bugs because each class is concerned with only a specific functionality. Adhering to SRP often leads to more classes, each handling a single part of the functionality, which simplifies future modifications without affecting other parts of the program.
 
 ### 2. Open/Closed Principle (OCP)
+
 **Open/Closed Principle** suggests that software entities (classes, modules, functions, etc.) should be open for extension but closed for modification. This means that the behavior of a module can be extended without altering the source code of the module itself. Typically, this is achieved using interfaces or abstract classes that can be implemented or inherited without changing the existing code, facilitating adding new functionalities without risking the introduction of bugs into the existing code.
 
 ### 3. Liskov Substitution Principle (LSP)
+
 **Liskov Substitution Principle** asserts that objects of a superclass shall be replaceable with objects of its subclasses without affecting the correctness of the program. This principle is fundamental for achieving polymorphism in OOP. It ensures that a subclass can stand in for a superclass in all situations without leading to incorrect outcomes, promoting reusability and enforceability of a modular architecture.
 
 ### 4. Interface Segregation Principle (ISP)
+
 **Interface Segregation Principle** dictates that no client should be forced to depend on methods it does not use. This principle encourages the segregation of larger interfaces into smaller, more specific ones so that implementing classes only need to be concerned about the methods that are of interest to them. ISP reduces the side effects and frequency of required changes by structuring interfaces in a way that does not burden the client classes with irrelevant methods.
 
 ### 5. Dependency Inversion Principle (DIP)
+
 **Dependency Inversion Principle** states that high-level modules should not depend on low-level modules. Both should depend on abstractions (e.g., interfaces) rather than concrete classes. This principle is aimed at reducing the dependencies on specific software components, allowing for high-level policy-making modules to remain unchanged even as the details of low-level modules evolve. Essentially, DIP facilitates the decoupling of software components, which simplifies system development and potential refactoring.
 
 ### Conclusion
+
 The SOLID principles provide a foundation for designing software that is robust, scalable, and easy to maintain. By adhering to these principles, developers can produce code that accommodates new requirements and technological changes with minimal disruptions, thereby enhancing the longevity and flexibility of their software applications. Each principle interlocks with the others to promote a design that is truly resilient in the face of change.
 
-
-
-## Examples:
+## Examples
 
 ### 1. Single Responsibility Principle (SRP)
 
@@ -50,16 +54,19 @@ user.save_user_to_database()
 user.send_email("Welcome to our service!")
 ```
 
-#### Violations of SRP:
+#### Violations of SRP
+
 - **Database Management**: The `save_user_to_database` method makes the `User` class responsible for database operations related to the user data. This introduces a reason to change if the database schema or technology stack changes.
 - **Email Communication**: The `send_email` method assigns the responsibility of handling email communications to the `User` class. This method will need to change if the method of sending emails or the email content/formatting requirements change.
 
-#### Impact of SRP Violation:
+#### Impact of SRP Violation
+
 - **High Coupling**: This class is tightly coupled with specific implementations for database and email services. Changing the email system, for instance, could affect how users are saved to the database if not carefully managed.
 - **Difficult Maintenance**: Testing and maintaining this class becomes harder because changes in one responsibility (like modifying email logic) could inadvertently affect database-related features.
 - **Challenging Testing**: Writing unit tests for this class would be challenging since tests for user creation might unintentionally involve email sending logic and vice versa.
 
-#### Recommended Refactoring:
+#### Recommended Refactoring
+
 To adhere to SRP, the `User` class should be refactored by separating the responsibilities into different classes. Here is a suggested refactoring:
 
 ```python
@@ -89,9 +96,6 @@ email_service.send_email(user.email, "Welcome to our service!")
 
 This refactoring ensures that each class has one reason to change: `User` for user data management, `UserRepository` for database interactions, and `EmailService` for handling emails. Each class is now simpler, more testable, and adheres to the Single Responsibility Principle.
 
-
-
-
 ### 2. Open/Closed Principle (OCP)
 
 Here is an example where the Open/Closed Principle (OCP) is violated. The OCP states that software entities should be open for extension but closed for modification. This example will illustrate a case where modifications to existing code are necessary to add new functionality, which violates OCP.
@@ -115,15 +119,18 @@ print(report_generator.generate_report("pdf"))
 print(report_generator.generate_report("csv"))
 ```
 
-#### Violation of OCP:
+#### Violation of OCP
+
 - **Modification Required for New Types**: To support a new report format (e.g., XML), you must modify the `generate_report` method. This could involve adding a new `elif` block, which means modifying existing, tested, and potentially stable code.
 - **Risk of Introducing Bugs**: Each modification in the `generate_report` method carries the risk of introducing bugs into the previously working code for other report types.
 
-### Impact:
+### Impact
+
 - **Scalability Issues**: As the number of report types grows, this method becomes increasingly complex and harder to maintain.
 - **Testing Overhead**: Every change requires retesting the entire method, even if only one report type was added or changed.
 
-#### Recommended Refactoring to Comply with OCP:
+#### Recommended Refactoring to Comply with OCP
+
 To make this example adhere to the Open/Closed Principle, we can refactor the code by using polymorphism, where each report type is implemented in its subclass:
 
 ```python
@@ -193,15 +200,18 @@ make_bird_fly(eagle)  # Works fine
 make_bird_fly(penguin)  # Raises an exception because penguins cannot fly
 ```
 
-#### Violation of LSP:
+#### Violation of LSP
+
 - **Inappropriate Inheritance**: By inheriting `Penguin` from `Bird`, there's an implicit assumption that all behaviors of the superclass (`Bird`) apply to the subclass (`Penguin`). However, `Penguin` cannot fulfill the `fly` method contract established by `Bird` without altering its behavior (throwing an exception).
 - **Substitutability Issue**: The function `make_bird_fly` expects any subclass of `Bird` to fly. When it receives a `Penguin`, it results in an exception, indicating that `Penguin` is not a proper substitute for `Bird` with respect to the `fly` method.
 
-#### Impact:
+#### Impact
+
 - **Runtime Errors**: The application might crash at runtime if it incorrectly assumes that all `Bird` objects can fly, leading to poor error handling and a system that is hard to maintain.
 - **Design Limitation**: The current design limits the extension of the `Bird` class to only those birds that can fly, thereby misrepresenting the nature of birds in the real world.
 
-#### Recommended Solution:
+#### Recommended Solution
+
 A better approach would be to use interface segregation to split the bird behaviors into separate interfaces, thus adhering to both LSP and the Interface Segregation Principle (ISP). Here’s how you might refactor it:
 
 ```python
@@ -232,7 +242,6 @@ make_bird_fly(eagle)  # Still works fine
 ```
 
 In this refactor, we distinguish between general `Bird` behaviors and specific behaviors like `fly`, which are applicable only to certain birds. This separation ensures that only birds capable of flying are treated as such, maintaining the integrity and correctness of the behavioral expectations.
-
 
 ### 4. Interface Segregation Principle (ISP)
 
@@ -309,13 +318,13 @@ multi_function_printer.scan_document("Multi-function document")
 multi_function_printer.fax_document("Fax document")
 ```
 
-#### Benefits of Refactoring:
+#### Benefits of Refactoring
+
 1. **Decoupling**: Each class only depends on the interfaces that provide the methods it actually uses. `SimplePrinter` doesn't need to care about scanning or faxing functionalities.
 2. **Flexibility and Maintainability**: It's easier to maintain and evolve the system since changes in one interface don't affect classes that use other interfaces.
 3. **Clearer Dependencies**: It is immediately clear what functionality each class supports, improving code readability and reducing the risk of runtime errors.
 
 This refactored design adheres to the ISP by ensuring that classes only implement the interfaces they need, avoiding the obligation to implement unnecessary methods, which enhances system modularity and robustness.
-
 
 ### 5. Dependency Inversion Principle (DIP)
 
@@ -349,15 +358,18 @@ manager = NewsArticleManager()
 manager.publish_article(article)
 ```
 
-#### Violation of DIP:
+#### Violation of DIP
+
 - **Direct Dependency**: The `NewsArticleManager` (high-level module) is directly dependent on `MySQLDatabase` (low-level module). If the storage requirements change (e.g., switching to a different type of database), the `NewsArticleManager` must be modified.
 - **Hardcoded Dependency**: The `NewsArticleManager` creates an instance of `MySQLDatabase` internally, making it hard to replace, especially for testing purposes where you might want to use a mock database.
 
-#### Impact:
+#### Impact
+
 - **Lack of Flexibility**: Changing the database involves significant changes in the `NewsArticleManager`, violating the open/closed principle as well.
 - **Difficulties in Testing**: Testing the `NewsArticleManager` is difficult without also involving the `MySQLDatabase`, which is not ideal for unit tests that should be isolated and fast.
 
-#### Recommended Refactoring to Comply with DIP:
+#### Recommended Refactoring to Comply with DIP
+
 To make this example adhere to the Dependency Inversion Principle, we can refactor the code by introducing an abstraction (interface) for the database operations and then injecting this dependency into the high-level module:
 
 ```python

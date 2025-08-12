@@ -8,7 +8,7 @@ install-deps:
 
 install-dev-deps:
 	@echo "Installing development dependencies..."
-	@uv sync
+	@uv sync --all-groups
 
 
 fixup:
