@@ -3,7 +3,6 @@
 Clean IoC allows you to add extra functionality to dependencies via decoration.
 It achieves this with what would look traditionally like an Object Orientated decorator pattern. This is very different to traditional python decorator functions.
 
-
 !!! question "Why use a different decorator pattern?. This looks like Java"
 
     Python class decorators either mutate or wrap the decorated class in order to add new dependencies to the decorators it would have to dynamically change the the classes __init__ function, but since we can define a separate  Service Type from the Implementation Type changing the `__init__` method just becomes messy.
@@ -14,11 +13,9 @@ It achieves this with what would look traditionally like an Object Orientated de
     3. When we just register an instances, it can also be decorated.
     4. Allows us to selectively apply decorators.
 
-
 !!! question "Are you suggesting that python should change how it traditionally does decoration for cross cutting concerns?"
 
     Nope. When adding cross cutting concerns to classes and functions in python, traditional python decorators work fantastically. It's also not a case of one or the other. For example if you want to register `dataclasses` and also add decorators instance of those classes you can absolutely do that.
-
 
 ```python
 class MessageSender(Protocol):
@@ -49,6 +46,7 @@ sender.send("HELLO") # logs while sending
 ```
 
 ## Decorator ordering
+
 By default decorators are resolved in order of when first registered. So the first registered decorator is the highest the object tree.
 
 ```python
@@ -120,9 +118,6 @@ The `position` arg is an integer.
     type(root.child.child) # returns DecoratorLow
     type(root.child.child.child) # returns Concrete
 ```
-
-
-
 
 ## Manually setting decorated arg
 

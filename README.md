@@ -1,9 +1,8 @@
 # Clean IoC
+
 A simple dependency injection library for python that requires nothing of your application code (except that you use typing).
 
-
 Read the [docs](https://peter-daly.github.io/clean_ioc/) to find out more.
-
 
 ## Basic Registering and resolving
 
@@ -100,7 +99,6 @@ client.get_number() # returns 10
 
 ```
 
-
 ### Instance
 
 ```python
@@ -130,4 +128,3 @@ client = container.resolve(Client)
 client.get_number() # returns 10
 
 ```
-

@@ -6,7 +6,6 @@ An example where this might be usefule is if you want to inject loggers as a dep
 
 Pre-configuration functions can also have dependencies from the container.
 
-
 ```python
 import logging
 

@@ -2,20 +2,17 @@
 
 Clean IoC comes with helpers to help you easily integrate it with Fast API. If you are using Clean IoC with other application types and wanting that same experience in Fast API development you can add your container to Fast API.
 
-
 ## How it works
 
 The extension works by giving you a Clean IoC scope with every FastAPI request allowing you to leverage scoped lifetimes. This makses it easy for you to have a single SqlAlchemy session per request as an example.
 
-
 ## Setting it up
+
 Clean IoC comes with a simple utility function that wires up the container to the app.
 It's best to the wiring up within a lifespan.
 
 !!! note "Same word different meaning"
     ***Lifespan*** in Fast API refers to the ability to configure run sone setup and teardown during the lifetime of the app. ***Lifespan*** in Clean Ioc is a setting on a regiestered dependency on how long the registered dependency stays alive for.
-
-
 
 When you want to access a dependnecy in your routes you can use the **Resolve** helper function.
 This gives you a very similar experience to using **Depends** in Fast API. The only difference is that you provide the type you want to resolve rather then the resolver function.
@@ -45,8 +42,7 @@ async def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
     my_dependency.do_action()
 ```
 
-
-## Accessinng Fast API objects inside container dependencies.
+## Accessinng Fast API objects inside container dependencies
 
 You can add fast api Dependencies to the scope of the request using the **get_scope** helper.
 Create a new function that depends on **get_scope** and add items to the scope.

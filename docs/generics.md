@@ -61,7 +61,6 @@ h3.handle(AlohaCommand()) # prints 'ALOHA'
 
 Leveraging Clean IoC's Resolver dependency you can take it a step further and build a dispatch mechanism
 
-
 ```python
 class CommandDispatcher:
     def __init__(self, reslover: Resolver):
@@ -80,7 +79,6 @@ dispatcher.dispatch(HelloCommand()) # prints 'HELLO'
 dispatcher.dispatch(GoodbyeCommand()) # prints 'GOODBYE'
 dispatcher.dispatch(AlohaCommand()) # prints 'ALOHA'
 ```
-
 
 ## Generic Decorators
 
@@ -127,7 +125,6 @@ h2.handle(GoodbyeCommand()) # prints 'A VERY BIG\nGOODBYE'
 ```
 
 Clean IoC will also respect generic dependencies of the generic decorator so you can have custom features per different concrete type.
-
 
 ```python
 T = TypeVar("T")

@@ -20,4 +20,3 @@ Traditionally, in software applications, components often directly manage their 
 2. **Flexibility and Reusability**: Components designed to use IoC are generally easier to reuse in different scenarios because they do not directly manage their dependencies. This makes them more flexible to changes in the behavior of their dependencies.
 3. **Ease of Testing**: Since components are not responsible for finding or creating the objects they rely on, testing them becomes easier. Developers can inject mock or stub implementations of complex dependencies when testing, which simplifies unit testing.
 4. **Simplified Configuration and Integration**: Changes to the system configuration can be made at a higher level than the component level, often outside the application code itself. For instance, swapping the implementation of an interface can be done in the IoC container's configuration rather than in the application code.
-

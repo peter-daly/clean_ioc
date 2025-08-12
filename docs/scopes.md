@@ -2,11 +2,13 @@
 
 Scopes allow you to define a dependency that will stay alive for a period of time (while the scope is alive).
 Some appropriate use cases for scopes are:
- - http request in a web server
- - message/event if working on a message based system
- - a thread cotext
+
+- http request in a web server
+- message/event if working on a message based system
+- a thread cotext
 
 For instance you could set up that an single database connection open for a scope
+
 ```python
 class DbConnection:
     def run_sql(self, statement):
@@ -39,9 +41,10 @@ async with container.get_scope() as scope:
     await db_conn.run_sql("UPDATE table SET column = 1")
 ```
 
-
 ## Scoped Teardowns
+
 When registering a component you have the option to run a teardown function after the scope is complete
+
 ```python
 class AsyncDbConnection:
     async def run_sql(self, statement):
@@ -63,7 +66,6 @@ async with container.get_scope() as scope:
 
 # prints CLOSING CONNECTION
 ```
-
 
 ## Scopes with generator factories
 
@@ -93,7 +95,6 @@ async with container.get_scope() as scope:
 
 # prints CLOSING CONNECTION
 ```
-
 
 !!! Question "Should I use f
 generators or scoped teardowns is there any difference?"
@@ -127,8 +128,8 @@ generators or scoped teardowns is there any difference?"
         await db_conn.run_sql("UPDATE table SET column = 1")
     ```
 
-
 ## Registering within scopes
+
 Each scope has it's own registry which enables you to register new dependencies that are available within the scope.
 When within new scopes you can register dependencies that will live within the scope.
 
@@ -150,7 +151,6 @@ container.resolve(float) # returns 1.0
 ```
 
 An exampes of this is if you have a scope that you use for a web request and you want to register the CurrentUser within the dependencies.
-
 
 ## Nesting scopes
 
@@ -174,8 +174,6 @@ with container.get_scope() as scope:
 container.resolve(int) # returns 1
 container.resolve(float) # returns 1.0
 ```
-
-
 
 ## The container is just the root scope
 

@@ -1,6 +1,4 @@
-
-
-## Accessing the Container, Scope and Resolver within dependencies
+# Accessing the Container, Scope and Resolver within dependencies
 
 Accessing container directly
 
