@@ -773,3 +773,35 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes_can_hav
     assert b_handler.thing_doer == is_exact_type(DoAThingWithBCommand)
     assert c_handler.thing_doer == is_exact_type(DoAThingWithCEvent)
     assert d_handler.thing_doer == is_exact_type(DoAThingWithEvent)
+
+
+def test_can_register_a_generic_type_that_has_been_dynamically_created_with_a_generic_dependency():
+    T = TypeVar("T")
+
+    class GenericDependency(Generic[T]):
+        pass
+
+    class GenericClass(Generic[T]):
+        def __init__(self, value: T, dependency: GenericDependency[T]):
+            self.value = value
+            self.dependency = dependency
+
+    class A:
+        pass
+
+    class MyClass(GenericClass[A]):
+        pass
+
+    class MyDepedency(GenericDependency[A]):
+        pass
+
+    container = Container()
+
+    container.register(GenericClass[A], MyClass)
+    container.register(GenericDependency[A], MyDepedency)
+    container.register(A)
+
+    instance = container.resolve(GenericClass[A])
+    assert isinstance(instance, MyClass)
+    assert isinstance(instance.value, A)
+    assert isinstance(instance.dependency, MyDepedency)

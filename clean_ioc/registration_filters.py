@@ -22,6 +22,8 @@ def with_name(name: str | None):
     def _with_name(r: Registration):
         return r.name == name
 
+    _with_name.__name__ = f"with_name({name})"
+
     return predicate(_with_name)
 
 
@@ -34,6 +36,8 @@ def name_starts_with(prefix: str):
         if r.name is not None:
             return r.name.startswith(prefix)
         return False
+
+    _name_starts_with.__name__ = f"name_starts_with({prefix})"
 
     return predicate(_name_starts_with)
 
@@ -48,11 +52,14 @@ def name_ends_with(suffix: str):
             return r.name.endswith(suffix)
         return False
 
+    _name_ends_with.__name__ = f"name_ends_with({suffix})"
+
     return predicate(_name_ends_with)
 
 
 is_not_named = with_name(None)
 is_not_named.__doc__ = "Filter for registrations that do not have a name"
+
 
 is_named = ~is_not_named
 is_named.__doc__ = "Filter for registrations that have a name"
@@ -65,6 +72,8 @@ def with_implementation(implementation: type):
 
     def _with_implementation(r: Registration):
         return r.implementation == implementation
+
+    _with_implementation.__name__ = f"with_implementation({implementation})"
 
     return predicate(_with_implementation)
 
@@ -133,6 +142,8 @@ def has_tag(name: str, value: str | None = None):
 
     def _has_tag(r: Registration):
         return r.has_tag(name, value)
+
+    _has_tag.__name__ = f"has_tag({name}, {value})"
 
     return predicate(_has_tag)
 

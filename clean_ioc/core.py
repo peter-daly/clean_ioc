@@ -31,6 +31,7 @@ from theutilitybelt.functional.utils import constant
 from theutilitybelt.typing.generics import GenericTypeMap, get_generic_bases, try_to_map_generic_args_to_open_type
 from theutilitybelt.typing.utils import get_subclasses
 
+from clean_ioc.generic_utils import map_type_vars_to_parent
 from clean_ioc.utils import singleton
 
 from .type_filters import is_abstract, name_starts_with
@@ -92,7 +93,10 @@ def _get_arg_info(subject: Callable, local_ns: dict = {}, global_ns: dict | None
     for name, param in signature.parameters.items():
         if "*" in str(param):
             continue
-        d[name] = ArgInfo(name=name, arg_type=args[name], default_value=param.default)
+
+        arg_type = args[name]
+
+        d[name] = ArgInfo(name=name, arg_type=arg_type, default_value=param.default)
     return d
 
 
@@ -553,7 +557,7 @@ class Dependency:
         self.name = name
         self.parent_implementation = parent_implementation
         if isinstance(parent_implementation, type):
-            self.service_type = try_to_map_generic_args_to_open_type(service_type, parent_implementation)
+            self.service_type = map_type_vars_to_parent(child_type=service_type, parent_type=parent_implementation)
         else:
             self.service_type = service_type
         self.settings = settings
@@ -592,7 +596,7 @@ class Dependency:
                 registration_list_modifier=self.settings.list_modifier,
             )
             sequence_node = DependencyNode(
-                service_type=self.service_type,
+                service_type=self.service_type,  # pyright: ignore[reportArgumentType]
                 implementation=self.generic_collection_type,
                 lifespan=Lifespan.transient,
             )
@@ -606,7 +610,7 @@ class Dependency:
             return collection
         try:
             reg = context.find_registration(
-                service_type=self.service_type,
+                service_type=self.service_type,  # pyright: ignore[reportArgumentType]
                 registration_filter=self.settings.filter,
                 parent_node=dependency_node,
             )
@@ -636,7 +640,7 @@ class Dependency:
                 registration_list_modifier=self.settings.list_modifier,
             )
             sequence_node = DependencyNode(
-                service_type=self.service_type,
+                service_type=self.service_type,  # pyright: ignore[reportArgumentType]
                 implementation=self.generic_collection_type,
                 lifespan=Lifespan.transient,
             )
@@ -651,7 +655,7 @@ class Dependency:
             return collection
         try:
             reg = context.find_registration(
-                service_type=self.service_type,
+                service_type=self.service_type,  # pyright: ignore[reportArgumentType]
                 registration_filter=self.settings.filter,
                 parent_node=dependency_node,
             )
