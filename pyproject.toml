@@ -1,6 +1,6 @@
 [project]
 name = "clean_ioc"
-version = "1.20.0"
+version = "1.20.1"
 description = "An IOC Container for Python 3.10+"
 authors = [{ name = "Peter Daly" }]
 requires-python = ">=3.10,<4"
