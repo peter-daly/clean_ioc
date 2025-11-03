@@ -25,7 +25,9 @@ from .core import (
     ScopeCreator,
     SubDependencies,
     Tag,
+    default_decorated_node_filter,
     default_parameter_value_factory,
+    default_parent_node_filter,
     default_registration_filter,
     default_registration_list_modifier,
 )
@@ -60,4 +62,6 @@ __all__ = [
     "default_parameter_value_factory",
     "default_registration_filter",
     "default_registration_list_modifier",
+    "default_parent_node_filter",
+    "default_decorated_node_filter",
 ]

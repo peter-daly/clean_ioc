@@ -133,7 +133,7 @@ wheels = [
 
 [[package]]
 name = "clean-ioc"
-version = "1.20.1"
+version = "1.20.2"
 source = { editable = "." }
 dependencies = [
     { name = "the-utility-belt" },
