@@ -475,46 +475,83 @@ class CurrentGraph:
 
 class CannotResolveError(Exception):
     def __init__(self):
-        self.dependencies: list[Dependency] = []
+        self._chain_items: list[dict] = []
+        self.first_dependency: Dependency | None = None
 
-    def append(self, d: Dependency):
-        self.dependencies.append(d)
-
-    @staticmethod
-    def print_dependency(d: Dependency):
-        # Format the dependency information with ASCII box
-        content = (
-            f"implementation: {d.parent_implementation}\ndependency_name: {d.name}\nservice_type: {d.service_type}"
+    def append_registration(self, r: _Registration):
+        self._chain_items.append(
+            {
+                "type": "Registration",
+                "id": r.id,
+                "service_type": r.service_type,
+                "implementation": r.implementation,
+                "name": r.name,
+                "lifespan": r.lifespan.name,
+                "tags": [(t.name, t.value) for t in r.tags],
+            }
         )
-        content_lines = content.split("\n")
-        width = max(len(line) for line in content_lines)
-        top_border = "┌" + "─" * (width + 2) + "┐"
-        bottom_border = "└" + "─" * (width + 2) + "┘"
-        padded_content = "\n".join("│ " + line.ljust(width) + " │" for line in content_lines)
-        return f"{top_border}\n{padded_content}\n{bottom_border}"
+
+    def append_decorator(self, d: Decorator):
+        self._chain_items.append(
+            {
+                "type": "Decorator",
+                "service_type": d.service_type,
+                "decorator_type": d.decorator_type,
+                "decorated_arg": d.decorated_arg,
+            }
+        )
+
+    def append_dependency(self, d: Dependency):
+        self._chain_items.append(
+            {
+                "type": "Dependency",
+                "service_type": d.service_type,
+                "arg_name": d.name,
+                "settings": {
+                    "filter": d.settings.filter.__repr__(),
+                    "value_factory": d.settings.value_factory.__repr__(),
+                },
+            }
+        )
+
+        if not self.first_dependency:
+            self.first_dependency = d
+
+    def append_pre_configuration(self, p: PreConfiguration):
+        self._chain_items.append(
+            {
+                "type": "PreConfiguration",
+                "pre_configuration": p.configuration_fn,
+            }
+        )
+
+    def _print_chain_item(self, item: dict):
+        content = "-------------------------\n"
+
+        for key, value in item.items():
+            content += f"{key}: {value}\n"
+
+        content += "-------------------------\n"
+
+        return content
+
+    @property
+    def chain(self):
+        return "\u2b06\n".join(self._print_chain_item(item) for item in self._chain_items)
 
     @property
     def message(self):
-        top_dependency = self.dependencies[0]
-        return f"Failed to resolve {top_dependency.parent_implementation} could not find {top_dependency.service_type}"
+        first_dependency = self.first_dependency
+        if not first_dependency:
+            return "Failed to resolve unknown dependency"
 
-    @property
-    def dependency_chain(self):
-        chain = ""
-        arrow = "↑\n↑\n↑\n"
-
-        for index, item in enumerate(self.dependencies):
-            printer_item = CannotResolveError.print_dependency(item)
-            if index == 0:
-                chain += f"{printer_item}\n"
-            else:
-                # Adding fixed spacing before arrow for alignment, then adding the dependency
-                chain += f"{arrow}{printer_item}\n"
-
-        return chain
+        return (
+            f"***{first_dependency.parent_implementation} could not find "
+            f"{first_dependency.service_type} for argument '{first_dependency.name}'***"
+        )
 
     def __str__(self):
-        return f"\n{self.message}\n\nDependency chain:\n{self.dependency_chain}"
+        return f"\n{self.message}\nChain:\n\n{self.chain}"
 
 
 class Dependency:
@@ -575,94 +612,98 @@ class Dependency:
         elif self.service_type == CurrentGraph:
             self.is_current_graph = True
 
-    def resolve(self, context: _ResolvingContext, dependency_node: DependencyNode) -> Any:
-        dependency_context = DependencyContext(name=self.name, dependency_node=dependency_node)
-        value = self.settings.value_factory(self.default_value, dependency_context)
-
-        if value is not EMPTY:
-            return value
-
-        if self.is_dependency_context:
-            return dependency_context
-
-        if self.is_current_graph:
-            return CurrentGraph(parent_node=dependency_node, resolving_context=context)
-
-        if self.generic_collection_type:
-            regs = context.find_registrations(
-                service_type=self.service_type.__args__[0],  # type: ignore
-                registration_filter=self.settings.filter,
-                parent_node=dependency_node,
-                registration_list_modifier=self.settings.list_modifier,
-            )
-            sequence_node = DependencyNode(
-                service_type=self.service_type,  # pyright: ignore[reportArgumentType]
-                implementation=self.generic_collection_type,
-                lifespan=Lifespan.transient,
-            )
-
-            dependency_node.add_child(sequence_node)
-
-            generator = (r.build(context, sequence_node) for r in regs)
-            collection = self.generic_collection_type(generator)
-            sequence_node.set_instance(collection)
-
-            return collection
+    @contextmanager
+    def _propagate_resolve_error(self):
         try:
+            yield
+        except CannotResolveError as e:
+            e.append_dependency(self)
+            raise e
+
+    def resolve(self, context: _ResolvingContext, dependency_node: DependencyNode) -> Any:
+        with self._propagate_resolve_error():
+            dependency_context = DependencyContext(name=self.name, dependency_node=dependency_node)
+            value = self.settings.value_factory(self.default_value, dependency_context)
+
+            if value is not EMPTY:
+                return value
+
+            if self.is_dependency_context:
+                return dependency_context
+
+            if self.is_current_graph:
+                return CurrentGraph(parent_node=dependency_node, resolving_context=context)
+
+            if self.generic_collection_type:
+                regs = context.find_registrations(
+                    service_type=self.service_type.__args__[0],  # type: ignore
+                    registration_filter=self.settings.filter,
+                    parent_node=dependency_node,
+                    registration_list_modifier=self.settings.list_modifier,
+                )
+                sequence_node = DependencyNode(
+                    service_type=self.service_type,  # pyright: ignore[reportArgumentType]
+                    implementation=self.generic_collection_type,
+                    lifespan=Lifespan.transient,
+                )
+
+                dependency_node.add_child(sequence_node)
+
+                generator = (r.build(context, sequence_node) for r in regs)
+                collection = self.generic_collection_type(generator)
+                sequence_node.set_instance(collection)
+
+                return collection
+
             reg = context.find_registration(
                 service_type=self.service_type,  # pyright: ignore[reportArgumentType]
                 registration_filter=self.settings.filter,
                 parent_node=dependency_node,
             )
             return reg.build(context, dependency_node)
-        except CannotResolveError as ex:
-            ex.append(self)
-            raise ex
 
     async def resolve_async(self, context: _ResolvingContext, dependency_node: DependencyNode) -> Any:
-        dependency_context = DependencyContext(name=self.name, dependency_node=dependency_node)
-        value = self.settings.value_factory(self.default_value, dependency_context)
+        with self._propagate_resolve_error():
+            dependency_context = DependencyContext(name=self.name, dependency_node=dependency_node)
+            value = self.settings.value_factory(self.default_value, dependency_context)
 
-        if value is not EMPTY:
-            return value
+            if value is not EMPTY:
+                return value
 
-        if self.is_dependency_context:
-            return DependencyContext(name=self.name, dependency_node=dependency_node)
+            if self.is_dependency_context:
+                return DependencyContext(name=self.name, dependency_node=dependency_node)
 
-        if self.is_current_graph:
-            return CurrentGraph(parent_node=dependency_node, resolving_context=context)
+            if self.is_current_graph:
+                return CurrentGraph(parent_node=dependency_node, resolving_context=context)
 
-        if self.generic_collection_type:
-            regs = context.find_registrations(
-                service_type=self.service_type.__args__[0],  # type: ignore
-                registration_filter=self.settings.filter,
-                parent_node=dependency_node,
-                registration_list_modifier=self.settings.list_modifier,
-            )
-            sequence_node = DependencyNode(
-                service_type=self.service_type,  # pyright: ignore[reportArgumentType]
-                implementation=self.generic_collection_type,
-                lifespan=Lifespan.transient,
-            )
+            if self.generic_collection_type:
+                regs = context.find_registrations(
+                    service_type=self.service_type.__args__[0],  # type: ignore
+                    registration_filter=self.settings.filter,
+                    parent_node=dependency_node,
+                    registration_list_modifier=self.settings.list_modifier,
+                )
+                sequence_node = DependencyNode(
+                    service_type=self.service_type,  # pyright: ignore[reportArgumentType]
+                    implementation=self.generic_collection_type,
+                    lifespan=Lifespan.transient,
+                )
 
-            dependency_node.add_child(sequence_node)
+                dependency_node.add_child(sequence_node)
 
-            generator = (r.build_async(context, sequence_node) for r in regs)
-            items = await asyncio.gather(*generator)
-            collection = self.generic_collection_type(items)
-            sequence_node.set_instance(collection)
+                generator = (r.build_async(context, sequence_node) for r in regs)
+                items = await asyncio.gather(*generator)
+                collection = self.generic_collection_type(items)
+                sequence_node.set_instance(collection)
 
-            return collection
-        try:
+                return collection
+
             reg = context.find_registration(
                 service_type=self.service_type,  # pyright: ignore[reportArgumentType]
                 registration_filter=self.settings.filter,
                 parent_node=dependency_node,
             )
             return await reg.build_async(context, dependency_node)
-        except CannotResolveError as ex:
-            ex.append(self)
-            raise ex
 
 
 class Activator(abc.ABC):
@@ -850,6 +891,14 @@ class PreConfiguration:
             if not self.continue_on_failure:
                 raise ex
 
+    @contextmanager
+    def _propagate_resolve_error(self):
+        try:
+            yield
+        except CannotResolveError as e:
+            e.append_pre_configuration(self)
+            raise e
+
     def run(self, context: _ResolvingContext, dependency_node: DependencyNode):
         resolved_dependencies = _resolve_dependencies(self.dependencies, context, dependency_node)
         with self._run_safely():
@@ -905,25 +954,35 @@ class Decorator:
 
         self.dependencies: dict[str, Dependency] = dependencies
 
+    @contextmanager
+    def _propagate_resolve_error(self):
+        try:
+            yield
+        except CannotResolveError as e:
+            e.append_decorator(self)
+            raise e
+
     def decorate(
         self, instance: Any, context: _ResolvingContext, dependency_node: DependencyNode, registration: Registration
     ):
-        resolved_dependencies = _resolve_dependencies(self.dependencies, context, dependency_node)
-        resolved_dependencies[self.decorated_arg] = instance
+        with self._propagate_resolve_error():
+            resolved_dependencies = _resolve_dependencies(self.dependencies, context, dependency_node)
+            resolved_dependencies[self.decorated_arg] = instance
 
-        return self.activator_class.activate(
-            self.decorator_type, resolved_dependencies, context, lifespan=registration.lifespan
-        )
+            return self.activator_class.activate(
+                self.decorator_type, resolved_dependencies, context, lifespan=registration.lifespan
+            )
 
     async def decorate_async(
         self, instance: Any, context: _ResolvingContext, dependency_node: DependencyNode, registration: Registration
     ):
-        resolved_dependencies = await _resolve_dependencies_async(self.dependencies, context, dependency_node)
-        resolved_dependencies[self.decorated_arg] = instance
+        with self._propagate_resolve_error():
+            resolved_dependencies = await _resolve_dependencies_async(self.dependencies, context, dependency_node)
+            resolved_dependencies[self.decorated_arg] = instance
 
-        return await self.activator_class.activate_async(
-            self.decorator_type, resolved_dependencies, context, lifespan=registration.lifespan
-        )
+            return await self.activator_class.activate_async(
+                self.decorator_type, resolved_dependencies, context, lifespan=registration.lifespan
+            )
 
 
 class Registration(Protocol):
@@ -1019,89 +1078,99 @@ class _Registration(Registration):
         parent_node.add_child(new_instance_node)
         return new_instance_node
 
+    @contextmanager
+    def _propagate_resolve_error(self):
+        try:
+            yield
+        except CannotResolveError as e:
+            e.append_registration(self)
+            raise e
+
     def build(self, context: _ResolvingContext, parent_node: DependencyNode):
-        if cached_node := self._try_find_cached_node(context, parent_node):
-            return cached_node
+        with self._propagate_resolve_error():
+            if cached_node := self._try_find_cached_node(context, parent_node):
+                return cached_node
 
-        new_instance_node = self._create_new_dependency_node(parent_node)
+            new_instance_node = self._create_new_dependency_node(parent_node)
 
-        pre_configurations = context.find_pre_configurations_that_apply(self)
+            pre_configurations = context.find_pre_configurations_that_apply(self)
 
-        for pre_configuration in pre_configurations:
-            pre_configuration_node = DependencyNode(
-                self.service_type,
-                pre_configuration.configuration_fn,
-                lifespan=Lifespan.singleton,
+            for pre_configuration in pre_configurations:
+                pre_configuration_node = DependencyNode(
+                    self.service_type,
+                    pre_configuration.configuration_fn,
+                    lifespan=Lifespan.singleton,
+                )
+                new_instance_node.add_pre_configuration(pre_configuration_node)
+
+                pre_configuration.run(context, pre_configuration_node)
+                pre_configuration_node.set_instance(pre_configuration)
+
+            resolved_dependencies = _resolve_dependencies(self.dependencies, context, new_instance_node)
+
+            built_instance = self.activator_class.activate(
+                self.implementation, resolved_dependencies, context, lifespan=self.lifespan
             )
-            new_instance_node.add_pre_configuration(pre_configuration_node)
+            new_instance_node.set_instance(built_instance)
 
-            pre_configuration.run(context, pre_configuration_node)
-            pre_configuration_node.set_instance(pre_configuration)
+            top_decorated_node = new_instance_node
+            for dec in context.find_decorators_that_apply(self, decorated_instance_node=new_instance_node):
+                next_decorated_node = DependencyNode(
+                    service_type=self.service_type,
+                    implementation=dec.decorator_type,
+                    lifespan=self.lifespan,
+                )
+                top_decorated_node.add_decorator(next_decorated_node)
+                built_instance = dec.decorate(built_instance, context, next_decorated_node, self)
+                next_decorated_node.set_instance(built_instance)
+                top_decorated_node = next_decorated_node
 
-        resolved_dependencies = _resolve_dependencies(self.dependencies, context, new_instance_node)
-
-        built_instance = self.activator_class.activate(
-            self.implementation, resolved_dependencies, context, lifespan=self.lifespan
-        )
-        new_instance_node.set_instance(built_instance)
-
-        top_decorated_node = new_instance_node
-        for dec in context.find_decorators_that_apply(self, decorated_instance_node=new_instance_node):
-            next_decorated_node = DependencyNode(
-                service_type=self.service_type,
-                implementation=dec.decorator_type,
-                lifespan=self.lifespan,
-            )
-            top_decorated_node.add_decorator(next_decorated_node)
-            built_instance = dec.decorate(built_instance, context, next_decorated_node, self)
-            next_decorated_node.set_instance(built_instance)
-            top_decorated_node = next_decorated_node
-
-        context.new_instance_created(self, top_decorated_node)
-        self.was_used = True
-        return built_instance
+            context.new_instance_created(self, top_decorated_node)
+            self.was_used = True
+            return built_instance
 
     async def build_async(self, context: _ResolvingContext, parent_node: DependencyNode):
-        if cached_node := self._try_find_cached_node(context, parent_node):
-            return cached_node
+        with self._propagate_resolve_error():
+            if cached_node := self._try_find_cached_node(context, parent_node):
+                return cached_node
 
-        new_instance_node = self._create_new_dependency_node(parent_node)
+            new_instance_node = self._create_new_dependency_node(parent_node)
 
-        pre_configurations = context.find_pre_configurations_that_apply(self)
+            pre_configurations = context.find_pre_configurations_that_apply(self)
 
-        for pre_configuration in pre_configurations:
-            pre_configuration_node = DependencyNode(
-                self.service_type,
-                pre_configuration.configuration_fn,
-                lifespan=Lifespan.singleton,
+            for pre_configuration in pre_configurations:
+                pre_configuration_node = DependencyNode(
+                    self.service_type,
+                    pre_configuration.configuration_fn,
+                    lifespan=Lifespan.singleton,
+                )
+                new_instance_node.add_pre_configuration(pre_configuration_node)
+
+                await pre_configuration.run_async(context, pre_configuration_node)
+                pre_configuration_node.set_instance(pre_configuration)
+
+            resolved_dependencies = await _resolve_dependencies_async(self.dependencies, context, new_instance_node)
+            built_instance = await self.activator_class.activate_async(
+                self.implementation, resolved_dependencies, context, lifespan=self.lifespan
             )
-            new_instance_node.add_pre_configuration(pre_configuration_node)
+            new_instance_node.set_instance(built_instance)
 
-            await pre_configuration.run_async(context, pre_configuration_node)
-            pre_configuration_node.set_instance(pre_configuration)
+            top_decorated_node = new_instance_node
 
-        resolved_dependencies = await _resolve_dependencies_async(self.dependencies, context, new_instance_node)
-        built_instance = await self.activator_class.activate_async(
-            self.implementation, resolved_dependencies, context, lifespan=self.lifespan
-        )
-        new_instance_node.set_instance(built_instance)
+            for dec in context.find_decorators_that_apply(self, decorated_instance_node=new_instance_node):
+                next_decorated_node = DependencyNode(
+                    service_type=self.service_type,
+                    implementation=dec.decorator_type,
+                    lifespan=self.lifespan,
+                )
+                top_decorated_node.add_decorator(next_decorated_node)
+                built_instance = await dec.decorate_async(built_instance, context, next_decorated_node, self)
+                next_decorated_node.set_instance(built_instance)
+                top_decorated_node = next_decorated_node
 
-        top_decorated_node = new_instance_node
-
-        for dec in context.find_decorators_that_apply(self, decorated_instance_node=new_instance_node):
-            next_decorated_node = DependencyNode(
-                service_type=self.service_type,
-                implementation=dec.decorator_type,
-                lifespan=self.lifespan,
-            )
-            top_decorated_node.add_decorator(next_decorated_node)
-            built_instance = await dec.decorate_async(built_instance, context, next_decorated_node, self)
-            next_decorated_node.set_instance(built_instance)
-            top_decorated_node = next_decorated_node
-
-        context.new_instance_created(self, top_decorated_node)
-        self.was_used = True
-        return built_instance
+            context.new_instance_created(self, top_decorated_node)
+            self.was_used = True
+            return built_instance
 
 
 class _DecoratorStore:

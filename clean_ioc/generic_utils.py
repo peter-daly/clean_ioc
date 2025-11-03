@@ -60,6 +60,7 @@ def get_generic_type_args(type: type):
 
         for base in getattr(type_check, "__orig_bases__", ()):
             queue.put(base)
-            queue.put(base.__origin__)
+            if base_origin := getattr(base, "__origin__", None):
+                queue.put(base_origin)
 
     return ()

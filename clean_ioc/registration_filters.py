@@ -59,10 +59,12 @@ def name_ends_with(suffix: str):
 
 is_not_named = with_name(None)
 is_not_named.__doc__ = "Filter for registrations that do not have a name"
+is_not_named.__name__ = "is_not_named"
 
 
 is_named = ~is_not_named
 is_named.__doc__ = "Filter for registrations that have a name"
+is_named.__name__ = "is_named"
 
 
 def with_implementation(implementation: type):
@@ -197,6 +199,8 @@ def has_lifespan(lifespan: Lifespan):
 
     def _has_lifespan(r: Registration):
         return r.lifespan == lifespan
+
+    _has_lifespan.__name__ = f"has_lifespan({lifespan})"
 
     return predicate(_has_lifespan)
 
