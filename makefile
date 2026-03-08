@@ -1,4 +1,4 @@
-.PHONY: fixup lint format test ci
+.PHONY: fixup lint format test docs-check ci
 
 
 install-deps:
@@ -33,7 +33,11 @@ test:
 	@echo "Running tests..."
 	@uv run pytest .
 
-ci: lint format typecheck test
+docs-check:
+	@echo "Validating docs examples..."
+	@uv run python scripts/validate_docs_examples.py
+
+ci: lint format typecheck test docs-check
 
 publish:
 	@echo "Building the package..."

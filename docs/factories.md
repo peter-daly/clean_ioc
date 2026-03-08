@@ -1,187 +1,161 @@
 # Factories
 
-Factories are just Callables that return an instance of your dependency. Factories can be useful if you need to your implementation to be evaluated dynamically based on the context/state of your application or current dependencies in the graph.
-Factories can also have their dependencies.
-
-## Function
-
-The most basic factory is a simple function.
+Factories are callables used to build dependency instances.
 
 ```python
+from clean_ioc import Container
+```
 
-class DbUserRepository:
-    def __init__(self, connection: Connection):
-        self.dep = dep
+## Function factory
 
-    def get_user(self, id: str):
-        ## DB Logic to get user
-        pass
+```python
+class Connection:
+    pass
 
-def connection_factory():
-    ## DO initialisation to get the connection
+
+def connection_factory() -> Connection:
     return Connection()
 
 
 container = Container()
 container.register(Connection, factory=connection_factory)
-container.register(UserRepository, DbUserRepository)
 
-repo = container.resolve(UserRepository)
-
-user = repo.get_user(10)
+conn = container.resolve(Connection)
+print(type(conn).__name__)  # Connection
 ```
 
-## Async Function (Coroutine)
+## Async function factory
 
-!!! warning
-    Async function factories must only run when using ***resolve_async***
+Use `resolve_async` with async factories.
 
 ```python
+import asyncio
 
-class DbUserRepository:
-    def __init__(self, connection: Connection):
-        self.dep = dep
+from clean_ioc import Container
 
-    async def get_user(self, id: str):
-        ## DB Logic to get user
-        pass
 
-async def connection_factory():
-    ## Do some asyncio operations
+class Connection:
+    pass
+
+
+async def connection_factory() -> Connection:
     return Connection()
 
 
-container = Container()
-container.register(Connection, factory=connection_factory)
-container.register(UserRepository, DbUserRepository)
+async def main():
+    container = Container()
+    container.register(Connection, factory=connection_factory)
 
-repo = await container.resolve_async(UserRepository)
+    conn = await container.resolve_async(Connection)
+    print(type(conn).__name__)
 
-user = await repo.get_user(10)
+
+asyncio.run(main())
 ```
 
-## Generator
-
-You can also use a generator as your factory.
-This enables you to run some teardown tasks then the scope or container is ending.
+## Generator factory (setup/teardown)
 
 ```python
+from clean_ioc import Container, Lifespan
 
-class DbUserRepository:
-    def __init__(self, connection: Connection):
-        self.dep = dep
 
-    def get_user(self, id: str):
-        ## DB Logic to get user
-        pass
+class Connection:
+    def close(self):
+        print("closed")
+
 
 def connection_factory():
-    ## DO initialisation to get the connection
-    connection = Connection()
-    yield connection
-    connection.close()
+    conn = Connection()
+    yield conn
+    conn.close()
 
 
 container = Container()
-container.register(Connection, factory=connection_factory)
-container.register(UserRepository, DbUserRepository)
+container.register(Connection, factory=connection_factory, lifespan=Lifespan.scoped)
 
-repo = container.resolve(UserRepository)
-
-user = repo.get_user(10)
+with container.new_scope() as scope:
+    scope.resolve(Connection)
+# prints: closed
 ```
 
-## Async Generator
-
-!!! warning
-    Async generator factories must only run when using ***resolve_async***
+## Async generator factory
 
 ```python
+import asyncio
 
-class DbUserRepository:
-    def __init__(self, connection: Connection):
-        self.dep = dep
+from clean_ioc import Container, Lifespan
 
-    async def get_user(self, id: str):
-        ## DB Logic to get user
-        pass
+
+class Connection:
+    async def close(self):
+        print("closed")
+
 
 async def connection_factory():
-    ## DO initialisation to get the connection
-    connection = Connection()
-    yield connection
-    await connection.close()
+    conn = Connection()
+    yield conn
+    await conn.close()
 
 
-container = Container()
-container.register(Connection, factory=connection_factory)
-container.register(UserRepository, DbUserRepository)
+async def main():
+    container = Container()
+    container.register(Connection, factory=connection_factory, lifespan=Lifespan.scoped)
 
-repo = await container.resolve_async(UserRepository)
+    async with container.new_scope() as scope:
+        await scope.resolve_async(Connection)
 
-user = await repo.get_user(10)
+
+asyncio.run(main())
 ```
 
-## Generator as a context manager
-
-You can also use a generator as your factory.
-This enables you to run some teardown tasks then the scope or container is ending.
+## `@contextmanager` and `@asynccontextmanager`
 
 ```python
+import asyncio
+from contextlib import asynccontextmanager, contextmanager
 
-class DbUserRepository:
-    def __init__(self, connection: Connection):
-        self.dep = dep
+from clean_ioc import Container, Lifespan
 
-    def get_user(self, id: str):
-        ## DB Logic to get user
-        pass
+
+class Connection:
+    def close(self):
+        print("sync close")
+
+
+class AsyncConnection:
+    async def close(self):
+        print("async close")
+
 
 @contextmanager
-def connection_factory():
-    ## DO initialisation to get the connection
-    connection = Connection()
-    yield connection
-    connection.close()
+def sync_connection_factory():
+    conn = Connection()
+    try:
+        yield conn
+    finally:
+        conn.close()
 
-
-container = Container()
-container.register(Connection, factory=connection_factory)
-container.register(UserRepository, DbUserRepository)
-
-repo = container.resolve(UserRepository)
-
-user = repo.get_user(10)
-```
-
-## Async Generator as an async context manager
-
-!!! warning
-    Async generator factories must only run when using ***resolve_async***
-
-```python
-
-class DbUserRepository:
-    def __init__(self, connection: Connection):
-        self.dep = dep
-
-    async def get_user(self, id: str):
-        ## DB Logic to get user
-        pass
 
 @asynccontextmanager
-async def connection_factory():
-    ## DO initialisation to get the connection
-    connection = Connection()
-    yield connection
-    await connection.close()
+async def async_connection_factory():
+    conn = AsyncConnection()
+    try:
+        yield conn
+    finally:
+        await conn.close()
 
 
-container = Container()
-container.register(Connection, factory=connection_factory)
-container.register(UserRepository, DbUserRepository)
+async def main():
+    container = Container()
+    container.register(Connection, factory=sync_connection_factory, lifespan=Lifespan.scoped)
+    container.register(AsyncConnection, factory=async_connection_factory, lifespan=Lifespan.scoped)
 
-repo = await container.resolve_async(UserRepository)
+    with container.new_scope() as scope:
+        scope.resolve(Connection)
 
-user = await repo.get_user(10)
+    async with container.new_scope() as scope:
+        await scope.resolve_async(AsyncConnection)
+
+
+asyncio.run(main())
 ```
