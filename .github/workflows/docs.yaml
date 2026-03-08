@@ -6,14 +6,12 @@ on:
     branches: [main]
     paths:
       - "docs/**"
-      - "mkdocs.yaml"
-      - "pyproject.toml"
+      - "mkdocs.yml"
 
 permissions:
-  id-token: write
-  contents: read
-  pages: write
-
+  id-token: write # This is required for actions/deploy-pages
+  contents: read # This is required for actions/checkout
+  pages: write # This is required for actions/deploy-pages
 jobs:
   publish-to-github-pages:
     runs-on: ubuntu-latest
@@ -30,8 +28,9 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Install dependencies
-        run: uv sync --group dev
+      - name: Install dependencies with uv
+        run: |
+          uv sync --group dev
 
       - name: Build docs site
         run: uv run mkdocs build
@@ -39,6 +38,7 @@ jobs:
       - name: Upload site to artifacts
         uses: actions/upload-pages-artifact@v3
         with:
+          # Upload site folder
           path: "./site"
 
       - name: Deploy to GitHub Pages

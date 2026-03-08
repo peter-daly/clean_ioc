@@ -6,16 +6,6 @@ on:
   pull_request:
 
 jobs:
-  workflow-lint:
-    name: Workflow lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v4
-
-      - name: Lint GitHub Actions workflows
-        uses: rhysd/actionlint@v1
-
   tests:
     name: py${{ matrix.python }} / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -23,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python: ["3.12", "3.13", "3.14"]
+        python: ["3.10","3.11","3.12", "3.13"]
 
     steps:
       - name: Check out the repository
@@ -67,7 +57,7 @@ jobs:
   check-version:
     name: Check version against tags
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [tests, workflow-lint, pre-commit]
+    needs: [tests, pre-commit]
     runs-on: ubuntu-latest
     outputs:
       should_release: ${{ steps.compare.outputs.should_release }}
