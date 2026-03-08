@@ -1,208 +1,133 @@
 # Scopes
 
-Scopes allow you to define a dependency that will stay alive for a period of time (while the scope is alive).
-Some appropriate use cases for scopes are:
+A scope is a child container with its own scoped-instance cache.
+Create scopes with `new_scope()`.
 
-- http request in a web server
-- message/event if working on a message based system
-- a thread cotext
+```python
+from clean_ioc import Container, Lifespan
+```
 
-For instance you could set up that an single database connection open for a scope
+## Basic scope usage
 
 ```python
 class DbConnection:
-    def run_sql(self, statement):
-        # Done some sql Stuff
-        pass
+    def run_sql(self, statement: str):
+        print(statement)
 
+
+container = Container()
 container.register(DbConnection, lifespan=Lifespan.scoped)
 
-with container.get_scope() as scope:
-    db_conn = scope.resolve(DbConnection)
-    db_conn.run_sql("UPDATE table SET column = 1")
-
-    db_conn_2 = scope.resolve(DbConnection) # Same DbConnection instance
-    db_conn_2.run_sql("UPDATE table SET column = 2")
-
+with container.new_scope() as scope:
+    db1 = scope.resolve(DbConnection)
+    db2 = scope.resolve(DbConnection)
+    print(db1 is db2)  # True
 ```
 
-Scopes can also be use with asyncio
+## Async scope usage
 
 ```python
+import asyncio
+
+from clean_ioc import Container, Lifespan
+
+
 class AsyncDbConnection:
-    async def run_sql(self, statement):
-        # Done some sql Stuff
-        pass
+    async def run_sql(self, statement: str):
+        print(statement)
 
-container.register(AsyncDbConnection, lifespan=Lifespan.scoped)
 
-async with container.get_scope() as scope:
-    db_conn = scope.resolve(AsyncDbConnection)
-    await db_conn.run_sql("UPDATE table SET column = 1")
+async def main():
+    container = Container()
+    container.register(AsyncDbConnection, lifespan=Lifespan.scoped)
+
+    async with container.new_scope() as scope:
+        db = await scope.resolve_async(AsyncDbConnection)
+        await db.run_sql("SELECT 1")
+
+
+asyncio.run(main())
 ```
 
-## Scoped Teardowns
+## Scoped teardown
 
-When registering a component you have the option to run a teardown function after the scope is complete
+Use `scoped_teardown` for scoped registrations.
 
 ```python
-class AsyncDbConnection:
-    async def run_sql(self, statement):
-        # Done some sql Stuff
-        pass
-    async def close(self):
-        # Close the connection
-        pass
+class DbConnection:
+    def close(self):
+        print("CLOSING")
 
-async def close_connection(conn: AsyncDbConnection):
-    print('CLOSING CONNECTION')
-    await conn.close()
 
+def close_connection(conn: DbConnection):
+    conn.close()
+
+
+container = Container()
 container.register(DbConnection, lifespan=Lifespan.scoped, scoped_teardown=close_connection)
 
-async with container.get_scope() as scope:
-    db_conn = scope.resolve(AsyncDbConnection)
-    await db_conn.run_sql("UPDATE table SET column = 1")
-
-# prints CLOSING CONNECTION
+with container.new_scope() as scope:
+    scope.resolve(DbConnection)
+# prints CLOSING
 ```
 
-## Scopes with generator factories
+## Generator factories as teardown alternative
 
-If you use a generator or async generator as a factory when a scope ends it can run more teardown functions in the factory
-
-```python
-class AsyncDbConnection:
-    async def run_sql(self, statement):
-        # Done some sql Stuff
-        pass
-    async def close(self):
-        # Close the connection
-        pass
-
-async def connection_factory(conn: AsyncDbConnection):
-    connection = AsyncDbConnection()
-    yield connection
-    print('CLOSING CONNECTION')
-    await conn.close()
-
-
-container.register(DbConnection, lifespan=Lifespan.scoped, factory=close_connection)
-
-async with container.get_scope() as scope:
-    db_conn = await scope.resolve_async(AsyncDbConnection)
-    await db_conn.run_sql("UPDATE table SET column = 1")
-
-# prints CLOSING CONNECTION
-```
-
-!!! Question "Should I use f
-generators or scoped teardowns is there any difference?"
-    For the examples above, both serve the same purpose so it's really up the your own personal taste. Generators come in useful if the object being returned is a context manager or async context manager, which can be the case in a lot of db connection libraries.
-
-    ```python
-    class AsyncDbConnection:
-        async def run_sql(self, statement):
-            # Done some sql Stuff
-            pass
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *args):
-            await self.close()
-
-        async def close(self):
-            # Close the connection
-            pass
-
-    async def connection_factory(conn: AsyncDbConnection):
-        async AsyncDbConnection() as conn:
-            yield connection
-
-
-    container.register(DbConnection, lifespan=Lifespan.scoped, factory=close_connection)
-
-    async with container.get_scope() as scope:
-        db_conn = await scope.resolve_async(AsyncDbConnection)
-        await db_conn.run_sql("UPDATE table SET column = 1")
-    ```
-
-## Registering within scopes
-
-Each scope has it's own registry which enables you to register new dependencies that are available within the scope.
-When within new scopes you can register dependencies that will live within the scope.
+You can colocate setup/teardown in a single factory.
 
 ```python
+from contextlib import contextmanager
+
+
+class DbConnection:
+    def close(self):
+        print("CLOSING")
+
+
+@contextmanager
+def connection_factory():
+    conn = DbConnection()
+    try:
+        yield conn
+    finally:
+        conn.close()
+
 
 container = Container()
+container.register(DbConnection, lifespan=Lifespan.scoped, factory=connection_factory)
 
-container.register(int, instance=1)
-container.register(float, instance=1.0)
-
-with container.get_scope() as scope:
-    scope.register(int, instance=2)
-    scope.resolve(int) # returns 2
-    scope.resolve(float) # returns 1.0
-
-container.resolve(int) # returns 1
-container.resolve(float) # returns 1.0
-
+with container.new_scope() as scope:
+    scope.resolve(DbConnection)
+# prints CLOSING
 ```
 
-An exampes of this is if you have a scope that you use for a web request and you want to register the CurrentUser within the dependencies.
+## Scope-local overrides
 
-## Nesting scopes
-
-When within a scope you create new child scopes. Any scoped object that is created in the parent scope will be available in the child scope.
+Registrations on a scope override parent registrations for that scope.
 
 ```python
-
 container = Container()
-
 container.register(int, instance=1)
-container.register(float, instance=1.0)
-with container.get_scope() as scope:
-    scope.register(int, instance=2)
-    with scope.get_scope() as inner_scope:
-        inner_scope.register(int, instance=3)
-        inner_scope.resolve(int) # returns 3
-        inner_scope.resolve(float) # returns 1.0
-    scope.resolve(int) # returns 2
-    scope.resolve(float) # returns 1.0
 
-container.resolve(int) # returns 1
-container.resolve(float) # returns 1.0
+with container.new_scope() as scope:
+    scope.register(int, instance=2)
+    print(scope.resolve(int))      # 2
+
+print(container.resolve(int))      # 1
 ```
 
-## The container is just the root scope
+## Nested scopes
 
-As you may have noticed the a lot of the things you can do in a container you can do in a scope, this is because the container is the root scope. If you use the container a context manager or async context manager then you can apply teardowns to objects from the container.
+Child scopes can still access parent scoped/singleton instances.
 
 ```python
-class AsyncDbConnection:
-    async def run_sql(self, statement):
-        # Done some sql Stuff
-        pass
+container = Container()
+container.register(str, instance="root")
 
-    async def __aenter__(self):
-        return self
+with container.new_scope() as parent:
+    parent.register(int, instance=10)
 
-    async def __aexit__(self, *args):
-        await self.close()
-
-    async def close(self):
-        # Close the connection
-        pass
-
-async def connection_factory(conn: AsyncDbConnection):
-    async AsyncDbConnection() as conn:
-        yield connection
-
-
-container.register(DbConnection, lifespan=Lifespan.scoped, factory=close_connection)
-
-async with container:
-    db_conn = await scope.resolve_async(AsyncDbConnection)
-    await db_conn.run_sql("UPDATE table SET column = 1")
+    with parent.new_scope() as child:
+        print(child.resolve(int))  # 10
+        print(child.resolve(str))  # root
 ```

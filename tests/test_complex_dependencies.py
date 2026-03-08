@@ -90,10 +90,10 @@ def test_value_factories_with_generic_decorators():
     )
     handler_a: TransactionMessageHandlerDecorator[MessageA] = container.resolve(
         MessageHandler[MessageA]  # type: ignore
-    )
+    )  # ty:ignore[invalid-assignment]
     handler_b: TransactionMessageHandlerDecorator[MessageB] = container.resolve(
         MessageHandler[MessageB]  # type: ignore
-    )
+    )  # ty:ignore[invalid-assignment]
 
     transaction_manager_a: SqlTransactionManager = handler_a.transaction_manager  # type: ignore
     transaction_manager_b: SqlTransactionManager = handler_b.transaction_manager  # type: ignore
@@ -356,13 +356,13 @@ def test_generic_decorator_can_set_the_generic_args_of_a_dependency_with_differe
     handler_b: Any = container.resolve(MessageHandler[MessageB])
     handler_c: Any = container.resolve(MessageHandler[MessageC])
 
-    assert_that(handler_a.transaction_manager).matches(is_exact_type(SqlTransactionManager))
-    assert_that(handler_a.child).matches(is_exact_type(AHandler))
-    assert_that(handler_b.transaction_manager).matches(is_exact_type(DocDbTransactionManager))
-    assert_that(handler_b.child).matches(is_exact_type(BHandler))
-    assert_that(handler_c.transaction_manager).matches(is_exact_type(DocDbTransactionManager))
-    assert_that(handler_c.child.transaction_manager).matches(is_exact_type(SqlTransactionManager))
-    assert_that(handler_c.child.child).matches(is_exact_type(CHandler))
+    handler_a.transaction_manager == is_exact_type(SqlTransactionManager)  # ty:ignore[unresolved-attribute]
+    handler_a.child == is_exact_type(AHandler)  # ty:ignore[unresolved-attribute]
+    handler_b.transaction_manager == (is_exact_type(DocDbTransactionManager))  # ty:ignore[unresolved-attribute]
+    handler_b.child == is_exact_type(BHandler)  # ty:ignore[unresolved-attribute]
+    handler_c.transaction_manager == (is_exact_type(DocDbTransactionManager))  # ty:ignore[unresolved-attribute]
+    handler_c.child.transaction_manager == (is_exact_type(SqlTransactionManager))  # ty:ignore[unresolved-attribute]
+    handler_c.child.child == is_exact_type(CHandler)  # ty:ignore[unresolved-attribute]
 
 
 def test_can_filter_parent_based_on_registration_name():

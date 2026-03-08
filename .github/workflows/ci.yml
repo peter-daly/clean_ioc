@@ -1,50 +1,150 @@
 name: CI
 
 on:
-  - push
+  push:
+    branches: [main]
+  pull_request:
 
 jobs:
+  workflow-lint:
+    name: Workflow lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Lint GitHub Actions workflows
+        uses: rhysd/actionlint@v1
+
   tests:
-    name: ${{ matrix.session }} ${{ matrix.python }} / ${{ matrix.os }}
+    name: py${{ matrix.python }} / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { python: "3.13", os: "ubuntu-latest", session: "tests" }
-          - { python: "3.12", os: "ubuntu-latest", session: "tests" }
-          - { python: "3.11", os: "ubuntu-latest", session: "tests" }
-          - { python: "3.10", os: "ubuntu-latest", session: "tests" }
-    env:
-      NOXSESSION: ${{ matrix.session }}
-      FORCE_COLOR: "1"
-      PRE_COMMIT_COLOR: "always"
+        os: [ubuntu-latest]
+        python: ["3.12", "3.13", "3.14"]
+
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python }}
-        uses: actions/setup-python@v4.6.0
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v6
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
 
       - name: Install dependencies
-        run: |
-          make install-dev-deps
+        run: uv sync --group dev
 
-      - name: Run CI
-        run: |
-          make ci
+      - name: Run CI checks
+        run: make ci
 
-  markdownlint-cli2:
+  pre-commit:
+    name: pre-commit
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v4
 
-      - name: markdownlint-cli2-action
-        uses: DavidAnson/markdownlint-cli2-action@v9
-        continue-on-error: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run pre-commit hooks
+        run: uv run pre-commit run --all-files
+
+  check-version:
+    name: Check version against tags
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [tests, workflow-lint, pre-commit]
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.compare.outputs.should_release }}
+      package_version: ${{ steps.compare.outputs.package_version }}
+      latest_tag: ${{ steps.compare.outputs.latest_tag }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Fetch tags
+        run: git fetch --tags --force
+
+      - name: Compare package version with latest tag
+        id: compare
+        run: |
+          uv run python - <<'PY'
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          package_version = subprocess.run(
+              ["uv", "version", "--short"],
+              check=True,
+              capture_output=True,
+              text=True,
+          ).stdout.strip()
+
+          tag_pattern = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
+          tags = []
+
+          completed = subprocess.run(
+              ["git", "tag", "--list", "v*"],
+              check=True,
+              capture_output=True,
+              text=True,
+          )
+          for line in completed.stdout.splitlines():
+              tag = line.strip()
+              match = tag_pattern.match(tag)
+              if match:
+                  tags.append((tuple(int(i) for i in match.groups()), tag))
+
+          version_match = re.match(r"^(\d+)\.(\d+)\.(\d+)$", package_version)
+          if not version_match:
+              raise SystemExit(
+                  f"Package version '{package_version}' is not strict semver (X.Y.Z)."
+              )
+
+          package_tuple = tuple(int(i) for i in version_match.groups())
+
+          latest_tag = "none"
+          should_release = "true"
+          if tags:
+              latest_tuple, latest_tag = max(tags, key=lambda item: item[0])
+              should_release = "true" if package_tuple > latest_tuple else "false"
+
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as f:
+              f.write(f"package_version={package_version}\n")
+              f.write(f"latest_tag={latest_tag}\n")
+              f.write(f"should_release={should_release}\n")
+
+          print(f"package_version={package_version}")
+          print(f"latest_tag={latest_tag}")
+          print(f"should_release={should_release}")
+          PY
+
+  release:
+    name: Release
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    secrets: inherit

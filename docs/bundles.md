@@ -1,78 +1,72 @@
 # Bundles
 
-As the number of classes and objects grow you may find that you will create more complex dependency graphs. You will have a groups of components that you will want to register together. For example if you want to have a sqlalchemy Session you will likely want a sqlalchemy Engine. This is where bundles come in to play.
+Bundles group related registrations.
 
-At it's minimal a bundle is a just a ```Callable[[Container], None]``` that can be used to set up related registrations on the container.
-The simplest type of bundle is a simple function that takes a container as a argument.
+A bundle is any callable with signature `Callable[[Container], None]`.
+
+```python
+from dataclasses import dataclass
+
+from clean_ioc import Container
+from clean_ioc.bundles import OnlyRunOncePerClassBundle
+```
+
+## Function bundle
 
 ```python
 class ClientDependency:
-    def get_int(self):
+    def get_int(self) -> int:
         return 10
+
 
 class Client:
     def __init__(self, dep: ClientDependency):
         self.dep = dep
 
-    def get_number(self):
+    def get_number(self) -> int:
         return self.dep.get_int()
+
 
 def client_bundle(c: Container):
     c.register(ClientDependency)
     c.register(Client)
 
+
+container = Container()
 container.apply_bundle(client_bundle)
 
 client = container.resolve(Client)
-
-client.get_number() # returns 10
+print(client.get_number())
 ```
 
-## Helpers for bundles
-
-There are a set of base Bundle classes that can be used to set up bundles
-    - ```BaseBundle```: Basic callable
-    - ```OnlyRunOncePerInstanceBundle```: Only run the bundle once in the container instance
-    - ```OnlyRunOncePerClassBundle```: Only run this bundle class once in a container
-
-You can find these classes in the `clean_ioc.bundles` module.
-
-These bundle classes are also useful if you want to pass instances of dependencies with your bundle.
+## Class-based bundle
 
 ```python
 @dataclass
 class ClientConfig:
-    url: str
+    base_url: str
 
-class Client:
+
+class ApiClient:
     def __init__(self, config: ClientConfig):
-        self.base_url = config.url
-
-    def get_user(self):
-        # Do some requests stuff here
-        pass
+        self.base_url = config.base_url
 
 
-
-class ClientBundle(OnlyRunOncePerClassBundle):
-
+class ApiBundle(OnlyRunOncePerClassBundle):
     def __init__(self, config: ClientConfig):
         self.config = config
 
     def apply(self, c: Container):
         c.register(ClientConfig, instance=self.config)
-        c.register(Client)
+        c.register(ApiClient)
 
 
+container = Container()
+cfg = ClientConfig(base_url="https://example.com")
 
-client_config = ClientConfig(
-    url = "https://example.com"
-)
+container.apply_bundle(ApiBundle(cfg))
+container.apply_bundle(ApiBundle(cfg))  # ignored by OnlyRunOncePerClassBundle
 
-container.apply_bundle(ClientBundle(config=client_config)) # Gets applied
-container.apply_bundle(ClientBundle(config=client_config)) # Does not get applied
-
-client = container.resolve(Client)
-
-user = client.get_user()
+client = container.resolve(ApiClient)
+print(client.base_url)
 ```

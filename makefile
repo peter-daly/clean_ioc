@@ -1,4 +1,4 @@
-.PHONY: fixup lint format test ci
+.PHONY: fixup lint format test docs-check ci typecheck pre-commit
 
 
 install-deps:
@@ -18,7 +18,12 @@ fixup:
 
 typecheck:
 	@echo "Typechecking"
-	@uv run pyright .
+	@uv run ty check clean_ioc --ignore invalid-type-form --ignore not-subscriptable
+
+
+pre-commit:
+	@echo "Running pre-commit hooks..."
+	@uv run pre-commit run --all-files
 
 
 lint:
@@ -33,7 +38,11 @@ test:
 	@echo "Running tests..."
 	@uv run pytest .
 
-ci: lint format typecheck test
+docs-check:
+	@echo "Validating docs examples..."
+	@uv run python scripts/validate_docs_examples.py
+
+ci: lint format typecheck test docs-check
 
 publish:
 	@echo "Building the package..."

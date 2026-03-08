@@ -1,0 +1,22 @@
+repos:
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.11
+    hooks:
+      - id: actionlint
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff-check
+        entry: uv run ruff check --fix .
+        language: system
+        pass_filenames: false
+      - id: ty-check
+        name: ty-check
+        entry: uv run ty check clean_ioc --ignore invalid-type-form --ignore not-subscriptable
+        language: system
+        pass_filenames: false
+      - id: unit-tests
+        name: unit-tests
+        entry: uv run pytest .
+        language: system
+        pass_filenames: false

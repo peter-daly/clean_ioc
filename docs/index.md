@@ -1,50 +1,65 @@
 # Clean IoC
 
-A simple unintrusive dependency injection library for python that requires nothing of your application code (except that you use typing).
+Clean IoC is a dependency injection container for Python that keeps application code framework-agnostic.
 
-## What is Clean IoC?
+It focuses on:
 
-Clean IoC is a dependency injection library written in python that enables dependency injection in your python applications. Clean IoC is ***unintrusive***, meaning that it avoids you needing any of the following to make your code work with it.
+- constructor/factory injection using type hints
+- explicit registration and resolution
+- lifecycle control with `transient`, `once_per_graph`, `scoped`, `singleton`
+- filtering, decorators, and generic registration helpers
 
-- Weird global state
-- Any base clases
-- Any framework decorators
+## Install
 
-The avoidance of of any IoC concerns from you application code allows your code to remain ***clean***.
-
-Since Clean IoC keeps your code clean from the library itself, to use it you can simply just create a container and register your dependencies.
-
-```python
-
-class UserRepository(Protocol):
-    def add(self, user):
-        ...
-
-class InMemoryUserRepository(UserRepository):
-
-    def __init__(self):
-        self.users = []
-
-    def add(self, user):
-        # This is obviously terrible, but it's for demo purposes
-        self.users.append(user)
-
-class SqlAlchemyUserRepository(UserRepository):
-
-    def __init__(self):
-        # Do some db stuff here
-        pass
-
-    def add(self, user):
-        # Do some db stuff here
-        pass
-
-container = Container()
-container.register(UserRepository, InMemoryUserRepository)
-
-
-repository = container.resolve(UserRepository) # This will return an InMemoryUserRepository
-
+```bash
+pip install clean_ioc
 ```
 
-You can see more basic registration [here](./simple-uses.md).
+FastAPI integration:
+
+```bash
+pip install "clean_ioc[fastapi]"
+```
+
+## Quick Start
+
+```python
+from clean_ioc import Container
+
+
+class UserRepository:
+    def get_user(self, user_id: str) -> dict:
+        return {"id": user_id, "name": "Ada"}
+
+
+class UserService:
+    def __init__(self, repo: UserRepository):
+        self.repo = repo
+
+    def get_user(self, user_id: str) -> dict:
+        return self.repo.get_user(user_id)
+
+
+container = Container()
+container.register(UserRepository)
+container.register(UserService)
+
+service = container.resolve(UserService)
+print(service.get_user("123"))
+```
+
+## Core Concepts
+
+1. Register dependencies on `Container`/`Scope`.
+2. Resolve by type.
+3. Let the container recursively resolve child dependencies.
+4. Control reuse with lifespans.
+
+## Next Steps
+
+- [Simple Uses](./simple-uses.md)
+- [Factories](./factories.md)
+- [Lifespans](./lifespans.md)
+- [Scopes](./scopes.md)
+- [Decorators](./decorators.md)
+- [Generics](./generics.md)

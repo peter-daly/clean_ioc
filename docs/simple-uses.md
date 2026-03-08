@@ -1,239 +1,130 @@
-# Basic Registering and resolving
+# Simple Uses
 
-There are 4 basic modes of registering a new set of classes
-
-## Implementation
+This page shows the most common registration and resolution patterns.
 
 ```python
+from clean_ioc import Container
+```
 
-class UserRepository(abc.ABC):
-    @abc.abstractmethod
-    def add(self, user):
-        pass
+## 1. Register implementation
+
+```python
+from typing import Protocol
+
+
+class UserRepository(Protocol):
+    def get_user(self, user_id: str) -> dict:
+        ...
+
 
 class InMemoryUserRepository(UserRepository):
+    def get_user(self, user_id: str) -> dict:
+        return {"id": user_id, "name": "InMemory"}
 
-    def __init__(self):
-        self.users = []
-
-    def add(self, user):
-        # This is obviously terrible, but it's for demo purposes
-        self.users.append(user)
-
-class SqlAlchemyUserRepository(UserRepository):
-
-    def __init__(self):
-        # Do some db stuff here
-        pass
-
-    def add(self, user):
-        # Do some db stuff here
-        pass
 
 container = Container()
 container.register(UserRepository, InMemoryUserRepository)
 
-
-repository = container.resolve(UserRepository) # This will return an InMemoryUserRepository
-
+repo = container.resolve(UserRepository)
+print(type(repo).__name__)  # InMemoryUserRepository
 ```
 
-## Concrete Class
+## 2. Register concrete class
 
 ```python
-
-class ClientDependency:
-    def get_int(self):
+class RandomNumberProvider:
+    def get(self) -> int:
         return 10
 
-class Client:
-    def __init__(self, dep: ClientDependency):
-        self.dep = dep
 
-    def get_number(self):
-        return self.dep.get_int()
+class Client:
+    def __init__(self, provider: RandomNumberProvider):
+        self.provider = provider
+
+    def number(self) -> int:
+        return self.provider.get()
 
 
 container = Container()
-container.register(ClientDependency)
+container.register(RandomNumberProvider)
 container.register(Client)
 
 client = container.resolve(Client)
-
-client.get_number() # returns 10
-
+print(client.number())  # 10
 ```
 
-## Factory
+## 3. Register factory
 
 ```python
+class AppConfig:
+    def __init__(self, env: str):
+        self.env = env
 
-class ClientDependency:
-    def get_int(self):
-        return 10
 
-class Client:
-    def __init__(self, dep: ClientDependency):
-        self.dep = dep
-
-    def get_number(self):
-        return self.dep.get_int()
-
-def client_factory(dep: ClientDependency):
-    return Client(dep=dep)
+def create_config() -> AppConfig:
+    return AppConfig(env="prod")
 
 
 container = Container()
-container.register(ClientDependency)
-container.register(Client, factory=client_factory)
+container.register(AppConfig, factory=create_config)
 
-client = container.resolve(Client)
-
-client.get_number() # returns 10
-
+config = container.resolve(AppConfig)
+print(config.env)  # prod
 ```
 
-## Instance
+## 4. Register instance
 
 ```python
-
-class ClientDependency:
-    def __init__(self, num):
-        self.num = num
-
-    def get_int(self):
-        return self.num
-
-class Client:
-    def __init__(self, dep: ClientDependency):
-        self.dep = dep
-
-    def get_number(self):
-        return self.dep.get_int()
-
-client_dependency = ClientDependency(num=10)
+settings = {"region": "us-east-1"}
 
 container = Container()
-container.register(ClientDependency, instance=client_dependency)
-container.register(Client)
+container.register(dict, instance=settings)
 
-client = container.resolve(Client)
-
-client.get_number() # returns 10
-
-```
-
-## Subclasses registration
-
-This feature allows registration of all subclasses of a giveb type
-
-```python
-class Client(abc.ABC):
-    @abc.abstractmethod
-    def get_number(self):
-        pass
-
-
-class TenClient(Client):
-    def get_number(self):
-        return 10
-
-class TwentyClient(Client):
-    def get_number(self):
-        return 20
-
-container = Container()
-
-container.register_subclasses(Client)
-
-ten_client = container.resolve(TenClient)
-ten_client.get_number() # returns 10
-
-twenty_client = container.resolve(TwentyClient)
-twenty_client.get_number() # returns 20
-
- Resolve all subsclasses of Client
-client = container.resolve(list[Client]) ## [TwentyClient(), TenClient()]
+resolved = container.resolve(dict)
+print(resolved is settings)  # True
 ```
 
 ## Collection resolving
 
-If you have multiple dependencues you can simply define a collection type such as list[T], tuple[T] or set[T] and you can return all of the instances.
+When multiple registrations exist for the same service type, resolve `list[T]`, `tuple[T]`, or `set[T]`.
 
 ```python
-
-class ClientDependency:
-    def __init__(self, numbers: list[int]):
-        self.numbers = numbers
-
-    def get_numbers(self):
-        return self.numbers
-
-class Client:
-    def __init__(self, dep: ClientDependency):
-        self.dep = dep
-
-    def get_numbers(self):
-        return self.dep.get_numbers()
-
 container = Container()
-container.register(ClientDependency)
-container.register(Client)
 container.register(int, instance=1)
 container.register(int, instance=2)
 container.register(int, instance=3)
 
-client = container.resolve(Client)
-
-client.get_numbers() # returns [3, 2, 1]
+numbers = container.resolve(list[int])
+print(numbers)  # [3, 2, 1]
 ```
 
-!!! note "Supported collection types"
-    The following table shows what collection types are supported and what gets used at run time.
+## Async resolving
 
-    | Defined Collection Type | Used Collection Type |
-    | :---------: | :----------------------------------: |
-    | **list**                              | list  |
-    | **set**                               | set   |
-    | **tuple**                             | tuple |
-    | **typing.Sequence**                   | tuple |
-    | **collections.abc.Sequence**          | tuple |
-    | **typing.Iterable**                   | tuple |
-    | **collections.abc.Iterable**          | tuple |
-    | **typing.Collection**                 | tuple |
-    | **collections.abc.Collection**        | tuple |
-    | **typing.MutableSequence**            | list |
-    | **collections.abc.MutableSequence**   | list |
-
-## Asyncio
-
-You can also resolve dependencies using ***asyncio*** and ***Coroutines***
-This can be done with ```container.resolve_async()```.
-
-Using async resolving is needed if you need async functions or async generators in your factory functions. For more details on factories look [here](./factories.md)
+Use `resolve_async` when your graph includes async factories/generators.
 
 ```python
+import asyncio
+
+from clean_ioc import Container
 
 
-
-class UserServiceClient:
-    def __init__(self, http_client: httpx.AsyncClient):
-        self.http_client = http_client
-
-    def get_user(self, user_id: int):
-        return await http_client.get(f"https://myservice.domain/user/{user_id}")
-
-async def http_client_factory():
-    async with httpx.AsyncClient() as client:
-        yield client
+class TokenClient:
+    def __init__(self, token: str):
+        self.token = token
 
 
-container = Container()
-container.register(UserServiceClient)
-container.register(httpx.AsyncClient, factory=http_client_factory)
+async def token_factory() -> str:
+    return "secret-token"
 
-async with container:
-    client = await container.resolve_async(UserServiceClient)
-    user = await client.get_user(123)
 
+async def main():
+    container = Container()
+    container.register(str, factory=token_factory)
+    container.register(TokenClient)
+
+    client = await container.resolve_async(TokenClient)
+    print(client.token)
+
+
+asyncio.run(main())
 ```
