@@ -642,7 +642,7 @@ class Dependency:
                     registration_list_modifier=self.settings.list_modifier,
                 )
                 sequence_node = DependencyNode(
-                    service_type=self.service_type,  # pyright: ignore[reportArgumentType]
+                    service_type=self.service_type,  # pyright: ignore[reportArgumentType]  # ty:ignore[invalid-argument-type]
                     implementation=self.generic_collection_type,
                     lifespan=Lifespan.transient,
                 )
@@ -656,7 +656,7 @@ class Dependency:
                 return collection
 
             reg = context.find_registration(
-                service_type=self.service_type,  # pyright: ignore[reportArgumentType]
+                service_type=self.service_type,  # pyright: ignore[reportArgumentType]  # ty:ignore[invalid-argument-type]
                 registration_filter=self.settings.filter,
                 parent_node=dependency_node,
             )
@@ -684,7 +684,7 @@ class Dependency:
                     registration_list_modifier=self.settings.list_modifier,
                 )
                 sequence_node = DependencyNode(
-                    service_type=self.service_type,  # pyright: ignore[reportArgumentType]
+                    service_type=self.service_type,  # pyright: ignore[reportArgumentType]  # ty:ignore[invalid-argument-type]
                     implementation=self.generic_collection_type,
                     lifespan=Lifespan.transient,
                 )
@@ -699,7 +699,7 @@ class Dependency:
                 return collection
 
             reg = context.find_registration(
-                service_type=self.service_type,  # pyright: ignore[reportArgumentType]
+                service_type=self.service_type,  # pyright: ignore[reportArgumentType]  # ty:ignore[invalid-argument-type]
                 registration_filter=self.settings.filter,
                 parent_node=dependency_node,
             )
@@ -1366,7 +1366,7 @@ class _Registry:
         service_types = service_type if isinstance(service_type, Iterable) else (service_type,)
 
         for st in service_types:
-            self._pre_configurations[st].appendleft(pre_configuration)
+            self._pre_configurations[st].appendleft(pre_configuration)  # ty:ignore[invalid-argument-type]
 
     def get_registrations(self, service_type: type):
         return self._registrations[service_type]
@@ -2054,7 +2054,9 @@ class Scope:
             position=position,
         )
 
-    def add_singleton_node(self, registration: _Registration, node: DependencyNode) -> Scope: ...
+    def add_singleton_node(
+        self, registration: _Registration, node: DependencyNode
+    ) -> Scope: ...  # ty:ignore[empty-body]
 
     def find_singleton_node(self, registration_id: str) -> DependencyNode | None: ...
 
@@ -2162,9 +2164,9 @@ class Scope:
         return self._scoped_instances
 
     @property
-    def singleton_instances(self) -> dict[str, DependencyNode]: ...
+    def singleton_instances(self) -> dict[str, DependencyNode]: ...  # ty:ignore[empty-body]
 
-    def new_scope(self) -> Scope: ...
+    def new_scope(self) -> Scope: ...  # ty:ignore[empty-body]
 
 
 class ChildScope(Scope):

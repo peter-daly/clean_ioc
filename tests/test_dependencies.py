@@ -327,10 +327,10 @@ def test_nested_decorators_with_sort_index():
     a: Any = container.resolve(A)
 
     assert a == is_exact_type(D3)
-    assert a.a == is_exact_type(D5)
-    assert a.a.a == is_exact_type(D1)
-    assert a.a.a.a == is_exact_type(D2)
-    assert a.a.a.a.a == is_exact_type(D4)
+    assert a.a == is_exact_type(D5)  # ty:ignore[unresolved-attribute]
+    assert a.a.a == is_exact_type(D1)  # ty:ignore[unresolved-attribute]
+    assert a.a.a.a == is_exact_type(D2)  # ty:ignore[unresolved-attribute]
+    assert a.a.a.a.a == is_exact_type(D4)  # ty:ignore[unresolved-attribute]
 
 
 def test_simple_decorator():

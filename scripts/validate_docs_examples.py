@@ -2,7 +2,6 @@
 
 import asyncio
 from contextlib import asynccontextmanager, contextmanager
-from dataclasses import dataclass
 from typing import Generic, Protocol, TypeVar
 
 import clean_ioc.value_factories as vf
