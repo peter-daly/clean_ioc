@@ -1,7 +1,6 @@
 from typing import Callable
 
-from theutilitybelt.functional.predicate import predicate
-from theutilitybelt.functional.utils import constant
+from funcie import constant, predicate
 
 from .core import Node, NodeFilter
 
@@ -24,7 +23,7 @@ def service_type_matches_type_filter(type_filter: Callable[[type], bool]):
 
 def implementation_matches_type_filter(type_filter: Callable[[type], bool]):
     def inner(node: Node):
-        return type_filter(node.implementation_type)  # type: ignore
+        return type_filter(node.implementation_type)
 
     return predicate(inner)
 

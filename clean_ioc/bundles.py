@@ -42,13 +42,13 @@ class RunOnceBundle(BaseBundle):
 class OnlyRunOncePerInstanceBundle(RunOnceBundle):
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
-        instance._instance_id = str(uuid4())  # type: ignore
+        instance._instance_id = str(uuid4())
         return instance
 
     def get_bundle_identifier(self) -> str:
         module = self.__class__.__module__
         class_name = self.__class__.__name__
-        return f"{module}.{class_name}-{self._instance_id}"  # type: ignore
+        return f"{module}.{class_name}-{self._instance_id}"  # ty:ignore[unresolved-attribute]
 
 
 class OnlyRunOncePerClassBundle(RunOnceBundle):

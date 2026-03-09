@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 from assertive import (
-    assert_that,
     has_length,
     is_exact_type,
     is_gt,
@@ -54,7 +53,7 @@ def test_simple_implementation_registation():
     container.register(A, B)
 
     a = container.resolve(A)
-    assert_that(a).matches(is_exact_type(B))
+    assert a == is_exact_type(B)
 
 
 def test_simple_implementation_registation_can_also_resolve_from_implementation_type():
@@ -68,7 +67,7 @@ def test_simple_implementation_registation_can_also_resolve_from_implementation_
     container.register(A, B)
 
     b = container.resolve(B)
-    assert_that(b).matches(is_exact_type(B))
+    assert b == is_exact_type(B)
 
 
 def test_simple_factory_registation():
@@ -85,7 +84,7 @@ def test_simple_factory_registation():
     container.register(A, factory=fac)
 
     a = container.resolve(A)
-    assert_that(a).matches(is_exact_type(B))
+    assert a == is_exact_type(B)
 
 
 def test_simple_instance_registation():
@@ -98,8 +97,8 @@ def test_simple_instance_registation():
     container.register(A, instance=instance)
 
     a = container.resolve(A)
-    assert_that(a).matches(is_exact_type(A))
-    assert_that(a).matches(is_same_instance_as(instance))
+    assert a == is_exact_type(A)
+    assert a == is_same_instance_as(instance)
 
 
 def test_simple_self_registation():
@@ -110,7 +109,7 @@ def test_simple_self_registation():
     container.register(A)
 
     a = container.resolve(A)
-    assert_that(a).matches(is_exact_type(A))
+    assert a == is_exact_type(A)
 
 
 def test_list():
@@ -127,9 +126,9 @@ def test_list():
 
     array = container.resolve(list[A])
 
-    assert_that(array).matches(has_length(2))
-    assert_that(array[0]).matches(is_exact_type(B))
-    assert_that(array[1]).matches(is_exact_type(A))
+    assert array == has_length(2)
+    assert array[0] == is_exact_type(B)
+    assert array[1] == is_exact_type(A)
 
 
 def test_sequence():
@@ -146,9 +145,9 @@ def test_sequence():
 
     array = container.resolve(Sequence[A])
 
-    assert_that(array).matches(has_length(2))
-    assert_that(array[0]).matches(is_exact_type(B))  # type: ignore
-    assert_that(array[1]).matches(is_exact_type(A))  # type: ignore
+    assert array == has_length(2)
+    assert array[0] == is_exact_type(B)  # type: ignore
+    assert array[1] == is_exact_type(A)  # type: ignore
 
 
 def test_mutable_sequence():
@@ -165,9 +164,9 @@ def test_mutable_sequence():
 
     array = container.resolve(MutableSequence[A])
 
-    assert_that(array).matches(has_length(2))
-    assert_that(array[0]).matches(is_exact_type(B))  # type: ignore
-    assert_that(array[1]).matches(is_exact_type(A))  # type: ignore
+    assert array == has_length(2)
+    assert array[0] == is_exact_type(B)  # type: ignore
+    assert array[1] == is_exact_type(A)  # type: ignore
 
 
 def test_list_with_filter():
@@ -184,8 +183,8 @@ def test_list_with_filter():
 
     array = container.resolve(list[A], filter=with_implementation(B))
 
-    assert_that(array).matches(has_length(1))
-    assert_that(array[0]).matches(is_exact_type(B))
+    assert array == has_length(1)
+    assert array[0] == is_exact_type(B)
 
 
 def test_with_named_filter():
@@ -202,7 +201,7 @@ def test_with_named_filter():
 
     a = container.resolve(A, filter=with_name("A1"))
 
-    assert_that(a).matches(is_same_instance_as(a1))
+    assert a == is_same_instance_as(a1)
 
 
 def test_with_named_filter_unnamed_always_returned_first():
@@ -219,7 +218,7 @@ def test_with_named_filter_unnamed_always_returned_first():
 
     a = container.resolve(A)
 
-    assert_that(a).matches(is_same_instance_as(unnamed_a))
+    assert a == is_same_instance_as(unnamed_a)
 
 
 def test_list_with_named_filter():
@@ -238,9 +237,9 @@ def test_list_with_named_filter():
 
     array = container.resolve(list[A], filter=with_name("IN_LIST"))
 
-    assert_that(array).matches(has_length(2))
-    assert_that(array[0]).matches(is_same_instance_as(a3))
-    assert_that(array[1]).matches(is_same_instance_as(a1))
+    assert array == has_length(2)
+    assert array[0] == is_same_instance_as(a3)
+    assert array[1] == is_same_instance_as(a1)
 
 
 def test_different_collection_types():
@@ -261,9 +260,9 @@ def test_different_collection_types():
     a_tuple = container.resolve(tuple[A], has_tag_with_value_in("number", "one", "two"))
     a_list = container.resolve(list[A])
 
-    assert_that(a_set).matches(has_length(3))
-    assert_that(a_tuple).matches(has_length(2))
-    assert_that(a_list).matches(has_length(3))
+    assert a_set == has_length(3)
+    assert a_tuple == has_length(2)
+    assert a_list == has_length(3)
 
 
 def test_nested_decorators_should_be_in_order_of_when_first_registered():
@@ -286,9 +285,9 @@ def test_nested_decorators_should_be_in_order_of_when_first_registered():
 
     a = container.resolve(A)
 
-    assert_that(a).matches(is_exact_type(DecALayer1))
-    assert_that(a.a).matches(is_exact_type(DecALayer2))  # type: ignore
-    assert_that(a.a.a).matches(is_exact_type(A))  # type: ignore
+    assert a == is_exact_type(DecALayer1)
+    assert a.a == is_exact_type(DecALayer2)  # type: ignore
+    assert a.a.a == is_exact_type(A)  # type: ignore
 
 
 def test_nested_decorators_with_sort_index():
@@ -348,7 +347,7 @@ def test_simple_decorator():
 
     a = container.resolve(A)
 
-    assert_that(a).matches(is_exact_type(DecA))
+    assert a == is_exact_type(DecA)
 
 
 def test_decorator_with_decorated_arg_set():
@@ -366,7 +365,7 @@ def test_decorator_with_decorated_arg_set():
 
     a = container.resolve(A)
 
-    assert_that(a).matches(is_exact_type(DecAny))
+    assert a == is_exact_type(DecAny)
 
 
 def test_simple_open_generic():
@@ -384,7 +383,7 @@ def test_simple_open_generic():
 
     a = container.resolve(A[int])
 
-    assert_that(a).matches(is_exact_type(B))
+    assert a == is_exact_type(B)
 
 
 def test_simple_open_generic_with_protocol():
@@ -402,7 +401,7 @@ def test_simple_open_generic_with_protocol():
 
     a = container.resolve(A[int])
 
-    assert_that(a).matches(is_exact_type(B))
+    assert a == is_exact_type(B)
 
 
 def test_simple_open_generic_should_fail_when_no_implementation():
@@ -440,7 +439,7 @@ def test_simple_open_generic_with_fallback_should_not_fail():
 
     a = container.resolve(A[str])
 
-    assert_that(a).matches(is_exact_type(C))
+    assert a == is_exact_type(C)
 
 
 def test_open_generic_decorators():
@@ -463,7 +462,7 @@ def test_open_generic_decorators():
 
     a = container.resolve(A[int])
 
-    assert_that(type(a).__name__).matches("__DecoratedGeneric__ADec")
+    assert type(a).__name__ == "__DecoratedGeneric__ADec"
 
 
 def test_open_generic_decorators_with_protocol():
@@ -486,7 +485,7 @@ def test_open_generic_decorators_with_protocol():
 
     a = container.resolve(A[int])
 
-    assert_that(type(a).__name__).matches("__DecoratedGeneric__ADec")
+    assert type(a).__name__ == "__DecoratedGeneric__ADec"
 
 
 def test_open_generic_decorators_with_nongeneric_decorator():
@@ -509,7 +508,7 @@ def test_open_generic_decorators_with_nongeneric_decorator():
 
     a = container.resolve(A[int])
 
-    assert_that(type(a).__name__).matches("ADec")
+    assert type(a).__name__ == "ADec"
 
 
 def test_open_generic_decorators_with_both_generic_and_nongeneric_decorator():
@@ -537,9 +536,9 @@ def test_open_generic_decorators_with_both_generic_and_nongeneric_decorator():
 
     a = container.resolve(A[int])
 
-    assert_that(type(a).__name__).matches("__DecoratedGeneric__ADecGeneric")
-    assert_that(type(a.a).__name__).matches("ADecNonGeneric")  # type: ignore
-    assert_that(type(a.a.a).__name__).matches("B")  # type: ignore
+    assert type(a).__name__ == "__DecoratedGeneric__ADecGeneric"
+    assert type(a.a).__name__ == "ADecNonGeneric"  # type: ignore
+    assert type(a.a.a).__name__ == "B"  # type: ignore
 
 
 def test_deep_dependencies_with_dependency_settings():
@@ -582,10 +581,10 @@ def test_deep_dependencies_with_dependency_settings():
 
     c: C = container.resolve(C)
 
-    assert_that(c.b.a.s).matches("3")
-    assert_that(c.b.x).matches(5)
-    assert_that(c.y).matches(100)
-    assert_that(c.z).matches(10)
+    assert c.b.a.s == "3"
+    assert c.b.x == 5
+    assert c.y == 100
+    assert c.z == 10
 
 
 def test_a_dependency_value_factory_with_a_dependency_context_filter():
@@ -628,9 +627,9 @@ def test_a_dependency_value_factory_with_a_dependency_context_filter():
     c = container.resolve(C)
     d = container.resolve(D)
 
-    assert_that(b.a.greeting).matches("BBBBB")
-    assert_that(c.a.greeting).matches("CCCCC")
-    assert_that(d.a.greeting).matches("AAAAA")
+    assert b.a.greeting == "BBBBB"
+    assert c.a.greeting == "CCCCC"
+    assert d.a.greeting == "AAAAA"
 
 
 def test_simple_self_regristation_with_constructor_with_positional_and_keyword_args_no_args():
@@ -642,7 +641,7 @@ def test_simple_self_regristation_with_constructor_with_positional_and_keyword_a
     container.register(A)
 
     a = container.resolve(A)
-    assert_that(a).matches(is_exact_type(A))
+    assert a == is_exact_type(A)
 
 
 def test_simple_self_regristation_with_constructor_with_positional_and_keyword_args():
@@ -654,8 +653,8 @@ def test_simple_self_regristation_with_constructor_with_positional_and_keyword_a
     container.register(A, dependency_config={"x": DependencySettings(value_factory=set_value(10))})
 
     a = container.resolve(A)
-    assert_that(a).matches(is_exact_type(A))
-    assert_that(a.kw["x"]).matches(10)
+    assert a == is_exact_type(A)
+    assert a.kw["x"] == 10
 
 
 def test_lifespans():
@@ -691,9 +690,9 @@ def test_lifespans():
     e: E = container.resolve(E)
     a: A = container.resolve(A)
 
-    assert_that(e.d.c.b.a).matches(is_same_instance_as(a))
-    assert_that(e.d.c).does_not_match(is_same_instance_as(e.c))
-    assert_that(e.d.b).matches(is_same_instance_as(e.d.c.b))
+    assert e.d.c.b.a == is_same_instance_as(a)
+    assert e.d.c != is_same_instance_as(e.c)
+    assert e.d.b == is_same_instance_as(e.d.c.b)
 
 
 def test_scopes_with_lifespans():
@@ -737,10 +736,10 @@ def test_scopes_with_lifespans():
 
     e2_1: E = scope2.resolve(E)
 
-    assert_that(e1).does_not_match(is_same_instance_as(e2))
-    assert_that(a1).matches(is_same_instance_as(a2))
-    assert_that(e2_1).matches(is_same_instance_as(e2))
-    assert_that(e2.d.c.b.a).matches(is_same_instance_as(e2.d.c.b.a))
+    assert e1 != is_same_instance_as(e2)
+    assert a1 == is_same_instance_as(a2)
+    assert e2_1 == is_same_instance_as(e2)
+    assert e2.d.c.b.a == is_same_instance_as(e2.d.c.b.a)
 
 
 def test_scope_registrations_overrides_container():
@@ -767,8 +766,8 @@ def test_scope_registrations_overrides_container():
 
         c: C = container.resolve(C)
 
-        assert_that(c.b).does_not_match(is_same_instance_as(c_scoped.b))
-        assert_that(c.b.a).matches(is_same_instance_as(c_scoped.b.a))
+        assert c.b != is_same_instance_as(c_scoped.b)
+        assert c.b.a == is_same_instance_as(c_scoped.b.a)
 
 
 def test_expect_to_be_scoped():
@@ -783,7 +782,7 @@ def test_expect_to_be_scoped():
         scope.register(A)
         a_scoped: A = scope.resolve(A)
 
-        assert_that(a_scoped).matches(is_exact_type(A))
+        assert a_scoped == is_exact_type(A)
 
     with raises_exception(NeedsScopedRegistrationError):
         container.resolve(A)
@@ -800,16 +799,16 @@ def test_expect_to_be_scoped_with_name():
 
     with container.new_scope() as scope:
         scope.register(A, name="ScopedA")
-        assert_that(lambda: container.resolve(A, filter=with_name("ScopedA"))).matches(
-            raises_exception(NeedsScopedRegistrationError)
+        assert (lambda: container.resolve(A, filter=with_name("ScopedA"))) == raises_exception(
+            NeedsScopedRegistrationError
         )
 
         a_scoped: A = scope.resolve(A, filter=with_name("ScopedA"))
 
-        assert_that(a_scoped).matches(is_exact_type(A))
+        assert a_scoped == is_exact_type(A)
 
     a_unscoped = container.resolve(A)
-    assert_that(a_unscoped).matches(is_exact_type(A))
+    assert a_unscoped == is_exact_type(A)
 
 
 def test_simple_bundle_registation():
@@ -827,7 +826,7 @@ def test_simple_bundle_registation():
     container.apply_bundle(module)
 
     a = container.resolve(A)
-    assert_that(a).matches(is_exact_type(B))
+    assert a == is_exact_type(B)
 
 
 def test_dependency_context_with_parent():
@@ -847,7 +846,7 @@ def test_dependency_context_with_parent():
     container.register(B)
 
     b = container.resolve(B)
-    assert_that(b.a.parent_type).matches(B)
+    assert b.a.parent_type == B
 
 
 def test_dependency_context_with_decorators_and_deep_child():
@@ -893,8 +892,8 @@ def test_dependency_context_with_decorators_and_deep_child():
 
     a = b.get_a()
 
-    assert_that(a.parent_type).matches(BDecoratedLayer1)
-    assert_that(a.parent_type_undecorated).matches(B)
+    assert a.parent_type == BDecoratedLayer1
+    assert a.parent_type_undecorated == B
 
 
 def test_has_registrations():
@@ -908,8 +907,8 @@ def test_has_registrations():
 
     container.register(A)
 
-    assert_that(container.has_registration(A)).matches(True)
-    assert_that(container.has_registration(B)).matches(False)
+    assert container.has_registration(A) is True
+    assert container.has_registration(B) is False
 
 
 def test_pre_configurations():
@@ -1012,26 +1011,26 @@ def test_registration_with_tags():
     al4 = container.resolve(list[A], filter=~has_tag("a"))
     al5 = container.resolve(list[A])
 
-    assert_that(ar1).matches(is_same_instance_as(a1))
+    assert ar1 == is_same_instance_as(a1)
 
-    assert_that(al1).matches(has_length(2))
-    assert_that(al1[0]).matches(is_same_instance_as(a2))
-    assert_that(al1[1]).matches(is_same_instance_as(a1))
+    assert al1 == has_length(2)
+    assert al1[0] == is_same_instance_as(a2)
+    assert al1[1] == is_same_instance_as(a1)
 
-    assert_that(al2).matches(has_length(1))
-    assert_that(al2[0]).matches(is_same_instance_as(a1))
+    assert al2 == has_length(1)
+    assert al2[0] == is_same_instance_as(a1)
 
-    assert_that(al3).matches(has_length(2))
-    assert_that(al3[0]).matches(is_same_instance_as(a3))
-    assert_that(al3[1]).matches(is_same_instance_as(a2))
+    assert al3 == has_length(2)
+    assert al3[0] == is_same_instance_as(a3)
+    assert al3[1] == is_same_instance_as(a2)
 
-    assert_that(al4).matches(has_length(1))
-    assert_that(al4[0]).matches(is_same_instance_as(a3))
+    assert al4 == has_length(1)
+    assert al4[0] == is_same_instance_as(a3)
 
-    assert_that(al5).matches(has_length(3))
-    assert_that(al5[0]).matches(is_same_instance_as(a3))
-    assert_that(al5[1]).matches(is_same_instance_as(a2))
-    assert_that(al5[2]).matches(is_same_instance_as(a1))
+    assert al5 == has_length(3)
+    assert al5[0] == is_same_instance_as(a3)
+    assert al5[1] == is_same_instance_as(a2)
+    assert al5[2] == is_same_instance_as(a1)
 
 
 def test_decorator_with_registration_filters():
@@ -1054,8 +1053,8 @@ def test_decorator_with_registration_filters():
     ar1 = container.resolve(A, filter=with_name("a1"))
     ar2 = container.resolve(A, filter=with_name("a2"))
 
-    assert_that(ar1).matches(is_exact_type(DecA))
-    assert_that(ar2).matches(is_exact_type(A))
+    assert ar1 == is_exact_type(DecA)
+    assert ar2 == is_exact_type(A)
 
 
 def test_parent_context_filter():
@@ -1086,8 +1085,8 @@ def test_parent_context_filter():
     e = container.resolve(E)
     d = container.resolve(D)
 
-    assert_that(e.a).matches(is_exact_type(B))
-    assert_that(d.a).matches(is_exact_type(C))
+    assert e.a == is_exact_type(B)
+    assert d.a == is_exact_type(C)
 
 
 def test_scoped_teardowns():
@@ -1100,7 +1099,7 @@ def test_scoped_teardowns():
     with container.new_scope() as scope:
         a = scope.resolve(A)
 
-    assert_that(teardown).matches(was_called_with(a))
+    assert teardown == was_called_with(a)
 
 
 @pytest.mark.asyncio()
@@ -1114,7 +1113,7 @@ async def test_sync_scoped_teardowns_are_called_for_in_scope():
     async with container.new_scope() as scope:
         a = scope.resolve(A)
 
-    assert_that(sync_teardown).matches(was_called_with(a))
+    assert sync_teardown == was_called_with(a)
 
 
 @pytest.mark.asyncio()
@@ -1128,7 +1127,7 @@ async def test_async_scoped_teardowns_are_called_for_in_scope():
     async with container.new_scope() as scope:
         a = scope.resolve(A)
 
-    assert_that(async_teardown).matches(was_called_with(a))
+    assert async_teardown == was_called_with(a)
 
 
 def test_async_scoped_teardowns_dont_get_called_in_sync_context_manager():
@@ -1142,7 +1141,7 @@ def test_async_scoped_teardowns_dont_get_called_in_sync_context_manager():
     with container.new_scope() as scope:
         scope.resolve(A)
 
-    assert_that(async_teardown).matches(was_called().never())
+    assert async_teardown == was_called().never()
 
 
 def test_generator_factory():
@@ -1158,9 +1157,9 @@ def test_generator_factory():
 
     with container.new_scope() as scope:
         s = scope.resolve(str)
-        assert_that(s).matches("5")
-        assert_that(mock).matches(was_called().never())
-    assert_that(mock).matches(was_called_with(5))
+        assert s == "5"
+        assert mock == was_called().never()
+    assert mock == was_called_with(5)
 
 
 def test_generator_factory_works_in_a_scope_without_scoped_objects():
@@ -1176,9 +1175,9 @@ def test_generator_factory_works_in_a_scope_without_scoped_objects():
 
     with container.new_scope() as scope:
         s = scope.resolve(str)
-        assert_that(s).matches("5")
-        assert_that(mock).matches(was_called().never())
-    assert_that(mock).matches(was_called_with(5))
+        assert s == "5"
+        assert mock == was_called().never()
+    assert mock == was_called_with(5)
 
 
 def test_generator_doesnt_finish_when_not_in_a_scope():
@@ -1194,8 +1193,8 @@ def test_generator_doesnt_finish_when_not_in_a_scope():
     container.register(str, factory=generator)
     result = container.resolve(str)
 
-    assert_that(result).matches("5")
-    assert_that(mock).matches(was_called().never())
+    assert result == "5"
+    assert mock == was_called().never()
 
 
 def test_generator_factory_with_a_context_manager():
@@ -1211,11 +1210,11 @@ def test_generator_factory_with_a_context_manager():
 
     with container.new_scope() as scope:
         s = scope.resolve(str)
-        assert_that(s).matches("5")
-        assert_that(mock.__enter__).matches(was_called().once())
-        assert_that(mock.__exit__).matches(was_called().never())
-    assert_that(mock.__enter__).matches(was_called().once())
-    assert_that(mock.__exit__).matches(was_called().once())
+        assert s == "5"
+        assert mock.__enter__ == was_called().once()
+        assert mock.__exit__ == was_called().never()
+    assert mock.__enter__ == was_called().once()
+    assert mock.__exit__ == was_called().once()
 
 
 def test_generators_can_depend_on_other_generators():
@@ -1236,15 +1235,15 @@ def test_generators_can_depend_on_other_generators():
 
     with container.new_scope() as scope:
         s = scope.resolve(str)
-        assert_that(s).matches("5")
+        assert s == "5"
 
     int_mock_call_arg = int_mock.mock_calls[0].args[0]
     str_mock_call_arg = str_mock.mock_calls[0].args[0]
 
-    assert_that(int_mock_call_arg).matches(is_exact_type(datetime))
-    assert_that(str_mock_call_arg).matches(is_exact_type(datetime))
+    assert int_mock_call_arg == is_exact_type(datetime)
+    assert str_mock_call_arg == is_exact_type(datetime)
 
-    assert_that(int_mock_call_arg).matches(is_gt(str_mock_call_arg))
+    assert int_mock_call_arg == is_gt(str_mock_call_arg)
 
 
 def test_nested_scopes():
@@ -1318,35 +1317,35 @@ def test_generators_across_scopes():
                 inner_x = inner_scope.resolve(float)
                 assert inner_x == 5.0
 
-                assert_that(int_mock.__enter__).matches(was_called().once())
-                assert_that(int_mock.__exit__).matches(was_called().never())
-                assert_that(str_mock.__enter__).matches(was_called().once())
-                assert_that(str_mock.__exit__).matches(was_called().never())
-                assert_that(float_mock.__enter__).matches(was_called().once())
-                assert_that(float_mock.__exit__).matches(was_called().never())
+                assert int_mock.__enter__ == was_called().once()
+                assert int_mock.__exit__ == was_called().never()
+                assert str_mock.__enter__ == was_called().once()
+                assert str_mock.__exit__ == was_called().never()
+                assert float_mock.__enter__ == was_called().once()
+                assert float_mock.__exit__ == was_called().never()
 
-            assert_that(int_mock.__enter__).matches(was_called().once())
-            assert_that(int_mock.__exit__).matches(was_called().once())
-            assert_that(str_mock.__enter__).matches(was_called().once())
-            assert_that(str_mock.__exit__).matches(was_called().never())
-            assert_that(float_mock.__enter__).matches(was_called().once())
-            assert_that(float_mock.__exit__).matches(was_called().once())
+            assert int_mock.__enter__ == was_called().once()
+            assert int_mock.__exit__ == was_called().once()
+            assert str_mock.__enter__ == was_called().once()
+            assert str_mock.__exit__ == was_called().never()
+            assert float_mock.__enter__ == was_called().once()
+            assert float_mock.__exit__ == was_called().once()
 
         # Exit outer scope
-        assert_that(int_mock.__enter__).matches(was_called().once())
-        assert_that(int_mock.__exit__).matches(was_called().once())
-        assert_that(str_mock.__enter__).matches(was_called().once())
-        assert_that(str_mock.__exit__).matches(was_called().never())
-        assert_that(float_mock.__enter__).matches(was_called().once())
-        assert_that(float_mock.__exit__).matches(was_called().once())
+        assert int_mock.__enter__ == was_called().once()
+        assert int_mock.__exit__ == was_called().once()
+        assert str_mock.__enter__ == was_called().once()
+        assert str_mock.__exit__ == was_called().never()
+        assert float_mock.__enter__ == was_called().once()
+        assert float_mock.__exit__ == was_called().once()
 
     # Exit container
-    assert_that(int_mock.__enter__).matches(was_called().once())
-    assert_that(int_mock.__exit__).matches(was_called().once())
-    assert_that(str_mock.__enter__).matches(was_called().once())
-    assert_that(str_mock.__exit__).matches(was_called().once())
-    assert_that(float_mock.__enter__).matches(was_called().once())
-    assert_that(float_mock.__exit__).matches(was_called().once())
+    assert int_mock.__enter__ == was_called().once()
+    assert int_mock.__exit__ == was_called().once()
+    assert str_mock.__enter__ == was_called().once()
+    assert str_mock.__exit__ == was_called().once()
+    assert float_mock.__enter__ == was_called().once()
+    assert float_mock.__exit__ == was_called().once()
 
 
 def test_singleton_implementation_and_service_type_resolve_to_same_instance():
@@ -1624,7 +1623,7 @@ async def test_async_context_manager_with_generator_generator():
 
     async with container:
         a = await container.resolve_async(A)
-        assert_that(a).matches(is_exact_type(A))
+        assert a == is_exact_type(A)
 
 
 def test_resolve_from_registration_ids():

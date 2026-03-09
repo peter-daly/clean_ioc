@@ -1,6 +1,6 @@
 from typing import Any, Callable
 
-from theutilitybelt.functional.utils import constant
+from funcie import constant
 
 from .core import Registration
 

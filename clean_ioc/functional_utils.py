@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import TypeVar
 
-from theutilitybelt.functional.predicate import predicate
+from funcie import predicate
 
 TArg = TypeVar("TArg")
 

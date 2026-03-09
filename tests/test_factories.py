@@ -1,5 +1,5 @@
 # from __future__ import annotations
-from assertive import assert_that, is_exact_type, is_same_instance_as
+from assertive import is_exact_type, is_same_instance_as
 
 from clean_ioc import (
     Container,
@@ -32,11 +32,11 @@ def test_simple_use_registered():
     a = container.resolve(A)
     b = container.resolve(B)
 
-    assert_that(a).matches(is_exact_type(D))
-    assert_that(b).matches(is_exact_type(D))
+    assert a == is_exact_type(D)
+    assert b == is_exact_type(D)
 
-    assert_that(a).matches(is_same_instance_as(d))
-    assert_that(b).matches(is_same_instance_as(d))
+    assert a == is_same_instance_as(d)
+    assert b == is_same_instance_as(d)
 
 
 def test_use_registered_with_filters():
@@ -61,8 +61,8 @@ def test_use_registered_with_filters():
     a = container.resolve(A)
     b = container.resolve(B)
 
-    assert_that(a).matches(is_same_instance_as(c1))
-    assert_that(b).matches(is_same_instance_as(c2))
+    assert a == is_same_instance_as(c1)
+    assert b == is_same_instance_as(c2)
 
 
 def test_create_type_mapping():
@@ -95,9 +95,9 @@ def test_create_type_mapping():
 
     mapping = container.resolve(dict[str, A])
 
-    assert_that(mapping["B"]).matches(is_exact_type(B))
-    assert_that(mapping["C"]).matches(is_exact_type(C))
-    assert_that(mapping["D"]).matches(is_exact_type(D))
+    assert mapping["B"] == is_exact_type(B)
+    assert mapping["C"] == is_exact_type(C)
+    assert mapping["D"] == is_exact_type(D)
 
 
 def test_create_type_mapping_with_filter():
@@ -134,6 +134,6 @@ def test_create_type_mapping_with_filter():
 
     mapping: dict[str, A] = container.resolve(dict[str, A])
 
-    assert_that(mapping.get("B")).matches(is_exact_type(B))
-    assert_that(mapping.get("C")).matches(None)
-    assert_that(mapping.get("D")).matches(is_exact_type(D))
+    assert mapping.get("B") == is_exact_type(B)
+    assert mapping.get("C") is None
+    assert mapping.get("D") == is_exact_type(D)

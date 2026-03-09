@@ -2,8 +2,7 @@ import inspect
 from collections.abc import Iterable
 from typing import Callable, TypeVar
 
-from theutilitybelt.functional.predicate import predicate
-from theutilitybelt.functional.utils import constant
+from funcie import constant, predicate
 
 from .core import Lifespan, Registration
 

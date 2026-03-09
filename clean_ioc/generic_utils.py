@@ -1,14 +1,14 @@
 import types
-from typing import (  # type: ignore
+from collections import deque
+from typing import (
     Generic,
     Protocol,
     TypeVar,
-    _GenericAlias,  # type: ignore
-    _SpecialGenericAlias,  # type: ignore
+    _GenericAlias,  # ty:ignore[unresolved-import]
+    _SpecialGenericAlias,  # ty:ignore[unresolved-import]
 )
 
-from theutilitybelt.collections.queue import Queue
-from theutilitybelt.typing.generics import GenericTypeMap
+from typetoolbox.generics import GenericTypeMap
 
 TypingGenericAlias = (_GenericAlias, _SpecialGenericAlias, types.GenericAlias)
 GenericDefinitionClasses = (Generic, Protocol)
@@ -27,7 +27,7 @@ def map_type_vars_to_parent(*, child_type: type | TypeVar | _GenericAlias, paren
 
     child_generic_type_map = GenericTypeMap(child_type)
 
-    if child_generic_type_map.is_generic_mapping_closed():
+    if child_generic_type_map.is_mapping_specialized():
         return child_type
     output_args = []
     generic_args = get_generic_type_args(child_type)
@@ -38,29 +38,29 @@ def map_type_vars_to_parent(*, child_type: type | TypeVar | _GenericAlias, paren
             continue
 
         if from_child := child_mapping.get(a):
-            if linked_to_open := parent_mapping.get(from_child):  # type: ignore
+            if linked_to_open := parent_mapping.get(from_child):
                 output_args.append(linked_to_open)
                 continue
 
         output_args.append(a)
 
-    return child_type[tuple(output_args)]  # pyright: ignore[reportIndexIssue]
+    return child_type[tuple(output_args)]
 
 
 def get_generic_type_args(type: type):
-    queue = Queue()
-    queue.put(type)
+    queue = deque()
+    queue.append(type)
 
-    while not queue.is_empty():
-        type_check = queue.get()
+    while queue:
+        type_check = queue.popleft()
         if origin_type := getattr(type_check, "__origin__", None):
-            queue.put(origin_type)
+            queue.append(origin_type)
             if origin_type in GenericDefinitionClasses:
                 return type_check.__args__
 
         for base in getattr(type_check, "__orig_bases__", ()):
-            queue.put(base)
+            queue.append(base)
             if base_origin := getattr(base, "__origin__", None):
-                queue.put(base_origin)
+                queue.append(base_origin)
 
     return ()

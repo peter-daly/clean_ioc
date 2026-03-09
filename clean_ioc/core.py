@@ -26,10 +26,13 @@ from typing import MutableSequence as TypingMutableSequence
 from typing import Sequence as TypingSequence
 from uuid import uuid4
 
-from theutilitybelt.functional.predicate import always_true
-from theutilitybelt.functional.utils import constant
-from theutilitybelt.typing.generics import GenericTypeMap, get_generic_bases, try_to_map_generic_args_to_open_type
-from theutilitybelt.typing.utils import get_subclasses
+from funcie import always_true, constant
+from typetoolbox import get_subclasses
+from typetoolbox.generics import (
+    GenericTypeMap,
+    get_generic_bases,
+    try_to_map_generic_args_to_specialization,
+)
 
 from clean_ioc.generic_utils import map_type_vars_to_parent
 from clean_ioc.utils import singleton
@@ -1771,16 +1774,16 @@ class Scope:
     def call(self, fn: Callable[..., TReturn]) -> TReturn:
         name: str = str(uuid4())
         with self.new_scope() as scope:
-            scope.register(Callable, fn, name=name)  # type: ignore
-            return scope.resolve(Callable, filter=lambda r: r.name == name)  # type: ignore
+            scope.register(Callable, fn, name=name)
+            return scope.resolve(Callable, filter=lambda r: r.name == name)
 
     async def call_async(self, fn: Callable[..., TReturn]) -> TReturn:
         name: str = str(uuid4())
         with self.new_scope() as scope:
-            scope.register(Callable, fn, name=name)  # type: ignore
+            scope.register(Callable, fn, name=name)
 
-            return await scope.resolve_async(  # type: ignore
-                Callable,  # type: ignore
+            return await scope.resolve_async(
+                Callable,
                 filter=lambda r: r.name == name,
             )
 
@@ -2076,7 +2079,7 @@ class Scope:
         """
 
         registrations = [r for r in self._registry.get_registrations(service_type) if filter(r)]
-        registrations = list_modifier(registrations)  # type: ignore
+        registrations = list_modifier(registrations)
         return [r.id for r in registrations]
 
     def find_registrations(
@@ -2287,7 +2290,7 @@ class Container(Scope):
     def _get_target_generic_base(generic_service_type: type, subclass: type):
         return next(
             (
-                try_to_map_generic_args_to_open_type(b, subclass)
+                try_to_map_generic_args_to_specialization(b, subclass)
                 for b in get_generic_bases(
                     subclass,
                     lambda t: getattr(t, "__origin__", None) == generic_service_type,
@@ -2403,17 +2406,19 @@ class Container(Scope):
         full_type_filter = ~is_abstract & ~name_starts_with("__DecoratedGeneric__") & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, filter=full_type_filter)
         decorator_generic_map = GenericTypeMap(generic_decorator_type)
-        decorator_is_open_generic = decorator_generic_map.is_generic_mapping_open()
+        decorator_is_open_generic = decorator_generic_map.is_mapping_generic()
 
         for subclass in subclasses:
-            target_generic_base = try_to_map_generic_args_to_open_type(generic_service_type, subclass)
+            target_generic_base = try_to_map_generic_args_to_specialization(generic_service_type, subclass)
             if target_generic_base:
                 if decorator_is_open_generic:
-                    concrete_decorator = try_to_map_generic_args_to_open_type(generic_decorator_type, subclass)
-                    DecoratedType = create_generic_decorator_type(concrete_decorator)  # noqa: N806
+                    concrete_decorator = try_to_map_generic_args_to_specialization(generic_decorator_type, subclass)
+                    DecoratedType = create_generic_decorator_type(  # noqa: N806
+                        concrete_decorator  # ty:ignore[invalid-argument-type]
+                    )
 
                     self.register_decorator(
-                        target_generic_base,
+                        target_generic_base,  # ty:ignore[invalid-argument-type]
                         DecoratedType,
                         decorated_arg=decorated_arg,
                         dependency_config=dependency_config,
@@ -2423,7 +2428,7 @@ class Container(Scope):
                     )
                 else:
                     self.register_decorator(
-                        target_generic_base,
+                        target_generic_base,  # ty:ignore[invalid-argument-type]
                         generic_decorator_type,
                         decorated_arg=decorated_arg,
                         dependency_config=dependency_config,

@@ -16,7 +16,10 @@ keywords = [
     "typing",
 ]
 classifiers = ["Development Status :: 5 - Production/Stable"]
-dependencies = ["the-utility-belt>=0.3.0,<0.4"]
+dependencies = [
+    "funcie>=0.2.0",
+    "typetoolbox>=0.2.0",
+]
 
 [project.optional-dependencies]
 fastapi = ["fastapi>=0.101.0,<0.102"]
@@ -31,7 +34,7 @@ dev = [
     "pytest>=7.0.0,<8",
     "pytest-cov>=4.0.0,<5",
     "pytest-asyncio>=0.21.1,<0.22",
-    "assertive>=0.2.1,<0.3",
+    "assertive>=1.0.0",
     "fastapi>=0.101.0,<0.102",
     "httpx>=0.26.0,<0.27",
     "ruff>=0.4.3,<0.5",

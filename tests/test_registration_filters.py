@@ -1,5 +1,3 @@
-from assertive import assert_that
-
 from clean_ioc.core import FactoryActivator, Lifespan, Tag, _Registration
 from clean_ioc.registration_filters import (
     has_tag,
@@ -17,10 +15,10 @@ def test_has_tag():
         activator_class=FactoryActivator,
     )
 
-    assert_that(has_tag("name")(registration)).matches(True)
-    assert_that(has_tag("name", "value")(registration)).matches(True)
-    assert_that(has_tag("name", "val")(registration)).matches(False)
-    assert_that(has_tag("yourname")(registration)).matches(False)
+    assert has_tag("name")(registration) is True
+    assert has_tag("name", "value")(registration) is True
+    assert has_tag("name", "val")(registration) is False
+    assert has_tag("yourname")(registration) is False
 
 
 def test_has_tag_with_value_or_missing_tag():
@@ -32,9 +30,9 @@ def test_has_tag_with_value_or_missing_tag():
         activator_class=FactoryActivator,
     )
 
-    assert_that(has_tag_with_value_or_missing_tag("name", "value")(registration)).matches(True)
-    assert_that(has_tag_with_value_or_missing_tag("name", "val")(registration)).matches(False)
-    assert_that(has_tag_with_value_or_missing_tag("yourname", "yourvalue")(registration)).matches(True)
+    assert has_tag_with_value_or_missing_tag("name", "value")(registration) is True
+    assert has_tag_with_value_or_missing_tag("name", "val")(registration) is False
+    assert has_tag_with_value_or_missing_tag("yourname", "yourvalue")(registration) is True
 
 
 def test_has_tag_with_value_in():
@@ -46,9 +44,9 @@ def test_has_tag_with_value_in():
         activator_class=FactoryActivator,
     )
 
-    assert_that(has_tag_with_value_in("name", "value", "value2")(registration)).matches(True)
-    assert_that(has_tag_with_value_in("name", "val", "val2")(registration)).matches(False)
-    assert_that(has_tag_with_value_in("yourname", "value", "val")(registration)).matches(False)
+    assert has_tag_with_value_in("name", "value", "value2")(registration) is True
+    assert has_tag_with_value_in("name", "val", "val2")(registration) is False
+    assert has_tag_with_value_in("yourname", "value", "val")(registration) is False
 
 
 def test_tags_can_be_destructured_into_the_filter():
@@ -61,7 +59,7 @@ def test_tags_can_be_destructured_into_the_filter():
         activator_class=FactoryActivator,
     )
 
-    assert_that(has_tag(*tag)(registration)).matches(True)
+    assert has_tag(*tag)(registration) is True
 
 
 def test_name_only_tags_can_be_destructured_into_the_filter():
@@ -74,4 +72,4 @@ def test_name_only_tags_can_be_destructured_into_the_filter():
         activator_class=FactoryActivator,
     )
 
-    assert_that(has_tag(*tag)(registration)).matches(True)
+    assert has_tag(*tag)(registration) is True
