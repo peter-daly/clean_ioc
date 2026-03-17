@@ -18,7 +18,7 @@ keywords = [
 classifiers = ["Development Status :: 5 - Production/Stable"]
 dependencies = [
     "funcie>=0.2.0",
-    "typetoolbox>=0.2.0",
+    "typetoolbox>=0.3.0",
 ]
 
 [project.optional-dependencies]

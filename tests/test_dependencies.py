@@ -1,4 +1,5 @@
 # from __future__ import annotations
+import dataclasses
 from collections.abc import MutableSequence, Sequence
 from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime
@@ -17,6 +18,7 @@ from assertive import (
     was_called_with,
     was_not_called,
 )
+from typetoolbox.generics import create_specialized_function
 
 from clean_ioc import (
     CannotResolveError,
@@ -1697,3 +1699,83 @@ def test_using_registration_id_returned_from_registration():
     resolved_a = container.resolve(A, filter=lambda r: r.id == reg_id)
 
     assert resolved_a is not None
+
+
+def test_register_generic_factory_specializes_dependencies():
+    class Connection:
+        pass
+
+    TConnection = TypeVar("TConnection", bound=Connection)
+
+    @dataclasses.dataclass(kw_only=True)
+    class ConnectionConfig:
+        connection_string: str
+
+    class Engine:
+        def __init__(self, _connection_class: type[Connection], config: ConnectionConfig):
+            self._connection_class = _connection_class
+            self.config = config
+
+        def create_connection(self) -> Connection:
+            return self._connection_class()
+
+    class GenericConnectionConfig(Generic[TConnection], ConnectionConfig):
+        pass
+
+    class MyConnection(Connection):
+        pass
+
+    class MyConfig(GenericConnectionConfig[MyConnection]):
+        pass
+
+    class GenericEngine(Generic[TConnection], Engine):
+        pass
+
+    class MyEngine(GenericEngine[MyConnection]):
+        pass
+
+    def create_engine(
+        config: GenericConnectionConfig[TConnection],
+        engine_class: type[GenericEngine[TConnection]],
+        connection_class: type[TConnection],
+    ) -> GenericEngine[TConnection]:
+        return engine_class(_connection_class=connection_class, config=config)
+
+    def create_connection(engine: GenericEngine[TConnection], connection_type: type[TConnection]) -> TConnection:
+        return connection_type()
+
+    create_engine_factory = create_specialized_function(create_engine, MyEngine)
+
+    create_connection_factory = create_specialized_function(create_connection, MyEngine)
+
+    config_instance = MyConfig(connection_string="my_connection_string")
+
+    container = Container()
+
+    container.register(
+        GenericConnectionConfig[MyConnection],
+        instance=config_instance,
+    )
+
+    container.register(
+        GenericEngine[MyConnection],
+        factory=create_engine_factory,
+        dependency_config={
+            "engine_class": MyEngine,
+            "connection_class": MyConnection,
+        },
+        lifespan=Lifespan.singleton,
+    )
+
+    container.register(
+        MyConnection,
+        factory=create_connection_factory,
+        dependency_config={
+            "connection_type": MyConnection,
+        },
+        lifespan=Lifespan.singleton,
+    )
+
+    connection = container.resolve(MyConnection)
+
+    assert connection == is_exact_type(MyConnection)

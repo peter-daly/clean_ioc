@@ -187,7 +187,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.101.0,<0.102" },
     { name = "funcie", specifier = ">=0.2.0" },
-    { name = "typetoolbox", specifier = ">=0.2.0" },
+    { name = "typetoolbox", specifier = ">=0.3.0" },
 ]
 provides-extras = ["fastapi"]
 
@@ -1130,14 +1130,14 @@ wheels = [
 
 [[package]]
 name = "typetoolbox"
-version = "0.2.0"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "funcie" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8e/f3/9daf2ce02889d6eef603e54869df583f9ab9dd33521a62d2b21dad99161b/typetoolbox-0.2.0.tar.gz", hash = "sha256:8638e96db249744ca14ab811c4e43463d4128d14646014564f9e1bf48514fbb7", size = 55911, upload-time = "2026-03-09T18:00:09.715Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0b/33/18a0194130da3ebc4ff1b3705c1612299c7b530045055e234f65f45ab8dc/typetoolbox-0.3.0.tar.gz", hash = "sha256:67936c31b9f6437314444e26585d137fd44059afe4bea25621ddca4b362fa06b", size = 58379, upload-time = "2026-03-16T22:01:54.663Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f2/22/afebed387c07e00465e682979172f3b9786dffb2054bcf028b8b98b46ed5/typetoolbox-0.2.0-py3-none-any.whl", hash = "sha256:a15f6d31a025ee6ba5022bec0a390c5fa918f93d1bc69eed6743a3745e4349ba", size = 6101, upload-time = "2026-03-09T18:00:08.8Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/29/8e4b3c54abd6aff0b114f3cb259745eb1036c1c72c8005a581fa5e032b9b/typetoolbox-0.3.0-py3-none-any.whl", hash = "sha256:b067fa45e26e2bcbdaf0feac133caef665246836a4ac2b80f2e722d4465edfe6", size = 8202, upload-time = "2026-03-16T22:01:55.688Z" },
 ]
 
 [[package]]
