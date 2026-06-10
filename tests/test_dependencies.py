@@ -513,6 +513,68 @@ def test_open_generic_decorators_with_nongeneric_decorator():
     assert type(a).__name__ == "ADec"
 
 
+def test_open_generic_decorators_with_duplicate_closed_service_type_use_nongeneric_decorator_once():
+    T = TypeVar("T")
+
+    class A(Generic[T]):
+        pass
+
+    class ADec:
+        def __init__(self, a: A):
+            self.a = a
+
+    class B:
+        pass
+
+    class C(A[B]):
+        pass
+
+    class D(A[B]):
+        pass
+
+    container = Container()
+
+    container.register_generic_subclasses(A)
+    container.register_generic_decorator(A, ADec, decorated_arg="a")
+
+    a = container.resolve(A[B])
+
+    assert type(a).__name__ == "ADec"
+    assert not isinstance(a.a, ADec)
+    assert type(a.a).__name__ in {"C", "D"}
+
+
+def test_open_generic_decorators_with_duplicate_closed_service_type_use_open_generic_decorator_once():
+    T = TypeVar("T")
+
+    class A(Generic[T]):
+        pass
+
+    class ADec(Generic[T]):
+        def __init__(self, a: A[T]):
+            self.a = a
+
+    class B:
+        pass
+
+    class C(A[B]):
+        pass
+
+    class D(A[B]):
+        pass
+
+    container = Container()
+
+    container.register_generic_subclasses(A)
+    container.register_generic_decorator(A, ADec, decorated_arg="a")
+
+    a = container.resolve(A[B])
+
+    assert type(a).__name__ == "__DecoratedGeneric__ADec"
+    assert type(a.a).__name__ in {"C", "D"}
+    assert type(a.a).__name__ != "__DecoratedGeneric__ADec"
+
+
 def test_open_generic_decorators_with_both_generic_and_nongeneric_decorator():
     T = TypeVar("T")
 

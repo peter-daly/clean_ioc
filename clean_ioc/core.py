@@ -2407,10 +2407,15 @@ class Container(Scope):
         subclasses = get_subclasses(generic_service_type, filter=full_type_filter)
         decorator_generic_map = GenericTypeMap(generic_decorator_type)
         decorator_is_open_generic = decorator_generic_map.is_mapping_generic()
+        processed_target_generic_bases = set()
 
         for subclass in subclasses:
-            target_generic_base = try_to_map_generic_args_to_specialization(generic_service_type, subclass)
+            target_generic_base = self._get_target_generic_base(generic_service_type, subclass)
             if target_generic_base:
+                if target_generic_base in processed_target_generic_bases:
+                    continue
+                processed_target_generic_bases.add(target_generic_base)
+
                 if decorator_is_open_generic:
                     concrete_decorator = try_to_map_generic_args_to_specialization(generic_decorator_type, subclass)
                     DecoratedType = create_generic_decorator_type(  # noqa: N806
