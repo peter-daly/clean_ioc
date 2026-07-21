@@ -1574,7 +1574,7 @@ class Resolver(Protocol):
 class Registrator(Protocol):
     def register(
         self,
-        service_type: type[TService],
+        service_type: Any,
         implementation_type: type[TService] | None = None,
         *,
         factory: Callable[..., TService] | None = None,
@@ -1831,7 +1831,7 @@ class Scope:
 
     def register(
         self,
-        service_type: type[TService],
+        service_type: Any,
         implementation_type: type[TService] | None = None,
         *,
         factory: Callable[..., TService] | None = None,
