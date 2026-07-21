@@ -19,6 +19,7 @@ from typing import (
     TypeVar,
     _GenericAlias,  # type: ignore
     get_type_hints,
+    overload,
 )
 from typing import Collection as TypingCollection
 from typing import Iterable as TypingIterable
@@ -1572,6 +1573,32 @@ class Resolver(Protocol):
 
 
 class Registrator(Protocol):
+    @overload
+    def register(
+        self,
+        service_type: type[TService],
+        implementation_type: type[TService] | None = ...,
+        *,
+        factory: Callable[..., TService] | None = ...,
+        instance: TService | None = ...,
+        lifespan: Lifespan = ...,
+        name: str | None = ...,
+        dependency_config: DependencyConfig = ...,
+        tags: Iterable[Tag] | None = ...,
+        parent_node_filter: NodeFilter = ...,
+        scoped_teardown: Callable[[TService], Any] | None = ...,
+    ) -> str: ...
+
+    @overload
+    def register(
+        self,
+        service_type: Any,
+        *,
+        instance: Any,
+        name: str | None = ...,
+        tags: Iterable[Tag] | None = ...,
+    ) -> str: ...
+
     def register(
         self,
         service_type: Any,
@@ -1828,6 +1855,32 @@ class Scope:
             service_type,
             filter=lambda r: r.id == registration_id,
         )
+
+    @overload
+    def register(
+        self,
+        service_type: type[TService],
+        implementation_type: type[TService] | None = ...,
+        *,
+        factory: Callable[..., TService] | None = ...,
+        instance: TService | None = ...,
+        lifespan: Lifespan = ...,
+        name: str | None = ...,
+        dependency_config: DependencyConfig = ...,
+        tags: Iterable[Tag] | None = ...,
+        parent_node_filter: NodeFilter = ...,
+        scoped_teardown: Callable[[TService], Any] | None = ...,
+    ) -> str: ...
+
+    @overload
+    def register(
+        self,
+        service_type: Any,
+        *,
+        instance: Any,
+        name: str | None = ...,
+        tags: Iterable[Tag] | None = ...,
+    ) -> str: ...
 
     def register(
         self,
