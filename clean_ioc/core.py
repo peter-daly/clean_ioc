@@ -1599,6 +1599,22 @@ class Registrator(Protocol):
         tags: Iterable[Tag] | None = ...,
     ) -> str: ...
 
+    @overload
+    def register(
+        self,
+        service_type: Any,
+        implementation_type: Any = ...,
+        *,
+        factory: Callable[..., Any] | None = ...,
+        instance: Any = ...,
+        lifespan: Lifespan = ...,
+        name: str | None = ...,
+        dependency_config: DependencyConfig = ...,
+        tags: Iterable[Tag] | None = ...,
+        parent_node_filter: NodeFilter = ...,
+        scoped_teardown: Callable[[Any], Any] | None = ...,
+    ) -> str: ...
+
     def register(
         self,
         service_type: Any,
@@ -1880,6 +1896,22 @@ class Scope:
         instance: Any,
         name: str | None = ...,
         tags: Iterable[Tag] | None = ...,
+    ) -> str: ...
+
+    @overload
+    def register(
+        self,
+        service_type: Any,
+        implementation_type: Any = ...,
+        *,
+        factory: Callable[..., Any] | None = ...,
+        instance: Any = ...,
+        lifespan: Lifespan = ...,
+        name: str | None = ...,
+        dependency_config: DependencyConfig = ...,
+        tags: Iterable[Tag] | None = ...,
+        parent_node_filter: NodeFilter = ...,
+        scoped_teardown: Callable[[Any], Any] | None = ...,
     ) -> str: ...
 
     def register(
