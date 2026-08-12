@@ -1,0 +1,4 @@
+interface:
+  display_name: "Use Clean IoC"
+  short_description: "Build Python apps with Clean IoC"
+  default_prompt: "Use $use-clean-ioc to design and implement dependency injection for this Python application."

@@ -1,5 +1,6 @@
 # from __future__ import annotations
 import dataclasses
+import inspect
 from collections.abc import MutableSequence, Sequence
 from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime
@@ -28,6 +29,8 @@ from clean_ioc import (
     Lifespan,
     NeedsScopedRegistrationError,
     Registration,
+    Registrator,
+    RemoveDependencySetting,
     Tag,
 )
 from clean_ioc.factories import use_from_current_graph
@@ -35,6 +38,7 @@ from clean_ioc.node_filters import implementation_type_is
 from clean_ioc.registration_filters import (
     has_tag,
     has_tag_with_value_in,
+    with_id,
     with_implementation,
     with_name,
 )
@@ -1690,7 +1694,7 @@ async def test_async_context_manager_with_generator_generator():
         assert a == is_exact_type(A)
 
 
-def test_resolve_from_registration_ids():
+def test_resolve_from_registration_id_is_deprecated():
     class A:
         pass
 
@@ -1703,10 +1707,208 @@ def test_resolve_from_registration_ids():
 
     ids = container.get_registration_ids(A)
 
-    resolved_a1 = container.resolve_from_registration_id(A, ids[1])
-    resolved_a2 = container.resolve_from_registration_id(A, ids[0])
+    with pytest.warns(DeprecationWarning, match=r"resolve_from_registration_id\(\) is deprecated"):
+        resolved_a1 = container.resolve_from_registration_id(A, ids[1])
+    with pytest.warns(DeprecationWarning, match=r"resolve_from_registration_id\(\) is deprecated"):
+        resolved_a2 = container.resolve_from_registration_id(A, ids[0])
     assert resolved_a1 is a1
     assert resolved_a2 is a2
+
+
+async def test_resolve_from_registration_id_async_is_deprecated():
+    class A:
+        pass
+
+    a = A()
+    container = Container()
+    registration_id = container.register(A, instance=a)
+
+    with pytest.warns(DeprecationWarning, match=r"resolve_from_registration_id_async\(\) is deprecated"):
+        resolved = await container.resolve_from_registration_id_async(A, registration_id)
+
+    assert resolved is a
+
+
+def test_get_registration_id_returns_the_first_matching_registration_id():
+    class A:
+        pass
+
+    class B:
+        pass
+
+    container = Container()
+    first_id = container.register(A)
+    second_id = container.register(A)
+    named_id = container.register(A, name="named")
+
+    assert container.get_registration_id(A) == second_id
+    assert container.get_registration_id(A, filter=with_name("named")) == named_id
+    assert container.get_registration_id(A, filter=with_id(first_id)) == first_id
+    assert container.get_registration_id(B) is None
+
+
+def test_patch_registration_changes_lifespan_through_registrator():
+    class A:
+        pass
+
+    container = Container()
+    registrator = container.resolve(Registrator)
+    registration_id = registrator.register(A, lifespan=Lifespan.transient)
+
+    registrator.patch_registration(A, registration_id, lifespan=Lifespan.singleton)
+
+    assert container.resolve(A) is container.resolve(A)
+
+
+def test_patch_registration_public_signature():
+    signature = inspect.signature(Registrator.patch_registration)
+
+    assert signature == inspect.signature(Container.patch_registration)
+    assert signature.parameters["service_type"].kind is inspect.Parameter.POSITIONAL_OR_KEYWORD
+    assert signature.parameters["registration_id"].kind is inspect.Parameter.POSITIONAL_OR_KEYWORD
+    assert signature.parameters["dependency_config"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert signature.parameters["lifespan"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert signature.parameters["tags"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert repr(RemoveDependencySetting) == "RemoveDependencySetting"
+
+
+def test_patch_registration_merges_dependency_config():
+    class A:
+        def __init__(self, x: int = 1, y: int = 2):
+            self.x = x
+            self.y = y
+
+    container = Container()
+    registration_id = container.register(
+        A,
+        dependency_config={
+            "x": 10,
+            "y": DependencySettings(value_factory=set_value(20)),
+        },
+    )
+
+    container.patch_registration(A, registration_id, dependency_config={"x": 30})
+
+    resolved = container.resolve(A)
+    assert resolved.x == 30
+    assert resolved.y == 20
+
+
+def test_patch_registration_can_remove_dependency_setting():
+    class A:
+        def __init__(self, x: int = 1, y: int = 2, **kwargs):
+            self.x = x
+            self.y = y
+            self.kwargs = kwargs
+
+    container = Container()
+    registration_id = container.register(A, dependency_config={"x": 10, "y": 20, "extra": 30})
+
+    container.patch_registration(
+        A,
+        registration_id,
+        dependency_config={
+            "x": RemoveDependencySetting,
+            "extra": RemoveDependencySetting,
+        },
+    )
+
+    resolved = container.resolve(A)
+    assert resolved.x == 1
+    assert resolved.y == 20
+    assert resolved.kwargs == {}
+
+
+def test_patch_registration_merges_tags_by_name():
+    class A:
+        pass
+
+    container = Container()
+    registration_id = container.register(
+        A,
+        tags=[Tag("environment", "development"), Tag("region", "eu")],
+    )
+
+    container.patch_registration(
+        A,
+        registration_id,
+        tags=[
+            Tag("environment", "staging"),
+            Tag("tier", "api"),
+            Tag("environment", "production"),
+        ],
+    )
+
+    assert container.get_registration_id(A, filter=has_tag("environment", "development")) is None
+    assert container.get_registration_id(A, filter=has_tag("environment", "production")) == registration_id
+    assert container.get_registration_id(A, filter=has_tag("region", "eu")) == registration_id
+    assert container.get_registration_id(A, filter=has_tag("tier", "api")) == registration_id
+
+
+def test_patch_registration_updates_implementation_alias():
+    class A:
+        pass
+
+    class B(A):
+        def __init__(self, value: int = 1):
+            self.value = value
+
+    container = Container()
+    registration_id = container.register(A, B)
+
+    with raises_exception(KeyError):
+        container.patch_registration(B, registration_id, dependency_config={"value": 3})
+    container.patch_registration(A, registration_id, dependency_config={"value": 2})
+
+    assert container.resolve(B).value == 2
+
+
+def test_patch_registration_requires_a_locally_owned_matching_type_and_id():
+    class A:
+        pass
+
+    class B:
+        pass
+
+    container = Container()
+    registration_id = container.register(A)
+
+    with raises_exception(KeyError):
+        container.patch_registration(A, "missing-registration-id")
+    with raises_exception(KeyError):
+        container.patch_registration(B, registration_id)
+    with raises_exception(KeyError):
+        container.new_scope().patch_registration(A, registration_id)
+
+    container.patch_registration(A, registration_id)
+    assert container.resolve(A) == is_exact_type(A)
+
+
+def test_patch_registration_rejects_all_patches_after_first_use_without_mutating_registration():
+    class A:
+        def __init__(self, value: int = 1):
+            self.value = value
+
+    container = Container()
+    registration_id = container.register(
+        A,
+        lifespan=Lifespan.transient,
+        tags=[Tag("environment", "development")],
+    )
+    first = container.resolve(A)
+
+    with raises_exception(RuntimeError):
+        container.patch_registration(A, registration_id, dependency_config={"value": 2})
+    with raises_exception(RuntimeError):
+        container.patch_registration(A, registration_id, lifespan=Lifespan.singleton)
+    with raises_exception(RuntimeError):
+        container.patch_registration(A, registration_id, tags=[Tag("environment", "production")])
+
+    second = container.resolve(A)
+    assert second.value == 1
+    assert second is not first
+    assert container.get_registration_id(A, filter=has_tag("environment", "development")) == registration_id
+    assert container.get_registration_id(A, filter=has_tag("environment", "production")) is None
 
 
 def test_setting_dependency_config_can_accept_values():
@@ -1758,7 +1960,7 @@ def test_using_registration_id_returned_from_registration():
     container = Container()
     reg_id = container.register(A)
 
-    resolved_a = container.resolve(A, filter=lambda r: r.id == reg_id)
+    resolved_a = container.resolve(A, filter=with_id(reg_id))
 
     assert resolved_a is not None
 

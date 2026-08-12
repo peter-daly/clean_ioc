@@ -3,8 +3,8 @@
 Filtering controls which registration is selected when multiple registrations match a service type.
 
 ```python
-from clean_ioc import Container, DependencySettings, Tag
-from clean_ioc.registration_filters import has_tag, with_name
+from clean_ioc import Container, DependencySettings, Lifespan, RemoveDependencySetting, Tag
+from clean_ioc.registration_filters import has_tag, with_id, with_name
 import clean_ioc.node_filters as nf
 ```
 
@@ -44,6 +44,50 @@ flowchart LR
     Q[Resolve int using default filter] --> U[Unnamed registrations only]
     U --> Pick[Pick unnamed registration]
 ```
+
+## Registration ID filters
+
+`register(...)` returns the registration's unique ID. Use `with_id(...)` when that exact registration must be selected:
+
+```python
+container = Container()
+registration_id = container.register(str, instance="selected")
+
+value = container.resolve(str, filter=with_id(registration_id))
+print(value)  # selected
+```
+
+## Patching a registration
+
+Patch a registration before its first resolution when configuration needs to be layered after registration. The service type and registration ID identify the registration; dependency settings, lifespan, and tags are the only mutable fields.
+
+```python
+class Client:
+    def __init__(self, endpoint: str = "http://localhost", timeout: int = 5):
+        self.endpoint = endpoint
+        self.timeout = timeout
+
+
+client_registration_id = container.register(
+    Client,
+    dependency_config={"endpoint": "https://old.example", "timeout": 30},
+    tags=[Tag("environment", "development")],
+)
+
+container.patch_registration(
+    Client,
+    client_registration_id,
+    dependency_config={"endpoint": RemoveDependencySetting},
+    lifespan=Lifespan.singleton,
+    tags=[Tag("environment", "production")],
+)
+
+client = container.resolve(Client)
+print(client.endpoint)  # http://localhost
+print(client.timeout)   # 30
+```
+
+Dependency configuration is shallow-merged by parameter name. `RemoveDependencySetting` restores normal injection or a declared default for that parameter. Tags are merged by name, with later values replacing earlier ones. Patching after the registration has created an instance raises `RuntimeError`; a type/ID pair not owned by that scope raises `KeyError`.
 
 ## Name and tag filters
 

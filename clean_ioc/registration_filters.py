@@ -6,16 +6,41 @@ from funcie import constant, predicate
 
 from .core import Lifespan, Registration
 
+__all__ = [
+    "all_registrations",
+    "create_filter",
+    "has_generic_args_matching",
+    "has_lifespan",
+    "has_lifespan_in",
+    "has_tag",
+    "has_tag_with_value_in",
+    "has_tag_with_value_or_missing_tag",
+    "is_named",
+    "is_not_named",
+    "name_ends_with",
+    "name_starts_with",
+    "with_id",
+    "with_implementation",
+    "with_implementation_matching_filter",
+    "with_name",
+]
+
 all_registrations = constant(True)
+all_registrations.__doc__ = "Match every registration."
 
 
 def create_filter(func: Callable[[Registration], bool]):
+    """Create a composable registration filter from ``func``.
+
+    ``func`` receives a registration and must return whether it matches.
+    """
     return predicate(func)
 
 
 def with_name(name: str | None):
-    """
-    Filter registrations equal the name
+    """Match registrations whose name equals ``name``.
+
+    Pass ``None`` to match unnamed registrations.
     """
 
     def _with_name(r: Registration):
@@ -26,10 +51,19 @@ def with_name(name: str | None):
     return predicate(_with_name)
 
 
+def with_id(registration_id: str):
+    """Match the registration whose unique ID equals ``registration_id``."""
+
+    def _with_id(r: Registration):
+        return r.id == registration_id
+
+    _with_id.__name__ = f"with_id({registration_id})"
+
+    return predicate(_with_id)
+
+
 def name_starts_with(prefix: str):
-    """
-    Filter registrations where the name starts the prefix
-    """
+    """Match named registrations whose name starts with ``prefix``."""
 
     def _name_starts_with(r: Registration):
         if r.name is not None:
@@ -42,9 +76,7 @@ def name_starts_with(prefix: str):
 
 
 def name_ends_with(suffix: str):
-    """
-    Filter registrations where the name ends the suffix
-    """
+    """Match named registrations whose name ends with ``suffix``."""
 
     def _name_ends_with(r: Registration):
         if r.name is not None:
@@ -57,19 +89,17 @@ def name_ends_with(suffix: str):
 
 
 is_not_named = with_name(None)
-is_not_named.__doc__ = "Filter for registrations that do not have a name"
+is_not_named.__doc__ = "Match registrations that do not have a name."
 is_not_named.__name__ = "is_not_named"
 
 
 is_named = ~is_not_named
-is_named.__doc__ = "Filter for registrations that have a name"
+is_named.__doc__ = "Match registrations that have a name."
 is_named.__name__ = "is_named"
 
 
 def with_implementation(implementation: type):
-    """
-    Filter to registrations that have the implementation
-    """
+    """Match registrations whose implementation equals ``implementation``."""
 
     def _with_implementation(r: Registration):
         return r.implementation == implementation
@@ -80,22 +110,11 @@ def with_implementation(implementation: type):
 
 
 def with_implementation_matching_filter(type_filter: Callable[[type], bool]):
-    """
-    Returns a filter function that checks if the implementation of a given registration matches a specified type filter.
+    """Match implementation types accepted by ``type_filter``.
 
-    Parameters:
-        type_filter (Callable[[type], bool]): A function that takes a type and returns a boolean indicating whether
-        the type matches a specific criteria.
-
-    Returns:
-        Callable[[Registration], bool]: A filter function that takes a registration and returns True if
-        the implementation of the registration matches the specified type filter, False otherwise.
-
-    Example:
-        >>> type_filter = lambda x: issubclass(x, int)
-        >>> registration = Registration(implementation=123)
-        >>> with_implementation_matching_filter(type_filter)(registration)
-        True
+    Factory-function implementations do not match because they are not implementation
+    types. Use this with predicates from ``clean_ioc.type_filters`` or another callable
+    accepting a type.
     """
 
     def _with_implementation_matching_filter(r: Registration):
@@ -108,18 +127,10 @@ def with_implementation_matching_filter(type_filter: Callable[[type], bool]):
 
 
 def has_generic_args_matching(pair: tuple[TypeVar | str, type]):
-    """
-    Filter registrations where generic type arg matches
-    >>> TBar = TypeVar("TBar")
-    >>> class Foo(Generic[TBar]):
-    ...    pass
-    >>> class IntFoo(Foo[int]):
-    ...    pass
-    >>> class StringFoo(Foo[str]):
-    ...    pass
-    >>> container.register(Foo, IntFoo)
-    >>> container.register(Foo, StringFoo)
-    >>> container.resolve(Foo, filter=has_generic_args_matching((TBar, int))) # returns instance of IntFoo
+    """Match a generic argument by type-variable key and concrete type.
+
+    ``pair`` contains a ``TypeVar`` (or its string name) and the concrete type
+    expected in the registration's generic mapping.
     """
 
     def _has_generic_args_matching(r: Registration):
@@ -129,16 +140,10 @@ def has_generic_args_matching(pair: tuple[TypeVar | str, type]):
 
 
 def has_tag(name: str, value: str | None = None):
-    """
-    Check if a given registration has a specific tag.
+    """Match registrations containing a tag named ``name``.
 
-    Parameters:
-        name (str): The name of the tag to check for.
-        value (str | None, optional): The value of the tag to check for. Defaults to None.
-
-    Returns:
-        Callable[[Registration], bool]: A filter function that takes a registration and returns True
-        if the registration has the specified tag, False otherwise.
+    When ``value`` is provided, the tag value must also match. When it is ``None``,
+    only the tag name is checked.
     """
 
     def _has_tag(r: Registration):
@@ -150,32 +155,15 @@ def has_tag(name: str, value: str | None = None):
 
 
 def has_tag_with_value_or_missing_tag(name: str, value: str):
-    """
-    Check if a given registration has a specific tag with a given value or if it does not have that tag.
+    """Match a tag value while allowing registrations without that tag.
 
-    Parameters:
-        name (str): The name of the tag to check for.
-        value (str): The value of the tag to check for.
-
-    Returns:
-        Callable[[Registration], bool]: A filter function that takes a registration and returns True
-        if the registration has the specified tag with the given value or if it does not have that tag, False otherwise.
+    Registrations containing ``name`` with a different value do not match.
     """
     return has_tag(name, value) | ~has_tag(name)
 
 
 def has_tag_with_value_in(name: str, *values: str):
-    """
-    Check if a given registration has a specific tag with a value that matches any of the given values.
-
-    Parameters:
-        name (str): The name of the tag to check for.
-        *values (str): The values to check for.
-
-    Returns:
-        Callable[[Registration], bool]: A filter function that takes a registration and returns True if
-        the registration has the specified tag with a value that matches any of the given values, False otherwise.
-    """
+    """Match registrations whose ``name`` tag has any of ``values``."""
     predicates = [has_tag(name, v) for v in values]
 
     def _has_tag_with_value_in(r: Registration):
@@ -185,16 +173,7 @@ def has_tag_with_value_in(name: str, *values: str):
 
 
 def has_lifespan(lifespan: Lifespan):
-    """
-    Check if a given registration has a specific lifespan.
-
-    Parameters:
-        lifespan (str): The lifespan to check for.
-
-    Returns:
-        Callable[[Registration], bool]: A filter function that takes a registration and returns True
-        if the registration has the specified lifespan, False otherwise.
-    """
+    """Match registrations whose lifespan equals ``lifespan``."""
 
     def _has_lifespan(r: Registration):
         return r.lifespan == lifespan
@@ -205,16 +184,7 @@ def has_lifespan(lifespan: Lifespan):
 
 
 def has_lifespan_in(lifespans: Iterable[Lifespan]):
-    """
-    Returns a predicate function that checks if the lifespan of a registration is in the given lifespans.
-
-    Args:
-        lifespans (Iterable[Lifespan]): The lifespans to check against.
-
-    Returns:
-        Callable[[Registration], bool]: A predicate function that returns True if the lifespan of a registration
-        is in the given lifespans, False otherwise.
-    """
+    """Match registrations whose lifespan occurs in ``lifespans``."""
 
     def _has_lifespans(r: Registration):
         return r.lifespan in lifespans

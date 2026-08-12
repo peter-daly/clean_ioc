@@ -36,7 +36,7 @@ from typetoolbox.generics import (
 )
 
 from clean_ioc.generic_utils import map_type_vars_to_parent
-from clean_ioc.utils import singleton
+from clean_ioc.utils import send_deprecation_warning, singleton
 
 from .type_filters import is_abstract, name_starts_with
 
@@ -60,6 +60,16 @@ class _unknown:  # noqa: N801
 
 EMPTY = _empty()
 UNKNOWN = _unknown()
+
+
+class _RemoveDependencySetting:
+    """Sentinel used to remove one dependency override from a registration patch."""
+
+    def __repr__(self) -> str:
+        return "RemoveDependencySetting"
+
+
+RemoveDependencySetting = _RemoveDependencySetting()
 
 
 @functools.cache
@@ -1064,6 +1074,40 @@ class _Registration(Registration):
 
         return any(t.name == name for t in self.tags)
 
+    def patch(
+        self,
+        *,
+        dependency_config: DependencyConfig | None = None,
+        lifespan: Lifespan | None = None,
+        tags: Iterable[Tag] | None = None,
+    ) -> None:
+        if self.was_used:
+            raise RuntimeError(f"Registration {self.id} cannot be patched after it has been used")
+
+        if dependency_config is not None:
+            merged_dependency_config: DependencyConfig = {
+                name: dependency.settings for name, dependency in self.dependencies.items()
+            }
+            for name, settings in dependency_config.items():
+                if settings is RemoveDependencySetting:
+                    merged_dependency_config.pop(name, None)
+                else:
+                    merged_dependency_config[name] = settings
+
+            self.dependencies = _set_up_dependencies(
+                self.implementation,
+                dependency_config_to_subdependencies(merged_dependency_config),
+            )
+
+        if lifespan is not None:
+            self.lifespan = lifespan
+
+        if tags is not None:
+            merged_tags = {tag.name: tag for tag in self.tags}
+            for tag in tags:
+                merged_tags[tag.name] = tag
+            self.tags = tuple(merged_tags.values())
+
     @property
     def generic_mapping(self):
         if not self._generic_mapping:
@@ -1334,6 +1378,32 @@ class _Registry:
         self._registrations[service_type].appendleft(registration)
 
         return registration.id
+
+    def patch_registration(
+        self,
+        service_type: type,
+        registration_id: str,
+        *,
+        dependency_config: DependencyConfig | None = None,
+        lifespan: Lifespan | None = None,
+        tags: Iterable[Tag] | None = None,
+    ) -> None:
+        registration = next(
+            (
+                registration
+                for registration in self._registrations.get(service_type, ())
+                if registration.service_type == service_type and registration.id == registration_id
+            ),
+            None,
+        )
+        if registration is None:
+            raise KeyError(f"No registration found for {service_type} with ID {registration_id}")
+
+        registration.patch(
+            dependency_config=dependency_config,
+            lifespan=lifespan,
+            tags=tags,
+        )
 
     def register_decorator(
         self,
@@ -1672,6 +1742,29 @@ class Registrator(Protocol):
         """
         ...
 
+    def patch_registration(
+        self,
+        service_type: type,
+        registration_id: str,
+        *,
+        dependency_config: DependencyConfig | None = None,
+        lifespan: Lifespan | None = None,
+        tags: Iterable[Tag] | None = None,
+    ) -> None:
+        """Patch an unused registration identified by service type and registration ID.
+
+        Dependency settings are shallow-merged by parameter name. Tags are merged by
+        tag name, and a supplied lifespan replaces the existing lifespan. Use
+        ``RemoveDependencySetting`` as a dependency-config value to remove an override.
+
+        Raises:
+            KeyError:
+                If this registrator does not own the requested registration.
+            RuntimeError:
+                If the registration has already created an instance.
+        """
+        ...
+
 
 class ScopeCreator(Protocol):
     def new_scope(
@@ -1822,7 +1915,14 @@ class Scope:
         """
         Resolve a service from a registration ID.
         This is useful for advanced use cases where you need to resolve a specific registration
+
+        .. deprecated:: 1.23.0
+            Use ``resolve(service_type, filter=with_id(registration_id))`` instead.
         """
+        send_deprecation_warning(
+            "resolve_from_registration_id() is deprecated; "
+            "use resolve(service_type, filter=with_id(registration_id)) instead."
+        )
         return self.resolve(
             service_type,
             filter=lambda r: r.id == registration_id,
@@ -1832,7 +1932,14 @@ class Scope:
         """
         Resolve a service from a registration ID.
         This is useful for advanced use cases where you need to resolve a specific registration
+
+        .. deprecated:: 1.23.0
+            Use ``resolve_async(service_type, filter=with_id(registration_id))`` instead.
         """
+        send_deprecation_warning(
+            "resolve_from_registration_id_async() is deprecated; "
+            "use resolve_async(service_type, filter=with_id(registration_id)) instead."
+        )
         return await self.resolve_async(
             service_type,
             filter=lambda r: r.id == registration_id,
@@ -1893,7 +2000,7 @@ class Scope:
 
         Returns:
             The registration ID that can later be used for diagnostics or
-            resolution by ID.
+            filter-based resolution.
 
         Examples:
             Register implementation mapping:
@@ -1966,6 +2073,47 @@ class Scope:
             dependency_config=dependency_config,
             parent_node_filter=parent_node_filter,
             scoped_teardown=scoped_teardown,
+        )
+
+    def patch_registration(
+        self,
+        service_type: type,
+        registration_id: str,
+        *,
+        dependency_config: DependencyConfig | None = None,
+        lifespan: Lifespan | None = None,
+        tags: Iterable[Tag] | None = None,
+    ) -> None:
+        """Patch an unused registration owned by this scope.
+
+        ``dependency_config`` is shallow-merged by parameter name. Set a value to
+        ``RemoveDependencySetting`` to remove an existing override. ``tags`` are
+        merged by tag name, with later values replacing earlier values.
+
+        Args:
+            service_type:
+                The original service type used to register the dependency.
+            registration_id:
+                The ID returned by ``register(...)``.
+            dependency_config:
+                Dependency-setting additions, replacements, or removals.
+            lifespan:
+                Replacement lifespan for future resolution.
+            tags:
+                Tags to add or replace by name.
+
+        Raises:
+            KeyError:
+                If this scope does not own the requested type/ID pair.
+            RuntimeError:
+                If the registration has already created an instance.
+        """
+        self._registry.patch_registration(
+            service_type,
+            registration_id,
+            dependency_config=dependency_config,
+            lifespan=lifespan,
+            tags=tags,
         )
 
     def pre_configure(
@@ -2090,6 +2238,20 @@ class Scope:
         registrations = [r for r in self._registry.get_registrations(service_type) if filter(r)]
         registrations = list_modifier(registrations)
         return [r.id for r in registrations]
+
+    def get_registration_id(
+        self,
+        service_type,
+        *,
+        filter: RegistrationFilter = default_registration_filter,
+    ) -> str | None:
+        """Return the first matching registration ID, or ``None`` when no registration matches.
+
+        Registrations use the same most-recently-registered-first order as
+        normal resolution.
+        """
+        registration_ids = self.get_registration_ids(service_type, filter=filter)
+        return registration_ids[0] if registration_ids else None
 
     def find_registrations(
         self,
@@ -2437,7 +2599,7 @@ class Container(Scope):
                     )
 
                     self.register_decorator(
-                        target_generic_base,  # ty:ignore[invalid-argument-type]
+                        target_generic_base,
                         DecoratedType,
                         decorated_arg=decorated_arg,
                         dependency_config=dependency_config,
@@ -2447,7 +2609,7 @@ class Container(Scope):
                     )
                 else:
                     self.register_decorator(
-                        target_generic_base,  # ty:ignore[invalid-argument-type]
+                        target_generic_base,
                         generic_decorator_type,
                         decorated_arg=decorated_arg,
                         dependency_config=dependency_config,

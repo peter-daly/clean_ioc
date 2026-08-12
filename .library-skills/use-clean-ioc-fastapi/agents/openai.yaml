@@ -1,0 +1,4 @@
+interface:
+  display_name: "Use Clean IoC with FastAPI"
+  short_description: "Wire Clean IoC into FastAPI safely"
+  default_prompt: "Use $use-clean-ioc-fastapi to integrate Clean IoC dependency injection into this FastAPI application."

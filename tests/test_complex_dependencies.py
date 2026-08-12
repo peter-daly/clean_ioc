@@ -3,7 +3,6 @@ from typing import Any, Generic, Protocol, TypeVar
 
 from assertive import (
     is_exact_type,
-    is_none,
 )
 from typetoolbox.generics import GenericTypeMap
 
@@ -97,7 +96,7 @@ def test_value_factories_with_generic_decorators():
     transaction_manager_a: SqlTransactionManager = handler_a.transaction_manager  # type: ignore
     transaction_manager_b: SqlTransactionManager = handler_b.transaction_manager  # type: ignore
 
-    assert transaction_manager_a.isolation_level == is_none()
+    assert transaction_manager_a.isolation_level is None
     assert transaction_manager_b.isolation_level == "REPEATABLE READ"
 
 

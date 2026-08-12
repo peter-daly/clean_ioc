@@ -70,3 +70,33 @@ container.apply_bundle(ApiBundle(cfg))  # ignored by OnlyRunOncePerClassBundle
 client = container.resolve(ApiClient)
 print(client.base_url)
 ```
+
+## Customizing a bundle registration
+
+A configurable bundle can retain a registration ID so application setup can patch selected registration details before anything is resolved:
+
+```python
+class ConfigurableApiBundle:
+    def __init__(self):
+        self.api_client_registration_id: str | None = None
+
+    def __call__(self, c: Container):
+        self.api_client_registration_id = c.register(ApiClient)
+
+
+configurable_bundle = ConfigurableApiBundle()
+container = Container()
+container.apply_bundle(configurable_bundle)
+
+assert configurable_bundle.api_client_registration_id is not None
+container.patch_registration(
+    ApiClient,
+    configurable_bundle.api_client_registration_id,
+    dependency_config={"config": cfg},
+)
+
+client = container.resolve(ApiClient)
+print(client.base_url)
+```
+
+Apply every patch before resolving the registration. Once a registration has created an instance, Clean IoC rejects further patches so cached lifespans and teardown ownership cannot become stale.

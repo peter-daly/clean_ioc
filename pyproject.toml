@@ -1,6 +1,6 @@
 [project]
 name = "clean_ioc"
-version = "1.22.0"
+version = "1.23.0"
 description = "An IOC Container for Python 3.10+"
 authors = [{ name = "Peter Daly" }]
 requires-python = ">=3.10,<4"
@@ -34,7 +34,7 @@ dev = [
     "pytest>=7.0.0,<8",
     "pytest-cov>=4.0.0,<5",
     "pytest-asyncio>=0.21.1,<0.22",
-    "assertive>=1.0.0",
+    "assertive>=1.6.1",
     "fastapi>=0.101.0,<0.102",
     "httpx>=0.26.0,<0.27",
     "ruff>=0.4.3,<0.5",
@@ -53,6 +53,7 @@ default-groups = [
 
 [tool.hatch.build.targets.sdist]
 include = [
+    ".library-skills",
     "clean_ioc",
     "CHANGES.rst",
     "clean_ioc/py.typed",
@@ -66,6 +67,9 @@ include = [
     "clean_ioc/py.typed",
     "clean_ioc/ext/fastapi/py.typed",
 ]
+
+[tool.hatch.build.targets.wheel.force-include]
+".library-skills" = "clean_ioc/.agents/skills"
 
 [build-system]
 requires = ["hatchling"]
