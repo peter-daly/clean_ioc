@@ -800,3 +800,50 @@ def test_can_register_a_generic_type_that_has_been_dynamically_created_with_a_ge
     assert isinstance(instance, MyClass)
     assert isinstance(instance.value, A)
     assert isinstance(instance.dependency, MyDepedency)
+
+
+def test_generic_decorator_type_is_memoised_across_containers():
+    """Repeated container builds must not mint fresh decorator classes.
+
+    create_generic_decorator_type used to call types.new_class on every
+    invocation; each new class was then pinned for the life of the process by
+    typing's parameterisation caches, so applications that build a container
+    per test/request leaked thousands of classes per build.
+    """
+    from clean_ioc.core import create_generic_decorator_type
+
+    TMessage = TypeVar("TMessage")
+
+    class MessageA:
+        pass
+
+    class MessageHandler(Generic[TMessage]):
+        def handle(self, message: TMessage):
+            pass
+
+    class AHandler(MessageHandler[MessageA]):
+        pass
+
+    class LoggingDecorator(MessageHandler[TMessage], Generic[TMessage]):
+        def __init__(self, child: MessageHandler[TMessage]):
+            self.child = child
+
+        def handle(self, message: TMessage):
+            self.child.handle(message)
+
+    def build_container() -> Container:
+        container = Container()
+        container.register_generic_subclasses(MessageHandler)
+        container.register_generic_decorator(MessageHandler, LoggingDecorator, decorated_arg="child")
+        return container
+
+    handler_1 = build_container().resolve(MessageHandler[MessageA])  # type: ignore
+    handler_2 = build_container().resolve(MessageHandler[MessageA])  # type: ignore
+
+    assert handler_1 is not handler_2
+    assert type(handler_1) is type(handler_2)
+    assert isinstance(handler_1, LoggingDecorator)
+    assert isinstance(handler_1.child, AHandler)  # type: ignore[attr-defined]
+
+    specialisation = LoggingDecorator[MessageA]
+    assert create_generic_decorator_type(specialisation) is create_generic_decorator_type(specialisation)

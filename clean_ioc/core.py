@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import functools
 import inspect
 import logging
 import types
@@ -61,7 +62,15 @@ EMPTY = _empty()
 UNKNOWN = _unknown()
 
 
+@functools.cache
 def create_generic_decorator_type(concrete_decorator: type):
+    # Memoised: minting a fresh class per call leaks — dynamically created
+    # classes end up pinned for the life of the process by typing's
+    # parameterisation caches (and, before typetoolbox held its GenericTypeMap
+    # cache weakly, by that too), so every register_generic_decorator call on
+    # a new container grew the heap by thousands of classes. The generated
+    # class is a pure template (never mutated after creation), so one per
+    # concrete decorator serves every container in the process.
     return types.new_class(
         f"__DecoratedGeneric__{concrete_decorator.__name__}",
         (concrete_decorator,),
@@ -2312,7 +2321,12 @@ class Container(Scope):
     ) -> list[str]:
         ids: list[str] = []
 
-        full_type_filter = ~is_abstract & subclass_type_filter
+        # Exclude generated decorator template classes (same exclusion as
+        # register_generic_decorator): without it, a process that builds more
+        # than one container rediscovers an earlier build's
+        # __DecoratedGeneric__* classes as implementations and ends up
+        # decorating the decorator, recursing at resolve time.
+        full_type_filter = ~is_abstract & ~name_starts_with("__DecoratedGeneric__") & subclass_type_filter
         subclasses = get_subclasses(generic_service_type, filter=full_type_filter)
         for subclass in subclasses:
             target_generic_base = self._get_target_generic_base(generic_service_type, subclass)
