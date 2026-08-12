@@ -12,7 +12,7 @@ repos:
         pass_filenames: false
       - id: ty-check
         name: ty-check
-        entry: uv run ty check clean_ioc --ignore invalid-type-form --ignore not-subscriptable
+        entry: uv run ty check . --fix
         language: system
         pass_filenames: false
       - id: unit-tests

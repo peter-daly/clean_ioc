@@ -1,6 +1,6 @@
 [project]
 name = "clean_ioc"
-version = "1.23.0"
+version = "1.24.0"
 description = "An IOC Container for Python 3.10+"
 authors = [{ name = "Peter Daly" }]
 requires-python = ">=3.10,<4"
@@ -18,7 +18,7 @@ keywords = [
 classifiers = ["Development Status :: 5 - Production/Stable"]
 dependencies = [
     "funcie>=0.2.0",
-    "typetoolbox>=0.3.0",
+    "typetoolbox>=0.4.0",
 ]
 
 [project.optional-dependencies]

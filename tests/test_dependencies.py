@@ -152,8 +152,8 @@ def test_sequence():
     array = container.resolve(Sequence[A])
 
     assert array == has_length(2)
-    assert array[0] == is_exact_type(B)  # type: ignore
-    assert array[1] == is_exact_type(A)  # type: ignore
+    assert array[0] == is_exact_type(B)
+    assert array[1] == is_exact_type(A)
 
 
 def test_mutable_sequence():
@@ -171,8 +171,8 @@ def test_mutable_sequence():
     array = container.resolve(MutableSequence[A])
 
     assert array == has_length(2)
-    assert array[0] == is_exact_type(B)  # type: ignore
-    assert array[1] == is_exact_type(A)  # type: ignore
+    assert array[0] == is_exact_type(B)
+    assert array[1] == is_exact_type(A)
 
 
 def test_list_with_filter():
@@ -332,10 +332,10 @@ def test_nested_decorators_with_sort_index():
     a: Any = container.resolve(A)
 
     assert a == is_exact_type(D3)
-    assert a.a == is_exact_type(D5)  # ty:ignore[unresolved-attribute]
-    assert a.a.a == is_exact_type(D1)  # ty:ignore[unresolved-attribute]
-    assert a.a.a.a == is_exact_type(D2)  # ty:ignore[unresolved-attribute]
-    assert a.a.a.a.a == is_exact_type(D4)  # ty:ignore[unresolved-attribute]
+    assert a.a == is_exact_type(D5)
+    assert a.a.a == is_exact_type(D1)
+    assert a.a.a.a == is_exact_type(D2)
+    assert a.a.a.a.a == is_exact_type(D4)
 
 
 def test_simple_decorator():
@@ -544,8 +544,8 @@ def test_open_generic_decorators_with_duplicate_closed_service_type_use_nongener
     a = container.resolve(A[B])
 
     assert type(a).__name__ == "ADec"
-    assert not isinstance(a.a, ADec)
-    assert type(a.a).__name__ in {"C", "D"}
+    assert not isinstance(a.a, ADec)  # ty: ignore[unresolved-attribute]
+    assert type(a.a).__name__ in {"C", "D"}  # ty: ignore[unresolved-attribute]
 
 
 def test_open_generic_decorators_with_duplicate_closed_service_type_use_open_generic_decorator_once():
@@ -575,8 +575,8 @@ def test_open_generic_decorators_with_duplicate_closed_service_type_use_open_gen
     a = container.resolve(A[B])
 
     assert type(a).__name__ == "__DecoratedGeneric__ADec"
-    assert type(a.a).__name__ in {"C", "D"}
-    assert type(a.a).__name__ != "__DecoratedGeneric__ADec"
+    assert type(a.a).__name__ in {"C", "D"}  # ty: ignore[unresolved-attribute]
+    assert type(a.a).__name__ != "__DecoratedGeneric__ADec"  # ty: ignore[unresolved-attribute]
 
 
 def test_open_generic_decorators_with_both_generic_and_nongeneric_decorator():

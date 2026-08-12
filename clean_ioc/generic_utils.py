@@ -44,7 +44,7 @@ def map_type_vars_to_parent(*, child_type: type | TypeVar | _GenericAlias, paren
 
         output_args.append(a)
 
-    return child_type[tuple(output_args)]
+    return child_type[tuple(output_args)]  # ty: ignore[not-subscriptable]
 
 
 def get_generic_type_args(type: type):

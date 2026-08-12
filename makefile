@@ -18,7 +18,7 @@ fixup:
 
 typecheck:
 	@echo "Typechecking"
-	@uv run ty check clean_ioc --ignore invalid-type-form --ignore not-subscriptable
+	@uv run ty check .
 
 
 pre-commit:

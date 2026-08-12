@@ -2595,7 +2595,7 @@ class Container(Scope):
                 if decorator_is_open_generic:
                     concrete_decorator = try_to_map_generic_args_to_specialization(generic_decorator_type, subclass)
                     DecoratedType = create_generic_decorator_type(  # noqa: N806
-                        concrete_decorator  # ty:ignore[invalid-argument-type]
+                        concrete_decorator
                     )
 
                     self.register_decorator(

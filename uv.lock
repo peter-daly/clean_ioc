@@ -175,7 +175,7 @@ wheels = [
 
 [[package]]
 name = "clean-ioc"
-version = "1.23.0"
+version = "1.24.0"
 source = { editable = "." }
 dependencies = [
     { name = "funcie" },
@@ -208,7 +208,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.101.0,<0.102" },
     { name = "funcie", specifier = ">=0.2.0" },
-    { name = "typetoolbox", specifier = ">=0.3.0" },
+    { name = "typetoolbox", specifier = ">=0.4.0" },
 ]
 provides-extras = ["fastapi"]
 
@@ -1278,14 +1278,14 @@ wheels = [
 
 [[package]]
 name = "typetoolbox"
-version = "0.3.0"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "funcie" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0b/33/18a0194130da3ebc4ff1b3705c1612299c7b530045055e234f65f45ab8dc/typetoolbox-0.3.0.tar.gz", hash = "sha256:67936c31b9f6437314444e26585d137fd44059afe4bea25621ddca4b362fa06b", size = 58379, upload-time = "2026-03-16T22:01:54.663Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ff/25/9b1fbd56714cad55eac2ad541aa7e4eca621010f242defc1596b866d8b7e/typetoolbox-0.4.0.tar.gz", hash = "sha256:2d72b2b24389e2d23ab8d1ba4132285493fc3884afd006950ba525fe9d3357c4", size = 61684, upload-time = "2026-08-12T10:15:04.04Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ce/29/8e4b3c54abd6aff0b114f3cb259745eb1036c1c72c8005a581fa5e032b9b/typetoolbox-0.3.0-py3-none-any.whl", hash = "sha256:b067fa45e26e2bcbdaf0feac133caef665246836a4ac2b80f2e722d4465edfe6", size = 8202, upload-time = "2026-03-16T22:01:55.688Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/c3/29efcdf05fcd70472fcee5b3c002834929ce2f5db1f6e5072dcbcd3cf650/typetoolbox-0.4.0-py3-none-any.whl", hash = "sha256:5435b992632535f519b55b9df6498cb1fd1e1b9e71b4120615c77c81cc3901e9", size = 11375, upload-time = "2026-08-12T10:15:03.129Z" },
 ]
 
 [[package]]

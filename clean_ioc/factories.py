@@ -40,7 +40,7 @@ def create_type_mapping(
     filter: RegistrationFilter = default_registration_filter,
 ):
     def factory(resolver: Resolver):
-        items = resolver.resolve(list[service_type], filter=filter)
+        items = resolver.resolve(list[service_type], filter=filter)  # ty: ignore[invalid-type-form]
         return {key_getter(item): item for item in items}
 
     return factory
@@ -52,7 +52,7 @@ def create_type_mapping_async(
     filter: RegistrationFilter = default_registration_filter,
 ):
     async def factory(resolver: Resolver):
-        items = await resolver.resolve_async(list[service_type], filter=filter)
+        items = await resolver.resolve_async(list[service_type], filter=filter)  # ty: ignore[invalid-type-form]
         return {key_getter(item): item for item in items}
 
     return factory

@@ -87,10 +87,10 @@ def test_value_factories_with_generic_decorators():
         dependency_config={"isolation_level": DependencySettings(value_factory=isolation_level_factory)},
     )
     handler_a: TransactionMessageHandlerDecorator[MessageA] = container.resolve(
-        MessageHandler[MessageA]  # type: ignore
+        MessageHandler[MessageA]
     )  # ty:ignore[invalid-assignment]
     handler_b: TransactionMessageHandlerDecorator[MessageB] = container.resolve(
-        MessageHandler[MessageB]  # type: ignore
+        MessageHandler[MessageB]
     )  # ty:ignore[invalid-assignment]
 
     transaction_manager_a: SqlTransactionManager = handler_a.transaction_manager  # type: ignore
@@ -350,13 +350,13 @@ def test_generic_decorator_can_set_the_generic_args_of_a_dependency_with_differe
     handler_b: Any = container.resolve(MessageHandler[MessageB])
     handler_c: Any = container.resolve(MessageHandler[MessageC])
 
-    handler_a.transaction_manager == is_exact_type(SqlTransactionManager)  # ty:ignore[unresolved-attribute]
-    handler_a.child == is_exact_type(AHandler)  # ty:ignore[unresolved-attribute]
-    handler_b.transaction_manager == (is_exact_type(DocDbTransactionManager))  # ty:ignore[unresolved-attribute]
-    handler_b.child == is_exact_type(BHandler)  # ty:ignore[unresolved-attribute]
-    handler_c.transaction_manager == (is_exact_type(DocDbTransactionManager))  # ty:ignore[unresolved-attribute]
-    handler_c.child.transaction_manager == (is_exact_type(SqlTransactionManager))  # ty:ignore[unresolved-attribute]
-    handler_c.child.child == is_exact_type(CHandler)  # ty:ignore[unresolved-attribute]
+    handler_a.transaction_manager == is_exact_type(SqlTransactionManager)
+    handler_a.child == is_exact_type(AHandler)
+    handler_b.transaction_manager == (is_exact_type(DocDbTransactionManager))
+    handler_b.child == is_exact_type(BHandler)
+    handler_c.transaction_manager == (is_exact_type(DocDbTransactionManager))
+    handler_c.child.transaction_manager == (is_exact_type(SqlTransactionManager))
+    handler_c.child.child == is_exact_type(CHandler)
 
 
 def test_can_filter_parent_based_on_registration_name():
@@ -722,7 +722,7 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes_can_hav
         def is_subclass_of_parent(subclass: type):
             generic_type_map = GenericTypeMap(subclass)
             generic_type = generic_type_map["TThing"]
-            return issubclass(generic_type, parent)  # type: ignore
+            return issubclass(generic_type, parent)
 
         return is_subclass_of_parent
 
@@ -836,8 +836,8 @@ def test_generic_decorator_type_is_memoised_across_containers():
         container.register_generic_decorator(MessageHandler, LoggingDecorator, decorated_arg="child")
         return container
 
-    handler_1 = build_container().resolve(MessageHandler[MessageA])  # type: ignore
-    handler_2 = build_container().resolve(MessageHandler[MessageA])  # type: ignore
+    handler_1 = build_container().resolve(MessageHandler[MessageA])
+    handler_2 = build_container().resolve(MessageHandler[MessageA])
 
     assert handler_1 is not handler_2
     assert type(handler_1) is type(handler_2)
