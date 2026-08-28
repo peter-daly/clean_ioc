@@ -1,0 +1,71 @@
+name: Benchmarks
+
+on:
+  pull_request:
+
+# A later push to the same PR makes an in-flight run pointless.
+concurrency:
+  group: benchmarks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    name: Compare against base
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --group bench
+
+      - name: Find the base revision
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # checkout@v4 fetches the pull request ref, not the base branch, so
+          # fetch the base branch before asking for a merge base.
+          git fetch --no-tags origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          BASE=$(git merge-base HEAD "refs/remotes/origin/$BASE_REF")
+          echo "Base revision: $BASE"
+          echo "BASE_SHA=$BASE" >> "$GITHUB_ENV"
+
+      # Both revisions are measured in this one checkout, with one virtual
+      # environment and one interpreter. Only the library source is swapped, so
+      # the machine info matches and the two runs stay comparable. The benchmark
+      # code always comes from this pull request.
+      - name: Measure the base revision
+        run: |
+          rm -rf clean_ioc
+          git checkout "$BASE_SHA" -- clean_ioc
+          uv run pytest benchmarks --benchmark-only --benchmark-save=base
+
+      # min is the comparison metric because it is the least sensitive to the
+      # scheduling noise of a shared runner. The threshold is deliberately loose:
+      # this job catches a change that makes resolution much slower, not a small
+      # one. Measure small changes locally with `make bench-compare`.
+      - name: Measure this pull request and compare
+        run: |
+          rm -rf clean_ioc
+          git checkout HEAD -- clean_ioc
+          uv run pytest benchmarks --benchmark-only \
+            --benchmark-compare=0001_base \
+            --benchmark-compare-fail=min:50%
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: .benchmarks
+          if-no-files-found: warn

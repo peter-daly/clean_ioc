@@ -1,4 +1,4 @@
-.PHONY: fixup lint format test docs-check ci typecheck pre-commit
+.PHONY: fixup lint format test docs-check ci typecheck pre-commit bench bench-save bench-compare
 
 
 install-deps:
@@ -36,7 +36,27 @@ format:
 
 test:
 	@echo "Running tests..."
-	@uv run pytest .
+	@uv run pytest
+
+
+bench:
+	@echo "Running benchmarks..."
+	@uv run --group bench pytest benchmarks --benchmark-only
+
+
+# Record the current revision as the baseline to compare later runs against.
+bench-save:
+	@echo "Saving benchmark baseline..."
+	@uv run --group bench pytest benchmarks --benchmark-only \
+		--benchmark-save=baseline --benchmark-save-data
+
+
+# Compare against the saved baseline. Fails if any min time regresses by more
+# than 50%. Only meaningful when both runs happened on the same machine.
+bench-compare:
+	@echo "Comparing benchmarks against baseline..."
+	@uv run --group bench pytest benchmarks --benchmark-only \
+		--benchmark-compare=0001_baseline --benchmark-compare-fail=min:50%
 
 docs-check:
 	@echo "Validating docs examples..."

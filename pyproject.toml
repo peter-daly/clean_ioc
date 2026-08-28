@@ -45,6 +45,10 @@ dev = [
     "pre-commit>=4.5.1,<5",
     "ty>=0.0.21,<1",
 ]
+bench = [
+    "pytest>=7.0.0,<8",
+    "pytest-benchmark>=4.0.0,<6",
+]
 
 [tool.uv]
 default-groups = [
@@ -121,10 +125,13 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "F403"]  # Ignore unused imports on init files
 "tests/**/*.py" = ["S101"]  # Allow assert usage on tests
+"benchmarks/**/*.py" = ["S101"]  # Allow assert usage on benchmarks
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
 source = ["clean_ioc", "tests"]
+omit = ["benchmarks/*"]
