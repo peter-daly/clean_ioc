@@ -55,6 +55,7 @@ async def app_lifespan(app: FastAPI):
     )
     container.register(UserRepository, lifespan=Lifespan.scoped)
     container.register(UserService)
+    container.validate(UserService)
 
     async with add_container_to_app(app, container):
         yield
@@ -72,6 +73,12 @@ async def get_user(
 ```
 
 Do not wrap `Resolve(...)` in `Depends(...)`; it already returns a FastAPI dependency marker. Internally it awaits `scope.resolve_async(...)`, so it supports graphs containing both sync and async factories.
+
+Call `container.validate(...)` for the route services, handlers, and other application
+entry points before yielding from the lifespan. The check does not construct resources,
+and it turns missing registrations, dependency cycles, and singleton-to-request-scope
+captures into startup failures with complete paths. Leave `allow_async=True` because
+`Resolve(...)` uses `scope.resolve_async(...)`.
 
 ## Let FastAPI drive request resolution
 

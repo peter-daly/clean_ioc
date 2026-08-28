@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">Clean IoC social preview</title>
+  <desc id="desc">Your Python dependency graph is valid. Prove it.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#08111f"/>
+      <stop offset="1" stop-color="#102a35"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1280" height="640" rx="30" fill="url(#background)"/>
+  <circle cx="1160" cy="90" r="210" fill="#22d3ee" opacity="0.06"/>
+  <circle cx="80" cy="620" r="260" fill="#34d399" opacity="0.05"/>
+
+  <g transform="translate(76 72)">
+    <rect x="0" y="0" width="76" height="76" rx="18" fill="url(#accent)"/>
+    <path d="M22 27h32M22 38h20M22 49h32" stroke="#08111f" stroke-width="7" stroke-linecap="round"/>
+    <text x="98" y="55" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="52" font-weight="750">Clean IoC</text>
+  </g>
+
+  <text x="76" y="245" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="70" font-weight="760">Your Python DI graph is valid.</text>
+  <text x="76" y="330" fill="url(#accent)" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="70" font-weight="760">Prove it.</text>
+  <text x="80" y="405" fill="#9fb4c3" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28">Static validation · readable explanations · explicit ownership</text>
+
+  <g transform="translate(80 480)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="21">
+    <rect width="1120" height="92" rx="18" fill="#07101b" stroke="#294252" stroke-width="2"/>
+    <circle cx="41" cy="46" r="15" fill="#34d399" filter="url(#glow)"/>
+    <path d="M34 46l5 5 10-12" fill="none" stroke="#07101b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="77" y="54" fill="#d6e3ea">container.validate(CreateOrder)</text>
+    <text x="705" y="54" fill="#78e5c1">validate()  explain()  FastAPI  CQRS</text>
+  </g>
+</svg>

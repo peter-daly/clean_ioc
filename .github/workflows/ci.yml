@@ -54,10 +54,42 @@ jobs:
       - name: Run pre-commit hooks
         run: uv run pre-commit run --all-files
 
+  fastapi-compatibility:
+    name: FastAPI ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: minimum (0.101.0)
+            requirement: fastapi==0.101.0
+          - label: latest
+            requirement: fastapi<1
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: |
+          uv sync --group dev
+          uv pip install --upgrade "${{ matrix.requirement }}"
+
+      - name: Run FastAPI integration tests
+        run: uv run pytest -q tests/ext/fast_api
+
   check-version:
     name: Check version against tags
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [tests, pre-commit]
+    needs: [tests, pre-commit, fastapi-compatibility]
     runs-on: ubuntu-latest
     outputs:
       should_release: ${{ steps.compare.outputs.should_release }}

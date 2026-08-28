@@ -70,6 +70,38 @@ container.register(UserService)
 service = container.resolve(UserService)
 ```
 
+## Validate and explain before resolving
+
+After registration, statically validate the application's public entry points at the
+composition root. Validation does not invoke constructors, factories, decorators,
+pre-configurations, or custom value providers:
+
+```python
+container.validate(UserService, CreateOrder, HandlePayment)
+```
+
+With no service types, `validate()` checks every registration visible to the current
+scope. It raises `ContainerValidationError` with all discovered missing registrations,
+cycles, singleton-to-scoped captures, and—when `allow_async=False`—async-only activation
+paths. Use the stricter mode for entry points that must call `resolve(...)` rather than
+`resolve_async(...)`:
+
+```python
+container.validate(Command, allow_async=False)
+```
+
+Use `explain(...)` to review a selected graph without creating it:
+
+```python
+plan = container.explain(UserService)
+print(plan.to_text())
+print(plan.to_mermaid())
+```
+
+The plan models argument names, implementations, lifespans, registration names,
+collections, supplied values, decorators, and pre-configurations. Check `plan.is_valid`
+and `plan.issues` when building diagnostics or architecture tooling.
+
 Choose one registration form for each service:
 
 ```python
@@ -171,6 +203,12 @@ Import `Lifespan` from `clean_ioc` and select based on ownership:
 | `once_per_graph` | One top-level resolve graph; the default | Ordinary services |
 | `scoped` | One `Scope` | Request, job, or unit-of-work state |
 | `singleton` | Root `Container` | Configuration and long-lived client pools |
+
+Never make a singleton depend directly or indirectly on a non-instance `scoped`
+registration. Clean IoC rejects this captive dependency during validation and runtime
+resolution because it would retain a request/job-owned object for the application
+lifetime. Scoped and singleton first activation is coordinated across threads and async
+tasks, so concurrent callers share one build at the relevant ownership boundary.
 
 Open scopes as context managers so cached objects and finalizers are released:
 

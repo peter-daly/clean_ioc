@@ -2,6 +2,11 @@
 
 Lifespan controls instance reuse.
 
+Clean IoC coordinates first-time `scoped` and `singleton` construction across concurrent
+threads and async tasks. Callers resolving the same uncached registration wait for one
+builder and receive the same cached instance. A failed build wakes all waiters and leaves
+the registration retryable.
+
 ```python
 from clean_ioc import Container, Lifespan
 ```
@@ -101,3 +106,18 @@ with container.new_scope() as scope:
 
 print(a1 is a2)  # True
 ```
+
+### Captive dependencies
+
+A singleton must not depend directly or indirectly on a non-instance `scoped` service.
+Doing so would retain request- or job-owned state for the lifetime of the application.
+Clean IoC detects this during `validate()` and runtime resolution:
+
+```text
+Singleton AppService cannot depend on scoped UnitOfWork.
+Path: AppService -> Repository -> UnitOfWork
+```
+
+Move the owning service to `scoped`, lengthen the dependency's ownership only when that is
+semantically correct, or inject a boundary that creates a scope for each operation. Do not
+silence the error by changing lifespans without checking resource ownership.

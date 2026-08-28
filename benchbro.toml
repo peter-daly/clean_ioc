@@ -1,0 +1,16 @@
+benchmark_paths = ["benchmarks"]
+
+[run]
+repeats = 30
+warmup = 5
+min_iterations = 20000
+adaptive = true
+min_repeats = 7
+min_time_s = 0.25
+max_time_s = 10.0
+target_relative_margin_pct = 3.0
+noise_threshold_pct = 10.0
+
+[output]
+json = "benchmarks/results.json"
+markdown = "benchmarks/results.md"

@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import concurrent.futures
+import contextvars
 import functools
 import inspect
 import logging
+import threading
 import types
 from collections import defaultdict, deque
 from collections.abc import Callable, Collection, Iterable, MutableSequence, Sequence
@@ -14,11 +17,14 @@ from contextlib import _AsyncGeneratorContextManager, _GeneratorContextManager, 
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import (
+    TYPE_CHECKING,
     Any,
     ClassVar,
     Protocol,
     TypeVar,
     _GenericAlias,  # type: ignore
+    get_args,
+    get_origin,
     get_type_hints,
 )
 from typing import Collection as TypingCollection
@@ -39,6 +45,9 @@ from clean_ioc.generic_utils import map_type_vars_to_parent
 from clean_ioc.utils import send_deprecation_warning, singleton
 
 from .type_filters import is_abstract, name_starts_with
+
+if TYPE_CHECKING:
+    from .diagnostics import DependencyPlan, ValidationReport
 
 logger = logging.getLogger(__name__)
 
@@ -202,6 +211,40 @@ class Lifespan(IntEnum):
     once_per_graph = 1
     scoped = 2
     singleton = 3
+
+
+@dataclass(frozen=True)
+class _BuildOutcome:
+    error: BaseException | None = None
+
+
+class _SharedBuildCoordinator:
+    """Coordinate scoped/singleton activation across threads and event loops."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._in_flight: dict[str, concurrent.futures.Future[_BuildOutcome]] = {}
+
+    def begin(self, registration_id: str) -> tuple[concurrent.futures.Future[_BuildOutcome], bool]:
+        with self._lock:
+            if existing := self._in_flight.get(registration_id):
+                return existing, False
+
+            future: concurrent.futures.Future[_BuildOutcome] = concurrent.futures.Future()
+            self._in_flight[registration_id] = future
+            return future, True
+
+    def finish(
+        self,
+        registration_id: str,
+        future: concurrent.futures.Future[_BuildOutcome],
+        error: BaseException | None = None,
+    ) -> None:
+        with self._lock:
+            if self._in_flight.get(registration_id) is future:
+                del self._in_flight[registration_id]
+
+        future.set_result(_BuildOutcome(error=error))
 
 
 class Node(Protocol):
@@ -574,6 +617,45 @@ class CannotResolveError(Exception):
 
     def __str__(self):
         return f"\n{self.message}\nChain:\n\n{self.chain}"
+
+
+def _display_type(subject: Any) -> str:
+    origin = get_origin(subject)
+    arguments = get_args(subject)
+    if origin is not None and arguments:
+        return f"{_display_type(origin)}[{', '.join(_display_type(argument) for argument in arguments)}]"
+    return getattr(subject, "__name__", str(subject).replace("typing.", ""))
+
+
+class CircularDependencyError(CannotResolveError):
+    """Raised when a registration is encountered twice in one active graph path."""
+
+    def __init__(self, registrations: Sequence[_Registration]):
+        super().__init__()
+        self.registrations = tuple(registrations)
+
+    @property
+    def message(self):
+        path = " -> ".join(_display_type(registration.service_type) for registration in self.registrations)
+        return f"Circular dependency detected: {path}"
+
+
+class CaptiveDependencyError(CannotResolveError):
+    """Raised when a singleton attempts to retain a scoped dependency."""
+
+    def __init__(self, singleton: _Registration, scoped: _Registration, registrations: Sequence[_Registration]):
+        super().__init__()
+        self.singleton = singleton
+        self.scoped = scoped
+        self.registrations = tuple(registrations)
+
+    @property
+    def message(self):
+        path = " -> ".join(_display_type(registration.service_type) for registration in self.registrations)
+        return (
+            f"Singleton {_display_type(self.singleton.service_type)} cannot depend on scoped "
+            f"{_display_type(self.scoped.service_type)}. Path: {path}"
+        )
 
 
 class Dependency:
@@ -1027,6 +1109,8 @@ class _Registration(Registration):
         "dependencies",
         "id",
         "implementation",
+        "is_instance",
+        "is_root_owned_instance",
         "is_named",
         "lifespan",
         "name",
@@ -1049,12 +1133,16 @@ class _Registration(Registration):
         parent_node_filter: NodeFilter = default_parent_node_filter,
         tags: Iterable[Tag] | None = None,
         scoped_teardown: Callable | None = None,
+        is_instance: bool = False,
+        is_root_owned_instance: bool = False,
     ):
         if scoped_teardown and not lifespan <= Lifespan.scoped:
             raise ValueError("Scoped teardowns can only be used with scoped and singleton lifestyles")
 
         self.service_type = service_type
         self.implementation = implementation
+        self.is_instance = is_instance
+        self.is_root_owned_instance = is_root_owned_instance
         self.activator_class = activator_class
         self.lifespan = lifespan
         self.name = name
@@ -1117,10 +1205,10 @@ class _Registration(Registration):
 
     def _try_find_cached_node(self, context: _ResolvingContext, parent_node: DependencyNode):
         cached_node = context.get_cached(self.id)
-        if cached_node:
+        if cached_node is not None:
             parent_node.add_child(cached_node)
-            return cached_node.instance
-        return None
+            return True, cached_node.instance
+        return False, None
 
     def _create_new_dependency_node(self, parent_node: DependencyNode):
         new_instance_node = DependencyNode(
@@ -1142,90 +1230,128 @@ class _Registration(Registration):
             e.append_registration(self)
             raise e
 
+    def _build_uncached(self, context: _ResolvingContext, parent_node: DependencyNode):
+        new_instance_node = self._create_new_dependency_node(parent_node)
+
+        for pre_configuration in context.find_pre_configurations_that_apply(self):
+            pre_configuration_node = DependencyNode(
+                self.service_type,
+                pre_configuration.configuration_fn,
+                lifespan=Lifespan.singleton,
+            )
+            new_instance_node.add_pre_configuration(pre_configuration_node)
+            pre_configuration.run(context, pre_configuration_node)
+            pre_configuration_node.set_instance(pre_configuration)
+
+        resolved_dependencies = _resolve_dependencies(self.dependencies, context, new_instance_node)
+        built_instance = self.activator_class.activate(
+            self.implementation, resolved_dependencies, context, lifespan=self.lifespan
+        )
+        new_instance_node.set_instance(built_instance)
+
+        top_decorated_node = new_instance_node
+        for dec in context.find_decorators_that_apply(self, decorated_instance_node=new_instance_node):
+            next_decorated_node = DependencyNode(
+                service_type=self.service_type,
+                implementation=dec.decorator_type,
+                lifespan=self.lifespan,
+            )
+            top_decorated_node.add_decorator(next_decorated_node)
+            built_instance = dec.decorate(built_instance, context, next_decorated_node, self)
+            next_decorated_node.set_instance(built_instance)
+            top_decorated_node = next_decorated_node
+
+        context.new_instance_created(self, top_decorated_node)
+        self.was_used = True
+        return built_instance
+
+    async def _build_uncached_async(self, context: _ResolvingContext, parent_node: DependencyNode):
+        new_instance_node = self._create_new_dependency_node(parent_node)
+
+        for pre_configuration in context.find_pre_configurations_that_apply(self):
+            pre_configuration_node = DependencyNode(
+                self.service_type,
+                pre_configuration.configuration_fn,
+                lifespan=Lifespan.singleton,
+            )
+            new_instance_node.add_pre_configuration(pre_configuration_node)
+            await pre_configuration.run_async(context, pre_configuration_node)
+            pre_configuration_node.set_instance(pre_configuration)
+
+        resolved_dependencies = await _resolve_dependencies_async(self.dependencies, context, new_instance_node)
+        built_instance = await self.activator_class.activate_async(
+            self.implementation, resolved_dependencies, context, lifespan=self.lifespan
+        )
+        new_instance_node.set_instance(built_instance)
+
+        top_decorated_node = new_instance_node
+        for dec in context.find_decorators_that_apply(self, decorated_instance_node=new_instance_node):
+            next_decorated_node = DependencyNode(
+                service_type=self.service_type,
+                implementation=dec.decorator_type,
+                lifespan=self.lifespan,
+            )
+            top_decorated_node.add_decorator(next_decorated_node)
+            built_instance = await dec.decorate_async(built_instance, context, next_decorated_node, self)
+            next_decorated_node.set_instance(built_instance)
+            top_decorated_node = next_decorated_node
+
+        context.new_instance_created(self, top_decorated_node)
+        self.was_used = True
+        return built_instance
+
     def build(self, context: _ResolvingContext, parent_node: DependencyNode):
         with self._propagate_resolve_error():
-            if cached_node := self._try_find_cached_node(context, parent_node):
-                return cached_node
+            context.assert_registration_allowed(self)
+            is_cached, cached_instance = self._try_find_cached_node(context, parent_node)
+            if is_cached:
+                return cached_instance
 
-            new_instance_node = self._create_new_dependency_node(parent_node)
+            future, is_builder = context.begin_shared_build(self)
+            if future is not None and not is_builder:
+                outcome = future.result()
+                if outcome.error is not None:
+                    raise outcome.error
+                is_cached, cached_instance = self._try_find_cached_node(context, parent_node)
+                if not is_cached:
+                    raise RuntimeError(f"Shared dependency {self.id} completed without a cached instance")
+                return cached_instance
 
-            pre_configurations = context.find_pre_configurations_that_apply(self)
+            try:
+                with context.enter_registration(self):
+                    built_instance = self._build_uncached(context, parent_node)
+            except BaseException as error:
+                context.finish_shared_build(self, future, error)
+                raise
 
-            for pre_configuration in pre_configurations:
-                pre_configuration_node = DependencyNode(
-                    self.service_type,
-                    pre_configuration.configuration_fn,
-                    lifespan=Lifespan.singleton,
-                )
-                new_instance_node.add_pre_configuration(pre_configuration_node)
-
-                pre_configuration.run(context, pre_configuration_node)
-                pre_configuration_node.set_instance(pre_configuration)
-
-            resolved_dependencies = _resolve_dependencies(self.dependencies, context, new_instance_node)
-
-            built_instance = self.activator_class.activate(
-                self.implementation, resolved_dependencies, context, lifespan=self.lifespan
-            )
-            new_instance_node.set_instance(built_instance)
-
-            top_decorated_node = new_instance_node
-            for dec in context.find_decorators_that_apply(self, decorated_instance_node=new_instance_node):
-                next_decorated_node = DependencyNode(
-                    service_type=self.service_type,
-                    implementation=dec.decorator_type,
-                    lifespan=self.lifespan,
-                )
-                top_decorated_node.add_decorator(next_decorated_node)
-                built_instance = dec.decorate(built_instance, context, next_decorated_node, self)
-                next_decorated_node.set_instance(built_instance)
-                top_decorated_node = next_decorated_node
-
-            context.new_instance_created(self, top_decorated_node)
-            self.was_used = True
+            context.finish_shared_build(self, future)
             return built_instance
 
     async def build_async(self, context: _ResolvingContext, parent_node: DependencyNode):
         with self._propagate_resolve_error():
-            if cached_node := self._try_find_cached_node(context, parent_node):
-                return cached_node
+            context.assert_registration_allowed(self)
+            is_cached, cached_instance = self._try_find_cached_node(context, parent_node)
+            if is_cached:
+                return cached_instance
 
-            new_instance_node = self._create_new_dependency_node(parent_node)
+            future, is_builder = context.begin_shared_build(self)
+            if future is not None and not is_builder:
+                outcome = await asyncio.shield(asyncio.wrap_future(future))
+                if outcome.error is not None:
+                    raise outcome.error
+                is_cached, cached_instance = self._try_find_cached_node(context, parent_node)
+                if not is_cached:
+                    raise RuntimeError(f"Shared dependency {self.id} completed without a cached instance")
+                return cached_instance
 
-            pre_configurations = context.find_pre_configurations_that_apply(self)
+            try:
+                with context.enter_registration(self):
+                    built_instance = await self._build_uncached_async(context, parent_node)
+            except BaseException as error:
+                context.finish_shared_build(self, future, error)
+                raise
 
-            for pre_configuration in pre_configurations:
-                pre_configuration_node = DependencyNode(
-                    self.service_type,
-                    pre_configuration.configuration_fn,
-                    lifespan=Lifespan.singleton,
-                )
-                new_instance_node.add_pre_configuration(pre_configuration_node)
-
-                await pre_configuration.run_async(context, pre_configuration_node)
-                pre_configuration_node.set_instance(pre_configuration)
-
-            resolved_dependencies = await _resolve_dependencies_async(self.dependencies, context, new_instance_node)
-            built_instance = await self.activator_class.activate_async(
-                self.implementation, resolved_dependencies, context, lifespan=self.lifespan
-            )
-            new_instance_node.set_instance(built_instance)
-
-            top_decorated_node = new_instance_node
-
-            for dec in context.find_decorators_that_apply(self, decorated_instance_node=new_instance_node):
-                next_decorated_node = DependencyNode(
-                    service_type=self.service_type,
-                    implementation=dec.decorator_type,
-                    lifespan=self.lifespan,
-                )
-                top_decorated_node.add_decorator(next_decorated_node)
-                built_instance = await dec.decorate_async(built_instance, context, next_decorated_node, self)
-                next_decorated_node.set_instance(built_instance)
-                top_decorated_node = next_decorated_node
-
-            context.new_instance_created(self, top_decorated_node)
-            self.was_used = True
+            context.finish_shared_build(self, future)
             return built_instance
 
 
@@ -1324,6 +1450,7 @@ class _Registry:
         tags: Iterable[Tag] | None,
         parent_node_filter: NodeFilter,
         scoped_teardown: Callable[[TService], Any] | None,
+        is_root_owned_instance: bool,
     ) -> str:
         instance_lifespan = lifespan if lifespan == Lifespan.singleton else Lifespan.scoped
 
@@ -1337,6 +1464,8 @@ class _Registry:
             parent_node_filter=parent_node_filter,
             scoped_teardown=scoped_teardown,
             tags=tags,
+            is_instance=True,
+            is_root_owned_instance=is_root_owned_instance,
         )
         self._registrations[service_type].appendleft(registration)
         return registration.id
@@ -1506,6 +1635,47 @@ class _ResolvingContext:
     def __init__(self, scope: Scope):
         self.scope = scope
         self._cache = _DependencyCache(scope=scope)
+        self._registration_stack: contextvars.ContextVar[tuple[_Registration, ...]] = contextvars.ContextVar(
+            f"clean_ioc_registration_stack_{id(self)}",
+            default=(),
+        )
+
+    def assert_registration_allowed(self, registration: _Registration) -> None:
+        stack = self._registration_stack.get()
+        if registration in stack:
+            cycle_start = stack.index(registration)
+            raise CircularDependencyError((*stack[cycle_start:], registration))
+
+        singleton = next((item for item in stack if item.lifespan == Lifespan.singleton), None)
+        is_safe_root_instance = registration.is_instance and registration.is_root_owned_instance
+        if singleton is not None and registration.lifespan == Lifespan.scoped and not is_safe_root_instance:
+            raise CaptiveDependencyError(singleton, registration, (*stack, registration))
+
+    @contextmanager
+    def enter_registration(self, registration: _Registration):
+        stack = self._registration_stack.get()
+        token = self._registration_stack.set((*stack, registration))
+        try:
+            yield
+        finally:
+            self._registration_stack.reset(token)
+
+    def begin_shared_build(
+        self, registration: _Registration
+    ) -> tuple[concurrent.futures.Future[_BuildOutcome] | None, bool]:
+        if registration.lifespan not in (Lifespan.scoped, Lifespan.singleton):
+            return None, True
+        return self.scope.get_build_coordinator(registration.lifespan).begin(registration.id)
+
+    def finish_shared_build(
+        self,
+        registration: _Registration,
+        future: concurrent.futures.Future[_BuildOutcome] | None,
+        error: BaseException | None = None,
+    ) -> None:
+        if future is None:
+            return
+        self.scope.get_build_coordinator(registration.lifespan).finish(registration.id, future, error)
 
     def try_generic_fallback(
         self, service_type: _GenericAlias, parent_node: DependencyNode, registration_filter: RegistrationFilter
@@ -1778,6 +1948,7 @@ class Scope:
     ):
         self._id = str(uuid4())
         self._registry = _Registry()
+        self._build_coordinator = _SharedBuildCoordinator()
         self._scoped_instances: dict[str, DependencyNode] = {}
         self._sync_teardowns: dict[str, Callable] = {}
         self._async_teardowns: dict[str, Callable] = {}
@@ -1911,6 +2082,37 @@ class Scope:
         del context
         return graph
 
+    def explain(
+        self,
+        service_type: type,
+        filter: RegistrationFilter = default_registration_filter,
+        *,
+        allow_async: bool = True,
+    ) -> DependencyPlan:
+        """Describe how a service would be assembled without creating instances.
+
+        The returned plan includes registrations, lifespans, supplied values,
+        collections, decorators, pre-configurations, and any validation issues.
+        Use ``plan.to_text()`` for terminal output or ``plan.to_mermaid()`` for
+        documentation and pull requests.
+        """
+
+        from .diagnostics import explain
+
+        return explain(self, service_type, filter, allow_async=allow_async)
+
+    def validate(self, *service_types: type, allow_async: bool = True) -> ValidationReport:
+        """Fail fast when registrations contain invalid dependency graphs.
+
+        When no service types are supplied, every registration visible to this
+        scope is checked. The analysis is static and does not call user code.
+        Set ``allow_async=False`` to flag graphs that require async resolution.
+        """
+
+        from .diagnostics import validate
+
+        return validate(self, *service_types, allow_async=allow_async)
+
     def resolve_from_registration_id(self, service_type: type[TService], registration_id: str):
         """
         Resolve a service from a registration ID.
@@ -2041,6 +2243,7 @@ class Scope:
                 dependency_config=dependency_config,
                 parent_node_filter=parent_node_filter,
                 scoped_teardown=scoped_teardown,
+                is_root_owned_instance=isinstance(self, Container),
             )
         if factory is not None:
             return self._registry.register_factory(
@@ -2223,6 +2426,9 @@ class Scope:
     def find_scoped_node(self, registration_id: str) -> DependencyNode | None:
         return self._scoped_instances.get(registration_id)
 
+    def get_build_coordinator(self, lifespan: Lifespan) -> _SharedBuildCoordinator:
+        return self._build_coordinator
+
     def get_registration_ids(
         self,
         service_type,
@@ -2358,6 +2564,11 @@ class ChildScope(Scope):
 
     def find_singleton_node(self, registration_id: str) -> DependencyNode | None:
         return self._parent_scope.find_singleton_node(registration_id)
+
+    def get_build_coordinator(self, lifespan: Lifespan) -> _SharedBuildCoordinator:
+        if lifespan == Lifespan.singleton:
+            return self._parent_scope.get_build_coordinator(lifespan)
+        return super().get_build_coordinator(lifespan)
 
     def find_scoped_node(self, registration_id: str) -> DependencyNode | None:
         if scoped_node := super().find_scoped_node(registration_id):

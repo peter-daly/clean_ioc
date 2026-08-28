@@ -1379,7 +1379,7 @@ def test_generators_across_scopes():
         with container.new_scope() as outer_scope:
             outer_scope.register(str, factory=generator_str, lifespan=Lifespan.singleton)
             outer_scope.register(float, factory=generator_float, lifespan=Lifespan.scoped)
-            outer_scope.register(int, factory=generator_int, lifespan=Lifespan.scoped)
+            outer_scope.register(int, factory=generator_int, lifespan=Lifespan.once_per_graph)
 
             with outer_scope.new_scope() as inner_scope:
                 inner_x = inner_scope.resolve(float)

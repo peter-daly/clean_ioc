@@ -48,3 +48,17 @@ jobs:
 
           git tag "v${PACKAGE_VERSION}"
           git push origin "v${PACKAGE_VERSION}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${PACKAGE_VERSION}" >/dev/null 2>&1; then
+            echo "Release v${PACKAGE_VERSION} already exists; skipping."
+            exit 0
+          fi
+
+          gh release create "v${PACKAGE_VERSION}" \
+            --title "Clean IoC v${PACKAGE_VERSION}" \
+            --generate-notes \
+            dist/*

@@ -1,41 +1,61 @@
 [project]
 name = "clean_ioc"
-version = "1.24.0"
-description = "An IOC Container for Python 3.10+"
+version = "1.25.0"
+description = "Typed Python dependency injection with static graph validation and explicit lifespans"
 authors = [{ name = "Peter Daly" }]
 requires-python = ">=3.10,<4"
 readme = "README.md"
 license = "MIT"
 keywords = [
     "dependency",
+    "dependency injection",
+    "di container",
     "injection",
     "ioc",
     "inversion of control",
+    "clean architecture",
+    "cqrs",
+    "fastapi",
+    "async",
     "type",
     "hints",
     "typing",
 ]
-classifiers = ["Development Status :: 5 - Production/Stable"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+]
 dependencies = [
     "funcie>=0.2.0",
     "typetoolbox>=0.4.0",
 ]
 
 [project.optional-dependencies]
-fastapi = ["fastapi>=0.101.0,<0.102"]
+fastapi = ["fastapi>=0.101.0,<1"]
 
 [project.urls]
 Homepage = "https://peter-daly.github.io/clean_ioc/"
 Repository = "https://github.com/peter-daly/clean_ioc"
 Documentation = "https://peter-daly.github.io/clean_ioc/"
+Changelog = "https://github.com/peter-daly/clean_ioc/blob/main/CHANGES.rst"
+Issues = "https://github.com/peter-daly/clean_ioc/issues"
 
 [dependency-groups]
 dev = [
-    "pytest>=7.0.0,<8",
-    "pytest-cov>=4.0.0,<5",
-    "pytest-asyncio>=0.21.1,<0.22",
+    "benchbro @ git+https://github.com/peter-daly/benchbro.git@d21630c45f5c506f69104101110b0851f7de9d1a",
+    "pytest>=8.0.0,<10",
+    "pytest-cov>=5.0.0,<8",
+    "pytest-asyncio>=0.24.0,<2",
     "assertive>=1.6.1",
-    "fastapi>=0.101.0,<0.102",
+    "fastapi>=0.101.0,<1",
     "httpx>=0.26.0,<0.27",
     "ruff>=0.4.3,<0.5",
     "mkdocs>=1.5.3,<2",
@@ -121,6 +141,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "F403"]  # Ignore unused imports on init files
 "tests/**/*.py" = ["S101"]  # Allow assert usage on tests
+"examples/**/test_*.py" = ["S101"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

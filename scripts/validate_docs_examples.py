@@ -5,7 +5,15 @@ from contextlib import asynccontextmanager, contextmanager
 from typing import Generic, Protocol, TypeVar
 
 import clean_ioc.value_factories as vf
-from clean_ioc import Container, DependencyContext, DependencySettings, Lifespan, Resolver, Tag
+from clean_ioc import (
+    Container,
+    ContainerValidationError,
+    DependencyContext,
+    DependencySettings,
+    Lifespan,
+    Resolver,
+    Tag,
+)
 from clean_ioc.factories import use_from_current_graph
 from clean_ioc.registration_filters import has_tag, with_name
 
@@ -278,6 +286,38 @@ def validate_resolver_injection():
         _assert(scope.resolve(Client).number() == 10, "scope resolver override failed")
 
 
+def validate_static_diagnostics():
+    class Repository:
+        pass
+
+    class Service:
+        def __init__(self, repository: Repository):
+            self.repository = repository
+
+    container = Container()
+    container.register(Repository, lifespan=Lifespan.scoped)
+    container.register(Service)
+
+    report = container.validate(Service)
+    plan = container.explain(Service)
+
+    _assert(report.is_valid, "valid graph was rejected")
+    _assert(plan.is_valid, "valid explanation was rejected")
+    _assert("repository: Repository [scoped]" in plan.to_text(), "text explanation omitted dependency")
+    _assert(plan.to_mermaid().startswith("flowchart TD"), "Mermaid explanation was not generated")
+
+    registration_id = container.get_registration_id(Service)
+    if registration_id is None:
+        raise AssertionError("service registration disappeared")
+    container.patch_registration(Service, registration_id, lifespan=Lifespan.singleton)
+    try:
+        container.validate(Service)
+    except ContainerValidationError as error:
+        _assert(error.issues[0].code == "captive-dependency", "wrong lifecycle issue reported")
+    else:
+        raise AssertionError("captive dependency was not reported")
+
+
 def main():
     validate_registration_modes()
     validate_filtering()
@@ -288,6 +328,7 @@ def main():
     validate_generics()
     validate_generator_factories()
     validate_resolver_injection()
+    validate_static_diagnostics()
     asyncio.run(validate_async_factories())
     print("All documentation example validations passed.")
 

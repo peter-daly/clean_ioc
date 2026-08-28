@@ -1,3 +1,18 @@
+1.25.0
+------
+    Add static ``Container.validate()`` checks for missing registrations, circular
+    dependencies, captive scoped dependencies, and async-only graphs.
+    Add ``Container.explain()`` with readable text and Mermaid dependency plans.
+    Raise dedicated ``CircularDependencyError`` and ``CaptiveDependencyError``
+    exceptions during runtime resolution.
+    Coordinate first-time scoped and singleton activation across concurrent threads
+    and async tasks, including safe failure and retry behavior.
+    Expand FastAPI support from 0.101.x to all compatible 0.x releases and test both
+    the minimum and latest supported versions in CI.
+    Add a runnable FastAPI Clean Architecture example, reproducible microbenchmarks,
+    and a documentation and project-positioning overhaul.
+
+
 0.0.1
 -----
     Registration and resolving works.
