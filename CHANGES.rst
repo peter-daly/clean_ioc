@@ -1,3 +1,21 @@
+2.0.0a1
+-------
+    Split mutable composition into ``ContainerBuilder`` and ``ScopeBuilder`` and
+    make ``Container`` and ``Scope`` immutable runtime types.
+    Compile occurrence-specific component plans at ``build()`` without invoking
+    constructors, factories, generators, teardown callbacks, or value providers.
+    Execute frozen activation instructions without allocating legacy dependency
+    graph nodes during normal resolution.
+    Replace public registration/node filtering with the immutable ``Component``
+    model and shared ``clean_ioc.component_filters`` predicates.
+    Add declared scope slots and locked ``Scope.provide()`` values for FastAPI and
+    other late framework inputs.
+    Add experimental scope overlays whose singletons belong to the built scope and
+    descendants.
+    Replace the sealed-container prototype with BenchBro build, runtime, scope,
+    request-slot, and Python-allocation experiments.
+
+
 1.25.0
 ------
     Add static ``Container.validate()`` checks for missing registrations, circular

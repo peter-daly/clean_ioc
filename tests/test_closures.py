@@ -3,7 +3,7 @@ from typing import Tuple
 
 import pytest
 
-from clean_ioc import (
+from clean_ioc.core import (
     Container,
 )
 

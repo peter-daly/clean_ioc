@@ -1136,7 +1136,7 @@ class _Registration(Registration):
         is_instance: bool = False,
         is_root_owned_instance: bool = False,
     ):
-        if scoped_teardown and not lifespan <= Lifespan.scoped:
+        if scoped_teardown and lifespan not in (Lifespan.scoped, Lifespan.singleton):
             raise ValueError("Scoped teardowns can only be used with scoped and singleton lifestyles")
 
         self.service_type = service_type
@@ -2470,7 +2470,7 @@ class Scope:
         registrations = [
             r for r in self._registry.get_registrations(service_type) if filter(r) and r.parent_node_filter(parent_node)
         ]
-        return list_modifier(registrations)  # type: ignore
+        return list_modifier(registrations)
 
     def find_decorators(
         self, *, registration: _Registration, decorated_instance_node: DependencyNode
@@ -2883,14 +2883,14 @@ class Container(Scope):
 
 @dataclass(kw_only=True)
 class DependencySettings:
-    value_factory: ParameterValueFactory = default_parameter_value_factory
-    filter: RegistrationFilter = default_registration_filter
-    list_modifier: RegistrationListModifier = default_registration_list_modifier
+    value_factory: Callable[[Any, Any], Any] = default_parameter_value_factory
+    filter: Callable[[Any], bool] = default_registration_filter
+    list_modifier: Callable[[list[Any]], list[Any]] = default_registration_list_modifier
 
 
 DependencyConfig = dict[str, Any]
 SubDependencies = dict[str, DependencySettings]
-RegistrationFilter = Callable[[_Registration], bool]
-NodeFilter = Callable[[Node], bool]
-ParameterValueFactory = Callable[[Any, DependencyContext], Any]
-RegistrationListModifier = Callable[[list[Registration]], list[Registration]]
+RegistrationFilter = Callable[[Any], bool]
+NodeFilter = Callable[[Any], bool]
+ParameterValueFactory = Callable[[Any, Any], Any]
+RegistrationListModifier = Callable[[list[Any]], list[Any]]

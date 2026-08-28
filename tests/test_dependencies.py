@@ -21,7 +21,7 @@ from assertive import (
 )
 from typetoolbox.generics import create_specialized_function
 
-from clean_ioc import (
+from clean_ioc.core import (
     CannotResolveError,
     Container,
     DependencyContext,

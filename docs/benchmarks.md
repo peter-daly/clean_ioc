@@ -1,51 +1,64 @@
 ---
-description: Reproducible Clean IoC microbenchmarks for instance, singleton, transient, graph resolution, and static explanations.
+description: Reproducible BenchBro experiments separating Clean IoC build cost, compiled runtime latency, and Python allocations.
 ---
 
 # Benchmarks
 
-Clean IoC favors predictable ownership and graph capability over being the smallest possible service lookup. These microbenchmarks make its framework overhead visible and reproducible.
+The compiled model deliberately moves work from resolution to `build()`. The benchmark suite therefore measures three boundaries separately:
 
-## Current result
+- container and scope-overlay compilation;
+- resolution and ordinary scope creation after compilation;
+- Python allocations through `tracemalloc`.
 
-Measured with BenchBro 1.0.0 on 28 August 2026 using CPython 3.14.4 and macOS 15.7.9 on Apple arm64. Adaptive sampling used 20,000 measured invocations per repeat and stopped between 7 and 30 repeat samples after reaching a 3% relative-margin target or the 10-second limit.
+## Local directional snapshot
 
-| Scenario | Median | Operations/sec | Samples | CV | Quality |
-| --- | ---: | ---: | ---: | ---: | --- |
-| Direct Python construction | 0.57 µs | 1,754,360 | 7 | 1.09% | Stable |
-| Resolve pre-built instance | 9.15 µs | 107,056 | 10 | 4.56% | Noisy¹ |
-| Resolve cached singleton | 8.97 µs | 110,281 | 7 | 2.65% | Noisy¹ |
-| Resolve transient | 13.15 µs | 74,642 | 13 | 5.21% | Noisy¹ |
-| Resolve five-node graph | 44.19 µs | 22,486 | 7 | 2.37% | Stable |
-| Explain five-node graph | 33.59 µs | 29,582 | 7 | 2.18% | Noisy¹ |
+Measured twice unchanged with BenchBro 1.0 on 28 August 2026 using CPython 3.14.4, macOS 15.7.9, and Apple arm64. The second run produced:
 
-¹ BenchBro marks a result noisy when its coefficient of variation crosses the configured threshold or its IQR analysis finds an outlier. Each noisy row above had one outlier and a CV below 5.3%. Two unchanged comparison runs kept every median within 3.4% of the initial baseline, so these figures are useful as directional framework-overhead measurements rather than hard application limits.
+| Operation | Median / peak | CV | Quality |
+| --- | ---: | ---: | --- |
+| Direct Python construction | 0.56 µs | 1.90% | Stable |
+| Resolve pre-built instance | 2.44 µs | 4.09% | Noisy |
+| Resolve cached singleton | 2.56 µs | 5.26% | Noisy |
+| Resolve transient | 4.97 µs | 0.67% | Stable |
+| Resolve five-component plan | 19.99 µs | 2.34% | Noisy |
+| Create ordinary scope | 3.74 µs | 1.76% | Noisy |
+| Resolve request-slot plan | 24.05 µs | 3.72% | Noisy |
+| Build five-component container | 336.61 µs | 0.74% | Stable |
+| Build scope overlay | 278.42 µs | 0.89% | Noisy |
+| Resolve five-component allocation peak | 4,048.8 B | 28.98% | Noisy |
+| Create-scope allocation peak | 2,635.5 B | 0.72% | Stable |
 
-The direct-construction row passes through the same benchmark call boundary as every other row. It is a harness reference, not a raw constructor floor or a like-for-like feature comparison. Real factories, database calls, network clients, and application work usually dominate container overhead.
+“Noisy” means BenchBro found an IQR outlier or exceeded the configured CV threshold. The unchanged comparison kept runtime medians within 3%, build medians within 1%, and allocation peaks within 0.3%. Treat this as evidence about this machine and implementation—not a package guarantee or CI threshold.
+
+The allocation case measures Python allocations visible to `tracemalloc`, not whole-process resident memory. The noisy five-component allocation row needs more investigation before making an allocation-reduction claim.
+
+## Measurement boundaries
+
+Runtime containers and the provided request scope are session systems prepared outside the measured interval. Each runtime invocation performs exactly one resolve or scope creation.
+
+Build benchmarks deliberately include:
+
+- builder construction;
+- registrations;
+- component-plan compilation;
+- immutable runtime creation.
+
+This keeps startup cost visible instead of hiding it in setup.
 
 ## Reproduce it
-
-Install the locked development environment, inspect discovery, and run the suite:
 
 ```bash
 uv sync
 uv run benchbro list --verbose
+uv run benchbro run --no-compare
 uv run benchbro run
 ```
 
-`make benchmark` runs the same configured suite. CI uses the much faster discovery-only check so benchmark definitions cannot silently drift while host-specific timing remains opt-in.
+The first pass creates a machine-local baseline. The unchanged second pass establishes ordinary variance. Inspect sample count, confidence interval, relative margin, CV, outliers, and the noisy flag before interpreting a change.
 
-The checked-in `benchbro.toml` owns the sampling policy and writes two reviewable artifacts:
+The checked-in `benchbro.toml` owns sampling policy and writes:
 
-- `benchmarks/results.json` preserves the complete schema-versioned result and environment metadata.
-- `benchmarks/results.md` is the generated human-readable report.
+- `benchmarks/results.json` — complete result and environment metadata;
+- `benchmarks/results.md` — generated human-readable report.
 
-Container setup and BenchBro dependency injection are explicitly excluded from the measured interval. Each invocation measures one Python construction, Clean IoC resolution, or static explanation operation.
-
-Normal runs compare with the machine-local `.benchbro/baseline.local.json`. That directory is ignored by Git; use `--new-baseline` only when the current environment and behavior should deliberately replace your local reference. BenchBro rejects environment-mismatched comparisons by default.
-
-## Concurrency correctness
-
-Scoped and singleton activation uses a shared build coordinator. Concurrent threads and async tasks that request the same uncached registration wait for the first build and receive the same cached instance. Failed first builds wake every waiter and leave the registration retryable.
-
-This behavior is covered by dedicated tests because “one build per ownership boundary” is a correctness guarantee, not a timing result.
+Machine-local baselines and history remain under ignored `.benchbro/`.

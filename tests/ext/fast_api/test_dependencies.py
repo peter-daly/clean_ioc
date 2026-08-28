@@ -4,7 +4,7 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from clean_ioc import Container
+from clean_ioc import ContainerBuilder
 from clean_ioc.core import Lifespan
 from clean_ioc.ext.fastapi import Resolve, add_container_to_app
 from clean_ioc.ext.fastapi.dependencies import (
@@ -12,6 +12,7 @@ from clean_ioc.ext.fastapi.dependencies import (
     ResponseHeaderWriter,
     add_request_header_reader_to_scope,
     add_response_header_writer_to_scope,
+    register_fastapi_scope_slots,
 )
 
 
@@ -28,10 +29,12 @@ def test_response_writer_writes_a_header_to_response():
 
     @asynccontextmanager
     async def lifespan(a):
-        with Container() as container:
-            container.register(MyDependency)
-            async with add_container_to_app(a, container):
-                yield
+        builder = ContainerBuilder()
+        register_fastapi_scope_slots(builder)
+        builder.register(MyDependency)
+        container = builder.build()
+        async with add_container_to_app(a, container):
+            yield
 
     app = FastAPI(lifespan=lifespan, dependencies=[Depends(add_response_header_writer_to_scope)])
 
@@ -58,10 +61,12 @@ def test_request_header_reader_reads_headers():
 
     @asynccontextmanager
     async def lifespan(a):
-        with Container() as container:
-            container.register(MyDependency)
-            async with add_container_to_app(a, container):
-                yield
+        builder = ContainerBuilder()
+        register_fastapi_scope_slots(builder)
+        builder.register(MyDependency)
+        container = builder.build()
+        async with add_container_to_app(a, container):
+            yield
 
     app = FastAPI(lifespan=lifespan, dependencies=[Depends(add_request_header_reader_to_scope)])
 
@@ -99,10 +104,12 @@ def test_with_async_generator_dependency():
 
     @asynccontextmanager
     async def lifespan(a):
-        with Container() as container:
-            container.register(MyDependency, factory=my_dependency_factory)
-            async with add_container_to_app(a, container):
-                yield
+        builder = ContainerBuilder()
+        register_fastapi_scope_slots(builder)
+        builder.register(MyDependency, factory=my_dependency_factory)
+        container = builder.build()
+        async with add_container_to_app(a, container):
+            yield
 
     app = FastAPI(lifespan=lifespan, dependencies=[Depends(add_request_header_reader_to_scope)])
 
@@ -128,10 +135,11 @@ def test_scope_is_unique_per_request():
 
     @asynccontextmanager
     async def lifespan(a):
-        with Container() as container:
-            container.register(MyDependency, lifespan=Lifespan.scoped)
-            async with add_container_to_app(a, container):
-                yield
+        builder = ContainerBuilder()
+        builder.register(MyDependency, lifespan=Lifespan.scoped)
+        container = builder.build()
+        async with add_container_to_app(a, container):
+            yield
 
     app = FastAPI(lifespan=lifespan)
 

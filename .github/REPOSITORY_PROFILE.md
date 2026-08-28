@@ -6,7 +6,7 @@ Apply these settings in **GitHub → About → Edit repository details** after t
 
 **Description**
 
-> Typed Python dependency injection that validates and explains object graphs before startup. Explicit lifespans, async cleanup, generics, decorators, and FastAPI request scopes.
+> Compile typed Python dependency plans before startup, then resolve from an immutable runtime. Explicit lifespans, generics, decorators, and FastAPI scopes.
 
 **Website**
 
@@ -37,10 +37,10 @@ Enable **Releases**, **Packages**, and **Discussions**. Keep Issues enabled. Upl
 
 Share the kind of application, which features you use, and anything that made adoption harder than it should have been. Small examples are welcome. This thread is also the best place to request an integration or documentation walkthrough before opening a detailed feature issue.
 
-## First release after the repositioning
+## First alpha after the compiler work
 
-Use the v1.25.0 title:
+Use the v2.0.0a1 title:
 
-> Prove your dependency graph before startup
+> Compile once, resolve the plan
 
-Lead the release notes with `validate()` and `explain()`, then concurrency/lifetime safety, broad FastAPI compatibility, and the runnable example. The release workflow now creates a GitHub Release with generated notes and built artifacts.
+Lead with the `ContainerBuilder`/immutable `Container` split, strict `build()`, graph-free runtime execution, unified `Component` filters, scope slots, and experimental `ScopeBuilder` overlays. Label the release alpha and ask for composition roots that challenge the static model.

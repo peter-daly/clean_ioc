@@ -1,123 +1,79 @@
 # Lifespans
 
-Lifespan controls instance reuse.
-
-Clean IoC coordinates first-time `scoped` and `singleton` construction across concurrent
-threads and async tasks. Callers resolving the same uncached registration wait for one
-builder and receive the same cached instance. A failed build wakes all waiters and leaves
-the registration retryable.
-
 ```python
-from clean_ioc import Container, Lifespan
+from clean_ioc import ContainerBuilder, Lifespan
 ```
 
 ## `transient`
 
-Always create a new instance.
+A new value is activated for every dependency edge:
 
 ```python
-class A:
-    pass
+builder = ContainerBuilder()
+builder.register(A, lifespan=Lifespan.transient)
+container = builder.build()
 
-
-container = Container()
-container.register(A, lifespan=Lifespan.transient)
-
-a1 = container.resolve(A)
-a2 = container.resolve(A)
-print(a1 is a2)  # False
+assert container.resolve(A) is not container.resolve(A)
 ```
 
-## `once_per_graph` (default)
+## `once_per_graph`
 
-Reuse within one resolve graph, but not across separate resolve calls.
+The default lifespan reuses a component within one top-level resolve and discards it afterward:
 
 ```python
-class A:
-    pass
+class Pair:
+    def __init__(self, first: A, second: A):
+        self.first = first
+        self.second = second
 
 
-class B:
-    def __init__(self, a: A):
-        self.a = a
+builder = ContainerBuilder()
+builder.register(A)
+builder.register(Pair)
+container = builder.build()
 
-
-class C:
-    def __init__(self, a: A):
-        self.a = a
-
-
-class D:
-    def __init__(self, b: B, c: C):
-        self.b = b
-        self.c = c
-
-
-container = Container()
-container.register(A, lifespan=Lifespan.once_per_graph)
-container.register(B)
-container.register(C)
-container.register(D)
-
-first = container.resolve(D)
-second = container.resolve(D)
-
-print(first.b.a is first.c.a)   # True (same graph)
-print(first.b.a is second.b.a)  # False (different graph)
+pair = container.resolve(Pair)
+assert pair.first is pair.second
+assert container.resolve(Pair).first is not pair.first
 ```
 
 ## `scoped`
 
-Reuse within the current scope.
+A scoped component is cached by a runtime scope:
 
 ```python
-class A:
-    pass
+builder = ContainerBuilder()
+builder.register(A, lifespan=Lifespan.scoped)
+container = builder.build()
 
-
-container = Container()
-container.register(A, lifespan=Lifespan.scoped)
-
-with container.new_scope() as s1:
-    a1 = s1.resolve(A)
-    a2 = s1.resolve(A)
-    print(a1 is a2)  # True
-
-with container.new_scope() as s2:
-    a3 = s2.resolve(A)
-    print(a1 is a3)  # False
+with container.new_scope() as scope:
+    assert scope.resolve(A) is scope.resolve(A)
 ```
+
+Nested scopes inherit already-created parent scoped values.
 
 ## `singleton`
 
-Reuse for the container/root-scope lifetime.
+A root singleton belongs to the immutable container and is shared by every child scope:
 
 ```python
-class A:
-    pass
+builder = ContainerBuilder()
+builder.register(A, lifespan=Lifespan.singleton)
+container = builder.build()
 
-
-container = Container()
-container.register(A, lifespan=Lifespan.singleton)
-
-a1 = container.resolve(A)
-with container.new_scope() as scope:
-    a2 = scope.resolve(A)
-
-print(a1 is a2)  # True
+assert container.resolve(A) is container.new_scope().resolve(A)
 ```
 
-### Captive dependencies
+A singleton registered on `ScopeBuilder` instead belongs to the built overlay scope and its descendants.
 
-A singleton must not depend directly or indirectly on a non-instance `scoped` service.
-Doing so would retain request- or job-owned state for the lifetime of the application.
-Clean IoC detects this during `validate()` and runtime resolution:
+## Captive dependencies
 
-```text
-Singleton AppService cannot depend on scoped UnitOfWork.
-Path: AppService -> Repository -> UnitOfWork
-```
+`build()` rejects a singleton plan that retains a scoped component. This check happens before user activation and applies to decorator and factory dependencies as well as constructors.
 
-Move the owning service to `scoped`, lengthen the dependency's ownership only when that is
-semantically correct, or inject a boundary that creates a scope for each operation. Do not
-silence the error by changing lifespans without checking resource ownership.
+## Cleanup ownership
+
+Scoped and singleton values may own generator/context-manager finalizers or teardown callbacks. Cleanup follows the cache owner:
+
+- scoped value → scope exit;
+- root singleton → container exit;
+- overlay singleton → built `ScopeBuilder` scope exit.

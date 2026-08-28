@@ -1,15 +1,21 @@
 # Clean IoC
 
-**Python dependency injection that can prove its wiring before your app starts.**
+**Compile your Python dependency graph once. Resolve it without rebuilding the graph.**
 
 [![CI](https://github.com/peter-daly/clean_ioc/actions/workflows/ci.yml/badge.svg)](https://github.com/peter-daly/clean_ioc/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/clean-ioc.svg)](https://pypi.org/project/clean-ioc/)
 [![Python](https://img.shields.io/pypi/pyversions/clean-ioc.svg)](https://pypi.org/project/clean-ioc/)
 [![License](https://img.shields.io/pypi/l/clean-ioc.svg)](https://github.com/peter-daly/clean_ioc/blob/main/LICENSE)
 
-Clean IoC is a typed inversion-of-control container for Python 3.10+. It keeps your domain code free of framework imports while handling lifespans, async resources, decorators, contextual selection, open generics, and FastAPI request scopes.
+Clean IoC is a typed dependency-injection container for Python 3.10+. Version 2 separates mutable composition from immutable runtime execution:
 
-Its differentiator is confidence: validate a complete object graph at startup, get actionable errors for missing registrations, cycles, and captive dependencies, or render the wiring as text or Mermaid—without constructing a single object.
+1. Register components with `ContainerBuilder`.
+2. Call `build()` to validate and compile every visible dependency plan.
+3. Resolve from the immutable `Container` or a lightweight `Scope`.
+
+Constructors, factories, generators, and parameter value providers do not run during the build. At runtime Clean IoC executes frozen instructions, caches plain instances, and does not allocate a dependency graph.
+
+> **2.0 alpha:** the compiled API is intentionally experimental while its compatibility surface and performance are hardened.
 
 ```bash
 pip install clean_ioc
@@ -19,12 +25,12 @@ pip install "clean_ioc[fastapi]"
 
 ## See it in 30 seconds
 
-Your application code only needs normal Python types:
+Your application code uses ordinary Python types:
 
 ```python
 from typing import Protocol
 
-from clean_ioc import Container, Lifespan
+from clean_ioc import ContainerBuilder, Lifespan
 
 
 class PaymentGateway(Protocol):
@@ -44,86 +50,99 @@ class Checkout:
         return self.gateway.charge(amount)
 
 
-container = Container()
-container.register(PaymentGateway, StripeGateway, lifespan=Lifespan.singleton)
-container.register(Checkout)
+builder = ContainerBuilder()
+builder.register(PaymentGateway, StripeGateway, lifespan=Lifespan.singleton)
+builder.register(Checkout)
 
-container.validate(Checkout)  # static: no constructors or factories are called
+container = builder.build()  # validates and compiles; user code has not run
 checkout = container.resolve(Checkout)
 
 assert checkout.place_order(2500) == "charged:2500"
 ```
 
-No base classes. No decorators on application code. No global container. No generated proxy objects.
+No application base classes. No decorators on domain code. No global container. No generated proxies.
 
-## Prove the graph before production
+## Why compile the container?
 
-Most dependency-injection mistakes otherwise appear only when a rarely used endpoint or worker path is first executed. Clean IoC can inspect that path during startup or CI:
+Traditional runtime DI repeatedly discovers registrations, evaluates contextual filters, and constructs bookkeeping nodes while resolving objects. Clean IoC moves that work to an explicit application boundary.
 
-```python
-container.validate(Checkout)
-```
-
-Validation reports all discovered problems together:
-
-```text
-Container validation failed with 2 problems:
-- [missing-registration] No registration can supply AuditSink (Checkout -> AuditSink)
-- [captive-dependency] Singleton Checkout cannot depend on scoped RequestState (Checkout -> RequestState)
-```
-
-Ask the same static model to explain a graph:
-
-```python
-plan = container.explain(Checkout)
-
-print(plan.to_text())
-print(plan.to_mermaid())
-```
-
-```text
-Checkout [once_per_graph]
-   └─ gateway: PaymentGateway -> StripeGateway [singleton]
-```
-
-This gives code reviewers, onboarding developers, and coding agents a shared, inspectable description of the architecture. See [validation and graph explanations](https://peter-daly.github.io/clean_ioc/validation/).
-
-## Why teams reach for Clean IoC
-
-| Need | What Clean IoC provides |
+| Build time | Runtime |
 | --- | --- |
-| Keep the domain portable | Constructor and factory injection through ordinary type hints |
-| Catch broken wiring early | Static `validate()` with missing, cycle, lifetime, and async checks |
-| Understand a large graph | `explain().to_text()` and `explain().to_mermaid()` |
-| Own resources correctly | `transient`, `once_per_graph`, `scoped`, and `singleton` lifespans |
-| Handle concurrent traffic | One coordinated build per scoped/singleton registration across tasks and threads |
-| Add cross-cutting behavior | Typed decorator chains with ordering and contextual filters |
-| Build CQRS/event systems | Automatic closed-generic discovery and open-generic decorators |
-| Integrate with FastAPI | Application container, request scopes, async resolution, request/response helpers |
-| Collaborate with coding agents | Package-distributed Clean IoC and FastAPI skills |
+| Specialize generic types | Select a frozen root plan |
+| Build occurrence-specific component trees | Execute precompiled activation steps |
+| Evaluate component and decorator filters | Cache plain instances by lifespan |
+| Detect missing, circular, and captive dependencies | Coordinate concurrent scoped/singleton builds |
+| Freeze decorators, pre-configurations, and fallback edges | Track only activation and teardown state |
 
-Clean IoC is a particularly good fit for Clean Architecture, hexagonal applications, CQRS handlers, message consumers, CLIs, and FastAPI services where dependency ownership matters beyond a single function call.
+`build()` fails before startup completes if a graph is incomplete or a singleton captures scoped state. A failed build leaves the builder reusable, so composition can be repaired and built again. A successful builder is single-use.
 
-## Lifespans that match real ownership
+## One static model: `Component`
+
+Registration metadata and dependency-graph nodes are replaced by one immutable, plan-backed model. Every `Component` exposes its service, implementation, lifespan, name, tags, generic mapping, parent, dependencies, decorators, and pre-configurations.
 
 ```python
-container.register(AppSettings, instance=settings, lifespan=Lifespan.singleton)
-container.register(HttpClient, factory=create_http_client, lifespan=Lifespan.singleton)
-container.register(UnitOfWork, factory=create_uow, lifespan=Lifespan.scoped)
-container.register(PlaceOrder)  # once_per_graph by default
+import clean_ioc.component_filters as cf
+
+builder.register(PaymentGateway, StripeGateway, name="stripe")
+
+component_id = builder.get_component_id(
+    PaymentGateway,
+    filter=cf.with_name("stripe"),
+)
+```
+
+Use the same filters for root selection, dependency selection, contextual registration, decorators, and pre-configuration:
+
+```python
+builder.register(
+    PaymentGateway,
+    StripeGateway,
+    when=cf.parent(cf.has_tag("channel", "web")),
+)
+
+gateway = container.resolve(PaymentGateway, filter=cf.with_name("stripe"))
+```
+
+Composition, dependency, decorator, and pre-configuration filters run while the container or scope is built. Their decisions are frozen and are not repeated during resolution. A filter passed directly to `resolve(...)` only selects among those already-compiled root plans.
+
+## Scopes, request values, and experimental overlays
+
+Creating an ordinary scope is cheap and never compiles:
+
+```python
+builder.declare_scope_slot(RequestContext)
+builder.register(RequestHandler)
+container = builder.build()
 
 with container.new_scope() as scope:
-    handler = scope.resolve(PlaceOrder)
+    scope.provide(RequestContext, current_request)
+    handler = scope.resolve(RequestHandler)
 ```
+
+Slots make late request/framework values explicit. Only declared slots may be provided; duplicate provisions are rejected, and provisions lock when resolution starts. Nested scopes inherit provided values and may override them before their first resolve.
+
+When a child genuinely needs different composition, use `ScopeBuilder` and pay the compile cost explicitly:
+
+```python
+tenant_builder = container.new_scope_builder()
+tenant_builder.register(PaymentGateway, TenantGateway)
+
+with tenant_builder.build() as tenant_scope:
+    tenant_scope.resolve(Checkout)
+```
+
+Singletons introduced by a `ScopeBuilder` belong to its built scope and descendants. They are finalized when that built scope exits, without mutating the root container.
+
+## Lifespans that match ownership
 
 | Lifespan | Reuse boundary | Typical ownership |
 | --- | --- | --- |
-| `transient` | Every dependency edge | Context-sensitive or disposable objects |
+| `transient` | Every dependency edge | Context-sensitive objects |
 | `once_per_graph` | One top-level resolve | Ordinary application services |
-| `scoped` | One explicit scope | Request state, unit of work, DB session |
-| `singleton` | Root container | Settings, pools, long-lived clients |
+| `scoped` | One explicit scope | Request state, units of work, DB sessions |
+| `singleton` | Owning container or compiled overlay scope | Settings, pools, long-lived clients |
 
-Generator factories, context managers, teardown callbacks, and async equivalents are finalized when their owning scope exits. Invalid singleton-to-scoped capture fails with a readable path instead of silently retaining request state.
+Generator factories, context managers, teardown callbacks, and async equivalents are finalized by their cache owner.
 
 ## FastAPI without framework-coupled services
 
@@ -132,17 +151,18 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from clean_ioc import Container, Lifespan
+from clean_ioc import ContainerBuilder, Lifespan
 from clean_ioc.ext.fastapi import Resolve, add_container_to_app
+
+
+builder = ContainerBuilder()
+builder.register(OrderRepository, SqlOrderRepository, lifespan=Lifespan.scoped)
+builder.register(PlaceOrder)
+container = builder.build()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    container = Container()
-    container.register(OrderRepository, SqlOrderRepository, lifespan=Lifespan.scoped)
-    container.register(PlaceOrder)
-    container.validate(PlaceOrder)
-
     async with add_container_to_app(app, container):
         yield
 
@@ -155,49 +175,28 @@ async def place_order(command: OrderRequest, handler: PlaceOrder = Resolve(Place
     return await handler(command)
 ```
 
-Each request gets one child scope. Endpoint services resolve asynchronously, so sync and async factories can coexist, and scoped resources close at the request boundary. Clean IoC is continuously tested against the minimum supported and latest FastAPI releases.
+FastAPI creates an ordinary child scope per request. Request/response helpers use declared scope slots and `scope.provide(...)`; they never mutate or recompile the container.
 
-See the [FastAPI guide](https://peter-daly.github.io/clean_ioc/extensions/fastapi/) and the [complete Clean Architecture example](https://github.com/peter-daly/clean_ioc/tree/main/examples/fastapi_clean_architecture).
+## Built for demanding object graphs
 
-## The deeper toolkit
+- Sync and async factories, generators, context managers, and deterministic cleanup.
+- Named, tagged, parent-aware, and descendant-aware component filters.
+- Ordered decorators selected from the undecorated core subtree.
+- Closed-generic discovery, open-generic fallback, and generic decorators.
+- Coordinated first activation across threads and event loops.
+- Bundles targeting one shared `ComponentBuilder` composition protocol.
+- BenchBro experiments separating build cost, runtime latency, and Python allocations.
 
-- Resolve every implementation through `list[Service]`, `tuple[Service]`, or `set[Service]`.
-- Select named or tagged registrations from the root or at individual dependency edges.
-- Select implementations from the parent graph—useful for multi-tenant and adapter-heavy systems.
-- Register sync/async factories, generator factories, and context managers with automatic cleanup.
-- Apply decorators to services without modifying their implementations.
-- Discover concrete generic handlers and apply generic decorators across them.
-- Package repeatable registrations as bundles and safely patch them before first use.
-- Inspect the runtime dependency graph when instance-level detail matters.
+Clean IoC is a particularly good fit for Clean Architecture, hexagonal applications, CQRS handlers, message consumers, CLIs, and FastAPI services where dependency ownership matters beyond one function call.
 
-The [documentation](https://peter-daly.github.io/clean_ioc/) goes from basic registration through contextual filtering and generic handler pipelines.
-
-## Choosing the right level of DI
-
-| Approach | Best when |
-| --- | --- |
-| Manual wiring | The application is small and the object graph rarely changes |
-| Framework-native dependencies | Dependencies live entirely at one framework boundary |
-| Clean IoC | Domain/application code must stay portable, graphs are deep or contextual, or resource lifetimes need explicit ownership |
-
-Clean IoC is intentionally more capable than a tiny service dictionary and less invasive than a framework that requires application-wide annotations or wrappers. Registrations remain explicit at the composition root; ordinary code stays ordinary.
-
-## Project health
-
-- Production/stable package with typed public APIs (`py.typed`)
-- CI across Python 3.10–3.14
-- FastAPI compatibility matrix from 0.101.0 to latest 0.x
-- Unit, integration, documentation-example, lint, and type checks
-- BenchBro-powered [microbenchmarks](https://peter-daly.github.io/clean_ioc/benchmarks/) with confidence and noise reporting
-- MIT licensed
-
-## Start here
+## Project links
 
 - [Documentation](https://peter-daly.github.io/clean_ioc/)
-- [Validation and explanations](https://peter-daly.github.io/clean_ioc/validation/)
-- [Clean Architecture example](https://github.com/peter-daly/clean_ioc/tree/main/examples/fastapi_clean_architecture)
+- [Compiled scopes](https://peter-daly.github.io/clean_ioc/scopes/)
+- [Component filtering](https://peter-daly.github.io/clean_ioc/advanced/filtering/)
 - [FastAPI integration](https://peter-daly.github.io/clean_ioc/extensions/fastapi/)
+- [Benchmarks](https://peter-daly.github.io/clean_ioc/benchmarks/)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGES.rst)
 
-If Clean IoC saves you from one production-only wiring bug—or makes one architecture review clearer—consider starring the repository. It helps the right Python teams discover a deliberately niche project.
+If this model fits a problem other Python DI containers make awkward, consider starring the repository. It helps the right niche find it.

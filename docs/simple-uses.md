@@ -1,130 +1,100 @@
-# Simple Uses
+# Simple uses
 
-This page shows the most common registration and resolution patterns.
+All composition happens on `ContainerBuilder`; all resolution happens after `build()`.
 
 ```python
-from clean_ioc import Container
+from clean_ioc import ContainerBuilder
 ```
 
-## 1. Register implementation
+## Implementation mapping
 
 ```python
-from typing import Protocol
+builder = ContainerBuilder()
+builder.register(UserRepository, InMemoryUserRepository)
+builder.register(UserService)
+container = builder.build()
 
-
-class UserRepository(Protocol):
-    def get_user(self, user_id: str) -> dict:
-        ...
-
-
-class InMemoryUserRepository(UserRepository):
-    def get_user(self, user_id: str) -> dict:
-        return {"id": user_id, "name": "InMemory"}
-
-
-container = Container()
-container.register(UserRepository, InMemoryUserRepository)
-
-repo = container.resolve(UserRepository)
-print(type(repo).__name__)  # InMemoryUserRepository
+service = container.resolve(UserService)
 ```
 
-## 2. Register concrete class
+## Concrete component
 
 ```python
-class RandomNumberProvider:
-    def get(self) -> int:
-        return 10
-
-
-class Client:
-    def __init__(self, provider: RandomNumberProvider):
-        self.provider = provider
-
-    def number(self) -> int:
-        return self.provider.get()
-
-
-container = Container()
-container.register(RandomNumberProvider)
-container.register(Client)
-
-client = container.resolve(Client)
-print(client.number())  # 10
+builder = ContainerBuilder()
+builder.register(RandomNumberProvider)
+container = builder.build()
 ```
 
-## 3. Register factory
+## Factory
 
 ```python
-class AppConfig:
-    def __init__(self, env: str):
-        self.env = env
-
-
 def create_config() -> AppConfig:
-    return AppConfig(env="prod")
+    return AppConfig(environment="production")
 
 
-container = Container()
-container.register(AppConfig, factory=create_config)
-
-config = container.resolve(AppConfig)
-print(config.env)  # prod
+builder = ContainerBuilder()
+builder.register(AppConfig, factory=create_config)
+container = builder.build()
 ```
 
-## 4. Register instance
+Factory parameters are dependency-injected from the same compiled plan. Async functions, generators, async generators, and context-manager functions are supported.
+
+## Existing instance
 
 ```python
-settings = {"region": "us-east-1"}
+settings = AppConfig(environment="test")
 
-container = Container()
-container.register(dict, instance=settings)
+builder = ContainerBuilder()
+builder.register(AppConfig, instance=settings)
+container = builder.build()
 
-resolved = container.resolve(dict)
-print(resolved is settings)  # True
+assert container.resolve(AppConfig) is settings
 ```
 
-## Collection resolving
-
-When multiple registrations exist for the same service type, resolve `list[T]`, `tuple[T]`, or `set[T]`.
+## Multiple components and collections
 
 ```python
-container = Container()
-container.register(int, instance=1)
-container.register(int, instance=2)
-container.register(int, instance=3)
+builder = ContainerBuilder()
+builder.register(Plugin, FirstPlugin)
+builder.register(Plugin, SecondPlugin)
+container = builder.build()
 
-numbers = container.resolve(list[int])
-print(numbers)  # [3, 2, 1]
+plugins = container.resolve(list[Plugin])
 ```
 
-## Async resolving
+Collections preserve component order and use the same filter vocabulary as individual dependencies.
 
-Use `resolve_async` when your graph includes async factories/generators.
+## Named components
 
 ```python
-import asyncio
+import clean_ioc.component_filters as cf
 
-from clean_ioc import Container
+builder = ContainerBuilder()
+builder.register(int, instance=1)
+builder.register(int, instance=2, name="two")
+container = builder.build()
 
+assert container.resolve(int) == 1
+assert container.resolve(int, filter=cf.with_name("two")) == 2
+```
 
-class TokenClient:
-    def __init__(self, token: str):
-        self.token = token
+## Build does not activate user code
 
-
-async def token_factory() -> str:
-    return "secret-token"
-
-
-async def main():
-    container = Container()
-    container.register(str, factory=token_factory)
-    container.register(TokenClient)
-
-    client = await container.resolve_async(TokenClient)
-    print(client.token)
+```python
+calls = 0
 
 
-asyncio.run(main())
+def token_factory() -> str:
+    global calls
+    calls += 1
+    return "token"
+
+
+builder = ContainerBuilder()
+builder.register(str, factory=token_factory)
+container = builder.build()
+assert calls == 0
+
+container.resolve(str)
+assert calls == 1
 ```

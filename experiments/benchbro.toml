@@ -1,5 +1,0 @@
-benchmark_paths = ["experiments/bench_compiled_container.py"]
-
-[output]
-json = ".benchbro/compiled-container/results.json"
-markdown = ".benchbro/compiled-container/results.md"

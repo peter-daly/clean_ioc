@@ -22,4 +22,4 @@ curl -X POST http://127.0.0.1:8000/orders \
   -d '{"customer_id":"customer-123","total_pence":2500}'
 ```
 
-The composition root calls `container.validate(CreateOrder)` before serving requests. Each request gets one scoped repository, while the payment gateway and audit sink belong to the application container.
+The composition root calls `builder.build()` before serving requests. That validates and compiles the application plan without running user constructors. Each request gets one scoped repository, while the payment gateway and audit sink belong to the application container.

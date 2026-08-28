@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from clean_ioc import (
+from clean_ioc.core import (
     CaptiveDependencyError,
     CircularDependencyError,
     Container,

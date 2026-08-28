@@ -27,7 +27,7 @@ The container is configured once at the application boundary. Ordinary code cont
 | Manual wiring | Maximum explicitness and no library | Composition becomes repetitive as graphs and variants grow |
 | Service dictionary / locator | Very small implementation | Dependencies become hidden runtime lookups throughout application code |
 | Framework-native injection | Excellent at the framework boundary | Domain services can become coupled to framework concepts |
-| Clean IoC | Typed, portable graphs with explicit ownership and validation | Adds a registration layer that small applications may not need |
+| Clean IoC | Typed, portable plans with explicit ownership and build-time compilation | Adds a composition layer that small applications may not need |
 
 Clean IoC does not try to replace a framework's transport features. In FastAPI, for example, request parsing and transport-level dependencies remain FastAPI concerns; Clean IoC constructs portable application services inside a request scope.
 
@@ -43,7 +43,7 @@ service = Checkout(SqlOrderRepository(session), StripeGateway(client))
 # tenant-specific gateways, handler collections, decorators, and cleanup.
 ```
 
-Clean IoC centralizes those rules and can then validate them. The gain is not saving constructor lines; it is making architecture-level wiring consistent, inspectable, and testable.
+Clean IoC centralizes those rules and compiles them before activation. The gain is not saving constructor lines; it is making architecture-level wiring consistent, inspectable, and cheap to execute repeatedly.
 
 ## Why type-driven registration?
 
@@ -54,21 +54,21 @@ That creates a useful boundary:
 - the application owns interfaces and behavior;
 - infrastructure owns implementations;
 - the composition root owns selection and lifetime;
-- Clean IoC owns graph construction and cleanup.
+- Clean IoC owns component-plan compilation, activation, and cleanup.
 
 ## The confidence loop
 
 ```mermaid
 flowchart LR
     register["Register at composition root"]
-    validate["Validate without constructing"]
-    explain["Review the exact graph"]
+    validate["Build without activating"]
+    explain["Review static components"]
     resolve["Resolve at the boundary"]
     cleanup["Release at the owning scope"]
     register --> validate --> explain --> resolve --> cleanup
 ```
 
-That loop is the central reason to choose Clean IoC over an unvalidated registry: the container can explain the rules it will execute and fail fast when those rules are unsafe.
+That loop is the central reason to choose Clean IoC over a runtime registry: the builder fails fast when static rules are unsafe and the container executes the frozen result without rebuilding dependency graphs.
 
 ## When not to use it
 

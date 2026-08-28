@@ -1,62 +1,29 @@
 ---
 name: use-clean-ioc-fastapi
-description: Use Clean IoC with FastAPI to configure application lifespan integration, per-request scopes, Resolve dependencies, registration filters, request and response helpers, async resource cleanup, and integration tests. Use when building, modifying, debugging, reviewing, or testing applications that combine fastapi with clean_ioc.ext.fastapi.
+description: Use Clean IoC 2 with FastAPI to compile an application container, attach it to lifespan, resolve endpoint services from per-request scopes, declare and provide request/response slots, select components, own async resources, and test cleanup. Use when code combines fastapi with clean_ioc.ext.fastapi.
 ---
 
 # Use Clean IoC with FastAPI
 
-Attach one root Clean IoC container to the FastAPI application lifespan and let each request receive one child scope. Resolve endpoint services from that request scope with `Resolve(...)`.
-
-## Install the integration
-
-Install the FastAPI extra when adding Clean IoC to an application:
-
-```bash
-pip install "clean_ioc[fastapi]"
-```
-
-Treat the installed package as the source of truth. Inspect `clean_ioc.ext.fastapi` before using helpers not covered here.
-
-## Configure the application lifespan
-
-Create and register the root container inside an async lifespan. Keep `add_container_to_app(...)` active across the lifespan yield so singleton resources are owned and cleaned up correctly:
+Compile one immutable application container, attach it for the full FastAPI lifespan, and let the integration create one lightweight child scope per request.
 
 ```python
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from clean_ioc import Container, Lifespan
+from clean_ioc import ContainerBuilder, Lifespan
 from clean_ioc.ext.fastapi import Resolve, add_container_to_app
 
 
-class Settings:
-    def __init__(self, app_name: str):
-        self.app_name = app_name
-
-
-class UserRepository:
-    pass
-
-
-class UserService:
-    def __init__(self, repository: UserRepository, settings: Settings):
-        self.repository = repository
-        self.settings = settings
+builder = ContainerBuilder()
+builder.register(Repository, lifespan=Lifespan.scoped)
+builder.register(Service)
+container = builder.build()
 
 
 @asynccontextmanager
 async def app_lifespan(app: FastAPI):
-    container = Container()
-    container.register(
-        Settings,
-        factory=lambda: Settings("users-api"),
-        lifespan=Lifespan.singleton,
-    )
-    container.register(UserRepository, lifespan=Lifespan.scoped)
-    container.register(UserService)
-    container.validate(UserService)
-
     async with add_container_to_app(app, container):
         yield
 
@@ -64,191 +31,83 @@ async def app_lifespan(app: FastAPI):
 app = FastAPI(lifespan=app_lifespan)
 
 
-@app.get("/users/{user_id}")
-async def get_user(
-    user_id: str,
-    service: UserService = Resolve(UserService),
-):
-    return {"id": user_id, "app": service.settings.app_name}
+@app.get("/")
+async def endpoint(service: Service = Resolve(Service)):
+    return await service.run()
 ```
 
-Do not wrap `Resolve(...)` in `Depends(...)`; it already returns a FastAPI dependency marker. Internally it awaits `scope.resolve_async(...)`, so it supports graphs containing both sync and async factories.
+Do not wrap `Resolve(...)` in `Depends(...)`; it already returns a dependency marker. It calls `scope.resolve_async(...)`, so compiled paths may contain sync and async activation.
 
-Call `container.validate(...)` for the route services, handlers, and other application
-entry points before yielding from the lifespan. The check does not construct resources,
-and it turns missing registrations, dependency cycles, and singleton-to-request-scope
-captures into startup failures with complete paths. Leave `allow_async=True` because
-`Resolve(...)` uses `scope.resolve_async(...)`.
+## Map ownership correctly
 
-## Let FastAPI drive request resolution
+- `singleton`: application lifespan resources such as settings, pools, and `httpx.AsyncClient`;
+- `scoped`: one per request, such as sessions and units of work;
+- `once_per_graph`: one endpoint-root resolve only;
+- `transient`: every dependency edge.
 
-Treat `Resolve(Service)` as the framework adapter at the endpoint composition boundary:
+Keep `add_container_to_app(...)` active across the lifespan yield and use async context management when any singleton cleanup is async.
 
-- FastAPI invokes the generated dependency resolver;
-- `get_scope` creates or reuses one child scope for the request;
-- Clean IoC resolves the requested root service with `scope.resolve_async(...)`;
-- the endpoint receives the constructed service without accessing the container;
-- request completion exits the child scope and runs scoped cleanup.
+## Declare late FastAPI values before build
 
-Keep route functions focused on transport concerns and application-service calls. Do not inject `Container` into endpoints or manually call `container.resolve(...)` when `Resolve(...)` can express the dependency. Use `get_scope` directly only for FastAPI dependencies that must add request-local values before service resolution.
-
-## Map lifespans to web ownership
-
-Choose lifespans according to the web resource boundary:
-
-| Clean IoC lifespan | FastAPI behavior | Typical use |
-| --- | --- | --- |
-| `singleton` | One instance for the application lifespan | Settings, database/Redis pools, `httpx.AsyncClient` |
-| `scoped` | One instance per request scope | Sessions, request state, units of work |
-| `once_per_graph` | Reused only inside one `Resolve(...)` graph | Ordinary service graph dependencies |
-| `transient` | New instance at every dependency edge | Disposable operations or graph-sensitive values |
-
-Do not assume `once_per_graph` is request-scoped. Separate `Resolve(...)` dependencies can create separate graphs; use `scoped` when all resolutions in one request must share an instance.
-
-Use async generator or async context-manager factories for resources that must close at application or request exit:
+Request and response objects do not exist during application compilation. Declare their slots before `build()`:
 
 ```python
-from contextlib import asynccontextmanager
+from clean_ioc.ext.fastapi.dependencies import register_fastapi_scope_slots
 
-import httpx
-
-
-@asynccontextmanager
-async def http_client_factory():
-    async with httpx.AsyncClient(timeout=5.0) as client:
-        yield client
-
-
-container.register(
-    httpx.AsyncClient,
-    factory=http_client_factory,
-    lifespan=Lifespan.singleton,
-)
+builder = ContainerBuilder()
+register_fastapi_scope_slots(builder)
+builder.register(RequestAwareService)
+container = builder.build()
 ```
 
-Use `scoped_teardown=` as an alternative when cleanup should remain separate from construction.
-
-## Resolve named or tagged registrations
-
-Pass the registration filter directly to `Resolve(...)`:
+Then add only the FastAPI dependencies that provide values your services need:
 
 ```python
-from clean_ioc.ext.fastapi import Resolve
-from clean_ioc.registration_filters import with_name
+from fastapi import Depends
+from clean_ioc.ext.fastapi.dependencies import add_request_to_scope
 
-
-@app.get("/payments")
-async def payments(
-    gateway: Gateway = Resolve(Gateway, filter=with_name("stripe")),
-):
-    return await gateway.list_payments()
-```
-
-The normal Clean IoC default filter selects unnamed registrations. Register and select names or tags deliberately.
-
-## Inject request and response objects
-
-Import scope helpers from their actual modules:
-
-```python
-from fastapi import Depends, FastAPI
-
-from clean_ioc.ext.fastapi import get_scope
-from clean_ioc.ext.fastapi.dependencies import (
-    RequestHeaderReader,
-    ResponseHeaderWriter,
-    add_request_header_reader_to_scope,
-    add_request_to_scope,
-    add_response_header_writer_to_scope,
-    add_response_to_scope,
-)
-```
-
-Add only the helpers required by the application as global FastAPI dependencies. They register request-specific instances into the same child scope used by `Resolve(...)`:
-
-```python
 app = FastAPI(
     lifespan=app_lifespan,
-    dependencies=[
-        Depends(add_request_to_scope),
-        Depends(add_response_to_scope),
-    ],
+    dependencies=[Depends(add_request_to_scope)],
 )
 ```
 
-After `add_request_to_scope`, inject `fastapi.Request` into Clean IoC services normally. After `add_response_to_scope`, inject `fastapi.Response`. Use the header helpers when services need only header access rather than the full framework objects:
+Available providers cover `Request`, `Response`, `RequestHeaderReader`, and `ResponseHeaderWriter`. They call `scope.provide(...)`; they do not mutate or recompile the container.
+
+For an application-specific late value, declare it on the builder and provide it in a FastAPI dependency before `Resolve(...)` runs:
 
 ```python
-app = FastAPI(
-    lifespan=app_lifespan,
-    dependencies=[
-        Depends(add_request_header_reader_to_scope),
-        Depends(add_response_header_writer_to_scope),
-    ],
-)
+builder.declare_scope_slot(TenantId)
 
 
-class EndpointService:
-    def __init__(
-        self,
-        reader: RequestHeaderReader,
-        writer: ResponseHeaderWriter,
-    ):
-        self.reader = reader
-        self.writer = writer
+def provide_tenant(request: Request, scope: Scope = Depends(get_scope)):
+    scope.provide(TenantId, TenantId(request.headers["x-tenant-id"]))
 ```
 
-Use `get_scope` directly only when a FastAPI dependency must register additional request-local values:
+Provisioning locks at the scope's first resolution, so dependency ordering must ensure providers run first.
+
+## Component selection
+
+Pass a component filter directly to `Resolve`:
 
 ```python
-from fastapi import Depends, Request
+import clean_ioc.component_filters as cf
 
-from clean_ioc import Scope
-from clean_ioc.ext.fastapi import get_scope
-
-
-def add_tenant_to_scope(
-    request: Request,
-    scope: Scope = Depends(get_scope),
-):
-    scope.register(TenantId, instance=TenantId(request.headers["x-tenant-id"]))
+gateway: Gateway = Resolve(Gateway, filter=cf.with_name("stripe"))
 ```
 
-Register framework objects on the request scope, never as root singletons.
+The filter selects among frozen root occurrences; it does not inspect runtime instances.
 
-## Test through the lifespan
+## Test through lifespan
 
-Enter `TestClient` as a context manager so FastAPI runs startup, shutdown, and Clean IoC teardown:
-
-```python
-from fastapi.testclient import TestClient
-
-
-with TestClient(app) as client:
-    first = client.get("/probe")
-    second = client.get("/probe")
-
-assert first.status_code == 200
-assert second.status_code == 200
-assert first.json()["request_id"] != second.json()["request_id"]
-```
-
-Test these boundaries explicitly:
-
-- two `Resolve(...)` operations in one request share a `scoped` dependency;
-- two requests receive different scoped instances;
-- singleton infrastructure is reused across requests;
-- async generator cleanup runs at request or application exit;
-- named/tagged endpoint dependencies use the intended registration;
-- request/response helpers register into the current request scope.
+Use `TestClient` as a context manager. Verify that two dependencies in one request share scoped state, different requests do not, singleton infrastructure is reused, provided request values are visible, and async cleanup happens at request/application exit.
 
 ## Avoid common mistakes
 
-- Do not set `app.state.root_scope` manually; use `add_container_to_app(...)`.
-- Do not create a fresh container or scope inside every endpoint.
-- Do not resolve request services from the root container.
-- Do not use `Depends(Resolve(Service))`; write `service: Service = Resolve(Service)`.
-- Do not model request-specific sessions or mutable state as singletons.
-- Do not recreate connection pools or reusable HTTP clients per request.
-- Do not instantiate `TestClient` without a context manager when testing lifespan behavior.
-- Do not register `Request`, `Response`, or header helpers unless the corresponding FastAPI dependency populates the request scope first.
+- Do not instantiate `Container()`; compose with `ContainerBuilder()` and call `build()`.
+- Do not register on a request scope; declare a slot and call `provide()`.
+- Do not compile a `ScopeBuilder` per ordinary request.
+- Do not resolve request-scoped services from the root container.
+- Do not model mutable request state as a singleton.
+- Do not create a container inside each endpoint.
+- Do not set `app.state.root_scope` manually outside a deliberate test override.

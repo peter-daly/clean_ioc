@@ -1,17 +1,22 @@
 # Benchbro Results
 
 - schema_version: `2`
-- run_id: `d65f42de34044467951c87b13803506d`
-- started_at: `2026-08-28T17:24:56.966264+00:00`
-- finished_at: `2026-08-28T17:25:22.849570+00:00`
+- run_id: `c9712083cf124d47aac71398131bc79a`
+- started_at: `2026-08-28T20:39:46.871158+00:00`
+- finished_at: `2026-08-28T20:43:10.733611+00:00`
 - python_version: `3.14.4`
 - platform: `macOS-15.7.9-arm64-arm-64bit-Mach-O`
 
 | case | benchmark | metric_type | parameters | mean_s | median_s | ci95 | cv_pct | p95_s | ops_per_sec | peak_alloc_bytes | net_alloc_bytes | status |
 | --- | --- | --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| container-operations | direct-python-construction | time |  | 5.70008e-07 | 5.67463e-07 | 5.65046e-07–5.74971e-07 | 1.088 | 5.80302e-07 | 1.75436e+06 | - | - | stable |
-| container-operations | resolve-pre-built-instance | time |  | 9.34088e-06 | 9.14788e-06 | 9.06265e-06–9.61912e-06 | 4.55918 | 1.01343e-05 | 107056 | - | - | noisy |
-| container-operations | resolve-cached-singleton | time |  | 9.06776e-06 | 8.96518e-06 | 8.87521e-06–9.2603e-06 | 2.65368 | 9.48005e-06 | 110281 | - | - | noisy |
-| container-operations | resolve-transient | time |  | 1.33972e-05 | 1.31484e-05 | 1.30024e-05–1.37921e-05 | 5.20892 | 1.45598e-05 | 74642.4 | - | - | noisy |
-| container-operations | resolve-five-node-graph | time |  | 4.44728e-05 | 4.41945e-05 | 4.36302e-05–4.53155e-05 | 2.36793 | 4.62336e-05 | 22485.6 | - | - | stable |
-| container-operations | explain-five-node-graph | time |  | 3.38046e-05 | 3.35908e-05 | 3.32141e-05–3.4395e-05 | 2.18281 | 3.50416e-05 | 29581.8 | - | - | noisy |
+| compiled-runtime | direct-python-construction | time |  | 5.63126e-07 | 5.62077e-07 | 5.54548e-07–5.71705e-07 | 1.90373 | 5.80014e-07 | 1.7758e+06 | - | - | stable |
+| compiled-runtime | resolve-pre-built-instance | time |  | 2.48023e-06 | 2.44073e-06 | 2.40997e-06–2.55049e-06 | 4.08789 | 2.64973e-06 | 403188 | - | - | noisy |
+| compiled-runtime | resolve-cached-singleton | time |  | 2.58653e-06 | 2.56072e-06 | 2.51256e-06–2.6605e-06 | 5.26087 | 2.77872e-06 | 386619 | - | - | noisy |
+| compiled-runtime | resolve-transient | time |  | 4.97349e-06 | 4.97168e-06 | 4.94698e-06–5e-06 | 0.666082 | 5.01356e-06 | 201066 | - | - | stable |
+| compiled-runtime | resolve-five-component-plan | time |  | 2.00783e-05 | 1.99878e-05 | 1.97021e-05–2.04545e-05 | 2.34151 | 2.08632e-05 | 49805 | - | - | noisy |
+| compiled-runtime | create-scope | time |  | 3.75892e-06 | 3.73905e-06 | 3.70583e-06–3.812e-06 | 1.76491 | 3.87037e-06 | 266034 | - | - | noisy |
+| compiled-runtime | resolve-request-slot-plan | time |  | 2.4374e-05 | 2.40541e-05 | 2.36486e-05–2.50994e-05 | 3.71948 | 2.59225e-05 | 41027.3 | - | - | noisy |
+| compiled-build | build-five-component-container | time |  | 0.000336079 | 0.000336614 | 0.000334094–0.000338065 | 0.738286 | 0.000339444 | 2975.49 | - | - | stable |
+| compiled-build | build-scope-overlay | time |  | 0.000279513 | 0.000278416 | 0.000277532–0.000281494 | 0.88564 | 0.000283562 | 3577.65 | - | - | noisy |
+| compiled-allocations | resolve-five-component-plan | memory |  | - | - | - | 28.9836 | - | - | 4048.8 | 760.8 | noisy |
+| compiled-allocations | create-scope | memory |  | - | - | - | 0.716961 | - | - | 2635.53 | 348.533 | stable |

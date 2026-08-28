@@ -6,16 +6,15 @@ from assertive import (
 )
 from typetoolbox.generics import GenericTypeMap
 
-import clean_ioc.node_filters as nf
-import clean_ioc.registration_filters as rf
+import clean_ioc.component_filters as cf
 import clean_ioc.type_filters as tf
 from clean_ioc import (
-    Container,
+    Component,
+    ContainerBuilder,
     DependencyContext,
     DependencySettings,
-    Registration,
 )
-from clean_ioc.core import Lifespan, Node, Tag
+from clean_ioc.core import Lifespan, Tag
 from clean_ioc.factories import use_registered
 
 
@@ -27,6 +26,7 @@ def test_value_factories_with_generic_decorators():
     ISOLATION_CLASS_ATTRIBUTE = "__ISOLATION_LEVEL__"  # noqa: N806
 
     def isolation_level_factory(default_value: Any, context: DependencyContext):
+        assert context.parent is not None
         message_type = context.parent.generic_mapping[TMessage]
         if isolation_level := getattr(message_type, ISOLATION_CLASS_ATTRIBUTE, None):
             return isolation_level
@@ -76,16 +76,17 @@ def test_value_factories_with_generic_decorators():
         def handle(self, message: TMessage):
             self.child.handle(message)
 
-    container = Container()
+    builder = ContainerBuilder()
 
-    container.register_generic_subclasses(MessageHandler)
-    container.register_generic_decorator(MessageHandler, TransactionMessageHandlerDecorator, decorated_arg="child")
+    builder.register_generic_subclasses(MessageHandler)
+    builder.register_generic_decorator(MessageHandler, TransactionMessageHandlerDecorator, decorated_arg="child")
 
-    container.register(
+    builder.register(
         TransactionManager,
         SqlTransactionManager,
         dependency_config={"isolation_level": DependencySettings(value_factory=isolation_level_factory)},
     )
+    container = builder.build()
     handler_a: TransactionMessageHandlerDecorator[MessageA] = container.resolve(
         MessageHandler[MessageA]
     )  # ty:ignore[invalid-assignment]
@@ -107,7 +108,7 @@ def test_generic_decorators_where_we_want_to_filter_away_on_certain_generic_type
     TMessage = TypeVar("TMessage", bound=Message)
     ISOLATION_CLASS_ATTRIBUTE = "__ISOLATION_LEVEL__"  # noqa: N806
 
-    def decorator_registration_filter(registration: Registration):
+    def decorator_registration_filter(registration: Component):
         message_type = registration.generic_mapping[TMessage]
         return hasattr(message_type, ISOLATION_CLASS_ATTRIBUTE)
 
@@ -153,20 +154,21 @@ def test_generic_decorators_where_we_want_to_filter_away_on_certain_generic_type
         def handle(self, message: TMessage):
             self.child.handle(message)
 
-    container = Container()
+    builder = ContainerBuilder()
 
-    container.register_generic_subclasses(MessageHandler)
-    container.register_generic_decorator(
+    builder.register_generic_subclasses(MessageHandler)
+    builder.register_generic_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
-        registration_filter=decorator_registration_filter,
+        when=decorator_registration_filter,
     )
 
-    container.register(
+    builder.register(
         TransactionManager,
         SqlTransactionManager,
     )
+    container = builder.build()
     handler_a = container.resolve(MessageHandler[MessageA])
     handler_b = container.resolve(MessageHandler[MessageB])
 
@@ -218,30 +220,31 @@ def test_generic_decorators_with_different_implementations_of_the_same_dependenc
             self.child.handle(message)
 
     def parents_message_type_is(message_type: type):
-        def inner(parent: Node):
+        def inner(parent: Component):
             return parent.generic_mapping[TMessage] == message_type
 
         return inner
 
-    container = Container()
+    builder = ContainerBuilder()
 
-    container.register_generic_subclasses(MessageHandler)
-    container.register_generic_decorator(
+    builder.register_generic_subclasses(MessageHandler)
+    builder.register_generic_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
     )
 
-    container.register(
+    builder.register(
         TransactionManager,
         SqlTransactionManager,
-        parent_node_filter=parents_message_type_is(MessageA),
+        when=cf.parent(parents_message_type_is(MessageA)),
     )
-    container.register(
+    builder.register(
         TransactionManager,
         DocDbTransactionManager,
-        parent_node_filter=parents_message_type_is(MessageB),
+        when=cf.parent(parents_message_type_is(MessageB)),
     )
+    container = builder.build()
     handler_a = container.resolve(MessageHandler[MessageA])
     handler_b = container.resolve(MessageHandler[MessageB])
 
@@ -316,36 +319,37 @@ def test_generic_decorator_can_set_the_generic_args_of_a_dependency_with_differe
         def handle(self, message: TMessage):
             self.child.handle(message)
 
-    container = Container()
+    builder = ContainerBuilder()
 
-    container.register(DocDbConnection)
-    container.register(SqlDbConnection)
-    container.register(TransactionManager, SqlTransactionManager)
-    container.register(TransactionManager, DocDbTransactionManager)
-    container.register(DocRepository)
-    container.register(SqlRepository)
+    builder.register(DocDbConnection)
+    builder.register(SqlDbConnection)
+    builder.register(TransactionManager, SqlTransactionManager)
+    builder.register(TransactionManager, DocDbTransactionManager)
+    builder.register(DocRepository)
+    builder.register(SqlRepository)
 
-    container.register_generic_subclasses(MessageHandler, subclass_type_filter=~tf.name_end_with("Decorator"))
-    container.register_generic_decorator(
+    builder.register_generic_subclasses(MessageHandler, subclass_type_filter=~tf.name_end_with("Decorator"))
+    builder.register_generic_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
         dependency_config={
-            "transaction_manager": DependencySettings(filter=rf.with_implementation(DocDbTransactionManager))
+            "transaction_manager": DependencySettings(filter=cf.implementation_is(DocDbTransactionManager))
         },
-        decorated_node_filter=nf.has_dependant_service_type(DocDbConnection),
+        when=cf.has_descendant(cf.service_type_is(DocDbConnection)),
     )
 
-    container.register_generic_decorator(
+    builder.register_generic_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
         dependency_config={
-            "transaction_manager": DependencySettings(filter=rf.with_implementation(SqlTransactionManager))
+            "transaction_manager": DependencySettings(filter=cf.implementation_is(SqlTransactionManager))
         },
-        decorated_node_filter=nf.has_dependant_service_type(SqlDbConnection),
+        when=cf.has_descendant(cf.service_type_is(SqlDbConnection)),
     )
 
+    container = builder.build()
     handler_a: Any = container.resolve(MessageHandler[MessageA])
     handler_b: Any = container.resolve(MessageHandler[MessageB])
     handler_c: Any = container.resolve(MessageHandler[MessageC])
@@ -364,16 +368,17 @@ def test_can_filter_parent_based_on_registration_name():
         def __init__(self, x: int):
             self.x = x
 
-    container = Container()
+    builder = ContainerBuilder()
 
-    container.register(Dependency, name="FIVE")
-    container.register(Dependency, name="TEN")
+    builder.register(Dependency, name="FIVE")
+    builder.register(Dependency, name="TEN")
 
-    container.register(int, instance=5, parent_node_filter=nf.registration_name_is("FIVE"))
-    container.register(int, instance=10, parent_node_filter=nf.registration_name_is("TEN"))
+    builder.register(int, instance=5, when=cf.parent(cf.with_name("FIVE")))
+    builder.register(int, instance=10, when=cf.parent(cf.with_name("TEN")))
 
-    five = container.resolve(Dependency, filter=rf.with_name("FIVE"))
-    ten = container.resolve(Dependency, filter=rf.with_name("TEN"))
+    container = builder.build()
+    five = container.resolve(Dependency, filter=cf.with_name("FIVE"))
+    ten = container.resolve(Dependency, filter=cf.with_name("TEN"))
 
     assert five.x == 5
     assert ten.x == 10
@@ -384,16 +389,17 @@ def test_can_filter_parent_based_on_registration_tags():
         def __init__(self, x: int):
             self.x = x
 
-    container = Container()
+    builder = ContainerBuilder()
 
-    container.register(Dependency, tags=[Tag("number", "FIVE")])
-    container.register(Dependency, tags=[Tag("number", "TEN")])
+    builder.register(Dependency, tags=[Tag("number", "FIVE")])
+    builder.register(Dependency, tags=[Tag("number", "TEN")])
 
-    container.register(int, instance=5, parent_node_filter=nf.has_registration_tag("number", "FIVE"))
-    container.register(int, instance=10, parent_node_filter=nf.has_registration_tag("number", "TEN"))
+    builder.register(int, instance=5, when=cf.parent(cf.has_tag("number", "FIVE")))
+    builder.register(int, instance=10, when=cf.parent(cf.has_tag("number", "TEN")))
 
-    five = container.resolve(Dependency, filter=rf.has_tag("number", "FIVE"))
-    ten = container.resolve(Dependency, filter=rf.has_tag("number", "TEN"))
+    container = builder.build()
+    five = container.resolve(Dependency, filter=cf.has_tag("number", "FIVE"))
+    ten = container.resolve(Dependency, filter=cf.has_tag("number", "TEN"))
 
     assert five.x == 5
     assert ten.x == 10
@@ -469,26 +475,27 @@ def test_generic_shared_dependency_among_different_generic_decorator_types_with_
             self.context_getter = context_getter
             pass
 
-    container = Container()
+    builder = ContainerBuilder()
 
-    container.register_generic_subclasses(
+    builder.register_generic_subclasses(
         ContextGetter,
         fallback_type=BasicCommandContextGetter,
-        parent_node_filter=nf.implementation_matches_type_filter(tf.is_subclass_of(CommandContextDecorator)),
+        when=cf.parent(cf.implementation_matches_type_filter(tf.is_subclass_of(CommandContextDecorator))),
     )
 
-    container.register_generic_subclasses(
+    builder.register_generic_subclasses(
         ContextGetter,
         fallback_type=BasicQueryContextGetter,
-        parent_node_filter=nf.implementation_matches_type_filter(tf.is_subclass_of(QueryContextDecorator)),
+        when=cf.parent(cf.implementation_matches_type_filter(tf.is_subclass_of(QueryContextDecorator))),
     )
 
-    container.register_generic_subclasses(CommandHandler)
-    container.register_generic_subclasses(QueryHandler)
+    builder.register_generic_subclasses(CommandHandler)
+    builder.register_generic_subclasses(QueryHandler)
 
-    container.register_generic_decorator(CommandHandler, CommandContextDecorator)
-    container.register_generic_decorator(QueryHandler, QueryContextDecorator)
+    builder.register_generic_decorator(CommandHandler, CommandContextDecorator)
+    builder.register_generic_decorator(QueryHandler, QueryContextDecorator)
 
+    container = builder.build()
     command_handler_a: CommandContextDecorator = container.resolve(CommandHandler[CommandA])  # type: ignore
     command_handler_b: CommandContextDecorator = container.resolve(CommandHandler[CommandB])  # type: ignore
     query_handler_c: QueryContextDecorator = container.resolve(QueryHandler[QueryC])  # type: ignore
@@ -522,12 +529,13 @@ def test_use_registered_factory_with_multiple_base_classes():
             self.a = a
             self.b = b
 
-    container = Container()
+    builder = ContainerBuilder()
 
-    container.register(A, AB, lifespan=Lifespan.scoped)
-    container.register(B, factory=use_registered(AB), lifespan=Lifespan.scoped)
-    container.register(C, lifespan=Lifespan.scoped)
+    builder.register(A, AB, lifespan=Lifespan.scoped)
+    builder.register(B, factory=use_registered(AB), lifespan=Lifespan.scoped)
+    builder.register(C, lifespan=Lifespan.scoped)
 
+    container = builder.build()
     with container.new_scope() as scope:
         c = scope.resolve(C)
 
@@ -615,17 +623,18 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes():
     class DoAThingWithCEvent(ThingDoer[CEvent]):
         pass
 
-    container = Container()
+    builder = ContainerBuilder()
 
-    container.register_generic_subclasses(CommandHandler)
-    container.register_generic_subclasses(QueryHandler)
-    container.register_generic_subclasses(EventHandler)
-    container.register_generic_subclasses(ThingDoer, fallback_type=DefaultThingDoer)
+    builder.register_generic_subclasses(CommandHandler)
+    builder.register_generic_subclasses(QueryHandler)
+    builder.register_generic_subclasses(EventHandler)
+    builder.register_generic_subclasses(ThingDoer, fallback_type=DefaultThingDoer)
 
-    container.register_generic_decorator(CommandHandler, OperationDecorator, decorated_arg="handler")
-    container.register_generic_decorator(QueryHandler, OperationDecorator, decorated_arg="handler")
-    container.register_generic_decorator(EventHandler, OperationDecorator, decorated_arg="handler")
+    builder.register_generic_decorator(CommandHandler, OperationDecorator, decorated_arg="handler")
+    builder.register_generic_decorator(QueryHandler, OperationDecorator, decorated_arg="handler")
+    builder.register_generic_decorator(EventHandler, OperationDecorator, decorated_arg="handler")
 
+    container = builder.build()
     command_handler: OperationDecorator = container.resolve(CommandHandler[ACommand])  # type: ignore
     query_handler: OperationDecorator = container.resolve(QueryHandler[BQuery, BResult])  # type: ignore
     event_handler: OperationDecorator = container.resolve(EventHandler[CEvent])  # type: ignore
@@ -726,38 +735,39 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes_can_hav
 
         return is_subclass_of_parent
 
-    container = Container()
+    builder = ContainerBuilder()
 
-    container.register_generic_subclasses(
+    builder.register_generic_subclasses(
         ThingDoer,
         fallback_type=DoAThingWithCommand,
         subclass_type_filter=thing_doer_type_filter(Command),
         tags=[Tag("command")],
     )
 
-    container.register_generic_subclasses(
+    builder.register_generic_subclasses(
         ThingDoer,
         fallback_type=DoAThingWithEvent,
         subclass_type_filter=thing_doer_type_filter(Event),
         tags=[Tag("event")],
     )
 
-    container.register_generic_subclasses(CommandHandler)
-    container.register_generic_subclasses(EventHandler)
-    container.register_generic_decorator(
+    builder.register_generic_subclasses(CommandHandler)
+    builder.register_generic_subclasses(EventHandler)
+    builder.register_generic_decorator(
         CommandHandler,
         OperationDecorator,
         decorated_arg="handler",
-        dependency_config={"thing_doer": DependencySettings(filter=rf.has_tag("command"))},
+        dependency_config={"thing_doer": DependencySettings(filter=cf.has_tag("command"))},
     )
 
-    container.register_generic_decorator(
+    builder.register_generic_decorator(
         EventHandler,
         OperationDecorator,
         decorated_arg="handler",
-        dependency_config={"thing_doer": DependencySettings(filter=rf.has_tag("event"))},
+        dependency_config={"thing_doer": DependencySettings(filter=cf.has_tag("event"))},
     )
 
+    container = builder.build()
     a_handler: OperationDecorator = container.resolve(CommandHandler[ACommand])  # type: ignore
     b_handler: OperationDecorator = container.resolve(CommandHandler[BCommand])  # type: ignore
     c_handler: OperationDecorator = container.resolve(EventHandler[CEvent])  # type: ignore
@@ -789,12 +799,13 @@ def test_can_register_a_generic_type_that_has_been_dynamically_created_with_a_ge
     class MyDepedency(GenericDependency[A]):
         pass
 
-    container = Container()
+    builder = ContainerBuilder()
 
-    container.register(GenericClass[A], MyClass)
-    container.register(GenericDependency[A], MyDepedency)
-    container.register(A)
+    builder.register(GenericClass[A], MyClass)
+    builder.register(GenericDependency[A], MyDepedency)
+    builder.register(A)
 
+    container = builder.build()
     instance = container.resolve(GenericClass[A])
     assert isinstance(instance, MyClass)
     assert isinstance(instance.value, A)
@@ -830,11 +841,11 @@ def test_generic_decorator_type_is_memoised_across_containers():
         def handle(self, message: TMessage):
             self.child.handle(message)
 
-    def build_container() -> Container:
-        container = Container()
-        container.register_generic_subclasses(MessageHandler)
-        container.register_generic_decorator(MessageHandler, LoggingDecorator, decorated_arg="child")
-        return container
+    def build_container():
+        builder = ContainerBuilder()
+        builder.register_generic_subclasses(MessageHandler)
+        builder.register_generic_decorator(MessageHandler, LoggingDecorator, decorated_arg="child")
+        return builder.build()
 
     handler_1 = build_container().resolve(MessageHandler[MessageA])
     handler_2 = build_container().resolve(MessageHandler[MessageA])

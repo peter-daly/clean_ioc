@@ -1,7 +1,7 @@
 # from __future__ import annotations
 from assertive import is_exact_type, is_same_instance_as
 
-from clean_ioc import (
+from clean_ioc.core import (
     Container,
     Registration,
 )

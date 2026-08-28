@@ -1,292 +1,20 @@
-"""Validate key documentation examples as runnable smoke tests."""
+"""Validate the documented Clean IoC 2 composition and runtime boundaries."""
 
 import asyncio
 from contextlib import asynccontextmanager, contextmanager
-from typing import Generic, Protocol, TypeVar
+from typing import Generic, TypeVar
 
-import clean_ioc.value_factories as vf
+import clean_ioc.component_filters as cf
 from clean_ioc import (
-    Container,
-    ContainerValidationError,
-    DependencyContext,
+    Component,
+    ContainerBuilder,
+    ContainerBuildError,
     DependencySettings,
     Lifespan,
-    Resolver,
-    Tag,
 )
-from clean_ioc.factories import use_from_current_graph
-from clean_ioc.registration_filters import has_tag, with_name
 
 
-def _assert(condition: bool, message: str):
-    if not condition:
-        raise AssertionError(message)
-
-
-def validate_registration_modes():
-    class Repo:
-        def value(self) -> int:
-            return 1
-
-    class RepoImpl(Repo):
-        pass
-
-    class Service:
-        def __init__(self, repo: Repo):
-            self.repo = repo
-
-    class Config:
-        def __init__(self, env: str):
-            self.env = env
-
-    container = Container()
-    container.register(Repo, RepoImpl)
-    container.register(Service)
-    _assert(isinstance(container.resolve(Service).repo, RepoImpl), "implementation registration failed")
-
-    container = Container()
-    container.register(RepoImpl)
-    _assert(isinstance(container.resolve(RepoImpl), RepoImpl), "concrete registration failed")
-
-    container = Container()
-
-    def config_factory() -> Config:
-        return Config(env="prod")
-
-    container.register(Config, factory=config_factory)
-    _assert(container.resolve(Config).env == "prod", "factory registration failed")
-
-    container = Container()
-    cfg = Config(env="test")
-    container.register(Config, instance=cfg)
-    _assert(container.resolve(Config) is cfg, "instance registration failed")
-
-
-def validate_filtering():
-    container = Container()
-    container.register(str, instance="dev", name="dev")
-    container.register(str, instance="prod", tags=[Tag("env", "prod")])
-    container.register(str, instance="staging", tags=[Tag("env", "staging")])
-
-    _assert(container.resolve(str, filter=with_name("dev")) == "dev", "with_name filtering failed")
-    _assert(container.resolve(str, filter=has_tag("env", "prod")) == "prod", "tag filtering failed")
-
-
-def validate_lifespans_and_scopes():
-    class A:
-        pass
-
-    container = Container()
-    container.register(A, lifespan=Lifespan.singleton)
-    _assert(container.resolve(A) is container.resolve(A), "singleton reuse failed")
-
-    container = Container()
-    container.register(A, lifespan=Lifespan.transient)
-    _assert(container.resolve(A) is not container.resolve(A), "transient reuse failed")
-
-    container = Container()
-    container.register(A, lifespan=Lifespan.scoped)
-    with container.new_scope() as s1:
-        a1 = s1.resolve(A)
-        a2 = s1.resolve(A)
-        _assert(a1 is a2, "scoped same-scope reuse failed")
-    with container.new_scope() as s2:
-        a3 = s2.resolve(A)
-    _assert(a1 is not a3, "scoped cross-scope isolation failed")
-
-
-def validate_decorators():
-    class Sender(Protocol):
-        def send(self, text: str) -> str: ...
-
-    class BaseSender:
-        def send(self, text: str) -> str:
-            return f"base:{text}"
-
-    class LogDec:
-        def __init__(self, child: Sender):
-            self.child = child
-
-        def send(self, text: str) -> str:
-            return f"log:{self.child.send(text)}"
-
-    class MetricsDec:
-        def __init__(self, child: Sender):
-            self.child = child
-
-        def send(self, text: str) -> str:
-            return f"metrics:{self.child.send(text)}"
-
-    container = Container()
-    container.register(Sender, BaseSender)
-    container.register_decorator(Sender, LogDec, position=0)
-    container.register_decorator(Sender, MetricsDec, position=10)
-    value = container.resolve(Sender).send("x")
-    _assert(value == "metrics:log:base:x", "decorator ordering failed")
-
-
-def validate_value_factories():
-    class Client:
-        def __init__(self, number: int = 10):
-            self.number = number
-
-    container = Container()
-    container.register(int, instance=2)
-    container.register(
-        Client,
-        name="default",
-        dependency_config={"number": DependencySettings(value_factory=vf.use_default_value)},
-    )
-    container.register(
-        Client,
-        name="resolved",
-        dependency_config={"number": DependencySettings(value_factory=vf.dont_use_default_value)},
-    )
-    _assert(container.resolve(Client, filter=with_name("default")).number == 10, "use_default_value failed")
-    _assert(container.resolve(Client, filter=with_name("resolved")).number == 2, "dont_use_default_value failed")
-
-
-def validate_special_dependency_types():
-    class Logger:
-        def __init__(self, module_name: str):
-            self.module_name = module_name
-
-    class Client:
-        def __init__(self, logger: Logger):
-            self.logger = logger
-
-    def logger_factory(context: DependencyContext) -> Logger:
-        return Logger(module_name=context.parent.implementation.__module__)
-
-    container = Container()
-    container.register(Logger, factory=logger_factory, lifespan=Lifespan.transient)
-    container.register(Client)
-    client = container.resolve(Client)
-    _assert(client.logger.module_name == __name__, "DependencyContext factory failed")
-
-    class Sender:
-        pass
-
-    class BatchSender:
-        pass
-
-    class SenderImpl(Sender, BatchSender):
-        pass
-
-    class UsesBoth:
-        def __init__(self, sender: Sender, batch_sender: BatchSender):
-            self.sender = sender
-            self.batch_sender = batch_sender
-
-    container = Container()
-    container.register(Sender, SenderImpl)
-    container.register(BatchSender, factory=use_from_current_graph(SenderImpl))
-    container.register(UsesBoth)
-    obj = container.resolve(UsesBoth)
-    _assert(obj.sender is obj.batch_sender, "CurrentGraph helper failed")
-
-
-def validate_generics():
-    T = TypeVar("T")
-
-    class Event:
-        pass
-
-    class AEvent(Event):
-        pass
-
-    class BEvent(Event):
-        pass
-
-    class Handler(Generic[T]):
-        def value(self) -> str:
-            raise NotImplementedError
-
-    class AHandler(Handler[AEvent]):
-        def value(self) -> str:
-            return "A"
-
-    class BHandler(Handler[BEvent]):
-        def value(self) -> str:
-            return "B"
-
-    container = Container()
-    container.register_generic_subclasses(Handler)
-    _assert(container.resolve(Handler[AEvent]).value() == "A", "generic subclass A failed")
-    _assert(container.resolve(Handler[BEvent]).value() == "B", "generic subclass B failed")
-
-
-async def validate_async_factories():
-    class Token:
-        def __init__(self, value: str):
-            self.value = value
-
-    async def token_factory() -> Token:
-        return Token("abc")
-
-    @asynccontextmanager
-    async def token_cm_factory():
-        token = Token("cm")
-        yield token
-
-    container = Container()
-    container.register(Token, factory=token_factory)
-    token = await container.resolve_async(Token)
-    _assert(token.value == "abc", "async function factory failed")
-
-    container = Container()
-    container.register(Token, factory=token_cm_factory, lifespan=Lifespan.scoped)
-    async with container.new_scope() as scope:
-        token = await scope.resolve_async(Token)
-        _assert(token.value == "cm", "async contextmanager factory failed")
-
-
-def validate_generator_factories():
-    class Conn:
-        def __init__(self):
-            self.closed = False
-
-        def close(self):
-            self.closed = True
-
-    last_conn: Conn | None = None
-
-    @contextmanager
-    def conn_factory():
-        nonlocal last_conn
-        conn = Conn()
-        last_conn = conn
-        try:
-            yield conn
-        finally:
-            conn.close()
-
-    container = Container()
-    container.register(Conn, factory=conn_factory, lifespan=Lifespan.scoped)
-    with container.new_scope() as scope:
-        scope.resolve(Conn)
-    _assert(last_conn is not None and last_conn.closed, "contextmanager teardown failed")
-
-
-def validate_resolver_injection():
-    class Client:
-        def __init__(self, resolver: Resolver):
-            self.resolver = resolver
-
-        def number(self):
-            return self.resolver.resolve(int)
-
-    container = Container()
-    container.register(int, instance=1)
-    container.register(Client)
-    _assert(container.resolve(Client).number() == 1, "resolver injection failed")
-
-    with container.new_scope() as scope:
-        scope.register(int, instance=10)
-        _assert(scope.resolve(Client).number() == 10, "scope resolver override failed")
-
-
-def validate_static_diagnostics():
+def validate_build_and_resolution() -> None:
     class Repository:
         pass
 
@@ -294,43 +22,178 @@ def validate_static_diagnostics():
         def __init__(self, repository: Repository):
             self.repository = repository
 
-    container = Container()
-    container.register(Repository, lifespan=Lifespan.scoped)
-    container.register(Service)
+    builder = ContainerBuilder()
+    builder.register(Repository)
+    builder.register(Service)
+    container = builder.build()
 
-    report = container.validate(Service)
-    plan = container.explain(Service)
+    assert isinstance(container.resolve(Service).repository, Repository)  # noqa: S101
 
-    _assert(report.is_valid, "valid graph was rejected")
-    _assert(plan.is_valid, "valid explanation was rejected")
-    _assert("repository: Repository [scoped]" in plan.to_text(), "text explanation omitted dependency")
-    _assert(plan.to_mermaid().startswith("flowchart TD"), "Mermaid explanation was not generated")
 
-    registration_id = container.get_registration_id(Service)
-    if registration_id is None:
-        raise AssertionError("service registration disappeared")
-    container.patch_registration(Service, registration_id, lifespan=Lifespan.singleton)
+def validate_failed_builder_is_reusable() -> None:
+    class Missing:
+        pass
+
+    class Service:
+        def __init__(self, missing: Missing):
+            self.missing = missing
+
+    builder = ContainerBuilder()
+    builder.register(Service)
     try:
-        container.validate(Service)
-    except ContainerValidationError as error:
-        _assert(error.issues[0].code == "captive-dependency", "wrong lifecycle issue reported")
+        builder.build()
+    except ContainerBuildError:
+        builder.register(Missing)
     else:
-        raise AssertionError("captive dependency was not reported")
+        raise AssertionError("missing dependency did not fail build")
+
+    assert isinstance(builder.build().resolve(Service).missing, Missing)  # noqa: S101
 
 
-def main():
-    validate_registration_modes()
-    validate_filtering()
-    validate_lifespans_and_scopes()
-    validate_decorators()
-    validate_value_factories()
-    validate_special_dependency_types()
-    validate_generics()
-    validate_generator_factories()
-    validate_resolver_injection()
-    validate_static_diagnostics()
-    asyncio.run(validate_async_factories())
-    print("All documentation example validations passed.")
+def validate_components_and_filters() -> None:
+    class Service:
+        pass
+
+    seen: list[Component] = []
+
+    def when(component: Component) -> bool:
+        seen.append(component)
+        return True
+
+    builder = ContainerBuilder()
+    component_id = builder.register(Service, name="primary", when=when)
+    assert builder.get_component_id(Service, filter=cf.with_name("primary")) == component_id  # noqa: S101
+    container = builder.build()
+    build_calls = len(seen)
+
+    assert isinstance(container.resolve(Service, filter=cf.with_name("primary")), Service)  # noqa: S101
+    assert len(seen) == build_calls  # noqa: S101
+
+
+def validate_lifespans_slots_and_overlays() -> None:
+    class Request:
+        pass
+
+    class Handler:
+        def __init__(self, request: Request):
+            self.request = request
+
+    builder = ContainerBuilder()
+    builder.declare_scope_slot(Request)
+    builder.register(Handler)
+    container = builder.build()
+
+    request = Request()
+    with container.new_scope().provide(Request, request) as scope:
+        assert scope.resolve(Handler).request is request  # noqa: S101
+
+    class Root:
+        pass
+
+    class Overlay(Root):
+        pass
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(Root, Overlay, lifespan=Lifespan.singleton)
+    with overlay_builder.build() as overlay:
+        assert isinstance(overlay.resolve(Root), Overlay)  # noqa: S101
+
+
+def validate_generics_and_decorators() -> None:
+    T = TypeVar("T")
+
+    class Message:
+        pass
+
+    class A(Message):
+        pass
+
+    class Handler(Generic[T]):
+        pass
+
+    class AHandler(Handler[A]):
+        pass
+
+    class Decorator(Handler[T], Generic[T]):
+        def __init__(self, child: Handler[T]):
+            self.child = child
+
+    builder = ContainerBuilder()
+    builder.register_generic_subclasses(Handler)
+    builder.register_generic_decorator(Handler, Decorator, decorated_arg="child")
+    handler = builder.build().resolve(Handler[A])
+
+    assert isinstance(handler, Decorator)  # noqa: S101
+    assert isinstance(handler.child, AHandler)  # noqa: S101
+
+
+def validate_factories_and_cleanup() -> None:
+    class Resource:
+        pass
+
+    events: list[str] = []
+
+    @contextmanager
+    def factory():
+        events.append("enter")
+        yield Resource()
+        events.append("exit")
+
+    builder = ContainerBuilder()
+    builder.register(Resource, factory=factory, lifespan=Lifespan.scoped)
+    container = builder.build()
+    with container.new_scope() as scope:
+        scope.resolve(Resource)
+
+    assert events == ["enter", "exit"]  # noqa: S101
+
+
+async def validate_async_factory() -> None:
+    class Resource:
+        pass
+
+    @asynccontextmanager
+    async def factory():
+        yield Resource()
+
+    builder = ContainerBuilder()
+    builder.register(Resource, factory=factory, lifespan=Lifespan.scoped)
+    container = builder.build()
+    async with container.new_scope() as scope:
+        assert isinstance(await scope.resolve_async(Resource), Resource)  # noqa: S101
+
+
+def validate_value_provider_fallback() -> None:
+    class Dependency:
+        pass
+
+    class Service:
+        def __init__(self, dependency: Dependency):
+            self.dependency = dependency
+
+    def provider(default, context):
+        assert context.component.service_type is Service  # noqa: S101
+        return default
+
+    builder = ContainerBuilder()
+    builder.register(Dependency)
+    builder.register(
+        Service,
+        dependency_config={"dependency": DependencySettings(value_factory=provider)},
+    )
+    assert isinstance(builder.build().resolve(Service).dependency, Dependency)  # noqa: S101
+
+
+def main() -> None:
+    validate_build_and_resolution()
+    validate_failed_builder_is_reusable()
+    validate_components_and_filters()
+    validate_lifespans_slots_and_overlays()
+    validate_generics_and_decorators()
+    validate_factories_and_cleanup()
+    validate_value_provider_fallback()
+    asyncio.run(validate_async_factory())
+    print("documentation examples validated")
 
 
 if __name__ == "__main__":

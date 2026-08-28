@@ -7,7 +7,7 @@ from assertive import (
     was_called,
 )
 
-from clean_ioc import (
+from clean_ioc.core import (
     Container,
 )
 

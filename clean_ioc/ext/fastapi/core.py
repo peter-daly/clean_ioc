@@ -1,17 +1,12 @@
 import logging
 from contextlib import asynccontextmanager
-from typing import Annotated, AsyncGenerator
+from typing import Annotated, AsyncGenerator, TypeVar
 
-from clean_ioc.core import (
-    Container,
-    RegistrationFilter,
-    Scope,
-    TService,
-    default_registration_filter,
-)
+from clean_ioc import ComponentFilter, Container, Scope, default_component_filter
 from fastapi import Depends, FastAPI, Request, params
 
 logger = logging.getLogger(__name__)
+TService = TypeVar("TService")
 
 
 @asynccontextmanager
@@ -62,7 +57,7 @@ async def get_scope(
 
 def Resolve(  # noqa: N802
     service_type: type[TService],
-    filter: RegistrationFilter = default_registration_filter,
+    filter: ComponentFilter = default_component_filter,
 ) -> Annotated[TService, params.Depends]:
     """
     Resolve a type from the clean_ioc container, acts as a FastAPI dependency.

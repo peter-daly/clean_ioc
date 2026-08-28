@@ -1,5 +1,5 @@
 ---
-description: A runnable FastAPI Clean Architecture example with ports, adapters, request scopes, decorators, and startup validation.
+description: A runnable FastAPI Clean Architecture example with ports, adapters, request scopes, decorators, and build-time compilation.
 ---
 
 # FastAPI Clean Architecture example
@@ -43,16 +43,17 @@ No application class performs a container lookup.
 ## Composition root
 
 ```python
-container.register(OrderRepository, InMemoryOrderRepository, lifespan=Lifespan.scoped)
-container.register(PaymentGateway, FakePaymentGateway, lifespan=Lifespan.singleton)
-container.register(AuditSink, LoggingAuditSink, lifespan=Lifespan.singleton)
-container.register(CreateOrder)
-container.register_decorator(CreateOrder, AuditedCreateOrder, decorated_arg="wrapped")
+builder = ContainerBuilder()
+builder.register(OrderRepository, InMemoryOrderRepository, lifespan=Lifespan.scoped)
+builder.register(PaymentGateway, FakePaymentGateway, lifespan=Lifespan.singleton)
+builder.register(AuditSink, LoggingAuditSink, lifespan=Lifespan.singleton)
+builder.register(CreateOrder)
+builder.register_decorator(CreateOrder, AuditedCreateOrder, decorated_arg="wrapped")
 
-container.validate(CreateOrder)
+container = builder.build()
 ```
 
-This is the only place that chooses concrete adapters and ownership. Startup validation proves that the use case and its decorator are complete before FastAPI accepts traffic.
+This is the only place that chooses concrete adapters and ownership. `build()` proves that the use case and its decorator are complete and compiles their runtime instructions before FastAPI accepts traffic.
 
 ## Request boundary
 

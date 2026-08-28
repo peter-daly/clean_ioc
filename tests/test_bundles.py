@@ -2,7 +2,8 @@ from unittest.mock import Mock
 
 from assertive import was_called, was_called_once, was_called_once_with, was_not_called
 
-from clean_ioc import Container
+from clean_ioc import ComponentBuilder
+from clean_ioc import ContainerBuilder as Container
 from clean_ioc.bundles import (
     BaseBundle,
     OnlyRunOncePerClassBundle,
@@ -18,7 +19,7 @@ def test_only_run_once_per_instance_bundle_will_only_run_once_per_instance():
         def __init__(self, mock):
             self.mock = mock
 
-        def apply(self, container: Container):
+        def apply(self, builder: ComponentBuilder):
             self.mock()
 
     container = Container()
@@ -38,7 +39,7 @@ def test_bundle_instance_can_be_called_multiple_times_when_allowed():
         def __init__(self, mock):
             self.mock = mock
 
-        def apply(self, container: Container):
+        def apply(self, builder: ComponentBuilder):
             self.mock()
 
     container = Container()
@@ -59,7 +60,7 @@ def test_bundle_class_can_be_called_multiple_times_with_different_instances():
         def __init__(self, mock):
             self.mock = mock
 
-        def apply(self, container: Container):
+        def apply(self, builder: ComponentBuilder):
             self.mock()
 
     container = Container()
@@ -82,8 +83,8 @@ def test_bundle_class_same_instance_can_run_on_multiple_containers():
         def __init__(self, mock):
             self.mock = mock
 
-        def apply(self, container: Container):
-            self.mock(container)
+        def apply(self, builder: ComponentBuilder):
+            self.mock(builder)
 
     container1 = Container()
     container2 = Container()
@@ -106,7 +107,7 @@ def test_bundle_class_can_be_called_only_once_across_all_instances_when_set():
         def __init__(self, mock):
             self.mock = mock
 
-        def apply(self, container: Container):
+        def apply(self, builder: ComponentBuilder):
             self.mock()
 
     container = Container()
@@ -135,7 +136,7 @@ def test_custom_run_once_bundle():
         def get_bundle_identifier(self) -> str:
             return f"{self.__class__.__name__}-{self.name}"
 
-        def apply(self, container: Container):
+        def apply(self, builder: ComponentBuilder):
             self.mock()
 
     container = Container()

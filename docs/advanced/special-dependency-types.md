@@ -1,66 +1,46 @@
-# Special Dependency Types
+# Special dependency types
 
-Clean IoC supports special injected types for advanced graph-aware scenarios.
-
-```python
-import logging
-
-from clean_ioc import Container, CurrentGraph, DependencyContext, Lifespan
-from clean_ioc.factories import use_from_current_graph
-```
+Clean IoC 2 keeps the runtime special surface small: `DependencyContext`, `ResolutionContext`, `Scope`, and `Container`.
 
 ## `DependencyContext`
 
-Use `DependencyContext` to inspect the current parent/dependency information.
+A value provider receives static information about the parameter's compiled occurrence:
 
 ```python
-class Client:
-    def __init__(self, logger: logging.Logger):
-        self.logger = logger
+from clean_ioc import DependencyContext
 
 
-def logger_factory(context: DependencyContext) -> logging.Logger:
-    module_name = context.parent.implementation.__module__
-    return logging.getLogger(module_name)
-
-
-container = Container()
-container.register(Client)
-container.register(logging.Logger, factory=logger_factory, lifespan=Lifespan.transient)
-
-container.resolve(Client)
+def module_name(default, context: DependencyContext):
+    return context.parent.implementation.__module__
 ```
 
-Use `transient` for dependencies that rely on `DependencyContext`/graph-specific state.
+It exposes the parameter name, current component, service, implementation, static parent, and decorated component. It never exposes a runtime instance.
 
-## `CurrentGraph`
+## `ResolutionContext`
 
-`CurrentGraph` resolves from the current active graph.
+`ResolutionContext` resolves an already-compiled root inside the active top-level resolve. It preserves `once_per_graph` identity.
+
+Prefer constructor injection. Use `ResolutionContext` or helpers such as `use_registered(...)` only when the dependency itself is selected dynamically.
 
 ```python
-class Sender:
-    pass
+from clean_ioc import ResolutionContext
 
 
-class BatchSender:
-    pass
+class SenderSelector:
+    def __init__(self, context: ResolutionContext):
+        self.context = context
 
-
-class MySender(Sender, BatchSender):
-    pass
-
-
-class Client:
-    def __init__(self, sender: Sender, batch_sender: BatchSender):
-        self.sender = sender
-        self.batch_sender = batch_sender
-
-
-container = Container()
-container.register(Sender, MySender)
-container.register(BatchSender, factory=use_from_current_graph(MySender))
-container.register(Client)
-
-client = container.resolve(Client)
-print(client.sender is client.batch_sender)  # True
+    def select(self, premium: bool) -> Sender:
+        name = "premium" if premium else "standard"
+        return self.context.resolve(Sender, filter=cf.with_name(name))
 ```
+
+ResolutionContext can only select frozen root plans. It cannot register, patch, decorate, provide slots, or compile.
+
+## `Scope`
+
+Injecting `Scope` returns the current runtime scope. This is useful at framework boundaries that must create a nested cache boundary. Application services should normally depend on their actual collaborators.
+
+## `Container`
+
+Injecting `Container` returns the immutable root container, even while resolving inside a child scope. It has resolution and scope-creation APIs but no composition APIs.

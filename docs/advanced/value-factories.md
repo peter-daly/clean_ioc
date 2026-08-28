@@ -1,67 +1,48 @@
-# Value Factories
+# Parameter value providers
 
-Value factories let you override dependency values without resolving from the registry.
-
-```python
-from clean_ioc import Container, DependencySettings
-from clean_ioc.registration_filters import with_name
-import clean_ioc.value_factories as vf
-```
-
-## Set a static value
+`DependencySettings.value_factory` can supply a constructor/factory parameter at activation time.
 
 ```python
-class Client:
-    def __init__(self, number: int):
-        self.number = number
+from clean_ioc import ContainerBuilder, DependencyContext, DependencySettings, EMPTY
 
 
-container = Container()
-container.register(
-    Client,
-    dependency_config={"number": DependencySettings(value_factory=vf.set_value(50))},
-)
-
-client = container.resolve(Client)
-print(client.number)  # 50
-```
-
-## Default values vs registry values
-
-```python
-class Client:
-    def __init__(self, number: int = 10):
-        self.number = number
+def isolation_level(default, context: DependencyContext):
+    message_type = context.parent.generic_mapping["TMessage"]
+    return getattr(message_type, "isolation_level", default)
 
 
-container = Container()
-container.register(int, instance=1, name="one")
-container.register(int, instance=2)
-
-container.register(
-    Client,
-    name="uses_default",
-    dependency_config={"number": DependencySettings(value_factory=vf.use_default_value)},
-)
-
-container.register(
-    Client,
-    name="ignore_default",
-    dependency_config={"number": DependencySettings(value_factory=vf.dont_use_default_value)},
-)
-
-container.register(
-    Client,
-    name="ignore_default_filtered",
+builder = ContainerBuilder()
+builder.register(
+    TransactionManager,
     dependency_config={
-        "number": DependencySettings(
-            value_factory=vf.dont_use_default_value,
-            filter=with_name("one"),
-        )
+        "isolation_level": DependencySettings(value_factory=isolation_level),
     },
 )
-
-print(container.resolve(Client, filter=with_name("uses_default")).number)          # 10
-print(container.resolve(Client, filter=with_name("ignore_default")).number)        # 2
-print(container.resolve(Client, filter=with_name("ignore_default_filtered")).number)  # 1
+container = builder.build()
 ```
+
+The provider does not run during `build()`. The compiler freezes its static `DependencyContext` and compiles a normal fallback edge. At activation:
+
+1. the provider receives the parameter's default value and static context;
+2. any result other than `EMPTY` is used;
+3. `EMPTY` executes the precompiled fallback component edge.
+
+The context exposes the current component, its static parent, service, implementation, and decorated occurrence. It never exposes runtime instances.
+
+## Built-in providers
+
+```python
+from clean_ioc.value_factories import dont_use_default_value, set_value, use_default_value
+```
+
+- `use_default_value` always uses the Python default;
+- `dont_use_default_value` returns `EMPTY`, forcing the compiled component fallback;
+- `set_value(value)` always supplies one explicit value.
+
+Constant `dependency_config` values are shorthand for `set_value(...)`:
+
+```python
+builder.register(Client, dependency_config={"timeout": 5.0})
+```
+
+Use a declared scope slot instead when the value belongs to a request or framework boundary and should be shared by multiple components.

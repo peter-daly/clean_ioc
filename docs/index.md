@@ -1,23 +1,21 @@
 ---
-description: Typed Python dependency injection with static graph validation, explicit lifespans, async cleanup, generics, decorators, and FastAPI request scopes.
+description: Typed Python dependency injection with build-time component compilation, immutable runtime plans, explicit lifespans, generics, decorators, and FastAPI scopes.
 ---
 
-# Python dependency injection you can verify
+# Compile the graph once. Resolve the plan.
 
-Clean IoC builds rich object graphs while keeping application code completely unaware of the container. Registrations stay at the composition root; domain and application services use ordinary typed constructors.
-
-The unusual part is what happens before resolution: Clean IoC can validate the graph and explain its exact wiring without creating any objects.
+Clean IoC keeps application code unaware of the container while making dependency composition explicit and inspectable. Version 2 separates the mutable `ContainerBuilder` from the immutable runtime `Container`.
 
 ```bash
 pip install clean_ioc
 ```
 
-## A complete first graph
+## A complete first plan
 
 ```python
 from typing import Protocol
 
-from clean_ioc import Container, Lifespan
+from clean_ioc import ContainerBuilder, Lifespan
 
 
 class UserRepository(Protocol):
@@ -34,60 +32,60 @@ class UserService:
         self.repository = repository
 
 
-container = Container()
-container.register(UserRepository, SqlUserRepository, lifespan=Lifespan.scoped)
-container.register(UserService)
+builder = ContainerBuilder()
+builder.register(UserRepository, SqlUserRepository, lifespan=Lifespan.scoped)
+builder.register(UserService)
 
-container.validate(UserService)
+container = builder.build()
 
 with container.new_scope() as scope:
     service = scope.resolve(UserService)
     assert service.repository.get_name("123") == "Ada"
 ```
 
-Application code imports neither Clean IoC nor a web framework. The composition root decides which implementation to use and how long it lives.
+`build()` specializes types, constructs occurrence-specific `Component` trees, evaluates filters, checks cycles and captive lifespans, and freezes activation instructions. It does not invoke user constructors, factories, generators, teardown callbacks, or value providers.
 
-## Catch wiring errors at startup
+Runtime resolution executes the frozen plan. It does not rediscover registrations or allocate graph nodes.
+
+## Composition and runtime are different jobs
+
+| API | Responsibility |
+| --- | --- |
+| `ContainerBuilder` | Register, decorate, configure, declare slots, compile root plan |
+| `Container` | Resolve from the immutable root plan and own root singletons |
+| `ScopeBuilder` | Compile an experimental child overlay without mutating its parent |
+| `Scope` | Resolve, cache scoped values, provide declared slots, and run cleanup |
+| `Component` | Read-only static occurrence model used by every filter and query |
+
+## Build failures happen before activation
 
 ```python
-report = container.validate(UserService)
-plan = container.explain(UserService)
+builder = ContainerBuilder()
+builder.register(UserService)  # UserRepository is missing
 
-print(report)
-print(plan.to_text())
+container = builder.build()  # raises ContainerBuildError
 ```
 
-Static validation detects:
-
-- missing registrations;
-- circular dependencies, with the full cycle;
-- singletons that capture scoped services;
-- async factories used from sync-only entry points.
-
-`explain()` also models collections, named registrations, supplied values, decorators, and pre-configurations. It can emit Mermaid for architecture documentation. [See validation and explanations](validation.md).
+A failed build leaves the builder reusable. A successful build makes the builder immutable and single-use.
 
 ## Built for application architecture
 
 | Capability | Use it for |
 | --- | --- |
-| Four explicit lifespans | Settings, clients, request state, units of work, and ordinary services |
+| Four explicit lifespans | Settings, clients, request state, units of work, ordinary services |
 | Sync and async factories | Resource creation and deterministic cleanup |
-| Contextual filters | Select adapters based on the consuming service or registration metadata |
-| Typed decorator chains | Logging, metrics, retries, caching, and authorization |
-| Generic discovery | CQRS handlers, event consumers, validators, and pipelines |
-| FastAPI integration | One application container and one child scope per request |
-| Graph introspection | Debugging, reviews, onboarding, and architecture diagrams |
-
-Scoped and singleton activation is coordinated across concurrent tasks and threads, so one cache boundary produces one instance—even under simultaneous first use.
+| Unified component filters | Root, dependency, parent, decorator, and pre-configuration selection |
+| Typed decorator chains | Logging, metrics, retries, caching, authorization |
+| Generic discovery | CQRS handlers, event consumers, validators, pipelines |
+| Declared scope slots | FastAPI requests, responses, tenant IDs, tracing context |
+| Compiled scope overlays | Experimental tenant/test/plugin composition |
 
 ## Where to go next
 
-- [Why Clean IoC?](why-clean-ioc.md) — when a container is worth introducing
-- [Simple uses](simple-uses.md) — the four registration forms
-- [Validation and explanations](validation.md) — fail-fast startup and CI checks
-- [Lifespans](lifespans.md) and [scopes](scopes.md) — resource ownership
+- [Simple uses](simple-uses.md) — registration forms and the build boundary
+- [Lifespans](lifespans.md) and [scopes](scopes.md) — ownership, slots, and overlays
+- [Filtering](advanced/filtering.md) — the unified `Component` model
 - [Factories](factories.md) — sync, async, generators, and context managers
-- [Filtering](advanced/filtering.md) — named, tagged, and parent-aware selection
-- [Decorators](decorators.md) and [generics](generics.md) — handler pipelines and cross-cutting behavior
-- [FastAPI](extensions/fastapi.md) — request scopes and endpoint injection
-- [Clean Architecture example](examples/clean-architecture.md) — a real composition root
+- [Decorators](decorators.md) and [generics](generics.md) — compiled handler pipelines
+- [FastAPI](extensions/fastapi.md) — request scopes and explicit request values
+- [Benchmarks](benchmarks.md) — build, runtime, and allocation experiments

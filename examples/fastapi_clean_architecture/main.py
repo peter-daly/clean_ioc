@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from clean_ioc import Container, Lifespan
+from clean_ioc import Container, ContainerBuilder, Lifespan
 from clean_ioc.ext.fastapi import Resolve, add_container_to_app
 
 from .application import (
@@ -24,20 +24,19 @@ class CreateOrderRequest(BaseModel):
 
 
 def build_container() -> Container:
-    container = Container()
+    builder = ContainerBuilder()
 
     # Infrastructure ownership is explicit at the composition root.
-    container.register(OrderRepository, InMemoryOrderRepository, lifespan=Lifespan.scoped)
-    container.register(PaymentGateway, FakePaymentGateway, lifespan=Lifespan.singleton)
-    container.register(AuditSink, LoggingAuditSink, lifespan=Lifespan.singleton)
+    builder.register(OrderRepository, InMemoryOrderRepository, lifespan=Lifespan.scoped)
+    builder.register(PaymentGateway, FakePaymentGateway, lifespan=Lifespan.singleton)
+    builder.register(AuditSink, LoggingAuditSink, lifespan=Lifespan.singleton)
 
     # Application code has no FastAPI or Clean IoC imports.
-    container.register(CreateOrder)
-    container.register_decorator(CreateOrder, AuditedCreateOrder, decorated_arg="wrapped")
+    builder.register(CreateOrder)
+    builder.register_decorator(CreateOrder, AuditedCreateOrder, decorated_arg="wrapped")
 
     # Fail during startup if the application graph is incomplete or unsafe.
-    container.validate(CreateOrder)
-    return container
+    return builder.build()
 
 
 def create_app() -> FastAPI:

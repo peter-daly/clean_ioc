@@ -13,7 +13,7 @@ class UserService:
 ## With IoC
 
 ```python
-from clean_ioc import Container
+from clean_ioc import ContainerBuilder
 
 
 class UserService:
@@ -29,9 +29,10 @@ class SqlUserRepository(UserRepository):
     pass
 
 
-container = Container()
-container.register(UserRepository, SqlUserRepository)
-container.register(UserService)
+builder = ContainerBuilder()
+builder.register(UserRepository, SqlUserRepository)
+builder.register(UserService)
+container = builder.build()
 
 service = container.resolve(UserService)
 ```
@@ -39,5 +40,5 @@ service = container.resolve(UserService)
 ## Why this matters in Clean IoC
 
 - Dependencies are explicit in type hints.
-- Wiring logic lives in container setup, not business classes.
+- Wiring logic lives in a builder, not business classes.
 - Swapping implementations is a registration change, not a code rewrite.

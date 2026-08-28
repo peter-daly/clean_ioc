@@ -35,9 +35,9 @@ Common OCP violation:
 - adding `if provider == ...` branching in service classes for each new implementation
 
 ```python
-container.register(UserRepository, SqlUserRepository)
+builder.register(UserRepository, SqlUserRepository)
 # later
-container.register(UserRepository, InMemoryUserRepository)
+builder.register(UserRepository, InMemoryUserRepository)
 ```
 
 ## Liskov Substitution Principle (LSP)
@@ -74,8 +74,8 @@ Common ISP violation:
 ```python
 from clean_ioc.factories import use_from_current_graph
 
-container.register(Sender, MySender)
-container.register(BatchSender, factory=use_from_current_graph(MySender))
+builder.register(Sender, MySender)
+builder.register(BatchSender, factory=use_from_current_graph(MySender))
 ```
 
 ## Dependency Inversion Principle (DIP)
@@ -90,7 +90,8 @@ Common DIP violation:
 - service directly instantiates infrastructure classes (`self.repo = SqlRepo()`)
 
 ```python
-container.register(UserRepository, SqlUserRepository)
-container.register(UserService)
+builder.register(UserRepository, SqlUserRepository)
+builder.register(UserService)
+container = builder.build()
 service = container.resolve(UserService)
 ```

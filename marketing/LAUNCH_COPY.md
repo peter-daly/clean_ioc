@@ -1,43 +1,52 @@
-# Launch copy
+# Clean IoC 2 alpha launch copy
 
 ## Technical community post
 
 ### Title
 
-Clean IoC: prove your Python dependency graph before the app starts
+Clean IoC 2: compile a Python dependency graph once, then resolve without rebuilding it
 
 ### Body
 
-I maintain a typed dependency-injection container for Python, and I realized its README was selling the least interesting part: resolving constructors by type.
+I maintain a typed dependency-injection container for Python. Its old runtime model treated every resolve as a fresh graph-building exercise, even when the registrations had not changed.
 
-The new v1.25.0 release focuses on the problem I actually care about—knowing a large object graph is complete and lifecycle-safe before a cold endpoint or worker path reaches production.
+The 2.0 alpha splits that into two explicit jobs:
 
 ```python
-container.validate(CreateOrder)
-print(container.explain(CreateOrder).to_text())
+builder = ContainerBuilder()
+builder.register(OrderRepository, SqlOrderRepository, lifespan=Lifespan.scoped)
+builder.register(CreateOrder)
+
+container = builder.build()
+handler = container.resolve(CreateOrder)
 ```
 
-Validation is static: it does not call constructors or factories. It reports missing registrations, full dependency cycles, singletons that capture scoped/request services, and async-only paths used by sync entry points. The same model can render the selected implementations, lifespans, collections, and decorators as text or Mermaid.
+`build()` specializes generics, constructs occurrence-specific component trees, evaluates contextual and decorator filters, checks missing/circular/captive dependencies, and freezes activation instructions. It does not run constructors, factories, generators, teardown callbacks, or value providers.
 
-Clean IoC keeps application classes framework-agnostic and adds explicit transient, per-graph, scoped, and singleton ownership. There is a FastAPI adapter with one child scope per request, plus generic handler discovery and typed decorator pipelines for CQRS/event-driven designs.
+The runtime container is immutable. Resolution executes frozen steps, caches plain instances, and does not allocate dependency-graph nodes.
 
-I also added a runnable FastAPI Clean Architecture example and published the microbenchmark script and results rather than making “fast” claims.
+The other experiment is child composition. `new_scope()` remains cheap and reuses its parent's plan. When a tenant or test genuinely needs different registrations, `new_scope_builder().build()` compiles an overlay explicitly. Late request/framework values use declared scope slots and `scope.provide(...)`, so FastAPI does not mutate or recompile the container per request.
 
-Manual wiring is still the better choice for small graphs. I would especially value feedback from people maintaining FastAPI, worker, or CQRS systems: what graph mistakes would you want a startup validator to catch?
+Registration metadata and graph nodes have also become one read-only `Component` model. The same `component_filters` predicates now drive root selection, dependency selection, parent-aware registration, decorators, and pre-configuration.
+
+This is a major-version alpha because the build boundary changes the programming model. I would especially value feedback from people with deep FastAPI, CQRS, plugin, or multi-tenant object graphs: which composition patterns cannot be frozen at startup?
 
 Repository: https://github.com/peter-daly/clean_ioc
 
-Validation docs: https://peter-daly.github.io/clean_ioc/validation/
-
 ## Short social post
 
-Clean IoC v1.25 turns Python DI wiring into something you can prove before startup.
+Clean IoC 2 alpha compiles Python DI plans before startup:
 
-`container.validate()` catches missing registrations, cycles, captive request state, and sync/async mismatches—without constructing resources.
+`ContainerBuilder` → `build()` → immutable `Container`
 
-`container.explain()` renders the selected graph as text or Mermaid.
+- strict missing/cycle/captive checks
+- no user activation during build
+- no dependency-graph allocation during resolve
+- one static `Component` filter model
+- cheap scopes + explicit compiled scope overlays
+- declared FastAPI request slots
 
-Also: coordinated concurrent lifespans, broad FastAPI compatibility, a runnable Clean Architecture example, and reproducible benchmarks.
+BenchBro results separate build cost, runtime latency, and allocations. Looking for hard object graphs that break the model.
 
 https://github.com/peter-daly/clean_ioc
 
@@ -45,16 +54,15 @@ https://github.com/peter-daly/clean_ioc
 
 ### Title
 
-The dependency-injection bug hiding on your coldest endpoint
+What if a Python DI container stopped building graphs at runtime?
 
 ### Sections
 
-1. A singleton accidentally captures a request-scoped unit of work.
-2. Why unit tests and eager startup miss cold graph paths.
-3. What can be proven from typed registrations without invoking user code.
-4. Building full-path errors for missing, cyclic, captive, and async dependencies.
-5. Turning the same static model into a reviewable Mermaid graph.
-6. What cannot be proven: runtime behavior inside arbitrary factories and value providers.
-7. When manual construction remains the clearer design.
-
-End with the complete example and invite readers to share a graph the validator cannot yet model.
+1. Why mutable composition and runtime resolution are different jobs.
+2. The explicit build boundary and what must remain side-effect free.
+3. Occurrence-specific component plans for parent-aware generics.
+4. Evaluating decorators against the undecorated core subtree.
+5. Runtime providers with static context and a precompiled fallback edge.
+6. Cheap child scopes, declared slots, and explicit scope overlays.
+7. Measuring startup, runtime, and allocations as separate questions.
+8. What remains experimental and which graphs should challenge the design.

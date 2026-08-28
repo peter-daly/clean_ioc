@@ -1,372 +1,168 @@
-# FastAPI Extension
+# FastAPI integration
 
-Clean IoC provides helpers for per-request scope integration with FastAPI.
+Clean IoC compiles the application container at startup and creates a lightweight child scope per request. Application services remain ordinary Python classes with no FastAPI dependency.
+
+Install the optional dependency:
+
+```bash
+pip install "clean_ioc[fastapi]"
+```
+
+## Minimal application
 
 ```python
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import FastAPI
 
-from clean_ioc import Container, Lifespan, Scope
-from clean_ioc.ext.fastapi import Resolve, add_container_to_app, get_scope
-```
+from clean_ioc import ContainerBuilder, Lifespan
+from clean_ioc.ext.fastapi import Resolve, add_container_to_app
 
-## How it works
 
-- A root scope is attached to the app during lifespan.
-- Each request receives a child scope (`get_scope`).
-- `Resolve(SomeType)` resolves from the request scope.
+class Repository:
+    pass
 
-## Minimal setup
 
-```python
-class MyDependency:
-    def do_action(self) -> str:
-        return "done"
+class Service:
+    def __init__(self, repository: Repository):
+        self.repository = repository
+
+
+builder = ContainerBuilder()
+builder.register(Repository, lifespan=Lifespan.scoped)
+builder.register(Service)
+container = builder.build()
 
 
 @asynccontextmanager
-async def app_lifespan(app: FastAPI):
-    container = Container()
-    container.register(MyDependency)
-
+async def lifespan(app: FastAPI):
     async with add_container_to_app(app, container):
         yield
 
 
-app = FastAPI(lifespan=app_lifespan)
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/")
-async def read_root(dep: MyDependency = Resolve(MyDependency)):
-    return {"result": dep.do_action()}
+async def endpoint(service: Service = Resolve(Service)):
+    return {"repository": type(service.repository).__name__}
 ```
 
-## Dependencies with dependencies: FastAPI only vs Clean IoC
+`Resolve(Service)` is a normal FastAPI dependency. It retrieves the request scope and calls `resolve_async`, so a plan may mix sync and async activation.
 
-### FastAPI without Clean IoC
+## Request scope lifecycle
 
-In plain FastAPI, you usually wire every edge in the dependency chain with `Depends(...)`.
+The extension stores the immutable root container on `app.state`. For the first Clean IoC dependency in a request, it creates `root_scope.new_scope()`, reuses that scope for the rest of the request, and exits it after the response.
+
+This means:
+
+- `scoped` services are shared within one request and isolated between requests;
+- singleton services belong to the application container;
+- generators, context managers, and teardown callbacks run at the correct boundary;
+- no dependency plan is compiled during an ordinary request.
+
+## Request and response helpers use declared slots
+
+FastAPI creates `Request` and `Response` values after the container is built. Declare those late values before build:
 
 ```python
-from functools import lru_cache
-
 from fastapi import Depends, FastAPI
 
-app = FastAPI()
+from clean_ioc import ContainerBuilder
+from clean_ioc.ext.fastapi.dependencies import (
+    RequestHeaderReader,
+    add_request_header_reader_to_scope,
+    register_fastapi_scope_slots,
+)
 
 
-class Settings:
-    def __init__(self, db_url: str):
-        self.db_url = db_url
+class HeaderAwareService:
+    def __init__(self, headers: RequestHeaderReader):
+        self.headers = headers
 
 
-class DbSession:
-    def __init__(self, settings: Settings):
-        self.settings = settings
+builder = ContainerBuilder()
+register_fastapi_scope_slots(builder)
+builder.register(HeaderAwareService)
+container = builder.build()
 
-
-class UserRepository:
-    def __init__(self, db: DbSession):
-        self.db = db
-
-
-class UserService:
-    def __init__(self, repo: UserRepository):
-        self.repo = repo
-
-    def get_user(self, user_id: str) -> dict:
-        return {"id": user_id}
-
-
-@lru_cache
-def get_settings() -> Settings:
-    # Singleton-like dependency requires extra wiring/caching.
-    return Settings(db_url="postgresql://localhost:5432/app")
-
-
-def get_db(settings: Settings = Depends(get_settings)) -> DbSession:
-    return DbSession(settings)
-
-
-def get_user_repo(db: DbSession = Depends(get_db)) -> UserRepository:
-    return UserRepository(db)
-
-
-def get_user_service(repo: UserRepository = Depends(get_user_repo)) -> UserService:
-    return UserService(repo)
-
-
-@app.get("/users/{user_id}")
-def get_user(user_id: str, service: UserService = Depends(get_user_service)):
-    return service.get_user(user_id)
+app = FastAPI(dependencies=[Depends(add_request_header_reader_to_scope)])
 ```
 
-### FastAPI with Clean IoC
+`register_fastapi_scope_slots` declares slots for:
 
-With Clean IoC, you declare classes and register types once. Constructor dependencies are resolved automatically.
+- `fastapi.Request`;
+- `fastapi.Response`;
+- `RequestHeaderReader`;
+- `ResponseHeaderWriter`.
+
+The matching FastAPI dependency calls `scope.provide(...)`. It does not register a component or mutate the plan.
+
+Available helpers:
 
 ```python
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
-
-from clean_ioc import Container, Lifespan
-from clean_ioc.ext.fastapi import Resolve, add_container_to_app
-
-
-class Settings:
-    def __init__(self, db_url: str):
-        self.db_url = db_url
-
-
-class DbSession:
-    def __init__(self, settings: Settings):
-        self.settings = settings
-
-
-class UserRepository:
-    def __init__(self, db: DbSession):
-        self.db = db
-
-
-class UserService:
-    def __init__(self, repo: UserRepository):
-        self.repo = repo
-
-    def get_user(self, user_id: str) -> dict:
-        return {"id": user_id}
-
-
-@asynccontextmanager
-async def app_lifespan(app: FastAPI):
-    container = Container()
-    container.register(Settings, factory=lambda: Settings("postgresql://localhost:5432/app"), lifespan=Lifespan.singleton)
-    container.register(DbSession, lifespan=Lifespan.scoped)
-    container.register(UserRepository)
-    container.register(UserService)
-
-    async with add_container_to_app(app, container):
-        yield
-
-
-app = FastAPI(lifespan=app_lifespan)
-
-
-@app.get("/users/{user_id}")
-async def get_user(user_id: str, service: UserService = Resolve(UserService)):
-    return service.get_user(user_id)
+from clean_ioc.ext.fastapi.dependencies import (
+    add_request_header_reader_to_scope,
+    add_request_to_scope,
+    add_response_header_writer_to_scope,
+    add_response_to_scope,
+)
 ```
 
-### Lifecycle model differences
+Add only the dependencies your application needs, while declaring all slots through the helper before `build()`.
 
-- Plain FastAPI dependency functions are request-cached by default, so request scope is the natural model.
-- Singleton-like dependencies in plain FastAPI are usually achieved with app state or caching patterns (`@lru_cache`, custom startup wiring).
-- Clean IoC makes lifespan explicit at registration time (`transient`, `once_per_graph`, `scoped`, `singleton`), so lifetime is a first-class design decision.
+## Filtering endpoint services
 
-#### Performance note: singleton placement matters
-
-Using `singleton` for expensive, reusable infrastructure dependencies can significantly improve performance.
-
-Examples:
-
-- Database connection pools (SQLAlchemy engine/pool, async DB pool).
-- Redis clients/pools.
-- HTTP clients (`httpx.AsyncClient`) with connection pooling and TLS session reuse.
-
-If you recreate these per request, you repeatedly pay setup costs.
-For HTTP clients, that can include DNS lookup, TCP connect, and TLS handshake overhead.
-Keeping a long-lived client instance allows connection reuse and reduces latency under load.
-
-#### Plain FastAPI lifecycle example
+`Resolve` accepts a component filter:
 
 ```python
-from functools import lru_cache
-from uuid import uuid4
-
-from fastapi import Depends, FastAPI
-
-app = FastAPI()
+import clean_ioc.component_filters as cf
 
 
-class RequestTracker:
-    def __init__(self):
-        self.request_id = str(uuid4())
-
-
-class Settings:
-    def __init__(self, app_name: str):
-        self.app_name = app_name
-
-
-@lru_cache
-def get_settings() -> Settings:
-    # App-wide singleton-like dependency (manual pattern).
-    return Settings("my-api")
-
-
-def get_request_tracker() -> RequestTracker:
-    # New instance per request (request cache still means one per request).
-    return RequestTracker()
-
-
-@app.get("/lifecycle")
-def lifecycle(
-    tracker_a: RequestTracker = Depends(get_request_tracker),
-    tracker_b: RequestTracker = Depends(get_request_tracker),
-    settings_a: Settings = Depends(get_settings),
-    settings_b: Settings = Depends(get_settings),
-):
-    return {
-        "request_scoped_same_instance": tracker_a is tracker_b,  # True per request
-        "singleton_like_same_instance": settings_a is settings_b,  # True app-wide
-    }
+@app.get("/primary")
+async def primary(service: Service = Resolve(Service, filter=cf.with_name("primary"))):
+    return service
 ```
 
-#### Clean IoC lifecycle example
+Root filters select among already-compiled component occurrences.
 
-```python
-from contextlib import asynccontextmanager
-from uuid import uuid4
-
-from fastapi import FastAPI
-
-from clean_ioc import Container, Lifespan
-from clean_ioc.ext.fastapi import Resolve, add_container_to_app
-
-
-class RequestTracker:
-    def __init__(self):
-        self.request_id = str(uuid4())
-
-
-class OperationToken:
-    def __init__(self):
-        self.value = str(uuid4())
-
-
-class Settings:
-    def __init__(self, app_name: str):
-        self.app_name = app_name
-
-
-class LifecycleProbe:
-    def __init__(
-        self,
-        tracker_a: RequestTracker,
-        tracker_b: RequestTracker,
-        token_a: OperationToken,
-        token_b: OperationToken,
-        settings_a: Settings,
-        settings_b: Settings,
-    ):
-        self.tracker_a = tracker_a
-        self.tracker_b = tracker_b
-        self.token_a = token_a
-        self.token_b = token_b
-        self.settings_a = settings_a
-        self.settings_b = settings_b
-
-
-@asynccontextmanager
-async def app_lifespan(app: FastAPI):
-    container = Container()
-    container.register(Settings, factory=lambda: Settings("my-api"), lifespan=Lifespan.singleton)
-    container.register(RequestTracker, lifespan=Lifespan.scoped)
-    container.register(OperationToken, lifespan=Lifespan.transient)
-    container.register(LifecycleProbe)
-
-    async with add_container_to_app(app, container):
-        yield
-
-
-app = FastAPI(lifespan=app_lifespan)
-
-
-@app.get("/lifecycle")
-async def lifecycle(probe: LifecycleProbe = Resolve(LifecycleProbe)):
-    return {
-        "scoped_same_instance": probe.tracker_a is probe.tracker_b,  # True within request scope
-        "transient_same_instance": probe.token_a is probe.token_b,  # False (always new)
-        "singleton_same_instance": probe.settings_a is probe.settings_b,  # True app-wide
-    }
-```
-
-#### Example: singleton HTTPX client in Clean IoC
+## Async resources
 
 ```python
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI
-
-from clean_ioc import Container, Lifespan
-from clean_ioc.ext.fastapi import Resolve, add_container_to_app
-
-
-class ExternalApi:
-    def __init__(self, client: httpx.AsyncClient):
-        self.client = client
-
-    async def health(self) -> dict:
-        r = await self.client.get("https://example.com/health")
-        r.raise_for_status()
-        return r.json()
 
 
 @asynccontextmanager
-async def httpx_client_factory():
-    # One client for app lifetime: reuses connections and TLS sessions.
-    async with httpx.AsyncClient(timeout=5.0) as client:
+async def http_client_factory():
+    async with httpx.AsyncClient() as client:
         yield client
 
 
-@asynccontextmanager
-async def app_lifespan(app: FastAPI):
-    container = Container()
-    container.register(httpx.AsyncClient, factory=httpx_client_factory, lifespan=Lifespan.singleton)
-    container.register(ExternalApi, lifespan=Lifespan.scoped)
-
-    async with add_container_to_app(app, container):
-        yield
-
-
-app = FastAPI(lifespan=app_lifespan)
-
-
-@app.get("/external-health")
-async def external_health(api: ExternalApi = Resolve(ExternalApi)):
-    return await api.health()
+builder = ContainerBuilder()
+builder.register(httpx.AsyncClient, factory=http_client_factory, lifespan=Lifespan.singleton)
+builder.register(ExternalApi, lifespan=Lifespan.scoped)
+container = builder.build()
 ```
 
-## Inject FastAPI request objects into scope
+Use `async with add_container_to_app(...)` so application-owned async singletons are finalized at shutdown. Request-owned async resources are finalized when their request scope exits.
+
+## Testing overrides
+
+For one test or tenant, compile a child overlay without changing the application root:
 
 ```python
-class RequestAwareDependency:
-    def __init__(self, request: Request):
-        self.request = request
+test_builder = container.new_scope_builder()
+test_builder.register(PaymentGateway, FakePaymentGateway)
 
-    def user_agent(self) -> str:
-        return self.request.headers.get("user-agent", "")
-
-
-def add_request_to_scope(request: Request, scope: Scope = Depends(get_scope)):
-    scope.register(Request, instance=request)
-
-
-@asynccontextmanager
-async def app_lifespan(app: FastAPI):
-    container = Container()
-    container.register(RequestAwareDependency, lifespan=Lifespan.scoped)
-
-    async with add_container_to_app(app, container):
-        yield
-
-
-app = FastAPI(lifespan=app_lifespan, dependencies=[Depends(add_request_to_scope)])
-
-
-@app.get("/ua")
-async def user_agent(dep: RequestAwareDependency = Resolve(RequestAwareDependency)):
-    return {"user_agent": dep.user_agent()}
+async with test_builder.build() as test_scope:
+    app.state.root_scope = test_scope
+    # run the test client
 ```
+
+For request-specific values, prefer a declared slot and `provide` because ordinary scope creation is much cheaper than compiling an overlay.
+
+## Complete example
+
+See [`examples/fastapi_clean_architecture`](https://github.com/peter-daly/clean_ioc/tree/main/examples/fastapi_clean_architecture) for a framework-independent use case, scoped repository, singleton adapters, an audit decorator, application startup, and endpoint resolution.

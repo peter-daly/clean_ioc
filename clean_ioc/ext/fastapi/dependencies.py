@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from clean_ioc.core import Scope
+from clean_ioc import ComponentBuilder, Scope
 from clean_ioc.functional_utils import constant
 from fastapi import Depends, Request, Response
 
@@ -33,18 +33,27 @@ class ResponseHeaderWriter:
 
 
 def add_request_to_scope(request: Request, scope: Scope = Depends(get_scope)):
-    scope.register(Request, instance=request)
+    scope.provide(Request, request)
 
 
 def add_response_to_scope(response: Response, scope: Scope = Depends(get_scope)):
-    scope.register(Response, instance=response)
+    scope.provide(Response, response)
 
 
 def add_request_header_reader_to_scope(request: Request, scope: Scope = Depends(get_scope)):
     reader = RequestHeaderReader(request)
-    scope.register(RequestHeaderReader, instance=reader)
+    scope.provide(RequestHeaderReader, reader)
 
 
 def add_response_header_writer_to_scope(response: Response, scope: Scope = Depends(get_scope)):
     writer = ResponseHeaderWriter(response)
-    scope.register(ResponseHeaderWriter, instance=writer)
+    scope.provide(ResponseHeaderWriter, writer)
+
+
+def register_fastapi_scope_slots(builder: ComponentBuilder) -> None:
+    """Declare values that FastAPI request dependencies can provide."""
+
+    builder.declare_scope_slot(Request)
+    builder.declare_scope_slot(Response)
+    builder.declare_scope_slot(RequestHeaderReader)
+    builder.declare_scope_slot(ResponseHeaderWriter)

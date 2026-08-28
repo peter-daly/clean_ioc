@@ -33,7 +33,7 @@
     <rect width="1120" height="92" rx="18" fill="#07101b" stroke="#294252" stroke-width="2"/>
     <circle cx="41" cy="46" r="15" fill="#34d399" filter="url(#glow)"/>
     <path d="M34 46l5 5 10-12" fill="none" stroke="#07101b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="77" y="54" fill="#d6e3ea">container.validate(CreateOrder)</text>
-    <text x="705" y="54" fill="#78e5c1">validate()  explain()  FastAPI  CQRS</text>
+    <text x="77" y="54" fill="#d6e3ea">container = builder.build()</text>
+    <text x="705" y="54" fill="#78e5c1">compile  resolve  FastAPI  CQRS</text>
   </g>
 </svg>

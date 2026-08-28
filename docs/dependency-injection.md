@@ -5,7 +5,7 @@ Dependency Injection is a concrete IoC technique: dependencies are provided from
 ## Constructor injection with Clean IoC
 
 ```python
-from clean_ioc import Container
+from clean_ioc import ContainerBuilder
 
 
 class Logger:
@@ -21,9 +21,10 @@ class UserService:
         self.logger.info("running")
 
 
-container = Container()
-container.register(Logger)
-container.register(UserService)
+builder = ContainerBuilder()
+builder.register(Logger)
+builder.register(UserService)
+container = builder.build()
 
 container.resolve(UserService).run()
 ```
@@ -38,7 +39,7 @@ container.resolve(UserService).run()
 ## In tests
 
 ```python
-from clean_ioc import Container
+from clean_ioc import ContainerBuilder
 
 
 class Logger:
@@ -62,9 +63,10 @@ class Service:
         self.logger.info("ok")
 
 
-container = Container()
-container.register(Logger, FakeLogger)
-container.register(Service)
+builder = ContainerBuilder()
+builder.register(Logger, FakeLogger)
+builder.register(Service)
+container = builder.build()
 
 service = container.resolve(Service)
 service.run()
