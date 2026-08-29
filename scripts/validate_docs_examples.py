@@ -119,7 +119,7 @@ def validate_generics_and_decorators() -> None:
 
     builder = ContainerBuilder()
     builder.register_generic_subclasses(Handler)
-    builder.register_generic_decorator(Handler, Decorator, decorated_arg="child")
+    builder.register_decorator(Handler, Decorator, decorated_arg="child")
     handler = builder.build().resolve(Handler[A])
 
     assert isinstance(handler, Decorator)  # noqa: S101

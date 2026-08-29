@@ -20,7 +20,7 @@ It exposes the parameter name, current component, service, implementation, stati
 
 `ResolutionContext` resolves an already-compiled root inside the active top-level resolve. It preserves `once_per_graph` identity.
 
-Prefer constructor injection. Use `ResolutionContext` or helpers such as `use_registered(...)` only when the dependency itself is selected dynamically.
+Prefer constructor injection. Use `ResolutionContext` or helpers such as `use_component(...)` only when the dependency itself is selected dynamically.
 
 ```python
 from clean_ioc import ResolutionContext

@@ -140,7 +140,7 @@ builder.register_decorator(CommandHandler, LoggingHandlerDecorator)
 
 Concrete decorator classes are memoized process-wide, avoiding repeated dynamic class creation across container builds.
 
-An open decorator definition is specialized from the closed component plans encountered by the compiler. It therefore applies to subclass-discovered handlers, explicit closed registrations, generic factories, and fallback registrations. It does not depend on Python's live subclass set. `register_generic_decorator()` remains as a compatibility wrapper for V1-style composition.
+An open decorator definition is specialized from the closed component plans encountered by the compiler. It therefore applies to subclass-discovered handlers, explicit closed registrations, generic factories, and fallback registrations. It does not depend on Python's live subclass set; use `register_decorator()` for both open and closed service types.
 
 ## Occurrence-specific context
 

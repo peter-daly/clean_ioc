@@ -13,9 +13,9 @@ from clean_ioc import (
     ContainerBuilder,
     DependencyContext,
     DependencySettings,
+    Tag,
 )
-from clean_ioc.core import Tag
-from clean_ioc.factories import use_registered
+from clean_ioc.factories import use_component
 
 
 def test_value_factories_with_generic_decorators():
@@ -79,7 +79,7 @@ def test_value_factories_with_generic_decorators():
     builder = ContainerBuilder()
 
     builder.register_generic_subclasses(MessageHandler)
-    builder.register_generic_decorator(MessageHandler, TransactionMessageHandlerDecorator, decorated_arg="child")
+    builder.register_decorator(MessageHandler, TransactionMessageHandlerDecorator, decorated_arg="child")
 
     builder.register(
         TransactionManager,
@@ -157,7 +157,7 @@ def test_generic_decorators_where_we_want_to_filter_away_on_certain_generic_type
     builder = ContainerBuilder()
 
     builder.register_generic_subclasses(MessageHandler)
-    builder.register_generic_decorator(
+    builder.register_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
@@ -228,7 +228,7 @@ def test_generic_decorators_with_different_implementations_of_the_same_dependenc
     builder = ContainerBuilder()
 
     builder.register_generic_subclasses(MessageHandler)
-    builder.register_generic_decorator(
+    builder.register_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
@@ -329,7 +329,7 @@ def test_generic_decorator_can_set_the_generic_args_of_a_dependency_with_differe
     builder.register(SqlRepository)
 
     builder.register_generic_subclasses(MessageHandler, subclass_type_filter=~tf.name_end_with("Decorator"))
-    builder.register_generic_decorator(
+    builder.register_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
@@ -339,7 +339,7 @@ def test_generic_decorator_can_set_the_generic_args_of_a_dependency_with_differe
         when=cf.has_descendant(cf.service_type_is(DocDbConnection)),
     )
 
-    builder.register_generic_decorator(
+    builder.register_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
@@ -492,8 +492,8 @@ def test_generic_shared_dependency_among_different_generic_decorator_types_with_
     builder.register_generic_subclasses(CommandHandler)
     builder.register_generic_subclasses(QueryHandler)
 
-    builder.register_generic_decorator(CommandHandler, CommandContextDecorator)
-    builder.register_generic_decorator(QueryHandler, QueryContextDecorator)
+    builder.register_decorator(CommandHandler, CommandContextDecorator)
+    builder.register_decorator(QueryHandler, QueryContextDecorator)
 
     container = builder.build()
     command_handler_a: CommandContextDecorator = container.resolve(CommandHandler[CommandA])  # type: ignore
@@ -514,7 +514,7 @@ def test_generic_shared_dependency_among_different_generic_decorator_types_with_
     assert query_handler_d.handler == is_exact_type(DHandler)
 
 
-def test_use_registered_factory_with_multiple_base_classes():
+def test_use_component_factory_with_multiple_base_classes():
     class A(Protocol):
         pass
 
@@ -532,7 +532,7 @@ def test_use_registered_factory_with_multiple_base_classes():
     builder = ContainerBuilder()
 
     builder.register(A, AB, lifespan="scoped")
-    builder.register(B, factory=use_registered(AB), lifespan="scoped")
+    builder.register(B, factory=use_component(AB), lifespan="scoped")
     builder.register(C, lifespan="scoped")
 
     container = builder.build()
@@ -630,9 +630,9 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes():
     builder.register_generic_subclasses(EventHandler)
     builder.register_generic_subclasses(ThingDoer, fallback_type=DefaultThingDoer)
 
-    builder.register_generic_decorator(CommandHandler, OperationDecorator, decorated_arg="handler")
-    builder.register_generic_decorator(QueryHandler, OperationDecorator, decorated_arg="handler")
-    builder.register_generic_decorator(EventHandler, OperationDecorator, decorated_arg="handler")
+    builder.register_decorator(CommandHandler, OperationDecorator, decorated_arg="handler")
+    builder.register_decorator(QueryHandler, OperationDecorator, decorated_arg="handler")
+    builder.register_decorator(EventHandler, OperationDecorator, decorated_arg="handler")
 
     container = builder.build()
     command_handler: OperationDecorator = container.resolve(CommandHandler[ACommand])  # type: ignore
@@ -753,14 +753,14 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes_can_hav
 
     builder.register_generic_subclasses(CommandHandler)
     builder.register_generic_subclasses(EventHandler)
-    builder.register_generic_decorator(
+    builder.register_decorator(
         CommandHandler,
         OperationDecorator,
         decorated_arg="handler",
         dependency_config={"thing_doer": DependencySettings(filter=cf.has_tag("command"))},
     )
 
-    builder.register_generic_decorator(
+    builder.register_decorator(
         EventHandler,
         OperationDecorator,
         decorated_arg="handler",
@@ -820,8 +820,6 @@ def test_generic_decorator_type_is_memoised_across_containers():
     typing's parameterisation caches, so applications that build a container
     per test/request leaked thousands of classes per build.
     """
-    from clean_ioc.core import create_generic_decorator_type
-
     TMessage = TypeVar("TMessage")
 
     class MessageA:
@@ -844,7 +842,7 @@ def test_generic_decorator_type_is_memoised_across_containers():
     def build_container():
         builder = ContainerBuilder()
         builder.register_generic_subclasses(MessageHandler)
-        builder.register_generic_decorator(MessageHandler, LoggingDecorator, decorated_arg="child")
+        builder.register_decorator(MessageHandler, LoggingDecorator, decorated_arg="child")
         return builder.build()
 
     handler_1 = build_container().resolve(MessageHandler[MessageA])
@@ -854,6 +852,3 @@ def test_generic_decorator_type_is_memoised_across_containers():
     assert type(handler_1) is type(handler_2)
     assert isinstance(handler_1, LoggingDecorator)
     assert isinstance(handler_1.child, AHandler)  # type: ignore[attr-defined]
-
-    specialisation = LoggingDecorator[MessageA]
-    assert create_generic_decorator_type(specialisation) is create_generic_decorator_type(specialisation)

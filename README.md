@@ -15,7 +15,7 @@ Clean IoC is a typed dependency-injection container for Python 3.10+. Version 2 
 
 Constructors, factories, generators, and parameter value providers do not run during the build. At runtime Clean IoC executes frozen instructions, caches plain instances, and does not allocate a dependency graph.
 
-> **2.0 alpha:** the compiled API is intentionally experimental while its compatibility surface and performance are hardened.
+> **2.0 alpha:** the compiled API is intentionally experimental while its breaking surface and performance are hardened. V1 is not shipped as a parallel public API.
 
 ```bash
 pip install clean_ioc

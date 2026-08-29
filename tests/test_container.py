@@ -1,3 +1,5 @@
+"""Tests for the public compiled builder and runtime API."""
+
 import asyncio
 import gc
 import inspect
@@ -405,7 +407,7 @@ def test_runtime_resolution_does_not_allocate_legacy_dependency_nodes():
     builder.register(Service)
     container = builder.build()
 
-    with patch("clean_ioc.core.DependencyNode", side_effect=AssertionError("runtime graph allocation")):
+    with patch("clean_ioc._legacy.DependencyNode", side_effect=AssertionError("runtime graph allocation")):
         assert isinstance(container.resolve(Service).dependency, Dependency)
 
 
@@ -757,7 +759,7 @@ def test_tolerated_pre_configuration_failure_is_logged_once_and_not_retried(capl
     builder.pre_configure(Service, configure, continue_on_failure=True)
     container = builder.build()
 
-    with caplog.at_level("ERROR", logger="clean_ioc.v2"):
+    with caplog.at_level("ERROR", logger="clean_ioc.container"):
         container.resolve(Service)
         container.resolve(Service)
 
@@ -841,7 +843,7 @@ def test_generic_subclass_and_decorator_discovery_share_the_build_snapshot():
 
     builder = ContainerBuilder()
     assert builder.register_generic_subclasses(Handler) is None
-    builder.register_generic_decorator(Handler, HandlerDecorator, decorated_arg="child")
+    builder.register_decorator(Handler, HandlerDecorator, decorated_arg="child")
 
     late_handler_type = types.new_class("LateHandler", (Handler[Command],))
     container = builder.build()
@@ -873,11 +875,11 @@ def test_deferred_generic_decorators_preserve_declaration_order(generic_first):
     builder = ContainerBuilder()
     builder.register_generic_subclasses(Handler)
     if generic_first:
-        builder.register_generic_decorator(Handler, GenericDecorator, decorated_arg="child")
+        builder.register_decorator(Handler, GenericDecorator, decorated_arg="child")
         builder.register_decorator(Handler[Command], ExplicitDecorator, decorated_arg="child")
     else:
         builder.register_decorator(Handler[Command], ExplicitDecorator, decorated_arg="child")
-        builder.register_generic_decorator(Handler, GenericDecorator, decorated_arg="child")
+        builder.register_decorator(Handler, GenericDecorator, decorated_arg="child")
 
     resolved = builder.build().resolve(Handler[Command])
 

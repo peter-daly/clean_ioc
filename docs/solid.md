@@ -72,10 +72,10 @@ Common ISP violation:
 - a large interface forcing unrelated consumers to depend on unused methods
 
 ```python
-from clean_ioc.factories import use_from_current_graph
+from clean_ioc.factories import use_component
 
 builder.register(Sender, MySender)
-builder.register(BatchSender, factory=use_from_current_graph(MySender))
+builder.register(BatchSender, factory=use_component(MySender))
 ```
 
 ## Dependency Inversion Principle (DIP)

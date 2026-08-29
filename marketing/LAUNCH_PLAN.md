@@ -65,5 +65,5 @@ The arc is “prove once → execute frozen plan → keep requests cheap.”
 - source locations and path-rich build diagnostics;
 - cache safe activation templates across scope-overlay builds;
 - formalize which provider behaviors remain runtime-only;
-- replace legacy compatibility internals after the alpha API settles;
+- replace the remaining private legacy compiler machinery after the alpha API settles;
 - serialize static components for tooling without serializing callables.

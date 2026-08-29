@@ -9,6 +9,10 @@
     Specialize compiled runtime steps by lifespan, freeze sync capability and
     default root selection at build, and defer runtime UUID creation until an ID
     is inspected, reducing resolution and ordinary scope-creation overhead.
+    Make the compiled builder/runtime design the only public API: retire the V1
+    container and its registration/node filters, remove compatibility aliases,
+    and expose the implementation through ``clean_ioc.container`` rather than a
+    versioned module.
     Replace public registration/node filtering with the immutable ``Component``
     model and shared ``clean_ioc.component_filters`` predicates.
     Add declared scope slots and locked ``Scope.provide()`` values for FastAPI and

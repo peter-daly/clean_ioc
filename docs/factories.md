@@ -63,14 +63,14 @@ Keep resource acquisition and release together in the generator or context-manag
 
 ## Reusing another compiled component
 
-Factory helpers such as `use_registered(...)` resolve through the current `ResolutionContext`, preserving `once_per_graph` identity:
+Factory helpers such as `use_component(...)` resolve through the current `ResolutionContext`, preserving `once_per_graph` identity:
 
 ```python
-from clean_ioc.factories import use_registered
+from clean_ioc.factories import use_component
 
 builder.register(SenderImpl)
-builder.register(Sender, factory=use_registered(SenderImpl))
-builder.register(BatchSender, factory=use_registered(SenderImpl))
+builder.register(Sender, factory=use_component(SenderImpl))
+builder.register(BatchSender, factory=use_component(SenderImpl))
 ```
 
 The referenced root plan is already compiled. Runtime use does not trigger registration discovery or graph compilation.

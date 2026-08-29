@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
+from .container import ContainerBuilder, ContainerBuildError, Scope, ScopeBuilder
 from .tooling import BuildReport, GraphManifest, IssueSeverity
-from .v2 import ContainerBuilder, ContainerBuildError, Scope, ScopeBuilder
 
 
 def _load_object(locator: str) -> Any:

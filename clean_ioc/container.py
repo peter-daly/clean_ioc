@@ -1,4 +1,4 @@
-"""Build-time composition and graph-free runtime for Clean IoC 2."""
+"""Build-time composition and graph-free runtime for Clean IoC."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from uuid import UUID, uuid4, uuid5
 
 from typetoolbox.generics import GenericTypeMap, get_generic_mapping
 
-from . import core as legacy
+from . import _legacy as legacy
 from .components import (
     Component,
     ComponentActivation,
@@ -32,6 +32,7 @@ from .components import (
     default_component_list_modifier,
     normalize_implementation_type,
 )
+from .configuration import default_parameter_value_factory
 from .tooling import (
     BuildIssue,
     BuildReport,
@@ -85,6 +86,14 @@ class ContainerBuildError(RuntimeError):
         self.code = code
         self.path = path
         super().__init__(message or (report.to_text() if report is not None else "Container build failed"))
+
+
+class CannotResolveError(LookupError):
+    """Raised when no compiled root matches a resolution request."""
+
+    def __init__(self, service_type: Any):
+        self.service_type = service_type
+        super().__init__(f"No compiled component matches {service_type!r}")
 
 
 class UndeclaredScopeSlotError(ContainerBuildError):
@@ -596,7 +605,6 @@ def _create_discovered_registration(
     lifespan: legacy.Lifespan,
     name: str | None,
     tags: tuple[legacy.Tag, ...],
-    parent_node_filter: Callable[[Any], bool],
 ) -> legacy._Registration:
     registry = legacy._Registry()
     component_id = registry.register_implementation(
@@ -606,7 +614,7 @@ def _create_discovered_registration(
         name=name,
         dependency_config={},
         tags=tags,
-        parent_node_filter=cast(Any, parent_node_filter),
+        parent_node_filter=legacy.default_parent_node_filter,
     )
     return next(
         registration for registration in registry.get_registrations(service_type) if registration.id == component_id
@@ -634,7 +642,6 @@ class _RegistrationDiscovery:
     subclass_type_filter: Callable[[type], bool]
     name: str | None
     tags: tuple[legacy.Tag, ...]
-    parent_node_filter: Callable[[Any], bool]
     when: ComponentFilter
     registrations: dict[int, tuple[type, legacy._Registration]] = field(default_factory=dict)
     fallback_registration: legacy._Registration | None = None
@@ -654,7 +661,6 @@ class _RegistrationDiscovery:
             lifespan=self.lifespan,
             name=self.name,
             tags=self.tags,
-            parent_node_filter=self.parent_node_filter,
         )
         self.registrations[id(subclass)] = (subclass, registration)
         return registration
@@ -682,7 +688,6 @@ class _RegistrationDiscovery:
                     lifespan=self.lifespan,
                     name=self.name,
                     tags=self.tags,
-                    parent_node_filter=self.parent_node_filter,
                 )
             _index_registration(registry, self.fallback_registration)
             registration_when[self.fallback_registration.id] = self.when
@@ -1769,7 +1774,7 @@ class _Compiler:
     ) -> tuple[_Step, Component | None]:
         dependency_context = DependencyContext(dependency.name, parent)
         value_factory = dependency.settings.value_factory
-        if value_factory is legacy.default_parameter_value_factory:
+        if value_factory is default_parameter_value_factory:
             value = dependency.default_value
         else:
             # The provider itself remains runtime-only. Its fallback edge is
@@ -1878,7 +1883,7 @@ class _Compiler:
                     )
                 )
             component, step = candidates[0]
-            if value_factory is not legacy.default_parameter_value_factory:
+            if value_factory is not default_parameter_value_factory:
                 provider, provider_draft = self._draft(
                     component_id=f"provider:{parent.occurrence_id}:{dependency.name}",
                     service_type=dependency.service_type,
@@ -1908,7 +1913,7 @@ class _Compiler:
         if slot is not None:
             name, component = slot
             return _ProvidedStep(dependency.service_type, name), component
-        if value_factory is not legacy.default_parameter_value_factory:
+        if value_factory is not default_parameter_value_factory:
             provider, _ = self._draft(
                 component_id=f"provider:{parent.occurrence_id}:{dependency.name}",
                 service_type=dependency.service_type,
@@ -2587,7 +2592,7 @@ class Scope(_RuntimeOwner):
                     return plan
         if (service_type, None) in self._plan.blueprint.slots:
             raise ScopeProvisionError(f"Scope slot {service_type!r} has no provided value")
-        raise legacy.CannotResolveError()
+        raise CannotResolveError(service_type)
 
     def _select_roots(self, service_type: Any, filter: ComponentFilter) -> tuple[_RootPlan, ...]:
         self._resolution_started = True
@@ -2606,7 +2611,7 @@ class Scope(_RuntimeOwner):
             if plan is None:
                 if (service_type, None) in self._plan.blueprint.slots:
                     raise ScopeProvisionError(f"Scope slot {service_type!r} has no provided value")
-                raise legacy.CannotResolveError()
+                raise CannotResolveError(service_type)
             if not plan.step.sync_supported:
                 raise RuntimeError(f"{service_type!r} requires resolve_async()")
             if isinstance(plan.step, _SingletonRegistrationStep):
@@ -2632,7 +2637,7 @@ class Scope(_RuntimeOwner):
             if plan is None:
                 if (service_type, None) in self._plan.blueprint.slots:
                     raise ScopeProvisionError(f"Scope slot {service_type!r} has no provided value")
-                raise legacy.CannotResolveError()
+                raise CannotResolveError(service_type)
             if isinstance(plan.step, _SingletonRegistrationStep):
                 owner = self._owners[plan.step.owner_token]
                 value = owner._singletons.get(plan.step.registration.id, _CACHE_MISS)
@@ -2797,7 +2802,6 @@ class _BuilderBase:
         dependency_config: legacy.DependencyConfig = {},
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
-        parent_node_filter: Callable[[Any], bool] = legacy.default_parent_node_filter,
     ) -> str:
         self._assert_mutable()
         if factory_specialization is not None and factory is None:
@@ -2811,7 +2815,7 @@ class _BuilderBase:
             name=name,
             dependency_config=dependency_config,
             tags=tags,
-            parent_node_filter=parent_node_filter,
+            parent_node_filter=legacy.default_parent_node_filter,
         )
         self._registration_when[component_id] = when
         if factory is not None:
@@ -2857,8 +2861,6 @@ class _BuilderBase:
             lifespan=None if lifespan is None else _legacy_lifespan(lifespan),
             tags=tags,
         )
-
-    patch_registration = patch_component
 
     def register_decorator(
         self,
@@ -3003,8 +3005,6 @@ class _BuilderBase:
         self._slots.add((service_type, name))
         return self
 
-    expect_to_be_scoped = declare_scope_slot
-
     def mark_entrypoint(
         self,
         service_type: Any,
@@ -3026,7 +3026,6 @@ class _BuilderBase:
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
-        parent_node_filter: Callable[[Any], bool] = legacy.default_parent_node_filter,
     ) -> None:
         """Queue concrete subclass discovery for the next successful build."""
 
@@ -3040,7 +3039,6 @@ class _BuilderBase:
                 subclass_type_filter=subclass_type_filter,
                 name=name,
                 tags=tuple(tags or ()),
-                parent_node_filter=parent_node_filter,
                 when=when,
             )
         )
@@ -3055,7 +3053,6 @@ class _BuilderBase:
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
-        parent_node_filter: Callable[[Any], bool] = legacy.default_parent_node_filter,
     ) -> None:
         """Queue closed-generic subclass discovery for the build snapshot."""
 
@@ -3069,40 +3066,8 @@ class _BuilderBase:
                 subclass_type_filter=subclass_type_filter,
                 name=name,
                 tags=tuple(tags or ()),
-                parent_node_filter=parent_node_filter,
                 when=when,
             )
-        )
-
-    def register_generic_decorator(
-        self,
-        generic_service_type: type,
-        generic_decorator_type: type,
-        *,
-        subclass_type_filter: Callable[[type], bool] = legacy.always_true,
-        when: ComponentFilter = all_components,
-        decorated_arg: str | None = None,
-        dependency_config: legacy.DependencyConfig = {},
-        position: int = 0,
-        name: str | None = None,
-        tags: Iterable[legacy.Tag] | None = None,
-    ) -> str:
-        """Compatibility wrapper for an open-generic decorator definition."""
-
-        self._assert_mutable()
-
-        def combined_when(component: Component) -> bool:
-            return when(component) and subclass_type_filter(component.implementation_type)
-
-        return self.register_decorator(
-            generic_service_type,
-            generic_decorator_type,
-            when=combined_when,
-            decorated_arg=decorated_arg,
-            dependency_config=dependency_config,
-            position=position,
-            name=name,
-            tags=tags,
         )
 
     def apply_bundle(self, bundle: Callable[[Any], None]) -> None:

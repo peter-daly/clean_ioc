@@ -1,4 +1,4 @@
-"""Static container validation and human-readable dependency plans."""
+"""Private diagnostics for the retired V1 runtime."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from html import escape
 from typing import Any, Iterable, cast, get_args, get_origin
 
-from .core import (
+from ._legacy import (
     EMPTY,
     AsyncFactoryActivator,
     AsyncGeneratorActivator,
@@ -21,9 +21,9 @@ from .core import (
     RegistrationFilter,
     Scope,
     _Registration,
-    default_parameter_value_factory,
     default_registration_filter,
 )
+from .configuration import default_parameter_value_factory
 from .value_factories import dont_use_default_value, use_default_value
 
 

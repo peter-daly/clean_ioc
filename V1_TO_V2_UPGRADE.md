@@ -1,10 +1,10 @@
-# Clean IoC V1 to V2 upgrade guide
+# Clean IoC 1.x to 2.0 upgrade guide
 
-This is an agent-oriented playbook for migrating applications, integrations, bundles, and tests from Clean IoC V1 to V2. Prefer a real V2 migration over importing `clean_ioc.core.Container` or aliasing `ContainerBuilder` as `Container` to preserve old call sites.
+This is an agent-oriented playbook for migrating applications, integrations, bundles, and tests from Clean IoC 1.x to 2.0. Version 2 has one public model: compose with a builder, call `build()`, then resolve from the immutable runtime.
 
 V2 changes the container lifecycle: composition is mutable, but a runtime is immutable and fully compiled before application code starts.
 
-Repository-specific warning: `clean_ioc/core.py` and several test modules intentionally retain and verify V1 behavior. Do not bulk-rewrite every `from clean_ioc.core import ...` occurrence in this repository. Confirm that the target application, integration, example, or test is intended to exercise V2. V2-focused tests use the package-root exports and `ContainerBuilder`.
+Clean IoC 2 does not ship the V1 container as a parallel public API. `clean_ioc.core`, registration filters, node filters, runtime dependency graphs, and compatibility method aliases are removed. Do not import private modules such as `clean_ioc._legacy`; they are temporary implementation details and may disappear without notice.
 
 ## The essential conversion
 
@@ -42,13 +42,13 @@ Apply all registrations, decorators, pre-configurations, discovery rules, patche
 | `Container()` | `ContainerBuilder()` then `.build()` | Do not construct V2 `Container` directly. |
 | `container.register(...)` | `builder.register(...)` | The registration signature is largely preserved. |
 | `Lifespan.scoped` and other enum members | `"scoped"` and other string literals | V2 accepts `"transient"`, `"once_per_graph"`, `"scoped"`, and `"singleton"`. |
-| `container.patch_registration(...)` | `builder.patch_component(...)` | `patch_registration` remains an alias, but patch only before a successful build. |
+| `container.patch_registration(...)` | `builder.patch_component(...)` | Patch only before a successful build. |
 | `container.pre_configure(...)` | `builder.pre_configure(...)` | It returns a stable definition ID; filters are component filters and run at build. |
 | pre-configuration `registration_filter=` | `when=` | V2 uses one component filter. |
 | `container.register_decorator(...)` | `builder.register_decorator(...)` | Selection is evaluated against immutable component occurrences. |
 | decorator `registration_filter=` / `decorator_node_filter=` | `when=` | Combine both predicates into one component filter. |
 | `container.apply_bundle(bundle)` | `builder.apply_bundle(bundle)` | Type bundles against `ComponentBuilder`. |
-| `container.expect_to_be_scoped(T)` | `builder.declare_scope_slot(T)` | `expect_to_be_scoped` remains an alias; prefer the new name. |
+| `container.expect_to_be_scoped(T)` | `builder.declare_scope_slot(T)` | Declare every late-bound slot before build. |
 | `container.has_registration(...)` | `builder.has_component(...)` | This previews compiled components. |
 | `get_registration_id(s)` | `get_component_id(s)` | IDs identify registrations; compiled occurrences also have `occurrence_id`. |
 | `container.validate(...)` | `builder.build()` / `BuildReport` | Validation is mandatory and covers every visible root. |
@@ -59,6 +59,26 @@ Apply all registrations, decorators, pre-configurations, discovery rules, patche
 | `force_run_pre_configuration(T)` | resolve an applicable compiled root | Build never invokes user pre-configuration code. |
 | `call()` / `call_async()` | no direct equivalent | Register a service/factory before build or invoke explicitly with resolved dependencies. |
 | `scoped_teardown=callback` | generator or context-manager factory | Keep acquisition and release in the same factory. |
+
+## Removed imports and their replacements
+
+The following removals are deliberate. Do not preserve them with local aliases or imports from private modules.
+
+| Removed V1 import/API | V2 replacement |
+| --- | --- |
+| `clean_ioc.core.Container` | `from clean_ioc import ContainerBuilder`; call `builder.build()` |
+| `clean_ioc.core.Scope` | `from clean_ioc import Scope` for runtime typing; create it from `container.new_scope()` |
+| `clean_ioc.core.Lifespan` | String literals accepted by `lifespan=`; `clean_ioc.Lifespan` is annotation-only |
+| `clean_ioc.registration_filters` | `clean_ioc.component_filters` |
+| `clean_ioc.node_filters` | `clean_ioc.component_filters` |
+| `clean_ioc.list_reduction_filters` | A `ComponentListModifier` callable passed through `DependencySettings` |
+| `clean_ioc.diagnostics` | `BuildReport`, `CompiledGraph`, manifests, and the `clean-ioc` CLI |
+| `clean_ioc.factories.use_registered` | `clean_ioc.factories.use_component` |
+| `clean_ioc.factories.use_from_current_graph` | `use_component` or an explicit `ResolutionContext` dependency |
+| `add_container_to_app` and `add_*_to_scope` | `configure_fastapi(builder)` plus `install_fastapi(app, container)` |
+| `register_generic_decorator(...)` | `register_decorator(...)`, which handles open and closed generic services |
+
+The package root is the authoritative public import surface. Submodules documented by the V2 guide—such as `component_filters`, `type_filters`, `factories`, `value_factories`, and `ext.fastapi`—are also public. An underscore-prefixed module is never a migration target.
 
 `resolve()` and `resolve_async()` remain runtime APIs. Use `resolve_async()` whenever the compiled path contains async factories, generators, context managers, or cleanup.
 
@@ -159,7 +179,7 @@ V2 decorator APIs use only `when=`. Combine V1's `registration_filter` and `deco
 
 `register_decorator()` now returns a stable decorator-definition ID. Use it with `patch_decorator()` or `remove_decorator()` before build. Higher `position` values are outside lower values; equal positions retain registration order outside-to-inside.
 
-Replace `register_generic_decorator(Service, Decorator)` with `register_decorator(Service, Decorator)` when convenient. Open decorator definitions are specialized from actual closed plans, including factory and fallback registrations, rather than only from discovered subclasses. The old method remains a compatibility wrapper.
+Replace `register_generic_decorator(Service, Decorator)` with `register_decorator(Service, Decorator)`. Open decorator definitions are specialized from actual closed plans, including factory and fallback registrations, rather than only from discovered subclasses.
 
 ## Pre-configurations are compiled singleton initializers
 
@@ -393,7 +413,7 @@ install_fastapi(app, container)
 
 The V2 extension requires FastAPI 0.121 or newer. It owns the root container for the application lifespan and creates one ordinary child scope for each complete HTTP request or WebSocket connection. `Resolve(Service)` still resolves a route dependency, but its filter is now a component filter. Every `Resolve` selection is checked against the compiled container during FastAPI startup.
 
-If application components consume `Request`, `WebSocket`, `RequestHeaderReader`, or `ResponseHeaderWriter`, call `configure_fastapi(builder)` before `build()`. The middleware provides those late boundary values automatically; remove V1 global `Depends(add_*_to_scope)` configuration. `register_fastapi_scope_slots`, `add_container_to_app`, and the individual provision dependencies remain compatibility APIs, not the preferred V2 integration.
+If application components consume `Request`, `WebSocket`, `RequestHeaderReader`, or `ResponseHeaderWriter`, call `configure_fastapi(builder)` before `build()`. The middleware provides those late boundary values automatically; remove V1 global `Depends(add_*_to_scope)` configuration. The old lifespan and individual provision helpers are not part of V2.
 
 For test overrides, compile a `ScopeBuilder` overlay and pass that built scope to `install_fastapi` on a test application instance. Use the configured slots instead when only request data changes.
 
@@ -437,7 +457,7 @@ If an integration needs a late external value, expose a helper that declares its
 
    ```bash
    rg -n "Container\(|\.register\(|\.patch_registration\(|registration_filters|node_filters|resolve_dependency_graph|\.validate\(|\.explain\(" .
-   rg -n "from clean_ioc\.core import" .
+   rg -n "clean_ioc\.(core|registration_filters|node_filters|diagnostics)|use_registered|use_from_current_graph" .
    ```
 
 2. Convert each composition root to `ContainerBuilder -> build -> Container`. Do not scatter builders through application services.

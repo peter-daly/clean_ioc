@@ -9,7 +9,7 @@ from typing import Any, Callable, Iterable, Iterator, Literal, Protocol, TypeAli
 
 from typetoolbox.generics import GenericTypeMap
 
-from .core import Tag
+from .configuration import Tag
 
 Lifespan: TypeAlias = Literal["transient", "once_per_graph", "scoped", "singleton"]
 
@@ -348,7 +348,6 @@ class ComponentBuilder(Protocol):
         dependency_config: dict[str, Any] = {},
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
-        parent_node_filter: Callable[[Any], bool] = all_components,
     ) -> str: ...
 
     def register_decorator(

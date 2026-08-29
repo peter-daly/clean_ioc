@@ -2,7 +2,7 @@
 
 This document records the V2 architecture and implementation decisions made so far. It is intended for agents and maintainers extending V2 without accidentally restoring runtime graph construction, weakening build invariants, or breaking scope ownership.
 
-V2 is currently published in project metadata as `2.0.0a1`. Its compatibility surface remains experimental.
+V2 is currently published in project metadata as `2.0.0a1`. Its public surface remains experimental.
 
 ## Core model
 
@@ -30,7 +30,7 @@ Container/Scope
 
 The compiler also prepares the common runtime decisions instead of rediscovering them on every resolve. It freezes each step's sync/async capability, builds direct maps for default root selection, and chooses a lifespan-specific registration step for transient, once-per-graph, scoped, or singleton behavior. Default cached root resolutions return the frozen value before allocating a per-resolution context. Runtime code should keep those paths specialized: do not restore recursive capability checks, repeated default-filter scans, or a generic lifespan switch to the hot path without measurements showing a benefit.
 
-The legacy implementation in `clean_ioc/core.py` still supplies registration storage, activators, dependency parsing, and filters needed for compatibility. V2 converts its public string-literal lifespans to the legacy enum only at this internal boundary. Do not expose that enum through V2 components or route V2 runtime resolution back through the legacy dependency graph.
+Private machinery in `clean_ioc/_legacy.py` still supplies registration storage, activators, dependency parsing, and filters while the compiler is made self-contained. It is not a supported import path. The public runtime converts string-literal lifespans to the private enum only at this internal boundary. Do not expose that enum through components or route runtime resolution back through the old dependency graph.
 
 ## Immutable component model
 
@@ -95,7 +95,7 @@ Pre-configuration generator/context-manager finalizers belong to the definition'
 
 ## Lifespans, activation, and cleanup
 
-- Public builder arguments and `Component.lifespan` use the literal strings `"transient"`, `"once_per_graph"`, `"scoped"`, and `"singleton"`; the V1 `IntEnum` is internal compatibility machinery only.
+- Public builder arguments and `Component.lifespan` use the literal strings `"transient"`, `"once_per_graph"`, `"scoped"`, and `"singleton"`; the private `IntEnum` is implementation machinery only.
 - `transient` activates on each dependency edge.
 - `once_per_graph` uses the `once_cache` owned by one `_RuntimeResolutionContext`/top-level resolve.
 - `scoped` uses the current scope cache and coordinator.
@@ -173,10 +173,10 @@ A target may be a builder, a built scope/container, or a zero-argument factory r
 
 ## Implementation map
 
-- `clean_ioc/v2.py`: builders, compiler, activation steps, runtimes, scopes, caches, ownership, validation, generics, and discovery.
+- `clean_ioc/container.py`: builders, compiler, activation steps, runtimes, scopes, caches, ownership, validation, generics, and discovery.
 - `clean_ioc/components.py`: immutable component graph and public builder/filter protocols.
 - `clean_ioc/tooling.py` and `clean_ioc/cli.py`: diagnostics, rendering, manifests, diffs, and command-line interface.
-- `tests/test_v2_container.py`: V2 composition, generics, discovery, runtime, ownership, concurrency, and cleanup.
+- `tests/test_container.py`: composition, generics, discovery, runtime, ownership, concurrency, and cleanup.
 - `tests/test_compiler_tooling.py`: structured reports, complete graph metadata, entry points, overlays, lifespan validation, manifests, and CLI behavior.
 - `benchmarks/bench_clean_ioc.py`: BenchBro build, runtime, tooling, scope, generic factory, graph-depth scaling, and Python-allocation experiments.
 

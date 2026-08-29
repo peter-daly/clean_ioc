@@ -4,7 +4,7 @@ from typing import Callable, TypeVar
 
 from funcie import constant, predicate
 
-from .core import Lifespan, Registration
+from ._legacy import Lifespan, Registration
 
 __all__ = [
     "all_registrations",

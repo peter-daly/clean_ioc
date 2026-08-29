@@ -1,4 +1,4 @@
-"""Simple IOC container."""
+"""Private V1 machinery retained while the V2 compiler is made self-contained."""
 
 from __future__ import annotations
 
@@ -44,41 +44,36 @@ from typetoolbox.generics import (
 from clean_ioc.generic_utils import map_type_vars_to_parent
 from clean_ioc.utils import send_deprecation_warning, singleton
 
+from .configuration import (
+    EMPTY,
+    UNKNOWN,
+    DependencyConfig,
+    DependencySettings,
+    NodeFilter,
+    RegistrationFilter,
+    RegistrationListModifier,
+    RemoveDependencySetting,
+    SubDependencies,
+    Tag,
+)
+from .configuration import (
+    _Empty as _empty,
+)
+from .configuration import (
+    default_component_filter as default_registration_filter,
+)
+from .configuration import (
+    default_component_list_modifier as default_registration_list_modifier,
+)
 from .type_filters import is_abstract, name_starts_with
 
 if TYPE_CHECKING:
-    from .diagnostics import DependencyPlan, ValidationReport
+    from ._legacy_diagnostics import DependencyPlan, ValidationReport
 
 logger = logging.getLogger(__name__)
 
 TService = TypeVar("TService")
 TReturn = TypeVar("TReturn")
-
-
-@singleton
-class _empty:  # noqa: N801
-    def __bool__(self):
-        return False
-
-
-@singleton
-class _unknown:  # noqa: N801
-    def __bool__(self):
-        return False
-
-
-EMPTY = _empty()
-UNKNOWN = _unknown()
-
-
-class _RemoveDependencySetting:
-    """Sentinel used to remove one dependency override from a registration patch."""
-
-    def __repr__(self) -> str:
-        return "RemoveDependencySetting"
-
-
-RemoveDependencySetting = _RemoveDependencySetting()
 
 
 @functools.cache
@@ -179,31 +174,8 @@ async def _resolve_dependencies_async(
     return kwargs
 
 
-def default_registration_filter(r: Registration) -> bool:
-    return r.name is None
-
-
-def default_parameter_value_factory(default_value: Any, _: DependencyContext) -> Any:
-    return default_value
-
-
-def default_registration_list_modifier(registrations: list[Registration]) -> list[Registration]:
-    return registrations
-
-
 default_parent_node_filter = constant(True)
 default_decorated_node_filter = constant(True)
-
-
-@dataclass
-class Tag:
-    name: str
-    value: str | None = None
-
-    def __iter__(self):
-        yield self.name
-        if self.value is not None:
-            yield self.value
 
 
 class Lifespan(IntEnum):
@@ -1763,7 +1735,7 @@ class Resolver(Protocol):
             Resolve a named registration:
 
             ```python
-            from clean_ioc.registration_filters import with_name
+            from clean_ioc._legacy_registration_filters import with_name
 
             gateway = resolver.resolve(PaymentGateway, filter=with_name("stripe"))
             ```
@@ -1979,7 +1951,7 @@ class Scope:
             Resolve a named registration:
 
             ```python
-            from clean_ioc.registration_filters import with_name
+            from clean_ioc._legacy_registration_filters import with_name
 
             gateway = container.resolve(PaymentGateway, filter=with_name("stripe"))
             ```
@@ -2077,7 +2049,7 @@ class Scope:
         documentation and pull requests.
         """
 
-        from .diagnostics import explain
+        from ._legacy_diagnostics import explain
 
         return explain(self, service_type, filter, allow_async=allow_async)
 
@@ -2089,7 +2061,7 @@ class Scope:
         Set ``allow_async=False`` to flag graphs that require async resolution.
         """
 
-        from .diagnostics import validate
+        from ._legacy_diagnostics import validate
 
         return validate(self, *service_types, allow_async=allow_async)
 
@@ -2371,7 +2343,7 @@ class Scope:
             Register with filters:
 
             ```python
-            from clean_ioc.registration_filters import has_tag
+            from clean_ioc._legacy_registration_filters import has_tag
 
             container.register_decorator(
                 Service,
@@ -2540,7 +2512,7 @@ class ChildScope(Scope):
         from_parent = self._parent_scope.find_registrations(
             service_type=service_type, filter=filter, parent_node=parent_node
         )
-        return list_modifier(registrations + from_parent)  # type: ignore
+        return list_modifier(registrations + from_parent)
 
     def find_decorators(
         self, *, registration: _Registration, decorated_instance_node: DependencyNode
@@ -2832,18 +2804,3 @@ class Container(Scope):
 
     def new_scope(self) -> Scope:
         return ChildScope(self)
-
-
-@dataclass(kw_only=True)
-class DependencySettings:
-    value_factory: Callable[[Any, Any], Any] = default_parameter_value_factory
-    filter: Callable[[Any], bool] = default_registration_filter
-    list_modifier: Callable[[list[Any]], list[Any]] = default_registration_list_modifier
-
-
-DependencyConfig = dict[str, Any]
-SubDependencies = dict[str, DependencySettings]
-RegistrationFilter = Callable[[Any], bool]
-NodeFilter = Callable[[Any], bool]
-ParameterValueFactory = Callable[[Any, Any], Any]
-RegistrationListModifier = Callable[[list[Any]], list[Any]]

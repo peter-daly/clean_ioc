@@ -62,7 +62,7 @@ app = FastAPI(lifespan=application_lifespan)
 install_fastapi(app, container)
 ```
 
-`add_container_to_app` and the individual `add_*_to_scope` dependencies remain available for compatibility, but new V2 applications should use `install_fastapi`.
+`install_fastapi` is the only lifecycle integration. It keeps request, streaming-response, WebSocket, background-work, and cleanup ownership inside one ASGI boundary.
 
 ## Route validation at startup
 

@@ -2,8 +2,7 @@ from unittest.mock import Mock
 
 from assertive import was_called, was_called_once, was_called_once_with, was_not_called
 
-from clean_ioc import ComponentBuilder
-from clean_ioc import ContainerBuilder as Container
+from clean_ioc import ComponentBuilder, ContainerBuilder
 from clean_ioc.bundles import (
     BaseBundle,
     OnlyRunOncePerClassBundle,
@@ -22,7 +21,7 @@ def test_only_run_once_per_instance_bundle_will_only_run_once_per_instance():
         def apply(self, builder: ComponentBuilder):
             self.mock()
 
-    container = Container()
+    container = ContainerBuilder()
     test_bundle = TestBundle(spy)
 
     container.apply_bundle(test_bundle)
@@ -42,7 +41,7 @@ def test_bundle_instance_can_be_called_multiple_times_when_allowed():
         def apply(self, builder: ComponentBuilder):
             self.mock()
 
-    container = Container()
+    container = ContainerBuilder()
     test_bundle = TestBundle(spy)
 
     container.apply_bundle(test_bundle)
@@ -63,7 +62,7 @@ def test_bundle_class_can_be_called_multiple_times_with_different_instances():
         def apply(self, builder: ComponentBuilder):
             self.mock()
 
-    container = Container()
+    container = ContainerBuilder()
     test_bundle1 = TestBundle(spy1)
     test_bundle2 = TestBundle(spy2)
 
@@ -86,8 +85,8 @@ def test_bundle_class_same_instance_can_run_on_multiple_containers():
         def apply(self, builder: ComponentBuilder):
             self.mock(builder)
 
-    container1 = Container()
-    container2 = Container()
+    container1 = ContainerBuilder()
+    container2 = ContainerBuilder()
     test_bundle = TestBundle(spy)
 
     container1.apply_bundle(test_bundle)
@@ -110,7 +109,7 @@ def test_bundle_class_can_be_called_only_once_across_all_instances_when_set():
         def apply(self, builder: ComponentBuilder):
             self.mock()
 
-    container = Container()
+    container = ContainerBuilder()
     test_bundle1 = TestBundle(spy1)
     test_bundle2 = TestBundle(spy2)
 
@@ -139,7 +138,7 @@ def test_custom_run_once_bundle():
         def apply(self, builder: ComponentBuilder):
             self.mock()
 
-    container = Container()
+    container = ContainerBuilder()
     test_bundle1 = TestBundle("ME", spy1)
     test_bundle2 = TestBundle("YOU", spy2)
     test_bundle3 = TestBundle("ME", spy3)

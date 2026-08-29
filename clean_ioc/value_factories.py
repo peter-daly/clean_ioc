@@ -2,7 +2,7 @@ from typing import Any
 
 from funcie import constant
 
-from .core import EMPTY
+from .configuration import EMPTY
 
 
 def use_default_value(default_value: Any, *_):

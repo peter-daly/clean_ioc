@@ -12,19 +12,27 @@ from .components import (
     default_component_filter,
     default_component_list_modifier,
 )
-from .core import (
+from .configuration import (
     EMPTY,
-    UNKNOWN,
-    CannotResolveError,
-    CaptiveDependencyError,
-    CircularDependencyError,
     DependencyConfig,
     DependencySettings,
-    NeedsScopedRegistrationError,
     ParameterValueFactory,
     RemoveDependencySetting,
     SubDependencies,
     Tag,
+)
+from .container import (
+    BuilderAlreadyBuiltError,
+    CannotResolveError,
+    Container,
+    ContainerBuilder,
+    ContainerBuildError,
+    DependencyContext,
+    ResolutionContext,
+    Scope,
+    ScopeBuilder,
+    ScopeProvisionError,
+    UndeclaredScopeSlotError,
 )
 from .tooling import (
     BuildIssue,
@@ -36,26 +44,11 @@ from .tooling import (
     GraphRoot,
     IssueSeverity,
 )
-from .v2 import (
-    BuilderAlreadyBuiltError,
-    Container,
-    ContainerBuilder,
-    ContainerBuildError,
-    DependencyContext,
-    ResolutionContext,
-    Scope,
-    ScopeBuilder,
-    ScopeProvisionError,
-    UndeclaredScopeSlotError,
-)
 
 __all__ = [
     "EMPTY",
-    "UNKNOWN",
     "BuilderAlreadyBuiltError",
     "CannotResolveError",
-    "CaptiveDependencyError",
-    "CircularDependencyError",
     "Component",
     "ComponentActivation",
     "ComponentBuilder",
@@ -77,7 +70,6 @@ __all__ = [
     "GraphManifest",
     "GraphRoot",
     "IssueSeverity",
-    "NeedsScopedRegistrationError",
     "ParameterValueFactory",
     "RemoveDependencySetting",
     "ResolutionContext",

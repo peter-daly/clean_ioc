@@ -109,6 +109,6 @@ class LoggingHandlerDecorator(Generic[TCommand]):
 builder.register_decorator(CommandHandler, LoggingHandlerDecorator)
 ```
 
-The compiler specializes this definition for every closed `CommandHandler[T]` plan it encounters. This includes handlers supplied by subclass discovery, explicit closed registrations, open or closed factories, and fallback registrations. Generic callable decorators are supported by the same rule. `register_generic_decorator()` remains as a compatibility wrapper.
+The compiler specializes this definition for every closed `CommandHandler[T]` plan it encounters. This includes handlers supplied by subclass discovery, explicit closed registrations, open or closed factories, and fallback registrations. Generic callable decorators are supported by the same `register_decorator()` API.
 
 Graph text lists decorators outside-to-inside and includes their positions. Component inspection and semantic manifests also expose decorator position, name, tags, dependencies, async requirements, and cleanup ownership.

@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from uuid import uuid4
 
 import pytest
-from fastapi import Depends, FastAPI, Request, WebSocket
+from fastapi import FastAPI, Request, WebSocket
 from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 
@@ -10,17 +10,11 @@ import clean_ioc.component_filters as cf
 from clean_ioc import ContainerBuilder
 from clean_ioc.ext.fastapi import (
     FastAPIIntegrationError,
+    RequestHeaderReader,
     Resolve,
-    add_container_to_app,
+    ResponseHeaderWriter,
     configure_fastapi,
     install_fastapi,
-)
-from clean_ioc.ext.fastapi.dependencies import (
-    RequestHeaderReader,
-    ResponseHeaderWriter,
-    add_request_header_reader_to_scope,
-    add_response_header_writer_to_scope,
-    register_fastapi_scope_slots,
 )
 
 
@@ -35,21 +29,17 @@ def test_response_writer_writes_a_header_to_response():
         def do_action(self):
             self.header_writer.write(self.HEADER_NAME, self.HEADER_VALUE)
 
-    @asynccontextmanager
-    async def lifespan(a):
-        builder = ContainerBuilder()
-        register_fastapi_scope_slots(builder)
-        builder.register(MyDependency)
-        container = builder.build()
-        async with add_container_to_app(a, container):
-            yield
-
-    app = FastAPI(lifespan=lifespan, dependencies=[Depends(add_response_header_writer_to_scope)])
+    builder = ContainerBuilder()
+    configure_fastapi(builder)
+    builder.register(MyDependency)
+    app = FastAPI()
 
     @app.get("/")
     def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
         my_dependency.do_action()
         return {"message": "Hello World"}
+
+    install_fastapi(app, builder.build())
 
     with TestClient(app) as test_client:
         response = test_client.get("/")
@@ -67,21 +57,17 @@ def test_request_header_reader_reads_headers():
         def do_action(self) -> str:
             return self.header_reader.read(self.HEADER_NAME)
 
-    @asynccontextmanager
-    async def lifespan(a):
-        builder = ContainerBuilder()
-        register_fastapi_scope_slots(builder)
-        builder.register(MyDependency)
-        container = builder.build()
-        async with add_container_to_app(a, container):
-            yield
-
-    app = FastAPI(lifespan=lifespan, dependencies=[Depends(add_request_header_reader_to_scope)])
+    builder = ContainerBuilder()
+    configure_fastapi(builder)
+    builder.register(MyDependency)
+    app = FastAPI()
 
     @app.get("/")
     def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
         header_value = my_dependency.do_action()
         return {"action": header_value}
+
+    install_fastapi(app, builder.build())
 
     with TestClient(app) as test_client:
         response = test_client.get("/", headers={"X-Action": "my-action"})
@@ -110,21 +96,17 @@ def test_with_async_generator_dependency():
         async with MyDependency(header_reader=header_reader) as dep:
             yield dep
 
-    @asynccontextmanager
-    async def lifespan(a):
-        builder = ContainerBuilder()
-        register_fastapi_scope_slots(builder)
-        builder.register(MyDependency, factory=my_dependency_factory)
-        container = builder.build()
-        async with add_container_to_app(a, container):
-            yield
-
-    app = FastAPI(lifespan=lifespan, dependencies=[Depends(add_request_header_reader_to_scope)])
+    builder = ContainerBuilder()
+    configure_fastapi(builder)
+    builder.register(MyDependency, factory=my_dependency_factory)
+    app = FastAPI()
 
     @app.get("/")
     async def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
         header_value = my_dependency.do_action()
         return {"action": header_value}
+
+    install_fastapi(app, builder.build())
 
     with TestClient(app) as test_client:
         response = test_client.get("/", headers={"X-Action": "my-action"})
@@ -141,20 +123,16 @@ def test_scope_is_unique_per_request():
         def do_thing(self) -> str:
             return self.uid
 
-    @asynccontextmanager
-    async def lifespan(a):
-        builder = ContainerBuilder()
-        builder.register(MyDependency, lifespan="scoped")
-        container = builder.build()
-        async with add_container_to_app(a, container):
-            yield
-
-    app = FastAPI(lifespan=lifespan)
+    builder = ContainerBuilder()
+    builder.register(MyDependency, lifespan="scoped")
+    app = FastAPI()
 
     @app.get("/")
     async def read_root(my_dependency: MyDependency = Resolve(MyDependency)):
         uid = my_dependency.do_thing()
         return {"uid": uid}
+
+    install_fastapi(app, builder.build())
 
     with TestClient(app) as test_client:
         response_1 = test_client.get("/")
