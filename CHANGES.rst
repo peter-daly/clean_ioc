@@ -35,6 +35,10 @@
     and open-generic specialization from actual compiled plans.
     Replace the public V2 ``Lifespan`` enum values with ``Literal`` string arguments
     and expose those same strings through components, filters, and graph manifests.
+    Compile pre-configurations as stable, shared singleton initializers with one
+    ``when=`` filter, declaration ordering, generic matching, captive-dependency
+    validation, concurrent single-flight execution, owner-correct cleanup, and
+    deterministic failure/retry behavior.
 
 
 1.25.0

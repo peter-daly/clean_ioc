@@ -126,6 +126,8 @@ gateway = container.resolve(PaymentGateway, filter=cf.with_name("stripe"))
 
 Composition, dependency, decorator, and pre-configuration filters run while the container or scope is built. Their decisions are frozen and are not repeated during resolution. A filter passed directly to `resolve(...)` only selects among those already-compiled root plans.
 
+Pre-configurations are compiled as lazy singleton initializers. Their dependency paths are validated at build, shared targets run one definition once in declaration order, and concurrent first resolutions join the same attempt. Optional failures can be logged and suppressed with `continue_on_failure=True`; other failures remain retryable.
+
 ## Scopes, request values, and experimental overlays
 
 Creating an ordinary scope is cheap and never compiles:

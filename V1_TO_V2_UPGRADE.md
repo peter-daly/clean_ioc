@@ -43,7 +43,8 @@ Apply all registrations, decorators, pre-configurations, discovery rules, patche
 | `container.register(...)` | `builder.register(...)` | The registration signature is largely preserved. |
 | `Lifespan.scoped` and other enum members | `"scoped"` and other string literals | V2 accepts `"transient"`, `"once_per_graph"`, `"scoped"`, and `"singleton"`. |
 | `container.patch_registration(...)` | `builder.patch_component(...)` | `patch_registration` remains an alias, but patch only before a successful build. |
-| `container.pre_configure(...)` | `builder.pre_configure(...)` | Filters are now component filters and run at build. |
+| `container.pre_configure(...)` | `builder.pre_configure(...)` | It returns a stable definition ID; filters are component filters and run at build. |
+| pre-configuration `registration_filter=` | `when=` | V2 uses one component filter. |
 | `container.register_decorator(...)` | `builder.register_decorator(...)` | Selection is evaluated against immutable component occurrences. |
 | decorator `registration_filter=` / `decorator_node_filter=` | `when=` | Combine both predicates into one component filter. |
 | `container.apply_bundle(bundle)` | `builder.apply_bundle(bundle)` | Type bundles against `ComponentBuilder`. |
@@ -159,6 +160,34 @@ V2 decorator APIs use only `when=`. Combine V1's `registration_filter` and `deco
 `register_decorator()` now returns a stable decorator-definition ID. Use it with `patch_decorator()` or `remove_decorator()` before build. Higher `position` values are outside lower values; equal positions retain registration order outside-to-inside.
 
 Replace `register_generic_decorator(Service, Decorator)` with `register_decorator(Service, Decorator)` when convenient. Open decorator definitions are specialized from actual closed plans, including factory and fallback registrations, rather than only from discovered subclasses. The old method remains a compatibility wrapper.
+
+## Pre-configurations are compiled singleton initializers
+
+V2 uses one `when=` predicate in place of the V1 pre-configuration `registration_filter=` argument:
+
+```python
+# V1
+container.pre_configure(
+    Client,
+    configure_client,
+    registration_filter=rf.with_name("external"),
+)
+
+# V2
+builder.pre_configure(
+    Client,
+    configure_client,
+    when=cf.with_name("external"),
+)
+```
+
+The function remains lazy, but its signature and complete dependency path are compiled and validated during `build()`. A pre-configuration is effectively singleton-owned regardless of the triggering component's lifespan, so its path cannot contain scoped or `once_per_graph` state. Plain transient and singleton dependencies remain valid when their descendants are valid.
+
+Passing several service types now creates one shared initializer. It runs once before the first applicable activation, in declaration order, and concurrent triggers share one in-flight attempt. In an overlay, inherited initializers run before those declared on the `ScopeBuilder`. Closed generic targets match exact compiled specializations; open generic targets match their specializations.
+
+By default, a failure propagates and a later resolution may retry. With `continue_on_failure=True`, a failure inside the configuration function is logged and treated as a completed optional attempt, so it does not fail and log on every resolution. Dependency-resolution failures still propagate. Generator or context-manager cleanup belongs to the builder layer that declared the initializer, including when an inherited initializer is first triggered from an overlay.
+
+An inherited initializer retains its frozen parent dependency plan, just like an inherited root singleton; an overlay cannot rewire it by overriding a dependency. If a parent definition had no applicable component and therefore no compiled plan, it cannot become newly applicable in an overlay. Register that initializer on the `ScopeBuilder` instead.
 
 ## Scopes, request values, and overrides
 

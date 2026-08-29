@@ -432,6 +432,158 @@ def test_failed_once_per_graph_capture_build_remains_reusable():
     assert isinstance(builder.build().resolve(SingletonService).graph_local, GraphLocal)
 
 
+@pytest.mark.parametrize("dependency_lifespan", ["once_per_graph", "scoped"])
+def test_singleton_pre_configuration_dependencies_are_validated_against_the_initializer(
+    dependency_lifespan,
+):
+    class ConfigurationDependency:
+        pass
+
+    class TransientTarget:
+        pass
+
+    def configure(dependency: ConfigurationDependency) -> None:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(ConfigurationDependency, lifespan=dependency_lifespan)
+    builder.register(TransientTarget, lifespan="transient")
+    builder.pre_configure(TransientTarget, configure)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("TransientTarget"))
+    assert issue.code == "captive-dependency"
+    assert tuple(part.rsplit(".", 1)[-1] for part in issue.path) == (
+        "TransientTarget",
+        "configure",
+        "ConfigurationDependency",
+    )
+
+
+def test_missing_pre_configuration_dependency_is_reported_at_build():
+    class MissingDependency:
+        pass
+
+    class Service:
+        pass
+
+    def configure(dependency: MissingDependency) -> None:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.pre_configure(Service, configure)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
+    assert issue.code == "missing-component"
+    assert tuple(part.rsplit(".", 1)[-1] for part in issue.path) == (
+        "Service",
+        "configure",
+        "MissingDependency",
+    )
+
+
+def test_shared_pre_configuration_dependency_cannot_trigger_the_same_definition():
+    class First:
+        pass
+
+    class Second:
+        pass
+
+    def configure(second: Second) -> None:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(First)
+    builder.register(Second, lifespan="singleton")
+    builder.pre_configure((First, Second), configure)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(
+        issue
+        for issue in report.errors
+        if issue.code == "circular-dependency" and "Circular pre-configuration trigger" in issue.message
+    )
+    assert "Circular pre-configuration trigger" in issue.message
+    assert tuple(part.rsplit(".", 1)[-1] for part in issue.path) == (
+        "First",
+        "configure",
+        "Second",
+        "configure",
+    )
+
+
+def test_inherited_pre_configuration_keeps_its_frozen_parent_dependency_plan():
+    class Dependency:
+        pass
+
+    class OverlayDependency(Dependency):
+        pass
+
+    class Service:
+        pass
+
+    configured_with: list[type] = []
+
+    def configure(dependency: Dependency) -> None:
+        configured_with.append(type(dependency))
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, lifespan="singleton")
+    builder.register(Service, lifespan="transient")
+    builder.pre_configure(Service, configure)
+    container = builder.build()
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(Dependency, OverlayDependency, lifespan="singleton")
+    overlay = overlay_builder.build()
+
+    overlay.resolve(Service)
+
+    assert configured_with == [Dependency]
+
+
+def test_inherited_pre_configuration_requires_a_frozen_parent_plan():
+    class ExistingService:
+        pass
+
+    class OverlayService:
+        pass
+
+    def configure() -> None:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(ExistingService)
+    builder.pre_configure(OverlayService, configure)
+    container = builder.build()
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(OverlayService)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        overlay_builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("OverlayService"))
+    assert issue.code == "overlay-pre-configuration"
+    assert "has no frozen parent plan" in issue.message
+
+
 def test_graph_text_mermaid_and_json_renderers_are_available():
     class Service:
         pass

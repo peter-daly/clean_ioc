@@ -74,7 +74,7 @@ Use `RemoveDependencySetting` to remove an inherited dependency override. Patche
 
 ## Pre-configuration
 
-`pre_configure(Service, function, when=...)` compiles the function's dependencies and runs the function once before an applicable component's first activation. Use `continue_on_failure=True` only when optional failure is deliberate.
+`pre_configure(Service, function, when=...)` returns a stable definition ID, compiles the function's dependencies as a singleton path, and runs the function once before an applicable component's first activation. Scoped and `once_per_graph` dependencies are invalid anywhere on that path. Passing several service types creates one shared initializer; applicable initializers run in declaration order, and concurrent triggers share one in-flight attempt. A propagated failure is retryable. `continue_on_failure=True` logs one tolerated failure and marks the initializer complete. Cleanup belongs to the builder layer that declared the initializer. Overlays retain an inherited initializer's frozen parent dependency plan; declare an initializer on the `ScopeBuilder` when it only applies to overlay components.
 
 ## Dynamic selection inside activation
 

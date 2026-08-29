@@ -387,8 +387,7 @@ class ComponentBuilder(Protocol):
         when: ComponentFilter = all_components,
         dependency_config: dict[str, Any] = {},
         continue_on_failure: bool = False,
-        registration_filter: ComponentFilter = all_components,
-    ) -> None: ...
+    ) -> str: ...
 
     def declare_scope_slot(self, service_type: type, name: str | None = None) -> Any: ...
 

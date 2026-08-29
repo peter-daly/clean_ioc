@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import inspect
+import logging
 import threading
 import types
 import typing
@@ -42,6 +43,8 @@ from .tooling import (
 )
 
 TService = TypeVar("TService")
+
+logger = logging.getLogger(__name__)
 
 
 _LEGACY_LIFESPANS: dict[Lifespan, legacy.Lifespan] = {
@@ -160,6 +163,17 @@ class _DecoratorDefinition:
     tags: tuple[legacy.Tag, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class _PreConfigurationDefinition:
+    id: str
+    service_types: tuple[Any, ...]
+    configuration_fn: Callable[..., Any]
+    dependency_config: Mapping[str, Any]
+    order: int
+    when: ComponentFilter
+    continue_on_failure: bool
+
+
 class _DecoratorUnset:
     __slots__ = ()
 
@@ -180,8 +194,8 @@ class _Layer:
     factory_specializations: dict[str, object]
     decorators: tuple[_DecoratorDefinition, ...]
     removed_decorator_ids: frozenset[str]
-    pre_configuration_when: dict[int, ComponentFilter]
-    pre_configuration_states: dict[int, _PreConfigurationState]
+    pre_configurations: tuple[_PreConfigurationDefinition, ...]
+    pre_configuration_states: dict[str, _PreConfigurationState]
     slots: frozenset[tuple[Any, str | None]]
     entrypoints: tuple[_EntryPoint, ...]
 
@@ -235,11 +249,14 @@ class _Blueprint:
             None,
         )
 
-    def pre_configurations(self, service_type: Any) -> list[tuple[legacy.PreConfiguration, _Layer]]:
+    def pre_configurations(self, service_type: Any) -> list[tuple[_PreConfigurationDefinition, _Layer]]:
         return [
             (configuration, layer)
-            for layer in self.layers
-            for configuration in layer.registry.get_pre_configurations(service_type)
+            # Parent builders existed before their overlays, so initializer
+            # declaration order proceeds from the root layer outwards.
+            for layer in reversed(self.layers)
+            for configuration in sorted(layer.pre_configurations, key=lambda item: item.order)
+            if any(_decorator_service_matches(target, service_type) for target in configuration.service_types)
         ]
 
     def service_types(self) -> tuple[Any, ...]:
@@ -258,10 +275,6 @@ def _clone_registry(source: legacy._Registry) -> legacy._Registry:
     target._registrations = defaultdict(
         deque,
         {service_type: deque(registrations) for service_type, registrations in source._registrations.items()},
-    )
-    target._pre_configurations = defaultdict(
-        deque,
-        {service_type: deque(configurations) for service_type, configurations in source._pre_configurations.items()},
     )
     target._decorators = defaultdict(legacy._DecoratorStore)
     for service_type, decorators in source._decorators.items():
@@ -769,63 +782,123 @@ class _CollectionStep(_Step):
         return self.collection_type(values)
 
 
+@dataclass(frozen=True, slots=True)
+class _PreConfigurationOutcome:
+    error: BaseException | None = None
+
+
 @dataclass(slots=True)
 class _PreConfigurationState:
-    has_run: bool = False
+    completed: bool = False
+    in_flight: concurrent.futures.Future[_PreConfigurationOutcome] | None = None
     lock: threading.Lock = field(default_factory=threading.Lock)
+
+    def begin(self) -> tuple[concurrent.futures.Future[_PreConfigurationOutcome] | None, bool]:
+        with self.lock:
+            if self.completed:
+                return None, False
+            if self.in_flight is not None:
+                return self.in_flight, False
+            future: concurrent.futures.Future[_PreConfigurationOutcome] = concurrent.futures.Future()
+            self.in_flight = future
+            return future, True
+
+    def finish(
+        self,
+        future: concurrent.futures.Future[_PreConfigurationOutcome],
+        *,
+        completed: bool = False,
+        error: BaseException | None = None,
+    ) -> None:
+        with self.lock:
+            if self.in_flight is future:
+                self.completed = completed
+                self.in_flight = None
+        future.set_result(_PreConfigurationOutcome(error))
 
 
 @dataclass(slots=True)
 class _CompiledPreConfiguration:
-    source: legacy.PreConfiguration
+    definition: _PreConfigurationDefinition
+    activator_class: type[legacy.Activator]
     dependencies: tuple[_CompiledDependency, ...]
     component: Component
     state: _PreConfigurationState
+    owner_token: str
 
     @property
     def sync_supported(self) -> bool:
-        return not _requires_async(self.source.activator_class, self.source.configuration_fn) and all(
+        return not _requires_async(self.activator_class, self.definition.configuration_fn) and all(
             dependency.step.sync_supported for dependency in self.dependencies
         )
 
     def run(self, context: _RuntimeResolutionContext) -> None:
-        with self.state.lock:
-            if self.state.has_run:
-                return
+        future, builder = self.state.begin()
+        if future is None:
+            return
+        if not builder:
+            outcome = future.result()
+            if outcome.error is not None:
+                raise outcome.error
+            return
+        try:
             values = {dependency.name: dependency.step.resolve(context) for dependency in self.dependencies}
-            try:
-                self.source.activator_class.activate(
-                    self.source.configuration_fn,
+        except BaseException as error:
+            self.state.finish(future, error=error)
+            raise
+        try:
+            with context.enter_singleton_owner(self.owner_token):
+                self.activator_class.activate(
+                    self.definition.configuration_fn,
                     values,
                     cast(Any, context),
                     legacy.Lifespan.singleton,
                 )
-            except Exception:
-                if not self.source.continue_on_failure:
-                    raise
-            else:
-                self.state.has_run = True
+        except Exception as error:
+            if not self.definition.continue_on_failure:
+                self.state.finish(future, error=error)
+                raise
+            logger.exception("Failed to run pre-configuration %r", self.definition.configuration_fn)
+            self.state.finish(future, completed=True)
+        except BaseException as error:
+            self.state.finish(future, error=error)
+            raise
+        else:
+            self.state.finish(future, completed=True)
 
     async def run_async(self, context: _RuntimeResolutionContext) -> None:
-        # Async builds are coordinated at their owning registration. This lock
-        # only protects the cheap already-run check across sync/async callers.
-        with self.state.lock:
-            if self.state.has_run:
-                return
-        values = {dependency.name: await dependency.step.resolve_async(context) for dependency in self.dependencies}
+        future, builder = self.state.begin()
+        if future is None:
+            return
+        if not builder:
+            outcome = await asyncio.shield(asyncio.wrap_future(future))
+            if outcome.error is not None:
+                raise outcome.error
+            return
         try:
-            await self.source.activator_class.activate_async(
-                self.source.configuration_fn,
-                values,
-                cast(Any, context),
-                legacy.Lifespan.singleton,
-            )
-        except Exception:
-            if not self.source.continue_on_failure:
+            values = {dependency.name: await dependency.step.resolve_async(context) for dependency in self.dependencies}
+        except BaseException as error:
+            self.state.finish(future, error=error)
+            raise
+        try:
+            with context.enter_singleton_owner(self.owner_token):
+                await self.activator_class.activate_async(
+                    self.definition.configuration_fn,
+                    values,
+                    cast(Any, context),
+                    legacy.Lifespan.singleton,
+                )
+        except Exception as error:
+            if not self.definition.continue_on_failure:
+                self.state.finish(future, error=error)
                 raise
+            logger.exception("Failed to run pre-configuration %r", self.definition.configuration_fn)
+            self.state.finish(future, completed=True)
+        except BaseException as error:
+            self.state.finish(future, error=error)
+            raise
         else:
-            with self.state.lock:
-                self.state.has_run = True
+            self.state.finish(future, completed=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1187,27 +1260,46 @@ def _manages_cleanup(activator_class: type, implementation: Any) -> bool:
     return wrapped is not None and (inspect.isgeneratorfunction(wrapped) or inspect.isasyncgenfunction(wrapped))
 
 
+@dataclass(frozen=True, slots=True)
+class _CompilerFrame:
+    label: Any
+    lifespan: legacy.Lifespan
+    owner_token: str
+    kind: ComponentKind
+
+
+def _frame_description(frame: _CompilerFrame) -> str:
+    label = qualified_name(frame.label)
+    if frame.kind is ComponentKind.pre_configuration:
+        return f"Pre-configuration {label}"
+    owner = "Singleton" if frame.lifespan == legacy.Lifespan.singleton else "Scoped"
+    return f"{owner} {label}"
+
+
 class _Compiler:
     def __init__(
         self,
         blueprint: _Blueprint,
         *,
         anchored_singletons: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
+        anchored_pre_configurations: dict[str, _CompiledPreConfiguration] | None = None,
         anchored_owner_tokens: frozenset[str] = frozenset(),
     ):
         self.blueprint = blueprint
         self.graph = _ComponentGraph()
         self._next_occurrence = 1
         self._stack: list[legacy._Registration] = []
+        self._frames: list[_CompilerFrame] = []
         self._specialized_factories: dict[tuple[str, tuple[Any, ...]], legacy._Registration] = {}
+        self._compiled_pre_configurations: dict[str, _CompiledPreConfiguration] = {}
+        self._compiling_pre_configurations: set[str] = set()
         self._anchored_singletons = anchored_singletons or {}
+        self._anchored_pre_configurations = anchored_pre_configurations or {}
         self._anchored_owner_tokens = anchored_owner_tokens
         self.issues: list[BuildIssue] = []
 
     def _current_path(self, *tail: Any) -> tuple[str, ...]:
-        return tuple(
-            qualified_name(value) for value in (*(registration.service_type for registration in self._stack), *tail)
-        )
+        return tuple(qualified_name(value) for value in (*(frame.label for frame in self._frames), *tail))
 
     def compile(self, service_types: Iterable[Any] | None = None) -> _PlanSet:
         roots: dict[Any, tuple[_RootPlan, ...]] = {}
@@ -1366,25 +1458,43 @@ class _Compiler:
                 code="circular-dependency",
                 path=self._current_path(registration.service_type),
             )
-        singleton = next((item for item in reversed(self._stack) if item.lifespan == legacy.Lifespan.singleton), None)
+        singleton = next((item for item in reversed(self._frames) if item.lifespan == legacy.Lifespan.singleton), None)
         if singleton is not None and registration.lifespan == legacy.Lifespan.scoped and not registration.is_instance:
             raise ContainerBuildError(
-                f"Singleton {singleton.service_type} cannot retain scoped {registration.service_type}",
+                f"{_frame_description(singleton)} cannot retain scoped {registration.service_type}",
                 code="captive-dependency",
                 path=self._current_path(registration.service_type),
             )
         long_lived = next(
             (
                 item
-                for item in reversed(self._stack)
+                for item in reversed(self._frames)
                 if item.lifespan in (legacy.Lifespan.scoped, legacy.Lifespan.singleton)
             ),
             None,
         )
         if long_lived is not None and registration.lifespan == legacy.Lifespan.once_per_graph:
-            owner = "Singleton" if long_lived.lifespan == legacy.Lifespan.singleton else "Scoped"
             raise ContainerBuildError(
-                f"{owner} {long_lived.service_type} cannot retain once-per-graph {registration.service_type}",
+                f"{_frame_description(long_lived)} cannot retain once-per-graph {registration.service_type}",
+                code="captive-dependency",
+                path=self._current_path(registration.service_type),
+            )
+        anchored_owner = next(
+            (
+                item
+                for item in reversed(self._frames)
+                if item.lifespan == legacy.Lifespan.singleton and item.owner_token in self._anchored_owner_tokens
+            ),
+            None,
+        )
+        if (
+            anchored_owner is not None
+            and registration.lifespan == legacy.Lifespan.singleton
+            and layer.owner_token != anchored_owner.owner_token
+        ):
+            raise ContainerBuildError(
+                f"{_frame_description(anchored_owner)} cannot retain overlay-owned singleton "
+                f"{registration.service_type}",
                 code="captive-dependency",
                 path=self._current_path(registration.service_type),
             )
@@ -1404,9 +1514,17 @@ class _Compiler:
             manages_cleanup=_manages_cleanup(registration.activator_class, registration.implementation),
         )
         self._stack.append(registration)
+        self._frames.append(
+            _CompilerFrame(
+                label=requested_service_type,
+                lifespan=registration.lifespan,
+                owner_token=layer.owner_token,
+                kind=ComponentKind.registration,
+            )
+        )
         try:
             dependencies = self._compile_dependencies(registration.dependencies, component)
-            configurations = self._compile_pre_configurations(registration, component)
+            configurations = self._compile_pre_configurations(component)
             draft.pre_configuration_ids = tuple(item.component.occurrence_id for item in configurations)
             decorators = self._compile_decorators(registration, component)
             # Component inspection presents the final pipeline outside-to-inside,
@@ -1422,6 +1540,7 @@ class _Compiler:
             )
             return component, step
         finally:
+            self._frames.pop()
             self._stack.pop()
 
     def _clone_component_tree(
@@ -1668,32 +1787,89 @@ class _Compiler:
 
     def _compile_pre_configurations(
         self,
-        registration: legacy._Registration,
         parent: Component,
     ) -> tuple[_CompiledPreConfiguration, ...]:
         items: list[_CompiledPreConfiguration] = []
-        for configuration, layer in self.blueprint.pre_configurations(registration.service_type):
-            if not configuration.registration_filter(cast(Any, parent)):
+        for definition, layer in self.blueprint.pre_configurations(parent.service_type):
+            if not definition.when(parent):
                 continue
-            when = layer.pre_configuration_when.get(id(configuration), all_components)
-            if not when(parent):
+            existing = self._compiled_pre_configurations.get(definition.id)
+            if existing is not None:
+                items.append(existing)
                 continue
+            if layer.owner_token in self._anchored_owner_tokens:
+                anchored = self._anchored_pre_configurations.get(definition.id)
+                if anchored is None:
+                    raise ContainerBuildError(
+                        f"Parent-owned pre-configuration {qualified_name(definition.configuration_fn)} "
+                        "has no frozen parent plan; declare it in the scope builder",
+                        code="overlay-pre-configuration",
+                        path=self._current_path(definition.configuration_fn),
+                    )
+                compiled = replace(
+                    anchored,
+                    component=self._clone_component_tree(anchored.component, parent=None),
+                )
+                self._compiled_pre_configurations[definition.id] = compiled
+                items.append(compiled)
+                continue
+            if definition.id in self._compiling_pre_configurations:
+                raise ContainerBuildError(
+                    f"Circular pre-configuration trigger for {qualified_name(definition.configuration_fn)}",
+                    code="circular-dependency",
+                    path=self._current_path(definition.configuration_fn),
+                )
+            try:
+                dependencies = legacy._set_up_dependencies(
+                    definition.configuration_fn,
+                    legacy.dependency_config_to_subdependencies(dict(definition.dependency_config)),
+                )
+            except Exception as error:
+                raise ContainerBuildError(
+                    f"Pre-configuration {qualified_name(definition.configuration_fn)} has an invalid signature: "
+                    f"{error}",
+                    code="invalid-pre-configuration",
+                    path=self._current_path(definition.configuration_fn),
+                ) from error
+            activator_class = legacy._Registry._get_activator_class(definition.configuration_fn)
             component, _ = self._draft(
-                component_id=f"pre:{id(configuration)}",
-                service_type=registration.service_type,
-                implementation=configuration.configuration_fn,
+                component_id=definition.id,
+                service_type=definition.service_types[0],
+                implementation=definition.configuration_fn,
                 lifespan="singleton",
                 name=None,
                 tags=(),
                 kind=ComponentKind.pre_configuration,
-                activation=_callable_activation(configuration.configuration_fn),
-                parent=parent,
-                requires_async=_requires_async(configuration.activator_class, configuration.configuration_fn),
-                manages_cleanup=_manages_cleanup(configuration.activator_class, configuration.configuration_fn),
+                activation=_callable_activation(definition.configuration_fn),
+                parent=None,
+                requires_async=_requires_async(activator_class, definition.configuration_fn),
+                manages_cleanup=_manages_cleanup(activator_class, definition.configuration_fn),
             )
-            dependencies = self._compile_dependencies(configuration.dependencies, component)
-            state = layer.pre_configuration_states.setdefault(id(configuration), _PreConfigurationState())
-            items.append(_CompiledPreConfiguration(configuration, dependencies, component, state))
+            self._compiling_pre_configurations.add(definition.id)
+            self._frames.append(
+                _CompilerFrame(
+                    label=definition.configuration_fn,
+                    lifespan=legacy.Lifespan.singleton,
+                    owner_token=layer.owner_token,
+                    kind=ComponentKind.pre_configuration,
+                )
+            )
+            try:
+                compiled_dependencies = self._compile_dependencies(dependencies, component)
+            finally:
+                self._frames.pop()
+                self._compiling_pre_configurations.remove(definition.id)
+            state = layer.pre_configuration_states.setdefault(definition.id, _PreConfigurationState())
+            compiled = _CompiledPreConfiguration(
+                definition=definition,
+                activator_class=activator_class,
+                dependencies=compiled_dependencies,
+                component=component,
+                state=state,
+                owner_token=layer.owner_token,
+            )
+            self._compiled_pre_configurations[definition.id] = compiled
+            items.append(compiled)
         return tuple(items)
 
     def _compile_decorators(
@@ -1875,6 +2051,16 @@ def _anchored_singletons(
     return anchored
 
 
+def _anchored_pre_configurations(plan: _PlanSet) -> dict[str, _CompiledPreConfiguration]:
+    anchored: dict[str, _CompiledPreConfiguration] = {}
+    for plans in plan.roots.values():
+        for root in plans:
+            for step in _iter_registration_steps(root.step):
+                for configuration in step.pre_configurations:
+                    anchored.setdefault(configuration.definition.id, configuration)
+    return anchored
+
+
 def _graph_roots(plan: _PlanSet) -> tuple[GraphRoot, ...]:
     return tuple(
         GraphRoot(service_type, root.component) for service_type, roots in plan.roots.items() for root in roots
@@ -1915,6 +2101,7 @@ def _error_report(
     original: BaseException,
     *,
     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
+    anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
     anchored_owner_tokens: frozenset[str] = frozenset(),
 ) -> BuildReport:
     issues: list[BuildIssue] = []
@@ -1928,6 +2115,7 @@ def _error_report(
             _Compiler(
                 blueprint,
                 anchored_singletons=anchored_singleton_steps,
+                anchored_pre_configurations=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
             ).compile((service_type,))
         except Exception as error:
@@ -2053,12 +2241,14 @@ def _compile_with_report(
     blueprint: _Blueprint,
     *,
     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
+    anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
     anchored_owner_tokens: frozenset[str] = frozenset(),
 ) -> _PlanSet:
     try:
         plan = _Compiler(
             blueprint,
             anchored_singletons=anchored_singleton_steps,
+            anchored_pre_configurations=anchored_pre_configuration_steps,
             anchored_owner_tokens=anchored_owner_tokens,
         ).compile()
         return _finalize_plan(plan)
@@ -2069,6 +2259,7 @@ def _compile_with_report(
             blueprint,
             error,
             anchored_singleton_steps=anchored_singleton_steps,
+            anchored_pre_configuration_steps=anchored_pre_configuration_steps,
             anchored_owner_tokens=anchored_owner_tokens,
         )
         raise ContainerBuildError(report=report) from error
@@ -2077,6 +2268,7 @@ def _compile_with_report(
             blueprint,
             error,
             anchored_singleton_steps=anchored_singleton_steps,
+            anchored_pre_configuration_steps=anchored_pre_configuration_steps,
             anchored_owner_tokens=anchored_owner_tokens,
         )
         raise ContainerBuildError(report=report) from error
@@ -2088,6 +2280,7 @@ class _RuntimeResolutionContext:
         self.once_cache: dict[str, Any] = {}
         self.registration_stack: list[_RegistrationStep] = []
         self.component_stack: list[Component] = []
+        self.singleton_owner_stack: list[str] = []
 
     def resolve_root(self, service_type: Any, filter: ComponentFilter) -> Any:
         collection = _collection_request(service_type)
@@ -2130,6 +2323,14 @@ class _RuntimeResolutionContext:
             yield
         finally:
             self.component_stack.pop()
+
+    @contextmanager
+    def enter_singleton_owner(self, owner_token: str):
+        self.singleton_owner_stack.append(owner_token)
+        try:
+            yield
+        finally:
+            self.singleton_owner_stack.pop()
 
     def _cache(self, step: _RegistrationStep) -> dict[str, Any] | None:
         lifespan = step.registration.lifespan
@@ -2187,7 +2388,10 @@ class _RuntimeResolutionContext:
 
     def add_finalizer(self, lifespan: legacy.Lifespan, finalizer: Callable[..., Any]) -> None:
         step = self.registration_stack[-1] if self.registration_stack else None
-        if lifespan == legacy.Lifespan.singleton and step is not None:
+        owner_token = self.singleton_owner_stack[-1] if self.singleton_owner_stack else None
+        if lifespan == legacy.Lifespan.singleton and owner_token is not None:
+            self.scope._owners[owner_token]._finalizers.appendleft(finalizer)
+        elif lifespan == legacy.Lifespan.singleton and step is not None:
             self.scope._owners[step.owner_token]._finalizers.appendleft(finalizer)
         else:
             self.scope._finalizers.appendleft(finalizer)
@@ -2382,8 +2586,9 @@ class _BuilderBase:
         self._decorators: list[_DecoratorDefinition] = []
         self._removed_decorator_ids: set[str] = set()
         self._next_decorator_order = 0
-        self._pre_configuration_when: dict[int, ComponentFilter] = {}
-        self._pre_configuration_states: dict[int, _PreConfigurationState] = {}
+        self._pre_configurations: list[_PreConfigurationDefinition] = []
+        self._pre_configuration_states: dict[str, _PreConfigurationState] = {}
+        self._next_pre_configuration_order = 0
         self._registration_discoveries: list[_RegistrationDiscovery] = []
         self._slots: set[tuple[Any, str | None]] = set()
         self._entrypoints: list[_EntryPoint] = []
@@ -2413,7 +2618,7 @@ class _BuilderBase:
             factory_specializations=dict(self._factory_specializations),
             decorators=tuple(self._decorators),
             removed_decorator_ids=frozenset(self._removed_decorator_ids),
-            pre_configuration_when=dict(self._pre_configuration_when),
+            pre_configurations=tuple(self._pre_configurations),
             pre_configuration_states=dict(self._pre_configuration_states),
             slots=frozenset(self._slots),
             entrypoints=tuple(self._entrypoints),
@@ -2422,6 +2627,11 @@ class _BuilderBase:
     def _new_decorator_order(self) -> int:
         value = self._next_decorator_order
         self._next_decorator_order += 1
+        return value
+
+    def _new_pre_configuration_order(self) -> int:
+        value = self._next_pre_configuration_order
+        self._next_pre_configuration_order += 1
         return value
 
     def register(
@@ -2609,29 +2819,34 @@ class _BuilderBase:
         when: ComponentFilter = all_components,
         dependency_config: legacy.DependencyConfig = {},
         continue_on_failure: bool = False,
-        registration_filter: ComponentFilter = all_components,
-    ) -> None:
+    ) -> str:
         self._assert_mutable()
         service_types = (
             tuple(service_type)
-            if isinstance(service_type, Iterable) and not isinstance(service_type, type)
+            if (
+                isinstance(service_type, Iterable)
+                and not isinstance(service_type, type)
+                and get_origin(service_type) is None
+            )
             else (service_type,)
         )
-        before = {
-            id(item) for target in service_types for item in self._composition._registry.get_pre_configurations(target)
-        }
-        self._composition.pre_configure(
-            service_type,
-            configuration_function,
-            registration_filter=cast(Any, registration_filter),
-            dependency_config=dependency_config,
-            continue_on_failure=continue_on_failure,
+        service_types = tuple(dict.fromkeys(service_types))
+        if not service_types:
+            raise ValueError("pre_configure() requires at least one service type")
+        definition_id = str(uuid4())
+        self._pre_configurations.append(
+            _PreConfigurationDefinition(
+                id=definition_id,
+                service_types=service_types,
+                configuration_fn=configuration_function,
+                dependency_config=types.MappingProxyType(dict(dependency_config)),
+                order=self._new_pre_configuration_order(),
+                when=when,
+                continue_on_failure=continue_on_failure,
+            )
         )
-        for target in service_types:
-            for item in self._composition._registry.get_pre_configurations(target):
-                if id(item) not in before:
-                    self._pre_configuration_when[id(item)] = when
-                    self._pre_configuration_states.setdefault(id(item), _PreConfigurationState())
+        self._pre_configuration_states[definition_id] = _PreConfigurationState()
+        return definition_id
 
     def declare_scope_slot(self, service_type: type, name: str | None = None) -> _BuilderBase:
         self._assert_mutable()
@@ -2797,6 +3012,7 @@ class ScopeBuilder(_BuilderBase):
         plan = _compile_with_report(
             blueprint,
             anchored_singleton_steps=_anchored_singletons(self._parent._plan),
+            anchored_pre_configuration_steps=_anchored_pre_configurations(self._parent._plan),
             anchored_owner_tokens=frozenset(self._parent._owners),
         )
         scope = Scope(

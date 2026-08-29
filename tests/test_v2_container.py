@@ -1,9 +1,12 @@
+import asyncio
 import gc
 import inspect
+import threading
 import types
 import weakref
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, contextmanager
 from typing import Any, Callable, Generic, ParamSpec, TypeVar, cast, get_args
 from unittest.mock import Mock, patch
@@ -525,6 +528,258 @@ def test_shared_pre_configuration_runs_once_across_roots_and_scope_overlays():
     container.new_scope_builder().build().resolve(First)
 
     assert calls == ["configured"]
+
+
+def test_pre_configurations_run_in_declaration_order_and_share_one_compiled_definition():
+    class First:
+        pass
+
+    class Second:
+        pass
+
+    calls: list[str] = []
+
+    def configure_first() -> None:
+        calls.append("first")
+
+    def configure_second() -> None:
+        calls.append("second")
+
+    builder = ContainerBuilder()
+    builder.register(First)
+    builder.register(Second)
+    first_id = builder.pre_configure((First, Second), configure_first)
+    second_id = builder.pre_configure((First, Second), configure_second)
+    container = builder.build()
+
+    components = {component.service_type: component for component in container.components}
+    first_configurations = components[First].pre_configurations
+    second_configurations = components[Second].pre_configurations
+
+    assert (first_id, second_id) == tuple(component.id for component in first_configurations)
+    assert tuple(component.occurrence_id for component in first_configurations) == tuple(
+        component.occurrence_id for component in second_configurations
+    )
+
+    container.resolve(Second)
+    container.resolve(First)
+
+    assert calls == ["first", "second"]
+
+
+def test_pre_configuration_api_uses_one_component_filter():
+    parameters = inspect.signature(ContainerBuilder.pre_configure).parameters
+
+    assert "when" in parameters
+    assert "registration_filter" not in parameters
+
+
+def test_sync_pre_configuration_is_single_flight_across_concurrent_triggers():
+    class First:
+        pass
+
+    class Second:
+        pass
+
+    entered = threading.Event()
+    release = threading.Event()
+    calls = 0
+
+    def configure() -> None:
+        nonlocal calls
+        calls += 1
+        entered.set()
+        assert release.wait(timeout=2)
+
+    builder = ContainerBuilder()
+    builder.register(First)
+    builder.register(Second)
+    builder.pre_configure((First, Second), configure)
+    container = builder.build()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(container.resolve, First)
+        assert entered.wait(timeout=2)
+        second = executor.submit(container.resolve, Second)
+        release.set()
+        assert isinstance(first.result(timeout=2), First)
+        assert isinstance(second.result(timeout=2), Second)
+
+    assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_async_pre_configuration_is_single_flight_across_concurrent_triggers():
+    class First:
+        pass
+
+    class Second:
+        pass
+
+    calls = 0
+
+    async def configure() -> None:
+        nonlocal calls
+        calls += 1
+        await asyncio.sleep(0)
+
+    builder = ContainerBuilder()
+    builder.register(First)
+    builder.register(Second)
+    builder.pre_configure((First, Second), configure)
+    container = builder.build()
+
+    first, second = await asyncio.gather(container.resolve_async(First), container.resolve_async(Second))
+
+    assert isinstance(first, First)
+    assert isinstance(second, Second)
+    assert calls == 1
+
+
+def test_inherited_pre_configuration_cleanup_belongs_to_the_declaring_container():
+    class Service:
+        pass
+
+    events: list[str] = []
+
+    @contextmanager
+    def configure():
+        events.append("enter")
+        yield
+        events.append("exit")
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.pre_configure(Service, configure)
+
+    with builder.build() as container:
+        overlay_builder = container.new_scope_builder()
+        overlay_builder.register(Service)
+        with overlay_builder.build() as overlay:
+            overlay.resolve(Service)
+        assert events == ["enter"]
+
+        container.resolve(Service)
+        assert events == ["enter"]
+
+    assert events == ["enter", "exit"]
+
+
+def test_pre_configuration_order_runs_from_parent_builder_to_overlay_builder():
+    class Service:
+        pass
+
+    calls: list[str] = []
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.pre_configure(Service, lambda: calls.append("parent"))
+    container = builder.build()
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(Service)
+    overlay_builder.pre_configure(Service, lambda: calls.append("overlay"))
+    overlay = overlay_builder.build()
+
+    overlay.resolve(Service)
+
+    assert calls == ["parent", "overlay"]
+
+
+def test_closed_generic_pre_configuration_matches_an_open_generic_registration():
+    T = TypeVar("T")
+
+    class Service(Generic[T]):
+        pass
+
+    class Consumer:
+        def __init__(self, service: Service[int]):
+            self.service = service
+
+    calls: list[str] = []
+
+    def configure() -> None:
+        calls.append("configured")
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register(Consumer)
+    builder.pre_configure(Service[int], configure)
+    container = builder.build()
+
+    assert isinstance(container.resolve(Consumer).service, Service)
+    assert calls == ["configured"]
+
+
+def test_tolerated_pre_configuration_failure_is_logged_once_and_not_retried(caplog):
+    class Service:
+        pass
+
+    calls = 0
+
+    def configure() -> None:
+        nonlocal calls
+        calls += 1
+        raise ValueError("optional configuration failed")
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.pre_configure(Service, configure, continue_on_failure=True)
+    container = builder.build()
+
+    with caplog.at_level("ERROR", logger="clean_ioc.v2"):
+        container.resolve(Service)
+        container.resolve(Service)
+
+    assert calls == 1
+    assert sum("Failed to run pre-configuration" in record.message for record in caplog.records) == 1
+
+
+def test_continue_on_failure_does_not_suppress_dependency_failures():
+    class Dependency:
+        pass
+
+    class Service:
+        pass
+
+    def create_dependency() -> Dependency:
+        raise ValueError("dependency failed")
+
+    def configure(dependency: Dependency) -> None:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, factory=create_dependency, lifespan="singleton")
+    builder.register(Service)
+    builder.pre_configure(Service, configure, continue_on_failure=True)
+    container = builder.build()
+
+    with pytest.raises(ValueError, match="dependency failed"):
+        container.resolve(Service)
+
+
+def test_propagated_pre_configuration_failure_can_be_retried():
+    class Service:
+        pass
+
+    calls = 0
+
+    def configure() -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise ValueError("retry configuration")
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.pre_configure(Service, configure)
+    container = builder.build()
+
+    with pytest.raises(ValueError, match="retry configuration"):
+        container.resolve(Service)
+
+    assert isinstance(container.resolve(Service), Service)
+    assert calls == 2
 
 
 def test_subclass_discovery_runs_at_build_and_seals_the_snapshot():

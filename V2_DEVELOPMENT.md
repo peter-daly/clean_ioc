@@ -77,6 +77,20 @@ When changing validation:
 3. Keep a failed builder repairable.
 4. Test all compiled edge types when the rule is meant to be graph-wide.
 
+## Pre-configuration compilation and ownership
+
+`pre_configure()` stores an immutable `_PreConfigurationDefinition` with a stable ID, target service types, frozen dependency configuration, declaration order, one `when` filter, and failure policy. Definitions execute in declaration order within a layer and parent layers precede overlay layers. Do not route V2 pre-configurations back through the mutable legacy registry or restore separate registration/node filters.
+
+The compiler matches definitions against the actual compiled service type. This is important for open registrations specialized to closed generic aliases: an exact target such as `Service[int]` must not be treated as the iterable of its type arguments, while an open target must apply to its closed specializations.
+
+One definition has one `_CompiledPreConfiguration`, component occurrence, and `_PreConfigurationState` across all matching trigger roots in a compiled plan. Its dependency path is compiled inside an explicit singleton `_CompilerFrame`, independently of the triggering registration's lifespan. This makes scoped and `once_per_graph` captures build errors and makes recursive shared-trigger paths diagnosable.
+
+Scope overlays anchor an inherited initializer to the parent's compiled plan as well as its shared runtime state. Clone its component metadata into the overlay graph, but retain its parent activation steps; otherwise dependency selection would depend on which scope wins the first runtime trigger. A parent definition with no compiled plan cannot become newly applicable in an overlay and reports `overlay-pre-configuration`; declare it on the `ScopeBuilder` instead.
+
+Runtime execution is lazy and single-flight across sync and async callers. A successful attempt marks the shared state complete. A propagated failure wakes current waiters with the same failure but leaves the state retryable; `continue_on_failure=True` logs a configuration-function failure and marks the attempt complete. Dependency-resolution failures always propagate because activation did not occur. Keep dependency resolution and user-code activation outside the state lock.
+
+Pre-configuration generator/context-manager finalizers belong to the definition's declaring owner token. They must not be attached to whichever overlay happened to trigger the initializer first. Dependencies retain their own registration ownership.
+
 ## Lifespans, activation, and cleanup
 
 - Public builder arguments and `Component.lifespan` use the literal strings `"transient"`, `"once_per_graph"`, `"scoped"`, and `"singleton"`; the V1 `IntEnum` is internal compatibility machinery only.
