@@ -10,7 +10,6 @@ from clean_ioc import (
     ContainerBuilder,
     ContainerBuildError,
     DependencySettings,
-    Lifespan,
 )
 
 
@@ -94,7 +93,7 @@ def validate_lifespans_slots_and_overlays() -> None:
         pass
 
     overlay_builder = container.new_scope_builder()
-    overlay_builder.register(Root, Overlay, lifespan=Lifespan.singleton)
+    overlay_builder.register(Root, Overlay, lifespan="singleton")
     with overlay_builder.build() as overlay:
         assert isinstance(overlay.resolve(Root), Overlay)  # noqa: S101
 
@@ -140,7 +139,7 @@ def validate_factories_and_cleanup() -> None:
         events.append("exit")
 
     builder = ContainerBuilder()
-    builder.register(Resource, factory=factory, lifespan=Lifespan.scoped)
+    builder.register(Resource, factory=factory, lifespan="scoped")
     container = builder.build()
     with container.new_scope() as scope:
         scope.resolve(Resource)
@@ -157,7 +156,7 @@ async def validate_async_factory() -> None:
         yield Resource()
 
     builder = ContainerBuilder()
-    builder.register(Resource, factory=factory, lifespan=Lifespan.scoped)
+    builder.register(Resource, factory=factory, lifespan="scoped")
     container = builder.build()
     async with container.new_scope() as scope:
         assert isinstance(await scope.resolve_async(Resource), Resource)  # noqa: S101

@@ -3,7 +3,7 @@
 Use a factory when construction is not a direct class call, needs injected dependencies, or owns setup and cleanup.
 
 ```python
-from clean_ioc import ContainerBuilder, Lifespan
+from clean_ioc import ContainerBuilder
 
 
 def client_factory(config: Config) -> Client:
@@ -46,7 +46,7 @@ def connection_factory():
 
 
 builder = ContainerBuilder()
-builder.register(Connection, factory=connection_factory, lifespan=Lifespan.scoped)
+builder.register(Connection, factory=connection_factory, lifespan="scoped")
 container = builder.build()
 
 with container.new_scope() as scope:

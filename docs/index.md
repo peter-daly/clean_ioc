@@ -15,7 +15,7 @@ pip install clean_ioc
 ```python
 from typing import Protocol
 
-from clean_ioc import ContainerBuilder, Lifespan
+from clean_ioc import ContainerBuilder
 
 
 class UserRepository(Protocol):
@@ -33,7 +33,7 @@ class UserService:
 
 
 builder = ContainerBuilder()
-builder.register(UserRepository, SqlUserRepository, lifespan=Lifespan.scoped)
+builder.register(UserRepository, SqlUserRepository, lifespan="scoped")
 builder.register(UserService)
 
 container = builder.build()

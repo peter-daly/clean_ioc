@@ -6,7 +6,7 @@ from typing import Any
 from starlette.datastructures import MutableHeaders
 from starlette.requests import HTTPConnection
 
-from clean_ioc import ComponentBuilder, Lifespan, Scope
+from clean_ioc import ComponentBuilder, Scope
 from clean_ioc.functional_utils import constant
 from fastapi import Depends, Request, Response, WebSocket
 
@@ -66,7 +66,7 @@ def configure_fastapi(builder: ComponentBuilder) -> None:
     builder.declare_scope_slot(Request)
     builder.declare_scope_slot(WebSocket)
     builder.declare_scope_slot(ResponseHeaderWriter)
-    builder.register(RequestHeaderReader, lifespan=Lifespan.scoped)
+    builder.register(RequestHeaderReader, lifespan="scoped")
 
 
 def add_request_to_scope(request: Request, scope: Scope = Depends(get_scope, scope="request")) -> None:

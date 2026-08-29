@@ -132,9 +132,11 @@ def _component_description(component: Component) -> str:
     implementation = _implementation_name(component)
     target = service if implementation == service else f"{service} -> {implementation}"
     prefix = f"{component.argument}: " if component.argument else ""
-    details = [component.kind.value, component.activation.value, component.lifespan.name]
+    details = [component.kind.value, component.activation.value, component.lifespan]
     if component.name is not None:
         details.append(f'name="{component.name}"')
+    if component.position is not None:
+        details.append(f"position={component.position}")
     if component.requires_async:
         details.append("async")
     if component.manages_cleanup:
@@ -152,8 +154,9 @@ def _node_dict(component: Component, path: str, order: int) -> dict[str, Any]:
         "implementation_type": qualified_name(component.implementation_type),
         "kind": component.kind.value,
         "activation": component.activation.value,
-        "lifespan": component.lifespan.name,
+        "lifespan": component.lifespan,
         "name": component.name,
+        "position": component.position,
         "tags": [
             {"name": tag.name, "value": tag.value}
             for tag in sorted(component.tags, key=lambda item: (item.name, item.value or ""))

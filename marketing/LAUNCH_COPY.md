@@ -14,7 +14,7 @@ The 2.0 alpha splits that into two explicit jobs:
 
 ```python
 builder = ContainerBuilder()
-builder.register(OrderRepository, SqlOrderRepository, lifespan=Lifespan.scoped)
+builder.register(OrderRepository, SqlOrderRepository, lifespan="scoped")
 builder.register(CreateOrder)
 
 container = builder.build()

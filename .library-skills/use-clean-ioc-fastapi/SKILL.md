@@ -12,12 +12,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from clean_ioc import ContainerBuilder, Lifespan
+from clean_ioc import ContainerBuilder
 from clean_ioc.ext.fastapi import Resolve, add_container_to_app
 
 
 builder = ContainerBuilder()
-builder.register(Repository, lifespan=Lifespan.scoped)
+builder.register(Repository, lifespan="scoped")
 builder.register(Service)
 container = builder.build()
 

@@ -53,6 +53,6 @@ class ServiceBundle(BaseBundle):
 bundle = ServiceBundle()
 builder = ContainerBuilder()
 builder.apply_bundle(bundle)
-builder.patch_component(Service, bundle.component_id, lifespan=Lifespan.singleton)
+builder.patch_component(Service, bundle.component_id, lifespan="singleton")
 container = builder.build()
 ```

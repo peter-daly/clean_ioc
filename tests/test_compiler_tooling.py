@@ -13,7 +13,6 @@ from clean_ioc import (
     ContainerBuildError,
     DependencySettings,
     GraphManifest,
-    Lifespan,
     ResolutionContext,
     Scope,
 )
@@ -238,14 +237,14 @@ def test_overlay_anchors_parent_singletons_and_starts_a_fresh_scoped_cache():
             self.dependency = dependency
 
     builder = ContainerBuilder()
-    builder.register(Dependency, RootDependency, lifespan=Lifespan.singleton)
-    builder.register(SingletonService, lifespan=Lifespan.singleton)
-    builder.register(ScopedService, lifespan=Lifespan.scoped)
+    builder.register(Dependency, RootDependency, lifespan="singleton")
+    builder.register(SingletonService, lifespan="singleton")
+    builder.register(ScopedService, lifespan="scoped")
     container = builder.build()
     parent_scoped = container.resolve(ScopedService)
 
     overlay_builder = container.new_scope_builder()
-    overlay_builder.register(Dependency, OverlayDependency, lifespan=Lifespan.scoped)
+    overlay_builder.register(Dependency, OverlayDependency, lifespan="scoped")
     overlay_builder.register_decorator(
         SingletonService,
         OverlaySingletonDecorator,
@@ -261,7 +260,7 @@ def test_overlay_anchors_parent_singletons_and_starts_a_fresh_scoped_cache():
     assert isinstance(overlay_scoped.dependency, OverlayDependency)
 
 
-@pytest.mark.parametrize("owner_lifespan", [Lifespan.singleton, Lifespan.scoped])
+@pytest.mark.parametrize("owner_lifespan", ["singleton", "scoped"])
 def test_long_lived_components_cannot_transitively_capture_once_per_graph(owner_lifespan):
     class GraphLocal:
         pass
@@ -276,7 +275,7 @@ def test_long_lived_components_cannot_transitively_capture_once_per_graph(owner_
 
     builder = ContainerBuilder()
     builder.register(GraphLocal)
-    builder.register(TransientWrapper, lifespan=Lifespan.transient)
+    builder.register(TransientWrapper, lifespan="transient")
     builder.register(Owner, lifespan=owner_lifespan)
 
     with pytest.raises(ContainerBuildError) as raised:
@@ -294,7 +293,7 @@ def test_long_lived_components_cannot_transitively_capture_once_per_graph(owner_
     assert "once-per-graph" in issue.message
 
 
-@pytest.mark.parametrize("owner_lifespan", [Lifespan.singleton, Lifespan.scoped])
+@pytest.mark.parametrize("owner_lifespan", ["singleton", "scoped"])
 @pytest.mark.parametrize(
     "edge",
     ["constructor", "factory", "decorator", "collection", "provider-fallback", "pre-configuration"],
@@ -372,7 +371,7 @@ def test_once_per_graph_capture_is_rejected_across_compiled_edge_types(owner_lif
     assert issue.path[-1].endswith("GraphLocal")
 
 
-@pytest.mark.parametrize("owner_lifespan", [Lifespan.singleton, Lifespan.scoped])
+@pytest.mark.parametrize("owner_lifespan", ["singleton", "scoped"])
 def test_long_lived_components_may_capture_plain_transients(owner_lifespan):
     class Logger:
         pass
@@ -382,7 +381,7 @@ def test_long_lived_components_may_capture_plain_transients(owner_lifespan):
             self.logger = logger
 
     builder = ContainerBuilder()
-    builder.register(Logger, lifespan=Lifespan.transient)
+    builder.register(Logger, lifespan="transient")
     builder.register(Service, lifespan=owner_lifespan)
     container = builder.build()
 
@@ -393,7 +392,7 @@ def test_long_lived_components_may_capture_plain_transients(owner_lifespan):
     assert first.logger is second.logger
 
 
-@pytest.mark.parametrize("dependency_lifespan", [Lifespan.scoped, Lifespan.singleton])
+@pytest.mark.parametrize("dependency_lifespan", ["scoped", "singleton"])
 def test_once_per_graph_components_may_depend_on_longer_lived_components(dependency_lifespan):
     class LongLived:
         pass
@@ -424,12 +423,12 @@ def test_failed_once_per_graph_capture_build_remains_reusable():
 
     builder = ContainerBuilder()
     component_id = builder.register(GraphLocal)
-    builder.register(SingletonService, lifespan=Lifespan.singleton)
+    builder.register(SingletonService, lifespan="singleton")
 
     with pytest.raises(ContainerBuildError):
         builder.build()
 
-    builder.patch_component(GraphLocal, component_id, lifespan=Lifespan.singleton)
+    builder.patch_component(GraphLocal, component_id, lifespan="singleton")
     assert isinstance(builder.build().resolve(SingletonService).graph_local, GraphLocal)
 
 
@@ -444,6 +443,32 @@ def test_graph_text_mermaid_and_json_renderers_are_available():
     assert "Resolve" in container.graph.to_text()
     assert container.graph.to_mermaid().startswith("flowchart TD")
     assert json.loads(container.graph.manifest().to_json())["schema_version"] == 1
+
+
+def test_graph_renderers_show_decorator_positions_outside_to_inside():
+    class Service:
+        pass
+
+    class Inner:
+        def __init__(self, child: Service):
+            self.child = child
+
+    class Outer:
+        def __init__(self, child: Service):
+            self.child = child
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register_decorator(Service, Inner, position=100)
+    builder.register_decorator(Service, Outer, position=1000)
+    graph = builder.build().graph
+
+    text = graph.to_text()
+    assert text.index("Outer") < text.index("Inner")
+    assert "position=1000" in text
+    decorators = graph.manifest().data["roots"][0]["decorators"]
+    assert [item["implementation"].split(".")[-1] for item in decorators] == ["Outer", "Inner"]
+    assert [item["position"] for item in decorators] == [1000, 100]
 
 
 def test_cli_check_graph_and_diff_contract(tmp_path: Path, capsys):

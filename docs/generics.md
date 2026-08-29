@@ -135,12 +135,12 @@ class LoggingHandlerDecorator(CommandHandler[TCommand], Generic[TCommand]):
         self.child = child
 
 
-builder.register_generic_decorator(CommandHandler, LoggingHandlerDecorator)
+builder.register_decorator(CommandHandler, LoggingHandlerDecorator)
 ```
 
 Concrete decorator classes are memoized process-wide, avoiding repeated dynamic class creation across container builds.
 
-Generic decorator discovery uses the same build-time snapshot as generic registration, so the rule may be declared before its concrete handler classes exist.
+An open decorator definition is specialized from the closed component plans encountered by the compiler. It therefore applies to subclass-discovered handlers, explicit closed registrations, generic factories, and fallback registrations. It does not depend on Python's live subclass set. `register_generic_decorator()` remains as a compatibility wrapper for V1-style composition.
 
 ## Occurrence-specific context
 

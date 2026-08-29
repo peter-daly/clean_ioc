@@ -44,9 +44,9 @@ No application class performs a container lookup.
 
 ```python
 builder = ContainerBuilder()
-builder.register(OrderRepository, InMemoryOrderRepository, lifespan=Lifespan.scoped)
-builder.register(PaymentGateway, FakePaymentGateway, lifespan=Lifespan.singleton)
-builder.register(AuditSink, LoggingAuditSink, lifespan=Lifespan.singleton)
+builder.register(OrderRepository, InMemoryOrderRepository, lifespan="scoped")
+builder.register(PaymentGateway, FakePaymentGateway, lifespan="singleton")
+builder.register(AuditSink, LoggingAuditSink, lifespan="singleton")
 builder.register(CreateOrder)
 builder.register_decorator(CreateOrder, AuditedCreateOrder, decorated_arg="wrapped")
 

@@ -30,7 +30,7 @@ Your application code uses ordinary Python types:
 ```python
 from typing import Protocol
 
-from clean_ioc import ContainerBuilder, Lifespan
+from clean_ioc import ContainerBuilder
 
 
 class PaymentGateway(Protocol):
@@ -51,7 +51,7 @@ class Checkout:
 
 
 builder = ContainerBuilder()
-builder.register(PaymentGateway, StripeGateway, lifespan=Lifespan.singleton)
+builder.register(PaymentGateway, StripeGateway, lifespan="singleton")
 builder.register(Checkout)
 
 container = builder.build()  # validates and compiles; user code has not run
@@ -163,6 +163,8 @@ Singletons introduced by a `ScopeBuilder` belong to its built scope and descenda
 | `scoped` | One explicit scope | Request state, units of work, DB sessions |
 | `singleton` | Owning container or compiled overlay scope | Settings, pools, long-lived clients |
 
+Pass these as plain strings to `lifespan=`. The exported `Lifespan` name is a `Literal` type alias for annotations, not an enum.
+
 Generator factories, context managers, and their async equivalents are finalized by their cache owner.
 
 ## FastAPI without framework-coupled services
@@ -170,12 +172,12 @@ Generator factories, context managers, and their async equivalents are finalized
 ```python
 from fastapi import FastAPI
 
-from clean_ioc import ContainerBuilder, Lifespan
+from clean_ioc import ContainerBuilder
 from clean_ioc.ext.fastapi import Resolve, install_fastapi
 
 
 builder = ContainerBuilder()
-builder.register(OrderRepository, SqlOrderRepository, lifespan=Lifespan.scoped)
+builder.register(OrderRepository, SqlOrderRepository, lifespan="scoped")
 builder.register(PlaceOrder)
 container = builder.build()
 
@@ -194,8 +196,8 @@ The integration creates an ordinary child scope for the complete HTTP request or
 
 - Sync and async factories, generators, context managers, and deterministic cleanup.
 - Named, tagged, parent-aware, and descendant-aware component filters.
-- Ordered decorators selected from the undecorated core subtree.
-- Build-time generic discovery, generic factory specialization, open-generic fallback, and decorators.
+- Z-indexed decorators with stable IDs, builder patch/removal, owned metadata, and build-time validation.
+- Build-time generic discovery, generic factory specialization, open-generic fallback, and plan-driven decorator policies.
 - Coordinated first activation across threads and event loops.
 - Bundles targeting one shared `ComponentBuilder` composition protocol.
 - BenchBro experiments separating build cost, runtime latency, and Python allocations.

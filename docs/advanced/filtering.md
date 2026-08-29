@@ -4,7 +4,7 @@ Clean IoC 2 uses one immutable `Component` model and one filter vocabulary every
 
 ```python
 import clean_ioc.component_filters as cf
-from clean_ioc import Component, ContainerBuilder, DependencySettings, Lifespan, Tag
+from clean_ioc import Component, ContainerBuilder, DependencySettings, Tag
 ```
 
 A component occurrence exposes:
@@ -100,7 +100,7 @@ Built-in predicates are composable through `funcie`:
 
 ```python
 production_stripe = cf.has_tag("env", "prod") & cf.with_name("stripe")
-not_singleton = ~cf.has_lifespan(Lifespan.singleton)
+not_singleton = ~cf.has_lifespan("singleton")
 ```
 
 Useful helpers include:
@@ -124,7 +124,7 @@ component_ids = builder.get_component_ids(Service)
 exists = builder.has_component(Service)
 
 if component_id is not None:
-    builder.patch_component(Service, component_id, lifespan=Lifespan.singleton)
+    builder.patch_component(Service, component_id, lifespan="singleton")
 ```
 
 Queries and patches must happen before a successful `build()`.

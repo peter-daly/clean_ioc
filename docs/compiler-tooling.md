@@ -52,7 +52,7 @@ Current issue codes include:
 
 ## Render the compiled graph
 
-The graph includes registrations plus the activation edges that are easy to miss in a registry dump: decorators, pre-configurations, default and configured values, runtime contexts, value providers, and declared scope slots.
+The graph includes registrations plus the activation edges that are easy to miss in a registry dump: decorators, pre-configurations, default and configured values, runtime contexts, value providers, and declared scope slots. Decorator pipelines render outside-to-inside with their z-index positions and metadata.
 
 ```python
 text = container.graph.to_text()

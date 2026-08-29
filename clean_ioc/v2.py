@@ -9,7 +9,7 @@ import threading
 import types
 import typing
 from collections import defaultdict, deque
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from typing import Any, TypeVar, cast, get_args, get_origin
@@ -24,6 +24,7 @@ from .components import (
     ComponentFilter,
     ComponentKind,
     ComponentListModifier,
+    Lifespan,
     _ComponentDraft,
     _ComponentGraph,
     all_components,
@@ -41,6 +42,26 @@ from .tooling import (
 )
 
 TService = TypeVar("TService")
+
+
+_LEGACY_LIFESPANS: dict[Lifespan, legacy.Lifespan] = {
+    "transient": legacy.Lifespan.transient,
+    "once_per_graph": legacy.Lifespan.once_per_graph,
+    "scoped": legacy.Lifespan.scoped,
+    "singleton": legacy.Lifespan.singleton,
+}
+
+
+def _legacy_lifespan(lifespan: Lifespan) -> legacy.Lifespan:
+    try:
+        return _LEGACY_LIFESPANS[lifespan]
+    except (KeyError, TypeError) as error:
+        allowed = ", ".join(repr(value) for value in _LEGACY_LIFESPANS)
+        raise ValueError(f"lifespan must be one of {allowed}; got {lifespan!r}") from error
+
+
+def _component_lifespan(lifespan: legacy.Lifespan) -> Lifespan:
+    return lifespan.name
 
 
 class BuilderAlreadyBuiltError(RuntimeError):
@@ -126,6 +147,30 @@ class _EntryPoint:
 
 
 @dataclass(frozen=True, slots=True)
+class _DecoratorDefinition:
+    id: str
+    service_type: Any
+    decorator_type: type | Callable[..., Any]
+    decorated_arg: str | None
+    dependency_config: Mapping[str, Any]
+    position: int
+    order: int
+    when: ComponentFilter
+    name: str | None
+    tags: tuple[legacy.Tag, ...]
+
+
+class _DecoratorUnset:
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "UNCHANGED"
+
+
+_DECORATOR_UNSET = _DecoratorUnset()
+
+
+@dataclass(frozen=True, slots=True)
 class _Layer:
     registry: legacy._Registry
     internal_ids: frozenset[str]
@@ -133,7 +178,8 @@ class _Layer:
     registration_when: dict[str, ComponentFilter]
     factory_ids: frozenset[str]
     factory_specializations: dict[str, object]
-    decorator_when: dict[int, ComponentFilter]
+    decorators: tuple[_DecoratorDefinition, ...]
+    removed_decorator_ids: frozenset[str]
     pre_configuration_when: dict[int, ComponentFilter]
     pre_configuration_states: dict[int, _PreConfigurationState]
     slots: frozenset[tuple[Any, str | None]]
@@ -163,10 +209,31 @@ class _Blueprint:
                 found.append((registration, layer))
         return found
 
-    def decorators(self, service_type: Any) -> list[tuple[legacy.Decorator, _Layer]]:
-        return [
-            (decorator, layer) for layer in self.layers for decorator in layer.registry.get_decorators(service_type)
-        ]
+    def decorators(self, service_type: Any) -> list[tuple[_DecoratorDefinition, _Layer]]:
+        found: list[tuple[_DecoratorDefinition, _Layer, int]] = []
+        removed: set[str] = set()
+        seen: set[str] = set()
+        for layer_index, layer in enumerate(self.layers):
+            removed.update(layer.removed_decorator_ids)
+            for decorator in layer.decorators:
+                if decorator.id in removed or decorator.id in seen:
+                    continue
+                if not _decorator_service_matches(decorator.service_type, service_type):
+                    continue
+                seen.add(decorator.id)
+                found.append((decorator, layer, layer_index))
+
+        # Runtime activation proceeds from the core outwards. Higher positions
+        # therefore appear later, while equal positions retain declaration order
+        # from outside to inside by activating newer definitions first.
+        found.sort(key=lambda item: (item[0].position, item[2], -item[0].order))
+        return [(decorator, layer) for decorator, layer, _ in found]
+
+    def decorator_definition(self, service_type: Any, decorator_id: str) -> _DecoratorDefinition | None:
+        return next(
+            (definition for definition, _ in self.decorators(service_type) if definition.id == decorator_id),
+            None,
+        )
 
     def pre_configurations(self, service_type: Any) -> list[tuple[legacy.PreConfiguration, _Layer]]:
         return [
@@ -221,6 +288,17 @@ def _runtime_type_key(value: Any) -> tuple[Any, ...]:
     if value is None or isinstance(value, (bool, bytes, int, str)):
         return ("literal", type(value).__module__, type(value).__qualname__, repr(value))
     return ("object", id(value))
+
+
+def _decorator_service_matches(rule_service_type: Any, service_type: Any) -> bool:
+    if rule_service_type == service_type:
+        return True
+    service_origin = get_origin(service_type)
+    if service_origin is None:
+        return False
+    if rule_service_type == service_origin:
+        return True
+    return get_origin(rule_service_type) == service_origin and bool(_typevars_in(rule_service_type))
 
 
 def _specialized_component_id(component_id: str, service_type: Any) -> str:
@@ -523,29 +601,6 @@ def _create_discovered_registration(
     )
 
 
-def _create_discovered_decorator(
-    *,
-    service_type: Any,
-    decorator_type: type | Callable,
-    registration_filter: ComponentFilter,
-    decorator_node_filter: ComponentFilter,
-    decorated_arg: str | None,
-    dependency_config: legacy.DependencyConfig,
-    position: int,
-) -> legacy.Decorator:
-    registry = legacy._Registry()
-    registry.register_decorator(
-        service_type=service_type,
-        decorator_type=decorator_type,
-        registration_filter=cast(Any, registration_filter),
-        decorator_node_filter=cast(Any, decorator_node_filter),
-        decorated_arg=decorated_arg,
-        dependency_config=dependency_config,
-        position=position,
-    )
-    return next(iter(registry.get_decorators(service_type)))
-
-
 def _unique_subclasses(base_type: type, filter: Callable[[type], bool]) -> tuple[type, ...]:
     found: list[type] = []
     seen: set[int] = set()
@@ -629,59 +684,6 @@ class _RegistrationDiscovery:
         if fallback is not None and fallback.service_type == service_type and fallback.id == component_id:
             return fallback
         return None
-
-
-@dataclass(slots=True)
-class _GenericDecoratorDiscovery:
-    order: int
-    generic_service_type: type
-    generic_decorator_type: type
-    subclass_type_filter: Callable[[type], bool]
-    when: ComponentFilter
-    decorated_arg: str | None
-    dependency_config: legacy.DependencyConfig
-    registration_filter: ComponentFilter
-    decorator_node_filter: ComponentFilter
-    position: int
-    decorators: dict[Any, legacy.Decorator] = field(default_factory=dict)
-
-    def _filter(self, subclass: type) -> bool:
-        return (
-            not inspect.isabstract(subclass)
-            and not subclass.__name__.startswith("__DecoratedGeneric__")
-            and self.subclass_type_filter(subclass)
-        )
-
-    def materialize(self) -> tuple[tuple[Any, legacy.Decorator], ...]:
-        decorator_is_generic = GenericTypeMap(self.generic_decorator_type).is_mapping_generic()
-        materialized: list[tuple[Any, legacy.Decorator]] = []
-        processed: set[Any] = set()
-        for subclass in _unique_subclasses(self.generic_service_type, self._filter):
-            service_type = legacy.Container._get_target_generic_base(self.generic_service_type, subclass)
-            if service_type is None or service_type in processed:
-                continue
-            processed.add(service_type)
-            decorator = self.decorators.get(service_type)
-            if decorator is None:
-                decorator_type = self.generic_decorator_type
-                if decorator_is_generic:
-                    concrete = legacy.try_to_map_generic_args_to_specialization(
-                        self.generic_decorator_type,
-                        subclass,
-                    )
-                    decorator_type = legacy.create_generic_decorator_type(concrete)
-                decorator = _create_discovered_decorator(
-                    service_type=service_type,
-                    decorator_type=decorator_type,
-                    registration_filter=self.registration_filter,
-                    decorator_node_filter=self.decorator_node_filter,
-                    decorated_arg=self.decorated_arg,
-                    dependency_config=self.dependency_config,
-                    position=self.position,
-                )
-                self.decorators[service_type] = decorator
-            materialized.append((service_type, decorator))
-        return tuple(materialized)
 
 
 @dataclass(frozen=True, slots=True)
@@ -827,14 +829,192 @@ class _CompiledPreConfiguration:
 
 
 @dataclass(frozen=True, slots=True)
+class _DecoratorActivation:
+    definition: _DecoratorDefinition
+    implementation: type | Callable[..., Any]
+    activator_class: type[legacy.Activator]
+    decorated_arg: str
+    dependencies: dict[str, legacy.Dependency]
+
+
+def _decorated_dependency_matches(annotation: Any, service_type: Any) -> bool:
+    if annotation == service_type:
+        return True
+    annotation_origin = get_origin(annotation)
+    service_origin = get_origin(service_type)
+    return annotation_origin is not None and annotation_origin == service_origin and bool(_typevars_in(annotation))
+
+
+def _specialize_decorator_implementation(
+    decorator_type: type | Callable[..., Any],
+    bindings: dict[str, Any],
+) -> type | Callable[..., Any]:
+    if not isinstance(decorator_type, type):
+        return decorator_type
+    parameters = tuple(getattr(decorator_type, "__parameters__", ()))
+    if not parameters:
+        return decorator_type
+    arguments = tuple(_resolve_factory_typevars(parameter, bindings) for parameter in parameters)
+    unresolved = [
+        parameter.__name__ for parameter, value in zip(parameters, arguments, strict=True) if _typevars_in(value)
+    ]
+    if unresolved:
+        raise ContainerBuildError(f"Unable to resolve decorator TypeVar(s) {', '.join(unresolved)}")
+    specialization = cast(Any, decorator_type)[arguments[0] if len(arguments) == 1 else arguments]
+    return legacy.create_generic_decorator_type(specialization)
+
+
+def _decorator_result_matches_service(result_type: Any, service_type: Any) -> bool:
+    if result_type in (Any, inspect.Signature.empty) or result_type == service_type:
+        return True
+    result_origin = get_origin(result_type) or result_type
+    service_origin = get_origin(service_type) or service_type
+    if not isinstance(result_origin, type) or not isinstance(service_origin, type):
+        return False
+    try:
+        return issubclass(result_origin, service_origin)
+    except TypeError:
+        return False
+
+
+def _materialize_decorator(
+    definition: _DecoratorDefinition,
+    service_type: Any,
+    implementation_type: type,
+) -> _DecoratorActivation:
+    label = qualified_name(definition.decorator_type)
+    source: type | Callable[..., Any] = definition.decorator_type
+    if isinstance(source, type) and GenericTypeMap(source).is_mapping_generic():
+        projected = legacy.try_to_map_generic_args_to_specialization(source, implementation_type)
+        if GenericTypeMap(projected).is_mapping_specialized():
+            source = legacy.create_generic_decorator_type(cast(type, projected))
+    try:
+        dependencies = legacy._set_up_dependencies(
+            source,
+            legacy.dependency_config_to_subdependencies(dict(definition.dependency_config)),
+        )
+    except Exception as error:
+        raise ContainerBuildError(
+            f"Decorator {label} has an invalid signature: {error}",
+            code="invalid-decorator",
+        ) from error
+
+    if definition.decorated_arg is not None:
+        if definition.decorated_arg not in dependencies:
+            raise ContainerBuildError(
+                f"Decorator {label} has no argument named {definition.decorated_arg!r}",
+                code="invalid-decorator",
+            )
+        decorated_arg = definition.decorated_arg
+    else:
+        candidates = [
+            name
+            for name, dependency in dependencies.items()
+            if _decorated_dependency_matches(dependency.service_type, service_type)
+        ]
+        if not candidates:
+            raise ContainerBuildError(
+                f"Decorator {label} has no argument for {qualified_name(service_type)}; set decorated_arg= explicitly",
+                code="invalid-decorator",
+            )
+        if len(candidates) > 1:
+            names = ", ".join(candidates)
+            raise ContainerBuildError(
+                f"Decorator {label} has multiple arguments for {qualified_name(service_type)} ({names}); "
+                "set decorated_arg= explicitly",
+                code="invalid-decorator",
+            )
+        decorated_arg = candidates[0]
+
+    decorated_dependency = dependencies.pop(decorated_arg)
+    annotations = tuple(dependency.service_type for dependency in (decorated_dependency, *dependencies.values()))
+    typevars = {item.__name__: item for annotation in annotations for item in _typevars_in(annotation)}
+    bindings: dict[str, Any] = {}
+    try:
+        _infer_factory_bindings(
+            decorated_dependency.service_type,
+            service_type,
+            bindings,
+            typevars,
+            factory=definition.decorator_type,
+            service_type=service_type,
+        )
+    except ContainerBuildError as error:
+        raise ContainerBuildError(
+            f"Decorator {label} has conflicting generic bindings for {qualified_name(service_type)}: {error}",
+            code="invalid-decorator",
+        ) from error
+
+    no_default = getattr(typing, "NoDefault", _NO_TYPEVAR_DEFAULT)
+    for name, typevar in typevars.items():
+        if name in bindings:
+            continue
+        default = getattr(typevar, "__default__", _NO_TYPEVAR_DEFAULT)
+        if default is _NO_TYPEVAR_DEFAULT or default is no_default:
+            continue
+        _merge_factory_binding(
+            bindings,
+            typevar,
+            _resolve_factory_typevars(default, bindings),
+            factory=source,
+            service_type=service_type,
+        )
+
+    unresolved = sorted(
+        name for name, typevar in typevars.items() if _typevars_in(_resolve_factory_typevars(typevar, bindings))
+    )
+    if unresolved:
+        raise ContainerBuildError(
+            f"Decorator {label} cannot resolve TypeVar(s) {', '.join(unresolved)} for "
+            f"{qualified_name(service_type)}",
+            code="invalid-decorator",
+        )
+
+    try:
+        implementation = _specialize_decorator_implementation(source, bindings)
+    except (ContainerBuildError, TypeError) as error:
+        raise ContainerBuildError(
+            f"Decorator {label} cannot be specialized for {qualified_name(service_type)}: {error}",
+            code="invalid-decorator",
+        ) from error
+
+    if not isinstance(source, type):
+        result_type = _resolve_factory_typevars(_factory_result_annotation(source), bindings)
+        if not _decorator_result_matches_service(result_type, service_type):
+            raise ContainerBuildError(
+                f"Decorator {label} returns {qualified_name(result_type)}, which is not compatible with "
+                f"{qualified_name(service_type)}",
+                code="invalid-decorator",
+            )
+
+    specialized_dependencies = {
+        name: legacy.Dependency(
+            name=dependency.name,
+            parent_implementation=implementation,
+            service_type=_resolve_factory_typevars(dependency.service_type, bindings),
+            settings=dependency.settings,
+            default_value=dependency.default_value,
+        )
+        for name, dependency in dependencies.items()
+    }
+    return _DecoratorActivation(
+        definition=definition,
+        implementation=implementation,
+        activator_class=legacy._Registry._get_activator_class(implementation),
+        decorated_arg=decorated_arg,
+        dependencies=specialized_dependencies,
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class _CompiledDecorator:
-    source: legacy.Decorator
+    source: _DecoratorActivation
     dependencies: tuple[_CompiledDependency, ...]
     component: Component
 
     @property
     def sync_supported(self) -> bool:
-        return not _requires_async(self.source.activator_class, self.source.decorator_type) and all(
+        return not _requires_async(self.source.activator_class, self.source.implementation) and all(
             dependency.step.sync_supported for dependency in self.dependencies
         )
 
@@ -843,7 +1023,7 @@ class _CompiledDecorator:
         dependencies[self.source.decorated_arg] = value
         with context.enter_component(self.component):
             return self.source.activator_class.activate(
-                self.source.decorator_type,
+                self.source.implementation,
                 dependencies,
                 cast(Any, context),
                 lifespan,
@@ -861,7 +1041,7 @@ class _CompiledDecorator:
         dependencies[self.source.decorated_arg] = value
         with context.enter_component(self.component):
             return await self.source.activator_class.activate_async(
-                self.source.decorator_type,
+                self.source.implementation,
                 dependencies,
                 cast(Any, context),
                 lifespan,
@@ -1093,7 +1273,7 @@ class _Compiler:
         component_id: str,
         service_type: Any,
         implementation: Any,
-        lifespan: legacy.Lifespan,
+        lifespan: Lifespan,
         name: str | None,
         tags: Iterable[legacy.Tag],
         kind: ComponentKind,
@@ -1102,6 +1282,7 @@ class _Compiler:
         argument: str | None = None,
         requires_async: bool = False,
         manages_cleanup: bool = False,
+        position: int | None = None,
     ) -> tuple[Component, _ComponentDraft]:
         occurrence = self._next_occurrence
         self._next_occurrence += 1
@@ -1118,6 +1299,7 @@ class _Compiler:
             activation=activation,
             requires_async=requires_async,
             manages_cleanup=manages_cleanup,
+            position=position,
             parent_id=None if parent is None else parent.occurrence_id,
             argument=argument,
         )
@@ -1211,7 +1393,7 @@ class _Compiler:
             component_id=registration.id,
             service_type=requested_service_type,
             implementation=registration.implementation,
-            lifespan=registration.lifespan,
+            lifespan=_component_lifespan(registration.lifespan),
             name=registration.name,
             tags=registration.tags,
             kind=ComponentKind.registration,
@@ -1227,7 +1409,9 @@ class _Compiler:
             configurations = self._compile_pre_configurations(registration, component)
             draft.pre_configuration_ids = tuple(item.component.occurrence_id for item in configurations)
             decorators = self._compile_decorators(registration, component)
-            draft.decorator_ids = tuple(item.component.occurrence_id for item in decorators)
+            # Component inspection presents the final pipeline outside-to-inside,
+            # while runtime activation retains the core-to-outside order.
+            draft.decorator_ids = tuple(item.component.occurrence_id for item in reversed(decorators))
             step = _RegistrationStep(
                 registration=registration,
                 owner_token=layer.owner_token,
@@ -1264,6 +1448,7 @@ class _Compiler:
             argument=source.argument if argument is None else argument,
             requires_async=source.requires_async,
             manages_cleanup=source.manages_cleanup,
+            position=source.position,
         )
         draft.implementation_type = source.implementation_type
         mapping[source.occurrence_id] = component
@@ -1321,7 +1506,7 @@ class _Compiler:
                 component_id=f"value:{parent.occurrence_id}:{dependency.name}",
                 service_type=dependency.service_type,
                 implementation=type(value),
-                lifespan=legacy.Lifespan.transient,
+                lifespan="transient",
                 name=None,
                 tags=(),
                 kind=ComponentKind.value,
@@ -1336,7 +1521,7 @@ class _Compiler:
                 component_id=f"context:{parent.occurrence_id}:{dependency.name}",
                 service_type=dependency.service_type,
                 implementation=DependencyContext,
-                lifespan=legacy.Lifespan.transient,
+                lifespan="transient",
                 name=None,
                 tags=(),
                 kind=ComponentKind.runtime_context,
@@ -1358,7 +1543,7 @@ class _Compiler:
                 component_id=f"context:{parent.occurrence_id}:{dependency.name}",
                 service_type=dependency.service_type,
                 implementation=dependency.service_type,
-                lifespan=legacy.Lifespan.transient,
+                lifespan="transient",
                 name=None,
                 tags=(),
                 kind=ComponentKind.runtime_context,
@@ -1374,7 +1559,7 @@ class _Compiler:
                 component_id=f"collection:{parent.occurrence_id}:{dependency.name}",
                 service_type=dependency.service_type,
                 implementation=dependency.generic_collection_type,
-                lifespan=legacy.Lifespan.transient,
+                lifespan="transient",
                 name=None,
                 tags=(),
                 kind=ComponentKind.collection,
@@ -1416,7 +1601,7 @@ class _Compiler:
                     component_id=f"provider:{parent.occurrence_id}:{dependency.name}",
                     service_type=dependency.service_type,
                     implementation=value_factory,
-                    lifespan=legacy.Lifespan.transient,
+                    lifespan="transient",
                     name=None,
                     tags=(),
                     kind=ComponentKind.value_provider,
@@ -1440,7 +1625,7 @@ class _Compiler:
                 component_id=f"provider:{parent.occurrence_id}:{dependency.name}",
                 service_type=dependency.service_type,
                 implementation=value_factory,
-                lifespan=legacy.Lifespan.transient,
+                lifespan="transient",
                 name=None,
                 tags=(),
                 kind=ComponentKind.value_provider,
@@ -1469,7 +1654,7 @@ class _Compiler:
                 component_id=f"slot:{slot_type!r}:{name}",
                 service_type=slot_type,
                 implementation=_ProvidedStep,
-                lifespan=legacy.Lifespan.scoped,
+                lifespan="scoped",
                 name=name,
                 tags=(),
                 kind=ComponentKind.scope_slot,
@@ -1497,7 +1682,7 @@ class _Compiler:
                 component_id=f"pre:{id(configuration)}",
                 service_type=registration.service_type,
                 implementation=configuration.configuration_fn,
-                lifespan=legacy.Lifespan.singleton,
+                lifespan="singleton",
                 name=None,
                 tags=(),
                 kind=ComponentKind.pre_configuration,
@@ -1518,31 +1703,36 @@ class _Compiler:
     ) -> tuple[_CompiledDecorator, ...]:
         # Applicability is deliberately evaluated against the completed,
         # undecorated core subtree before any decorator dependencies are added.
-        selected: list[tuple[legacy.Decorator, _Layer]] = []
-        for decorator, layer in self.blueprint.decorators(registration.service_type):
-            if not decorator.registration_filter(cast(Any, core)):
+        selected: list[_DecoratorDefinition] = []
+        for decorator, _ in self.blueprint.decorators(core.service_type):
+            if not decorator.when(core):
                 continue
-            if not decorator.decorated_node_filter(cast(Any, core)):
-                continue
-            if not layer.decorator_when.get(id(decorator), all_components)(core):
-                continue
-            selected.append((decorator, layer))
+            selected.append(decorator)
 
         items: list[_CompiledDecorator] = []
         decorated: Component = core
-        for decorator, _ in selected:
+        for definition in selected:
+            try:
+                decorator = _materialize_decorator(definition, core.service_type, core.implementation_type)
+            except ContainerBuildError as error:
+                raise ContainerBuildError(
+                    str(error),
+                    code="invalid-decorator",
+                    path=self._current_path(core.service_type),
+                ) from error
             component, draft = self._draft(
-                component_id=f"decorator:{id(decorator)}",
-                service_type=registration.service_type,
-                implementation=decorator.decorator_type,
-                lifespan=registration.lifespan,
-                name=registration.name,
-                tags=registration.tags,
+                component_id=definition.id,
+                service_type=core.service_type,
+                implementation=decorator.implementation,
+                lifespan=_component_lifespan(registration.lifespan),
+                name=definition.name,
+                tags=definition.tags,
                 kind=ComponentKind.decorator,
-                activation=_callable_activation(decorator.decorator_type),
+                activation=_callable_activation(decorator.implementation),
                 parent=core.parent,
-                requires_async=_requires_async(decorator.activator_class, decorator.decorator_type),
-                manages_cleanup=_manages_cleanup(decorator.activator_class, decorator.decorator_type),
+                requires_async=_requires_async(decorator.activator_class, decorator.implementation),
+                manages_cleanup=_manages_cleanup(decorator.activator_class, decorator.implementation),
+                position=definition.position,
             )
             draft.decorated_id = decorated.occurrence_id
             dependencies = self._compile_dependencies(decorator.dependencies, component)
@@ -2189,13 +2379,12 @@ class _BuilderBase:
         self._registration_when: dict[str, ComponentFilter] = {}
         self._factory_ids: set[str] = set()
         self._factory_specializations: dict[str, object] = {}
-        self._decorator_when: dict[int, ComponentFilter] = {}
-        self._decorator_orders: dict[int, int] = {}
+        self._decorators: list[_DecoratorDefinition] = []
+        self._removed_decorator_ids: set[str] = set()
         self._next_decorator_order = 0
         self._pre_configuration_when: dict[int, ComponentFilter] = {}
         self._pre_configuration_states: dict[int, _PreConfigurationState] = {}
         self._registration_discoveries: list[_RegistrationDiscovery] = []
-        self._generic_decorator_discoveries: list[_GenericDecoratorDiscovery] = []
         self._slots: set[tuple[Any, str | None]] = set()
         self._entrypoints: list[_EntryPoint] = []
         self._built = False
@@ -2207,7 +2396,6 @@ class _BuilderBase:
     def _layer(self) -> _Layer:
         registry = _clone_registry(self._composition._registry)
         registration_when = dict(self._registration_when)
-        decorator_when = dict(self._decorator_when)
 
         discovered = legacy._Registry()
         for rule in self._registration_discoveries:
@@ -2216,23 +2404,6 @@ class _BuilderBase:
             # Explicit composition always precedes convention-based discovery.
             registry._registrations[service_type].extend(registrations)
 
-        generated_decorators: dict[Any, list[tuple[int, legacy.Decorator]]] = defaultdict(list)
-        for rule in self._generic_decorator_discoveries:
-            for service_type, decorator in rule.materialize():
-                generated_decorators[service_type].append((rule.order, decorator))
-                decorator_when[id(decorator)] = rule.when
-
-        decorator_service_types = {*registry._decorators, *generated_decorators}
-        for service_type in decorator_service_types:
-            ordered: list[tuple[int, legacy.Decorator]] = []
-            for fallback_order, decorator in enumerate(registry.get_decorators(service_type)):
-                ordered.append((self._decorator_orders.get(id(decorator), -fallback_order - 1), decorator))
-            ordered.extend(generated_decorators.get(service_type, ()))
-            store = legacy._DecoratorStore()
-            for _, decorator in sorted(ordered, key=lambda item: item[0]):
-                store.add_decorator(decorator)
-            registry._decorators[service_type] = store
-
         return _Layer(
             registry=registry,
             internal_ids=self._internal_ids,
@@ -2240,7 +2411,8 @@ class _BuilderBase:
             registration_when=registration_when,
             factory_ids=frozenset(self._factory_ids),
             factory_specializations=dict(self._factory_specializations),
-            decorator_when=decorator_when,
+            decorators=tuple(self._decorators),
+            removed_decorator_ids=frozenset(self._removed_decorator_ids),
             pre_configuration_when=dict(self._pre_configuration_when),
             pre_configuration_states=dict(self._pre_configuration_states),
             slots=frozenset(self._slots),
@@ -2260,7 +2432,7 @@ class _BuilderBase:
         factory: Callable[..., Any] | None = None,
         factory_specialization: object | None = None,
         instance: TService | None = None,
-        lifespan: legacy.Lifespan = legacy.Lifespan.once_per_graph,
+        lifespan: Lifespan = "once_per_graph",
         name: str | None = None,
         dependency_config: legacy.DependencyConfig = {},
         tags: Iterable[legacy.Tag] | None = None,
@@ -2275,7 +2447,7 @@ class _BuilderBase:
             implementation_type,
             factory=factory,
             instance=instance,
-            lifespan=lifespan,
+            lifespan=_legacy_lifespan(lifespan),
             name=name,
             dependency_config=dependency_config,
             tags=tags,
@@ -2294,7 +2466,7 @@ class _BuilderBase:
         component_id: str,
         *,
         dependency_config: legacy.DependencyConfig | None = None,
-        lifespan: legacy.Lifespan | None = None,
+        lifespan: Lifespan | None = None,
         tags: Iterable[legacy.Tag] | None = None,
     ) -> None:
         self._assert_mutable()
@@ -2303,7 +2475,7 @@ class _BuilderBase:
                 service_type,
                 component_id,
                 dependency_config=dependency_config,
-                lifespan=lifespan,
+                lifespan=None if lifespan is None else _legacy_lifespan(lifespan),
                 tags=tags,
             )
             return
@@ -2322,7 +2494,7 @@ class _BuilderBase:
             raise KeyError(f"No component found for {service_type} with ID {component_id}")
         registration.patch(
             dependency_config=dependency_config,
-            lifespan=lifespan,
+            lifespan=None if lifespan is None else _legacy_lifespan(lifespan),
             tags=tags,
         )
 
@@ -2330,30 +2502,104 @@ class _BuilderBase:
 
     def register_decorator(
         self,
-        service_type: type,
+        service_type: Any,
         decorator_type: type | Callable,
         *,
         when: ComponentFilter = all_components,
         decorated_arg: str | None = None,
         dependency_config: legacy.DependencyConfig = {},
         position: int = 0,
-        registration_filter: ComponentFilter = all_components,
-        decorator_node_filter: ComponentFilter = all_components,
+        name: str | None = None,
+        tags: Iterable[legacy.Tag] | None = None,
+    ) -> str:
+        self._assert_mutable()
+        decorator_id = str(uuid4())
+        self._decorators.append(
+            _DecoratorDefinition(
+                id=decorator_id,
+                service_type=service_type,
+                decorator_type=decorator_type,
+                decorated_arg=decorated_arg,
+                dependency_config=types.MappingProxyType(dict(dependency_config)),
+                position=position,
+                order=self._new_decorator_order(),
+                when=when,
+                name=name,
+                tags=tuple(tags or ()),
+            )
+        )
+        return decorator_id
+
+    def _find_decorator_definition(
+        self,
+        service_type: Any,
+        decorator_id: str,
+    ) -> _DecoratorDefinition | None:
+        own = next(
+            (
+                definition
+                for definition in reversed(self._decorators)
+                if definition.id == decorator_id and definition.service_type == service_type
+            ),
+            None,
+        )
+        if own is not None:
+            return own
+        parent = getattr(self, "_parent", None)
+        if parent is None:
+            return None
+        return parent._plan.blueprint.decorator_definition(service_type, decorator_id)
+
+    def patch_decorator(
+        self,
+        service_type: Any,
+        decorator_id: str,
+        *,
+        decorated_arg: str | None | object = _DECORATOR_UNSET,
+        dependency_config: legacy.DependencyConfig | None = None,
+        position: int | object = _DECORATOR_UNSET,
+        when: ComponentFilter | None = None,
+        name: str | None | object = _DECORATOR_UNSET,
+        tags: Iterable[legacy.Tag] | None = None,
     ) -> None:
         self._assert_mutable()
-        before = {id(item) for item in self._composition._registry.get_decorators(service_type)}
-        self._composition.register_decorator(
-            service_type,
-            decorator_type,
-            registration_filter=cast(Any, registration_filter),
-            decorator_node_filter=cast(Any, decorator_node_filter),
-            decorated_arg=decorated_arg,
-            dependency_config=dependency_config,
-            position=position,
+        definition = self._find_decorator_definition(service_type, decorator_id)
+        if definition is None:
+            raise KeyError(f"No decorator found for {service_type} with ID {decorator_id}")
+
+        dependencies = dict(definition.dependency_config)
+        if dependency_config is not None:
+            for argument, setting in dependency_config.items():
+                if setting is legacy.RemoveDependencySetting:
+                    dependencies.pop(argument, None)
+                else:
+                    dependencies[argument] = setting
+
+        patched = replace(
+            definition,
+            decorated_arg=(
+                definition.decorated_arg if decorated_arg is _DECORATOR_UNSET else cast(str | None, decorated_arg)
+            ),
+            dependency_config=types.MappingProxyType(dependencies),
+            position=definition.position if position is _DECORATOR_UNSET else cast(int, position),
+            when=definition.when if when is None else when,
+            name=definition.name if name is _DECORATOR_UNSET else cast(str | None, name),
+            tags=definition.tags if tags is None else tuple(tags),
         )
-        item = next(item for item in self._composition._registry.get_decorators(service_type) if id(item) not in before)
-        self._decorator_when[id(item)] = when
-        self._decorator_orders[id(item)] = self._new_decorator_order()
+        for index, candidate in enumerate(self._decorators):
+            if candidate.id == decorator_id:
+                self._decorators[index] = patched
+                break
+        else:
+            self._decorators.append(patched)
+        self._removed_decorator_ids.discard(decorator_id)
+
+    def remove_decorator(self, service_type: Any, decorator_id: str) -> None:
+        self._assert_mutable()
+        if self._find_decorator_definition(service_type, decorator_id) is None:
+            raise KeyError(f"No decorator found for {service_type} with ID {decorator_id}")
+        self._decorators = [definition for definition in self._decorators if definition.id != decorator_id]
+        self._removed_decorator_ids.add(decorator_id)
 
     def pre_configure(
         self,
@@ -2410,7 +2656,7 @@ class _BuilderBase:
         self,
         base_type: type,
         *,
-        lifespan: legacy.Lifespan = legacy.Lifespan.once_per_graph,
+        lifespan: Lifespan = "once_per_graph",
         subclass_type_filter: Callable[[type], bool] = legacy.always_true,
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,
@@ -2425,7 +2671,7 @@ class _BuilderBase:
                 base_type=base_type,
                 generic=False,
                 fallback_type=None,
-                lifespan=lifespan,
+                lifespan=_legacy_lifespan(lifespan),
                 subclass_type_filter=subclass_type_filter,
                 name=name,
                 tags=tuple(tags or ()),
@@ -2439,7 +2685,7 @@ class _BuilderBase:
         generic_service_type: type,
         *,
         fallback_type: type | None = None,
-        lifespan: legacy.Lifespan = legacy.Lifespan.once_per_graph,
+        lifespan: Lifespan = "once_per_graph",
         subclass_type_filter: Callable[[type], bool] = legacy.always_true,
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,
@@ -2454,7 +2700,7 @@ class _BuilderBase:
                 base_type=generic_service_type,
                 generic=True,
                 fallback_type=fallback_type,
-                lifespan=lifespan,
+                lifespan=_legacy_lifespan(lifespan),
                 subclass_type_filter=subclass_type_filter,
                 name=name,
                 tags=tuple(tags or ()),
@@ -2472,26 +2718,26 @@ class _BuilderBase:
         when: ComponentFilter = all_components,
         decorated_arg: str | None = None,
         dependency_config: legacy.DependencyConfig = {},
-        registration_filter: ComponentFilter = all_components,
-        decorator_node_filter: ComponentFilter = all_components,
         position: int = 0,
-    ) -> None:
-        """Queue generic decorator materialization for the build snapshot."""
+        name: str | None = None,
+        tags: Iterable[legacy.Tag] | None = None,
+    ) -> str:
+        """Compatibility wrapper for an open-generic decorator definition."""
 
         self._assert_mutable()
-        self._generic_decorator_discoveries.append(
-            _GenericDecoratorDiscovery(
-                order=self._new_decorator_order(),
-                generic_service_type=generic_service_type,
-                generic_decorator_type=generic_decorator_type,
-                subclass_type_filter=subclass_type_filter,
-                when=when,
-                decorated_arg=decorated_arg,
-                dependency_config=dependency_config,
-                registration_filter=registration_filter,
-                decorator_node_filter=decorator_node_filter,
-                position=position,
-            )
+
+        def combined_when(component: Component) -> bool:
+            return when(component) and subclass_type_filter(component.implementation_type)
+
+        return self.register_decorator(
+            generic_service_type,
+            generic_decorator_type,
+            when=combined_when,
+            decorated_arg=decorated_arg,
+            dependency_config=dependency_config,
+            position=position,
+            name=name,
+            tags=tags,
         )
 
     def apply_bundle(self, bundle: Callable[[Any], None]) -> None:

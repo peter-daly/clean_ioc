@@ -1,8 +1,10 @@
 # Lifespans
 
 ```python
-from clean_ioc import ContainerBuilder, Lifespan
+from clean_ioc import ContainerBuilder
 ```
+
+The `lifespan=` argument takes the string literals `"transient"`, `"once_per_graph"`, `"scoped"`, or `"singleton"`. The exported `Lifespan` name is a typing alias for annotating reusable composition helpers, not an enum.
 
 ## `transient`
 
@@ -10,7 +12,7 @@ A new value is activated for every dependency edge:
 
 ```python
 builder = ContainerBuilder()
-builder.register(A, lifespan=Lifespan.transient)
+builder.register(A, lifespan="transient")
 container = builder.build()
 
 assert container.resolve(A) is not container.resolve(A)
@@ -43,7 +45,7 @@ A scoped component is cached by a runtime scope:
 
 ```python
 builder = ContainerBuilder()
-builder.register(A, lifespan=Lifespan.scoped)
+builder.register(A, lifespan="scoped")
 container = builder.build()
 
 with container.new_scope() as scope:
@@ -58,7 +60,7 @@ A root singleton belongs to the immutable container and is shared by every child
 
 ```python
 builder = ContainerBuilder()
-builder.register(A, lifespan=Lifespan.singleton)
+builder.register(A, lifespan="singleton")
 container = builder.build()
 
 assert container.resolve(A) is container.new_scope().resolve(A)

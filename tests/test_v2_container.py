@@ -1,10 +1,11 @@
 import gc
+import inspect
 import types
 import weakref
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
-from typing import Callable, Generic, ParamSpec, TypeVar, cast
+from typing import Any, Callable, Generic, ParamSpec, TypeVar, cast, get_args
 from unittest.mock import Mock, patch
 
 import pytest
@@ -20,11 +21,34 @@ from clean_ioc import (
     DependencySettings,
     Lifespan,
     ScopeProvisionError,
+    Tag,
     UndeclaredScopeSlotError,
 )
 
 T = TypeVar("T")
 P = ParamSpec("P")
+
+
+def test_lifespan_is_a_public_string_literal_and_component_metadata_uses_strings():
+    assert get_args(Lifespan) == ("transient", "once_per_graph", "scoped", "singleton")
+
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service, lifespan="singleton")
+    container = builder.build()
+
+    component = container.graph.roots[0].component
+    assert component.lifespan == "singleton"
+    assert isinstance(component.lifespan, str)
+
+
+def test_invalid_lifespan_string_is_rejected_during_composition():
+    builder = ContainerBuilder()
+
+    with pytest.raises(ValueError, match="lifespan must be one of"):
+        builder.register(object, lifespan=cast(Any, "application"))
 
 
 def test_builder_compiles_an_immutable_container_and_is_single_use():
@@ -116,6 +140,130 @@ def test_component_filters_cover_selection_and_undecorated_descendants():
 
     assert isinstance(service, Decorator)
     assert isinstance(service.child.database, Database)
+
+
+def test_decorator_definitions_have_stable_ids_metadata_and_z_index_order():
+    class Service:
+        pass
+
+    class Transaction:
+        def __init__(self, child: Service):
+            self.child = child
+
+    class Metrics:
+        def __init__(self, child: Service):
+            self.child = child
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    transaction_id = builder.register_decorator(
+        Service,
+        Transaction,
+        position=100,
+        name="transaction",
+        tags=[Tag("concern", "transaction")],
+    )
+    metrics_id = builder.register_decorator(
+        Service,
+        Metrics,
+        position=1000,
+        name="metrics",
+        tags=[Tag("concern", "observability")],
+    )
+
+    container = builder.build()
+    resolved = container.resolve(Service)
+    component = next(component for component in container.components if component.service_type is Service)
+
+    assert isinstance(resolved, Metrics)
+    assert isinstance(resolved.child, Transaction)
+    assert isinstance(resolved.child.child, Service)
+    assert transaction_id != metrics_id
+    assert [decorator.id for decorator in component.decorators] == [metrics_id, transaction_id]
+    assert [decorator.position for decorator in component.decorators] == [1000, 100]
+    assert [decorator.name for decorator in component.decorators] == ["metrics", "transaction"]
+    assert component.decorators[0].has_tag("concern", "observability")
+
+
+def test_decorator_signature_errors_are_aggregated_during_build():
+    class First:
+        pass
+
+    class Second:
+        pass
+
+    class MissingChild:
+        def __init__(self, value: str):
+            self.value = value
+
+    class InvalidExplicitChild:
+        def __init__(self, child: Second):
+            self.child = child
+
+    builder = ContainerBuilder()
+    builder.register(First)
+    builder.register(Second)
+    builder.register_decorator(First, MissingChild)
+    builder.register_decorator(Second, InvalidExplicitChild, decorated_arg="wrapped")
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    assert raised.value.report is not None
+    assert [issue.code for issue in raised.value.report.errors] == ["invalid-decorator", "invalid-decorator"]
+    assert "set decorated_arg=" in raised.value.report.errors[0].message
+    assert "no argument named 'wrapped'" in raised.value.report.errors[1].message
+
+
+def test_ambiguous_decorated_argument_requires_an_explicit_name():
+    class Service:
+        pass
+
+    class Ambiguous:
+        def __init__(self, first: Service, second: Service = cast(Service, None)):
+            self.first = first
+            self.second = second
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    decorator_id = builder.register_decorator(Service, Ambiguous)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    assert raised.value.report is not None
+    assert raised.value.report.errors[0].code == "invalid-decorator"
+    assert "multiple arguments" in raised.value.report.errors[0].message
+
+    builder.patch_decorator(Service, decorator_id, decorated_arg="first")
+    assert isinstance(builder.build().resolve(Service), Ambiguous)
+
+
+def test_v2_decorator_api_uses_one_component_filter():
+    parameters = inspect.signature(ContainerBuilder.register_decorator).parameters
+
+    assert "when" in parameters
+    assert "registration_filter" not in parameters
+    assert "decorator_node_filter" not in parameters
+
+
+def test_callable_decorator_return_annotation_is_validated_during_build():
+    class Service:
+        pass
+
+    def invalid(child: Service) -> str:
+        return str(child)
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register_decorator(Service, invalid)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    assert raised.value.report is not None
+    assert raised.value.report.errors[0].code == "invalid-decorator"
+    assert "not compatible" in raised.value.report.errors[0].message
 
 
 def test_collections_are_static_components_with_selected_members():
@@ -220,7 +368,7 @@ def test_scope_builder_singleton_finalizers_are_owned_by_built_scope():
     builder.register(
         Resource,
         factory=resource_factory,
-        lifespan=Lifespan.singleton,
+        lifespan="singleton",
     )
 
     with builder.build() as scope:
@@ -258,10 +406,10 @@ def test_once_per_graph_scoped_singleton_and_transient_lifespans():
             self.second = second
 
     for lifespan, same_within_graph, same_across_resolves in (
-        (Lifespan.transient, False, False),
-        (Lifespan.once_per_graph, True, False),
-        (Lifespan.scoped, True, True),
-        (Lifespan.singleton, True, True),
+        ("transient", False, False),
+        ("once_per_graph", True, False),
+        ("scoped", True, True),
+        ("singleton", True, True),
     ):
         builder = ContainerBuilder()
         builder.register(Item, lifespan=lifespan)
@@ -286,7 +434,7 @@ def test_generator_and_context_manager_finalizers_follow_cache_owner():
         events.append("exit")
 
     builder = ContainerBuilder()
-    builder.register(ScopedResource, factory=resource_factory, lifespan=Lifespan.scoped)
+    builder.register(ScopedResource, factory=resource_factory, lifespan="scoped")
     container = builder.build()
 
     with container.new_scope() as scope:
@@ -314,7 +462,7 @@ async def test_async_factory_and_async_context_manager_resolution():
             self.dependency = dependency
 
     builder = ContainerBuilder()
-    builder.register(Dependency, factory=dependency_factory, lifespan=Lifespan.scoped)
+    builder.register(Dependency, factory=dependency_factory, lifespan="scoped")
     builder.register(Service)
     container = builder.build()
 
@@ -469,7 +617,7 @@ def test_discovery_previews_keep_ids_stable_and_rescan_at_build():
     component_id = builder.get_component_id(Service)
     assert component_id is not None
     assert builder.get_component_id(Service) == component_id
-    builder.patch_component(Service, component_id, lifespan=Lifespan.singleton)
+    builder.patch_component(Service, component_id, lifespan="singleton")
 
     class AddedAfterPreview(Service):
         pass
@@ -478,7 +626,7 @@ def test_discovery_previews_keep_ids_stable_and_rescan_at_build():
     components = {component.implementation_type: component for component in container.components}
 
     assert components[Previewed].id == component_id
-    assert components[Previewed].lifespan is Lifespan.singleton
+    assert components[Previewed].lifespan == "singleton"
     assert AddedAfterPreview in components
 
 
@@ -735,9 +883,9 @@ def test_open_generic_factory_specializes_known_occurrences_and_keeps_closed_cac
         return Product(dependency)
 
     builder = ContainerBuilder()
-    builder.register(Dependency[int], IntDependency, lifespan=Lifespan.singleton)
-    builder.register(Dependency[str], StrDependency, lifespan=Lifespan.singleton)
-    builder.register(Product, factory=create_product, lifespan=Lifespan.singleton)
+    builder.register(Dependency[int], IntDependency, lifespan="singleton")
+    builder.register(Dependency[str], StrDependency, lifespan="singleton")
+    builder.register(Product, factory=create_product, lifespan="singleton")
     builder.register(FirstIntConsumer)
     builder.register(SecondIntConsumer)
     builder.register(StrConsumer)
@@ -813,8 +961,8 @@ def test_generic_factory_specializations_apply_closed_decorators_and_share_singl
         return Product()
 
     builder = ContainerBuilder()
-    builder.register(Dependency[int], IntDependency, lifespan=Lifespan.singleton)
-    builder.register(Product, factory=create_product, lifespan=Lifespan.singleton)
+    builder.register(Dependency[int], IntDependency, lifespan="singleton")
+    builder.register(Product, factory=create_product, lifespan="singleton")
     builder.register_decorator(Product[int], DecoratedProduct, decorated_arg="child")
     builder.register(RootConsumer)
     container = builder.build()
@@ -826,6 +974,90 @@ def test_generic_factory_specializations_apply_closed_decorators_and_share_singl
 
     assert isinstance(root_product, DecoratedProduct)
     assert overlay.resolve(OverlayConsumer).product is root_product
+
+
+def test_open_generic_decorator_policy_applies_to_closed_factory_components():
+    TItem = TypeVar("TItem")
+
+    class Product(Generic[TItem]):
+        pass
+
+    class ProductDecorator(Generic[TItem]):
+        def __init__(self, child: Product[TItem]):
+            self.child = child
+
+    def create_product() -> Product[int]:
+        return Product()
+
+    builder = ContainerBuilder()
+    builder.register(Product[int], factory=create_product)
+    decorator_id = builder.register_decorator(Product, ProductDecorator)
+    container = builder.build()
+    resolved = container.resolve(Product[int])
+
+    assert type(resolved).__name__ == "__DecoratedGeneric__ProductDecorator"
+    assert isinstance(getattr(resolved, "child"), Product)
+    root = next(component for component in container.components if component.service_type == Product[int])
+    assert root.decorators[0].id == decorator_id
+
+
+def test_open_generic_callable_decorator_specializes_its_dependencies():
+    TItem = TypeVar("TItem")
+
+    class Product(Generic[TItem]):
+        pass
+
+    class WrappedProduct(Product[TItem], Generic[TItem]):
+        def __init__(self, child: Product[TItem]):
+            self.child = child
+
+    class IntProduct(Product[int]):
+        pass
+
+    def wrap(child: Product[TItem]) -> Product[TItem]:
+        return WrappedProduct(child)
+
+    builder = ContainerBuilder()
+    builder.register(Product[int], IntProduct)
+    builder.register_decorator(Product, wrap)
+    resolved = builder.build().resolve(Product[int])
+
+    assert isinstance(resolved, WrappedProduct)
+    assert isinstance(resolved.child, IntProduct)
+
+
+def test_decorators_can_be_patched_removed_and_overridden_by_scope_builders():
+    class Service:
+        pass
+
+    class Decorator:
+        def __init__(self, child: Service):
+            self.child = child
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    decorator_id = builder.register_decorator(Service, Decorator)
+    builder.patch_decorator(
+        Service,
+        decorator_id,
+        position=900,
+        name="patched",
+        tags=[Tag("concern", "patched")],
+    )
+    container = builder.build()
+
+    root = next(component for component in container.components if component.service_type is Service)
+    assert isinstance(container.resolve(Service), Decorator)
+    assert root.decorators[0].position == 900
+    assert root.decorators[0].name == "patched"
+    assert root.decorators[0].has_tag("concern", "patched")
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.remove_decorator(Service, decorator_id)
+    overlay = overlay_builder.build()
+
+    assert type(overlay.resolve(Service)) is Service
+    assert isinstance(container.resolve(Service), Decorator)
 
 
 def test_generic_factory_build_errors_explain_unresolved_and_conflicting_typevars():
@@ -894,8 +1126,8 @@ def test_generic_generator_factory_preserves_cleanup():
         events.append("exit")
 
     builder = ContainerBuilder()
-    builder.register(Dependency[int], IntDependency, lifespan=Lifespan.scoped)
-    builder.register(Product[int], factory=create_product, lifespan=Lifespan.scoped)
+    builder.register(Dependency[int], IntDependency, lifespan="scoped")
+    builder.register(Product[int], factory=create_product, lifespan="scoped")
     container = builder.build()
 
     with container.new_scope() as scope:
@@ -926,8 +1158,8 @@ async def test_generic_async_context_manager_factory_preserves_cleanup():
         events.append("exit")
 
     builder = ContainerBuilder()
-    builder.register(Dependency[int], IntDependency, lifespan=Lifespan.scoped)
-    builder.register(Product[int], factory=create_product, lifespan=Lifespan.scoped)
+    builder.register(Dependency[int], IntDependency, lifespan="scoped")
+    builder.register(Product[int], factory=create_product, lifespan="scoped")
     container = builder.build()
 
     async with container.new_scope() as scope:

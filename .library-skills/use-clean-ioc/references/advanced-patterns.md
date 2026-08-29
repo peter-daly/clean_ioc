@@ -37,11 +37,15 @@ builder.register(Handler, ConcreteHandler)
 builder.register_decorator(Handler, LoggingHandler, decorated_arg="child")
 ```
 
-Lower `position` values are nearest the core. `when=` predicates are evaluated against the completed undecorated core subtree, before decorator dependencies are added. This prevents one decorator from making another decorator eligible.
+Treat `position` as a z-index: higher values are outside, lower values are nearest the core, and equal values retain registration order outside-to-inside. `when=` predicates are evaluated against the completed undecorated core subtree, before decorator dependencies are added. This prevents one decorator from making another decorator eligible.
+
+`register_decorator()` returns a stable definition ID for `patch_decorator()` and `remove_decorator()`. Definitions may have their own name and tags. Invalid decorated arguments and generic bindings fail during build with `invalid-decorator` findings.
+
+Register an open generic service with `register_decorator()` to define one policy for every closed plan the compiler encounters, including explicit and factory registrations. `register_generic_decorator()` is a compatibility wrapper.
 
 ## Generic discovery
 
-`register_subclasses(...)`, `register_generic_subclasses(...)`, and `register_generic_decorator(...)` queue discovery rules. Import candidate modules before `build()`; the build takes the live subclass snapshot, materializes matching registrations and decorators, validates them, and freezes the plan. Narrow discovery with `subclass_type_filter` from `clean_ioc.type_filters`. Use `fallback_type=` for unmatched closed requests.
+`register_subclasses(...)` and `register_generic_subclasses(...)` queue discovery rules. Import candidate modules before `build()`; the build takes the live subclass snapshot, materializes matching registrations, validates them, and freezes the plan. Narrow discovery with `subclass_type_filter` from `clean_ioc.type_filters`. Use `fallback_type=` for unmatched closed requests. Open decorator rules specialize from the resulting compiled plans rather than subclass discovery.
 
 The registration and decorator rules share the same build snapshot, so their declaration order does not control which concrete types are seen. Generated concrete decorator types are memoized process-wide. Use `types.new_class()` for dynamic parameterized generic bases, and retain dynamic class objects until build.
 
@@ -63,7 +67,7 @@ Retain the ID returned by `register(...)` when a reusable bundle needs a pre-bui
 
 ```python
 component_id = builder.register(Client)
-builder.patch_component(Client, component_id, lifespan=Lifespan.singleton)
+builder.patch_component(Client, component_id, lifespan="singleton")
 ```
 
 Use `RemoveDependencySetting` to remove an inherited dependency override. Patches are unavailable after successful build.

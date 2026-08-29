@@ -4,7 +4,7 @@ from typing import Generic, TypeVar
 
 from benchbro import Case, system
 
-from clean_ioc import CompiledGraph, Container, ContainerBuilder, GraphDiff, GraphManifest, Lifespan, Scope
+from clean_ioc import CompiledGraph, Container, ContainerBuilder, GraphDiff, GraphManifest, Scope
 
 
 class Leaf:
@@ -87,7 +87,7 @@ def instance_container() -> Container:
 @system(scope="session")
 def singleton_container() -> Container:
     builder = ContainerBuilder()
-    builder.register(Leaf, lifespan=Lifespan.singleton)
+    builder.register(Leaf, lifespan="singleton")
     container = builder.build()
     container.resolve(Leaf)
     return container
@@ -96,7 +96,7 @@ def singleton_container() -> Container:
 @system(scope="session")
 def transient_container() -> Container:
     builder = ContainerBuilder()
-    builder.register(Leaf, lifespan=Lifespan.transient)
+    builder.register(Leaf, lifespan="transient")
     return builder.build()
 
 
@@ -199,7 +199,7 @@ def build_five_component_container_with_entrypoint_diagnostics() -> Container:
 @build.benchmark(name="build-scope-overlay")
 def build_scope_overlay(graph_container: Container) -> Scope:
     builder = graph_container.new_scope_builder()
-    builder.register(Leaf, lifespan=Lifespan.singleton)
+    builder.register(Leaf, lifespan="singleton")
     return builder.build()
 
 

@@ -15,7 +15,7 @@ Clean IoC V2 supports FastAPI 0.121 and newer.
 ```python
 from fastapi import FastAPI
 
-from clean_ioc import ContainerBuilder, Lifespan
+from clean_ioc import ContainerBuilder
 from clean_ioc.ext.fastapi import Resolve, install_fastapi
 
 
@@ -29,7 +29,7 @@ class Service:
 
 
 builder = ContainerBuilder()
-builder.register(Repository, lifespan=Lifespan.scoped)
+builder.register(Repository, lifespan="scoped")
 builder.register(Service)
 container = builder.build()
 
@@ -149,8 +149,8 @@ async def http_client_factory():
 
 
 builder = ContainerBuilder()
-builder.register(httpx.AsyncClient, factory=http_client_factory, lifespan=Lifespan.singleton)
-builder.register(ExternalApi, lifespan=Lifespan.scoped)
+builder.register(httpx.AsyncClient, factory=http_client_factory, lifespan="singleton")
+builder.register(ExternalApi, lifespan="scoped")
 container = builder.build()
 ```
 

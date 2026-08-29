@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 
 import clean_ioc.component_filters as cf
-from clean_ioc import ContainerBuilder, Lifespan
+from clean_ioc import ContainerBuilder
 from clean_ioc.ext.fastapi import (
     FastAPIIntegrationError,
     Resolve,
@@ -144,7 +144,7 @@ def test_scope_is_unique_per_request():
     @asynccontextmanager
     async def lifespan(a):
         builder = ContainerBuilder()
-        builder.register(MyDependency, lifespan=Lifespan.scoped)
+        builder.register(MyDependency, lifespan="scoped")
         container = builder.build()
         async with add_container_to_app(a, container):
             yield
@@ -258,7 +258,7 @@ def test_request_scope_closes_after_streaming_response_finishes():
             events.append("closed")
 
     builder = ContainerBuilder()
-    builder.register(StreamResource, factory=stream_resource_factory, lifespan=Lifespan.scoped)
+    builder.register(StreamResource, factory=stream_resource_factory, lifespan="scoped")
     container = builder.build()
 
     app = FastAPI()
@@ -294,7 +294,7 @@ def test_request_scope_closes_when_route_raises():
             events.append("closed")
 
     builder = ContainerBuilder()
-    builder.register(Resource, factory=resource_factory, lifespan=Lifespan.scoped)
+    builder.register(Resource, factory=resource_factory, lifespan="scoped")
     container = builder.build()
 
     app = FastAPI()
@@ -326,7 +326,7 @@ def test_install_fastapi_wraps_custom_app_lifespan_and_closes_singletons():
             events.append("singleton-closed")
 
     builder = ContainerBuilder()
-    builder.register(SingletonResource, factory=singleton_factory, lifespan=Lifespan.singleton)
+    builder.register(SingletonResource, factory=singleton_factory, lifespan="singleton")
     container = builder.build()
 
     @asynccontextmanager

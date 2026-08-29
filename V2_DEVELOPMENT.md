@@ -28,7 +28,7 @@ Container/Scope
 - Building never invokes user constructors, factories, generators, context managers, or parameter value providers.
 - Runtime resolution executes `_Step` objects. It does not allocate legacy `DependencyNode`/object-graph structures.
 
-The legacy implementation in `clean_ioc/core.py` still supplies registration storage, activators, dependency parsing, filters needed for compatibility, and shared public types. Do not route V2 runtime resolution back through the legacy dependency graph.
+The legacy implementation in `clean_ioc/core.py` still supplies registration storage, activators, dependency parsing, and filters needed for compatibility. V2 converts its public string-literal lifespans to the legacy enum only at this internal boundary. Do not expose that enum through V2 components or route V2 runtime resolution back through the legacy dependency graph.
 
 ## Immutable component model
 
@@ -79,6 +79,7 @@ When changing validation:
 
 ## Lifespans, activation, and cleanup
 
+- Public builder arguments and `Component.lifespan` use the literal strings `"transient"`, `"once_per_graph"`, `"scoped"`, and `"singleton"`; the V1 `IntEnum` is internal compatibility machinery only.
 - `transient` activates on each dependency edge.
 - `once_per_graph` uses the `once_cache` owned by one `_RuntimeResolutionContext`/top-level resolve.
 - `scoped` uses the current scope cache and coordinator.
@@ -108,12 +109,16 @@ Framework/request data should use declared scope slots rather than post-build re
 
 ## Generics and discovery
 
-- Subclass, closed-generic, and generic-decorator discovery rules are queued on a builder and materialized together at `build()` from the then-live Python class set.
+- Subclass and closed-generic registration discovery rules are queued on a builder and materialized at `build()` from the then-live Python class set.
 - Import candidate modules and retain dynamically created class objects until build. Python's subclass registry uses weak references.
 - Open generic registrations are templates, not directly resolvable roots. Closed occurrences are specialized when encountered in a compiled dependency path; explicitly register a closed service when it must be a root.
 - Generic factory dependencies are specialized from the requested service type and factory annotations. `factory_specialization=` supplies otherwise hidden bindings.
 - Unresolved/conflicting `TypeVar` bindings fail build. `ParamSpec` and `TypeVarTuple` are not supported.
+- Decorators are immutable builder definitions with stable IDs. Signature parsing, decorated-argument validation, dependency compilation, and generic specialization happen during build.
+- Open decorator definitions match actual closed component plans, not the subclass registry. This covers explicit registrations, factories, fallbacks, and discovered subclasses.
 - Generated closed generic decorator types are memoized so repeated builds do not leak new classes.
+- Higher decorator positions are outside lower positions; equal positions retain declaration order outside-to-inside. Runtime activation retains the inverse core-to-outside order.
+- Decorator components own their name and tags. `when=` is the only V2 applicability filter; it sees the completed undecorated core subtree.
 
 Generic work relies on `typetoolbox`. Use the installed `using-typetoolbox` skill before changing binding or subclass-discovery behavior.
 

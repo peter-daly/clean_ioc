@@ -5,7 +5,7 @@ A pre-configuration runs once before an applicable component's first activation.
 ```python
 import logging
 
-from clean_ioc import ContainerBuilder, Lifespan
+from clean_ioc import ContainerBuilder
 
 
 def configure_logging(logger: logging.Logger):
@@ -13,7 +13,7 @@ def configure_logging(logger: logging.Logger):
 
 
 builder = ContainerBuilder()
-builder.register(logging.Logger, factory=logging.getLogger, lifespan=Lifespan.singleton)
+builder.register(logging.Logger, factory=logging.getLogger, lifespan="singleton")
 builder.register(Client)
 builder.pre_configure(Client, configure_logging)
 container = builder.build()

@@ -5,11 +5,13 @@ from __future__ import annotations
 import inspect
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Iterable, Iterator, Protocol, TypeAlias
+from typing import Any, Callable, Iterable, Iterator, Literal, Protocol, TypeAlias
 
 from typetoolbox.generics import GenericTypeMap
 
-from .core import Lifespan, Tag
+from .core import Tag
+
+Lifespan: TypeAlias = Literal["transient", "once_per_graph", "scoped", "singleton"]
 
 
 class ComponentKind(str, Enum):
@@ -50,6 +52,7 @@ class _ComponentRecord:
     activation: ComponentActivation
     requires_async: bool
     manages_cleanup: bool
+    position: int | None
     argument: str | None
     generic_mapping: GenericTypeMap
     parent_id: int | None
@@ -73,6 +76,7 @@ class _ComponentDraft:
     activation: ComponentActivation
     requires_async: bool = False
     manages_cleanup: bool = False
+    position: int | None = None
     argument: str | None = None
     parent_id: int | None = None
     dependency_ids: tuple[int, ...] = ()
@@ -94,6 +98,7 @@ class _ComponentDraft:
             activation=self.activation,
             requires_async=self.requires_async,
             manages_cleanup=self.manages_cleanup,
+            position=self.position,
             argument=self.argument,
             generic_mapping=GenericTypeMap(self.service_type),
             parent_id=self.parent_id,
@@ -227,6 +232,12 @@ class Component:
         return self._record.manages_cleanup
 
     @property
+    def position(self) -> int | None:
+        """Decorator z-index; ``None`` for non-decorator components."""
+
+        return self._record.position
+
+    @property
     def argument(self) -> str | None:
         return self._record.argument
 
@@ -332,7 +343,7 @@ class ComponentBuilder(Protocol):
         factory: Callable[..., Any] | None = None,
         factory_specialization: object | None = None,
         instance: Any | None = None,
-        lifespan: Lifespan = Lifespan.once_per_graph,
+        lifespan: Lifespan = "once_per_graph",
         name: str | None = None,
         dependency_config: dict[str, Any] = {},
         tags: Iterable[Tag] | None = None,
@@ -349,9 +360,24 @@ class ComponentBuilder(Protocol):
         decorated_arg: str | None = None,
         dependency_config: dict[str, Any] = {},
         position: int = 0,
-        registration_filter: ComponentFilter = all_components,
-        decorator_node_filter: ComponentFilter = all_components,
+        name: str | None = None,
+        tags: Iterable[Tag] | None = None,
+    ) -> str: ...
+
+    def patch_decorator(
+        self,
+        service_type: Any,
+        decorator_id: str,
+        *,
+        decorated_arg: str | None | object = ...,
+        dependency_config: dict[str, Any] | None = None,
+        position: int | object = ...,
+        when: ComponentFilter | None = None,
+        name: str | None | object = ...,
+        tags: Iterable[Tag] | None = None,
     ) -> None: ...
+
+    def remove_decorator(self, service_type: Any, decorator_id: str) -> None: ...
 
     def pre_configure(
         self,

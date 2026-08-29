@@ -30,6 +30,11 @@
     full-response cleanup, and startup validation of every ``Resolve`` route.
     Remove the ``scoped_teardown`` registration option; generator and context-manager
     factories now provide the single resource-cleanup model.
+    Make decorators stable builder definitions with IDs, owned metadata, patch/remove
+    operations, one ``when=`` filter, build-time validation, z-index graph rendering,
+    and open-generic specialization from actual compiled plans.
+    Replace the public V2 ``Lifespan`` enum values with ``Literal`` string arguments
+    and expose those same strings through components, filters, and graph manifests.
 
 
 1.25.0

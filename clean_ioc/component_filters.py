@@ -7,8 +7,7 @@ from typing import Callable, TypeVar
 
 from funcie import predicate
 
-from .components import ComponentFilter, all_components
-from .core import Lifespan
+from .components import ComponentFilter, Lifespan, all_components
 
 __all__ = [
     "all_components",

@@ -3,7 +3,7 @@
 An ordinary `Scope` is a lightweight runtime boundary. It reuses an already-compiled plan, owns scoped instances created within it, and runs their cleanup when it exits.
 
 ```python
-from clean_ioc import ContainerBuilder, Lifespan
+from clean_ioc import ContainerBuilder
 
 
 class DbConnection:
@@ -11,7 +11,7 @@ class DbConnection:
 
 
 builder = ContainerBuilder()
-builder.register(DbConnection, lifespan=Lifespan.scoped)
+builder.register(DbConnection, lifespan="scoped")
 container = builder.build()
 
 with container.new_scope() as scope:

@@ -23,10 +23,10 @@ service = container.resolve(Service)
 V2 builds an immutable runtime explicitly:
 
 ```python
-from clean_ioc import ContainerBuilder, Lifespan
+from clean_ioc import ContainerBuilder
 
 builder = ContainerBuilder()
-builder.register(Repository, SqlRepository, lifespan=Lifespan.scoped)
+builder.register(Repository, SqlRepository, lifespan="scoped")
 builder.register(Service)
 
 container = builder.build()
@@ -41,9 +41,11 @@ Apply all registrations, decorators, pre-configurations, discovery rules, patche
 | --- | --- | --- |
 | `Container()` | `ContainerBuilder()` then `.build()` | Do not construct V2 `Container` directly. |
 | `container.register(...)` | `builder.register(...)` | The registration signature is largely preserved. |
+| `Lifespan.scoped` and other enum members | `"scoped"` and other string literals | V2 accepts `"transient"`, `"once_per_graph"`, `"scoped"`, and `"singleton"`. |
 | `container.patch_registration(...)` | `builder.patch_component(...)` | `patch_registration` remains an alias, but patch only before a successful build. |
 | `container.pre_configure(...)` | `builder.pre_configure(...)` | Filters are now component filters and run at build. |
 | `container.register_decorator(...)` | `builder.register_decorator(...)` | Selection is evaluated against immutable component occurrences. |
+| decorator `registration_filter=` / `decorator_node_filter=` | `when=` | Combine both predicates into one component filter. |
 | `container.apply_bundle(bundle)` | `builder.apply_bundle(bundle)` | Type bundles against `ComponentBuilder`. |
 | `container.expect_to_be_scoped(T)` | `builder.declare_scope_slot(T)` | `expect_to_be_scoped` remains an alias; prefer the new name. |
 | `container.has_registration(...)` | `builder.has_component(...)` | This previews compiled components. |
@@ -152,7 +154,11 @@ builder.register(
 )
 ```
 
-The `registration_filter` and `decorator_node_filter` parameter names remain available on decorator APIs, but their predicates now receive `Component` occurrences. V2 also provides `when=`. Decorator applicability is evaluated against the completed undecorated core subtree, so one decorator's dependencies cannot make another decorator eligible.
+V2 decorator APIs use only `when=`. Combine V1's `registration_filter` and `decorator_node_filter` predicates into one component predicate. Decorator applicability is evaluated against the completed undecorated core subtree, so one decorator's dependencies cannot make another decorator eligible.
+
+`register_decorator()` now returns a stable decorator-definition ID. Use it with `patch_decorator()` or `remove_decorator()` before build. Higher `position` values are outside lower values; equal positions retain registration order outside-to-inside.
+
+Replace `register_generic_decorator(Service, Decorator)` with `register_decorator(Service, Decorator)` when convenient. Open decorator definitions are specialized from actual closed plans, including factory and fallback registrations, rather than only from discovered subclasses. The old method remains a compatibility wrapper.
 
 ## Scopes, request values, and overrides
 
@@ -193,7 +199,19 @@ Use an ordinary scope for the same composition and new request/unit-of-work stat
 
 ## Lifespan migration
 
-V2 validates captive lifespans for all visible roots during build. The default lifespan remains `once_per_graph`, so V1 code that silently promoted default dependencies beneath cached services may now fail.
+V2 replaces the `Lifespan` enum with string literals. Remove the enum import and pass one of `"transient"`, `"once_per_graph"`, `"scoped"`, or `"singleton"`. The default remains `"once_per_graph"`.
+
+```python
+# V1
+builder.register(Service, lifespan=Lifespan.singleton)
+
+# V2
+builder.register(Service, lifespan="singleton")
+```
+
+Compiled `Component.lifespan` values and graph manifests use the same strings. Invalid runtime strings raise `ValueError` during composition.
+
+V2 also validates captive lifespans for all visible roots during build, so V1 code that silently promoted default dependencies beneath cached services may now fail.
 
 Invalid paths include:
 
@@ -225,11 +243,11 @@ Example:
 ```python
 # Invalid: Repository defaults to once_per_graph beneath a scoped UnitOfWork.
 builder.register(Repository, SqlRepository)
-builder.register(UnitOfWork, lifespan=Lifespan.scoped)
+builder.register(UnitOfWork, lifespan="scoped")
 
 # Valid when both belong to the request/unit of work.
-builder.register(Repository, SqlRepository, lifespan=Lifespan.scoped)
-builder.register(UnitOfWork, lifespan=Lifespan.scoped)
+builder.register(Repository, SqlRepository, lifespan="scoped")
+builder.register(UnitOfWork, lifespan="scoped")
 ```
 
 V2 removes the `scoped_teardown` registration argument. Move acquisition and release into one generator or context-manager factory:
@@ -255,7 +273,7 @@ def connection_factory():
 builder.register(
     Connection,
     factory=connection_factory,
-    lifespan=Lifespan.scoped,
+    lifespan="scoped",
 )
 ```
 
@@ -336,7 +354,7 @@ Build the immutable container, then install it on the application:
 
 ```python
 builder = ContainerBuilder()
-builder.register(Repository, lifespan=Lifespan.scoped)
+builder.register(Repository, lifespan="scoped")
 builder.register(Service)
 container = builder.build()
 
@@ -358,8 +376,8 @@ V1 bundles often accepted `Container` and registered directly. V2 bundles should
 from clean_ioc import ComponentBuilder
 
 def add_persistence(builder: ComponentBuilder) -> None:
-    builder.register(Database, lifespan=Lifespan.singleton)
-    builder.register(Repository, SqlRepository, lifespan=Lifespan.scoped)
+    builder.register(Database, lifespan="singleton")
+    builder.register(Repository, SqlRepository, lifespan="scoped")
 ```
 
 This works with both `ContainerBuilder` and `ScopeBuilder`. A bundle is composition-only and must not resolve services or retain the builder for later mutation.

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from clean_ioc import Container, ContainerBuilder, Lifespan
+from clean_ioc import Container, ContainerBuilder
 from clean_ioc.ext.fastapi import Resolve, install_fastapi
 
 from .application import (
@@ -25,9 +25,9 @@ def build_container() -> Container:
     builder = ContainerBuilder()
 
     # Infrastructure ownership is explicit at the composition root.
-    builder.register(OrderRepository, InMemoryOrderRepository, lifespan=Lifespan.scoped)
-    builder.register(PaymentGateway, FakePaymentGateway, lifespan=Lifespan.singleton)
-    builder.register(AuditSink, LoggingAuditSink, lifespan=Lifespan.singleton)
+    builder.register(OrderRepository, InMemoryOrderRepository, lifespan="scoped")
+    builder.register(PaymentGateway, FakePaymentGateway, lifespan="singleton")
+    builder.register(AuditSink, LoggingAuditSink, lifespan="singleton")
 
     # Application code has no FastAPI or Clean IoC imports.
     builder.register(CreateOrder)

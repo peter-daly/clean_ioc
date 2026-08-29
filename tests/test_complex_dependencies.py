@@ -14,7 +14,7 @@ from clean_ioc import (
     DependencyContext,
     DependencySettings,
 )
-from clean_ioc.core import Lifespan, Tag
+from clean_ioc.core import Tag
 from clean_ioc.factories import use_registered
 
 
@@ -531,9 +531,9 @@ def test_use_registered_factory_with_multiple_base_classes():
 
     builder = ContainerBuilder()
 
-    builder.register(A, AB, lifespan=Lifespan.scoped)
-    builder.register(B, factory=use_registered(AB), lifespan=Lifespan.scoped)
-    builder.register(C, lifespan=Lifespan.scoped)
+    builder.register(A, AB, lifespan="scoped")
+    builder.register(B, factory=use_registered(AB), lifespan="scoped")
+    builder.register(C, lifespan="scoped")
 
     container = builder.build()
     with container.new_scope() as scope:
