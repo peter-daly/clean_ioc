@@ -28,6 +28,8 @@ Container/Scope
 - Building never invokes user constructors, factories, generators, context managers, or parameter value providers.
 - Runtime resolution executes `_Step` objects. It does not allocate legacy `DependencyNode`/object-graph structures.
 
+The compiler also prepares the common runtime decisions instead of rediscovering them on every resolve. It freezes each step's sync/async capability, builds direct maps for default root selection, and chooses a lifespan-specific registration step for transient, once-per-graph, scoped, or singleton behavior. Default cached root resolutions return the frozen value before allocating a per-resolution context. Runtime code should keep those paths specialized: do not restore recursive capability checks, repeated default-filter scans, or a generic lifespan switch to the hot path without measurements showing a benefit.
+
 The legacy implementation in `clean_ioc/core.py` still supplies registration storage, activators, dependency parsing, and filters needed for compatibility. V2 converts its public string-literal lifespans to the legacy enum only at this internal boundary. Do not expose that enum through V2 components or route V2 runtime resolution back through the legacy dependency graph.
 
 ## Immutable component model
@@ -101,13 +103,15 @@ Pre-configuration generator/context-manager finalizers belong to the definition'
 
 Generator factories and context managers register finalizers with their cache owner. Sync and async resolution share the compiled plan, with async requirements determined at build time and enforced when selecting the runtime path. Keep resource acquisition and release in the same factory; registration-level cleanup callbacks are intentionally unsupported.
 
+Activation tracking uses small per-resolution stacks and direct ``try/finally`` cleanup. Cached values use a sentinel so ``None`` remains a valid scoped or singleton value. These details avoid per-component context-manager and generic cache-dispatch overhead while preserving circular-activation diagnostics and cleanup ownership.
+
 Scoped and singleton first activation is coordinated across threads and async tasks. Preserve `_Coordinator` behavior when modifying caching or activation; failures must wake waiters and permit later retries.
 
 Known follow-up: plain transients are allowed beneath singletons, but cleanup-bearing transient ownership and runtime-context capture deserve separate validation. In particular, `Scope`/`ResolutionContext` can provide dynamic access that static registration traversal cannot fully describe. Do not fold this into an unrelated feature without explicit semantics and tests.
 
 ## Scopes and overlays
 
-Ordinary `new_scope()` is cheap and never recompiles. It reuses the parent's plan, inherits provided slot values, and may inherit already-created scoped values. Declared slots are supplied with `scope.provide()` before the first resolution; undeclared, duplicate, late, or missing provisions fail.
+Ordinary `new_scope()` is cheap and never recompiles. It reuses the parent's plan, inherits provided slot values, and may inherit already-created scoped values. Runtime UUID strings are created lazily on first ``id`` access so unused diagnostic identity is not part of the scope-creation hot path. Declared slots are supplied with `scope.provide()` before the first resolution; undeclared, duplicate, late, or missing provisions fail.
 
 `new_scope_builder()` is the explicit child-composition boundary:
 
@@ -174,7 +178,7 @@ A target may be a builder, a built scope/container, or a zero-argument factory r
 - `clean_ioc/tooling.py` and `clean_ioc/cli.py`: diagnostics, rendering, manifests, diffs, and command-line interface.
 - `tests/test_v2_container.py`: V2 composition, generics, discovery, runtime, ownership, concurrency, and cleanup.
 - `tests/test_compiler_tooling.py`: structured reports, complete graph metadata, entry points, overlays, lifespan validation, manifests, and CLI behavior.
-- `benchmarks/bench_clean_ioc.py`: BenchBro build, runtime, tooling, scope, generic factory, and Python-allocation experiments.
+- `benchmarks/bench_clean_ioc.py`: BenchBro build, runtime, tooling, scope, generic factory, graph-depth scaling, and Python-allocation experiments.
 
 `tests/test_complex_dependencies.py` contains several historically difficult combinations of generics, decorators, contextual filtering, collections, and shared registrations. Re-run it when a compiler change affects graph traversal or specialization.
 

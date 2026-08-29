@@ -6,6 +6,9 @@
     constructors, factories, generators, context managers, or value providers.
     Execute frozen activation instructions without allocating legacy dependency
     graph nodes during normal resolution.
+    Specialize compiled runtime steps by lifespan, freeze sync capability and
+    default root selection at build, and defer runtime UUID creation until an ID
+    is inspected, reducing resolution and ordinary scope-creation overhead.
     Replace public registration/node filtering with the immutable ``Component``
     model and shared ``clean_ioc.component_filters`` predicates.
     Add declared scope slots and locked ``Scope.provide()`` values for FastAPI and

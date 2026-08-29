@@ -1,6 +1,6 @@
 """BenchBro experiments for Clean IoC 2 build and runtime boundaries."""
 
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 from benchbro import Case, system
 
@@ -77,6 +77,24 @@ def build_graph_builder(*, mark_entrypoint: bool = False) -> ContainerBuilder:
     return builder
 
 
+def build_transient_chain(depth: int) -> tuple[Container, type]:
+    """Build a compiled constructor chain with exactly ``depth`` components."""
+
+    builder = ContainerBuilder()
+    child_type = type(f"ScaledLeaf{depth}", (), {})
+    builder.register(child_type, lifespan="transient")
+    for index in range(1, depth):
+        dependency_type = child_type
+
+        def init(self: Any, child: object) -> None:
+            self.child = child
+
+        init.__annotations__ = {"child": dependency_type, "return": None}
+        child_type = type(f"ScaledNode{depth}_{index}", (), {"__init__": init})
+        builder.register(child_type, lifespan="transient")
+    return builder.build(), child_type
+
+
 @system(scope="session")
 def instance_container() -> Container:
     builder = ContainerBuilder()
@@ -111,6 +129,11 @@ def request_scope() -> Scope:
     builder.declare_scope_slot(Request)
     builder.register(RequestHandler)
     return builder.build().new_scope().provide(Request, Request())
+
+
+@system(scope="session")
+def scaled_transient_containers() -> dict[int, tuple[Container, type]]:
+    return {depth: build_transient_chain(depth) for depth in (1, 5, 20, 50)}
 
 
 @system(scope="session")
@@ -176,6 +199,21 @@ def create_scope(graph_container: Container) -> Scope:
 @runtime.benchmark(name="resolve-request-slot-plan")
 def resolve_request_slot_plan(request_scope: Scope) -> RequestHandler:
     return request_scope.resolve(RequestHandler)
+
+
+scaling = Case(
+    name="compiled-runtime-scaling",
+    tags=["core", "runtime", "scaling"],
+    setup_timing="exclude",
+    teardown_timing="exclude",
+)
+
+
+@scaling.benchmark(name="resolve-transient-chain")
+@scaling.parametrize("depth", [1, 5, 20, 50], ids=["depth-1", "depth-5", "depth-20", "depth-50"])
+def resolve_transient_chain(scaled_transient_containers: dict[int, tuple[Container, type]], depth: int) -> object:
+    container, root_type = scaled_transient_containers[depth]
+    return container.resolve(root_type)
 
 
 build = Case(

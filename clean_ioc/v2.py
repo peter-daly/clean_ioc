@@ -11,7 +11,6 @@ import types
 import typing
 from collections import defaultdict, deque
 from collections.abc import Callable, Iterable, Mapping
-from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from typing import Any, TypeVar, cast, get_args, get_origin
 from uuid import UUID, uuid4, uuid5
@@ -715,6 +714,11 @@ class _Step:
         raise NotImplementedError
 
 
+_CACHE_MISS = object()
+_EMPTY_DEPENDENCIES: dict[str, Any] = {}
+_RUNTIME_ID_LOCK = threading.Lock()
+
+
 @dataclass(frozen=True, slots=True)
 class _ValueStep(_Step):
     value: Any
@@ -769,10 +773,7 @@ class _ScopeStep(_Step):
 class _CollectionStep(_Step):
     collection_type: type
     members: tuple[_Step, ...]
-
-    @property
-    def sync_supported(self) -> bool:
-        return all(member.sync_supported for member in self.members)
+    sync_supported: bool
 
     def resolve(self, context: _RuntimeResolutionContext) -> Any:
         return self.collection_type(member.resolve(context) for member in self.members)
@@ -825,12 +826,7 @@ class _CompiledPreConfiguration:
     component: Component
     state: _PreConfigurationState
     owner_token: str
-
-    @property
-    def sync_supported(self) -> bool:
-        return not _requires_async(self.activator_class, self.definition.configuration_fn) and all(
-            dependency.step.sync_supported for dependency in self.dependencies
-        )
+    sync_supported: bool
 
     def run(self, context: _RuntimeResolutionContext) -> None:
         future, builder = self.state.begin()
@@ -842,18 +838,25 @@ class _CompiledPreConfiguration:
                 raise outcome.error
             return
         try:
-            values = {dependency.name: dependency.step.resolve(context) for dependency in self.dependencies}
+            values = (
+                {dependency.name: dependency.step.resolve(context) for dependency in self.dependencies}
+                if self.dependencies
+                else _EMPTY_DEPENDENCIES
+            )
         except BaseException as error:
             self.state.finish(future, error=error)
             raise
         try:
-            with context.enter_singleton_owner(self.owner_token):
+            context.singleton_owner_stack.append(self.owner_token)
+            try:
                 self.activator_class.activate(
                     self.definition.configuration_fn,
                     values,
                     cast(Any, context),
                     legacy.Lifespan.singleton,
                 )
+            finally:
+                context.singleton_owner_stack.pop()
         except Exception as error:
             if not self.definition.continue_on_failure:
                 self.state.finish(future, error=error)
@@ -876,18 +879,25 @@ class _CompiledPreConfiguration:
                 raise outcome.error
             return
         try:
-            values = {dependency.name: await dependency.step.resolve_async(context) for dependency in self.dependencies}
+            values = (
+                {dependency.name: await dependency.step.resolve_async(context) for dependency in self.dependencies}
+                if self.dependencies
+                else _EMPTY_DEPENDENCIES
+            )
         except BaseException as error:
             self.state.finish(future, error=error)
             raise
         try:
-            with context.enter_singleton_owner(self.owner_token):
+            context.singleton_owner_stack.append(self.owner_token)
+            try:
                 await self.activator_class.activate_async(
                     self.definition.configuration_fn,
                     values,
                     cast(Any, context),
                     legacy.Lifespan.singleton,
                 )
+            finally:
+                context.singleton_owner_stack.pop()
         except Exception as error:
             if not self.definition.continue_on_failure:
                 self.state.finish(future, error=error)
@@ -1084,23 +1094,17 @@ class _CompiledDecorator:
     source: _DecoratorActivation
     dependencies: tuple[_CompiledDependency, ...]
     component: Component
-
-    @property
-    def sync_supported(self) -> bool:
-        return not _requires_async(self.source.activator_class, self.source.implementation) and all(
-            dependency.step.sync_supported for dependency in self.dependencies
-        )
+    sync_supported: bool
 
     def decorate(self, value: Any, context: _RuntimeResolutionContext, lifespan: legacy.Lifespan) -> Any:
         dependencies = {dependency.name: dependency.step.resolve(context) for dependency in self.dependencies}
         dependencies[self.source.decorated_arg] = value
-        with context.enter_component(self.component):
-            return self.source.activator_class.activate(
-                self.source.implementation,
-                dependencies,
-                cast(Any, context),
-                lifespan,
-            )
+        return self.source.activator_class.activate(
+            self.source.implementation,
+            dependencies,
+            cast(Any, context),
+            lifespan,
+        )
 
     async def decorate_async(
         self,
@@ -1112,13 +1116,12 @@ class _CompiledDecorator:
             dependency.name: await dependency.step.resolve_async(context) for dependency in self.dependencies
         }
         dependencies[self.source.decorated_arg] = value
-        with context.enter_component(self.component):
-            return await self.source.activator_class.activate_async(
-                self.source.implementation,
-                dependencies,
-                cast(Any, context),
-                lifespan,
-            )
+        return await self.source.activator_class.activate_async(
+            self.source.implementation,
+            dependencies,
+            cast(Any, context),
+            lifespan,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1129,27 +1132,22 @@ class _RegistrationStep(_Step):
     dependencies: tuple[_CompiledDependency, ...]
     pre_configurations: tuple[_CompiledPreConfiguration, ...]
     decorators: tuple[_CompiledDecorator, ...]
-
-    @property
-    def sync_supported(self) -> bool:
-        return (
-            not _requires_async(self.registration.activator_class, self.registration.implementation)
-            and all(dependency.step.sync_supported for dependency in self.dependencies)
-            and all(item.sync_supported for item in self.pre_configurations)
-            and all(item.sync_supported for item in self.decorators)
-        )
+    sync_supported: bool
 
     def _activate(self, context: _RuntimeResolutionContext) -> Any:
         for configuration in self.pre_configurations:
             configuration.run(context)
-        values = {dependency.name: dependency.step.resolve(context) for dependency in self.dependencies}
-        with context.enter_component(self.component):
-            instance = self.registration.activator_class.activate(
-                self.registration.implementation,
-                values,
-                cast(Any, context),
-                self.registration.lifespan,
-            )
+        values = (
+            {dependency.name: dependency.step.resolve(context) for dependency in self.dependencies}
+            if self.dependencies
+            else _EMPTY_DEPENDENCIES
+        )
+        instance = self.registration.activator_class.activate(
+            self.registration.implementation,
+            values,
+            cast(Any, context),
+            self.registration.lifespan,
+        )
         for decorator in self.decorators:
             instance = decorator.decorate(instance, context, self.registration.lifespan)
         return instance
@@ -1157,65 +1155,208 @@ class _RegistrationStep(_Step):
     async def _activate_async(self, context: _RuntimeResolutionContext) -> Any:
         for configuration in self.pre_configurations:
             await configuration.run_async(context)
-        values = {dependency.name: await dependency.step.resolve_async(context) for dependency in self.dependencies}
-        with context.enter_component(self.component):
-            instance = await self.registration.activator_class.activate_async(
-                self.registration.implementation,
-                values,
-                cast(Any, context),
-                self.registration.lifespan,
-            )
+        values = (
+            {dependency.name: await dependency.step.resolve_async(context) for dependency in self.dependencies}
+            if self.dependencies
+            else _EMPTY_DEPENDENCIES
+        )
+        instance = await self.registration.activator_class.activate_async(
+            self.registration.implementation,
+            values,
+            cast(Any, context),
+            self.registration.lifespan,
+        )
         for decorator in self.decorators:
             instance = await decorator.decorate_async(instance, context, self.registration.lifespan)
         return instance
 
     def resolve(self, context: _RuntimeResolutionContext) -> Any:
-        cached, value = context.get_cached(self)
-        if cached:
+        raise NotImplementedError
+
+    async def resolve_async(self, context: _RuntimeResolutionContext) -> Any:
+        raise NotImplementedError
+
+
+class _TransientRegistrationStep(_RegistrationStep):
+    __slots__ = ()
+
+    def resolve(self, context: _RuntimeResolutionContext) -> Any:
+        context.assert_allowed(self)
+        context.registration_stack.append(self)
+        try:
+            return self._activate(context)
+        finally:
+            context.registration_stack.pop()
+
+    async def resolve_async(self, context: _RuntimeResolutionContext) -> Any:
+        context.assert_allowed(self)
+        context.registration_stack.append(self)
+        try:
+            return await self._activate_async(context)
+        finally:
+            context.registration_stack.pop()
+
+
+class _OncePerGraphRegistrationStep(_RegistrationStep):
+    __slots__ = ()
+
+    def resolve(self, context: _RuntimeResolutionContext) -> Any:
+        key = self.registration.id
+        value = context.once_cache.get(key, _CACHE_MISS)
+        if value is not _CACHE_MISS:
             return value
-        future, builder = context.begin_build(self)
-        if future is not None and not builder:
+        context.assert_allowed(self)
+        context.registration_stack.append(self)
+        try:
+            value = self._activate(context)
+            context.once_cache[key] = value
+            return value
+        finally:
+            context.registration_stack.pop()
+
+    async def resolve_async(self, context: _RuntimeResolutionContext) -> Any:
+        key = self.registration.id
+        value = context.once_cache.get(key, _CACHE_MISS)
+        if value is not _CACHE_MISS:
+            return value
+        context.assert_allowed(self)
+        context.registration_stack.append(self)
+        try:
+            value = await self._activate_async(context)
+            context.once_cache[key] = value
+            return value
+        finally:
+            context.registration_stack.pop()
+
+
+class _ScopedRegistrationStep(_RegistrationStep):
+    __slots__ = ()
+
+    def resolve(self, context: _RuntimeResolutionContext) -> Any:
+        key = self.registration.id
+        found, value = context.scope._find_scoped(key)
+        if found:
+            return value
+        future, builder = context.scope._coordinator.begin(key)
+        if not builder:
             outcome = future.result()
             if outcome.error is not None:
                 raise outcome.error
-            cached, value = context.get_cached(self)
-            if not cached:
-                raise RuntimeError(f"Component {self.registration.id} completed without a cached value")
+            found, value = context.scope._find_scoped(key)
+            if not found:
+                raise RuntimeError(f"Component {key} completed without a cached value")
             return value
         try:
             context.assert_allowed(self)
-            with context.enter_registration(self):
+            context.registration_stack.append(self)
+            try:
                 value = self._activate(context)
-                context.cache(self, value)
+                context.scope._scoped[key] = value
+            finally:
+                context.registration_stack.pop()
         except BaseException as error:
-            context.finish_build(self, future, error)
+            context.scope._coordinator.finish(key, future, error)
             raise
-        context.finish_build(self, future)
+        context.scope._coordinator.finish(key, future)
         return value
 
     async def resolve_async(self, context: _RuntimeResolutionContext) -> Any:
-        cached, value = context.get_cached(self)
-        if cached:
+        key = self.registration.id
+        found, value = context.scope._find_scoped(key)
+        if found:
             return value
-        future, builder = context.begin_build(self)
-        if future is not None and not builder:
+        future, builder = context.scope._coordinator.begin(key)
+        if not builder:
             outcome = await asyncio.shield(asyncio.wrap_future(future))
             if outcome.error is not None:
                 raise outcome.error
-            cached, value = context.get_cached(self)
-            if not cached:
-                raise RuntimeError(f"Component {self.registration.id} completed without a cached value")
+            found, value = context.scope._find_scoped(key)
+            if not found:
+                raise RuntimeError(f"Component {key} completed without a cached value")
             return value
         try:
             context.assert_allowed(self)
-            with context.enter_registration(self):
+            context.registration_stack.append(self)
+            try:
                 value = await self._activate_async(context)
-                context.cache(self, value)
+                context.scope._scoped[key] = value
+            finally:
+                context.registration_stack.pop()
         except BaseException as error:
-            context.finish_build(self, future, error)
+            context.scope._coordinator.finish(key, future, error)
             raise
-        context.finish_build(self, future)
+        context.scope._coordinator.finish(key, future)
         return value
+
+
+class _SingletonRegistrationStep(_RegistrationStep):
+    __slots__ = ()
+
+    def resolve(self, context: _RuntimeResolutionContext) -> Any:
+        key = self.registration.id
+        owner = context.scope._owners[self.owner_token]
+        value = owner._singletons.get(key, _CACHE_MISS)
+        if value is not _CACHE_MISS:
+            return value
+        future, builder = owner._coordinator.begin(key)
+        if not builder:
+            outcome = future.result()
+            if outcome.error is not None:
+                raise outcome.error
+            value = owner._singletons.get(key, _CACHE_MISS)
+            if value is _CACHE_MISS:
+                raise RuntimeError(f"Component {key} completed without a cached value")
+            return value
+        try:
+            context.assert_allowed(self)
+            context.registration_stack.append(self)
+            try:
+                value = self._activate(context)
+                owner._singletons[key] = value
+            finally:
+                context.registration_stack.pop()
+        except BaseException as error:
+            owner._coordinator.finish(key, future, error)
+            raise
+        owner._coordinator.finish(key, future)
+        return value
+
+    async def resolve_async(self, context: _RuntimeResolutionContext) -> Any:
+        key = self.registration.id
+        owner = context.scope._owners[self.owner_token]
+        value = owner._singletons.get(key, _CACHE_MISS)
+        if value is not _CACHE_MISS:
+            return value
+        future, builder = owner._coordinator.begin(key)
+        if not builder:
+            outcome = await asyncio.shield(asyncio.wrap_future(future))
+            if outcome.error is not None:
+                raise outcome.error
+            value = owner._singletons.get(key, _CACHE_MISS)
+            if value is _CACHE_MISS:
+                raise RuntimeError(f"Component {key} completed without a cached value")
+            return value
+        try:
+            context.assert_allowed(self)
+            context.registration_stack.append(self)
+            try:
+                value = await self._activate_async(context)
+                owner._singletons[key] = value
+            finally:
+                context.registration_stack.pop()
+        except BaseException as error:
+            owner._coordinator.finish(key, future, error)
+            raise
+        owner._coordinator.finish(key, future)
+        return value
+
+
+_REGISTRATION_STEP_TYPES: dict[legacy.Lifespan, type[_RegistrationStep]] = {
+    legacy.Lifespan.transient: _TransientRegistrationStep,
+    legacy.Lifespan.once_per_graph: _OncePerGraphRegistrationStep,
+    legacy.Lifespan.scoped: _ScopedRegistrationStep,
+    legacy.Lifespan.singleton: _SingletonRegistrationStep,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -1228,6 +1369,8 @@ class _RootPlan:
 class _PlanSet:
     graph: _ComponentGraph
     roots: dict[Any, tuple[_RootPlan, ...]]
+    default_roots: dict[Any, _RootPlan]
+    default_root_groups: dict[Any, tuple[_RootPlan, ...]]
     blueprint: _Blueprint
     compiled_graph: CompiledGraph | None = None
     build_report: BuildReport = field(default_factory=BuildReport)
@@ -1312,9 +1455,15 @@ class _Compiler:
             candidates = self._compile_candidates(service_type, parent=None, argument=None)
             roots[service_type] = tuple(_RootPlan(component=component, step=step) for component, step in candidates)
         self.graph.freeze()
+        default_root_groups = {
+            service_type: tuple(plan for plan in plans if plan.component.name is None)
+            for service_type, plans in roots.items()
+        }
         return _PlanSet(
             graph=self.graph,
             roots=roots,
+            default_roots={service_type: plans[0] for service_type, plans in default_root_groups.items() if plans},
+            default_root_groups=default_root_groups,
             blueprint=self.blueprint,
             compiler_issues=tuple(self.issues),
         )
@@ -1530,13 +1679,19 @@ class _Compiler:
             # Component inspection presents the final pipeline outside-to-inside,
             # while runtime activation retains the core-to-outside order.
             draft.decorator_ids = tuple(item.component.occurrence_id for item in reversed(decorators))
-            step = _RegistrationStep(
+            step = _REGISTRATION_STEP_TYPES[registration.lifespan](
                 registration=registration,
                 owner_token=layer.owner_token,
                 component=component,
                 dependencies=dependencies,
                 pre_configurations=configurations,
                 decorators=decorators,
+                sync_supported=(
+                    not _requires_async(registration.activator_class, registration.implementation)
+                    and all(dependency.step.sync_supported for dependency in dependencies)
+                    and all(item.sync_supported for item in configurations)
+                    and all(item.sync_supported for item in decorators)
+                ),
             )
             return component, step
         finally:
@@ -1695,7 +1850,15 @@ class _Compiler:
             selected_ids = {component.occurrence_id for component in components}
             selected = [(component, step) for component, step in candidates if component.occurrence_id in selected_ids]
             collection_draft.dependency_ids = tuple(component.occurrence_id for component, _ in selected)
-            return _CollectionStep(dependency.generic_collection_type, tuple(step for _, step in selected)), collection
+            member_steps = tuple(step for _, step in selected)
+            return (
+                _CollectionStep(
+                    dependency.generic_collection_type,
+                    member_steps,
+                    all(step.sync_supported for step in member_steps),
+                ),
+                collection,
+            )
 
         candidates = self._compile_candidates(dependency.service_type, parent, dependency.name)
         candidates = [item for item in candidates if dependency.settings.filter(item[0])]
@@ -1730,7 +1893,13 @@ class _Compiler:
                 )
                 provider_draft.dependency_ids = (component.occurrence_id,)
                 return (
-                    _ProviderStep(cast(Any, value_factory), dependency.default_value, dependency_context, step),
+                    _ProviderStep(
+                        cast(Any, value_factory),
+                        dependency.default_value,
+                        dependency_context,
+                        step,
+                        step.sync_supported,
+                    ),
                     provider,
                 )
             return step, component
@@ -1752,7 +1921,16 @@ class _Compiler:
                 parent=parent,
                 argument=dependency.name,
             )
-            return _ProviderStep(cast(Any, value_factory), dependency.default_value, dependency_context, None), provider
+            return (
+                _ProviderStep(
+                    cast(Any, value_factory),
+                    dependency.default_value,
+                    dependency_context,
+                    None,
+                    True,
+                ),
+                provider,
+            )
         raise ContainerBuildError(
             f"No component for {dependency.service_type!r}, argument {dependency.name!r} of {parent.implementation!r}",
             code="missing-component",
@@ -1867,6 +2045,10 @@ class _Compiler:
                 component=component,
                 state=state,
                 owner_token=layer.owner_token,
+                sync_supported=(
+                    not _requires_async(activator_class, definition.configuration_fn)
+                    and all(dependency.step.sync_supported for dependency in compiled_dependencies)
+                ),
             )
             self._compiled_pre_configurations[definition.id] = compiled
             items.append(compiled)
@@ -1912,7 +2094,15 @@ class _Compiler:
             )
             draft.decorated_id = decorated.occurrence_id
             dependencies = self._compile_dependencies(decorator.dependencies, component)
-            items.append(_CompiledDecorator(decorator, dependencies, component))
+            items.append(
+                _CompiledDecorator(
+                    decorator,
+                    dependencies,
+                    component,
+                    not _requires_async(decorator.activator_class, decorator.implementation)
+                    and all(dependency.step.sync_supported for dependency in dependencies),
+                )
+            )
             decorated = component
         return tuple(items)
 
@@ -1923,10 +2113,7 @@ class _ProviderStep(_Step):
     default: Any
     dependency_context: DependencyContext
     fallback: _Step | None
-
-    @property
-    def sync_supported(self) -> bool:
-        return self.fallback is None or self.fallback.sync_supported
+    sync_supported: bool
 
     def resolve(self, context: _RuntimeResolutionContext) -> Any:
         value = self.provider(self.default, self.dependency_context)
@@ -1982,13 +2169,6 @@ class _RuntimeOwner:
         self._finalizers: deque[Callable[..., Any]] = deque()
         self._closed = False
 
-    def _remember(
-        self,
-        registration: legacy._Registration,
-        value: Any,
-    ) -> None:
-        self._singletons[registration.id] = value
-
     def _close(self) -> None:
         if self._closed:
             return
@@ -2009,6 +2189,8 @@ class _RuntimeOwner:
 
 
 def _collection_request(service_type: Any) -> tuple[type, Any] | None:
+    if isinstance(service_type, type):
+        return None
     origin = get_origin(service_type)
     collection_type = legacy.Dependency.GENERIC_COLLECTION_MAPPINGS.get(origin)
     arguments = get_args(service_type)
@@ -2275,11 +2457,12 @@ def _compile_with_report(
 
 
 class _RuntimeResolutionContext:
+    __slots__ = ("once_cache", "registration_stack", "scope", "singleton_owner_stack")
+
     def __init__(self, scope: Scope):
         self.scope = scope
         self.once_cache: dict[str, Any] = {}
         self.registration_stack: list[_RegistrationStep] = []
-        self.component_stack: list[Component] = []
         self.singleton_owner_stack: list[str] = []
 
     def resolve_root(self, service_type: Any, filter: ComponentFilter) -> Any:
@@ -2305,86 +2488,10 @@ class _RuntimeResolutionContext:
         return await self.scope._select_root(service_type, filter).step.resolve_async(self)
 
     def assert_allowed(self, step: _RegistrationStep) -> None:
-        if any(active.registration.id == step.registration.id for active in self.registration_stack):
-            raise RuntimeError(f"Circular component activation for {step.registration.service_type!r}")
-
-    @contextmanager
-    def enter_registration(self, step: _RegistrationStep):
-        self.registration_stack.append(step)
-        try:
-            yield
-        finally:
-            self.registration_stack.pop()
-
-    @contextmanager
-    def enter_component(self, component: Component):
-        self.component_stack.append(component)
-        try:
-            yield
-        finally:
-            self.component_stack.pop()
-
-    @contextmanager
-    def enter_singleton_owner(self, owner_token: str):
-        self.singleton_owner_stack.append(owner_token)
-        try:
-            yield
-        finally:
-            self.singleton_owner_stack.pop()
-
-    def _cache(self, step: _RegistrationStep) -> dict[str, Any] | None:
-        lifespan = step.registration.lifespan
-        if lifespan == legacy.Lifespan.transient:
-            return None
-        if lifespan == legacy.Lifespan.once_per_graph:
-            return self.once_cache
-        if lifespan == legacy.Lifespan.scoped:
-            return self.scope._scoped
-        return self.scope._owners[step.owner_token]._singletons
-
-    def get_cached(self, step: _RegistrationStep) -> tuple[bool, Any]:
-        if step.registration.lifespan == legacy.Lifespan.scoped:
-            found, value = self.scope._find_scoped(step.registration.id)
-            return found, value
-        cache = self._cache(step)
-        if cache is not None and step.registration.id in cache:
-            return True, cache[step.registration.id]
-        return False, None
-
-    def cache(self, step: _RegistrationStep, value: Any) -> None:
-        lifespan = step.registration.lifespan
-        cache = self._cache(step)
-        if cache is None:
-            return
-        if lifespan == legacy.Lifespan.singleton:
-            self.scope._owners[step.owner_token]._remember(step.registration, value)
-        elif lifespan == legacy.Lifespan.scoped:
-            self.scope._remember_scoped(step.registration, value)
-        else:
-            cache[step.registration.id] = value
-
-    def _coordinator(self, step: _RegistrationStep) -> _Coordinator | None:
-        if step.registration.lifespan == legacy.Lifespan.singleton:
-            return self.scope._owners[step.owner_token]._coordinator
-        if step.registration.lifespan == legacy.Lifespan.scoped:
-            return self.scope._coordinator
-        return None
-
-    def begin_build(self, step: _RegistrationStep) -> tuple[concurrent.futures.Future[_Outcome] | None, bool]:
-        coordinator = self._coordinator(step)
-        if coordinator is None:
-            return None, True
-        return coordinator.begin(step.registration.id)
-
-    def finish_build(
-        self,
-        step: _RegistrationStep,
-        future: concurrent.futures.Future[_Outcome] | None,
-        error: BaseException | None = None,
-    ) -> None:
-        coordinator = self._coordinator(step)
-        if coordinator is not None and future is not None:
-            coordinator.finish(step.registration.id, future, error)
+        registration = step.registration
+        for active in self.registration_stack:
+            if active.registration is registration:
+                raise RuntimeError(f"Circular component activation for {registration.service_type!r}")
 
     def add_finalizer(self, lifespan: legacy.Lifespan, finalizer: Callable[..., Any]) -> None:
         step = self.registration_stack[-1] if self.registration_stack else None
@@ -2411,7 +2518,7 @@ class Scope(_RuntimeOwner):
         inherit_scoped: bool = True,
     ) -> None:
         super().__init__()
-        self._id = str(uuid4())
+        self._id: str | None = None
         self._plan = plan
         self.container = container
         self.parent = parent
@@ -2421,13 +2528,19 @@ class Scope(_RuntimeOwner):
         self._owned_token = owned_token
         self._inherit_scoped = inherit_scoped
         self._scoped: dict[str, Any] = {}
-        self._coordinator = _Coordinator()
         self._provisions: dict[tuple[Any, str | None], Any] = {}
         self._resolution_started = False
 
     @property
     def id(self) -> str:
-        return self._id
+        identifier = self._id
+        if identifier is None:
+            with _RUNTIME_ID_LOCK:
+                identifier = self._id
+                if identifier is None:
+                    identifier = str(uuid4())
+                    self._id = identifier
+        return identifier
 
     @property
     def components(self) -> tuple[Component, ...]:
@@ -2464,15 +2577,22 @@ class Scope(_RuntimeOwner):
 
     def _select_root(self, service_type: Any, filter: ComponentFilter) -> _RootPlan:
         self._resolution_started = True
-        for plan in self._plan.roots.get(service_type, ()):
-            if filter(plan.component):
+        if filter is default_component_filter:
+            plan = self._plan.default_roots.get(service_type)
+            if plan is not None:
                 return plan
+        else:
+            for plan in self._plan.roots.get(service_type, ()):
+                if filter(plan.component):
+                    return plan
         if (service_type, None) in self._plan.blueprint.slots:
             raise ScopeProvisionError(f"Scope slot {service_type!r} has no provided value")
         raise legacy.CannotResolveError()
 
     def _select_roots(self, service_type: Any, filter: ComponentFilter) -> tuple[_RootPlan, ...]:
         self._resolution_started = True
+        if filter is default_component_filter:
+            return self._plan.default_root_groups.get(service_type, ())
         return tuple(plan for plan in self._plan.roots.get(service_type, ()) if filter(plan.component))
 
     def resolve(
@@ -2480,16 +2600,50 @@ class Scope(_RuntimeOwner):
         service_type: type[TService],
         filter: ComponentFilter = default_component_filter,
     ) -> TService:
-        context = _RuntimeResolutionContext(self)
-        return cast(TService, context.resolve_root(service_type, filter))
+        if isinstance(service_type, type) and filter is default_component_filter:
+            self._resolution_started = True
+            plan = self._plan.default_roots.get(service_type)
+            if plan is None:
+                if (service_type, None) in self._plan.blueprint.slots:
+                    raise ScopeProvisionError(f"Scope slot {service_type!r} has no provided value")
+                raise legacy.CannotResolveError()
+            if not plan.step.sync_supported:
+                raise RuntimeError(f"{service_type!r} requires resolve_async()")
+            if isinstance(plan.step, _SingletonRegistrationStep):
+                owner = self._owners[plan.step.owner_token]
+                value = owner._singletons.get(plan.step.registration.id, _CACHE_MISS)
+                if value is not _CACHE_MISS:
+                    return cast(TService, value)
+            elif isinstance(plan.step, _ScopedRegistrationStep):
+                found, value = self._find_scoped(plan.step.registration.id)
+                if found:
+                    return cast(TService, value)
+            return cast(TService, plan.step.resolve(_RuntimeResolutionContext(self)))
+        return cast(TService, _RuntimeResolutionContext(self).resolve_root(service_type, filter))
 
     async def resolve_async(
         self,
         service_type: type[TService],
         filter: ComponentFilter = default_component_filter,
     ) -> TService:
-        context = _RuntimeResolutionContext(self)
-        return cast(TService, await context.resolve_root_async(service_type, filter))
+        if isinstance(service_type, type) and filter is default_component_filter:
+            self._resolution_started = True
+            plan = self._plan.default_roots.get(service_type)
+            if plan is None:
+                if (service_type, None) in self._plan.blueprint.slots:
+                    raise ScopeProvisionError(f"Scope slot {service_type!r} has no provided value")
+                raise legacy.CannotResolveError()
+            if isinstance(plan.step, _SingletonRegistrationStep):
+                owner = self._owners[plan.step.owner_token]
+                value = owner._singletons.get(plan.step.registration.id, _CACHE_MISS)
+                if value is not _CACHE_MISS:
+                    return cast(TService, value)
+            elif isinstance(plan.step, _ScopedRegistrationStep):
+                found, value = self._find_scoped(plan.step.registration.id)
+                if found:
+                    return cast(TService, value)
+            return cast(TService, await plan.step.resolve_async(_RuntimeResolutionContext(self)))
+        return cast(TService, await _RuntimeResolutionContext(self).resolve_root_async(service_type, filter))
 
     def provide(self, service_type: type[TService], value: TService, name: str | None = None) -> Scope:
         key = (service_type, name)
@@ -2516,9 +2670,6 @@ class Scope(_RuntimeOwner):
         if self._inherit_scoped and self.parent is not None:
             return self.parent._find_scoped(component_id)
         return False, None
-
-    def _remember_scoped(self, registration: legacy._Registration, value: Any) -> None:
-        self._scoped[registration.id] = value
 
     def new_scope(self) -> Scope:
         return Scope(
@@ -2549,7 +2700,7 @@ class Container(Scope):
 
     def __init__(self, plan: _PlanSet, root_owner_token: str):
         _RuntimeOwner.__init__(self)
-        self._id = str(uuid4())
+        self._id: str | None = None
         self._plan = plan
         self.container = self
         self.parent = None
@@ -2557,7 +2708,6 @@ class Container(Scope):
         self._owned_token = root_owner_token
         self._inherit_scoped = False
         self._scoped = {}
-        self._coordinator = _Coordinator()
         self._provisions = {}
         self._resolution_started = False
 

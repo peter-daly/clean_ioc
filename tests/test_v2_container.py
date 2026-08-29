@@ -75,6 +75,16 @@ def test_builder_compiles_an_immutable_container_and_is_single_use():
         builder.build()
 
 
+def test_runtime_ids_are_lazy_stable_and_unique():
+    container = ContainerBuilder().build()
+    first_scope = container.new_scope()
+    second_scope = container.new_scope()
+
+    assert container.id == container.id
+    assert first_scope.id == first_scope.id
+    assert len({container.id, first_scope.id, second_scope.id}) == 3
+
+
 def test_failed_build_leaves_builder_reusable():
     class Missing:
         pass
@@ -422,6 +432,26 @@ def test_once_per_graph_scoped_singleton_and_transient_lifespans():
         second = container.resolve(Pair)
         assert (first.first is first.second) is same_within_graph
         assert (first.first is second.first) is same_across_resolves
+
+
+def test_cached_none_is_not_treated_as_a_cache_miss():
+    class Service:
+        pass
+
+    calls = 0
+
+    def create_service() -> Service:
+        nonlocal calls
+        calls += 1
+        return cast(Service, None)
+
+    builder = ContainerBuilder()
+    builder.register(Service, factory=create_service, lifespan="singleton")
+    container = builder.build()
+
+    assert container.resolve(Service) is None
+    assert container.resolve(Service) is None
+    assert calls == 1
 
 
 def test_generator_and_context_manager_finalizers_follow_cache_owner():
