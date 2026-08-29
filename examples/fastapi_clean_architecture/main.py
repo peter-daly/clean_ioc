@@ -1,10 +1,8 @@
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
 from clean_ioc import Container, ContainerBuilder, Lifespan
-from clean_ioc.ext.fastapi import Resolve, add_container_to_app
+from clean_ioc.ext.fastapi import Resolve, install_fastapi
 
 from .application import (
     AuditedCreateOrder,
@@ -41,13 +39,8 @@ def build_container() -> Container:
 
 def create_app() -> FastAPI:
     container = build_container()
-
-    @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        async with add_container_to_app(app, container):
-            yield
-
-    app = FastAPI(title="Clean IoC Orders", lifespan=lifespan)
+    app = FastAPI(title="Clean IoC Orders")
+    install_fastapi(app, container)
 
     @app.post("/orders", response_model=OrderReceipt)
     async def create_order(

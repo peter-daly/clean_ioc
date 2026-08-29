@@ -10,10 +10,11 @@ uv run benchbro run
 
 `make benchmark` is the equivalent convenience target.
 
-Use `uv run benchbro list --verbose` to inspect the discovered operations. The suite separates three questions:
+Use `uv run benchbro list --verbose` to inspect the discovered operations. The suite separates four questions:
 
 - `compiled-runtime`: resolution, scope creation, and request-slot plan execution with composition excluded;
-- `compiled-build`: root and scope-overlay compilation, including builder setup;
+- `compiled-build`: explicit root, scope-overlay, and open-generic factory compilation, including builder setup;
+- `compiler-tooling`: uncached semantic manifest creation and identical/single-change manifest diffs, with composition excluded;
 - `compiled-allocations`: Python allocations reported by `tracemalloc`, not process RSS.
 
 Runtime containers and provided request scopes are prepared outside the measured interval. Build benchmarks deliberately include registration and compilation.

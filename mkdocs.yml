@@ -9,6 +9,7 @@ nav:
   - Home: index.md
   - Why Clean IoC?: why-clean-ioc.md
   - Build & Components: validation.md
+  - Compiler Tooling: compiler-tooling.md
   - Simple Uses: simple-uses.md
   - Factories: factories.md
   - Lifespans: lifespans.md

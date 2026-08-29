@@ -2,6 +2,7 @@
 
 from .components import (
     Component,
+    ComponentActivation,
     ComponentBuilder,
     ComponentFilter,
     ComponentKind,
@@ -25,6 +26,16 @@ from .core import (
     SubDependencies,
     Tag,
 )
+from .tooling import (
+    BuildIssue,
+    BuildReport,
+    CompiledGraph,
+    GraphChange,
+    GraphDiff,
+    GraphManifest,
+    GraphRoot,
+    IssueSeverity,
+)
 from .v2 import (
     BuilderAlreadyBuiltError,
     Container,
@@ -46,6 +57,7 @@ __all__ = [
     "CaptiveDependencyError",
     "CircularDependencyError",
     "Component",
+    "ComponentActivation",
     "ComponentBuilder",
     "ComponentFilter",
     "ComponentKind",
@@ -53,10 +65,18 @@ __all__ = [
     "Container",
     "ContainerBuildError",
     "ContainerBuilder",
+    "BuildIssue",
+    "BuildReport",
+    "CompiledGraph",
     "DependencyConfig",
     "DependencyContext",
     "DependencySettings",
     "Lifespan",
+    "GraphChange",
+    "GraphDiff",
+    "GraphManifest",
+    "GraphRoot",
+    "IssueSeverity",
     "NeedsScopedRegistrationError",
     "ParameterValueFactory",
     "RemoveDependencySetting",

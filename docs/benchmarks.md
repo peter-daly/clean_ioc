@@ -4,33 +4,39 @@ description: Reproducible BenchBro experiments separating Clean IoC build cost, 
 
 # Benchmarks
 
-The compiled model deliberately moves work from resolution to `build()`. The benchmark suite therefore measures three boundaries separately:
+The compiled model deliberately moves work from resolution to `build()`. The benchmark suite therefore measures four boundaries separately:
 
 - container and scope-overlay compilation;
 - resolution and ordinary scope creation after compilation;
+- semantic manifest creation and manifest diffing after compilation;
 - Python allocations through `tracemalloc`.
 
 ## Local directional snapshot
 
-Measured twice unchanged with BenchBro 1.0 on 28 August 2026 using CPython 3.14.4, macOS 15.7.9, and Apple arm64. The second run produced:
+Measured with BenchBro 1.0 on 29 August 2026 using CPython 3.14.4, macOS 15.7.9, and Apple arm64:
 
 | Operation | Median / peak | CV | Quality |
 | --- | ---: | ---: | --- |
-| Direct Python construction | 0.56 µs | 1.90% | Stable |
-| Resolve pre-built instance | 2.44 µs | 4.09% | Noisy |
-| Resolve cached singleton | 2.56 µs | 5.26% | Noisy |
-| Resolve transient | 4.97 µs | 0.67% | Stable |
-| Resolve five-component plan | 19.99 µs | 2.34% | Noisy |
-| Create ordinary scope | 3.74 µs | 1.76% | Noisy |
-| Resolve request-slot plan | 24.05 µs | 3.72% | Noisy |
-| Build five-component container | 336.61 µs | 0.74% | Stable |
-| Build scope overlay | 278.42 µs | 0.89% | Noisy |
-| Resolve five-component allocation peak | 4,048.8 B | 28.98% | Noisy |
-| Create-scope allocation peak | 2,635.5 B | 0.72% | Stable |
+| Direct Python construction | 0.56 µs | 4.00% | Noisy |
+| Resolve pre-built instance | 2.45 µs | 1.66% | Noisy |
+| Resolve cached singleton | 2.54 µs | 1.52% | Noisy |
+| Resolve transient | 5.00 µs | 6.35% | Noisy |
+| Resolve five-component plan | 20.04 µs | 2.28% | Noisy |
+| Create ordinary scope | 3.82 µs | 1.90% | Noisy |
+| Resolve request-slot plan | 24.15 µs | 2.71% | Noisy |
+| Build five-component container | 362.85 µs | 0.33% | Stable |
+| Build with entry-point diagnostics | 382.08 µs | 1.04% | Stable |
+| Build scope overlay | 338.68 µs | 1.46% | Stable |
+| Build open generic factory container | 320.65 µs | 0.72% | Stable |
+| Create semantic manifest | 83.46 µs | 1.87% | Noisy |
+| Diff identical manifest | 52.38 µs | 1.83% | Stable |
+| Diff one wiring change | 57.43 µs | 1.10% | Noisy |
+| Resolve five-component allocation peak | 3,959.7 B | 17.98% | Noisy |
+| Create-scope allocation peak | 2,646.2 B | 0.56% | Stable |
 
-“Noisy” means BenchBro found an IQR outlier or exceeded the configured CV threshold. The unchanged comparison kept runtime medians within 3%, build medians within 1%, and allocation peaks within 0.3%. Treat this as evidence about this machine and implementation—not a package guarantee or CI threshold.
+“Noisy” means BenchBro found an IQR outlier or exceeded the configured CV threshold. The entry-point build is about 5.3% above the otherwise equivalent build in this run. Treat these results as evidence about this machine and implementation—not a package guarantee or CI threshold.
 
-The allocation case measures Python allocations visible to `tracemalloc`, not whole-process resident memory. The noisy five-component allocation row needs more investigation before making an allocation-reduction claim.
+The allocation case measures Python allocations visible to `tracemalloc`, not whole-process resident memory. Allocation snapshots remain directional and are not evidence of whole-process memory reduction.
 
 ## Measurement boundaries
 
@@ -44,6 +50,8 @@ Build benchmarks deliberately include:
 - immutable runtime creation.
 
 This keeps startup cost visible instead of hiding it in setup.
+
+The `compiler-tooling` case prepares compiled graphs and manifests as session systems. Its measured functions isolate three read-only operations: creating an uncached semantic manifest, diffing identical manifests, and diffing a single wiring change. Container composition and graph compilation remain outside this tooling boundary.
 
 ## Reproduce it
 

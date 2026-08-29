@@ -1115,7 +1115,6 @@ class _Registration(Registration):
         "lifespan",
         "name",
         "parent_node_filter",
-        "scoped_teardown",
         "service_type",
         "tags",
         "was_used",
@@ -1132,13 +1131,9 @@ class _Registration(Registration):
         sub_dependencies: SubDependencies = {},
         parent_node_filter: NodeFilter = default_parent_node_filter,
         tags: Iterable[Tag] | None = None,
-        scoped_teardown: Callable | None = None,
         is_instance: bool = False,
         is_root_owned_instance: bool = False,
     ):
-        if scoped_teardown and lifespan not in (Lifespan.scoped, Lifespan.singleton):
-            raise ValueError("Scoped teardowns can only be used with scoped and singleton lifestyles")
-
         self.service_type = service_type
         self.implementation = implementation
         self.is_instance = is_instance
@@ -1149,7 +1144,6 @@ class _Registration(Registration):
         self.tags = tuple(tags) if tags else tuple()
         self.id = str(uuid4())
         self.parent_node_filter = parent_node_filter
-        self.scoped_teardown = scoped_teardown
         self.was_used = False
         self.is_named = name is not None
         self.dependencies: dict[str, Dependency] = _set_up_dependencies(implementation, sub_dependencies)
@@ -1395,7 +1389,6 @@ class _Registry:
         dependency_config: DependencyConfig,
         tags: Iterable[Tag] | None,
         parent_node_filter: NodeFilter,
-        scoped_teardown: Callable[[TService], Any] | None,
     ) -> str:
         registration = _Registration(
             activator_class=FactoryActivator,
@@ -1405,7 +1398,6 @@ class _Registry:
             name=name,
             sub_dependencies=dependency_config_to_subdependencies(dependency_config),
             parent_node_filter=parent_node_filter,
-            scoped_teardown=scoped_teardown,
             tags=tags,
         )
 
@@ -1422,7 +1414,6 @@ class _Registry:
         dependency_config: DependencyConfig,
         tags: Iterable[Tag] | None,
         parent_node_filter: NodeFilter,
-        scoped_teardown: Callable[[TService], Any] | None,
     ) -> str:
         registration = _Registration(
             activator_class=FactoryActivator,
@@ -1432,7 +1423,6 @@ class _Registry:
             name=name,
             sub_dependencies=dependency_config_to_subdependencies(dependency_config),
             parent_node_filter=parent_node_filter,
-            scoped_teardown=scoped_teardown,
             tags=tags,
         )
 
@@ -1449,7 +1439,6 @@ class _Registry:
         dependency_config: DependencyConfig,
         tags: Iterable[Tag] | None,
         parent_node_filter: NodeFilter,
-        scoped_teardown: Callable[[TService], Any] | None,
         is_root_owned_instance: bool,
     ) -> str:
         instance_lifespan = lifespan if lifespan == Lifespan.singleton else Lifespan.scoped
@@ -1462,7 +1451,6 @@ class _Registry:
             name=name,
             sub_dependencies=dependency_config_to_subdependencies(dependency_config),
             parent_node_filter=parent_node_filter,
-            scoped_teardown=scoped_teardown,
             tags=tags,
             is_instance=True,
             is_root_owned_instance=is_root_owned_instance,
@@ -1490,7 +1478,6 @@ class _Registry:
         dependency_config: DependencyConfig,
         tags: Iterable[Tag] | None,
         parent_node_filter: NodeFilter,
-        scoped_teardown: Callable[[TService], Any] | None,
     ) -> str:
         registration = _Registration(
             activator_class=self._get_activator_class(factory),
@@ -1500,7 +1487,6 @@ class _Registry:
             name=name,
             sub_dependencies=dependency_config_to_subdependencies(dependency_config),
             parent_node_filter=parent_node_filter,
-            scoped_teardown=scoped_teardown,
             tags=tags,
         )
 
@@ -1833,7 +1819,6 @@ class Registrator(Protocol):
         dependency_config: DependencyConfig = {},
         tags: Iterable[Tag] | None = None,
         parent_node_filter: NodeFilter = default_parent_node_filter,
-        scoped_teardown: Callable[[TService], Any] | None = None,
     ) -> str:
         """
         Register a dependency for a service type and return its registration ID.
@@ -1874,9 +1859,6 @@ class Registrator(Protocol):
             parent_node_filter:
                 Predicate that must match the current parent dependency node for
                 this registration to be considered during resolution.
-            scoped_teardown:
-                Optional teardown callback to run for scoped/singleton cached
-                instances when scopes are cleaned up.
 
         Returns:
             A unique registration ID string.
@@ -1950,8 +1932,6 @@ class Scope:
         self._registry = _Registry()
         self._build_coordinator = _SharedBuildCoordinator()
         self._scoped_instances: dict[str, DependencyNode] = {}
-        self._sync_teardowns: dict[str, Callable] = {}
-        self._async_teardowns: dict[str, Callable] = {}
         self._finalizers: deque[Callable] = deque()
 
         self.register(ScopeCreator, instance=self)
@@ -2159,7 +2139,6 @@ class Scope:
         dependency_config: DependencyConfig = {},
         tags: Iterable[Tag] | None = None,
         parent_node_filter: NodeFilter = default_parent_node_filter,
-        scoped_teardown: Callable[[TService], Any] | None = None,
     ) -> str:
         """
         Register a dependency for ``service_type`` and return the registration ID.
@@ -2197,8 +2176,6 @@ class Scope:
             parent_node_filter:
                 Restricts when this registration is eligible based on the
                 current parent node in the dependency graph.
-            scoped_teardown:
-                Optional teardown callback for scoped/singleton registrations.
 
         Returns:
             The registration ID that can later be used for diagnostics or
@@ -2242,7 +2219,6 @@ class Scope:
                 tags=tags,
                 dependency_config=dependency_config,
                 parent_node_filter=parent_node_filter,
-                scoped_teardown=scoped_teardown,
                 is_root_owned_instance=isinstance(self, Container),
             )
         if factory is not None:
@@ -2254,7 +2230,6 @@ class Scope:
                 tags=tags,
                 dependency_config=dependency_config,
                 parent_node_filter=parent_node_filter,
-                scoped_teardown=scoped_teardown,
             )
         if implementation_type is not None:
             return self._registry.register_implementation(
@@ -2265,7 +2240,6 @@ class Scope:
                 tags=tags,
                 dependency_config=dependency_config,
                 parent_node_filter=parent_node_filter,
-                scoped_teardown=scoped_teardown,
             )
 
         return self._registry.register_concrete(
@@ -2275,7 +2249,6 @@ class Scope:
             tags=tags,
             dependency_config=dependency_config,
             parent_node_filter=parent_node_filter,
-            scoped_teardown=scoped_teardown,
         )
 
     def patch_registration(
@@ -2492,15 +2465,12 @@ class Scope:
         return self
 
     async def __aexit__(self, *args, **kwargs):
-        await self._run_async_teardowns()
-        self._run_sync_teardowns()
         await self._async_close_finalizers()
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args, **kwargs):
-        self._run_sync_teardowns()
         self._close_finalizers()
 
     def add_finalizer(self, lifespan: Lifespan, finalizer: Callable) -> Scope:
@@ -2518,25 +2488,8 @@ class Scope:
             else:
                 finalizer()
 
-    async def _run_async_teardowns(self):
-        for registration_id, teardown_fn in self._async_teardowns.items():
-            cached_dependency = self._scoped_instances[registration_id]
-            await teardown_fn(cached_dependency.instance)
-
-    def _run_sync_teardowns(self):
-        for registration_id, teardown_fn in self._sync_teardowns.items():
-            cached_dependency = self._scoped_instances[registration_id]
-            teardown_fn(cached_dependency.instance)
-
     def add_scoped_node(self, registration: _Registration, node: DependencyNode) -> Scope:
         self._scoped_instances[registration.id] = node
-        if registration.scoped_teardown:
-            is_async = inspect.iscoroutinefunction(registration.scoped_teardown)
-            if is_async:
-                self._async_teardowns[registration.id] = registration.scoped_teardown
-            else:
-                self._sync_teardowns[registration.id] = registration.scoped_teardown
-
         return self
 
     @property

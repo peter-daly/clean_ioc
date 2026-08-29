@@ -51,9 +51,12 @@ builder.register(CreateOrder)
 builder.register_decorator(CreateOrder, AuditedCreateOrder, decorated_arg="wrapped")
 
 container = builder.build()
+
+app = FastAPI()
+install_fastapi(app, container)
 ```
 
-This is the only place that chooses concrete adapters and ownership. `build()` proves that the use case and its decorator are complete and compiles their runtime instructions before FastAPI accepts traffic.
+This is the only place that chooses concrete adapters and ownership. `build()` proves that the use case and its decorator are complete and compiles their runtime instructions. `install_fastapi()` owns the container lifespan, creates request scopes, and validates the route's `Resolve(CreateOrder)` selection before FastAPI accepts traffic.
 
 ## Request boundary
 

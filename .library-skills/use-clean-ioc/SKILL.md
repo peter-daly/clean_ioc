@@ -24,7 +24,7 @@ Treat the installed package as the source of truth. Inspect public signatures wh
 
 Perform registration, decoration, pre-configuration, slot declaration, bundle application, component queries, and patches on a builder. Call `build()` only after composition is complete.
 
-`build()` strictly compiles every visible root without invoking constructors, factories, generators, teardown callbacks, or parameter value providers. A failed build leaves the builder reusable. A successful build makes it single-use.
+`build()` strictly compiles every visible root without invoking constructors, factories, generators, context managers, or parameter value providers. A failed build leaves the builder reusable. A successful build makes it single-use.
 
 Do not attempt to mutate a `Container` or `Scope`.
 
@@ -71,6 +71,8 @@ Keep `clean_ioc.type_filters` separate for Python subclass/generic discovery.
 - `once_per_graph`: one top-level resolve;
 - `scoped`: runtime scope cache;
 - `singleton`: root container or owning compiled overlay scope.
+
+Scoped and singleton components must not directly or transitively depend on `once_per_graph`; a transient wrapper does not make that capture valid. A singleton must not depend on scoped state. These invalid paths fail `build()` with `captive-dependency`.
 
 Use `resolve_async()` whenever an activation path may contain async functions, generators, context managers, or cleanup. Always exit the owning scope/container so cleanup runs.
 

@@ -1,11 +1,19 @@
+import gc
+import types
+import weakref
+from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
-from unittest.mock import patch
+from typing import Callable, Generic, ParamSpec, TypeVar, cast
+from unittest.mock import Mock, patch
 
 import pytest
+from assertive import was_called
 
 import clean_ioc.component_filters as cf
 from clean_ioc import (
     BuilderAlreadyBuiltError,
+    CannotResolveError,
     Component,
     ContainerBuilder,
     ContainerBuildError,
@@ -14,6 +22,9 @@ from clean_ioc import (
     ScopeProvisionError,
     UndeclaredScopeSlotError,
 )
+
+T = TypeVar("T")
+P = ParamSpec("P")
 
 
 def test_builder_compiles_an_immutable_container_and_is_single_use():
@@ -189,25 +200,35 @@ def test_scope_builder_overrides_without_mutating_parent_plan():
     assert isinstance(tenant_scope.new_scope().resolve(Service), TenantService)
 
 
-def test_scope_builder_singletons_are_owned_and_torn_down_by_built_scope():
+def test_scope_builder_singleton_finalizers_are_owned_by_built_scope():
     class Resource:
         pass
 
-    torn_down: list[Resource] = []
+    events: list[tuple[str, Resource]] = []
+
+    @contextmanager
+    def resource_factory():
+        resource = Resource()
+        events.append(("enter", resource))
+        try:
+            yield resource
+        finally:
+            events.append(("exit", resource))
+
     root = ContainerBuilder().build()
     builder = root.new_scope_builder()
     builder.register(
         Resource,
+        factory=resource_factory,
         lifespan=Lifespan.singleton,
-        scoped_teardown=torn_down.append,
     )
 
     with builder.build() as scope:
         resource = scope.resolve(Resource)
         assert scope.new_scope().resolve(Resource) is resource
-        assert torn_down == []
+        assert events == [("enter", resource)]
 
-    assert torn_down == [resource]
+    assert events == [("enter", resource), ("exit", resource)]
 
 
 def test_runtime_resolution_does_not_allocate_legacy_dependency_nodes():
@@ -356,3 +377,560 @@ def test_shared_pre_configuration_runs_once_across_roots_and_scope_overlays():
     container.new_scope_builder().build().resolve(First)
 
     assert calls == ["configured"]
+
+
+def test_subclass_discovery_runs_at_build_and_seals_the_snapshot():
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    assert builder.register_subclasses(Service) is None
+
+    late_service_type = type("LateService", (Service,), {})
+    container = builder.build()
+    too_late_service_type = type("TooLateService", (Service,), {})
+
+    assert isinstance(container.resolve(Service), late_service_type)
+    assert late_service_type in {component.implementation_type for component in container.components}
+    assert too_late_service_type not in {component.implementation_type for component in container.components}
+
+
+def test_generic_subclass_and_decorator_discovery_share_the_build_snapshot():
+    class Handler(Generic[T]):
+        pass
+
+    class Command:
+        pass
+
+    class HandlerDecorator(Generic[T]):
+        def __init__(self, child: Handler[T]):
+            self.child = child
+
+    builder = ContainerBuilder()
+    assert builder.register_generic_subclasses(Handler) is None
+    builder.register_generic_decorator(Handler, HandlerDecorator, decorated_arg="child")
+
+    late_handler_type = types.new_class("LateHandler", (Handler[Command],))
+    container = builder.build()
+    resolved = container.resolve(Handler[Command])
+
+    assert type(resolved).__name__ == "__DecoratedGeneric__HandlerDecorator"
+    assert isinstance(getattr(resolved, "child"), late_handler_type)
+
+
+@pytest.mark.parametrize("generic_first", [True, False])
+def test_deferred_generic_decorators_preserve_declaration_order(generic_first):
+    class Handler(Generic[T]):
+        pass
+
+    class Command:
+        pass
+
+    class ConcreteHandler(Handler[Command]):
+        pass
+
+    class GenericDecorator(Generic[T]):
+        def __init__(self, child: Handler[T]):
+            self.child = child
+
+    class ExplicitDecorator:
+        def __init__(self, child: Handler[Command]):
+            self.child = child
+
+    builder = ContainerBuilder()
+    builder.register_generic_subclasses(Handler)
+    if generic_first:
+        builder.register_generic_decorator(Handler, GenericDecorator, decorated_arg="child")
+        builder.register_decorator(Handler[Command], ExplicitDecorator, decorated_arg="child")
+    else:
+        builder.register_decorator(Handler[Command], ExplicitDecorator, decorated_arg="child")
+        builder.register_generic_decorator(Handler, GenericDecorator, decorated_arg="child")
+
+    resolved = builder.build().resolve(Handler[Command])
+
+    if generic_first:
+        assert type(resolved).__name__ == "__DecoratedGeneric__GenericDecorator"
+        assert isinstance(getattr(resolved, "child"), ExplicitDecorator)
+    else:
+        assert isinstance(resolved, ExplicitDecorator)
+        assert type(getattr(resolved, "child")).__name__ == "__DecoratedGeneric__GenericDecorator"
+
+
+def test_discovery_previews_keep_ids_stable_and_rescan_at_build():
+    class Service:
+        pass
+
+    class Previewed(Service):
+        pass
+
+    builder = ContainerBuilder()
+    builder.register_subclasses(Service)
+
+    component_id = builder.get_component_id(Service)
+    assert component_id is not None
+    assert builder.get_component_id(Service) == component_id
+    builder.patch_component(Service, component_id, lifespan=Lifespan.singleton)
+
+    class AddedAfterPreview(Service):
+        pass
+
+    container = builder.build()
+    components = {component.implementation_type: component for component in container.components}
+
+    assert components[Previewed].id == component_id
+    assert components[Previewed].lifespan is Lifespan.singleton
+    assert AddedAfterPreview in components
+
+
+@pytest.mark.parametrize("explicit_first", [True, False])
+def test_explicit_registration_precedes_discovery_regardless_of_call_order(explicit_first):
+    class Service:
+        pass
+
+    class Discovered(Service):
+        pass
+
+    class Explicit(Service):
+        pass
+
+    builder = ContainerBuilder()
+    if explicit_first:
+        builder.register(Service, Explicit)
+        builder.register_subclasses(Service)
+    else:
+        builder.register_subclasses(Service)
+        builder.register(Service, Explicit)
+
+    assert isinstance(builder.build().resolve(Service), Explicit)
+
+
+def test_failed_build_leaves_discovery_reusable_and_rescans_on_retry():
+    class Missing:
+        pass
+
+    class Service:
+        pass
+
+    class First(Service):
+        def __init__(self, missing: Missing):
+            self.missing = missing
+
+    builder = ContainerBuilder()
+    builder.register_subclasses(Service)
+
+    with pytest.raises(ContainerBuildError):
+        builder.build()
+
+    builder.register(Missing)
+
+    class AddedAfterFailure(Service):
+        pass
+
+    container = builder.build()
+    implementations = {component.implementation_type for component in container.components}
+
+    assert First in implementations
+    assert AddedAfterFailure in implementations
+
+
+def test_discovery_deduplicates_diamonds_and_excludes_abstract_and_raw_generics():
+    class Service:
+        pass
+
+    class Left(Service):
+        pass
+
+    class Right(Service):
+        pass
+
+    class Diamond(Left, Right):
+        pass
+
+    class AbstractService(Service, ABC):
+        @abstractmethod
+        def run(self): ...
+
+    builder = ContainerBuilder()
+    builder.register_subclasses(Service)
+    container = builder.build()
+    implementations = [
+        component.implementation_type for component in container.components if component.service_type is Service
+    ]
+
+    assert implementations.count(Diamond) == 1
+    assert AbstractService not in implementations
+
+    class Handler(Generic[T]):
+        pass
+
+    raw_handler_type = type("RawHandler", (Handler,), {})
+
+    generic_builder = ContainerBuilder()
+    generic_builder.register_generic_subclasses(Handler)
+    generic_container = generic_builder.build()
+
+    assert raw_handler_type not in {component.implementation_type for component in generic_container.components}
+
+
+def test_unretained_dynamic_subclass_can_disappear_before_build():
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register_subclasses(Service)
+
+    def create_ephemeral_type():
+        ephemeral = type("Ephemeral", (Service,), {})
+        return weakref.ref(ephemeral)
+
+    reference = create_ephemeral_type()
+    gc.collect()
+    container = builder.build()
+
+    assert reference() is None
+    assert container.components == ()
+    with pytest.raises(CannotResolveError):
+        container.resolve(Service)
+
+
+def test_scope_overlays_only_execute_their_own_discovery_rules():
+    class Service:
+        pass
+
+    class RootService(Service):
+        pass
+
+    root_builder = ContainerBuilder()
+    root_builder.register_subclasses(Service)
+    container = root_builder.build()
+
+    class LateService(Service):
+        pass
+
+    inherited_scope = container.new_scope_builder().build()
+    inherited_implementations = {component.implementation_type for component in inherited_scope.components}
+    assert LateService not in inherited_implementations
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register_subclasses(Service)
+    overlay_scope = overlay_builder.build()
+    overlay_implementations = {component.implementation_type for component in overlay_scope.components}
+
+    assert RootService in overlay_implementations
+    assert LateService in overlay_implementations
+
+
+def test_closed_generic_factory_specializes_nested_dependencies():
+    TItem = TypeVar("TItem")
+
+    class Dependency(Generic[TItem]):
+        pass
+
+    class IntDependency(Dependency[int]):
+        pass
+
+    class Product(Generic[TItem]):
+        def __init__(self, dependencies: list[Dependency[TItem]]):
+            self.dependencies = dependencies
+
+    def create_product(dependencies: list[Dependency[TItem]]) -> Product[TItem]:
+        return Product(dependencies)
+
+    builder = ContainerBuilder()
+    builder.register(Dependency[int], IntDependency)
+    builder.register(Product[int], factory=create_product)
+    container = builder.build()
+
+    product = container.resolve(Product[int])
+
+    assert len(product.dependencies) == 1
+    assert isinstance(product.dependencies[0], IntDependency)
+    component = next(component for component in container.components if component.service_type == Product[int])
+    assert component.generic_mapping[TItem] is int
+
+
+def test_generic_factory_infers_a_bare_return_typevar_from_a_concrete_service():
+    TConnection = TypeVar("TConnection")
+
+    class Engine(Generic[TConnection]):
+        pass
+
+    class Connection:
+        pass
+
+    class MyConnection(Connection):
+        pass
+
+    class MyEngine(Engine[MyConnection]):
+        pass
+
+    def create_connection(engine: Engine[TConnection]) -> TConnection:
+        assert isinstance(engine, MyEngine)
+        return cast(TConnection, MyConnection())
+
+    builder = ContainerBuilder()
+    builder.register(Engine[MyConnection], MyEngine)
+    builder.register(MyConnection, factory=create_connection)
+
+    assert isinstance(builder.build().resolve(MyConnection), MyConnection)
+
+
+def test_factory_specialization_supplies_typevars_not_expressed_by_the_service():
+    TConnection = TypeVar("TConnection")
+
+    class Engine(Generic[TConnection]):
+        pass
+
+    class Connection:
+        pass
+
+    class MyConnection(Connection):
+        pass
+
+    class MyEngine(Engine[MyConnection]):
+        pass
+
+    def create_connection(engine: Engine[TConnection]) -> Connection:
+        assert isinstance(engine, MyEngine)
+        return MyConnection()
+
+    builder = ContainerBuilder()
+    builder.register(Engine[MyConnection], MyEngine)
+    builder.register(Connection, factory=create_connection, factory_specialization=MyEngine)
+
+    assert isinstance(builder.build().resolve(Connection), MyConnection)
+
+
+def test_open_generic_factory_specializes_known_occurrences_and_keeps_closed_caches_separate():
+    TItem = TypeVar("TItem")
+    calls = Mock()
+
+    class Dependency(Generic[TItem]):
+        pass
+
+    class IntDependency(Dependency[int]):
+        pass
+
+    class StrDependency(Dependency[str]):
+        pass
+
+    class Product(Generic[TItem]):
+        def __init__(self, dependency: Dependency[TItem]):
+            self.dependency = dependency
+
+    class FirstIntConsumer:
+        def __init__(self, product: Product[int]):
+            self.product = product
+
+    class SecondIntConsumer:
+        def __init__(self, product: Product[int]):
+            self.product = product
+
+    class StrConsumer:
+        def __init__(self, product: Product[str]):
+            self.product = product
+
+    def create_product(dependency: Dependency[TItem]) -> Product[TItem]:
+        calls(type(dependency))
+        return Product(dependency)
+
+    builder = ContainerBuilder()
+    builder.register(Dependency[int], IntDependency, lifespan=Lifespan.singleton)
+    builder.register(Dependency[str], StrDependency, lifespan=Lifespan.singleton)
+    builder.register(Product, factory=create_product, lifespan=Lifespan.singleton)
+    builder.register(FirstIntConsumer)
+    builder.register(SecondIntConsumer)
+    builder.register(StrConsumer)
+    container = builder.build()
+
+    assert calls == was_called().never()
+
+    first = container.resolve(FirstIntConsumer).product
+    second = container.resolve(SecondIntConsumer).product
+    string = container.resolve(StrConsumer).product
+
+    assert first is second
+    assert first is not string
+    assert isinstance(first.dependency, IntDependency)
+    assert isinstance(string.dependency, StrDependency)
+    assert calls == was_called().twice()
+    with pytest.raises(CannotResolveError):
+        container.resolve(Product[int])
+
+
+def test_explicit_closed_factory_is_a_root_and_precedes_an_open_template():
+    TItem = TypeVar("TItem")
+
+    class Dependency(Generic[TItem]):
+        pass
+
+    class IntDependency(Dependency[int]):
+        pass
+
+    class Product(Generic[TItem]):
+        def __init__(self, source: str):
+            self.source = source
+
+    def create_open(dependency: Dependency[TItem]) -> Product[TItem]:
+        return Product("open")
+
+    def create_closed(dependency: Dependency[int]) -> Product[int]:
+        return Product("closed")
+
+    builder = ContainerBuilder()
+    builder.register(Dependency[int], IntDependency)
+    builder.register(Product, factory=create_open)
+    builder.register(Product[int], factory=create_closed)
+
+    assert builder.build().resolve(Product[int]).source == "closed"
+
+
+def test_generic_factory_specializations_apply_closed_decorators_and_share_singletons_with_scope_overlays():
+    TItem = TypeVar("TItem")
+
+    class Dependency(Generic[TItem]):
+        pass
+
+    class IntDependency(Dependency[int]):
+        pass
+
+    class Product(Generic[TItem]):
+        pass
+
+    class DecoratedProduct(Product[int]):
+        def __init__(self, child: Product[int]):
+            self.child = child
+
+    class RootConsumer:
+        def __init__(self, product: Product[int]):
+            self.product = product
+
+    class OverlayConsumer:
+        def __init__(self, product: Product[int]):
+            self.product = product
+
+    def create_product(dependency: Dependency[TItem]) -> Product[TItem]:
+        return Product()
+
+    builder = ContainerBuilder()
+    builder.register(Dependency[int], IntDependency, lifespan=Lifespan.singleton)
+    builder.register(Product, factory=create_product, lifespan=Lifespan.singleton)
+    builder.register_decorator(Product[int], DecoratedProduct, decorated_arg="child")
+    builder.register(RootConsumer)
+    container = builder.build()
+    root_product = container.resolve(RootConsumer).product
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(OverlayConsumer)
+    overlay = overlay_builder.build()
+
+    assert isinstance(root_product, DecoratedProduct)
+    assert overlay.resolve(OverlayConsumer).product is root_product
+
+
+def test_generic_factory_build_errors_explain_unresolved_and_conflicting_typevars():
+    TItem = TypeVar("TItem")
+    TDependency = TypeVar("TDependency")
+
+    class Dependency(Generic[TItem]):
+        pass
+
+    class Product(Generic[TItem]):
+        pass
+
+    class StrProduct(Product[str]):
+        pass
+
+    def unresolved(dependency: Dependency[TDependency]) -> Product[int]:
+        return Product()
+
+    unresolved_builder = ContainerBuilder()
+    unresolved_builder.register(Product, factory=unresolved)
+    unresolved_builder.register(Product[int], factory=unresolved)
+
+    with pytest.raises(ContainerBuildError, match="Unable to resolve TypeVar.*TDependency"):
+        unresolved_builder.build()
+
+    def conflicting(dependency: Dependency[TItem]) -> Product[TItem]:
+        return Product()
+
+    conflicting_builder = ContainerBuilder()
+    conflicting_builder.register(Product[int], factory=conflicting, factory_specialization=StrProduct)
+
+    with pytest.raises(ContainerBuildError, match="Conflicting TypeVar.*TItem"):
+        conflicting_builder.build()
+
+    builder = ContainerBuilder()
+    with pytest.raises(ValueError, match="factory_specialization requires factory"):
+        builder.register(Product[int], factory_specialization=StrProduct)
+
+    def unsupported(callback: Callable[P, int]) -> Product[int]:
+        return Product()
+
+    unsupported_builder = ContainerBuilder()
+    unsupported_builder.register(Product[int], factory=unsupported)
+
+    with pytest.raises(ContainerBuildError, match="Unsupported.*ParamSpec P.*only TypeVar"):
+        unsupported_builder.build()
+
+
+def test_generic_generator_factory_preserves_cleanup():
+    TItem = TypeVar("TItem")
+    events: list[str] = []
+
+    class Dependency(Generic[TItem]):
+        pass
+
+    class IntDependency(Dependency[int]):
+        pass
+
+    class Product(Generic[TItem]):
+        pass
+
+    def create_product(dependency: Dependency[TItem]) -> Iterator[Product[TItem]]:
+        assert isinstance(dependency, IntDependency)
+        events.append("enter")
+        yield Product()
+        events.append("exit")
+
+    builder = ContainerBuilder()
+    builder.register(Dependency[int], IntDependency, lifespan=Lifespan.scoped)
+    builder.register(Product[int], factory=create_product, lifespan=Lifespan.scoped)
+    container = builder.build()
+
+    with container.new_scope() as scope:
+        assert isinstance(scope.resolve(Product[int]), Product)
+        assert events == ["enter"]
+    assert events == ["enter", "exit"]
+
+
+@pytest.mark.asyncio
+async def test_generic_async_context_manager_factory_preserves_cleanup():
+    TItem = TypeVar("TItem")
+    events: list[str] = []
+
+    class Dependency(Generic[TItem]):
+        pass
+
+    class IntDependency(Dependency[int]):
+        pass
+
+    class Product(Generic[TItem]):
+        pass
+
+    @asynccontextmanager
+    async def create_product(dependency: Dependency[TItem]) -> AsyncIterator[Product[TItem]]:
+        assert isinstance(dependency, IntDependency)
+        events.append("enter")
+        yield Product()
+        events.append("exit")
+
+    builder = ContainerBuilder()
+    builder.register(Dependency[int], IntDependency, lifespan=Lifespan.scoped)
+    builder.register(Product[int], factory=create_product, lifespan=Lifespan.scoped)
+    container = builder.build()
+
+    async with container.new_scope() as scope:
+        assert isinstance(await scope.resolve_async(Product[int]), Product)
+        assert events == ["enter"]
+    assert events == ["enter", "exit"]

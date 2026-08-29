@@ -59,18 +59,7 @@ The generator finalizer belongs to the same owner as the cached component.
 
 Functions decorated with `@contextmanager` and `@asynccontextmanager` are supported as factories. Clean IoC enters them on activation and exits them when the owning scope or container closes.
 
-## Teardown callbacks
-
-```python
-builder.register(
-    Connection,
-    factory=Connection.open,
-    lifespan=Lifespan.scoped,
-    scoped_teardown=Connection.close,
-)
-```
-
-Teardown callbacks are available for scoped and singleton components. A `ScopeBuilder` singleton is torn down by its built scope; a root singleton is torn down by the container.
+Keep resource acquisition and release together in the generator or context-manager factory. This makes cleanup ownership explicit and works for both synchronous and asynchronous resources. A `ScopeBuilder` singleton is finalized by its built scope; a root singleton is finalized by the container.
 
 ## Reusing another compiled component
 

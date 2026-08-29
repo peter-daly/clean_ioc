@@ -19,6 +19,21 @@ class ComponentKind(str, Enum):
     decorator = "decorator"
     pre_configuration = "pre_configuration"
     collection = "collection"
+    scope_slot = "scope_slot"
+    value = "value"
+    value_provider = "value_provider"
+    runtime_context = "runtime_context"
+
+
+class ComponentActivation(str, Enum):
+    """How a compiled occurrence obtains its runtime value."""
+
+    constructor = "constructor"
+    factory = "factory"
+    instance = "instance"
+    supplied = "supplied"
+    collection = "collection"
+    context = "context"
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +47,9 @@ class _ComponentRecord:
     name: str | None
     tags: tuple[Tag, ...]
     kind: ComponentKind
+    activation: ComponentActivation
+    requires_async: bool
+    manages_cleanup: bool
     argument: str | None
     generic_mapping: GenericTypeMap
     parent_id: int | None
@@ -52,6 +70,9 @@ class _ComponentDraft:
     name: str | None
     tags: tuple[Tag, ...]
     kind: ComponentKind
+    activation: ComponentActivation
+    requires_async: bool = False
+    manages_cleanup: bool = False
     argument: str | None = None
     parent_id: int | None = None
     dependency_ids: tuple[int, ...] = ()
@@ -70,6 +91,9 @@ class _ComponentDraft:
             name=self.name,
             tags=self.tags,
             kind=self.kind,
+            activation=self.activation,
+            requires_async=self.requires_async,
+            manages_cleanup=self.manages_cleanup,
             argument=self.argument,
             generic_mapping=GenericTypeMap(self.service_type),
             parent_id=self.parent_id,
@@ -185,6 +209,24 @@ class Component:
         return self._record.kind
 
     @property
+    def activation(self) -> ComponentActivation:
+        return self._record.activation
+
+    @property
+    def activation_kind(self) -> ComponentActivation:
+        """Descriptive alias used by diagnostics and graph exporters."""
+
+        return self.activation
+
+    @property
+    def requires_async(self) -> bool:
+        return self._record.requires_async
+
+    @property
+    def manages_cleanup(self) -> bool:
+        return self._record.manages_cleanup
+
+    @property
     def argument(self) -> str | None:
         return self._record.argument
 
@@ -237,6 +279,9 @@ class Component:
         for child in self.dependencies:
             yield child
             yield from child.descendants()
+        for configuration in self.pre_configurations:
+            yield configuration
+            yield from configuration.descendants()
         for decorator in self.decorators:
             yield decorator
             yield from decorator.descendants()
@@ -285,6 +330,7 @@ class ComponentBuilder(Protocol):
         implementation_type: type | None = None,
         *,
         factory: Callable[..., Any] | None = None,
+        factory_specialization: object | None = None,
         instance: Any | None = None,
         lifespan: Lifespan = Lifespan.once_per_graph,
         name: str | None = None,
@@ -292,7 +338,6 @@ class ComponentBuilder(Protocol):
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
         parent_node_filter: Callable[[Any], bool] = all_components,
-        scoped_teardown: Callable[[Any], Any] | None = None,
     ) -> str: ...
 
     def register_decorator(
@@ -320,3 +365,10 @@ class ComponentBuilder(Protocol):
     ) -> None: ...
 
     def declare_scope_slot(self, service_type: type, name: str | None = None) -> Any: ...
+
+    def mark_entrypoint(
+        self,
+        service_type: Any,
+        *,
+        filter: ComponentFilter = default_component_filter,
+    ) -> Any: ...

@@ -68,11 +68,24 @@ A singleton registered on `ScopeBuilder` instead belongs to the built overlay sc
 
 ## Captive dependencies
 
-`build()` rejects a singleton plan that retains a scoped component. This check happens before user activation and applies to decorator and factory dependencies as well as constructors.
+`once_per_graph` is resolution-local state. A scoped or singleton component cannot retain it because the cached owner would carry that instance into later top-level resolves. `build()` rejects both direct and transitive captures:
+
+```text
+singleton -> once_per_graph                invalid
+singleton -> transient -> once_per_graph   invalid
+scoped -> once_per_graph                   invalid
+scoped -> transient -> once_per_graph      invalid
+```
+
+A plain transient dependency remains valid beneath a scoped or singleton owner. A transient does not, however, hide an invalid lifespan deeper in its dependency tree.
+
+The compiler also rejects a singleton plan that retains a scoped component. Shorter-lived components may depend on longer-lived components, so `once_per_graph -> scoped` and `once_per_graph -> singleton` are valid.
+
+These checks happen before user activation and cover constructors, factories, decorators, collections, value-provider fallbacks, and pre-configuration dependencies. Captive paths are reported with the `captive-dependency` issue code.
 
 ## Cleanup ownership
 
-Scoped and singleton values may own generator/context-manager finalizers or teardown callbacks. Cleanup follows the cache owner:
+Scoped and singleton values may own generator/context-manager finalizers. Cleanup follows the cache owner:
 
 - scoped value → scope exit;
 - root singleton → container exit;

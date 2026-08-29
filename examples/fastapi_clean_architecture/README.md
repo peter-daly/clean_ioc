@@ -22,4 +22,4 @@ curl -X POST http://127.0.0.1:8000/orders \
   -d '{"customer_id":"customer-123","total_pence":2500}'
 ```
 
-The composition root calls `builder.build()` before serving requests. That validates and compiles the application plan without running user constructors. Each request gets one scoped repository, while the payment gateway and audit sink belong to the application container.
+The composition root calls `builder.build()` and `install_fastapi()` before serving requests. That validates and compiles the application plan without running user constructors, checks the route entry point at startup, and installs request-scope ownership. Each request gets one scoped repository, while the payment gateway and audit sink belong to the application container.

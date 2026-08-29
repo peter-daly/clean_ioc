@@ -61,8 +61,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - label: minimum (0.101.0)
-            requirement: fastapi==0.101.0
+          - label: minimum (0.121.0)
+            requirement: fastapi==0.121.0
           - label: latest
             requirement: fastapi<1
 

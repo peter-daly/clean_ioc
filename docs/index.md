@@ -43,7 +43,7 @@ with container.new_scope() as scope:
     assert service.repository.get_name("123") == "Ada"
 ```
 
-`build()` specializes types, constructs occurrence-specific `Component` trees, evaluates filters, checks cycles and captive lifespans, and freezes activation instructions. It does not invoke user constructors, factories, generators, teardown callbacks, or value providers.
+`build()` specializes types, constructs occurrence-specific `Component` trees, evaluates filters, checks cycles and captive lifespans, and freezes activation instructions. It does not invoke user constructors, factories, generators, context managers, or value providers.
 
 Runtime resolution executes the frozen plan. It does not rediscover registrations or allocate graph nodes.
 

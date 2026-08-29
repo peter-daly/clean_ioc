@@ -415,10 +415,7 @@ class _Planner:
                 registration_path,
             )
 
-        if not self.allow_async and (
-            _requires_async(registration.activator_class, registration.implementation)
-            or inspect.iscoroutinefunction(registration.scoped_teardown)
-        ):
+        if not self.allow_async and _requires_async(registration.activator_class, registration.implementation):
             self._issue(
                 "async-required",
                 f"{service_name} requires resolve_async()",

@@ -29,9 +29,9 @@ async with container.new_scope() as scope:
     connection = await scope.resolve_async(DbConnection)
 ```
 
-Use async context management whenever a plan may contain async generators, async context managers, or async teardown callbacks.
+Use async context management whenever a plan may contain async generators or async context managers.
 
-Generator factories, context managers, and `scoped_teardown` callbacks belong to the same owner as the cached value. Scoped cleanup runs when the scope exits; root singleton cleanup runs when the container exits.
+Generator factories and context managers belong to the same owner as the cached value. Scoped cleanup runs when the scope exits; root singleton cleanup runs when the container exits.
 
 ## Declared scope slots
 
@@ -96,9 +96,11 @@ with tenant_builder.build() as tenant_scope:
 assert isinstance(container.resolve(PaymentGateway), ProductionGateway)
 ```
 
-`new_scope_builder()` is available on both `Container` and `Scope`. The first implementation recompiles all visible roots for correctness while reusing the composition metadata; later versions may add safe invalidation.
+`new_scope_builder()` is available on both `Container` and `Scope`. It recompiles the visible overlay roots for correctness while reusing frozen parent plans where ownership requires it.
 
-An overlay singleton belongs to the built scope and its descendants. It is finalized when that built scope exits. Root components continue to use the root container's singleton owner.
+An overlay singleton belongs to the built scope and its descendants. It is finalized when that built scope exits. An inherited root singleton remains anchored to the root container's frozen activation plan and owner, so an overlay registration or decorator cannot silently rewire it.
+
+A built overlay begins a fresh scoped cache boundary. This lets an inherited scoped component use overlay dependencies without reusing an instance created in the parent. Ordinary nested `new_scope()` calls retain their existing inheritance semantics.
 
 ## Which API should I use?
 

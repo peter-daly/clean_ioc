@@ -3,7 +3,7 @@
     Split mutable composition into ``ContainerBuilder`` and ``ScopeBuilder`` and
     make ``Container`` and ``Scope`` immutable runtime types.
     Compile occurrence-specific component plans at ``build()`` without invoking
-    constructors, factories, generators, teardown callbacks, or value providers.
+    constructors, factories, generators, context managers, or value providers.
     Execute frozen activation instructions without allocating legacy dependency
     graph nodes during normal resolution.
     Replace public registration/node filtering with the immutable ``Component``
@@ -12,8 +12,24 @@
     other late framework inputs.
     Add experimental scope overlays whose singletons belong to the built scope and
     descendants.
+    Defer subclass, closed-generic, and generic-decorator discovery until
+    ``build()``, making the successful build snapshot complete and immutable.
+    Specialize closed and open generic factory dependencies at build time, with
+    explicit ``factory_specialization`` support for otherwise hidden TypeVars.
     Replace the sealed-container prototype with BenchBro build, runtime, scope,
     request-slot, and Python-allocation experiments.
+    Add entry-point markers, aggregated structured build reports, complete compiled
+    graph inspection, deterministic redacted manifests, semantic graph diffs, and
+    the ``clean-ioc check|graph|diff`` command-line interface.
+    Anchor inherited root singletons to their frozen root activation plans and
+    make a built scope overlay a fresh scoped-cache boundary.
+    Reject direct and transitive ``once_per_graph`` dependencies beneath scoped
+    or singleton components as captive dependencies during ``build()``.
+    Modernize the FastAPI extension for FastAPI 0.121+, with one-call ASGI
+    installation, HTTP and WebSocket scopes, automatic request/header values,
+    full-response cleanup, and startup validation of every ``Resolve`` route.
+    Remove the ``scoped_teardown`` registration option; generator and context-manager
+    factories now provide the single resource-cleanup model.
 
 
 1.25.0

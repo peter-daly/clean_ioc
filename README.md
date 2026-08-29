@@ -74,7 +74,28 @@ Traditional runtime DI repeatedly discovers registrations, evaluates contextual 
 | Detect missing, circular, and captive dependencies | Coordinate concurrent scoped/singleton builds |
 | Freeze decorators, pre-configurations, and fallback edges | Track only activation and teardown state |
 
-`build()` fails before startup completes if a graph is incomplete or a singleton captures scoped state. A failed build leaves the builder reusable, so composition can be repaired and built again. A successful builder is single-use.
+`build()` fails before startup completes if a graph is incomplete, a singleton captures scoped state, or a singleton/scoped component captures `once_per_graph` state. The lifespan checks are transitive, so a transient wrapper cannot hide a captive dependency. A failed build leaves the builder reusable, so composition can be repaired and built again. A successful builder is single-use.
+
+## Make the object graph reviewable
+
+Mark the requests that start your application and turn the compiled graph into a CI-verifiable artifact:
+
+```python
+builder.mark_entrypoint(Checkout)
+container = builder.build()
+
+print(container.build_report.to_text())
+print(container.graph.to_mermaid())
+container.graph.manifest().to_json()
+```
+
+```bash
+clean-ioc check my_app.composition:application_builder --strict
+clean-ioc graph my_app.composition:application_builder --format json -o dependency-graph.json
+clean-ioc diff my_app.composition:application_builder dependency-graph.json
+```
+
+Build errors are aggregated across independent roots. Stable JSON manifests omit configured values and runtime identities, so wiring changes can be reviewed without serializing secrets. Entry points focus the default graph and warn about unreachable registrations; every visible root is still compiled, validated, and resolvable.
 
 ## One static model: `Component`
 
@@ -131,7 +152,7 @@ with tenant_builder.build() as tenant_scope:
     tenant_scope.resolve(Checkout)
 ```
 
-Singletons introduced by a `ScopeBuilder` belong to its built scope and descendants. They are finalized when that built scope exits, without mutating the root container.
+Singletons introduced by a `ScopeBuilder` belong to its built scope and descendants. Existing root singletons remain anchored to the root container and cannot be rewired by overlay dependencies or decorators. A built overlay also starts a fresh scoped cache boundary. It is finalized when that built scope exits, without mutating the root container.
 
 ## Lifespans that match ownership
 
@@ -142,17 +163,15 @@ Singletons introduced by a `ScopeBuilder` belong to its built scope and descenda
 | `scoped` | One explicit scope | Request state, units of work, DB sessions |
 | `singleton` | Owning container or compiled overlay scope | Settings, pools, long-lived clients |
 
-Generator factories, context managers, teardown callbacks, and async equivalents are finalized by their cache owner.
+Generator factories, context managers, and their async equivalents are finalized by their cache owner.
 
 ## FastAPI without framework-coupled services
 
 ```python
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 
 from clean_ioc import ContainerBuilder, Lifespan
-from clean_ioc.ext.fastapi import Resolve, add_container_to_app
+from clean_ioc.ext.fastapi import Resolve, install_fastapi
 
 
 builder = ContainerBuilder()
@@ -160,14 +179,8 @@ builder.register(OrderRepository, SqlOrderRepository, lifespan=Lifespan.scoped)
 builder.register(PlaceOrder)
 container = builder.build()
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    async with add_container_to_app(app, container):
-        yield
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
+install_fastapi(app, container)
 
 
 @app.post("/orders")
@@ -175,14 +188,14 @@ async def place_order(command: OrderRequest, handler: PlaceOrder = Resolve(Place
     return await handler(command)
 ```
 
-FastAPI creates an ordinary child scope per request. Request/response helpers use declared scope slots and `scope.provide(...)`; they never mutate or recompile the container.
+The integration creates an ordinary child scope for the complete HTTP request or WebSocket connection. Streaming responses, background work, and cleanup remain inside that boundary. FastAPI route selections are checked against the compiled container during application startup.
 
 ## Built for demanding object graphs
 
 - Sync and async factories, generators, context managers, and deterministic cleanup.
 - Named, tagged, parent-aware, and descendant-aware component filters.
 - Ordered decorators selected from the undecorated core subtree.
-- Closed-generic discovery, open-generic fallback, and generic decorators.
+- Build-time generic discovery, generic factory specialization, open-generic fallback, and decorators.
 - Coordinated first activation across threads and event loops.
 - Bundles targeting one shared `ComponentBuilder` composition protocol.
 - BenchBro experiments separating build cost, runtime latency, and Python allocations.
@@ -193,6 +206,7 @@ Clean IoC is a particularly good fit for Clean Architecture, hexagonal applicati
 
 - [Documentation](https://peter-daly.github.io/clean_ioc/)
 - [Compiled scopes](https://peter-daly.github.io/clean_ioc/scopes/)
+- [Compiler tooling](https://peter-daly.github.io/clean_ioc/compiler-tooling/)
 - [Component filtering](https://peter-daly.github.io/clean_ioc/advanced/filtering/)
 - [FastAPI integration](https://peter-daly.github.io/clean_ioc/extensions/fastapi/)
 - [Benchmarks](https://peter-daly.github.io/clean_ioc/benchmarks/)

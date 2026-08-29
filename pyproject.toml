@@ -39,7 +39,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-fastapi = ["fastapi>=0.101.0,<1"]
+fastapi = ["fastapi>=0.121.0,<1"]
 
 [project.urls]
 Homepage = "https://peter-daly.github.io/clean_ioc/"
@@ -48,6 +48,9 @@ Documentation = "https://peter-daly.github.io/clean_ioc/"
 Changelog = "https://github.com/peter-daly/clean_ioc/blob/main/CHANGES.rst"
 Issues = "https://github.com/peter-daly/clean_ioc/issues"
 
+[project.scripts]
+clean-ioc = "clean_ioc.cli:main"
+
 [dependency-groups]
 dev = [
     "benchbro @ git+https://github.com/peter-daly/benchbro.git@d21630c45f5c506f69104101110b0851f7de9d1a",
@@ -55,7 +58,7 @@ dev = [
     "pytest-cov>=5.0.0,<8",
     "pytest-asyncio>=0.24.0,<2",
     "assertive>=1.6.1",
-    "fastapi>=0.101.0,<1",
+    "fastapi>=0.121.0,<1",
     "httpx>=0.26.0,<0.27",
     "ruff>=0.4.3,<0.5",
     "mkdocs>=1.5.3,<2",
