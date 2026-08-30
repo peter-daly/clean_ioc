@@ -53,7 +53,7 @@ clean-ioc = "clean_ioc.cli:main"
 
 [dependency-groups]
 dev = [
-    "benchbro @ git+https://github.com/peter-daly/benchbro.git@d21630c45f5c506f69104101110b0851f7de9d1a",
+    "benchbro>=1.0.0,<2",
     "pytest>=8.0.0,<10",
     "pytest-cov>=5.0.0,<8",
     "pytest-asyncio>=0.24.0,<2",

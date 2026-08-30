@@ -80,10 +80,14 @@ wheels = [
 [[package]]
 name = "benchbro"
 version = "1.0.0"
-source = { git = "https://github.com/peter-daly/benchbro.git?rev=d21630c45f5c506f69104101110b0851f7de9d1a#d21630c45f5c506f69104101110b0851f7de9d1a" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "rich" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9c/09/f5ab1ab67cc06914798e6b9ee0c47fc53dccf5ead649e998fed089cd6764/benchbro-1.0.0.tar.gz", hash = "sha256:11f478eba28615ca91e1fc6ca88f403b956b72e2883301f15bbe59ebe0230645", size = 4703825, upload-time = "2026-08-29T21:34:20.503Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d1/23/ce5ff768972ff2b54114f8c1c5e9d8239058a47847fa071487eebbaf6340/benchbro-1.0.0-py3-none-any.whl", hash = "sha256:87771b3999f16c4816b0d1baa160266419579afbe3fa3aaf15efd954b49055e1", size = 53123, upload-time = "2026-08-29T21:34:18.924Z" },
 ]
 
 [[package]]
@@ -243,7 +247,7 @@ provides-extras = ["fastapi"]
 [package.metadata.requires-dev]
 dev = [
     { name = "assertive", specifier = ">=1.6.1" },
-    { name = "benchbro", git = "https://github.com/peter-daly/benchbro.git?rev=d21630c45f5c506f69104101110b0851f7de9d1a" },
+    { name = "benchbro", specifier = ">=1.0.0,<2" },
     { name = "fastapi", specifier = ">=0.121.0,<1" },
     { name = "httpx", specifier = ">=0.26.0,<0.27" },
     { name = "mkdocs", specifier = ">=1.5.3,<2" },
