@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 
 import clean_ioc.component_filters as cf
-from clean_ioc import ContainerBuilder
+from clean_ioc import ContainerBuilder, ContainerBuildError
 from clean_ioc.ext.fastapi import (
     FastAPIIntegrationError,
     RequestHeaderReader,
@@ -45,6 +45,25 @@ def test_response_writer_writes_a_header_to_response():
         response = test_client.get("/")
         assert response.status_code == 200
         assert response.headers["X-Action"] == "my-action"
+
+
+def test_request_scope_slot_rejects_singleton_capture_during_build():
+    class SingletonService:
+        def __init__(self, request: Request):
+            self.request = request
+
+    builder = ContainerBuilder()
+    configure_fastapi(builder)
+    builder.register(SingletonService, lifespan="singleton")
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("SingletonService"))
+    assert issue.code == "captive-dependency"
+    assert issue.path[-1].endswith("Request")
 
 
 def test_request_header_reader_reads_headers():

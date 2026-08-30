@@ -83,7 +83,7 @@ A plain transient dependency remains valid beneath a scoped or singleton owner. 
 
 The compiler also rejects a singleton plan that retains a scoped component. Shorter-lived components may depend on longer-lived components, so `once_per_graph -> scoped` and `once_per_graph -> singleton` are valid.
 
-These checks happen before user activation and cover constructors, factories, decorators, collections, value-provider fallbacks, and pre-configuration dependencies. Captive paths are reported with the `captive-dependency` issue code.
+These checks happen before user activation and cover constructors, factories, decorators, collections, value-provider fallbacks, pre-configuration dependencies, and supplied scope slots. A singleton therefore cannot capture a late-bound request value declared with `declare_scope_slot()`. Captive paths are reported with the `captive-dependency` issue code.
 
 ## Cleanup ownership
 

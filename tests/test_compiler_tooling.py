@@ -293,6 +293,84 @@ def test_long_lived_components_cannot_transitively_capture_once_per_graph(owner_
     assert "once-per-graph" in issue.message
 
 
+@pytest.mark.parametrize("edge", ["constructor", "transient-wrapper", "decorator", "pre-configuration"])
+def test_singleton_owned_paths_cannot_capture_supplied_scope_slots(edge):
+    class Request:
+        pass
+
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.declare_scope_slot(Request)
+
+    if edge == "constructor":
+
+        class ConstructorService(Service):
+            def __init__(self, request: Request):
+                self.request = request
+
+        builder.register(Service, ConstructorService, lifespan="singleton")
+    elif edge == "transient-wrapper":
+
+        class TransientWrapper:
+            def __init__(self, request: Request):
+                self.request = request
+
+        class WrappedService(Service):
+            def __init__(self, wrapper: TransientWrapper):
+                self.wrapper = wrapper
+
+        builder.register(TransientWrapper, lifespan="transient")
+        builder.register(Service, WrappedService, lifespan="singleton")
+    elif edge == "decorator":
+
+        class ServiceDecorator(Service):
+            def __init__(self, child: Service, request: Request):
+                self.child = child
+                self.request = request
+
+        builder.register(Service, lifespan="singleton")
+        builder.register_decorator(Service, ServiceDecorator, decorated_arg="child")
+    else:
+
+        def configure(request: Request) -> None:
+            pass
+
+        builder.register(Service, lifespan="transient")
+        builder.pre_configure(Service, configure)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
+    assert issue.code == "captive-dependency"
+    assert issue.path[0].endswith("Service")
+    assert issue.path[-1].endswith("Request")
+    assert "cannot retain scoped" in issue.message
+
+
+@pytest.mark.parametrize("owner_lifespan", ["transient", "once_per_graph", "scoped"])
+def test_shorter_lived_components_may_capture_supplied_scope_slots(owner_lifespan):
+    class Request:
+        pass
+
+    class Service:
+        def __init__(self, request: Request):
+            self.request = request
+
+    builder = ContainerBuilder()
+    builder.declare_scope_slot(Request)
+    builder.register(Service, lifespan=owner_lifespan)
+    container = builder.build()
+
+    request = Request()
+    with container.new_scope().provide(Request, request) as scope:
+        assert scope.resolve(Service).request is request
+
+
 @pytest.mark.parametrize("owner_lifespan", ["singleton", "scoped"])
 @pytest.mark.parametrize(
     "edge",

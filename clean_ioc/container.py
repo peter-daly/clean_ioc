@@ -1449,6 +1449,35 @@ class _Compiler:
     def _current_path(self, *tail: Any) -> tuple[str, ...]:
         return tuple(qualified_name(value) for value in (*(frame.label for frame in self._frames), *tail))
 
+    def _validate_captive_lifespan(
+        self,
+        label: Any,
+        lifespan: legacy.Lifespan,
+        *,
+        is_instance: bool = False,
+    ) -> None:
+        singleton = next((item for item in reversed(self._frames) if item.lifespan == legacy.Lifespan.singleton), None)
+        if singleton is not None and lifespan == legacy.Lifespan.scoped and not is_instance:
+            raise ContainerBuildError(
+                f"{_frame_description(singleton)} cannot retain scoped {label}",
+                code="captive-dependency",
+                path=self._current_path(label),
+            )
+        long_lived = next(
+            (
+                item
+                for item in reversed(self._frames)
+                if item.lifespan in (legacy.Lifespan.scoped, legacy.Lifespan.singleton)
+            ),
+            None,
+        )
+        if long_lived is not None and lifespan == legacy.Lifespan.once_per_graph:
+            raise ContainerBuildError(
+                f"{_frame_description(long_lived)} cannot retain once-per-graph {label}",
+                code="captive-dependency",
+                path=self._current_path(label),
+            )
+
     def compile(self, service_types: Iterable[Any] | None = None) -> _PlanSet:
         roots: dict[Any, tuple[_RootPlan, ...]] = {}
         for service_type in service_types or self.blueprint.service_types():
@@ -1612,27 +1641,11 @@ class _Compiler:
                 code="circular-dependency",
                 path=self._current_path(registration.service_type),
             )
-        singleton = next((item for item in reversed(self._frames) if item.lifespan == legacy.Lifespan.singleton), None)
-        if singleton is not None and registration.lifespan == legacy.Lifespan.scoped and not registration.is_instance:
-            raise ContainerBuildError(
-                f"{_frame_description(singleton)} cannot retain scoped {registration.service_type}",
-                code="captive-dependency",
-                path=self._current_path(registration.service_type),
-            )
-        long_lived = next(
-            (
-                item
-                for item in reversed(self._frames)
-                if item.lifespan in (legacy.Lifespan.scoped, legacy.Lifespan.singleton)
-            ),
-            None,
+        self._validate_captive_lifespan(
+            registration.service_type,
+            registration.lifespan,
+            is_instance=registration.is_instance,
         )
-        if long_lived is not None and registration.lifespan == legacy.Lifespan.once_per_graph:
-            raise ContainerBuildError(
-                f"{_frame_description(long_lived)} cannot retain once-per-graph {registration.service_type}",
-                code="captive-dependency",
-                path=self._current_path(registration.service_type),
-            )
         anchored_owner = next(
             (
                 item
@@ -1965,6 +1978,7 @@ class _Compiler:
                 argument=argument,
             )
             if filter(component):
+                self._validate_captive_lifespan(slot_type, legacy.Lifespan.scoped)
                 return name, component
         return None
 
