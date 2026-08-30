@@ -131,16 +131,34 @@ class DependencyContext:
 class ResolutionContext:
     """Resolve an already-compiled component inside the current object graph."""
 
-    __slots__ = ("_context",)
+    __slots__ = ("_context", "_requests")
 
-    def __init__(self, context: _RuntimeResolutionContext) -> None:
+    def __init__(
+        self,
+        context: _RuntimeResolutionContext,
+        requests: tuple[_CompiledResolutionRequest, ...] = (),
+    ) -> None:
         self._context = context
+        self._requests = requests
+
+    def _request(self, service_type: Any, filter: ComponentFilter) -> _CompiledResolutionRequest | None:
+        return next(
+            (
+                item
+                for item in self._requests
+                if item.request.service_type == service_type and item.request.filter is filter
+            ),
+            None,
+        )
 
     def resolve(
         self,
         service_type: type[TService],
         filter: ComponentFilter = default_component_filter,
     ) -> TService:
+        request = self._request(service_type, filter)
+        if request is not None:
+            return cast(TService, request.step.resolve(self._context))
         return cast(TService, self._context.resolve_root(service_type, filter))
 
     async def resolve_async(
@@ -148,7 +166,20 @@ class ResolutionContext:
         service_type: type[TService],
         filter: ComponentFilter = default_component_filter,
     ) -> TService:
+        request = self._request(service_type, filter)
+        if request is not None:
+            return cast(TService, await request.step.resolve_async(self._context))
         return cast(TService, await self._context.resolve_root_async(service_type, filter))
+
+
+_RESOLUTION_REQUESTS_ATTRIBUTE = "__clean_ioc_resolution_requests__"
+
+
+@dataclass(frozen=True, slots=True)
+class _ResolutionRequest:
+    service_type: Any
+    filter: ComponentFilter
+    resolve_async: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -719,6 +750,13 @@ class _Step:
         raise NotImplementedError
 
 
+@dataclass(frozen=True, slots=True)
+class _CompiledResolutionRequest:
+    request: _ResolutionRequest
+    step: _Step
+    component: Component
+
+
 _CACHE_MISS = object()
 _EMPTY_DEPENDENCIES: dict[str, Any] = {}
 _RUNTIME_ID_LOCK = threading.Lock()
@@ -762,12 +800,13 @@ class _DependencyContextStep(_Step):
 @dataclass(frozen=True, slots=True)
 class _ScopeStep(_Step):
     requested_type: Any
+    resolution_requests: tuple[_CompiledResolutionRequest, ...] = ()
 
     def resolve(self, context: _RuntimeResolutionContext) -> Any:
         if self.requested_type is Container:
             return context.scope.container
         if self.requested_type in (ResolutionContext, legacy.CurrentGraph):
-            return ResolutionContext(context)
+            return ResolutionContext(context, self.resolution_requests)
         return context.scope
 
     async def resolve_async(self, context: _RuntimeResolutionContext) -> Any:
@@ -1691,6 +1730,13 @@ class _Compiler:
         )
         try:
             dependencies = self._compile_dependencies(registration.dependencies, component)
+            resolution_requests = self._compile_resolution_requests(registration.implementation, component)
+            draft.dependency_ids += tuple(item.component.occurrence_id for item in resolution_requests)
+            dependencies = self._bind_resolution_requests(
+                registration.implementation,
+                dependencies,
+                resolution_requests,
+            )
             configurations = self._compile_pre_configurations(component)
             draft.pre_configuration_ids = tuple(item.component.occurrence_id for item in configurations)
             decorators = self._compile_decorators(registration, component)
@@ -1779,6 +1825,83 @@ class _Compiler:
         record = cast(_ComponentDraft, self.graph.record(parent.occurrence_id))
         record.dependency_ids = tuple(child_ids)
         return tuple(compiled)
+
+    def _compile_resolution_requests(
+        self,
+        implementation: Any,
+        parent: Component,
+    ) -> tuple[_CompiledResolutionRequest, ...]:
+        requests = cast(
+            tuple[_ResolutionRequest, ...],
+            getattr(implementation, _RESOLUTION_REQUESTS_ATTRIBUTE, ()),
+        )
+        compiled: list[_CompiledResolutionRequest] = []
+        for index, request in enumerate(requests):
+            candidates = self._compile_candidates(request.service_type, parent=None, argument=None)
+            candidates = [item for item in candidates if request.filter(item[0])]
+            if not candidates:
+                raise ContainerBuildError(
+                    f"Factory {qualified_name(implementation)} requests {request.service_type!r}, "
+                    "but no compiled root matches",
+                    code="missing-component",
+                    path=self._current_path(request.service_type),
+                )
+            if len(candidates) > 1:
+                path = self._current_path(request.service_type)
+                self.issues.append(
+                    BuildIssue(
+                        code="ambiguous-selection",
+                        severity=IssueSeverity.warning,
+                        message=(
+                            f"Factory {qualified_name(implementation)} requests {request.service_type!r}, "
+                            f"which matches {len(candidates)} components; the first is selected"
+                        ),
+                        root=path[0] if path else None,
+                        path=path,
+                    )
+                )
+            component, step = candidates[0]
+            if not request.resolve_async and not step.sync_supported:
+                raise ContainerBuildError(
+                    f"Synchronous factory {qualified_name(implementation)} cannot resolve async "
+                    f"component {request.service_type!r}",
+                    code="async-required",
+                    path=self._current_path(request.service_type),
+                )
+            argument = "resolution" if len(requests) == 1 else f"resolution[{index}]"
+            compiled.append(
+                _CompiledResolutionRequest(
+                    request,
+                    step,
+                    self._clone_component_tree(component, parent=parent, argument=argument),
+                )
+            )
+        return tuple(compiled)
+
+    def _bind_resolution_requests(
+        self,
+        implementation: Any,
+        dependencies: tuple[_CompiledDependency, ...],
+        requests: tuple[_CompiledResolutionRequest, ...],
+    ) -> tuple[_CompiledDependency, ...]:
+        if not requests:
+            return dependencies
+        found_context = False
+        bound: list[_CompiledDependency] = []
+        for dependency in dependencies:
+            step = dependency.step
+            if isinstance(step, _ScopeStep) and step.requested_type is ResolutionContext:
+                found_context = True
+                step = replace(step, resolution_requests=requests)
+            bound.append(_CompiledDependency(dependency.name, step))
+        if not found_context:
+            raise ContainerBuildError(
+                f"Factory {qualified_name(implementation)} declares compiled resolution requests "
+                "but does not inject ResolutionContext",
+                code="invalid-factory",
+                path=self._current_path(implementation),
+            )
+        return tuple(bound)
 
     def _compile_dependency(
         self,

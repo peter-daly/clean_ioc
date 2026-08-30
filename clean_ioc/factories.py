@@ -3,7 +3,11 @@
 from typing import Any, Callable, TypeVar
 
 from .components import ComponentFilter, default_component_filter
-from .container import ResolutionContext
+from .container import (
+    _RESOLUTION_REQUESTS_ATTRIBUTE,
+    ResolutionContext,
+    _ResolutionRequest,
+)
 
 T = TypeVar("T")
 
@@ -24,6 +28,11 @@ def use_component(
     def factory(context: ResolutionContext) -> T:
         return context.resolve(service_type, filter=filter)
 
+    setattr(
+        factory,
+        _RESOLUTION_REQUESTS_ATTRIBUTE,
+        (_ResolutionRequest(service_type, filter, resolve_async=False),),
+    )
     return factory
 
 
@@ -36,6 +45,11 @@ def use_component_async(
     async def factory(context: ResolutionContext) -> T:
         return await context.resolve_async(service_type, filter=filter)
 
+    setattr(
+        factory,
+        _RESOLUTION_REQUESTS_ATTRIBUTE,
+        (_ResolutionRequest(service_type, filter, resolve_async=True),),
+    )
     return factory
 
 

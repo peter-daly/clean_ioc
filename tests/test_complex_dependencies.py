@@ -354,13 +354,13 @@ def test_generic_decorator_can_set_the_generic_args_of_a_dependency_with_differe
     handler_b: Any = container.resolve(MessageHandler[MessageB])
     handler_c: Any = container.resolve(MessageHandler[MessageC])
 
-    handler_a.transaction_manager == is_exact_type(SqlTransactionManager)
-    handler_a.child == is_exact_type(AHandler)
-    handler_b.transaction_manager == (is_exact_type(DocDbTransactionManager))
-    handler_b.child == is_exact_type(BHandler)
-    handler_c.transaction_manager == (is_exact_type(DocDbTransactionManager))
-    handler_c.child.transaction_manager == (is_exact_type(SqlTransactionManager))
-    handler_c.child.child == is_exact_type(CHandler)
+    assert handler_a.transaction_manager == is_exact_type(SqlTransactionManager)
+    assert handler_a.child == is_exact_type(AHandler)
+    assert handler_b.transaction_manager == is_exact_type(DocDbTransactionManager)
+    assert handler_b.child == is_exact_type(BHandler)
+    assert handler_c.transaction_manager == is_exact_type(DocDbTransactionManager)
+    assert handler_c.child.transaction_manager == is_exact_type(SqlTransactionManager)
+    assert handler_c.child.child == is_exact_type(CHandler)
 
 
 def test_can_filter_parent_based_on_registration_name():
@@ -536,6 +536,8 @@ def test_use_component_factory_with_multiple_base_classes():
     builder.register(C, lifespan="scoped")
 
     container = builder.build()
+    b_component = next(component for component in container.components if component.service_type is B)
+    assert any(component.service_type is AB for component in b_component.dependencies)
     with container.new_scope() as scope:
         c = scope.resolve(C)
 

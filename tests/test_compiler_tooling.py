@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+import clean_ioc.component_filters as cf
 from clean_ioc import (
     EMPTY,
     BuildReport,
@@ -17,6 +18,7 @@ from clean_ioc import (
     Scope,
 )
 from clean_ioc.cli import main
+from clean_ioc.factories import use_component, use_component_async
 
 
 def test_build_report_aggregates_independent_errors_and_failed_builder_is_reusable():
@@ -96,6 +98,155 @@ def test_complete_component_graph_includes_special_injection_edges_and_redacts_v
     assert "top-secret" not in manifest
     assert "runtime-secret" not in manifest
     assert '"activation": "supplied"' in manifest
+
+
+def test_use_component_target_is_visible_and_missing_targets_fail_at_build():
+    class Missing:
+        pass
+
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service, factory=use_component(Missing))
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
+    assert issue.code == "missing-component"
+    assert issue.path[0].endswith("Service")
+    assert issue.path[-1].endswith("Missing")
+
+
+def test_use_component_filter_selects_the_same_compiled_and_runtime_target():
+    class Dependency:
+        pass
+
+    class DefaultDependency(Dependency):
+        pass
+
+    class SelectedDependency(Dependency):
+        pass
+
+    class Alias:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, DefaultDependency)
+    builder.register(Dependency, SelectedDependency, name="selected")
+    builder.register(Alias, factory=use_component(Dependency, filter=cf.with_name("selected")))
+    container = builder.build()
+
+    alias_component = next(component for component in container.components if component.service_type is Alias)
+    target = next(component for component in alias_component.dependencies if component.service_type is Dependency)
+    assert target.implementation_type is SelectedDependency
+    assert isinstance(container.resolve(Alias), SelectedDependency)
+
+
+def test_use_component_self_reference_is_a_build_time_cycle():
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service, factory=use_component(Service))
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
+    assert issue.code == "circular-dependency"
+
+
+def test_use_component_target_participates_in_transitive_lifespan_validation():
+    class GraphLocal:
+        pass
+
+    class TransientWrapper:
+        def __init__(self, graph_local: GraphLocal):
+            self.graph_local = graph_local
+
+    class SingletonService:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(GraphLocal)
+    builder.register(TransientWrapper, lifespan="transient")
+    builder.register(SingletonService, factory=use_component(TransientWrapper), lifespan="singleton")
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("SingletonService"))
+    assert issue.code == "captive-dependency"
+    assert tuple(part.rsplit(".", 1)[-1] for part in issue.path) == (
+        "SingletonService",
+        "TransientWrapper",
+        "GraphLocal",
+    )
+
+
+@pytest.mark.asyncio
+async def test_use_component_sync_mode_rejects_async_targets_but_async_mode_compiles():
+    class AsyncTarget:
+        pass
+
+    class Service:
+        pass
+
+    async def create_target() -> AsyncTarget:
+        return AsyncTarget()
+
+    invalid_builder = ContainerBuilder()
+    invalid_builder.register(AsyncTarget, factory=create_target)
+    invalid_builder.register(Service, factory=use_component(AsyncTarget))
+
+    with pytest.raises(ContainerBuildError) as raised:
+        invalid_builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
+    assert issue.code == "async-required"
+
+    builder = ContainerBuilder()
+    builder.register(AsyncTarget, factory=create_target)
+    builder.register(Service, factory=use_component_async(AsyncTarget))
+    container = builder.build()
+
+    assert isinstance(await container.resolve_async(Service), AsyncTarget)
+
+
+def test_use_component_uses_the_frozen_target_of_an_anchored_singleton():
+    class Dependency:
+        pass
+
+    class RootDependency(Dependency):
+        pass
+
+    class OverlayDependency(Dependency):
+        pass
+
+    class SingletonAlias:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, RootDependency, lifespan="singleton")
+    builder.register(SingletonAlias, factory=use_component(Dependency), lifespan="singleton")
+    container = builder.build()
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(Dependency, OverlayDependency, lifespan="singleton")
+    overlay = overlay_builder.build()
+
+    assert isinstance(overlay.resolve(SingletonAlias), RootDependency)
+    assert overlay.resolve(SingletonAlias) is container.resolve(SingletonAlias)
 
 
 def test_semantic_manifests_are_process_independent_and_diff_wiring_changes():
