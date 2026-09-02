@@ -11,12 +11,16 @@ A component occurrence exposes:
 
 - stable registration `id` and occurrence-specific `occurrence_id`;
 - `service_type`, `implementation`, and normalized `implementation_type`;
-- `lifespan`, `name`, `tags`, `kind`, and incoming `argument`;
+- `lifespan`, `name`, `tags`, `kind`, `activation`, and incoming `argument`;
+- activation properties including `requires_async` and `manages_cleanup`;
+- decorator `position` when the occurrence is a decorator;
 - `generic_mapping`;
 - read-only `parent`, `dependencies`, `decorators`, `decorated`, and `pre_configurations`;
 - static descendant queries.
 
-It deliberately has no runtime `instance` or `instance_type`. Composition, dependency, decorator, and pre-configuration filters are evaluated at build time and their decisions are frozen. A filter passed directly to `resolve(...)` selects among the already-compiled roots at runtime; it cannot alter their dependency plans.
+`Component` does not expose a runtime `instance` or `instance_type`. Composition, dependency, decorator, and
+pre-configuration filters are evaluated at build time and their decisions are frozen. A filter passed directly to
+`resolve(...)` selects among the already-compiled roots at runtime; it cannot alter their dependency plans.
 
 ## Root selection
 
@@ -106,13 +110,36 @@ not_singleton = ~cf.has_lifespan("singleton")
 Useful helpers include:
 
 - `with_name`, `with_id`, `name_starts_with`, `name_ends_with`;
-- `implementation_is`, `implementation_matches_type_filter`;
+- `implementation_is`, `implementation_type_is`, `implementation_matches_type_filter`;
 - `service_type_is`;
 - `has_tag`, `has_generic_arg`;
 - `has_lifespan`, `has_lifespan_in`;
 - `parent`, `has_descendant`.
 
 Use `create_filter(callable)` for a custom composable predicate.
+
+`implementation_is(T)` compares `T` with the component's raw implementation. For a factory registration, that is the
+factory callable. `implementation_type_is(T)` compares the normalized implementation type, including a factory's
+annotated return type:
+
+```python
+def create_client() -> Client:
+    return Client()
+
+
+builder.register(Client, factory=create_client)
+
+factory = cf.implementation_is(create_client)
+produces_client = cf.implementation_type_is(Client)
+```
+
+Custom filters can inspect the same metadata:
+
+```python
+async_resource = cf.create_filter(
+    lambda component: component.requires_async and component.manages_cleanup,
+)
+```
 
 ## Component IDs and patching
 

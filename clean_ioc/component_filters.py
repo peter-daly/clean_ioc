@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Callable, TypeVar
+from typing import Any, Callable, TypeVar
 
 from funcie import predicate
 
@@ -18,6 +18,7 @@ __all__ = [
     "has_lifespan_in",
     "has_tag",
     "implementation_is",
+    "implementation_type_is",
     "implementation_matches_type_filter",
     "is_named",
     "is_not_named",
@@ -54,8 +55,12 @@ is_not_named = with_name(None)
 is_named = ~is_not_named
 
 
-def implementation_is(implementation: type):
+def implementation_is(implementation: Any):
     return predicate(lambda component: component.implementation == implementation)
+
+
+def implementation_type_is(implementation_type: type):
+    return predicate(lambda component: component.implementation_type == implementation_type)
 
 
 def implementation_matches_type_filter(type_filter: Callable[[type], bool]):

@@ -133,7 +133,8 @@ Common mappings:
 | `rf.all_registrations` / `nf.yes` | `cf.all_components` |
 | `rf.with_name(name)` / `nf.registration_name_is(name)` | `cf.with_name(name)` |
 | `rf.with_id(id)` | `cf.with_id(id)` |
-| `rf.with_implementation(T)` / `nf.implementation_type_is(T)` | `cf.implementation_is(T)` |
+| `rf.with_implementation(T)` | `cf.implementation_is(T)` |
+| `nf.implementation_type_is(T)` | `cf.implementation_type_is(T)` |
 | `rf.with_implementation_matching_filter(f)` | `cf.implementation_matches_type_filter(f)` |
 | `rf.has_generic_args_matching((key, value))` | `cf.has_generic_arg(key, value)` |
 | `rf.has_tag(...)` / `nf.has_registration_tag(...)` | `cf.has_tag(...)` |
@@ -141,11 +142,13 @@ Common mappings:
 | `nf.service_type_is(T)` | `cf.service_type_is(T)` |
 | `nf.jump_parent(f)` | `cf.parent(f)` |
 | `nf.has_dependant_service_type(T)` | `cf.has_descendant(cf.service_type_is(T))` |
-| `nf.has_dependant_implementation_type(T)` | `cf.has_descendant(cf.implementation_is(T))` |
+| `nf.has_dependant_implementation_type(T)` | `cf.has_descendant(cf.implementation_type_is(T))` |
 
 There is no direct replacement for filters based on resolved instance type. User instances do not exist during build. Express the condition using service/implementation metadata, tags, names, generic bindings, or an explicit registration.
 
-For predicates without a named replacement, use `cf.create_filter(lambda component: ...)`. `Component` exposes service type, implementation, implementation type, lifespan, name, tags, parent, dependencies, decorators, pre-configurations, generic mapping, kind, and activation metadata.
+For predicates without a named replacement, use `cf.create_filter(lambda component: ...)`. `Component` exposes service
+type, raw and normalized implementation, lifespan, name, tags, parent, dependencies, decorators, pre-configurations,
+generic mapping, kind, activation, async and cleanup requirements, and decorator position.
 
 Filter timing changes matter:
 

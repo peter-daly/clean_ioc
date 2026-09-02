@@ -157,6 +157,23 @@ def test_component_filters_cover_selection_and_undecorated_descendants():
     assert isinstance(service.child.database, Database)
 
 
+def test_implementation_type_filter_uses_normalized_factory_return_type():
+    class Service:
+        pass
+
+    def create_service() -> Service:
+        return Service()
+
+    builder = ContainerBuilder()
+    builder.register(Service, factory=create_service)
+    container = builder.build()
+    component = container.graph.roots[0].component
+
+    assert cf.implementation_type_is(Service)(component)
+    assert not cf.implementation_is(Service)(component)
+    assert cf.implementation_is(create_service)(component)
+
+
 def test_decorator_definitions_have_stable_ids_metadata_and_z_index_order():
     class Service:
         pass
