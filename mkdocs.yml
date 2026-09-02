@@ -7,10 +7,10 @@ repo_url: https://github.com/peter-daly/clean_ioc
 edit_uri: edit/main/docs/
 nav:
   - Home: index.md
-  - Why Clean IoC?: why-clean-ioc.md
+  - Design rationale: why-clean-ioc.md
   - Build & Components: validation.md
   - Compiler Tooling: compiler-tooling.md
-  - Simple Uses: simple-uses.md
+  - Registration: simple-uses.md
   - Factories: factories.md
   - Lifespans: lifespans.md
   - Generics: generics.md
@@ -22,16 +22,17 @@ nav:
       - Filtering: advanced/filtering.md
       - Value Factories: advanced/value-factories.md
       - Special Dependency Types: advanced/special-dependency-types.md
-      - Clean Ioc Inside Dependencies: advanced/accessing-clean-ioc-within-dependency.md
+      - Runtime container access: advanced/accessing-clean-ioc-within-dependency.md
   - Extensions:
     - FastAPI: extensions/fastapi.md
+    - Potential future integrations: future-integrations.md
   - Examples:
     - FastAPI Clean Architecture: examples/clean-architecture.md
   - Benchmarks: benchmarks.md
-  - Background:
+  - Concepts:
     - Inversion of Control: inversion-of-control.md
     - Dependency Injection: dependency-injection.md
-    - SOLID: solid.md
+    - Dependency boundaries: solid.md
 
 theme:
   name: material

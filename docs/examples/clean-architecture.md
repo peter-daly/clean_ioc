@@ -4,7 +4,8 @@ description: A runnable FastAPI Clean Architecture example with ports, adapters,
 
 # FastAPI Clean Architecture example
 
-The repository includes a [runnable order API](https://github.com/peter-daly/clean_ioc/tree/main/examples/fastapi_clean_architecture) that demonstrates where Clean IoC belongs in a layered application.
+The repository includes a [runnable order API](https://github.com/peter-daly/clean_ioc/tree/main/examples/fastapi_clean_architecture)
+that demonstrates Clean IoC at the composition and HTTP boundaries of a layered application.
 
 ```mermaid
 flowchart LR
@@ -56,7 +57,9 @@ app = FastAPI()
 install_fastapi(app, container)
 ```
 
-This is the only place that chooses concrete adapters and ownership. `build()` proves that the use case and its decorator are complete and compiles their runtime instructions. `install_fastapi()` owns the container lifespan, creates request scopes, and validates the route's `Resolve(CreateOrder)` selection before FastAPI accepts traffic.
+This is the only module that selects concrete adapters and lifespans. `build()` validates the use case and decorator
+dependencies, then compiles their activation instructions. `install_fastapi()` owns the container lifespan, creates
+request scopes, and validates the route's `Resolve(CreateOrder)` selection during application startup.
 
 ## Request boundary
 

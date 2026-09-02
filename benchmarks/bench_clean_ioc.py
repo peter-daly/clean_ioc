@@ -161,6 +161,7 @@ def changed_tooling_manifest() -> GraphManifest:
 runtime = Case(
     name="compiled-runtime",
     tags=["core", "runtime"],
+    min_iterations=20_000,
     setup_timing="exclude",
     teardown_timing="exclude",
 )
@@ -204,6 +205,7 @@ def resolve_request_slot_plan(request_scope: Scope) -> RequestHandler:
 scaling = Case(
     name="compiled-runtime-scaling",
     tags=["core", "runtime", "scaling"],
+    min_iterations=20_000,
     setup_timing="exclude",
     teardown_timing="exclude",
 )
@@ -219,6 +221,7 @@ def resolve_transient_chain(scaled_transient_containers: dict[int, tuple[Contain
 build = Case(
     name="compiled-build",
     tags=["core", "build"],
+    min_iterations=20_000,
     setup_timing="exclude",
     teardown_timing="exclude",
 )
@@ -253,6 +256,7 @@ def build_open_generic_factory_container() -> Container:
 tooling = Case(
     name="compiler-tooling",
     tags=["core", "tooling"],
+    min_iterations=20_000,
     setup_timing="exclude",
     teardown_timing="exclude",
 )
@@ -281,6 +285,7 @@ allocations = Case(
     name="compiled-allocations",
     tags=["core", "memory"],
     metric_type="memory",
+    min_iterations=20_000,
     setup_timing="exclude",
     teardown_timing="exclude",
 )

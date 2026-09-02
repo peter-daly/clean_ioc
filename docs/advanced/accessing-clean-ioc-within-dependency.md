@@ -1,6 +1,7 @@
-# Accessing Clean IoC inside a dependency
+# Runtime container access
 
-Prefer explicit constructor dependencies. When a component truly makes a runtime selection, inject `ResolutionContext`:
+Constructor injection is the default. A component that selects among compiled roots at runtime can inject
+`ResolutionContext`:
 
 ```python
 import clean_ioc.component_filters as cf
@@ -17,7 +18,7 @@ class ClientSelector:
 
 The selected plans were compiled during `build()`. This API does not bring back runtime graph discovery.
 
-## Creating a nested scope
+## Nested scopes
 
 Framework infrastructure may inject `Scope` to create a nested cache boundary:
 
@@ -34,6 +35,6 @@ class BatchRunner:
             return batch_scope.resolve(BatchHandler).run()
 ```
 
-## What is intentionally unavailable
+## Composition restrictions
 
 Runtime dependencies cannot register components, patch components, apply bundles, or create a `ScopeBuilder`. Composition belongs at an explicit application boundary, not inside activation.

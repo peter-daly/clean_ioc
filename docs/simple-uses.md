@@ -1,6 +1,7 @@
-# Simple uses
+# Registration patterns
 
-All composition happens on `ContainerBuilder`; all resolution happens after `build()`.
+Registration and other composition operations use `ContainerBuilder`. Resolution begins after `build()` returns an
+immutable `Container`.
 
 ```python
 from clean_ioc import ContainerBuilder

@@ -1,14 +1,15 @@
 ---
-description: Decide when Clean IoC is the right Python dependency-injection approach for Clean Architecture, FastAPI, CQRS, and resource-heavy applications.
+description: Design scope, alternatives, and applicability of Clean IoC's compiled dependency-injection model.
 ---
 
-# Why Clean IoC?
+# Design rationale
 
-Dependency injection is not automatically an improvement. For a small script with three stable objects, direct construction is usually clearer. A container earns its place when the composition root is becoming a system of its own.
+Clean IoC is intended for composition roots where dependency selection, ownership, and validation are difficult to
+maintain with direct construction alone. Direct construction remains preferable for small, stable object graphs.
 
-## The problem it is designed for
+## Applicability
 
-Clean IoC fits applications where several of these are true:
+The compiled container model is relevant when several of the following conditions apply:
 
 - domain and application code must remain independent of FastAPI, a worker framework, or a CLI;
 - implementations differ by environment, tenant, consuming service, name, or tag;
@@ -16,61 +17,65 @@ Clean IoC fits applications where several of these are true:
 - handler or event-consumer families use closed generic types;
 - logging, metrics, retries, or authorization should wrap services consistently;
 - async factories and cleanup need to compose with synchronous application objects;
-- reviewers need to understand and verify a deep graph without running it.
+- dependency graphs need to be inspected or validated without activating application code.
 
-The container is configured once at the application boundary. Ordinary code continues to use ordinary constructors.
+Container configuration remains at the application boundary. Application and domain classes continue to use ordinary
+constructors.
 
-## Compare the approaches
+## Alternatives
 
 | Approach | Strength | Trade-off |
 | --- | --- | --- |
-| Manual wiring | Maximum explicitness and no library | Composition becomes repetitive as graphs and variants grow |
-| Service dictionary / locator | Very small implementation | Dependencies become hidden runtime lookups throughout application code |
-| Framework-native injection | Excellent at the framework boundary | Domain services can become coupled to framework concepts |
-| Clean IoC | Typed, portable plans with explicit ownership and build-time compilation | Adds a composition layer that small applications may not need |
+| Manual wiring | Explicit call graph and no container dependency | Ownership and variant selection remain application code |
+| Service dictionary / locator | Minimal infrastructure | Dependencies become runtime lookups and are not visible in constructor signatures |
+| Framework-native injection | Integrated with the framework request model | Application services may depend on framework-specific concepts |
+| Clean IoC | Compiled component plans with explicit ownership | Requires a separate composition root and build step |
 
-Clean IoC does not try to replace a framework's transport features. In FastAPI, for example, request parsing and transport-level dependencies remain FastAPI concerns; Clean IoC constructs portable application services inside a request scope.
+Clean IoC does not replace transport or framework services. With FastAPI, request parsing and transport-level
+dependencies remain FastAPI concerns. Clean IoC constructs application services within the request scope.
 
-## Why not just wire objects manually?
+## Manual composition
 
-Manual wiring remains a good default. The inflection point comes when ownership and selection matter as much as construction:
+Manual construction is explicit and requires no additional abstraction:
 
 ```python
-# This is easy...
 service = Checkout(SqlOrderRepository(session), StripeGateway(client))
-
-# ...until the real composition root also owns request sessions, client pools,
-# tenant-specific gateways, handler collections, decorators, and cleanup.
 ```
 
-Clean IoC centralizes those rules and compiles them before activation. The gain is not saving constructor lines; it is making architecture-level wiring consistent, inspectable, and cheap to execute repeatedly.
+As the graph grows, the composition root may also need to coordinate request sessions, client pools, tenant-specific
+implementations, handler collections, decorators, and cleanup. Clean IoC represents these rules as component metadata
+and compiles them before activation. It is intended to manage composition policy, not to reduce the number of constructor
+calls in source code.
 
-## Why type-driven registration?
+## Type-driven composition
 
-Python type hints already describe the dependency contract. Clean IoC uses them without requiring application classes to inherit from library types or carry injection decorators.
+Python type annotations describe constructor and factory dependencies. Clean IoC uses those annotations without
+requiring application classes to inherit from library types or carry injection decorators.
 
-That creates a useful boundary:
+Responsibility is divided as follows:
 
 - the application owns interfaces and behavior;
 - infrastructure owns implementations;
 - the composition root owns selection and lifetime;
-- Clean IoC owns component-plan compilation, activation, and cleanup.
+- Clean IoC compiles component plans and manages activation and cleanup.
 
-## The confidence loop
+## Composition lifecycle
 
 ```mermaid
 flowchart LR
-    register["Register at composition root"]
-    validate["Build without activating"]
-    explain["Review static components"]
-    resolve["Resolve at the boundary"]
-    cleanup["Release at the owning scope"]
-    register --> validate --> explain --> resolve --> cleanup
+    declare["Declare composition"]
+    compile["Compile and validate"]
+    inspect["Inspect report or manifest"]
+    resolve["Execute compiled plan"]
+    cleanup["Close the owning scope"]
+    declare --> compile --> inspect --> resolve --> cleanup
 ```
 
-That loop is the central reason to choose Clean IoC over a runtime registry: the builder fails fast when static rules are unsafe and the container executes the frozen result without rebuilding dependency graphs.
+The builder validates all visible roots and produces immutable activation plans. The runtime container executes those
+plans and maintains only lifespan caches and cleanup state. Registration discovery and graph construction do not occur
+during resolution.
 
-## When not to use it
+## When direct composition is preferable
 
 Prefer direct construction when:
 
@@ -80,4 +85,5 @@ Prefer direct construction when:
 - runtime selection, generic discovery, and decorators are unnecessary;
 - adding registration would obscure rather than clarify the program.
 
-A good composition root should make an application's architecture easier to see. If the container configuration is harder to understand than direct constructors, simplify it.
+The composition root should remain easier to inspect than the equivalent direct construction code. If it does not,
+reduce the registration model or use direct construction.

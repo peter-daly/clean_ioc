@@ -1,31 +1,32 @@
 # Clean IoC
 
-**Compile your Python dependency graph once. Resolve it without rebuilding the graph.**
-
 [![CI](https://github.com/peter-daly/clean_ioc/actions/workflows/ci.yml/badge.svg)](https://github.com/peter-daly/clean_ioc/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/clean-ioc.svg)](https://pypi.org/project/clean-ioc/)
 [![Python](https://img.shields.io/pypi/pyversions/clean-ioc.svg)](https://pypi.org/project/clean-ioc/)
 [![License](https://img.shields.io/pypi/l/clean-ioc.svg)](https://github.com/peter-daly/clean_ioc/blob/main/LICENSE)
 
-Clean IoC is a typed dependency-injection container for Python 3.10+. Version 2 separates mutable composition from immutable runtime execution:
+Clean IoC is a typed dependency-injection container for Python 3.10+. Version 2 separates mutable composition from
+immutable runtime execution:
 
 1. Register components with `ContainerBuilder`.
 2. Call `build()` to validate and compile every visible dependency plan.
 3. Resolve from the immutable `Container` or a lightweight `Scope`.
 
-Constructors, factories, generators, and parameter value providers do not run during the build. At runtime Clean IoC executes frozen instructions, caches plain instances, and does not allocate a dependency graph.
+Constructors, factories, generators, and parameter value providers do not run during the build. At runtime, Clean IoC
+executes the compiled activation instructions and maintains lifespan caches and cleanup state. It does not rebuild the
+dependency graph during resolution.
 
-> **2.0 alpha:** the compiled API is intentionally experimental while its breaking surface and performance are hardened. V1 is not shipped as a parallel public API.
+> **2.0 alpha:** the compiled API remains subject to breaking changes while the V2 surface is finalized. V1 is not
+> shipped as a parallel public API.
 
 ```bash
 pip install clean_ioc
-# With FastAPI support:
-pip install "clean_ioc[fastapi]"
+pip install "clean_ioc[fastapi]"  # optional FastAPI integration
 ```
 
-## See it in 30 seconds
+## Minimal example
 
-Your application code uses ordinary Python types:
+Application code uses ordinary Python types:
 
 ```python
 from typing import Protocol
@@ -54,17 +55,19 @@ builder = ContainerBuilder()
 builder.register(PaymentGateway, StripeGateway, lifespan="singleton")
 builder.register(Checkout)
 
-container = builder.build()  # validates and compiles; user code has not run
+container = builder.build()
 checkout = container.resolve(Checkout)
 
 assert checkout.place_order(2500) == "charged:2500"
 ```
 
-No application base classes. No decorators on domain code. No global container. No generated proxies.
+Application types do not require Clean IoC base classes or decorators. The container remains at the composition root,
+and activation returns ordinary Python objects rather than generated proxies.
 
-## Why compile the container?
+## Build and runtime model
 
-Traditional runtime DI repeatedly discovers registrations, evaluates contextual filters, and constructs bookkeeping nodes while resolving objects. Clean IoC moves that work to an explicit application boundary.
+`ContainerBuilder.build()` performs registration discovery, contextual selection, structural validation, and activation-plan
+compilation at an explicit application boundary.
 
 | Build time | Runtime |
 | --- | --- |
@@ -74,11 +77,14 @@ Traditional runtime DI repeatedly discovers registrations, evaluates contextual 
 | Detect missing, circular, and captive dependencies | Coordinate concurrent scoped/singleton builds |
 | Freeze decorators, pre-configurations, and fallback edges | Track only activation and teardown state |
 
-`build()` fails before startup completes if a graph is incomplete, a singleton captures scoped state, or a singleton/scoped component captures `once_per_graph` state. The lifespan checks are transitive, so a transient wrapper cannot hide a captive dependency. A failed build leaves the builder reusable, so composition can be repaired and built again. A successful builder is single-use.
+`build()` raises `ContainerBuildError` if a graph is incomplete, a singleton captures scoped state, or a singleton or
+scoped component captures `once_per_graph` state. Lifespan checks are transitive, including dependencies reached through
+transient components. A failed build leaves the builder reusable. A builder becomes immutable and single-use after a
+successful build.
 
-## Make the object graph reviewable
+## Graph inspection
 
-Mark the requests that start your application and turn the compiled graph into a CI-verifiable artifact:
+Mark application entry points to focus graph output and reachability analysis:
 
 ```python
 builder.mark_entrypoint(Checkout)
@@ -95,11 +101,15 @@ clean-ioc graph my_app.composition:application_builder --format json -o dependen
 clean-ioc diff my_app.composition:application_builder dependency-graph.json
 ```
 
-Build errors are aggregated across independent roots. Stable JSON manifests omit configured values and runtime identities, so wiring changes can be reviewed without serializing secrets. Entry points focus the default graph and warn about unreachable registrations; every visible root is still compiled, validated, and resolvable.
+Build errors are aggregated across independent roots. Deterministic JSON manifests omit configured values and runtime
+identities, allowing wiring changes to be reviewed without serializing secrets. Entry points focus the default graph and
+enable warnings for unreachable registrations; every visible root is still compiled, validated, and resolvable.
 
-## One static model: `Component`
+## Component model
 
-Registration metadata and dependency-graph nodes are replaced by one immutable, plan-backed model. Every `Component` exposes its service, implementation, lifespan, name, tags, generic mapping, parent, dependencies, decorators, and pre-configurations.
+`Component` is the immutable, plan-backed model used for registrations, dependency occurrences, filters, and graph
+inspection. It exposes the service, implementation, lifespan, name, tags, generic mapping, parent, dependencies,
+decorators, and pre-configurations.
 
 ```python
 import clean_ioc.component_filters as cf
@@ -112,7 +122,8 @@ component_id = builder.get_component_id(
 )
 ```
 
-Use the same filters for root selection, dependency selection, contextual registration, decorators, and pre-configuration:
+The same filter API applies to root selection, dependency selection, contextual registration, decorators, and
+pre-configuration:
 
 ```python
 builder.register(
@@ -124,13 +135,17 @@ builder.register(
 gateway = container.resolve(PaymentGateway, filter=cf.with_name("stripe"))
 ```
 
-Composition, dependency, decorator, and pre-configuration filters run while the container or scope is built. Their decisions are frozen and are not repeated during resolution. A filter passed directly to `resolve(...)` only selects among those already-compiled root plans.
+Composition, dependency, decorator, and pre-configuration filters run while the container or scope is built. Their
+decisions are frozen and are not repeated during resolution. A filter passed directly to `resolve(...)` selects among
+already-compiled root plans.
 
-Pre-configurations are compiled as lazy singleton initializers. Their dependency paths are validated at build, shared targets run one definition once in declaration order, and concurrent first resolutions join the same attempt. Optional failures can be logged and suppressed with `continue_on_failure=True`; other failures remain retryable.
+Pre-configurations are compiled as lazy singleton initializers. Their dependency paths are validated during build. Shared
+targets run one definition in declaration order, and concurrent first resolutions join the same attempt. Optional
+failures can be logged and suppressed with `continue_on_failure=True`; other failures remain retryable.
 
-## Scopes, request values, and experimental overlays
+## Scopes, provided values, and overlays
 
-Creating an ordinary scope is cheap and never compiles:
+An ordinary scope reuses the compiled plan:
 
 ```python
 builder.declare_scope_slot(RequestContext)
@@ -142,9 +157,11 @@ with container.new_scope() as scope:
     handler = scope.resolve(RequestHandler)
 ```
 
-Slots make late request/framework values explicit. Only declared slots may be provided; duplicate provisions are rejected, and provisions lock when resolution starts. Nested scopes inherit provided values and may override them before their first resolve.
+Slots represent values that are unavailable during root compilation, such as request or framework context. Only declared
+slots may be provided. Duplicate provisions are rejected, and provisions lock when resolution starts. Nested scopes
+inherit provided values and may override them before their first resolve.
 
-When a child genuinely needs different composition, use `ScopeBuilder` and pay the compile cost explicitly:
+Use `ScopeBuilder` when a child scope requires different registrations or decorators:
 
 ```python
 tenant_builder = container.new_scope_builder()
@@ -154,9 +171,11 @@ with tenant_builder.build() as tenant_scope:
     tenant_scope.resolve(Checkout)
 ```
 
-Singletons introduced by a `ScopeBuilder` belong to its built scope and descendants. Existing root singletons remain anchored to the root container and cannot be rewired by overlay dependencies or decorators. A built overlay also starts a fresh scoped cache boundary. It is finalized when that built scope exits, without mutating the root container.
+Singletons introduced by a `ScopeBuilder` belong to its built scope and descendants. Existing root singletons remain
+anchored to the root container and cannot be rewired by overlay dependencies or decorators. A built overlay starts a
+new scoped cache boundary and is finalized when that scope exits. The root container is not mutated.
 
-## Lifespans that match ownership
+## Lifespans and ownership
 
 | Lifespan | Reuse boundary | Typical ownership |
 | --- | --- | --- |
@@ -169,7 +188,10 @@ Pass these as plain strings to `lifespan=`. The exported `Lifespan` name is a `L
 
 Generator factories, context managers, and their async equivalents are finalized by their cache owner.
 
-## FastAPI without framework-coupled services
+## FastAPI integration
+
+FastAPI remains responsible for HTTP parameters, validation, and security dependencies. `Resolve` is the route-level
+equivalent of `Depends` for an application entry point compiled by Clean IoC:
 
 ```python
 from fastapi import FastAPI
@@ -192,9 +214,23 @@ async def place_order(command: OrderRequest, handler: PlaceOrder = Resolve(Place
     return await handler(command)
 ```
 
-The integration creates an ordinary child scope for the complete HTTP request or WebSocket connection. Streaming responses, background work, and cleanup remain inside that boundary. FastAPI route selections are checked against the compiled container during application startup.
+Native FastAPI supports nested dependency chains and caches repeated dependency callables within a request. For
+framework-independent application classes, those chains require provider functions at each layer. Clean IoC derives the
+application graph from ordinary constructor annotations and keeps only `Resolve(EntryPoint)` at the route boundary.
 
-## Built for demanding object graphs
+| Requirement | FastAPI with Clean IoC |
+| --- | --- |
+| Route-level application dependency | `service: Service = Resolve(Service)` |
+| Request-owned component | `lifespan="scoped"` |
+| Application-owned component | `lifespan="singleton"` |
+| Shared value within one resolution | `lifespan="once_per_graph"` |
+| Invalid component or lifespan graph | `ContainerBuildError` before activation |
+
+The integration creates an ordinary child scope for each complete HTTP request or WebSocket connection. Streaming
+responses, background work, and cleanup remain inside that boundary. FastAPI route selections are checked against the
+compiled container during application startup.
+
+## Composition features
 
 - Sync and async factories, generators, context managers, and deterministic cleanup.
 - Named, tagged, parent-aware, and descendant-aware component filters.
@@ -203,8 +239,6 @@ The integration creates an ordinary child scope for the complete HTTP request or
 - Coordinated first activation across threads and event loops.
 - Bundles targeting one shared `ComponentBuilder` composition protocol.
 - BenchBro experiments separating build cost, runtime latency, and Python allocations.
-
-Clean IoC is a particularly good fit for Clean Architecture, hexagonal applications, CQRS handlers, message consumers, CLIs, and FastAPI services where dependency ownership matters beyond one function call.
 
 ## Project links
 
@@ -216,5 +250,3 @@ Clean IoC is a particularly good fit for Clean Architecture, hexagonal applicati
 - [Benchmarks](https://peter-daly.github.io/clean_ioc/benchmarks/)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGES.rst)
-
-If this model fits a problem other Python DI containers make awkward, consider starring the repository. It helps the right niche find it.

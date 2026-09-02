@@ -75,7 +75,8 @@ builder.register(BatchSender, factory=use_component(SenderImpl))
 
 `use_component()` and `use_component_async()` attach their target and filter as compiler metadata. The referenced root therefore appears as a dependency edge in the compiled graph and participates in missing-component, circular-dependency, captive-lifespan, and sync/async validation. Runtime use still resolves through the current context to preserve `once_per_graph` identity; it does not trigger registration discovery or graph compilation.
 
-Direct calls made through an injected `ResolutionContext` remain deliberately dynamic because the compiler cannot inspect arbitrary function bodies. Prefer the helpers when the target is known during composition and should be reviewable in the graph.
+Direct calls made through an injected `ResolutionContext` remain dynamic because the compiler cannot inspect arbitrary
+function bodies. Use the helpers when the target is known during composition and should appear in the compiled graph.
 
 ## Runtime value providers
 

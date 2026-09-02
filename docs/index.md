@@ -2,15 +2,17 @@
 description: Typed Python dependency injection with build-time component compilation, immutable runtime plans, explicit lifespans, generics, decorators, and FastAPI scopes.
 ---
 
-# Compile the graph once. Resolve the plan.
+# Clean IoC 2
 
-Clean IoC keeps application code unaware of the container while making dependency composition explicit and inspectable. Version 2 separates the mutable `ContainerBuilder` from the immutable runtime `Container`.
+Clean IoC is a typed dependency-injection container for Python. Version 2 separates mutable composition in
+`ContainerBuilder` from immutable runtime execution in `Container`. Application classes use standard constructors and
+do not need to inherit from Clean IoC types or use injection decorators.
 
 ```bash
 pip install clean_ioc
 ```
 
-## A complete first plan
+## Minimal container
 
 ```python
 from typing import Protocol
@@ -43,21 +45,23 @@ with container.new_scope() as scope:
     assert service.repository.get_name("123") == "Ada"
 ```
 
-`build()` specializes types, constructs occurrence-specific `Component` trees, evaluates filters, checks cycles and captive lifespans, and freezes activation instructions. It does not invoke user constructors, factories, generators, context managers, or value providers.
+`build()` specializes types, constructs occurrence-specific `Component` trees, evaluates filters, checks cycles and
+captive lifespans, and freezes activation instructions. It does not invoke user constructors, factories, generators,
+context managers, or value providers.
 
-Runtime resolution executes the frozen plan. It does not rediscover registrations or allocate graph nodes.
+Runtime resolution executes the compiled plan without rediscovering registrations or allocating graph nodes.
 
-## Composition and runtime are different jobs
+## Composition and runtime APIs
 
 | API | Responsibility |
 | --- | --- |
-| `ContainerBuilder` | Register, decorate, configure, declare slots, compile root plan |
+| `ContainerBuilder` | Register, decorate, configure, declare slots, and compile the root plan |
 | `Container` | Resolve from the immutable root plan and own root singletons |
-| `ScopeBuilder` | Compile an experimental child overlay without mutating its parent |
+| `ScopeBuilder` | Compile a child overlay without mutating its parent |
 | `Scope` | Resolve, cache scoped values, provide declared slots, and run cleanup |
 | `Component` | Read-only static occurrence model used by every filter and query |
 
-## Build failures happen before activation
+## Build-time validation
 
 ```python
 builder = ContainerBuilder()
@@ -66,9 +70,10 @@ builder.register(UserService)  # UserRepository is missing
 container = builder.build()  # raises ContainerBuildError
 ```
 
-A failed build leaves the builder reusable. A successful build makes the builder immutable and single-use.
+`build()` raises `ContainerBuildError` with a structured report for invalid plans. A failed build leaves the builder
+reusable. After a successful build, the builder is immutable and cannot be built again.
 
-## Built for application architecture
+## Core capabilities
 
 | Capability | Use it for |
 | --- | --- |
@@ -78,11 +83,11 @@ A failed build leaves the builder reusable. A successful build makes the builder
 | Typed decorator chains | Logging, metrics, retries, caching, authorization |
 | Generic discovery | CQRS handlers, event consumers, validators, pipelines |
 | Declared scope slots | FastAPI requests, responses, tenant IDs, tracing context |
-| Compiled scope overlays | Experimental tenant/test/plugin composition |
+| Compiled scope overlays | Tenant, test, and plugin-specific composition |
 
-## Where to go next
+## Documentation
 
-- [Simple uses](simple-uses.md) — registration forms and the build boundary
+- [Registration patterns](simple-uses.md) — registration forms and the build boundary
 - [Lifespans](lifespans.md) and [scopes](scopes.md) — ownership, slots, and overlays
 - [Filtering](advanced/filtering.md) — the unified `Component` model
 - [Factories](factories.md) — sync, async, generators, and context managers

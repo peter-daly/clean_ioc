@@ -1,17 +1,19 @@
 ---
-description: Reproducible BenchBro experiments separating Clean IoC build cost, compiled runtime latency, and Python allocations.
+description: BenchBro experiments for Clean IoC build cost, compiled runtime latency, integrations, and Python allocations.
 ---
 
 # Benchmarks
 
-The compiled model deliberately moves work from resolution to `build()`. The benchmark suite therefore measures four boundaries separately:
+The compiled model moves composition work from resolution to `build()`. The benchmark suite measures five boundaries
+separately:
 
 - container and scope-overlay compilation;
 - resolution and ordinary scope creation after compilation;
 - semantic manifest creation and manifest diffing after compilation;
-- Python allocations through `tracemalloc`.
+- Python allocations through `tracemalloc`;
+- end-to-end FastAPI requests using native `Depends` and Clean IoC request scopes.
 
-## Local directional snapshot
+## Reference environment results
 
 Measured with BenchBro 1.0 on 29 August 2026 using CPython 3.14.4, macOS 15.7.9, and Apple arm64:
 
@@ -34,9 +36,12 @@ Measured with BenchBro 1.0 on 29 August 2026 using CPython 3.14.4, macOS 15.7.9,
 | Resolve five-component allocation peak | 3,959.7 B | 17.98% | Noisy |
 | Create-scope allocation peak | 2,646.2 B | 0.56% | Stable |
 
-“Noisy” means BenchBro found an IQR outlier or exceeded the configured CV threshold. The entry-point build is about 5.3% above the otherwise equivalent build in this run. Treat these results as evidence about this machine and implementation—not a package guarantee or CI threshold.
+“Noisy” means BenchBro found an IQR outlier or exceeded the configured CV threshold. In this run, the entry-point build
+median was 5.3% above the otherwise equivalent build. These values describe one environment and run; they are not package
+guarantees or CI thresholds.
 
-The allocation case measures Python allocations visible to `tracemalloc`, not whole-process resident memory. Allocation snapshots remain directional and are not evidence of whole-process memory reduction.
+The allocation case measures Python allocations visible to `tracemalloc`, not whole-process resident memory. It cannot
+be used to infer process-level memory consumption.
 
 ## Measurement boundaries
 
@@ -49,11 +54,16 @@ Build benchmarks deliberately include:
 - component-plan compilation;
 - immutable runtime creation.
 
-This keeps startup cost visible instead of hiding it in setup.
+The reported build measurements therefore include application startup compilation cost.
 
 The `compiler-tooling` case prepares compiled graphs and manifests as session systems. Its measured functions isolate three read-only operations: creating an uncached semantic manifest, diffing identical manifests, and diffing a single wiring change. Container composition and graph compilation remain outside this tooling boundary.
 
-## Reproduce it
+The `fastapi-five-layer-request` case prepares two FastAPI applications and persistent `TestClient` instances outside the
+measured interval. Each measured invocation performs one request through five native cached `Depends` providers or five
+Clean IoC `once_per_graph` components. Request dispatch, dependency resolution, middleware, response serialization, and
+garbage collection remain inside the measured interval.
+
+## Running the suite
 
 ```bash
 uv sync
@@ -62,7 +72,9 @@ uv run benchbro run --no-compare
 uv run benchbro run
 ```
 
-The first pass creates a machine-local baseline. The unchanged second pass establishes ordinary variance. Inspect sample count, confidence interval, relative margin, CV, outliers, and the noisy flag before interpreting a change.
+The first pass creates a machine-local baseline. The unchanged second pass records normal variation for the current
+environment. Review sample count, confidence interval, relative margin, CV, outliers, and the noisy flag before
+interpreting a difference.
 
 The checked-in `benchbro.toml` owns sampling policy and writes:
 

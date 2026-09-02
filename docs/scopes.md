@@ -57,7 +57,7 @@ with container.new_scope() as scope:
     handler = scope.resolve(Handler)
 ```
 
-Slot rules are deliberately strict:
+The following slot invariants apply:
 
 - only `(type, name)` pairs declared by a builder may be provided;
 - one scope cannot provide the same slot twice;
@@ -68,7 +68,7 @@ These constraints keep the plan static while still supporting FastAPI requests, 
 
 ## ScopeBuilder overlays
 
-If a child needs different registrations—not just values—make the extra build cost explicit:
+A child scope with different registrations requires a `ScopeBuilder` and a separate build:
 
 ```python
 class PaymentGateway:
@@ -98,11 +98,15 @@ assert isinstance(container.resolve(PaymentGateway), ProductionGateway)
 
 `new_scope_builder()` is available on both `Container` and `Scope`. It recompiles the visible overlay roots for correctness while reusing frozen parent plans where ownership requires it.
 
-An overlay singleton belongs to the built scope and its descendants. It is finalized when that built scope exits. An inherited root singleton remains anchored to the root container's frozen activation plan and owner, so an overlay registration or decorator cannot silently rewire it.
+An overlay singleton belongs to the built scope and its descendants. It is finalized when that built scope exits. An
+inherited root singleton remains anchored to the root container's frozen activation plan and owner; overlay registrations
+and decorators do not alter that plan.
 
-A built overlay begins a fresh scoped cache boundary. This lets an inherited scoped component use overlay dependencies without reusing an instance created in the parent. Ordinary nested `new_scope()` calls retain their existing inheritance semantics.
+A built overlay begins a new scoped cache boundary. An inherited scoped component can therefore use overlay dependencies
+without reusing an instance created in the parent. Ordinary nested `new_scope()` calls retain their existing inheritance
+semantics.
 
-## Which API should I use?
+## Scope API selection
 
 | Need | API |
 | --- | --- |

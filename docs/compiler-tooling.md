@@ -4,7 +4,8 @@ description: Inspect, validate, render, and diff Clean IoC's compiled dependency
 
 # Compiler tooling
 
-Clean IoC can treat an application's dependency graph as a build artifact. Mark the public requests that start your application, build once, and then inspect the exact component plans that runtime resolution will execute.
+Clean IoC exposes the compiled dependency graph as a build artifact. Mark application entry points to focus the default
+tooling view, then inspect the component plans used by runtime resolution.
 
 ```python
 from clean_ioc import ContainerBuilder
@@ -52,7 +53,9 @@ Current issue codes include:
 
 ## Render the compiled graph
 
-The graph includes registrations plus the activation edges that are easy to miss in a registry dump: decorators, pre-configurations, default and configured values, runtime contexts, value providers, and declared scope slots. Decorator pipelines render outside-to-inside with their z-index positions and metadata.
+The graph includes registrations and activation edges for decorators, pre-configurations, default and configured values,
+runtime contexts, value providers, and declared scope slots. Decorator pipelines render outside-to-inside with their
+positions and metadata.
 
 ```python
 text = container.graph.to_text()
@@ -105,7 +108,7 @@ clean-ioc diff my_app.composition:application_builder dependency-graph.json
 
 `diff` exits `0` when the graph is unchanged and `1` when it changed. Add `--all` to `graph` or `diff` when the baseline should include every root rather than the entry-point view. Baselines are never updated implicitly.
 
-One minimal CI policy is:
+Example CI policy:
 
 ```yaml
 - name: Validate dependency graph
@@ -114,4 +117,4 @@ One minimal CI policy is:
   run: clean-ioc diff my_app.composition:application_builder dependency-graph.json
 ```
 
-Update the checked-in manifest deliberately when a reviewed composition change is expected.
+Update the checked-in manifest only after reviewing the corresponding composition change.

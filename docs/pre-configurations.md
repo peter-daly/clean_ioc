@@ -68,4 +68,6 @@ Generator and context-manager initializers are cleaned up by the layer that decl
 
 The default propagates an initializer failure to every caller waiting for that attempt. Its state remains incomplete, so a later resolution can retry.
 
-`continue_on_failure=True` is for deliberately optional setup. An exception raised by the configuration function is logged, activation continues, and the initializer is considered complete; it is not retried on every resolution. Dependency-resolution failures still propagate because the configuration function never ran.
+`continue_on_failure=True` is reserved for optional setup. An exception raised by the configuration function is logged,
+activation continues, and the initializer is considered complete; it is not retried on every resolution.
+Dependency-resolution failures still propagate because the configuration function never ran.
