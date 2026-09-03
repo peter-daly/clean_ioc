@@ -1,6 +1,6 @@
 [project]
 name = "clean_ioc"
-version = "2.0.0a1"
+version = "2.0.0b1"
 description = "Typed Python dependency injection with build-time plan compilation and immutable runtimes"
 authors = [{ name = "Peter Daly" }]
 requires-python = ">=3.10,<4"
@@ -22,7 +22,7 @@ keywords = [
     "typing",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",

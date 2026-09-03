@@ -17,7 +17,7 @@ policies do run at build time because their concrete results become part of the 
 executes the compiled activation instructions and maintains lifespan caches and cleanup state. It does not rebuild the
 dependency graph during resolution.
 
-> **2.0 alpha:** the compiled API remains subject to breaking changes while the V2 surface is finalized. V1 is not
+> **2.0 beta:** the compiled API remains subject to breaking changes while the V2 surface is finalized. V1 is not
 > shipped as a parallel public API.
 
 ```bash

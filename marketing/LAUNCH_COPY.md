@@ -1,4 +1,4 @@
-# Clean IoC 2 alpha launch copy
+# Clean IoC 2 beta launch copy
 
 ## Technical community post
 
@@ -10,7 +10,7 @@ Clean IoC 2: compile a Python dependency graph once, then resolve without rebuil
 
 I maintain a typed dependency-injection container for Python. Its old runtime model treated every resolve as a fresh graph-building exercise, even when the registrations had not changed.
 
-The 2.0 alpha splits that into two explicit jobs:
+The 2.0 beta splits that into two explicit jobs:
 
 ```python
 builder = ContainerBuilder()
@@ -31,13 +31,13 @@ The other experiment is child composition. `new_scope()` remains cheap and reuse
 
 Registration metadata and graph nodes have also become one read-only `Component` model. The same `component_filters` predicates now drive root selection, dependency selection, parent-aware registration, decorators, and pre-configuration.
 
-This is a major-version alpha because the build boundary changes the programming model. I would especially value feedback from people with deep FastAPI, CQRS, plugin, or multi-tenant object graphs: which composition patterns cannot be frozen at startup?
+This is a major-version beta because the build boundary changes the programming model. I would especially value feedback from people with deep FastAPI, CQRS, plugin, or multi-tenant object graphs: which composition patterns cannot be frozen at startup?
 
 Repository: https://github.com/peter-daly/clean_ioc
 
 ## Short social post
 
-Clean IoC 2 alpha compiles Python DI plans before startup:
+Clean IoC 2 beta compiles Python DI plans before startup:
 
 `ContainerBuilder` → `build()` → immutable `Container`
 

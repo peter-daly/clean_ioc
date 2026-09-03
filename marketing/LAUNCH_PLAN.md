@@ -1,4 +1,4 @@
-# Clean IoC 2 alpha launch plan
+# Clean IoC 2 beta launch plan
 
 ## Positioning
 
@@ -43,7 +43,7 @@ scope.resolve(RequestHandler)
 
 The arc is “prove once → execute frozen plan → keep requests cheap.”
 
-## Alpha sequence
+## Beta sequence
 
 1. Publish an architecture note before a package release; explicitly label APIs experimental.
 2. Ask three maintainers with generic/contextual graphs to port one composition root.
@@ -65,5 +65,5 @@ The arc is “prove once → execute frozen plan → keep requests cheap.”
 - source locations and path-rich build diagnostics;
 - cache safe activation templates across scope-overlay builds;
 - formalize which provider behaviors remain runtime-only;
-- replace the remaining private legacy compiler machinery after the alpha API settles;
+- replace the remaining private legacy compiler machinery after the beta API settles;
 - serialize static components for tooling without serializing callables.

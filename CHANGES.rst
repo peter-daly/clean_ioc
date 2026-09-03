@@ -1,4 +1,4 @@
-2.0.0a1
+2.0.0b1
 -------
     Split mutable composition into ``ContainerBuilder`` and ``ScopeBuilder`` and
     make ``Container`` and ``Scope`` immutable runtime types.

@@ -2,7 +2,7 @@
 
 This document records the V2 architecture and implementation decisions made so far. It is intended for agents and maintainers extending V2 without accidentally restoring runtime graph construction, weakening build invariants, or breaking scope ownership.
 
-V2 is currently published in project metadata as `2.0.0a1`. Its public surface remains experimental.
+V2 is currently published in project metadata as `2.0.0b1`. Its public surface remains experimental.
 
 ## Core model
 
