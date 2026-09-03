@@ -12,7 +12,8 @@ immutable runtime execution:
 2. Call `build()` to validate and compile every visible dependency plan.
 3. Resolve from the immutable `Container` or a lightweight `Scope`.
 
-Constructors, factories, generators, and parameter value providers do not run during the build. At runtime, Clean IoC
+Constructors, factories, generators, and context managers do not run during the build. Explicit `derive(...)` argument
+policies do run at build time because their concrete results become part of the frozen plan. At runtime, Clean IoC
 executes the compiled activation instructions and maintains lifespan caches and cleanup state. It does not rebuild the
 dependency graph during resolution.
 
@@ -73,9 +74,21 @@ compilation at an explicit application boundary.
 | --- | --- |
 | Specialize generic types | Select a frozen root plan |
 | Build occurrence-specific component trees | Execute precompiled activation steps |
-| Evaluate component and decorator filters | Cache plain instances by lifespan |
+| Evaluate filters and explicit `build_args` | Cache plain instances by lifespan |
 | Detect missing, circular, and captive dependencies | Coordinate concurrent scoped/singleton builds |
-| Freeze decorators, pre-configurations, and fallback edges | Track only activation and teardown state |
+| Freeze decorators, pre-configurations, and argument policies | Track only activation and teardown state |
+
+Application-defined build arguments make environment-dependent composition explicit without turning those inputs into
+runtime services:
+
+```python
+container = builder.build(
+    build_args={"environment": "production", "mode": "live"},
+)
+```
+
+Derived argument policies and component filters can inspect the immutable mapping during compilation. The chosen wiring
+is frozen, while graph manifests and reports omit build-argument names and values.
 
 `build()` raises `ContainerBuildError` if a graph is incomplete, a singleton captures scoped state, or a singleton or
 scoped component captures `once_per_graph` state. Lifespan checks are transitive, including dependencies reached through
@@ -236,6 +249,7 @@ compiled container during application startup.
 - Named, tagged, parent-aware, and descendant-aware component filters.
 - Z-indexed decorators with stable IDs, builder patch/removal, owned metadata, and build-time validation.
 - Build-time generic discovery, generic factory specialization, open-generic fallback, and plan-driven decorator policies.
+- Immutable build inputs with explicit `build_arg(...)`, `generic_arg(...)`, and `inject()` argument policies.
 - Coordinated first activation across threads and event loops.
 - Bundles targeting one shared `ComponentBuilder` composition protocol.
 - BenchBro experiments separating build cost, runtime latency, and Python allocations.

@@ -1,20 +1,9 @@
 # Special dependency types
 
-Clean IoC 2 keeps the runtime special surface small: `DependencyContext`, `ResolutionContext`, `Scope`, and `Container`.
+Clean IoC 2 keeps the runtime special surface small: `ResolutionContext`, `Scope`, and `Container`.
 
-## `DependencyContext`
-
-A value provider receives static information about the parameter's compiled occurrence:
-
-```python
-from clean_ioc import DependencyContext
-
-
-def module_name(default, context: DependencyContext):
-    return context.parent.implementation.__module__
-```
-
-It exposes the parameter name, current component, service, implementation, static parent, and decorated component. It never exposes a runtime instance.
+`ParameterContext` is related but is not a runtime dependency. Clean IoC passes it only to an explicit `derive(...)`
+policy during `build()`. See [argument policies](arguments.md).
 
 ## `ResolutionContext`
 

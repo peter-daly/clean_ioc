@@ -6,10 +6,14 @@ from typing import Generic, TypeVar
 
 import clean_ioc.component_filters as cf
 from clean_ioc import (
+    INJECT,
     Component,
     ContainerBuilder,
     ContainerBuildError,
-    DependencySettings,
+    build_arg,
+    derive,
+    generic_arg,
+    inject,
 )
 
 
@@ -162,7 +166,7 @@ async def validate_async_factory() -> None:
         assert isinstance(await scope.resolve_async(Resource), Resource)  # noqa: S101
 
 
-def validate_value_provider_fallback() -> None:
+def validate_derived_injection() -> None:
     class Dependency:
         pass
 
@@ -170,17 +174,92 @@ def validate_value_provider_fallback() -> None:
         def __init__(self, dependency: Dependency):
             self.dependency = dependency
 
-    def provider(default, context):
+    def provider(context):
         assert context.component.service_type is Service  # noqa: S101
-        return default
+        return INJECT
 
     builder = ContainerBuilder()
     builder.register(Dependency)
     builder.register(
         Service,
-        dependency_config={"dependency": DependencySettings(value_factory=provider)},
+        arguments={"dependency": derive(provider)},
     )
     assert isinstance(builder.build().resolve(Service).dependency, Dependency)  # noqa: S101
+
+
+def validate_build_arguments() -> None:
+    class Client:
+        def __init__(self, timeout: int, environment: str, region: str):
+            self.timeout = timeout
+            self.environment = environment
+            self.region = region
+
+    class Publisher:
+        pass
+
+    class LivePublisher(Publisher):
+        pass
+
+    def timeout(context):
+        return 30 if context.build_args["environment"] == "production" else 5
+
+    build_args = {"environment": "production", "mode": "live"}
+    builder = ContainerBuilder()
+    builder.register(
+        Client,
+        arguments={
+            "timeout": derive(timeout),
+            "environment": build_arg("environment"),
+            "region": build_arg("region", default="global"),
+        },
+    )
+    builder.register(
+        Publisher,
+        LivePublisher,
+        when=cf.build_arg_is("mode", "live"),
+    )
+    assert builder.has_component(Publisher, build_args=build_args)  # noqa: S101
+
+    container = builder.build(build_args=build_args)
+    build_args["environment"] = "development"
+
+    assert container.resolve(Client).timeout == 30  # noqa: S101
+    assert container.resolve(Client).environment == "production"  # noqa: S101
+    assert container.resolve(Client).region == "global"  # noqa: S101
+    assert isinstance(container.resolve(Publisher), LivePublisher)  # noqa: S101
+    assert container.build_args["environment"] == "production"  # noqa: S101
+
+
+def validate_inject_and_generic_arg() -> None:
+    TItem = TypeVar("TItem")
+
+    class Dependency:
+        pass
+
+    fallback = Dependency()
+    injected = Dependency()
+
+    class Service:
+        def __init__(self, dependency: Dependency = fallback):
+            self.dependency = dependency
+
+    class Descriptor(Generic[TItem]):
+        def __init__(self, item_type: type = object):
+            self.item_type = item_type
+
+    Service.__init__.__annotations__["dependency"] = Dependency
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, instance=injected)
+    builder.register(Service, arguments={"dependency": inject()})
+    builder.register(
+        Descriptor[int],
+        arguments={"item_type": generic_arg(TItem)},
+    )
+    container = builder.build()
+
+    assert container.resolve(Service).dependency is injected  # noqa: S101
+    assert container.resolve(Descriptor[int]).item_type is int  # noqa: S101
 
 
 def main() -> None:
@@ -190,7 +269,9 @@ def main() -> None:
     validate_lifespans_slots_and_overlays()
     validate_generics_and_decorators()
     validate_factories_and_cleanup()
-    validate_value_provider_fallback()
+    validate_derived_injection()
+    validate_build_arguments()
+    validate_inject_and_generic_arg()
     asyncio.run(validate_async_factory())
     print("documentation examples validated")
 

@@ -7,15 +7,15 @@ import pytest
 
 import clean_ioc.component_filters as cf
 from clean_ioc import (
-    EMPTY,
+    INJECT,
     BuildReport,
     ComponentKind,
     ContainerBuilder,
     ContainerBuildError,
-    DependencySettings,
     GraphManifest,
     ResolutionContext,
     Scope,
+    derive,
 )
 from clean_ioc.cli import main
 from clean_ioc.factories import use_component, use_component_async
@@ -75,14 +75,15 @@ def test_complete_component_graph_includes_special_injection_edges_and_redacts_v
             self.configured = configured
             self.defaulted = defaulted
 
-    def configured_value(default, context):
-        return "runtime-secret" if default is EMPTY else default
+    def configured_value(context):
+        assert not context.has_default
+        return "compiled-secret"
 
     builder = ContainerBuilder()
     builder.declare_scope_slot(Request)
     builder.register(
         Application,
-        dependency_config={"configured": DependencySettings(value_factory=configured_value)},
+        arguments={"configured": derive(configured_value)},
     )
     builder.mark_entrypoint(Application)
     container = builder.build()
@@ -91,12 +92,11 @@ def test_complete_component_graph_includes_special_injection_edges_and_redacts_v
     assert {component.kind for component in application.dependencies} == {
         ComponentKind.scope_slot,
         ComponentKind.runtime_context,
-        ComponentKind.value_provider,
         ComponentKind.value,
     }
     manifest = container.graph.manifest().to_json()
     assert "top-secret" not in manifest
-    assert "runtime-secret" not in manifest
+    assert "compiled-secret" not in manifest
     assert '"activation": "supplied"' in manifest
 
 
@@ -525,7 +525,7 @@ def test_shorter_lived_components_may_capture_supplied_scope_slots(owner_lifespa
 @pytest.mark.parametrize("owner_lifespan", ["singleton", "scoped"])
 @pytest.mark.parametrize(
     "edge",
-    ["constructor", "factory", "decorator", "collection", "provider-fallback", "pre-configuration"],
+    ["constructor", "factory", "decorator", "collection", "derived-inject", "pre-configuration"],
 )
 def test_once_per_graph_capture_is_rejected_across_compiled_edge_types(owner_lifespan, edge):
     class GraphLocal:
@@ -566,20 +566,17 @@ def test_once_per_graph_capture_is_rejected_across_compiled_edge_types(owner_lif
                 self.graph_locals = graph_locals
 
         builder.register(Service, CollectionService, lifespan=owner_lifespan)
-    elif edge == "provider-fallback":
+    elif edge == "derived-inject":
 
         class ProviderService(Service):
             def __init__(self, graph_local: GraphLocal):
                 self.graph_local = graph_local
 
-        def use_fallback(default, context):
-            return EMPTY
-
         builder.register(
             Service,
             ProviderService,
             lifespan=owner_lifespan,
-            dependency_config={"graph_local": DependencySettings(value_factory=use_fallback)},
+            arguments={"graph_local": derive(lambda context: INJECT)},
         )
     else:
 
@@ -824,6 +821,46 @@ def test_graph_text_mermaid_and_json_renderers_are_available():
     assert "Resolve" in container.graph.to_text()
     assert container.graph.to_mermaid().startswith("flowchart TD")
     assert json.loads(container.graph.manifest().to_json())["schema_version"] == 1
+
+
+def test_graph_renderers_put_relationships_on_edges_and_keep_nodes_component_only():
+    class Repository:
+        pass
+
+    class Service:
+        def __init__(self, repository: Repository):
+            self.repository = repository
+
+    class TracedService:
+        def __init__(self, child: Service):
+            self.child = child
+
+    def configure_service() -> None:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Repository)
+    builder.register(Service)
+    builder.register_decorator(Service, TracedService, decorated_arg="child")
+    builder.pre_configure(Service, configure_service)
+    builder.mark_entrypoint(Service)
+    graph = builder.build().graph
+
+    text = graph.to_text()
+    mermaid = graph.to_mermaid()
+
+    assert "depends on: repository → " in text
+    assert "decorated by → " in text
+    assert "pre-configured by → " in text
+    assert "→ repository: " not in text
+    assert "|depends on: repository|" in mermaid
+    assert "|decorated by|" in mermaid
+    assert "|pre-configured by|" in mermaid
+    assert '["repository: ' not in mermaid
+
+    root = graph.manifest().data["roots"][0]
+    repository = next(item for item in root["dependencies"] if item["service"].endswith("Repository"))
+    assert repository["argument"] == "repository"
 
 
 def test_graph_renderers_show_decorator_positions_outside_to_inside():

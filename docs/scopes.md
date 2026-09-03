@@ -106,6 +106,16 @@ A built overlay begins a new scoped cache boundary. An inherited scoped componen
 without reusing an instance created in the parent. Ordinary nested `new_scope()` calls retain their existing inheritance
 semantics.
 
+An overlay build also inherits the parent's immutable `build_args` and may shallowly override keys:
+
+```python
+tenant_scope = tenant_builder.build(build_args={"tenant": "acme"})
+```
+
+Components newly compiled for the overlay see the merged mapping. Anchored parent singleton and pre-configuration plans
+retain the mapping under which the parent compiled, while ordinary `new_scope()` scopes reuse their parent's mapping
+unchanged. Build a new root when a key must be absent because overlays do not have a build-argument removal sentinel.
+
 ## Scope API selection
 
 | Need | API |

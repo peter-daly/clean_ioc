@@ -5,11 +5,11 @@ from __future__ import annotations
 import inspect
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Iterable, Iterator, Literal, Protocol, TypeAlias
+from typing import Any, Callable, Iterable, Iterator, Literal, Mapping, Protocol, TypeAlias
 
 from typetoolbox.generics import GenericTypeMap
 
-from .configuration import Tag
+from .metadata import Tag
 
 Lifespan: TypeAlias = Literal["transient", "once_per_graph", "scoped", "singleton"]
 
@@ -23,7 +23,6 @@ class ComponentKind(str, Enum):
     collection = "collection"
     scope_slot = "scope_slot"
     value = "value"
-    value_provider = "value_provider"
     runtime_context = "runtime_context"
 
 
@@ -48,6 +47,7 @@ class _ComponentRecord:
     lifespan: Lifespan
     name: str | None
     tags: tuple[Tag, ...]
+    build_args: Mapping[str, Any]
     kind: ComponentKind
     activation: ComponentActivation
     requires_async: bool
@@ -72,6 +72,7 @@ class _ComponentDraft:
     lifespan: Lifespan
     name: str | None
     tags: tuple[Tag, ...]
+    build_args: Mapping[str, Any]
     kind: ComponentKind
     activation: ComponentActivation
     requires_async: bool = False
@@ -94,6 +95,7 @@ class _ComponentDraft:
             lifespan=self.lifespan,
             name=self.name,
             tags=self.tags,
+            build_args=self.build_args,
             kind=self.kind,
             activation=self.activation,
             requires_async=self.requires_async,
@@ -204,6 +206,12 @@ class Component:
         return self._record.tags
 
     @property
+    def build_args(self) -> Mapping[str, Any]:
+        """Immutable user inputs supplied for this component's compilation."""
+
+        return self._record.build_args
+
+    @property
     def registration_tags(self) -> tuple[Tag, ...]:
         """Compatibility alias for pre-2.0 node filters."""
 
@@ -311,7 +319,6 @@ class Component:
 
 
 ComponentFilter: TypeAlias = Callable[[Component], bool]
-ComponentListModifier: TypeAlias = Callable[[list[Component]], list[Component]]
 
 
 def all_components(_: Component) -> bool:
@@ -320,10 +327,6 @@ def all_components(_: Component) -> bool:
 
 def default_component_filter(component: Component) -> bool:
     return component.name is None
-
-
-def default_component_list_modifier(components: list[Component]) -> list[Component]:
-    return components
 
 
 class ComponentBuilder(Protocol):
@@ -345,7 +348,7 @@ class ComponentBuilder(Protocol):
         instance: Any | None = None,
         lifespan: Lifespan = "once_per_graph",
         name: str | None = None,
-        dependency_config: dict[str, Any] = {},
+        arguments: Mapping[str, Any] | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
     ) -> str: ...
@@ -357,11 +360,21 @@ class ComponentBuilder(Protocol):
         *,
         when: ComponentFilter = all_components,
         decorated_arg: str | None = None,
-        dependency_config: dict[str, Any] = {},
+        arguments: Mapping[str, Any] | None = None,
         position: int = 0,
         name: str | None = None,
         tags: Iterable[Tag] | None = None,
     ) -> str: ...
+
+    def patch_component(
+        self,
+        service_type: type,
+        component_id: str,
+        *,
+        arguments: Mapping[str, Any] | None = None,
+        lifespan: Lifespan | None = None,
+        tags: Iterable[Tag] | None = None,
+    ) -> None: ...
 
     def patch_decorator(
         self,
@@ -369,7 +382,7 @@ class ComponentBuilder(Protocol):
         decorator_id: str,
         *,
         decorated_arg: str | None | object = ...,
-        dependency_config: dict[str, Any] | None = None,
+        arguments: Mapping[str, Any] | None = None,
         position: int | object = ...,
         when: ComponentFilter | None = None,
         name: str | None | object = ...,
@@ -384,7 +397,7 @@ class ComponentBuilder(Protocol):
         configuration_function: Callable,
         *,
         when: ComponentFilter = all_components,
-        dependency_config: dict[str, Any] = {},
+        arguments: Mapping[str, Any] | None = None,
         continue_on_failure: bool = False,
     ) -> str: ...
 

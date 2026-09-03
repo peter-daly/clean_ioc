@@ -21,7 +21,7 @@ container = builder.build()
 
 `pre_configure()` returns a stable definition ID. That ID also appears on the initializer's `Component` in graph and manifest tooling.
 
-Use `dependency_config` for argument-level selection or values. Use the single `when=` component filter to select static occurrences:
+Use `arguments=` for argument-level selection or values. Use the single `when=` component filter to select static occurrences:
 
 ```python
 import clean_ioc.component_filters as cf

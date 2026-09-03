@@ -1,25 +1,15 @@
 """Clean IoC's public API."""
 
+from .arguments import INJECT, REMOVE, ParameterContext, build_arg, derive, generic_arg, inject, select
 from .components import (
     Component,
     ComponentActivation,
     ComponentBuilder,
     ComponentFilter,
     ComponentKind,
-    ComponentListModifier,
     Lifespan,
     all_components,
     default_component_filter,
-    default_component_list_modifier,
-)
-from .configuration import (
-    EMPTY,
-    DependencyConfig,
-    DependencySettings,
-    ParameterValueFactory,
-    RemoveDependencySetting,
-    SubDependencies,
-    Tag,
 )
 from .container import (
     BuilderAlreadyBuiltError,
@@ -27,13 +17,13 @@ from .container import (
     Container,
     ContainerBuilder,
     ContainerBuildError,
-    DependencyContext,
     ResolutionContext,
     Scope,
     ScopeBuilder,
     ScopeProvisionError,
     UndeclaredScopeSlotError,
 )
+from .metadata import Tag
 from .tooling import (
     BuildIssue,
     BuildReport,
@@ -46,7 +36,8 @@ from .tooling import (
 )
 
 __all__ = [
-    "EMPTY",
+    "INJECT",
+    "REMOVE",
     "BuilderAlreadyBuiltError",
     "CannotResolveError",
     "Component",
@@ -54,32 +45,30 @@ __all__ = [
     "ComponentBuilder",
     "ComponentFilter",
     "ComponentKind",
-    "ComponentListModifier",
     "Container",
     "ContainerBuildError",
     "ContainerBuilder",
     "BuildIssue",
     "BuildReport",
     "CompiledGraph",
-    "DependencyConfig",
-    "DependencyContext",
-    "DependencySettings",
     "Lifespan",
     "GraphChange",
     "GraphDiff",
     "GraphManifest",
     "GraphRoot",
     "IssueSeverity",
-    "ParameterValueFactory",
-    "RemoveDependencySetting",
+    "ParameterContext",
     "ResolutionContext",
     "Scope",
     "ScopeBuilder",
     "ScopeProvisionError",
-    "SubDependencies",
     "Tag",
     "UndeclaredScopeSlotError",
     "all_components",
+    "build_arg",
     "default_component_filter",
-    "default_component_list_modifier",
+    "derive",
+    "generic_arg",
+    "inject",
+    "select",
 ]

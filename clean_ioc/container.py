@@ -18,21 +18,27 @@ from uuid import UUID, uuid4, uuid5
 from typetoolbox.generics import GenericTypeMap, get_generic_mapping
 
 from . import _legacy as legacy
+from ._legacy_configuration import default_parameter_value_factory
+from .arguments import (
+    INJECT,
+    REMOVE,
+    ParameterContext,
+    _DerivedArgument,
+    _FixedArgument,
+    _SelectArgument,
+)
 from .components import (
     Component,
     ComponentActivation,
     ComponentFilter,
     ComponentKind,
-    ComponentListModifier,
     Lifespan,
     _ComponentDraft,
     _ComponentGraph,
     all_components,
     default_component_filter,
-    default_component_list_modifier,
     normalize_implementation_type,
 )
-from .configuration import default_parameter_value_factory
 from .tooling import (
     BuildIssue,
     BuildReport,
@@ -45,6 +51,8 @@ from .tooling import (
 TService = TypeVar("TService")
 
 logger = logging.getLogger(__name__)
+
+_EMPTY_BUILD_ARGS: Mapping[str, Any] = types.MappingProxyType({})
 
 
 _LEGACY_LIFESPANS: dict[Lifespan, legacy.Lifespan] = {
@@ -65,6 +73,79 @@ def _legacy_lifespan(lifespan: Lifespan) -> legacy.Lifespan:
 
 def _component_lifespan(lifespan: legacy.Lifespan) -> Lifespan:
     return lifespan.name
+
+
+def _normalize_build_args(build_args: Mapping[str, Any] | None) -> Mapping[str, Any]:
+    if build_args is None:
+        return _EMPTY_BUILD_ARGS
+    if not isinstance(build_args, Mapping):
+        raise TypeError("build_args must be a mapping with string keys")
+    values = dict(build_args)
+    invalid_keys = [key for key in values if not isinstance(key, str)]
+    if invalid_keys:
+        rendered = ", ".join(repr(key) for key in invalid_keys)
+        raise TypeError(f"build_args keys must be strings; got {rendered}")
+    if not values:
+        return _EMPTY_BUILD_ARGS
+    return types.MappingProxyType(values)
+
+
+def _merge_build_args(
+    inherited: Mapping[str, Any],
+    overrides: Mapping[str, Any] | None,
+) -> Mapping[str, Any]:
+    normalized = _normalize_build_args(overrides)
+    if not normalized:
+        return inherited
+    values = dict(inherited)
+    values.update(normalized)
+    return types.MappingProxyType(values)
+
+
+def _arguments_to_dependency_config(
+    arguments: Mapping[str, Any] | None,
+    *,
+    allow_remove: bool = False,
+) -> legacy.DependencyConfig:
+    """Adapt V2 argument policies to the private signature parser."""
+
+    configured: legacy.DependencyConfig = {}
+    for name, argument in (arguments or {}).items():
+        if argument is REMOVE:
+            if not allow_remove:
+                raise ValueError("REMOVE is only valid when patching arguments")
+            configured[name] = legacy.RemoveDependencySetting
+        elif isinstance(argument, _SelectArgument):
+            configured[name] = legacy.DependencySettings(
+                value_factory=cast(Any, argument),
+                filter=argument.filter,
+            )
+        elif isinstance(argument, _DerivedArgument):
+            configured[name] = legacy.DependencySettings(value_factory=cast(Any, argument))
+        else:
+            configured[name] = legacy.DependencySettings(value_factory=cast(Any, _FixedArgument(argument)))
+    return configured
+
+
+def _validate_dependency_names(
+    implementation: Any,
+    dependencies: Mapping[str, legacy.Dependency],
+) -> None:
+    """Reject configured names that activation cannot pass to the callable."""
+
+    try:
+        parameters = inspect.signature(implementation).parameters
+    except (TypeError, ValueError):
+        return
+    if any(parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()):
+        return
+    unknown = sorted(set(dependencies) - set(parameters))
+    if unknown:
+        names = ", ".join(repr(name) for name in unknown)
+        raise ContainerBuildError(
+            f"{qualified_name(implementation)} has no argument named {names}",
+            code="invalid-argument",
+        )
 
 
 class BuilderAlreadyBuiltError(RuntimeError):
@@ -102,30 +183,6 @@ class UndeclaredScopeSlotError(ContainerBuildError):
 
 class ScopeProvisionError(RuntimeError):
     pass
-
-
-@dataclass(frozen=True, slots=True)
-class DependencyContext:
-    """Static context for a parameter value provider."""
-
-    name: str
-    component: Component
-
-    @property
-    def service_type(self) -> Any:
-        return self.component.service_type
-
-    @property
-    def implementation(self) -> Any:
-        return self.component.implementation
-
-    @property
-    def parent(self) -> Component | None:
-        return self.component.parent
-
-    @property
-    def decorated(self) -> Component | None:
-        return self.component.decorated
 
 
 class ResolutionContext:
@@ -194,7 +251,7 @@ class _DecoratorDefinition:
     service_type: Any
     decorator_type: type | Callable[..., Any]
     decorated_arg: str | None
-    dependency_config: Mapping[str, Any]
+    arguments: Mapping[str, Any]
     position: int
     order: int
     when: ComponentFilter
@@ -207,7 +264,7 @@ class _PreConfigurationDefinition:
     id: str
     service_types: tuple[Any, ...]
     configuration_fn: Callable[..., Any]
-    dependency_config: Mapping[str, Any]
+    arguments: Mapping[str, Any]
     order: int
     when: ComponentFilter
     continue_on_failure: bool
@@ -786,18 +843,6 @@ class _ProvidedStep(_Step):
 
 
 @dataclass(frozen=True, slots=True)
-class _DependencyContextStep(_Step):
-    name: str
-    component: Component
-
-    def resolve(self, context: _RuntimeResolutionContext) -> DependencyContext:
-        return DependencyContext(self.name, self.component)
-
-    async def resolve_async(self, context: _RuntimeResolutionContext) -> DependencyContext:
-        return self.resolve(context)
-
-
-@dataclass(frozen=True, slots=True)
 class _ScopeStep(_Step):
     requested_type: Any
     resolution_requests: tuple[_CompiledResolutionRequest, ...] = ()
@@ -1018,8 +1063,9 @@ def _materialize_decorator(
     try:
         dependencies = legacy._set_up_dependencies(
             source,
-            legacy.dependency_config_to_subdependencies(dict(definition.dependency_config)),
+            cast(Any, _arguments_to_dependency_config(definition.arguments)),
         )
+        _validate_dependency_names(source, dependencies)
     except Exception as error:
         raise ContainerBuildError(
             f"Decorator {label} has an invalid signature: {error}",
@@ -1416,6 +1462,7 @@ class _PlanSet:
     default_roots: dict[Any, _RootPlan]
     default_root_groups: dict[Any, tuple[_RootPlan, ...]]
     blueprint: _Blueprint
+    build_args: Mapping[str, Any]
     compiled_graph: CompiledGraph | None = None
     build_report: BuildReport = field(default_factory=BuildReport)
     compiler_issues: tuple[BuildIssue, ...] = ()
@@ -1468,11 +1515,13 @@ class _Compiler:
         self,
         blueprint: _Blueprint,
         *,
+        build_args: Mapping[str, Any] = _EMPTY_BUILD_ARGS,
         anchored_singletons: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
         anchored_pre_configurations: dict[str, _CompiledPreConfiguration] | None = None,
         anchored_owner_tokens: frozenset[str] = frozenset(),
     ):
         self.blueprint = blueprint
+        self.build_args = build_args
         self.graph = _ComponentGraph()
         self._next_occurrence = 1
         self._stack: list[legacy._Registration] = []
@@ -1538,6 +1587,7 @@ class _Compiler:
             default_roots={service_type: plans[0] for service_type, plans in default_root_groups.items() if plans},
             default_root_groups=default_root_groups,
             blueprint=self.blueprint,
+            build_args=self.build_args,
             compiler_issues=tuple(self.issues),
         )
 
@@ -1597,6 +1647,7 @@ class _Compiler:
         requires_async: bool = False,
         manages_cleanup: bool = False,
         position: int | None = None,
+        build_args: Mapping[str, Any] | None = None,
     ) -> tuple[Component, _ComponentDraft]:
         occurrence = self._next_occurrence
         self._next_occurrence += 1
@@ -1609,6 +1660,7 @@ class _Compiler:
             lifespan=lifespan,
             name=name,
             tags=tuple(tags),
+            build_args=self.build_args if build_args is None else build_args,
             kind=kind,
             activation=activation,
             requires_async=requires_async,
@@ -1663,6 +1715,7 @@ class _Compiler:
         argument: str | None,
         requested_service_type: Any,
     ) -> tuple[Component, _RegistrationStep]:
+        _validate_dependency_names(registration.implementation, registration.dependencies)
         if registration.lifespan == legacy.Lifespan.singleton and layer.owner_token in self._anchored_owner_tokens:
             anchored = self._anchored_singletons.get((registration.id, _runtime_type_key(requested_service_type)))
             if anchored is None:
@@ -1787,6 +1840,7 @@ class _Compiler:
             requires_async=source.requires_async,
             manages_cleanup=source.manages_cleanup,
             position=source.position,
+            build_args=source.build_args,
         )
         draft.implementation_type = source.implementation_type
         mapping[source.occurrence_id] = component
@@ -1908,15 +1962,39 @@ class _Compiler:
         dependency: legacy.Dependency,
         parent: Component,
     ) -> tuple[_Step, Component | None]:
-        dependency_context = DependencyContext(dependency.name, parent)
-        value_factory = dependency.settings.value_factory
-        if value_factory is default_parameter_value_factory:
+        policy = dependency.settings.value_factory
+        if isinstance(policy, _FixedArgument):
+            value = policy.value
+        elif isinstance(policy, _DerivedArgument):
+            has_default = dependency.default_value is not legacy.EMPTY
+            context = ParameterContext(
+                name=dependency.name,
+                annotation=dependency.service_type,
+                component=parent,
+                default=dependency.default_value if has_default else None,
+                has_default=has_default,
+            )
+            try:
+                value = policy.function(context)
+            except Exception as error:
+                raise ContainerBuildError(
+                    f"Could not derive argument {dependency.name!r} for "
+                    f"{qualified_name(parent.implementation)}: {error}",
+                    code="invalid-derived-argument",
+                    path=self._current_path(dependency.service_type),
+                ) from error
+        elif isinstance(policy, _SelectArgument):
+            value = INJECT
+        elif policy is default_parameter_value_factory:
             value = dependency.default_value
         else:
-            # The provider itself remains runtime-only. Its fallback edge is
-            # compiled below, so provider results do not alter the plan.
-            value = legacy.EMPTY
-        if value is not legacy.EMPTY:
+            raise ContainerBuildError(
+                f"Unsupported argument policy for {dependency.name!r} of {qualified_name(parent.implementation)}",
+                code="invalid-argument",
+                path=self._current_path(dependency.service_type),
+            )
+
+        if value is not legacy.EMPTY and value is not INJECT:
             component, _ = self._draft(
                 component_id=f"value:{parent.occurrence_id}:{dependency.name}",
                 service_type=dependency.service_type,
@@ -1931,20 +2009,6 @@ class _Compiler:
             )
             return _ValueStep(value), component
 
-        if dependency.service_type in (DependencyContext, legacy.DependencyContext):
-            component, _ = self._draft(
-                component_id=f"context:{parent.occurrence_id}:{dependency.name}",
-                service_type=dependency.service_type,
-                implementation=DependencyContext,
-                lifespan="transient",
-                name=None,
-                tags=(),
-                kind=ComponentKind.runtime_context,
-                activation=ComponentActivation.context,
-                parent=parent,
-                argument=dependency.name,
-            )
-            return _DependencyContextStep(dependency.name, parent), component
         if dependency.service_type in (
             Scope,
             Container,
@@ -1984,14 +2048,8 @@ class _Compiler:
             )
             candidates = self._compile_candidates(element_type, collection, dependency.name)
             candidates = [item for item in candidates if dependency.settings.filter(item[0])]
-            components = cast(
-                list[Component],
-                dependency.settings.list_modifier([component for component, _ in candidates]),
-            )
-            selected_ids = {component.occurrence_id for component in components}
-            selected = [(component, step) for component, step in candidates if component.occurrence_id in selected_ids]
-            collection_draft.dependency_ids = tuple(component.occurrence_id for component, _ in selected)
-            member_steps = tuple(step for _, step in selected)
+            collection_draft.dependency_ids = tuple(component.occurrence_id for component, _ in candidates)
+            member_steps = tuple(step for _, step in candidates)
             return (
                 _CollectionStep(
                     dependency.generic_collection_type,
@@ -2019,59 +2077,12 @@ class _Compiler:
                     )
                 )
             component, step = candidates[0]
-            if value_factory is not default_parameter_value_factory:
-                provider, provider_draft = self._draft(
-                    component_id=f"provider:{parent.occurrence_id}:{dependency.name}",
-                    service_type=dependency.service_type,
-                    implementation=value_factory,
-                    lifespan="transient",
-                    name=None,
-                    tags=(),
-                    kind=ComponentKind.value_provider,
-                    activation=ComponentActivation.factory,
-                    parent=parent,
-                    argument=dependency.name,
-                )
-                provider_draft.dependency_ids = (component.occurrence_id,)
-                return (
-                    _ProviderStep(
-                        cast(Any, value_factory),
-                        dependency.default_value,
-                        dependency_context,
-                        step,
-                        step.sync_supported,
-                    ),
-                    provider,
-                )
             return step, component
 
         slot = self._matching_slot(dependency.service_type, dependency.settings.filter, parent, dependency.name)
         if slot is not None:
             name, component = slot
             return _ProvidedStep(dependency.service_type, name), component
-        if value_factory is not default_parameter_value_factory:
-            provider, _ = self._draft(
-                component_id=f"provider:{parent.occurrence_id}:{dependency.name}",
-                service_type=dependency.service_type,
-                implementation=value_factory,
-                lifespan="transient",
-                name=None,
-                tags=(),
-                kind=ComponentKind.value_provider,
-                activation=ComponentActivation.factory,
-                parent=parent,
-                argument=dependency.name,
-            )
-            return (
-                _ProviderStep(
-                    cast(Any, value_factory),
-                    dependency.default_value,
-                    dependency_context,
-                    None,
-                    True,
-                ),
-                provider,
-            )
         raise ContainerBuildError(
             f"No component for {dependency.service_type!r}, argument {dependency.name!r} of {parent.implementation!r}",
             code="missing-component",
@@ -2142,8 +2153,9 @@ class _Compiler:
             try:
                 dependencies = legacy._set_up_dependencies(
                     definition.configuration_fn,
-                    legacy.dependency_config_to_subdependencies(dict(definition.dependency_config)),
+                    cast(Any, _arguments_to_dependency_config(definition.arguments)),
                 )
+                _validate_dependency_names(definition.configuration_fn, dependencies)
             except Exception as error:
                 raise ContainerBuildError(
                     f"Pre-configuration {qualified_name(definition.configuration_fn)} has an invalid signature: "
@@ -2250,31 +2262,6 @@ class _Compiler:
 
 
 @dataclass(frozen=True, slots=True)
-class _ProviderStep(_Step):
-    provider: Callable[[Any, DependencyContext], Any]
-    default: Any
-    dependency_context: DependencyContext
-    fallback: _Step | None
-    sync_supported: bool
-
-    def resolve(self, context: _RuntimeResolutionContext) -> Any:
-        value = self.provider(self.default, self.dependency_context)
-        if value is not legacy.EMPTY:
-            return value
-        if self.fallback is None:
-            raise ContainerBuildError(f"Value provider returned EMPTY for {self.dependency_context.name}")
-        return self.fallback.resolve(context)
-
-    async def resolve_async(self, context: _RuntimeResolutionContext) -> Any:
-        value = self.provider(self.default, self.dependency_context)
-        if value is not legacy.EMPTY:
-            return value
-        if self.fallback is None:
-            raise ContainerBuildError(f"Value provider returned EMPTY for {self.dependency_context.name}")
-        return await self.fallback.resolve_async(context)
-
-
-@dataclass(frozen=True, slots=True)
 class _Outcome:
     error: BaseException | None = None
 
@@ -2356,8 +2343,6 @@ def _iter_registration_steps(step: _Step) -> Iterable[_RegistrationStep]:
     if isinstance(step, _CollectionStep):
         for member in step.members:
             yield from _iter_registration_steps(member)
-    if isinstance(step, _ProviderStep) and step.fallback is not None:
-        yield from _iter_registration_steps(step.fallback)
 
 
 def _anchored_singletons(
@@ -2424,6 +2409,7 @@ def _error_report(
     blueprint: _Blueprint,
     original: BaseException,
     *,
+    build_args: Mapping[str, Any] = _EMPTY_BUILD_ARGS,
     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
     anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
     anchored_owner_tokens: frozenset[str] = frozenset(),
@@ -2438,6 +2424,7 @@ def _error_report(
         try:
             _Compiler(
                 blueprint,
+                build_args=build_args,
                 anchored_singletons=anchored_singleton_steps,
                 anchored_pre_configurations=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
@@ -2557,13 +2544,18 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
     report = BuildReport(deduplicated, checked_roots=len(all_roots))
     if not report.is_valid:
         raise ContainerBuildError(report=report)
-    compiled_graph = CompiledGraph(all_roots, tuple(entrypoints))
+    compiled_graph = CompiledGraph(
+        roots=all_roots,
+        build_args=plan.build_args,
+        entrypoints=tuple(entrypoints),
+    )
     return replace(plan, compiled_graph=compiled_graph, build_report=report)
 
 
 def _compile_with_report(
     blueprint: _Blueprint,
     *,
+    build_args: Mapping[str, Any] = _EMPTY_BUILD_ARGS,
     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
     anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
     anchored_owner_tokens: frozenset[str] = frozenset(),
@@ -2571,6 +2563,7 @@ def _compile_with_report(
     try:
         plan = _Compiler(
             blueprint,
+            build_args=build_args,
             anchored_singletons=anchored_singleton_steps,
             anchored_pre_configurations=anchored_pre_configuration_steps,
             anchored_owner_tokens=anchored_owner_tokens,
@@ -2582,6 +2575,7 @@ def _compile_with_report(
         report = _error_report(
             blueprint,
             error,
+            build_args=build_args,
             anchored_singleton_steps=anchored_singleton_steps,
             anchored_pre_configuration_steps=anchored_pre_configuration_steps,
             anchored_owner_tokens=anchored_owner_tokens,
@@ -2591,6 +2585,7 @@ def _compile_with_report(
         report = _error_report(
             blueprint,
             error,
+            build_args=build_args,
             anchored_singleton_steps=anchored_singleton_steps,
             anchored_pre_configuration_steps=anchored_pre_configuration_steps,
             anchored_owner_tokens=anchored_owner_tokens,
@@ -2698,6 +2693,12 @@ class Scope(_RuntimeOwner):
     @property
     def build_report(self) -> BuildReport:
         return self._plan.build_report
+
+    @property
+    def build_args(self) -> Mapping[str, Any]:
+        """Immutable user inputs supplied for this plan's compilation."""
+
+        return self._plan.build_args
 
     def has_component(self, service_type: Any, filter: ComponentFilter = default_component_filter) -> bool:
         """Return whether the frozen plan contains a matching root component."""
@@ -2890,6 +2891,12 @@ class _BuilderBase:
         if self._built:
             raise BuilderAlreadyBuiltError("Builders are single-use after a successful build")
 
+    def _effective_build_args(self, build_args: Mapping[str, Any] | None) -> Mapping[str, Any]:
+        parent = getattr(self, "_parent", None)
+        if parent is None:
+            return _normalize_build_args(build_args)
+        return _merge_build_args(parent.build_args, build_args)
+
     def _layer(self) -> _Layer:
         registry = _clone_registry(self._composition._registry)
         registration_when = dict(self._registration_when)
@@ -2936,7 +2943,7 @@ class _BuilderBase:
         instance: TService | None = None,
         lifespan: Lifespan = "once_per_graph",
         name: str | None = None,
-        dependency_config: legacy.DependencyConfig = {},
+        arguments: Mapping[str, Any] | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
     ) -> str:
@@ -2950,7 +2957,7 @@ class _BuilderBase:
             instance=instance,
             lifespan=_legacy_lifespan(lifespan),
             name=name,
-            dependency_config=dependency_config,
+            dependency_config=_arguments_to_dependency_config(arguments),
             tags=tags,
             parent_node_filter=legacy.default_parent_node_filter,
         )
@@ -2966,7 +2973,7 @@ class _BuilderBase:
         service_type: type,
         component_id: str,
         *,
-        dependency_config: legacy.DependencyConfig | None = None,
+        arguments: Mapping[str, Any] | None = None,
         lifespan: Lifespan | None = None,
         tags: Iterable[legacy.Tag] | None = None,
     ) -> None:
@@ -2975,7 +2982,9 @@ class _BuilderBase:
             self._composition.patch_registration(
                 service_type,
                 component_id,
-                dependency_config=dependency_config,
+                dependency_config=(
+                    None if arguments is None else _arguments_to_dependency_config(arguments, allow_remove=True)
+                ),
                 lifespan=None if lifespan is None else _legacy_lifespan(lifespan),
                 tags=tags,
             )
@@ -2994,7 +3003,9 @@ class _BuilderBase:
         if registration is None:
             raise KeyError(f"No component found for {service_type} with ID {component_id}")
         registration.patch(
-            dependency_config=dependency_config,
+            dependency_config=(
+                None if arguments is None else _arguments_to_dependency_config(arguments, allow_remove=True)
+            ),
             lifespan=None if lifespan is None else _legacy_lifespan(lifespan),
             tags=tags,
         )
@@ -3006,7 +3017,7 @@ class _BuilderBase:
         *,
         when: ComponentFilter = all_components,
         decorated_arg: str | None = None,
-        dependency_config: legacy.DependencyConfig = {},
+        arguments: Mapping[str, Any] | None = None,
         position: int = 0,
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,
@@ -3019,7 +3030,7 @@ class _BuilderBase:
                 service_type=service_type,
                 decorator_type=decorator_type,
                 decorated_arg=decorated_arg,
-                dependency_config=types.MappingProxyType(dict(dependency_config)),
+                arguments=types.MappingProxyType(dict(arguments or {})),
                 position=position,
                 order=self._new_decorator_order(),
                 when=when,
@@ -3055,7 +3066,7 @@ class _BuilderBase:
         decorator_id: str,
         *,
         decorated_arg: str | None | object = _DECORATOR_UNSET,
-        dependency_config: legacy.DependencyConfig | None = None,
+        arguments: Mapping[str, Any] | None = None,
         position: int | object = _DECORATOR_UNSET,
         when: ComponentFilter | None = None,
         name: str | None | object = _DECORATOR_UNSET,
@@ -3066,10 +3077,10 @@ class _BuilderBase:
         if definition is None:
             raise KeyError(f"No decorator found for {service_type} with ID {decorator_id}")
 
-        dependencies = dict(definition.dependency_config)
-        if dependency_config is not None:
-            for argument, setting in dependency_config.items():
-                if setting is legacy.RemoveDependencySetting:
+        dependencies = dict(definition.arguments)
+        if arguments is not None:
+            for argument, setting in arguments.items():
+                if setting is REMOVE:
                     dependencies.pop(argument, None)
                 else:
                     dependencies[argument] = setting
@@ -3079,7 +3090,7 @@ class _BuilderBase:
             decorated_arg=(
                 definition.decorated_arg if decorated_arg is _DECORATOR_UNSET else cast(str | None, decorated_arg)
             ),
-            dependency_config=types.MappingProxyType(dependencies),
+            arguments=types.MappingProxyType(dependencies),
             position=definition.position if position is _DECORATOR_UNSET else cast(int, position),
             when=definition.when if when is None else when,
             name=definition.name if name is _DECORATOR_UNSET else cast(str | None, name),
@@ -3106,7 +3117,7 @@ class _BuilderBase:
         configuration_function: Callable[..., Any],
         *,
         when: ComponentFilter = all_components,
-        dependency_config: legacy.DependencyConfig = {},
+        arguments: Mapping[str, Any] | None = None,
         continue_on_failure: bool = False,
     ) -> str:
         self._assert_mutable()
@@ -3128,7 +3139,7 @@ class _BuilderBase:
                 id=definition_id,
                 service_types=service_types,
                 configuration_fn=configuration_function,
-                dependency_config=types.MappingProxyType(dict(dependency_config)),
+                arguments=types.MappingProxyType(dict(arguments or {})),
                 order=self._new_pre_configuration_order(),
                 when=when,
                 continue_on_failure=continue_on_failure,
@@ -3211,24 +3222,37 @@ class _BuilderBase:
         self._assert_mutable()
         bundle(self)
 
-    def _preview_components(self, service_type: Any) -> tuple[Component, ...]:
+    def _preview_components(
+        self,
+        service_type: Any,
+        build_args: Mapping[str, Any] | None = None,
+    ) -> tuple[Component, ...]:
         self._assert_mutable()
-        plan = _Compiler(_Blueprint((self._layer(),))).compile()
+        plan = _Compiler(
+            _Blueprint((self._layer(),)),
+            build_args=self._effective_build_args(build_args),
+        ).compile()
         return tuple(item.component for item in plan.roots.get(service_type, ()))
 
-    def has_component(self, service_type: Any, filter: ComponentFilter = default_component_filter) -> bool:
-        return any(filter(component) for component in self._preview_components(service_type))
+    def has_component(
+        self,
+        service_type: Any,
+        filter: ComponentFilter = default_component_filter,
+        *,
+        build_args: Mapping[str, Any] | None = None,
+    ) -> bool:
+        return any(filter(component) for component in self._preview_components(service_type, build_args))
 
     def get_component_ids(
         self,
         service_type: Any,
         *,
         filter: ComponentFilter = default_component_filter,
-        list_modifier: ComponentListModifier = default_component_list_modifier,
+        build_args: Mapping[str, Any] | None = None,
     ) -> list[str]:
-        components = list_modifier(
-            [component for component in self._preview_components(service_type) if filter(component)]
-        )
+        components = [
+            component for component in self._preview_components(service_type, build_args) if filter(component)
+        ]
         return [component.id for component in components]
 
     def get_component_id(
@@ -3236,16 +3260,23 @@ class _BuilderBase:
         service_type: Any,
         *,
         filter: ComponentFilter = default_component_filter,
+        build_args: Mapping[str, Any] | None = None,
     ) -> str | None:
-        return next(iter(self.get_component_ids(service_type, filter=filter)), None)
+        return next(
+            iter(self.get_component_ids(service_type, filter=filter, build_args=build_args)),
+            None,
+        )
 
 
 class ContainerBuilder(_BuilderBase):
     """Mutable root composition API. Call :meth:`build` exactly once."""
 
-    def build(self) -> Container:
+    def build(self, *, build_args: Mapping[str, Any] | None = None) -> Container:
         self._assert_mutable()
-        plan = _compile_with_report(_Blueprint((self._layer(),)))
+        plan = _compile_with_report(
+            _Blueprint((self._layer(),)),
+            build_args=self._effective_build_args(build_args),
+        )
         container = Container(plan, self._owner_token)
         self._built = True
         return container
@@ -3258,11 +3289,12 @@ class ScopeBuilder(_BuilderBase):
         super().__init__()
         self._parent = parent
 
-    def build(self) -> Scope:
+    def build(self, *, build_args: Mapping[str, Any] | None = None) -> Scope:
         self._assert_mutable()
         blueprint = _Blueprint((self._layer(), *self._parent._plan.blueprint.layers))
         plan = _compile_with_report(
             blueprint,
+            build_args=self._effective_build_args(build_args),
             anchored_singleton_steps=_anchored_singletons(self._parent._plan),
             anchored_pre_configuration_steps=_anchored_pre_configurations(self._parent._plan),
             anchored_owner_tokens=frozenset(self._parent._owners),

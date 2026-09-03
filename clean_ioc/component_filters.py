@@ -11,8 +11,10 @@ from .components import ComponentFilter, Lifespan, all_components
 
 __all__ = [
     "all_components",
+    "build_arg_is",
     "create_filter",
     "has_descendant",
+    "has_build_arg",
     "has_generic_arg",
     "has_lifespan",
     "has_lifespan_in",
@@ -30,9 +32,23 @@ __all__ = [
     "with_name",
 ]
 
+_MISSING_BUILD_ARG = object()
+
 
 def create_filter(function: ComponentFilter):
     return predicate(function)
+
+
+def has_build_arg(name: str):
+    if not isinstance(name, str):
+        raise TypeError("build argument names must be strings")
+    return predicate(lambda component: name in component.build_args)
+
+
+def build_arg_is(name: str, value: Any):
+    if not isinstance(name, str):
+        raise TypeError("build argument names must be strings")
+    return predicate(lambda component: component.build_args.get(name, _MISSING_BUILD_ARG) == value)
 
 
 def with_name(name: str | None):

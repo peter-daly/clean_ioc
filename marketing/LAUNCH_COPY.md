@@ -21,7 +21,9 @@ container = builder.build()
 handler = container.resolve(CreateOrder)
 ```
 
-`build()` specializes generics, constructs occurrence-specific component trees, evaluates contextual and decorator filters, checks missing/circular/captive dependencies, and freezes activation instructions. It does not run constructors, factories, generators, teardown callbacks, or value providers.
+`build()` specializes generics, constructs occurrence-specific component trees, evaluates contextual filters and
+explicit derived argument policies, checks missing/circular/captive dependencies, and freezes activation instructions.
+It does not run constructors, factories, generators, context managers, or teardown callbacks.
 
 The runtime container is immutable. Resolution executes frozen steps, caches plain instances, and does not allocate dependency-graph nodes.
 

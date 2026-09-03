@@ -23,8 +23,15 @@ from ._legacy import (
     _Registration,
     default_registration_filter,
 )
-from .configuration import default_parameter_value_factory
-from .value_factories import dont_use_default_value, use_default_value
+from ._legacy_configuration import default_parameter_value_factory
+
+
+def use_default_value(default_value: Any, _: Any) -> Any:
+    return default_value
+
+
+def dont_use_default_value(_: Any, __: Any) -> Any:
+    return EMPTY
 
 
 def _display_type(subject: Any) -> str:

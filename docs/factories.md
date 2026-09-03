@@ -78,6 +78,9 @@ builder.register(BatchSender, factory=use_component(SenderImpl))
 Direct calls made through an injected `ResolutionContext` remain dynamic because the compiler cannot inspect arbitrary
 function bodies. Use the helpers when the target is known during composition and should appear in the compiled graph.
 
-## Runtime value providers
+## Argument values and selection
 
-Parameter value providers are the deliberate runtime exception: the provider runs during activation with a static `DependencyContext` and a precompiled fallback edge. See [value factories](advanced/value-factories.md).
+Use `arguments=` for fixed constructor/factory values, `select(...)` for a filtered component edge, and `derive(...)`
+for a pure build-time composition rule. `build_arg(...)` and `generic_arg(...)` project common metadata as frozen
+values, while `inject()` forces ordinary unnamed injection over a Python default. Runtime-changing values belong in an
+ordinary component factory or a declared scope slot. See [argument policies](advanced/arguments.md).

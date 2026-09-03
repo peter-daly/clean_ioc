@@ -86,6 +86,27 @@ Each closed dependency occurrence gets its own component identity and lifespan c
 builder.register(CommandHandler[CreateOrder], factory=create_handler)
 ```
 
+Use `generic_arg(...)` when a constructor or factory needs one of its owning component's concrete generic bindings as a
+value:
+
+```python
+from clean_ioc import generic_arg
+
+
+class HandlerMetadata(Generic[TCommand]):
+    def __init__(self, command_type: type):
+        self.command_type = command_type
+
+
+builder.register(
+    HandlerMetadata[CreateOrder],
+    arguments={"command_type": generic_arg(TCommand)},
+)
+```
+
+The `TypeVar` form is preferred. String keys are also supported when composition is reflection-driven. The binding is
+looked up and frozen during `build()` rather than rediscovered during factory activation.
+
 If a factory TypeVar is not expressed by its registered service or result, provide another generic class or alias as the mapping source:
 
 ```python
@@ -144,12 +165,22 @@ An open decorator definition is specialized from the closed component plans enco
 
 ## Occurrence-specific context
 
-The same registered component may appear under different closed generic parents. Clean IoC creates a distinct `Component.occurrence_id` for each use, so parent filters and value providers see the correct generic mapping:
+The same registered component may appear under different closed generic parents. Clean IoC creates a distinct
+`Component.occurrence_id` for each use, so parent filters and derived argument policies see the correct generic mapping:
 
 ```python
-def provider(default, context):
-    command_type = context.parent.generic_mapping[TCommand]
+from clean_ioc import ParameterContext, derive
+
+
+def command_name(context: ParameterContext):
+    parent = context.component.parent
+    if parent is None:
+        return context.default
+    command_type = parent.generic_mapping[TCommand]
     return command_type.__name__
+
+
+builder.register(Service, arguments={"command_name": derive(command_name)})
 ```
 
 Runtime caching still uses the stable component ID, preserving lifespan semantics across occurrences within one resolve.

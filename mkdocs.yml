@@ -20,7 +20,7 @@ nav:
   - Bundles: bundles.md
   - Advanced:
       - Filtering: advanced/filtering.md
-      - Value Factories: advanced/value-factories.md
+      - Argument Policies: advanced/arguments.md
       - Special Dependency Types: advanced/special-dependency-types.md
       - Runtime container access: advanced/accessing-clean-ioc-within-dependency.md
   - Extensions:

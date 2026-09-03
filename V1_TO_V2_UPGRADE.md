@@ -41,6 +41,7 @@ Apply all registrations, decorators, pre-configurations, discovery rules, patche
 | --- | --- | --- |
 | `Container()` | `ContainerBuilder()` then `.build()` | Do not construct V2 `Container` directly. |
 | `container.register(...)` | `builder.register(...)` | The registration signature is largely preserved. |
+| `dependency_config={...}` | `arguments={...}` | Values, selection, and derivation are explicit V2 policies. |
 | `Lifespan.scoped` and other enum members | `"scoped"` and other string literals | V2 accepts `"transient"`, `"once_per_graph"`, `"scoped"`, and `"singleton"`. |
 | `container.patch_registration(...)` | `builder.patch_component(...)` | Patch only before a successful build. |
 | `container.pre_configure(...)` | `builder.pre_configure(...)` | It returns a stable definition ID; filters are component filters and run at build. |
@@ -71,16 +72,107 @@ The following removals are deliberate. Do not preserve them with local aliases o
 | `clean_ioc.core.Lifespan` | String literals accepted by `lifespan=`; `clean_ioc.Lifespan` is annotation-only |
 | `clean_ioc.registration_filters` | `clean_ioc.component_filters` |
 | `clean_ioc.node_filters` | `clean_ioc.component_filters` |
-| `clean_ioc.list_reduction_filters` | A `ComponentListModifier` callable passed through `DependencySettings` |
+| `clean_ioc.list_reduction_filters` | no direct equivalent | Filter a collection with `select(...)`; register an explicit collection factory when ordering or reduction is domain behavior. |
+| `DependencySettings(filter=f)` | `select(f)` |
+| `DependencySettings(value_factory=f)` | `derive(f)` | The function now runs during build, not activation. |
+| `EMPTY` from a value factory | `INJECT` from `derive(...)` |
+| `RemoveDependencySetting` | `REMOVE` |
 | `clean_ioc.diagnostics` | `BuildReport`, `CompiledGraph`, manifests, and the `clean-ioc` CLI |
 | `clean_ioc.factories.use_registered` | `clean_ioc.factories.use_component` |
 | `clean_ioc.factories.use_from_current_graph` | `use_component` or an explicit `ResolutionContext` dependency |
 | `add_container_to_app` and `add_*_to_scope` | `configure_fastapi(builder)` plus `install_fastapi(app, container)` |
 | `register_generic_decorator(...)` | `register_decorator(...)`, which handles open and closed generic services |
 
-The package root is the authoritative public import surface. Submodules documented by the V2 guide—such as `component_filters`, `type_filters`, `factories`, `value_factories`, and `ext.fastapi`—are also public. An underscore-prefixed module is never a migration target.
+The package root is the authoritative public import surface. Submodules documented by the V2 guide—such as
+`component_filters`, `type_filters`, `factories`, and `ext.fastapi`—are also public. `clean_ioc.configuration` and
+`clean_ioc.value_factories` are removed. An underscore-prefixed module is never a migration target.
 
 `resolve()` and `resolve_async()` remain runtime APIs. Use `resolve_async()` whenever the compiled path contains async factories, generators, context managers, or cleanup.
+
+## Pass composition inputs explicitly
+
+When V1 composition captured environment or mode variables in value factories or filters, pass those inputs explicitly
+to the V2 build instead:
+
+```python
+def timeout(context: ParameterContext) -> int:
+    return 30 if context.build_args["environment"] == "production" else 5
+
+
+builder.register(Client, arguments={"timeout": derive(timeout)})
+builder.register(
+    Publisher,
+    LivePublisher,
+    when=cf.build_arg_is("mode", "live"),
+)
+container = builder.build(
+    build_args={"environment": "production", "mode": "live"},
+)
+```
+
+Build arguments influence compilation only and are not injected implicitly at runtime. Their shallow-copied mapping is
+immutable, although contained values remain user-owned. Scope overlays inherit and may override keys; ordinary scopes
+reuse the same arguments. Use a fresh root build when a key must be absent. Supply `build_args=` to preview queries when
+their result depends on these inputs. To pass one input to a constructor or factory, configure the parameter explicitly
+with `arguments={"environment": build_arg("environment")}`; the selected value is frozen during build. An explicit
+`default=` handles an absent input.
+
+Use `inject()` when a V1 dependency setting overrode a Python default with normal unnamed injection. Use
+`generic_arg(T)` when a contextual V1 value factory only projected a binding from the owning component's generic map.
+
+## Replace dependency settings with argument policies
+
+V2 removes the mutable `DependencySettings` object. Constructor, factory, decorator, and pre-configuration overrides
+all use `arguments=`:
+
+```python
+# V1
+container.register(
+    Client,
+    dependency_config={
+        "endpoint": DependencySettings(filter=rf.with_name("api")),
+        "timeout": 5.0,
+    },
+)
+
+# V2
+builder.register(
+    Client,
+    arguments={
+        "endpoint": select(cf.with_name("api")),
+        "timeout": 5.0,
+    },
+)
+```
+
+With no entry, a Python default is used when present; otherwise Clean IoC injects the unnamed component. A plain entry
+is the exact compiled value, including when it is callable. `select(filter)` explicitly injects a filtered component
+and ignores a Python default.
+
+Migrate a contextual value factory to a synchronous `derive(...)` policy:
+
+```python
+# V1: called during activation
+def isolation_level(default, context):
+    return getattr(context.parent.implementation, "isolation_level", default)
+
+# V2: called during build for each static occurrence
+def isolation_level(context: ParameterContext):
+    parent = context.component.parent
+    return getattr(parent.implementation, "isolation_level", context.default)
+
+builder.register(
+    TransactionManager,
+    arguments={"isolation_level": derive(isolation_level)},
+)
+```
+
+A derived policy returns a concrete value or `INJECT`. The latter compiles the normal component/scope-slot edge and
+therefore preserves complete lifespan, cycle, missing-component, and async validation. Derived policies must be pure,
+synchronous composition code: use a registered factory for runtime work or a declared scope slot for boundary data.
+
+Unknown `arguments` keys fail build unless the target accepts `**kwargs`. To remove an inherited override while
+patching, pass `arguments={"name": REMOVE}`.
 
 ## Composition and runtime must be separated
 
@@ -153,8 +245,8 @@ generic mapping, kind, activation, async and cleanup requirements, and decorator
 Filter timing changes matter:
 
 - `when=` on registration, decorator, and pre-configuration APIs is evaluated during build and frozen.
-- `DependencySettings.filter` receives compiled components during build.
-- `DependencySettings.list_modifier` receives `list[Component]`, not resolved values.
+- `select(filter)` receives compiled components during build.
+- collection selection preserves normal candidate order; V2 has no implicit collection reducer.
 - a filter passed to `resolve()` only selects among already-compiled root plans.
 - descendant filters see static dependency, decorator, and pre-configuration occurrences.
 

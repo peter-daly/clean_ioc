@@ -46,8 +46,8 @@ with container.new_scope() as scope:
 ```
 
 `build()` specializes types, constructs occurrence-specific `Component` trees, evaluates filters, checks cycles and
-captive lifespans, and freezes activation instructions. It does not invoke user constructors, factories, generators,
-context managers, or value providers.
+captive lifespans, evaluates explicit `derive(...)` argument policies, and freezes activation instructions. It does not
+invoke user constructors, factories, generators, or context managers.
 
 Runtime resolution executes the compiled plan without rediscovering registrations or allocating graph nodes.
 

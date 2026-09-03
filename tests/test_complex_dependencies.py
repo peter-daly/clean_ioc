@@ -11,27 +11,29 @@ import clean_ioc.type_filters as tf
 from clean_ioc import (
     Component,
     ContainerBuilder,
-    DependencyContext,
-    DependencySettings,
+    ParameterContext,
     Tag,
+    derive,
+    select,
 )
 from clean_ioc.factories import use_component
 
 
-def test_value_factories_with_generic_decorators():
+def test_derived_arguments_with_generic_decorators():
     class Message:
         pass
 
     TMessage = TypeVar("TMessage", bound=Message)
     ISOLATION_CLASS_ATTRIBUTE = "__ISOLATION_LEVEL__"  # noqa: N806
 
-    def isolation_level_factory(default_value: Any, context: DependencyContext):
-        assert context.parent is not None
-        message_type = context.parent.generic_mapping[TMessage]
+    def isolation_level_factory(context: ParameterContext):
+        if context.component.parent is None:
+            return context.default
+        message_type = context.component.parent.generic_mapping[TMessage]
         if isolation_level := getattr(message_type, ISOLATION_CLASS_ATTRIBUTE, None):
             return isolation_level
 
-        return default_value
+        return context.default
 
     def isolation_level(level: str):
         def decorator(cls: type):
@@ -84,7 +86,7 @@ def test_value_factories_with_generic_decorators():
     builder.register(
         TransactionManager,
         SqlTransactionManager,
-        dependency_config={"isolation_level": DependencySettings(value_factory=isolation_level_factory)},
+        arguments={"isolation_level": derive(isolation_level_factory)},
     )
     container = builder.build()
     handler_a: TransactionMessageHandlerDecorator[MessageA] = container.resolve(
@@ -333,9 +335,7 @@ def test_generic_decorator_can_set_the_generic_args_of_a_dependency_with_differe
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
-        dependency_config={
-            "transaction_manager": DependencySettings(filter=cf.implementation_is(DocDbTransactionManager))
-        },
+        arguments={"transaction_manager": select(cf.implementation_is(DocDbTransactionManager))},
         when=cf.has_descendant(cf.service_type_is(DocDbConnection)),
     )
 
@@ -343,9 +343,7 @@ def test_generic_decorator_can_set_the_generic_args_of_a_dependency_with_differe
         MessageHandler,
         TransactionMessageHandlerDecorator,
         decorated_arg="child",
-        dependency_config={
-            "transaction_manager": DependencySettings(filter=cf.implementation_is(SqlTransactionManager))
-        },
+        arguments={"transaction_manager": select(cf.implementation_is(SqlTransactionManager))},
         when=cf.has_descendant(cf.service_type_is(SqlDbConnection)),
     )
 
@@ -759,14 +757,14 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes_can_hav
         CommandHandler,
         OperationDecorator,
         decorated_arg="handler",
-        dependency_config={"thing_doer": DependencySettings(filter=cf.has_tag("command"))},
+        arguments={"thing_doer": select(cf.has_tag("command"))},
     )
 
     builder.register_decorator(
         EventHandler,
         OperationDecorator,
         decorated_arg="handler",
-        dependency_config={"thing_doer": DependencySettings(filter=cf.has_tag("event"))},
+        arguments={"thing_doer": select(cf.has_tag("event"))},
     )
 
     container = builder.build()

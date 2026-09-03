@@ -25,12 +25,53 @@ Container/Scope
 - `Container` and `Scope` contain frozen `_PlanSet` instances and expose no registration APIs.
 - A failed build leaves its builder reusable. A successful build makes the builder single-use.
 - Every visible closed root is compiled and validated. `mark_entrypoint()` only focuses tooling and reachability analysis; it does not weaken validation or make unmarked roots unresolvable.
-- Building never invokes user constructors, factories, generators, context managers, or parameter value providers.
+- Building never invokes user constructors, factories, generators, or context managers. Explicit `derive(...)`
+  argument policies run during compilation and their concrete results become value nodes.
 - Runtime resolution executes `_Step` objects. It does not allocate legacy `DependencyNode`/object-graph structures.
 
 The compiler also prepares the common runtime decisions instead of rediscovering them on every resolve. It freezes each step's sync/async capability, builds direct maps for default root selection, and chooses a lifespan-specific registration step for transient, once-per-graph, scoped, or singleton behavior. Default cached root resolutions return the frozen value before allocating a per-resolution context. Runtime code should keep those paths specialized: do not restore recursive capability checks, repeated default-filter scans, or a generic lifespan switch to the hot path without measurements showing a benefit.
 
 Private machinery in `clean_ioc/_legacy.py` still supplies registration storage, activators, dependency parsing, and filters while the compiler is made self-contained. It is not a supported import path. The public runtime converts string-literal lifespans to the private enum only at this internal boundary. Do not expose that enum through components or route runtime resolution back through the old dependency graph.
+
+## Argument compilation
+
+The only public override parameter is `arguments=`. Each entry is one of:
+
+- a plain value, compiled directly as `ComponentKind.value`;
+- `select(filter)`, compiled as a normal component or scope-slot edge;
+- `inject()`, compiled as the ordinary unnamed component/scope-slot edge even when a Python default exists;
+- `derive(function)`, evaluated synchronously during build for each static occurrence;
+- `build_arg(name, default=...)`, which projects one build input into a frozen value node;
+- `generic_arg(TypeVar | str)`, which projects an owning component's generic binding into a frozen value node.
+
+`ParameterContext` contains the specialized annotation, Python default state, and owning `Component`. A derived function
+may return a concrete value or `INJECT`; `INJECT` resumes normal unnamed component/scope-slot selection. Because that
+fallback is a normal edge rather than a runtime provider, it participates in all structural and lifespan validation.
+The owning component is still being compiled, so policies may rely on its identity, metadata, generic mapping, and
+already-known parent, but not on a completed dependency/decorator subtree. Builder preview queries compile temporary
+plans and can therefore evaluate policies before the final `build()`; purity is required.
+
+`build(build_args=...)` accepts application-defined composition inputs. Normalize them at the build boundary by
+validating string keys, making a shallow copy, and exposing that copy as an immutable mapping on `Component`,
+`ParameterContext`, `_PlanSet`/`Scope`, and `CompiledGraph`. Do not inject the mapping automatically. Derived policies,
+`build_arg(name)`, and filters consume it while compiling, and the selected wiring or projected value is frozen into the
+plan. Preview compilations must receive their explicit `build_args` too, including diagnostic recompilation after a
+failed build.
+
+A scope overlay shallowly merges its supplied arguments over the parent mapping. Newly compiled occurrences use the
+merged mapping. Clones anchored to a parent singleton or pre-configuration retain the mapping of their original
+compiled occurrence; this per-occurrence metadata is required for an honest graph. Ordinary scopes reuse their parent's
+mapping unchanged. Graph manifests, fingerprints, reports, and renderers must never serialize argument keys or values.
+There is intentionally no CLI parsing, implicit runtime injection, deep copy, or overlay removal sentinel for this
+input.
+
+Do not add activation-time value providers back to the public API. Runtime-changing values are ordinary registered
+factories or declared scope slots. Do not add a generic list modifier without a concrete use case and explicit graph
+semantics; collection `select(...)` currently filters candidates and preserves registration order. Unknown argument
+names fail compilation unless the activation callable accepts `**kwargs`. `REMOVE` is the patch sentinel.
+
+The private `_legacy_configuration.py` types only adapt this model to the legacy signature parser. They are not a
+public compatibility layer. `clean_ioc.configuration` and `clean_ioc.value_factories` are intentionally absent.
 
 ## Immutable component model
 
@@ -44,7 +85,9 @@ Each compiled occurrence records:
 - parent, dependencies, decorators, decorated component, and pre-configurations;
 - `ComponentKind`, `ComponentActivation`, `requires_async`, and `manages_cleanup`.
 
-Component kinds currently cover registrations, decorators, pre-configurations, collections, scope slots, fixed/default values, value providers, and runtime contexts. When adding a new activation edge, represent it in this graph as well as in the runtime step tree. Filters, manifests, diagnostics, and reachability depend on the graph being complete.
+Component kinds currently cover registrations, decorators, pre-configurations, collections, scope slots,
+fixed/default/derived values, and runtime contexts. When adding a new activation edge, represent it in this graph as
+well as in the runtime step tree. Filters, manifests, diagnostics, and reachability depend on the graph being complete.
 
 Draft records are mutable only while `_Compiler` is building the graph. `_ComponentGraph.freeze()` replaces them with immutable records before a runtime is returned.
 
@@ -54,7 +97,8 @@ Draft records are mutable only while `_Compiler` is building the graph. `_Compon
 
 Current hard failures include missing components, circular paths, invalid generic specialization, invalid parent singleton specialization in an overlay, missing marked entry points, and captive lifespans.
 
-Captive lifespan rules are transitive across constructors, factories, decorators, collections, value-provider fallbacks, and pre-configuration dependencies:
+Captive lifespan rules are transitive across constructors, factories, decorators, collections, argument-selected
+component edges, and pre-configuration dependencies:
 
 ```text
 singleton -> scoped                         invalid

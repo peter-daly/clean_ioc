@@ -1,20 +1,11 @@
-"""Public configuration primitives for Clean IoC composition."""
+"""Configuration types used only by the private V1 composition substrate."""
 
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, TypeAlias
 
+from .metadata import Tag as Tag
 from .utils import singleton
-
-__all__ = [
-    "EMPTY",
-    "DependencyConfig",
-    "DependencySettings",
-    "ParameterValueFactory",
-    "RemoveDependencySetting",
-    "SubDependencies",
-    "Tag",
-]
 
 
 @singleton
@@ -34,8 +25,6 @@ UNKNOWN = _Unknown()
 
 
 class _RemoveDependencySetting:
-    """Sentinel used to remove one dependency override from a component patch."""
-
     def __repr__(self) -> str:
         return "RemoveDependencySetting"
 
@@ -53,17 +42,6 @@ def default_component_filter(component: Any) -> bool:
 
 def default_component_list_modifier(components: list[Any]) -> list[Any]:
     return components
-
-
-@dataclass
-class Tag:
-    name: str
-    value: str | None = None
-
-    def __iter__(self):
-        yield self.name
-        if self.value is not None:
-            yield self.value
 
 
 @dataclass(kw_only=True)

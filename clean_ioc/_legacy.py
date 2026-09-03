@@ -44,7 +44,7 @@ from typetoolbox.generics import (
 from clean_ioc.generic_utils import map_type_vars_to_parent
 from clean_ioc.utils import send_deprecation_warning, singleton
 
-from .configuration import (
+from ._legacy_configuration import (
     EMPTY,
     UNKNOWN,
     DependencyConfig,
@@ -56,13 +56,13 @@ from .configuration import (
     SubDependencies,
     Tag,
 )
-from .configuration import (
+from ._legacy_configuration import (
     _Empty as _empty,
 )
-from .configuration import (
+from ._legacy_configuration import (
     default_component_filter as default_registration_filter,
 )
-from .configuration import (
+from ._legacy_configuration import (
     default_component_list_modifier as default_registration_list_modifier,
 )
 from .type_filters import is_abstract, name_starts_with

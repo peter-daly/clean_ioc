@@ -12,7 +12,8 @@ builder.register(CreateOrder)
 container = builder.build()
 ```
 
-No user constructor, factory, generator, context manager, or parameter value provider runs during this work.
+No user constructor, factory, generator, or context manager runs during this work. Functions passed explicitly to
+`derive(...)` do run because their concrete values are compiled into the plan.
 
 A successful build therefore establishes the runtime invariant: the `Container` contains one complete, immutable, structurally valid component plan. Later Python subclasses do not join or invalidate that plan.
 
@@ -68,7 +69,9 @@ for component in container.components:
 
 `Component` objects are immutable views of static occurrences. A stable component ID identifies its registration; `occurrence_id` distinguishes the same registration under different parents.
 
-`container.graph` adds a complete, read-only view that also models configured/default values, runtime contexts, value providers, declared slots, decorators, and pre-configurations. It can render text or Mermaid and produce deterministic, redacted JSON manifests.
+`container.graph` adds a complete, read-only view that also models configured/default values, runtime contexts,
+declared slots, decorators, and pre-configurations. It can render text or Mermaid and produce deterministic, redacted
+JSON manifests.
 
 ## Child composition
 

@@ -3,7 +3,16 @@
     Split mutable composition into ``ContainerBuilder`` and ``ScopeBuilder`` and
     make ``Container`` and ``Scope`` immutable runtime types.
     Compile occurrence-specific component plans at ``build()`` without invoking
-    constructors, factories, generators, context managers, or value providers.
+    constructors, factories, generators, or context managers.
+    Replace ``dependency_config`` and mutable ``DependencySettings`` with one
+    ``arguments`` API for fixed values, explicit component selection, and pure
+    build-time derivation; remove runtime value providers and list reducers.
+    Add immutable user-defined ``build_args`` to root and overlay compilation,
+    exposing them to derivation and component filters, with
+    ``build_arg(name, default=...)`` for explicit frozen-value projection,
+    without implicit runtime injection or disclosure through graph diagnostics.
+    Add ``inject()`` for forcing unnamed injection over a Python default and
+    ``generic_arg(...)`` for freezing an owning component's generic binding.
     Execute frozen activation instructions without allocating legacy dependency
     graph nodes during normal resolution.
     Specialize compiled runtime steps by lifespan, freeze sync capability and

@@ -4,7 +4,7 @@ Clean IoC 2 uses one immutable `Component` model and one filter vocabulary every
 
 ```python
 import clean_ioc.component_filters as cf
-from clean_ioc import Component, ContainerBuilder, DependencySettings, Tag
+from clean_ioc import Component, ContainerBuilder, Tag, select
 ```
 
 A component occurrence exposes:
@@ -14,7 +14,7 @@ A component occurrence exposes:
 - `lifespan`, `name`, `tags`, `kind`, `activation`, and incoming `argument`;
 - activation properties including `requires_async` and `manages_cleanup`;
 - decorator `position` when the occurrence is a decorator;
-- `generic_mapping`;
+- `generic_mapping` and immutable `build_args`;
 - read-only `parent`, `dependencies`, `decorators`, `decorated`, and `pre_configurations`;
 - static descendant queries.
 
@@ -48,14 +48,12 @@ builder = ContainerBuilder()
 builder.register(str, instance="https://api.example", name="api")
 builder.register(
     Client,
-    dependency_config={
-        "endpoint": DependencySettings(filter=cf.with_name("api")),
-    },
+    arguments={"endpoint": select(cf.with_name("api"))},
 )
 container = builder.build()
 ```
 
-Collections use the same predicate and an optional component-list modifier.
+For collection arguments, the same predicate selects every matching component while preserving normal candidate order.
 
 ## Contextual registration with `when=`
 
@@ -114,6 +112,7 @@ Useful helpers include:
 - `service_type_is`;
 - `has_tag`, `has_generic_arg`;
 - `has_lifespan`, `has_lifespan_in`;
+- `has_build_arg`, `build_arg_is`;
 - `parent`, `has_descendant`.
 
 Use `create_filter(callable)` for a custom composable predicate.
@@ -141,6 +140,25 @@ async_resource = cf.create_filter(
 )
 ```
 
+Build arguments provide explicit inputs for composition-time filtering:
+
+```python
+production = cf.build_arg_is("environment", "production")
+has_region = cf.has_build_arg("region")
+
+builder.register(
+    PaymentGateway,
+    ProductionGateway,
+    when=production & has_region,
+)
+container = builder.build(
+    build_args={"environment": "production", "region": "eu-west"},
+)
+```
+
+Missing keys do not match either helper. Custom filters can read `component.build_args` directly. Pass `build_args=` to
+builder preview queries when their temporary compilation should use the same composition inputs as the final build.
+
 ## Component IDs and patching
 
 Builder queries use component terminology:
@@ -148,7 +166,7 @@ Builder queries use component terminology:
 ```python
 component_id = builder.get_component_id(Service, filter=cf.with_name("primary"))
 component_ids = builder.get_component_ids(Service)
-exists = builder.has_component(Service)
+exists = builder.has_component(Service, build_args={"environment": "production"})
 
 if component_id is not None:
     builder.patch_component(Service, component_id, lifespan="singleton")

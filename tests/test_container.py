@@ -18,16 +18,23 @@ from assertive import was_called
 
 import clean_ioc.component_filters as cf
 from clean_ioc import (
+    INJECT,
+    REMOVE,
     BuilderAlreadyBuiltError,
     CannotResolveError,
     Component,
+    ComponentKind,
     ContainerBuilder,
     ContainerBuildError,
-    DependencySettings,
     Lifespan,
     ScopeProvisionError,
     Tag,
     UndeclaredScopeSlotError,
+    build_arg,
+    derive,
+    generic_arg,
+    inject,
+    select,
 )
 
 T = TypeVar("T")
@@ -526,7 +533,7 @@ async def test_async_factory_and_async_context_manager_resolution():
     assert events == ["enter", "exit"]
 
 
-def test_value_provider_has_a_precompiled_fallback_edge():
+def test_derived_injection_has_a_precompiled_component_edge():
     class Dependency:
         pass
 
@@ -536,22 +543,534 @@ def test_value_provider_has_a_precompiled_fallback_edge():
 
     calls = 0
 
-    def provider(default, context):
+    def provider(context):
         nonlocal calls
         calls += 1
         assert context.component.service_type is Service
-        return default
+        return INJECT
 
     builder = ContainerBuilder()
     builder.register(Dependency)
     builder.register(
         Service,
-        dependency_config={"dependency": DependencySettings(value_factory=provider)},
+        arguments={"dependency": derive(provider)},
     )
     container = builder.build()
 
     assert isinstance(container.resolve(Service).dependency, Dependency)
     assert calls == 1
+
+
+def test_arguments_compile_plain_values_and_do_not_invoke_callable_values():
+    callback = Mock()
+
+    class Service:
+        def __init__(self, timeout: float, callback: Callable[[], None]):
+            self.timeout = timeout
+            self.callback = callback
+
+    builder = ContainerBuilder()
+    builder.register(Service, arguments={"timeout": 2.5, "callback": callback})
+    container = builder.build()
+
+    service = container.resolve(Service)
+    assert service.timeout == 2.5
+    assert service.callback is callback
+    callback.assert_not_called()
+    component = next(component for component in container.components if component.service_type is Service)
+    assert {dependency.kind for dependency in component.dependencies} == {ComponentKind.value}
+
+
+def test_select_ignores_a_python_default_and_compiles_the_selected_component():
+    class Dependency:
+        pass
+
+    selected = Dependency()
+
+    class Service:
+        def __init__(self, dependency: Dependency = cast(Dependency, None)):
+            self.dependency = dependency
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, instance=selected, name="selected")
+    builder.register(Service, arguments={"dependency": select(cf.with_name("selected"))})
+    container = builder.build()
+
+    assert container.resolve(Service).dependency is selected
+
+
+def test_select_filters_collections_and_preserves_candidate_order():
+    class Plugin:
+        pass
+
+    first = Plugin()
+    ignored = Plugin()
+    second = Plugin()
+
+    class Service:
+        def __init__(self, plugins: list[Plugin]):
+            self.plugins = plugins
+
+    builder = ContainerBuilder()
+    builder.register(Plugin, instance=first, tags=[Tag("enabled")])
+    builder.register(Plugin, instance=ignored)
+    builder.register(Plugin, instance=second, tags=[Tag("enabled")])
+    builder.register(Service, arguments={"plugins": select(cf.has_tag("enabled"))})
+
+    assert builder.build().resolve(Service).plugins == [second, first]
+
+
+def test_derive_runs_during_build_with_static_parameter_context():
+    contexts = []
+
+    class Service:
+        def __init__(self, retries: int = 3):
+            self.retries = retries
+
+    def retries(context):
+        contexts.append(context)
+        return context.default + 1
+
+    builder = ContainerBuilder()
+    builder.register(Service, arguments={"retries": derive(retries)})
+    container = builder.build()
+
+    assert len(contexts) == 1
+    assert contexts[0].name == "retries"
+    assert contexts[0].annotation is int
+    assert contexts[0].has_default
+    assert contexts[0].component.service_type is Service
+    assert container.resolve(Service).retries == 4
+    assert container.resolve(Service).retries == 4
+    assert len(contexts) == 1
+
+
+def test_build_args_are_immutable_compilation_inputs_available_to_derive_and_graph_metadata():
+    calls = 0
+    nested = {"feature": True}
+    supplied = {"environment": "production", "settings": nested}
+
+    class Service:
+        def __init__(self, timeout: int):
+            self.timeout = timeout
+
+    def timeout(context):
+        nonlocal calls
+        calls += 1
+        assert context.build_args is context.component.build_args
+        return 30 if context.build_args["environment"] == "production" else 5
+
+    builder = ContainerBuilder()
+    builder.register(Service, arguments={"timeout": derive(timeout)})
+    container = builder.build(build_args=supplied)
+    supplied["environment"] = "development"
+    supplied["late"] = True
+
+    component = next(component for component in container.components if component.service_type is Service)
+    assert container.build_args == {"environment": "production", "settings": nested}
+    assert container.graph.build_args is container.build_args
+    assert component.build_args is container.build_args
+    assert component.dependencies[0].kind is ComponentKind.value
+    assert container.build_args["settings"] is nested
+    assert "late" not in container.build_args
+    with pytest.raises(TypeError):
+        cast(dict[str, Any], container.build_args)["environment"] = "test"
+
+    assert container.resolve(Service).timeout == 30
+    assert container.resolve(Service).timeout == 30
+    assert calls == 1
+    assert container.new_scope().build_args is container.build_args
+
+
+def test_build_arg_compiles_a_named_input_for_factory_injection():
+    class Client:
+        def __init__(self, environment: str):
+            self.environment = environment
+
+    def create_client(environment: str) -> Client:
+        return Client(environment)
+
+    supplied = {"environment": "production"}
+    builder = ContainerBuilder()
+    builder.register(
+        Client,
+        factory=create_client,
+        arguments={"environment": build_arg("environment")},
+    )
+    container = builder.build(build_args=supplied)
+    supplied["environment"] = "development"
+
+    component = next(component for component in container.components if component.service_type is Client)
+    assert component.dependencies[0].kind is ComponentKind.value
+    assert container.resolve(Client).environment == "production"
+
+
+def test_build_arg_can_use_an_explicit_default_for_a_missing_input():
+    class Client:
+        def __init__(self, timeout: int):
+            self.timeout = timeout
+
+    builder = ContainerBuilder()
+    builder.register(Client, arguments={"timeout": build_arg("timeout", default=30)})
+
+    assert builder.build().resolve(Client).timeout == 30
+
+
+def test_build_arg_validates_its_name_and_reports_missing_values_during_build():
+    with pytest.raises(TypeError, match="names must be strings"):
+        build_arg(cast(Any, 1))
+
+    class Service:
+        def __init__(self, environment: str):
+            self.environment = environment
+
+    builder = ContainerBuilder()
+    builder.register(Service, arguments={"environment": build_arg("environment")})
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    assert raised.value.report is not None
+    assert raised.value.report.errors[0].code == "invalid-derived-argument"
+
+
+def test_inject_forces_ordinary_component_injection_over_a_python_default():
+    class Logger:
+        pass
+
+    class Service:
+        def __init__(self, logger: Logger = cast(Logger, None)):
+            self.logger = logger
+
+    logger = Logger()
+    builder = ContainerBuilder()
+    builder.register(Logger, instance=logger)
+    builder.register(Service, arguments={"logger": inject()})
+    container = builder.build()
+
+    service = container.resolve(Service)
+    component = next(component for component in container.components if component.service_type is Service)
+    assert service.logger is logger
+    assert component.dependencies[0].kind is ComponentKind.registration
+
+
+def test_generic_arg_compiles_typevar_and_string_bindings_from_the_owning_component():
+    TItem = TypeVar("TItem")
+
+    class Descriptor(Generic[TItem]):
+        def __init__(self, item_type: type):
+            self.item_type = item_type
+
+    for key in (TItem, "TItem"):
+        builder = ContainerBuilder()
+        builder.register(
+            Descriptor[int],
+            arguments={"item_type": generic_arg(key)},
+        )
+        descriptor = builder.build().resolve(Descriptor[int])
+        assert descriptor.item_type is int
+
+
+def test_generic_arg_validates_its_key_and_reports_missing_bindings_during_build():
+    with pytest.raises(TypeError, match="TypeVar objects or strings"):
+        generic_arg(cast(Any, 1))
+
+    class Service:
+        def __init__(self, item_type: type):
+            self.item_type = item_type
+
+    builder = ContainerBuilder()
+    builder.register(Service, arguments={"item_type": generic_arg("TItem")})
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    assert raised.value.report is not None
+    assert raised.value.report.errors[0].code == "invalid-derived-argument"
+
+
+def test_build_arg_filters_apply_across_graph_aware_composition():
+    configured: list[str] = []
+
+    class Plugin:
+        pass
+
+    class ProductionPlugin(Plugin):
+        pass
+
+    class Service:
+        def __init__(self, plugins: list[Plugin]):
+            self.plugins = plugins
+
+    class Decorator(Service):
+        def __init__(self, child: Service):
+            self.child = child
+
+    def configure() -> None:
+        configured.append("configured")
+
+    builder = ContainerBuilder()
+    builder.register(
+        Plugin,
+        ProductionPlugin,
+        when=lambda component: component.build_args["environment"] == "production",
+    )
+    builder.register(
+        Service,
+        arguments={"plugins": select(cf.has_build_arg("environment"))},
+    )
+    builder.register_decorator(Service, Decorator, when=cf.build_arg_is("mode", "live"))
+    builder.pre_configure(Service, configure, when=cf.build_arg_is("mode", "live"))
+    builder.mark_entrypoint(Service, filter=cf.build_arg_is("mode", "live"))
+
+    container = builder.build(build_args={"environment": "production", "mode": "live"})
+    service = container.resolve(Service)
+
+    assert isinstance(service, Decorator)
+    assert isinstance(service.child.plugins[0], ProductionPlugin)
+    assert configured == ["configured"]
+    assert container.graph.entrypoints[0].component.service_type is Service
+
+
+def test_build_arg_filters_treat_missing_keys_as_non_matches():
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service, when=cf.has_build_arg("enabled"))
+
+    assert not builder.has_component(Service)
+    assert not builder.has_component(Service, filter=cf.build_arg_is("enabled", None))
+    assert builder.has_component(Service, build_args={"enabled": None})
+    assert builder.has_component(
+        Service,
+        filter=cf.build_arg_is("enabled", None),
+        build_args={"enabled": None},
+    )
+
+
+def test_builder_preview_queries_accept_build_args():
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    component_id = builder.register(Service, when=cf.build_arg_is("mode", "live"))
+
+    assert not builder.has_component(Service, build_args={"mode": "test"})
+    assert builder.has_component(Service, build_args={"mode": "live"})
+    assert builder.get_component_ids(Service, build_args={"mode": "live"}) == [component_id]
+    assert builder.get_component_id(Service, build_args={"mode": "live"}) == component_id
+
+
+def test_invalid_build_args_leave_the_builder_reusable():
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+
+    with pytest.raises(TypeError, match="must be a mapping"):
+        builder.build(build_args=cast(Any, [("environment", "production")]))
+    with pytest.raises(TypeError, match="keys must be strings"):
+        builder.build(build_args=cast(Any, {1: "production"}))
+
+    assert builder.build(build_args={"environment": "production"}).build_args["environment"] == "production"
+
+
+def test_compilation_failure_can_retry_with_different_build_args_then_becomes_single_use():
+    class Service:
+        def __init__(self, mode: str):
+            self.mode = mode
+
+    def mode(context):
+        if context.build_args["mode"] != "live":
+            raise ValueError("unsupported mode")
+        return context.build_args["mode"]
+
+    builder = ContainerBuilder()
+    builder.register(Service, arguments={"mode": derive(mode)})
+
+    with pytest.raises(ContainerBuildError):
+        builder.build(build_args={"mode": "invalid"})
+
+    container = builder.build(build_args={"mode": "live"})
+    assert container.resolve(Service).mode == "live"
+    with pytest.raises(BuilderAlreadyBuiltError):
+        builder.build(build_args={"mode": "another"})
+
+
+def test_missing_build_arg_in_derive_is_reported_as_a_build_error():
+    class Service:
+        def __init__(self, value: str):
+            self.value = value
+
+    builder = ContainerBuilder()
+    builder.register(Service, arguments={"value": derive(lambda context: context.build_args["missing"])})
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    assert raised.value.report is not None
+    assert raised.value.report.errors[0].code == "invalid-derived-argument"
+
+
+def test_scope_builder_inherits_and_overrides_build_args_without_relabeling_anchored_plans():
+    class RootSingleton:
+        pass
+
+    class OverlayService:
+        def __init__(self, mode: str):
+            self.mode = mode
+
+    def configure_root() -> None:
+        pass
+
+    root_builder = ContainerBuilder()
+    root_builder.register(RootSingleton, lifespan="singleton")
+    root_builder.pre_configure(RootSingleton, configure_root)
+    root = root_builder.build(build_args={"environment": "production", "mode": "root"})
+
+    overlay_builder = root.new_scope_builder()
+    overlay_builder.register(
+        OverlayService,
+        arguments={"mode": derive(lambda context: context.build_args["mode"])},
+    )
+    overlay = overlay_builder.build(build_args={"mode": "tenant"})
+
+    assert overlay.build_args == {"environment": "production", "mode": "tenant"}
+    assert overlay.graph.build_args is overlay.build_args
+    assert overlay.resolve(OverlayService).mode == "tenant"
+    overlay_component = next(component for component in overlay.components if component.service_type is OverlayService)
+    assert overlay_component.build_args is overlay.build_args
+
+    anchored = next(component for component in overlay.components if component.service_type is RootSingleton)
+    assert anchored.build_args == {"environment": "production", "mode": "root"}
+    assert anchored.pre_configurations[0].build_args == anchored.build_args
+    assert overlay.new_scope().build_args is overlay.build_args
+
+
+def test_build_args_are_omitted_from_reports_and_graph_serializations():
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    container = builder.build(build_args={"private-build-key": "private-build-value"})
+
+    outputs = (
+        container.build_report.to_json(),
+        container.build_report.to_text(),
+        container.graph.manifest().to_json(),
+        container.graph.to_text(),
+        container.graph.to_mermaid(),
+    )
+    assert all("private-build-key" not in output for output in outputs)
+    assert all("private-build-value" not in output for output in outputs)
+
+    equivalent_builder = ContainerBuilder()
+    equivalent_builder.register(Service)
+    equivalent = equivalent_builder.build(build_args={"another-private-key": object()})
+    assert equivalent.graph.manifest().fingerprint == container.graph.manifest().fingerprint
+
+
+def test_unknown_argument_override_fails_build_unless_callable_accepts_kwargs():
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service, arguments={"unknown": 1})
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    assert raised.value.report is not None
+    assert raised.value.report.errors[0].code == "invalid-argument"
+
+    received = None
+
+    def create_service(**kwargs: Any) -> Service:
+        nonlocal received
+        received = kwargs
+        return Service()
+
+    valid_builder = ContainerBuilder()
+    valid_builder.register(Service, factory=create_service, arguments={"known_at_composition": 1})
+    valid_builder.build().resolve(Service)
+    assert received == {"known_at_composition": 1}
+
+
+def test_derive_rejects_async_functions_and_reports_failures_at_build():
+    async def async_policy(context):
+        return 1
+
+    with pytest.raises(TypeError, match="synchronous"):
+        derive(async_policy)
+
+    class Service:
+        def __init__(self, value: int):
+            self.value = value
+
+    def failing_policy(context):
+        raise ValueError("bad policy")
+
+    builder = ContainerBuilder()
+    builder.register(Service, arguments={"value": derive(failing_policy)})
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    assert raised.value.report is not None
+    assert raised.value.report.errors[0].code == "invalid-derived-argument"
+
+
+def test_patch_component_remove_restores_automatic_injection():
+    class Dependency:
+        pass
+
+    injected = Dependency()
+    configured = Dependency()
+
+    class Service:
+        def __init__(self, dependency: Dependency):
+            self.dependency = dependency
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, instance=injected)
+    component_id = builder.register(Service, arguments={"dependency": configured})
+    builder.patch_component(Service, component_id, arguments={"dependency": REMOVE})
+
+    assert builder.build().resolve(Service).dependency is injected
+
+
+def test_decorator_and_pre_configuration_use_the_same_arguments_api():
+    configured: list[int] = []
+
+    class Service:
+        pass
+
+    class Decorator(Service):
+        def __init__(self, child: Service, label: str = "default"):
+            self.child = child
+            self.label = label
+
+    def configure(batch_size: int = 1) -> None:
+        configured.append(batch_size)
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    decorator_id = builder.register_decorator(
+        Service,
+        Decorator,
+        decorated_arg="child",
+        arguments={"label": "configured"},
+    )
+    builder.patch_decorator(Service, decorator_id, arguments={"label": REMOVE})
+    builder.pre_configure(Service, configure, arguments={"batch_size": 20})
+    service = builder.build().resolve(Service)
+
+    assert isinstance(service, Decorator)
+    assert service.label == "default"
+    assert configured == [20]
 
 
 def test_shared_pre_configuration_runs_once_across_roots_and_scope_overlays():

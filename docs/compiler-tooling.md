@@ -49,13 +49,15 @@ Current issue codes include:
 - `missing-component`, `missing-entrypoint`, and `ambiguous-selection`;
 - `circular-dependency` and `captive-dependency`;
 - `generic-specialization` and `overlay-singleton`;
+- `invalid-argument` and `invalid-derived-argument`;
 - `unreachable-component`.
 
 ## Render the compiled graph
 
 The graph includes registrations and activation edges for decorators, pre-configurations, default and configured values,
-runtime contexts, value providers, and declared scope slots. Decorator pipelines render outside-to-inside with their
-positions and metadata.
+runtime contexts, and declared scope slots. Decorator pipelines render outside-to-inside with their
+positions and metadata. Nodes describe components; edges consistently describe their relationship as
+`depends on: <argument>`, `decorated by`, or `pre-configured by`.
 
 ```python
 text = container.graph.to_text()
@@ -67,7 +69,7 @@ print(manifest.fingerprint)
 
 Renderers and manifests show marked entry points by default. Pass `all_roots=True` to inspect every compiled root.
 
-The JSON manifest is deterministic across equivalent builds. It uses semantic paths and qualified type names instead of component UUIDs or memory addresses. Fixed values are represented by type and activation kind; their contents are not serialized. This makes manifests suitable for review without leaking configured secrets.
+The JSON manifest is deterministic across equivalent builds. It uses semantic paths and qualified type names instead of component UUIDs or memory addresses. Fixed values are represented by type and activation kind; their contents are not serialized. Build-argument keys and values are also omitted from manifests, fingerprints, build reports, text output, and Mermaid output. Wiring changes selected by those inputs remain visible in the compiled graph. This makes manifests suitable for review without leaking configured secrets.
 
 ```python
 from clean_ioc import GraphManifest

@@ -7,7 +7,8 @@ import json
 from dataclasses import dataclass, field
 from enum import Enum
 from html import escape
-from typing import Any, Iterable, TypeVar, get_args, get_origin
+from types import MappingProxyType
+from typing import Any, Iterable, Mapping, TypeVar, get_args, get_origin
 
 from .components import Component, ComponentActivation
 
@@ -131,7 +132,6 @@ def _component_description(component: Component) -> str:
     service = qualified_name(component.service_type)
     implementation = _implementation_name(component)
     target = service if implementation == service else f"{service} -> {implementation}"
-    prefix = f"{component.argument}: " if component.argument else ""
     details = [component.kind.value, component.activation.value, component.lifespan]
     if component.name is not None:
         details.append(f'name="{component.name}"')
@@ -141,7 +141,17 @@ def _component_description(component: Component) -> str:
         details.append("async")
     if component.manages_cleanup:
         details.append("cleanup")
-    return f"{prefix}{target} [{', '.join(details)}]"
+    return f"{target} [{', '.join(details)}]"
+
+
+def _dependency_relationship(component: Component) -> str:
+    if component.argument is None:
+        return "depends on"
+    return f"depends on: {component.argument}"
+
+
+_DECORATOR_RELATIONSHIP = "decorated by"
+_PRE_CONFIGURATION_RELATIONSHIP = "pre-configured by"
 
 
 def _node_dict(component: Component, path: str, order: int) -> dict[str, Any]:
@@ -299,6 +309,7 @@ class CompiledGraph:
 
     roots: tuple[GraphRoot, ...]
     entrypoints: tuple[GraphRoot, ...] = ()
+    build_args: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}), compare=False, repr=False)
     _manifest_cache: dict[bool, GraphManifest] = field(default_factory=dict, compare=False, repr=False)
 
     def _selected_roots(self, all_roots: bool) -> tuple[GraphRoot, ...]:
@@ -341,14 +352,14 @@ class CompiledGraph:
         def visit(component: Component, depth: int, relation: str | None = None) -> None:
             prefix = "   " * depth
             branch = "└─ " if depth else ""
-            label = f"{relation}: " if relation else ""
+            label = f"{relation} → " if relation else ""
             lines.append(f"{prefix}{branch}{label}{_component_description(component)}")
             for child in component.dependencies:
-                visit(child, depth + 1)
+                visit(child, depth + 1, _dependency_relationship(child))
             for configuration in component.pre_configurations:
-                visit(configuration, depth + 1, "pre-configure")
+                visit(configuration, depth + 1, _PRE_CONFIGURATION_RELATIONSHIP)
             for decorator in component.decorators:
-                visit(decorator, depth + 1, "decorate")
+                visit(decorator, depth + 1, _DECORATOR_RELATIONSHIP)
 
         for index, root in enumerate(self._selected_roots(all_roots)):
             if index:
@@ -371,11 +382,11 @@ class CompiledGraph:
                 edge_label = f"|{escape(edge, quote=True)}|" if edge else ""
                 lines.append(f"    {parent_id} -->{edge_label} {node_id}")
             for child in component.dependencies:
-                visit(child, node_id, child.argument)
+                visit(child, node_id, _dependency_relationship(child))
             for configuration in component.pre_configurations:
-                visit(configuration, node_id, "pre-configure")
+                visit(configuration, node_id, _PRE_CONFIGURATION_RELATIONSHIP)
             for decorator in component.decorators:
-                visit(decorator, node_id, "decorate")
+                visit(decorator, node_id, _DECORATOR_RELATIONSHIP)
 
         for root in self._selected_roots(all_roots):
             visit(root.component)
