@@ -1,5 +1,6 @@
 2.0.0b1
 -------
+    Require Python 3.11 or newer.
     Split mutable composition into ``ContainerBuilder`` and ``ScopeBuilder`` and
     make ``Container`` and ``Scope`` immutable runtime types.
     Compile occurrence-specific component plans at ``build()`` without invoking

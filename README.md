@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/clean-ioc.svg)](https://pypi.org/project/clean-ioc/)
 [![License](https://img.shields.io/pypi/l/clean-ioc.svg)](https://github.com/peter-daly/clean_ioc/blob/main/LICENSE)
 
-Clean IoC is a typed dependency-injection container for Python 3.10+. Version 2 separates mutable composition from
+Clean IoC is a typed dependency-injection container for Python 3.11+. Version 2 separates mutable composition from
 immutable runtime execution:
 
 1. Register components with `ContainerBuilder`.
