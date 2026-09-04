@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import ast
 import hashlib
+import inspect
 import json
+import textwrap
 from dataclasses import dataclass, field
 from enum import Enum
 from html import escape
@@ -91,7 +94,17 @@ class BuildReport:
         return self.to_text()
 
 
-ValidationRule: TypeAlias = Callable[["CompiledGraph"], Iterable[BuildIssue]]
+ValidationRule: TypeAlias = Callable[["ValidationContext"], Iterable[BuildIssue]]
+
+
+@dataclass(frozen=True, slots=True)
+class TypeAst:
+    """Source and parsed class definition for one inspectable Python type."""
+
+    filename: str
+    first_line: int
+    source: str
+    node: ast.ClassDef
 
 
 def qualified_name(value: Any) -> str:
@@ -457,3 +470,53 @@ class CompiledGraph:
         for root in self._selected_roots(all_roots):
             visit(root.component)
         return "\n".join(lines)
+
+
+def _type_ast(implementation_type: type) -> TypeAst | None:
+    try:
+        lines, first_line = inspect.getsourcelines(implementation_type)
+        filename = inspect.getsourcefile(implementation_type)
+    except (OSError, TypeError):
+        return None
+    if filename is None:
+        return None
+
+    source = textwrap.dedent("".join(lines))
+    try:
+        tree = ast.parse(source, filename=filename)
+    except (SyntaxError, ValueError):
+        return None
+    node = next(
+        (
+            candidate
+            for candidate in tree.body
+            if isinstance(candidate, ast.ClassDef) and candidate.name == implementation_type.__name__
+        ),
+        None,
+    )
+    if node is None:
+        return None
+    ast.increment_lineno(node, first_line - 1)
+    return TypeAst(
+        filename=filename,
+        first_line=first_line,
+        source=source,
+        node=node,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class ValidationContext:
+    """Ephemeral helpers shared by every custom rule in one build."""
+
+    graph: CompiledGraph
+    _type_asts: dict[type, TypeAst | None] = field(default_factory=dict, init=False, compare=False, repr=False)
+
+    def type_ast(self, implementation_type: type) -> TypeAst | None:
+        """Return a cached AST for an inspectable Python class definition."""
+
+        if not isinstance(implementation_type, type):
+            raise TypeError("type_ast() requires a type")
+        if implementation_type not in self._type_asts:
+            self._type_asts[implementation_type] = _type_ast(implementation_type)
+        return self._type_asts[implementation_type]

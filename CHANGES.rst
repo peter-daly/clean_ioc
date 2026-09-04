@@ -1,3 +1,9 @@
+2.0.0b4
+-------
+    Pass one ephemeral ``ValidationContext`` to custom graph rules and add lazy,
+    per-build AST inspection for Python implementation types.
+
+
 2.0.0b3
 -------
     Add reusable custom build-time graph validation rules with structured findings,

@@ -46,6 +46,7 @@ from .tooling import (
     CompiledGraph,
     GraphRoot,
     IssueSeverity,
+    ValidationContext,
     ValidationRule,
     qualified_name,
 )
@@ -2407,9 +2408,9 @@ def _valid_build_issue(issue: Any) -> bool:
     )
 
 
-def _validation_rule_issues(rule: ValidationRule, graph: CompiledGraph) -> Iterable[BuildIssue]:
+def _validation_rule_issues(rule: ValidationRule, context: ValidationContext) -> Iterable[BuildIssue]:
     try:
-        result = rule(graph)
+        result = rule(context)
         if inspect.iscoroutine(result):
             result.close()
             raise TypeError("returned an awaitable; validation rules must be synchronous")
@@ -2589,8 +2590,11 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
         build_args=plan.build_args,
         entrypoints=tuple(entrypoints),
     )
-    for rule in plan.blueprint.validation_rules:
-        issues.extend(_validation_rule_issues(rule, compiled_graph))
+    validation_rules = plan.blueprint.validation_rules
+    if validation_rules:
+        validation_context = ValidationContext(compiled_graph)
+        for rule in validation_rules:
+            issues.extend(_validation_rule_issues(rule, validation_context))
 
     deduplicated = tuple(dict.fromkeys(issues))
     report = BuildReport(deduplicated, checked_roots=len(all_roots))

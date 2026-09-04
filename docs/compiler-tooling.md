@@ -53,10 +53,11 @@ Current issue codes include:
 - `validation-rule-error` for a broken custom validation callback;
 - `unreachable-component`.
 
-Applications may add their own stable codes by registering a custom graph rule. These issues use the same report, JSON,
-CLI strictness, and warning-suppression behavior as compiler findings. Use `CompiledGraph.walk()` for a deterministic
+Applications may add their own stable codes by registering a custom graph rule. Each rule receives a per-build
+`ValidationContext` containing the graph and lazy type-AST inspection. Custom issues use the same report, JSON, CLI
+strictness, and warning-suppression behavior as compiler findings. Use `context.graph.walk()` for a deterministic
 all-roots traversal; each returned `GraphVisit` retains the component objects and the matching diagnostic path. See
-[Custom graph rules](validation.md#custom-graph-rules) for a complete example.
+[Custom graph rules](validation.md#custom-graph-rules) for complete examples.
 
 ## Render the compiled graph
 

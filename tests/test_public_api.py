@@ -62,6 +62,8 @@ def test_package_root_has_one_compiled_container_surface():
         "REMOVE",
         "GraphVisit",
         "ParameterContext",
+        "TypeAst",
+        "ValidationContext",
         "ValidationRule",
         "build_arg",
         "derive",

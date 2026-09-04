@@ -1,3 +1,4 @@
+import ast
 import json
 import subprocess
 import sys
@@ -20,6 +21,8 @@ from clean_ioc import (
     IssueSeverity,
     ResolutionContext,
     Scope,
+    TypeAst,
+    ValidationContext,
     derive,
 )
 from clean_ioc.cli import main
@@ -321,7 +324,8 @@ def test_custom_validation_rules_receive_the_complete_graph_and_aggregate_with_b
 
     received: list[CompiledGraph] = []
 
-    def validate(graph: CompiledGraph):
+    def validate(context: ValidationContext):
+        graph = context.graph
         received.append(graph)
         assert {root.requested_type for root in graph.roots} == {Service}
         return (
@@ -356,7 +360,8 @@ def test_custom_validation_warning_order_deduplication_build_args_and_failed_bui
         message="Reported once",
     )
 
-    def validate(graph: CompiledGraph):
+    def validate(context: ValidationContext):
+        graph = context.graph
         if graph.build_args.get("ready"):
             return (duplicate, duplicate)
         return (
@@ -369,7 +374,7 @@ def test_custom_validation_warning_order_deduplication_build_args_and_failed_bui
             duplicate,
         )
 
-    def validate_later(_: CompiledGraph):
+    def validate_later(_: ValidationContext):
         return (
             BuildIssue(
                 code="example-later",
@@ -463,6 +468,61 @@ def test_graph_walk_preserves_paths_across_every_compiled_edge_kind():
     assert issue.path == decorator.path
 
 
+def test_validation_context_caches_type_asts_without_attaching_them_to_the_graph():
+    class InspectedService:
+        def source_marker(self):
+            return "type-ast-source-marker"
+
+    contexts: list[ValidationContext] = []
+    inspected: list[TypeAst] = []
+
+    def first_rule(context: ValidationContext):
+        contexts.append(context)
+        first = context.type_ast(InspectedService)
+        second = context.type_ast(InspectedService)
+        assert first is not None
+        assert first is second
+        inspected.append(first)
+        return ()
+
+    def second_rule(context: ValidationContext):
+        contexts.append(context)
+        assert context.type_ast(InspectedService) is inspected[0]
+        assert context.type_ast(int) is None
+        return ()
+
+    builder = ContainerBuilder()
+    builder.register(InspectedService)
+    builder.add_validation_rule(first_rule)
+    builder.add_validation_rule(second_rule)
+    container = builder.build()
+
+    assert contexts[0] is contexts[1]
+    type_ast = inspected[0]
+    assert isinstance(type_ast.node, ast.ClassDef)
+    assert type_ast.node.name == "InspectedService"
+    assert type_ast.filename.endswith("test_compiler_tooling.py")
+    assert type_ast.node.lineno >= type_ast.first_line
+    assert "type-ast-source-marker" in type_ast.source
+    assert not hasattr(container.graph, "type_ast")
+    assert "type-ast-source-marker" not in container.graph.manifest(all_roots=True).to_json()
+
+
+def test_validation_context_type_ast_requires_a_type():
+    captured: list[ValidationContext] = []
+
+    def validate(context: ValidationContext):
+        captured.append(context)
+        return ()
+
+    builder = ContainerBuilder()
+    builder.add_validation_rule(validate)
+    builder.build()
+
+    with pytest.raises(TypeError, match="requires a type"):
+        captured[0].type_ast(cast(Any, "not-a-type"))
+
+
 def test_architecture_validation_rule_can_report_the_forbidden_occurrence_path():
     class InfrastructureRepository:
         pass
@@ -474,7 +534,8 @@ def test_architecture_validation_rule_can_report_the_forbidden_occurrence_path()
     InfrastructureRepository.__module__ = "example.infrastructure"
     DomainService.__module__ = "example.domain"
 
-    def enforce_boundaries(graph: CompiledGraph):
+    def enforce_boundaries(context: ValidationContext):
+        graph = context.graph
         for visit in graph.walk():
             if len(visit.components) < 2:
                 continue
@@ -509,7 +570,7 @@ def test_validation_rule_failures_are_structured_and_later_rules_continue():
     class Service:
         pass
 
-    def partially_failing(_: CompiledGraph):
+    def partially_failing(_: ValidationContext):
         yield BuildIssue(
             code="example-before-failure",
             severity=IssueSeverity.warning,
@@ -517,7 +578,7 @@ def test_validation_rule_failures_are_structured_and_later_rules_continue():
         )
         raise ValueError("broken validator")
 
-    def malformed(_: CompiledGraph):
+    def malformed(_: ValidationContext):
         return (
             BuildIssue(
                 code="",
@@ -526,10 +587,10 @@ def test_validation_rule_failures_are_structured_and_later_rules_continue():
             ),
         )
 
-    def missing_result(_: CompiledGraph):
+    def missing_result(_: ValidationContext):
         return None
 
-    def later(_: CompiledGraph):
+    def later(_: ValidationContext):
         return (
             BuildIssue(
                 code="example-after-failure",
@@ -563,15 +624,15 @@ def test_validation_rule_failures_are_structured_and_later_rules_continue():
 
 
 def test_async_validation_rules_are_rejected_before_build():
-    async def validate(_: CompiledGraph):
+    async def validate(_: ValidationContext):
         return ()
 
-    async def generate(_: CompiledGraph):
+    async def generate(_: ValidationContext):
         if False:
             yield BuildIssue("unreachable", IssueSeverity.error, "unreachable")
 
     class AsyncRule:
-        async def __call__(self, _: CompiledGraph):
+        async def __call__(self, _: ValidationContext):
             return ()
 
     builder = ContainerBuilder()
@@ -590,7 +651,8 @@ def test_rules_do_not_run_for_preview_structural_failure_or_ordinary_scopes():
 
     calls: list[tuple[object, ...]] = []
 
-    def validate(graph: CompiledGraph):
+    def validate(context: ValidationContext):
+        graph = context.graph
         calls.append(tuple(root.requested_type for root in graph.roots))
         return ()
 
@@ -622,7 +684,8 @@ def test_overlay_inherits_parent_rules_and_runs_parent_before_child_against_all_
 
     calls: list[tuple[str, tuple[object, ...]]] = []
 
-    def parent_rule(graph: CompiledGraph):
+    def parent_rule(context: ValidationContext):
+        graph = context.graph
         calls.append(("parent", tuple(root.requested_type for root in graph.roots)))
         return (
             BuildIssue(
@@ -632,7 +695,8 @@ def test_overlay_inherits_parent_rules_and_runs_parent_before_child_against_all_
             ),
         )
 
-    def child_rule(graph: CompiledGraph):
+    def child_rule(context: ValidationContext):
+        graph = context.graph
         calls.append(("child", tuple(root.requested_type for root in graph.roots)))
         return (
             BuildIssue(

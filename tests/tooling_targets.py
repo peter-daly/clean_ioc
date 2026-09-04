@@ -1,6 +1,6 @@
 """Importable composition targets used by CLI tests."""
 
-from clean_ioc import BuildIssue, CompiledGraph, ContainerBuilder, IssueSeverity
+from clean_ioc import BuildIssue, ContainerBuilder, IssueSeverity, ValidationContext
 
 
 class Dependency:
@@ -52,7 +52,7 @@ def invalid_builder() -> ContainerBuilder:
     return builder
 
 
-def organization_warning(_: CompiledGraph):
+def organization_warning(_: ValidationContext):
     return (
         BuildIssue(
             code="example-organization-warning",

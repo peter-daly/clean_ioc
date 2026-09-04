@@ -34,6 +34,8 @@ from .tooling import (
     GraphRoot,
     GraphVisit,
     IssueSeverity,
+    TypeAst,
+    ValidationContext,
     ValidationRule,
 )
 
@@ -66,7 +68,9 @@ __all__ = [
     "ScopeBuilder",
     "ScopeProvisionError",
     "Tag",
+    "TypeAst",
     "UndeclaredScopeSlotError",
+    "ValidationContext",
     "ValidationRule",
     "all_components",
     "build_arg",

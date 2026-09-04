@@ -43,19 +43,21 @@ A successful runtime exposes the same report as `container.build_report`. Mark p
 ## Custom graph rules
 
 Use `add_validation_rule()` to enforce application or organization policy against the complete immutable graph. A rule
-is synchronous, receives `CompiledGraph`, and returns or yields zero or more `BuildIssue` values. `graph.walk()` visits
-every occurrence with its root and complete semantic path, including decorators, pre-configurations, collections,
-configured values, runtime contexts, and scope slots.
+is synchronous, receives a per-build `ValidationContext`, and returns or yields zero or more `BuildIssue` values. The
+context's `graph` is the complete `CompiledGraph`; `graph.walk()` visits every occurrence with its root and complete
+semantic path, including decorators, pre-configurations, collections, configured values, runtime contexts, and scope
+slots.
 
 This example prevents a domain-layer component from depending directly on infrastructure:
 
 ```python
 from collections.abc import Iterable
 
-from clean_ioc import BuildIssue, CompiledGraph
+from clean_ioc import BuildIssue, ValidationContext
 
 
-def enforce_architecture(graph: CompiledGraph) -> Iterable[BuildIssue]:
+def enforce_architecture(context: ValidationContext) -> Iterable[BuildIssue]:
+    graph = context.graph
     for visit in graph.walk():
         if len(visit.components) < 2:
             continue
@@ -78,6 +80,44 @@ builder.add_validation_rule(enforce_architecture)
 runtime's report and participate in the existing `clean-ioc check --strict` and `--ignore CODE` policies. Prefer an
 application or organization prefix for custom codes.
 
+### Inspecting implementation source
+
+`context.type_ast(type)` lazily extracts and parses an inspectable Python class definition. Results are cached within
+the validation context, so every rule in one build shares one parse per concrete type. The returned `TypeAst` includes
+the source filename, original first line, dedented source, and an `ast.ClassDef` whose line numbers match the original
+file.
+
+```python
+import ast
+
+from clean_ioc import ValidationContext
+
+
+def forbid_direct_environment_access(context: ValidationContext):
+    for visit in context.graph.walk():
+        inspected = context.type_ast(visit.component.implementation_type)
+        if inspected is None:
+            continue
+
+        for node in ast.walk(inspected.node):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "os"
+                and node.func.attr == "getenv"
+            ):
+                yield visit.issue(
+                    "my-app-direct-environment-access",
+                    f"Direct os.getenv() call at {inspected.filename}:{node.lineno}",
+                )
+```
+
+Source inspection returns `None` for built-in, extension, dynamically generated, and otherwise unavailable class
+definitions. Each rule decides whether that should be ignored or reported. Treat the returned AST as read-only; copy it
+before using a mutating `ast.NodeTransformer`. The context and its cache are not stored on the resulting container or
+graph, and source data never enters manifests or fingerprints.
+
 Rules execute only after structural compilation produces a complete graph. They therefore do not run during builder
 preview queries or when missing dependencies, cycles, or another structural failure prevent that graph from existing.
 They do run alongside complete-graph findings such as a missing marked entry point. A rule that raises, returns a
@@ -85,8 +125,8 @@ non-iterable value, or yields a malformed issue produces `validation-rule-error`
 remains useful.
 
 Rules should be deterministic, side-effect-free, and safe to run again after a failed build. They may inspect
-`graph.build_args`, but Clean IoC does not automatically copy those inputs into a report: do not include secrets in a
-custom issue's code, message, root, or path.
+`context.graph.build_args`, but Clean IoC does not automatically copy those inputs into a report: do not include secrets
+in a custom issue's code, message, root, or path.
 
 ## Builder state after build
 
