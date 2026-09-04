@@ -53,11 +53,12 @@ Current issue codes include:
 - `validation-rule-error` for a broken custom validation callback;
 - `unreachable-component`.
 
-Applications may add their own stable codes by registering a custom graph rule. Each rule receives a per-build
+Applications may add their own stable codes by registering a custom graph rule. Each rule receives a per-pass
 `ValidationContext` containing the graph and lazy type-AST inspection. Custom issues use the same report, JSON, CLI
-strictness, and warning-suppression behavior as compiler findings. Use `context.graph.walk()` for a deterministic
-all-roots traversal; each returned `GraphVisit` retains the component objects and the matching diagnostic path. See
-[Custom graph rules](validation.md#custom-graph-rules) for complete examples.
+strictness, and warning-suppression behavior as compiler findings. Rules registered with `strict_only=True` are skipped
+during application builds and run only in an explicit strict validation pass. Use `context.graph.walk()` for a
+deterministic all-roots traversal; each returned `GraphVisit` retains the component objects and the matching diagnostic
+path. See [Custom graph rules](validation.md#custom-graph-rules) for complete examples.
 
 ## Render the compiled graph
 
@@ -104,18 +105,30 @@ def application_builder():
     builder.register(Checkout)
     builder.mark_entrypoint(Checkout)
     return builder
+
+
+def application_container():
+    return application_builder().build()
 ```
 
-Then validate, render, and diff it without starting the application:
+The target may be a builder, a built container or scope, or a zero-argument factory function returning any of them.
+The CLI calls a factory exactly once. A factory that returns a builder is then built; a factory that returns a container
+is inspected directly.
+
+Validate, render, and diff it without starting the application:
 
 ```bash
 clean-ioc check my_app.composition:application_builder
+clean-ioc check my_app.composition:application_container
 clean-ioc graph my_app.composition:application_builder --format mermaid
 clean-ioc graph my_app.composition:application_builder --format json -o dependency-graph.json
 clean-ioc diff my_app.composition:application_builder dependency-graph.json
 ```
 
-`check` exits non-zero for build errors. Warnings are informational by default; `--strict` makes unsuppressed warnings fail, and `--ignore CODE` suppresses a warning code. Errors cannot be ignored.
+`check` is strict by default: it runs rules registered with `strict_only=True` and exits non-zero for build errors or
+unsuppressed warnings. `--ignore CODE` suppresses a warning code from either kind of rule; errors cannot be ignored.
+Pass `--no-strict` to skip strict-only rules and leave ordinary warnings informational. The explicit `--strict` form is
+also accepted when a CI command should state the policy directly.
 
 `diff` exits `0` when the graph is unchanged and `1` when it changed. Add `--all` to `graph` or `diff` when the baseline should include every root rather than the entry-point view. Baselines are never updated implicitly.
 
@@ -123,7 +136,7 @@ Example CI policy:
 
 ```yaml
 - name: Validate dependency graph
-  run: clean-ioc check my_app.composition:application_builder --strict
+  run: clean-ioc check my_app.composition:application_builder
 - name: Detect dependency graph changes
   run: clean-ioc diff my_app.composition:application_builder dependency-graph.json
 ```

@@ -2,7 +2,7 @@
 
 This document records the V2 architecture and implementation decisions made so far. It is intended for agents and maintainers extending V2 without accidentally restoring runtime graph construction, weakening build invariants, or breaking scope ownership.
 
-V2 is currently published in project metadata as `2.0.0b4`. Its public surface remains experimental.
+V2 is currently published in project metadata as `2.0.0b5`. Its public surface remains experimental.
 
 ## Core model
 
@@ -124,11 +124,11 @@ When changing validation:
 4. Test all compiled edge types when the rule is meant to be graph-wide.
 
 Custom validation rules are synchronous `ValidationRule` callbacks registered with
-`ComponentBuilder.add_validation_rule()`. They receive one ephemeral `ValidationContext` shared by every rule in a
-build after structural compilation and built-in complete-graph checks, then yield zero or more `BuildIssue` values. The
-context exposes the complete immutable `CompiledGraph`; custom errors fail the build and warnings use the existing
-Python and CLI policies. `CompiledGraph.walk()` always traverses every root and yields path-aware `GraphVisit` values;
-it is not focused by entry-point markers.
+`ComponentBuilder.add_validation_rule()`. Ordinary rules receive one ephemeral `ValidationContext` shared by every
+ordinary rule in a build after structural compilation and built-in complete-graph checks, then yield zero or more
+`BuildIssue` values. The context exposes the complete immutable `CompiledGraph`; custom errors fail the build and
+warnings use the existing Python and CLI policies. `CompiledGraph.walk()` always traverses every root and yields
+path-aware `GraphVisit` values; it is not focused by entry-point markers.
 
 `ValidationContext.type_ast(type)` lazily parses an inspectable Python class definition and caches the `TypeAst` result
 once per concrete type for that validation pass. Original filename and line positions are preserved. Missing source is
@@ -136,12 +136,19 @@ represented by `None`; callers decide whether that is acceptable. AST nodes are 
 The context and cache are discarded after validation rather than stored in `_PlanSet`, `CompiledGraph`, or the runtime,
 and source information must never enter graph manifests or fingerprints.
 
-Rules are frozen in builder layers. Scope overlays inherit parent rules, run them parent-first against the complete
-overlay graph, then run locally declared rules. Ordinary scopes do not rerun validation. Preview queries and failed
-structural compilations do not run custom rules because no final graph exists. A callback exception, non-iterable
-return, or malformed issue becomes `validation-rule-error`, and subsequent rules still run. Keep rules synchronous,
-deterministic, and side-effect-free; failed builds and overlay builds may execute the same callback again. Build inputs
-are available through the graph, but custom issue authors must not copy secrets into diagnostic fields.
+Rules and their `strict_only` metadata are frozen in builder layers. Scope overlays inherit parent rules, run them
+parent-first against the complete overlay graph, then run locally declared rules. Ordinary scopes do not rerun
+validation. Rules marked `strict_only=True` are skipped by `build()` and run only through
+`Scope.validation_report(include_strict_rules=True)`, which returns a fresh aggregate report without mutating the stored
+build report or raising for its errors. `clean-ioc check` requests that strict report by default before applying warning
+promotion and ignore policies; `--no-strict` opts out. Each strict pass gets a new shared `ValidationContext`, so
+deferred AST work is also absent from startup.
+
+Preview queries and failed structural compilations do not run custom rules because no final graph exists. A callback
+exception, non-iterable return, or malformed issue becomes `validation-rule-error`, and subsequent rules still run.
+Keep rules synchronous, deterministic, and side-effect-free; explicit strict reports, failed builds, and overlay builds
+may execute the same callback again. Build inputs are available through the graph, but custom issue authors must not
+copy secrets into diagnostic fields.
 
 ## Pre-configuration compilation and ownership
 
@@ -219,11 +226,13 @@ Manifests use qualified semantic identities rather than UUIDs, occurrence IDs, m
 
 `clean_ioc/cli.py` installs the `clean-ioc` command:
 
-- `check module:object [--strict] [--ignore CODE]`;
+- `check module:object [--strict | --no-strict] [--ignore CODE]` (strict by default);
 - `graph module:object --format text|mermaid|json [--all]`;
 - `diff module:object baseline.json [--all]`.
 
-A target may be a builder, a built scope/container, or a zero-argument factory returning one. Errors cannot be ignored. `diff` returns `0` for no change and `1` for a semantic change. Baselines are never updated implicitly.
+A target may be a builder, a built scope/container, or a zero-argument factory returning either a builder or a built
+scope/container. The CLI invokes a factory once. Errors cannot be ignored. `diff` returns `0` for no change and `1` for
+a semantic change. Baselines are never updated implicitly.
 
 ## Public extension guidance
 

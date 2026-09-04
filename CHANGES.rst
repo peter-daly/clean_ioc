@@ -1,3 +1,11 @@
+2.0.0b5
+-------
+    Add strict-only custom graph rules that defer expensive validation and AST
+    inspection until an explicit validation report or CLI check.
+    Make ``clean-ioc check`` strict by default, retaining ``--no-strict`` for
+    lightweight checks, and document factory functions returning built containers.
+
+
 2.0.0b4
 -------
     Pass one ephemeral ``ValidationContext`` to custom graph rules and add lazy,

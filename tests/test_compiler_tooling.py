@@ -523,6 +523,140 @@ def test_validation_context_type_ast_requires_a_type():
         captured[0].type_ast(cast(Any, "not-a-type"))
 
 
+def test_strict_only_validation_is_deferred_and_does_not_mutate_the_build_report():
+    class InspectedService:
+        def source_marker(self):
+            return "strict-only-type-ast-source-marker"
+
+    class UnusedService:
+        pass
+
+    ordinary_issue = BuildIssue(
+        code="example-ordinary-rule",
+        severity=IssueSeverity.warning,
+        message="Ordinary policy warning",
+    )
+    contexts: list[ValidationContext] = []
+    inspected: list[TypeAst] = []
+
+    def ordinary_rule(_: ValidationContext):
+        return (ordinary_issue,)
+
+    def expensive_rule(context: ValidationContext):
+        contexts.append(context)
+        type_ast = context.type_ast(InspectedService)
+        assert type_ast is not None
+        inspected.append(type_ast)
+        return (
+            ordinary_issue,
+            BuildIssue(
+                code="example-expensive-rule",
+                severity=IssueSeverity.error,
+                message="Expensive policy failed",
+            ),
+        )
+
+    builder = ContainerBuilder()
+    builder.register(InspectedService)
+    builder.register(UnusedService)
+    builder.mark_entrypoint(InspectedService)
+    builder.add_validation_rule(ordinary_rule)
+    builder.add_validation_rule(expensive_rule, strict_only=True)
+    container = builder.build()
+
+    assert not contexts
+    assert container.validation_report() is container.build_report
+    assert container.build_report.is_valid
+    assert [issue.code for issue in container.build_report.issues] == [
+        "unreachable-component",
+        "example-ordinary-rule",
+    ]
+    container.new_scope()
+    assert not contexts
+
+    strict_report = container.validation_report(include_strict_rules=True)
+
+    assert not strict_report.is_valid
+    assert [issue.code for issue in strict_report.issues] == [
+        "unreachable-component",
+        "example-ordinary-rule",
+        "example-expensive-rule",
+    ]
+    assert [issue.code for issue in container.build_report.issues] == [
+        "unreachable-component",
+        "example-ordinary-rule",
+    ]
+    assert len(contexts) == 1
+    assert "strict-only-type-ast-source-marker" in inspected[0].source
+
+    container.validation_report(include_strict_rules=True)
+    assert len(contexts) == 2
+    assert inspected[0] is not inspected[1]
+
+
+def test_strict_only_rules_inherit_parent_first_and_validate_the_complete_overlay():
+    class ParentService:
+        pass
+
+    class OverlayService:
+        pass
+
+    duplicate = BuildIssue(
+        code="example-strict-duplicate",
+        severity=IssueSeverity.warning,
+        message="Reported by both layers",
+    )
+    calls: list[tuple[str, tuple[object, ...], ValidationContext]] = []
+
+    def parent_rule(context: ValidationContext):
+        calls.append(("parent", tuple(root.requested_type for root in context.graph.roots), context))
+        return (
+            BuildIssue(
+                code="example-parent-strict",
+                severity=IssueSeverity.warning,
+                message="Parent strict rule",
+            ),
+            duplicate,
+        )
+
+    def child_rule(context: ValidationContext):
+        calls.append(("child", tuple(root.requested_type for root in context.graph.roots), context))
+        return (
+            duplicate,
+            BuildIssue(
+                code="example-child-strict",
+                severity=IssueSeverity.warning,
+                message="Child strict rule",
+            ),
+        )
+
+    builder = ContainerBuilder()
+    builder.register(ParentService)
+    builder.add_validation_rule(parent_rule, strict_only=True)
+    container = builder.build()
+    assert not calls
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(OverlayService)
+    overlay_builder.add_validation_rule(child_rule, strict_only=True)
+    overlay = overlay_builder.build()
+    assert not calls
+
+    report = overlay.validation_report(include_strict_rules=True)
+
+    expected_roots = (OverlayService, ParentService)
+    assert [(name, roots) for name, roots, _ in calls] == [
+        ("parent", expected_roots),
+        ("child", expected_roots),
+    ]
+    assert calls[0][2] is calls[1][2]
+    assert [issue.code for issue in report.issues] == [
+        "example-parent-strict",
+        "example-strict-duplicate",
+        "example-child-strict",
+    ]
+
+
 def test_architecture_validation_rule_can_report_the_forbidden_occurrence_path():
     class InfrastructureRepository:
         pass
@@ -639,6 +773,9 @@ def test_async_validation_rules_are_rejected_before_build():
     for rule in (validate, generate, AsyncRule()):
         with pytest.raises(TypeError, match="synchronous"):
             builder.add_validation_rule(cast(Any, rule))
+
+    with pytest.raises(TypeError, match="strict_only"):
+        builder.add_validation_rule(lambda _: (), strict_only=cast(Any, 1))
 
 
 def test_rules_do_not_run_for_preview_structural_failure_or_ordinary_scopes():
@@ -1309,12 +1446,12 @@ def test_graph_renderers_show_decorator_positions_outside_to_inside():
 
 def test_cli_check_graph_and_diff_contract(tmp_path: Path, capsys):
     target = "tests.tooling_targets:valid_builder"
-    assert main(["check", target]) == 0
+    assert main(["check", target]) == 1
     assert "unreachable-component" in capsys.readouterr().out
 
-    assert main(["check", target, "--strict"]) == 1
+    assert main(["check", target, "--no-strict"]) == 0
     capsys.readouterr()
-    assert main(["check", target, "--strict", "--ignore", "unreachable-component"]) == 0
+    assert main(["check", target, "--ignore", "unreachable-component"]) == 0
     capsys.readouterr()
 
     baseline = tmp_path / "graph.json"
@@ -1331,12 +1468,30 @@ def test_cli_check_graph_and_diff_contract(tmp_path: Path, capsys):
 def test_cli_strict_and_ignore_apply_to_custom_validation_warnings(capsys):
     target = "tests.tooling_targets:custom_warning_builder"
 
-    assert main(["check", target]) == 0
+    assert main(["check", target]) == 1
     assert "example-organization-warning" in capsys.readouterr().out
 
-    assert main(["check", target, "--strict"]) == 1
+    assert main(["check", target, "--no-strict"]) == 0
     capsys.readouterr()
-    assert main(["check", target, "--strict", "--ignore", "example-organization-warning"]) == 0
+    assert main(["check", target, "--ignore", "example-organization-warning"]) == 0
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "tests.tooling_targets:strict_warning_builder",
+        "tests.tooling_targets:strict_warning_container_factory",
+    ],
+)
+def test_cli_strict_runs_deferred_validation_rules_for_builder_and_container_factories(target, capsys):
+    assert main(["check", target, "--no-strict"]) == 0
+    assert "example-expensive-warning" not in capsys.readouterr().out
+
+    assert main(["check", target]) == 1
+    assert "example-expensive-warning" in capsys.readouterr().out
+
+    assert main(["check", target, "--ignore", "example-expensive-warning"]) == 0
+    assert "example-expensive-warning" not in capsys.readouterr().out
 
 
 def test_cli_manifest_is_stable_across_processes():

@@ -77,8 +77,28 @@ builder.add_validation_rule(enforce_architecture)
 
 `visit.issue()` creates an error by default and fills in the matching root and path. Pass
 `severity=IssueSeverity.warning` for an advisory finding. Errors fail `build()`; warnings appear on the successful
-runtime's report and participate in the existing `clean-ioc check --strict` and `--ignore CODE` policies. Prefer an
+runtime's report and participate in the strict-by-default `clean-ioc check` and `--ignore CODE` policies. Prefer an
 application or organization prefix for custom codes.
+
+Rules that are too expensive for application startup can be deferred to strict validation:
+
+```python
+builder.add_validation_rule(enforce_architecture, strict_only=True)
+```
+
+A strict-only rule is frozen into the graph policy but skipped by `build()`. The CLI runs deferred rules by default
+with `clean-ioc check ...`, which is suitable for CI. The default strict mode also makes every unsuppressed warning
+fatal; `--ignore CODE` can suppress warnings from either ordinary or strict-only rules, but never errors. Pass
+`--no-strict` to skip deferred rules and leave warnings informational.
+
+For programmatic tooling, request a fresh aggregate report from an already-built container or scope:
+
+```python
+report = container.validation_report(include_strict_rules=True)
+```
+
+This runs only the deferred rules and appends their findings after the stored build findings. It does not mutate
+`container.build_report` or raise for a strict-only error. Calling it again performs a new validation pass.
 
 ### Inspecting implementation source
 
@@ -111,18 +131,22 @@ def forbid_direct_environment_access(context: ValidationContext):
                     "my-app-direct-environment-access",
                     f"Direct os.getenv() call at {inspected.filename}:{node.lineno}",
                 )
+
+
+builder.add_validation_rule(forbid_direct_environment_access, strict_only=True)
 ```
 
 Source inspection returns `None` for built-in, extension, dynamically generated, and otherwise unavailable class
 definitions. Each rule decides whether that should be ignored or reported. Treat the returned AST as read-only; copy it
 before using a mutating `ast.NodeTransformer`. The context and its cache are not stored on the resulting container or
-graph, and source data never enters manifests or fingerprints.
+graph, and source data never enters manifests or fingerprints. Marking a source-inspection rule as strict-only also
+defers its inspection and parsing cost until a strict validation pass.
 
-Rules execute only after structural compilation produces a complete graph. They therefore do not run during builder
-preview queries or when missing dependencies, cycles, or another structural failure prevent that graph from existing.
-They do run alongside complete-graph findings such as a missing marked entry point. A rule that raises, returns a
-non-iterable value, or yields a malformed issue produces `validation-rule-error`; later rules still run so the report
-remains useful.
+Ordinary rules execute only after structural compilation produces a complete graph. They therefore do not run during
+builder preview queries or when missing dependencies, cycles, or another structural failure prevent that graph from
+existing. They do run alongside complete-graph findings such as a missing marked entry point. Strict-only rules require
+a successfully built graph and run only when strict validation is requested. A rule that raises, returns a non-iterable
+value, or yields a malformed issue produces `validation-rule-error`; later rules still run so the report remains useful.
 
 Rules should be deterministic, side-effect-free, and safe to run again after a failed build. They may inspect
 `context.graph.build_args`, but Clean IoC does not automatically copy those inputs into a report: do not include secrets

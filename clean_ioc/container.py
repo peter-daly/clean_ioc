@@ -273,6 +273,12 @@ class _PreConfigurationDefinition:
     continue_on_failure: bool
 
 
+@dataclass(frozen=True, slots=True)
+class _ValidationRuleDefinition:
+    rule: ValidationRule
+    strict_only: bool
+
+
 class _DecoratorUnset:
     __slots__ = ()
 
@@ -297,7 +303,7 @@ class _Layer:
     pre_configuration_states: dict[str, _PreConfigurationState]
     slots: frozenset[tuple[Any, str | None]]
     entrypoints: tuple[_EntryPoint, ...]
-    validation_rules: tuple[ValidationRule, ...]
+    validation_rules: tuple[_ValidationRuleDefinition, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -313,7 +319,7 @@ class _Blueprint:
         return tuple(entrypoint for layer in self.layers for entrypoint in layer.entrypoints)
 
     @property
-    def validation_rules(self) -> tuple[ValidationRule, ...]:
+    def validation_rules(self) -> tuple[_ValidationRuleDefinition, ...]:
         return tuple(rule for layer in reversed(self.layers) for rule in layer.validation_rules)
 
     def registrations(self, service_type: Any) -> list[tuple[legacy._Registration, _Layer]]:
@@ -2431,6 +2437,17 @@ def _validation_rule_issues(rule: ValidationRule, context: ValidationContext) ->
         )
 
 
+def _run_validation_rules(
+    graph: CompiledGraph,
+    definitions: Iterable[_ValidationRuleDefinition],
+) -> tuple[BuildIssue, ...]:
+    selected = tuple(definitions)
+    if not selected:
+        return ()
+    context = ValidationContext(graph)
+    return tuple(issue for definition in selected for issue in _validation_rule_issues(definition.rule, context))
+
+
 def _build_error_code(error: BaseException) -> str:
     if isinstance(error, ContainerBuildError) and error.code is not None:
         return error.code
@@ -2590,11 +2607,12 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
         build_args=plan.build_args,
         entrypoints=tuple(entrypoints),
     )
-    validation_rules = plan.blueprint.validation_rules
-    if validation_rules:
-        validation_context = ValidationContext(compiled_graph)
-        for rule in validation_rules:
-            issues.extend(_validation_rule_issues(rule, validation_context))
+    issues.extend(
+        _run_validation_rules(
+            compiled_graph,
+            (definition for definition in plan.blueprint.validation_rules if not definition.strict_only),
+        )
+    )
 
     deduplicated = tuple(dict.fromkeys(issues))
     report = BuildReport(deduplicated, checked_roots=len(all_roots))
@@ -2744,6 +2762,22 @@ class Scope(_RuntimeOwner):
     @property
     def build_report(self) -> BuildReport:
         return self._plan.build_report
+
+    def validation_report(self, *, include_strict_rules: bool = False) -> BuildReport:
+        """Return build findings, optionally running deferred strict-only rules."""
+
+        if not include_strict_rules:
+            return self.build_report
+        strict_issues = _run_validation_rules(
+            self.graph,
+            (definition for definition in self._plan.blueprint.validation_rules if definition.strict_only),
+        )
+        if not strict_issues:
+            return self.build_report
+        return BuildReport(
+            tuple(dict.fromkeys((*self.build_report.issues, *strict_issues))),
+            checked_roots=self.build_report.checked_roots,
+        )
 
     @property
     def build_args(self) -> Mapping[str, Any]:
@@ -2936,7 +2970,7 @@ class _BuilderBase:
         self._registration_discoveries: list[_RegistrationDiscovery] = []
         self._slots: set[tuple[Any, str | None]] = set()
         self._entrypoints: list[_EntryPoint] = []
-        self._validation_rules: list[ValidationRule] = []
+        self._validation_rules: list[_ValidationRuleDefinition] = []
         self._built = False
 
     def _assert_mutable(self) -> None:
@@ -2976,12 +3010,14 @@ class _BuilderBase:
             validation_rules=tuple(self._validation_rules),
         )
 
-    def add_validation_rule(self, rule: ValidationRule) -> None:
-        """Run a synchronous graph validation rule during final build validation."""
+    def add_validation_rule(self, rule: ValidationRule, *, strict_only: bool = False) -> None:
+        """Add a synchronous graph rule, optionally deferred to strict validation."""
 
         self._assert_mutable()
         if not callable(rule):
             raise TypeError("Validation rule must be callable")
+        if not isinstance(strict_only, bool):
+            raise TypeError("strict_only must be a bool")
         targets = (rule, getattr(rule, "__call__", None))
         if any(
             inspect.iscoroutinefunction(target) or inspect.isasyncgenfunction(target)
@@ -2989,7 +3025,7 @@ class _BuilderBase:
             if target is not None
         ):
             raise TypeError("Validation rules must be synchronous")
-        self._validation_rules.append(rule)
+        self._validation_rules.append(_ValidationRuleDefinition(rule, strict_only))
 
     def _new_decorator_order(self) -> int:
         value = self._next_decorator_order

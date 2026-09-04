@@ -27,9 +27,11 @@ along with its registrations:
 class ArchitecturePolicyBundle(BaseBundle):
     def apply(self, builder: ComponentBuilder):
         builder.add_validation_rule(enforce_architecture)
+        builder.add_validation_rule(inspect_all_source, strict_only=True)
 ```
 
 Rules installed on a root builder are inherited by scope overlays and validate each overlay's complete compiled graph.
+The `strict_only=True` form lets a bundle install an expensive CI policy without adding it to application startup.
 
 ## Run-once policies
 

@@ -1,6 +1,6 @@
 """Importable composition targets used by CLI tests."""
 
-from clean_ioc import BuildIssue, ContainerBuilder, IssueSeverity, ValidationContext
+from clean_ioc import BuildIssue, Container, ContainerBuilder, IssueSeverity, ValidationContext
 
 
 class Dependency:
@@ -68,3 +68,25 @@ def custom_warning_builder() -> ContainerBuilder:
     builder.register(Dependency)
     builder.add_validation_rule(organization_warning)
     return builder
+
+
+def strict_warning_builder() -> ContainerBuilder:
+    builder = ContainerBuilder()
+    builder.register(Application)
+    builder.register(Dependency)
+
+    def expensive_rule(_: ValidationContext):
+        return (
+            BuildIssue(
+                code="example-expensive-warning",
+                severity=IssueSeverity.warning,
+                message="Example expensive policy warning",
+            ),
+        )
+
+    builder.add_validation_rule(expensive_rule, strict_only=True)
+    return builder
+
+
+def strict_warning_container_factory() -> Container:
+    return strict_warning_builder().build()

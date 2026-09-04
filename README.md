@@ -109,14 +109,18 @@ container.graph.manifest().to_json()
 ```
 
 ```bash
-clean-ioc check my_app.composition:application_builder --strict
+clean-ioc check my_app.composition:application_builder
 clean-ioc graph my_app.composition:application_builder --format json -o dependency-graph.json
 clean-ioc diff my_app.composition:application_builder dependency-graph.json
 ```
 
+Each target can be a builder, a built container or scope, or a zero-argument factory function returning one.
+
 Build errors are aggregated across independent roots. Deterministic JSON manifests omit configured values and runtime
 identities, allowing wiring changes to be reviewed without serializing secrets. Entry points focus the default graph and
 enable warnings for unreachable registrations; every visible root is still compiled, validated, and resolvable.
+Expensive custom rules can be registered with `strict_only=True`, keeping their graph or source-AST inspection out of
+application startup while still running under the strict-by-default `clean-ioc check` command in CI.
 
 ## Component model
 
@@ -252,7 +256,8 @@ compiled container during application startup.
 - Immutable build inputs with explicit `build_arg(...)`, `generic_arg(...)`, and `inject()` argument policies.
 - Coordinated first activation across threads and event loops.
 - Bundles targeting one shared `ComponentBuilder` composition protocol.
-- Synchronous custom graph rules with structured findings, path-aware traversal, and lazy type-AST inspection.
+- Synchronous custom graph rules with structured findings, path-aware traversal, lazy type-AST inspection, and
+  strict-only CI execution.
 - BenchBro experiments separating build cost, runtime latency, and Python allocations.
 
 ## Project links
