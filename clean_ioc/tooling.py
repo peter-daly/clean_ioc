@@ -8,9 +8,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from html import escape
 from types import MappingProxyType
-from typing import Any, Iterable, Mapping, TypeVar, get_args, get_origin
+from typing import Any, Callable, Iterable, Iterator, Mapping, TypeAlias, TypeVar, get_args, get_origin
 
-from .components import Component, ComponentActivation
+from .components import Component, ComponentActivation, ComponentKind
 
 
 class IssueSeverity(str, Enum):
@@ -91,6 +91,9 @@ class BuildReport:
         return self.to_text()
 
 
+ValidationRule: TypeAlias = Callable[["CompiledGraph"], Iterable[BuildIssue]]
+
+
 def qualified_name(value: Any) -> str:
     """Return a deterministic display identity without using object reprs."""
 
@@ -120,6 +123,53 @@ class GraphRoot:
 
     requested_type: Any
     component: Component
+
+
+def _issue_path_name(component: Component) -> str:
+    if component.kind in (ComponentKind.decorator, ComponentKind.pre_configuration):
+        return qualified_name(component.implementation)
+    return qualified_name(component.service_type)
+
+
+@dataclass(frozen=True, slots=True)
+class GraphVisit:
+    """One occurrence and its path while walking a compiled graph."""
+
+    root: GraphRoot
+    components: tuple[Component, ...]
+
+    def __post_init__(self) -> None:
+        if not self.components:
+            raise ValueError("A graph visit requires at least one component")
+
+    @property
+    def component(self) -> Component:
+        return self.components[-1]
+
+    @property
+    def root_name(self) -> str:
+        return qualified_name(self.root.requested_type)
+
+    @property
+    def path(self) -> tuple[str, ...]:
+        return tuple(_issue_path_name(component) for component in self.components)
+
+    def issue(
+        self,
+        code: str,
+        message: str,
+        *,
+        severity: IssueSeverity = IssueSeverity.error,
+    ) -> BuildIssue:
+        """Create a structured issue located at this graph occurrence."""
+
+        return BuildIssue(
+            code=code,
+            severity=severity,
+            message=message,
+            root=self.root_name,
+            path=self.path,
+        )
 
 
 def _implementation_name(component: Component) -> str:
@@ -311,6 +361,22 @@ class CompiledGraph:
     entrypoints: tuple[GraphRoot, ...] = ()
     build_args: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}), compare=False, repr=False)
     _manifest_cache: dict[bool, GraphManifest] = field(default_factory=dict, compare=False, repr=False)
+
+    def walk(self) -> Iterator[GraphVisit]:
+        """Walk every compiled occurrence in deterministic depth-first order."""
+
+        def visit(root: GraphRoot, component: Component, ancestors: tuple[Component, ...]) -> Iterator[GraphVisit]:
+            components = (*ancestors, component)
+            yield GraphVisit(root=root, components=components)
+            for child in component.dependencies:
+                yield from visit(root, child, components)
+            for configuration in component.pre_configurations:
+                yield from visit(root, configuration, components)
+            for decorator in component.decorators:
+                yield from visit(root, decorator, components)
+
+        for root in self.roots:
+            yield from visit(root, root.component, ())
 
     def _selected_roots(self, all_roots: bool) -> tuple[GraphRoot, ...]:
         if all_roots or not self.entrypoints:

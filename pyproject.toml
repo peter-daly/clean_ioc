@@ -1,6 +1,6 @@
 [project]
 name = "clean_ioc"
-version = "2.0.0b2"
+version = "2.0.0b3"
 description = "Typed Python dependency injection with build-time plan compilation and immutable runtimes"
 authors = [{ name = "Peter Daly" }]
 requires-python = ">=3.11,<4"

@@ -50,7 +50,13 @@ Current issue codes include:
 - `circular-dependency` and `captive-dependency`;
 - `generic-specialization` and `overlay-singleton`;
 - `invalid-argument` and `invalid-derived-argument`;
+- `validation-rule-error` for a broken custom validation callback;
 - `unreachable-component`.
+
+Applications may add their own stable codes by registering a custom graph rule. These issues use the same report, JSON,
+CLI strictness, and warning-suppression behavior as compiler findings. Use `CompiledGraph.walk()` for a deterministic
+all-roots traversal; each returned `GraphVisit` retains the component objects and the matching diagnostic path. See
+[Custom graph rules](validation.md#custom-graph-rules) for a complete example.
 
 ## Render the compiled graph
 
@@ -68,6 +74,8 @@ print(manifest.fingerprint)
 ```
 
 Renderers and manifests show marked entry points by default. Pass `all_roots=True` to inspect every compiled root.
+`graph.walk()` is intentionally different: validation traversal always includes every root so an entry-point marker
+cannot weaken a policy rule.
 
 The JSON manifest is deterministic across equivalent builds. It uses semantic paths and qualified type names instead of component UUIDs or memory addresses. Fixed values are represented by type and activation kind; their contents are not serialized. Build-argument keys and values are also omitted from manifests, fingerprints, build reports, text output, and Mermaid output. Wiring changes selected by those inputs remain visible in the compiled graph. This makes manifests suitable for review without leaking configured secrets.
 

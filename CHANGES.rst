@@ -1,3 +1,9 @@
+2.0.0b3
+-------
+    Add reusable custom build-time graph validation rules with structured findings,
+    overlay inheritance, and path-aware traversal of compiled occurrences.
+
+
 2.0.0b2
 -------
     Require Python 3.11 or newer.

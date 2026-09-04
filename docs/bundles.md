@@ -20,6 +20,17 @@ container = builder.build()
 
 Bundles are composition-only. They are never injectable at runtime and cannot mutate a built container or scope.
 
+The shared protocol also supports custom validation rules, so a bundle can install organization or framework policy
+along with its registrations:
+
+```python
+class ArchitecturePolicyBundle(BaseBundle):
+    def apply(self, builder: ComponentBuilder):
+        builder.add_validation_rule(enforce_architecture)
+```
+
+Rules installed on a root builder are inherited by scope overlays and validate each overlay's complete compiled graph.
+
 ## Run-once policies
 
 Use `OnlyRunOncePerInstanceBundle` when one bundle object may be applied repeatedly but should compose each builder once:

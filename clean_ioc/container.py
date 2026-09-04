@@ -46,6 +46,7 @@ from .tooling import (
     CompiledGraph,
     GraphRoot,
     IssueSeverity,
+    ValidationRule,
     qualified_name,
 )
 
@@ -295,6 +296,7 @@ class _Layer:
     pre_configuration_states: dict[str, _PreConfigurationState]
     slots: frozenset[tuple[Any, str | None]]
     entrypoints: tuple[_EntryPoint, ...]
+    validation_rules: tuple[ValidationRule, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -308,6 +310,10 @@ class _Blueprint:
     @property
     def entrypoints(self) -> tuple[_EntryPoint, ...]:
         return tuple(entrypoint for layer in self.layers for entrypoint in layer.entrypoints)
+
+    @property
+    def validation_rules(self) -> tuple[ValidationRule, ...]:
+        return tuple(rule for layer in reversed(self.layers) for rule in layer.validation_rules)
 
     def registrations(self, service_type: Any) -> list[tuple[legacy._Registration, _Layer]]:
         found: list[tuple[legacy._Registration, _Layer]] = []
@@ -2387,6 +2393,43 @@ def _component_tree(component: Component) -> Iterable[Component]:
         yield from _component_tree(decorator)
 
 
+def _valid_build_issue(issue: Any) -> bool:
+    return (
+        isinstance(issue, BuildIssue)
+        and isinstance(issue.code, str)
+        and bool(issue.code.strip())
+        and isinstance(issue.severity, IssueSeverity)
+        and isinstance(issue.message, str)
+        and bool(issue.message.strip())
+        and (issue.root is None or (isinstance(issue.root, str) and bool(issue.root.strip())))
+        and isinstance(issue.path, tuple)
+        and all(isinstance(item, str) and bool(item.strip()) for item in issue.path)
+    )
+
+
+def _validation_rule_issues(rule: ValidationRule, graph: CompiledGraph) -> Iterable[BuildIssue]:
+    try:
+        result = rule(graph)
+        if inspect.iscoroutine(result):
+            result.close()
+            raise TypeError("returned an awaitable; validation rules must be synchronous")
+        iterator = iter(result)
+        while True:
+            try:
+                issue = next(iterator)
+            except StopIteration:
+                break
+            if not _valid_build_issue(issue):
+                raise TypeError("yielded a malformed BuildIssue")
+            yield issue
+    except Exception as error:
+        yield BuildIssue(
+            code="validation-rule-error",
+            severity=IssueSeverity.error,
+            message=(f"Validation rule {qualified_name(rule)} failed: " f"{type(error).__name__}: {error}"),
+        )
+
+
 def _build_error_code(error: BaseException) -> str:
     if isinstance(error, ContainerBuildError) and error.code is not None:
         return error.code
@@ -2541,15 +2584,18 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
                 )
             )
 
-    deduplicated = tuple(dict.fromkeys(issues))
-    report = BuildReport(deduplicated, checked_roots=len(all_roots))
-    if not report.is_valid:
-        raise ContainerBuildError(report=report)
     compiled_graph = CompiledGraph(
         roots=all_roots,
         build_args=plan.build_args,
         entrypoints=tuple(entrypoints),
     )
+    for rule in plan.blueprint.validation_rules:
+        issues.extend(_validation_rule_issues(rule, compiled_graph))
+
+    deduplicated = tuple(dict.fromkeys(issues))
+    report = BuildReport(deduplicated, checked_roots=len(all_roots))
+    if not report.is_valid:
+        raise ContainerBuildError(report=report)
     return replace(plan, compiled_graph=compiled_graph, build_report=report)
 
 
@@ -2886,6 +2932,7 @@ class _BuilderBase:
         self._registration_discoveries: list[_RegistrationDiscovery] = []
         self._slots: set[tuple[Any, str | None]] = set()
         self._entrypoints: list[_EntryPoint] = []
+        self._validation_rules: list[ValidationRule] = []
         self._built = False
 
     def _assert_mutable(self) -> None:
@@ -2922,7 +2969,23 @@ class _BuilderBase:
             pre_configuration_states=dict(self._pre_configuration_states),
             slots=frozenset(self._slots),
             entrypoints=tuple(self._entrypoints),
+            validation_rules=tuple(self._validation_rules),
         )
+
+    def add_validation_rule(self, rule: ValidationRule) -> None:
+        """Run a synchronous graph validation rule during final build validation."""
+
+        self._assert_mutable()
+        if not callable(rule):
+            raise TypeError("Validation rule must be callable")
+        targets = (rule, getattr(rule, "__call__", None))
+        if any(
+            inspect.iscoroutinefunction(target) or inspect.isasyncgenfunction(target)
+            for target in targets
+            if target is not None
+        ):
+            raise TypeError("Validation rules must be synchronous")
+        self._validation_rules.append(rule)
 
     def _new_decorator_order(self) -> int:
         value = self._next_decorator_order

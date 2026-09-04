@@ -81,6 +81,8 @@ def test_builder_compiles_an_immutable_container_and_is_single_use():
     with pytest.raises(BuilderAlreadyBuiltError):
         builder.register(str, instance="late")
     with pytest.raises(BuilderAlreadyBuiltError):
+        builder.add_validation_rule(lambda _: ())
+    with pytest.raises(BuilderAlreadyBuiltError):
         builder.build()
 
 

@@ -32,7 +32,9 @@ from .tooling import (
     GraphDiff,
     GraphManifest,
     GraphRoot,
+    GraphVisit,
     IssueSeverity,
+    ValidationRule,
 )
 
 __all__ = [
@@ -56,6 +58,7 @@ __all__ = [
     "GraphDiff",
     "GraphManifest",
     "GraphRoot",
+    "GraphVisit",
     "IssueSeverity",
     "ParameterContext",
     "ResolutionContext",
@@ -64,6 +67,7 @@ __all__ = [
     "ScopeProvisionError",
     "Tag",
     "UndeclaredScopeSlotError",
+    "ValidationRule",
     "all_components",
     "build_arg",
     "default_component_filter",

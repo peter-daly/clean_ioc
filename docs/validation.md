@@ -40,6 +40,54 @@ The compiler aggregates failures from independent roots into a structured `Build
 
 A successful runtime exposes the same report as `container.build_report`. Mark public resolution requests with `builder.mark_entrypoint(...)` to add reachability warnings and focus graph renderers without weakening whole-container validation. See [Compiler tooling](compiler-tooling.md) for graph manifests, semantic diffs, and CI commands.
 
+## Custom graph rules
+
+Use `add_validation_rule()` to enforce application or organization policy against the complete immutable graph. A rule
+is synchronous, receives `CompiledGraph`, and returns or yields zero or more `BuildIssue` values. `graph.walk()` visits
+every occurrence with its root and complete semantic path, including decorators, pre-configurations, collections,
+configured values, runtime contexts, and scope slots.
+
+This example prevents a domain-layer component from depending directly on infrastructure:
+
+```python
+from collections.abc import Iterable
+
+from clean_ioc import BuildIssue, CompiledGraph
+
+
+def enforce_architecture(graph: CompiledGraph) -> Iterable[BuildIssue]:
+    for visit in graph.walk():
+        if len(visit.components) < 2:
+            continue
+        parent, dependency = visit.components[-2:]
+        if (
+            parent.implementation_type.__module__.startswith("my_app.domain")
+            and dependency.implementation_type.__module__.startswith("my_app.infrastructure")
+        ):
+            yield visit.issue(
+                "my-app-domain-depends-on-infrastructure",
+                "Domain components cannot depend directly on infrastructure components",
+            )
+
+
+builder.add_validation_rule(enforce_architecture)
+```
+
+`visit.issue()` creates an error by default and fills in the matching root and path. Pass
+`severity=IssueSeverity.warning` for an advisory finding. Errors fail `build()`; warnings appear on the successful
+runtime's report and participate in the existing `clean-ioc check --strict` and `--ignore CODE` policies. Prefer an
+application or organization prefix for custom codes.
+
+Rules execute only after structural compilation produces a complete graph. They therefore do not run during builder
+preview queries or when missing dependencies, cycles, or another structural failure prevent that graph from existing.
+They do run alongside complete-graph findings such as a missing marked entry point. A rule that raises, returns a
+non-iterable value, or yields a malformed issue produces `validation-rule-error`; later rules still run so the report
+remains useful.
+
+Rules should be deterministic, side-effect-free, and safe to run again after a failed build. They may inspect
+`graph.build_args`, but Clean IoC does not automatically copy those inputs into a report: do not include secrets in a
+custom issue's code, message, root, or path.
+
 ## Builder state after build
 
 A failed build leaves the builder reusable:
@@ -53,7 +101,9 @@ except ContainerBuildError:
 container = builder.build()
 ```
 
-After a successful build, the builder rejects registration, decoration, pre-configuration, patching, slot declaration, bundle application, and a second `build()` call. The resulting `Container` has no mutation APIs.
+After a successful build, the builder rejects registration, decoration, pre-configuration, patching, slot declaration,
+validation-rule registration, bundle application, and a second `build()` call. The resulting `Container` has no
+mutation APIs.
 
 ## Inspecting the static plan
 
@@ -75,4 +125,8 @@ JSON manifests.
 
 ## Child composition
 
-`new_scope()` never validates or compiles because it reuses its parent's frozen plan. `new_scope_builder().build()` is a separate strict build boundary for a child overlay. It runs only discovery rules declared on that `ScopeBuilder`; inherited root rules are already frozen and are never rescanned.
+`new_scope()` never validates or compiles because it reuses its parent's frozen plan. `new_scope_builder().build()` is a
+separate strict build boundary for a child overlay. It runs only discovery rules declared on that `ScopeBuilder`;
+inherited root discovery is already frozen and is never rescanned. Custom validation rules are different: an overlay
+inherits its parent's policy rules, applies them to the complete recompiled overlay graph, and then runs rules declared
+on the `ScopeBuilder`.

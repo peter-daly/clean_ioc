@@ -5,11 +5,14 @@ from __future__ import annotations
 import inspect
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Iterable, Iterator, Literal, Mapping, Protocol, TypeAlias
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Literal, Mapping, Protocol, TypeAlias
 
 from typetoolbox.generics import GenericTypeMap
 
 from .metadata import Tag
+
+if TYPE_CHECKING:
+    from .tooling import ValidationRule
 
 Lifespan: TypeAlias = Literal["transient", "once_per_graph", "scoped", "singleton"]
 
@@ -339,6 +342,8 @@ class ComponentBuilder(Protocol):
     id: str
 
     def apply_bundle(self, bundle: Callable[[ComponentBuilder], None]) -> None: ...
+
+    def add_validation_rule(self, rule: ValidationRule) -> None: ...
 
     def register(
         self,

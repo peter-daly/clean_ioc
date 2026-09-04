@@ -2,7 +2,7 @@
 
 This document records the V2 architecture and implementation decisions made so far. It is intended for agents and maintainers extending V2 without accidentally restoring runtime graph construction, weakening build invariants, or breaking scope ownership.
 
-V2 is currently published in project metadata as `2.0.0b2`. Its public surface remains experimental.
+V2 is currently published in project metadata as `2.0.0b3`. Its public surface remains experimental.
 
 ## Core model
 
@@ -122,6 +122,19 @@ When changing validation:
 2. Preserve the error code and semantic component path.
 3. Keep a failed builder repairable.
 4. Test all compiled edge types when the rule is meant to be graph-wide.
+
+Custom validation rules are synchronous `ValidationRule` callbacks registered with
+`ComponentBuilder.add_validation_rule()`. They receive the complete immutable `CompiledGraph` after structural
+compilation and built-in complete-graph checks, then yield zero or more `BuildIssue` values. Custom errors fail the
+build; warnings use the existing Python and CLI policies. `CompiledGraph.walk()` always traverses every root and yields
+path-aware `GraphVisit` values; it is not focused by entry-point markers.
+
+Rules are frozen in builder layers. Scope overlays inherit parent rules, run them parent-first against the complete
+overlay graph, then run locally declared rules. Ordinary scopes do not rerun validation. Preview queries and failed
+structural compilations do not run custom rules because no final graph exists. A callback exception, non-iterable
+return, or malformed issue becomes `validation-rule-error`, and subsequent rules still run. Keep rules synchronous,
+deterministic, and side-effect-free; failed builds and overlay builds may execute the same callback again. Build inputs
+are available through the graph, but custom issue authors must not copy secrets into diagnostic fields.
 
 ## Pre-configuration compilation and ownership
 

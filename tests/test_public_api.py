@@ -56,10 +56,13 @@ def test_package_root_has_one_compiled_container_surface():
     assert "build_args" in inspect.signature(ContainerBuilder.has_component).parameters
     assert "build_args" in inspect.signature(ContainerBuilder.get_component_id).parameters
     assert "build_args" in inspect.signature(ContainerBuilder.get_component_ids).parameters
+    assert "add_validation_rule" in builder_methods
     assert {
         "INJECT",
         "REMOVE",
+        "GraphVisit",
         "ParameterContext",
+        "ValidationRule",
         "build_arg",
         "derive",
         "generic_arg",

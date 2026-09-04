@@ -1,6 +1,6 @@
 """Importable composition targets used by CLI tests."""
 
-from clean_ioc import ContainerBuilder
+from clean_ioc import BuildIssue, CompiledGraph, ContainerBuilder, IssueSeverity
 
 
 class Dependency:
@@ -49,4 +49,22 @@ def changed_builder() -> ContainerBuilder:
 def invalid_builder() -> ContainerBuilder:
     builder = ContainerBuilder()
     builder.register(InvalidApplication)
+    return builder
+
+
+def organization_warning(_: CompiledGraph):
+    return (
+        BuildIssue(
+            code="example-organization-warning",
+            severity=IssueSeverity.warning,
+            message="Example organization policy warning",
+        ),
+    )
+
+
+def custom_warning_builder() -> ContainerBuilder:
+    builder = ContainerBuilder()
+    builder.register(Application)
+    builder.register(Dependency)
+    builder.add_validation_rule(organization_warning)
     return builder

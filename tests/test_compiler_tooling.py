@@ -2,17 +2,22 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
 import clean_ioc.component_filters as cf
 from clean_ioc import (
     INJECT,
+    BuildIssue,
     BuildReport,
+    CompiledGraph,
     ComponentKind,
     ContainerBuilder,
     ContainerBuildError,
     GraphManifest,
+    GraphVisit,
+    IssueSeverity,
     ResolutionContext,
     Scope,
     derive,
@@ -305,6 +310,355 @@ def test_entrypoint_markers_focus_graphs_without_weakening_validation():
     assert len(container.graph.manifest().data["roots"]) == 1
     assert len(container.graph.manifest(all_roots=True).data["roots"]) == 3
     assert container.resolve(Unused).__class__ is Unused
+
+
+def test_custom_validation_rules_receive_the_complete_graph_and_aggregate_with_builtin_findings():
+    class Service:
+        pass
+
+    class MissingEntrypoint:
+        pass
+
+    received: list[CompiledGraph] = []
+
+    def validate(graph: CompiledGraph):
+        received.append(graph)
+        assert {root.requested_type for root in graph.roots} == {Service}
+        return (
+            BuildIssue(
+                code="example-domain-error",
+                severity=IssueSeverity.error,
+                message="The application graph violates a domain rule",
+            ),
+        )
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.mark_entrypoint(MissingEntrypoint)
+    builder.add_validation_rule(validate)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    assert [issue.code for issue in report.errors] == ["missing-entrypoint", "example-domain-error"]
+    assert len(received) == 1
+
+
+def test_custom_validation_warning_order_deduplication_build_args_and_failed_builder_retry():
+    class Service:
+        pass
+
+    duplicate = BuildIssue(
+        code="example-duplicate",
+        severity=IssueSeverity.warning,
+        message="Reported once",
+    )
+
+    def validate(graph: CompiledGraph):
+        if graph.build_args.get("ready"):
+            return (duplicate, duplicate)
+        return (
+            BuildIssue(
+                code="example-not-ready",
+                severity=IssueSeverity.error,
+                message="Composition is not ready",
+            ),
+            duplicate,
+            duplicate,
+        )
+
+    def validate_later(_: CompiledGraph):
+        return (
+            BuildIssue(
+                code="example-later",
+                severity=IssueSeverity.warning,
+                message="Later rule",
+            ),
+        )
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.add_validation_rule(validate)
+    builder.add_validation_rule(validate_later)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build(build_args={"ready": False})
+
+    report = raised.value.report
+    assert report is not None
+    assert [issue.code for issue in report.issues] == [
+        "example-not-ready",
+        "example-duplicate",
+        "example-later",
+    ]
+
+    container = builder.build(build_args={"ready": True})
+    assert [issue.code for issue in container.build_report.issues] == [
+        "example-duplicate",
+        "example-later",
+    ]
+
+
+def test_graph_walk_preserves_paths_across_every_compiled_edge_kind():
+    class Plugin:
+        pass
+
+    class Request:
+        pass
+
+    class Service:
+        def __init__(
+            self,
+            plugins: list[Plugin],
+            request: Request,
+            context: ResolutionContext,
+            configured: str,
+        ):
+            self.plugins = plugins
+            self.request = request
+            self.context = context
+            self.configured = configured
+
+    class Decorator:
+        def __init__(self, child: Service, plugin: Plugin):
+            self.child = child
+            self.plugin = plugin
+
+    def configure(plugin: Plugin) -> None:
+        del plugin
+
+    builder = ContainerBuilder()
+    builder.register(Plugin, lifespan="singleton")
+    builder.declare_scope_slot(Request)
+    builder.register(Service, arguments={"configured": "fixed"})
+    builder.register_decorator(Service, Decorator, decorated_arg="child")
+    builder.pre_configure(Service, configure)
+    graph = builder.build().graph
+
+    visits = tuple(visit for visit in graph.walk() if visit.root.requested_type is Service)
+    assert all(isinstance(visit, GraphVisit) for visit in visits)
+    assert [visit.component.occurrence_id for visit in graph.walk()] == [
+        visit.component.occurrence_id for visit in graph.walk()
+    ]
+    assert {
+        ComponentKind.registration,
+        ComponentKind.collection,
+        ComponentKind.scope_slot,
+        ComponentKind.runtime_context,
+        ComponentKind.value,
+        ComponentKind.pre_configuration,
+        ComponentKind.decorator,
+    }.issubset({visit.component.kind for visit in visits})
+
+    decorator = next(visit for visit in visits if visit.component.kind is ComponentKind.decorator)
+    configuration = next(visit for visit in visits if visit.component.kind is ComponentKind.pre_configuration)
+    assert decorator.component is decorator.components[-1]
+    assert decorator.path[-1].endswith("Decorator")
+    assert configuration.path[-1].endswith("configure")
+
+    issue = decorator.issue("example-layer-boundary", "Forbidden dependency direction")
+    assert issue.root is not None and issue.root.endswith("Service")
+    assert issue.path == decorator.path
+
+
+def test_architecture_validation_rule_can_report_the_forbidden_occurrence_path():
+    class InfrastructureRepository:
+        pass
+
+    class DomainService:
+        def __init__(self, repository: InfrastructureRepository):
+            self.repository = repository
+
+    InfrastructureRepository.__module__ = "example.infrastructure"
+    DomainService.__module__ = "example.domain"
+
+    def enforce_boundaries(graph: CompiledGraph):
+        for visit in graph.walk():
+            if len(visit.components) < 2:
+                continue
+            parent, dependency = visit.components[-2:]
+            if parent.implementation_type.__module__ == "example.domain" and (
+                dependency.implementation_type.__module__ == "example.infrastructure"
+            ):
+                yield visit.issue(
+                    "example-domain-depends-on-infrastructure",
+                    "Domain components cannot depend directly on infrastructure components",
+                )
+
+    builder = ContainerBuilder()
+    builder.register(InfrastructureRepository)
+    builder.register(DomainService)
+    builder.add_validation_rule(enforce_boundaries)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = report.errors[0]
+    assert issue.code == "example-domain-depends-on-infrastructure"
+    assert tuple(part.rsplit(".", 1)[-1] for part in issue.path) == (
+        "DomainService",
+        "InfrastructureRepository",
+    )
+
+
+def test_validation_rule_failures_are_structured_and_later_rules_continue():
+    class Service:
+        pass
+
+    def partially_failing(_: CompiledGraph):
+        yield BuildIssue(
+            code="example-before-failure",
+            severity=IssueSeverity.warning,
+            message="This finding is retained",
+        )
+        raise ValueError("broken validator")
+
+    def malformed(_: CompiledGraph):
+        return (
+            BuildIssue(
+                code="",
+                severity=IssueSeverity.warning,
+                message="Invalid empty code",
+            ),
+        )
+
+    def missing_result(_: CompiledGraph):
+        return None
+
+    def later(_: CompiledGraph):
+        return (
+            BuildIssue(
+                code="example-after-failure",
+                severity=IssueSeverity.warning,
+                message="Later rules still execute",
+            ),
+        )
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.add_validation_rule(partially_failing)
+    builder.add_validation_rule(malformed)
+    builder.add_validation_rule(missing_result)
+    builder.add_validation_rule(later)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    assert [issue.code for issue in report.issues] == [
+        "example-before-failure",
+        "validation-rule-error",
+        "validation-rule-error",
+        "validation-rule-error",
+        "example-after-failure",
+    ]
+    assert "broken validator" in report.issues[1].message
+    assert "malformed BuildIssue" in report.issues[2].message
+    assert "NoneType" in report.issues[3].message
+
+
+def test_async_validation_rules_are_rejected_before_build():
+    async def validate(_: CompiledGraph):
+        return ()
+
+    async def generate(_: CompiledGraph):
+        if False:
+            yield BuildIssue("unreachable", IssueSeverity.error, "unreachable")
+
+    class AsyncRule:
+        async def __call__(self, _: CompiledGraph):
+            return ()
+
+    builder = ContainerBuilder()
+    for rule in (validate, generate, AsyncRule()):
+        with pytest.raises(TypeError, match="synchronous"):
+            builder.add_validation_rule(cast(Any, rule))
+
+
+def test_rules_do_not_run_for_preview_structural_failure_or_ordinary_scopes():
+    class Missing:
+        pass
+
+    class InvalidService:
+        def __init__(self, missing: Missing):
+            self.missing = missing
+
+    calls: list[tuple[object, ...]] = []
+
+    def validate(graph: CompiledGraph):
+        calls.append(tuple(root.requested_type for root in graph.roots))
+        return ()
+
+    invalid_builder = ContainerBuilder()
+    invalid_builder.register(InvalidService)
+    invalid_builder.add_validation_rule(validate)
+
+    with pytest.raises(ContainerBuildError):
+        invalid_builder.build()
+    assert not calls
+
+    valid_builder = ContainerBuilder()
+    valid_builder.register(Missing)
+    valid_builder.add_validation_rule(validate)
+    assert valid_builder.has_component(Missing)
+    assert not calls
+    container = valid_builder.build()
+    assert calls == [(Missing,)]
+    container.new_scope()
+    assert calls == [(Missing,)]
+
+
+def test_overlay_inherits_parent_rules_and_runs_parent_before_child_against_all_roots():
+    class ParentService:
+        pass
+
+    class OverlayService:
+        pass
+
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    def parent_rule(graph: CompiledGraph):
+        calls.append(("parent", tuple(root.requested_type for root in graph.roots)))
+        return (
+            BuildIssue(
+                code="example-parent-rule",
+                severity=IssueSeverity.warning,
+                message="Parent rule",
+            ),
+        )
+
+    def child_rule(graph: CompiledGraph):
+        calls.append(("child", tuple(root.requested_type for root in graph.roots)))
+        return (
+            BuildIssue(
+                code="example-child-rule",
+                severity=IssueSeverity.warning,
+                message="Child rule",
+            ),
+        )
+
+    builder = ContainerBuilder()
+    builder.register(ParentService)
+    builder.add_validation_rule(parent_rule)
+    container = builder.build()
+    calls.clear()
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(OverlayService)
+    overlay_builder.add_validation_rule(child_rule)
+    overlay = overlay_builder.build()
+
+    expected_roots = (OverlayService, ParentService)
+    assert calls == [("parent", expected_roots), ("child", expected_roots)]
+    assert [issue.code for issue in overlay.build_report.warnings] == [
+        "example-parent-rule",
+        "example-child-rule",
+    ]
 
 
 def test_missing_and_ambiguous_entrypoints_have_structured_findings():
@@ -908,6 +1262,17 @@ def test_cli_check_graph_and_diff_contract(tmp_path: Path, capsys):
     assert "unchanged" in capsys.readouterr().out
     assert main(["diff", "tests.tooling_targets:changed_builder", str(baseline)]) == 1
     assert "changed" in capsys.readouterr().out
+
+
+def test_cli_strict_and_ignore_apply_to_custom_validation_warnings(capsys):
+    target = "tests.tooling_targets:custom_warning_builder"
+
+    assert main(["check", target]) == 0
+    assert "example-organization-warning" in capsys.readouterr().out
+
+    assert main(["check", target, "--strict"]) == 1
+    capsys.readouterr()
+    assert main(["check", target, "--strict", "--ignore", "example-organization-warning"]) == 0
 
 
 def test_cli_manifest_is_stable_across_processes():

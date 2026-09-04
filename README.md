@@ -252,6 +252,7 @@ compiled container during application startup.
 - Immutable build inputs with explicit `build_arg(...)`, `generic_arg(...)`, and `inject()` argument policies.
 - Coordinated first activation across threads and event loops.
 - Bundles targeting one shared `ComponentBuilder` composition protocol.
+- Synchronous custom graph rules with structured errors, warnings, and path-aware traversal.
 - BenchBro experiments separating build cost, runtime latency, and Python allocations.
 
 ## Project links
