@@ -51,6 +51,24 @@ def test_bundle_instance_can_be_called_multiple_times_when_allowed():
     assert spy == was_called().times(3)
 
 
+def test_bundle_can_apply_a_nested_bundle_through_component_builder_protocol():
+    class Dependency:
+        pass
+
+    class DependencyBundle(BaseBundle):
+        def apply(self, builder: ComponentBuilder):
+            builder.register(Dependency)
+
+    class ApplicationBundle(BaseBundle):
+        def apply(self, builder: ComponentBuilder):
+            builder.apply_bundle(DependencyBundle())
+
+    builder = ContainerBuilder()
+    builder.apply_bundle(ApplicationBundle())
+
+    assert isinstance(builder.build().resolve(Dependency), Dependency)
+
+
 def test_bundle_class_can_be_called_multiple_times_with_different_instances():
     spy1 = Mock()
     spy2 = Mock()

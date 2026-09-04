@@ -30,6 +30,7 @@ from .arguments import (
 from .components import (
     Component,
     ComponentActivation,
+    ComponentBuilder,
     ComponentFilter,
     ComponentKind,
     Lifespan,
@@ -3218,7 +3219,7 @@ class _BuilderBase:
             )
         )
 
-    def apply_bundle(self, bundle: Callable[[Any], None]) -> None:
+    def apply_bundle(self, bundle: Callable[[ComponentBuilder], None]) -> None:
         self._assert_mutable()
         bundle(self)
 

@@ -338,6 +338,8 @@ class ComponentBuilder(Protocol):
 
     id: str
 
+    def apply_bundle(self, bundle: Callable[[ComponentBuilder], None]) -> None: ...
+
     def register(
         self,
         service_type: type,

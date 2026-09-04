@@ -5,17 +5,17 @@ from .core import (
     validate_fastapi_routes,
 )
 from .dependencies import (
+    FastAPIBundle,
     RequestHeaderReader,
     ResponseHeaderWriter,
-    configure_fastapi,
 )
 
 __all__ = [
+    "FastAPIBundle",
     "FastAPIIntegrationError",
     "RequestHeaderReader",
     "Resolve",
     "ResponseHeaderWriter",
-    "configure_fastapi",
     "install_fastapi",
     "validate_fastapi_routes",
 ]

@@ -9,13 +9,27 @@ from fastapi.testclient import TestClient
 import clean_ioc.component_filters as cf
 from clean_ioc import ContainerBuilder, ContainerBuildError
 from clean_ioc.ext.fastapi import (
+    FastAPIBundle,
     FastAPIIntegrationError,
     RequestHeaderReader,
     Resolve,
     ResponseHeaderWriter,
-    configure_fastapi,
     install_fastapi,
 )
+
+
+def test_fastapi_bundle_runs_once_per_class_for_root_and_overlay_builders():
+    root = ContainerBuilder().build()
+
+    for builder in (ContainerBuilder(), root.new_scope_builder()):
+        builder.apply_bundle(FastAPIBundle())
+        builder.apply_bundle(FastAPIBundle())
+        scope = builder.build()
+
+        assert scope.has_scope_slot(Request)
+        assert scope.has_scope_slot(WebSocket)
+        assert scope.has_component(RequestHeaderReader)
+        assert len([component for component in scope.components if component.service_type is RequestHeaderReader]) == 1
 
 
 def test_response_writer_writes_a_header_to_response():
@@ -30,7 +44,7 @@ def test_response_writer_writes_a_header_to_response():
             self.header_writer.write(self.HEADER_NAME, self.HEADER_VALUE)
 
     builder = ContainerBuilder()
-    configure_fastapi(builder)
+    builder.apply_bundle(FastAPIBundle())
     builder.register(MyDependency)
     app = FastAPI()
 
@@ -53,7 +67,7 @@ def test_request_scope_slot_rejects_singleton_capture_during_build():
             self.request = request
 
     builder = ContainerBuilder()
-    configure_fastapi(builder)
+    builder.apply_bundle(FastAPIBundle())
     builder.register(SingletonService, lifespan="singleton")
 
     with pytest.raises(ContainerBuildError) as raised:
@@ -77,7 +91,7 @@ def test_request_header_reader_reads_headers():
             return self.header_reader.read(self.HEADER_NAME)
 
     builder = ContainerBuilder()
-    configure_fastapi(builder)
+    builder.apply_bundle(FastAPIBundle())
     builder.register(MyDependency)
     app = FastAPI()
 
@@ -116,7 +130,7 @@ def test_with_async_generator_dependency():
             yield dep
 
     builder = ContainerBuilder()
-    configure_fastapi(builder)
+    builder.apply_bundle(FastAPIBundle())
     builder.register(MyDependency, factory=my_dependency_factory)
     app = FastAPI()
 
@@ -183,7 +197,7 @@ def test_install_fastapi_provides_request_and_header_adapters_without_global_dep
             }
 
     builder = ContainerBuilder()
-    configure_fastapi(builder)
+    builder.apply_bundle(FastAPIBundle())
     builder.register(BoundaryAwareService)
     container = builder.build()
 
@@ -218,7 +232,7 @@ def test_install_fastapi_supports_websocket_connection_scopes():
             return f"{self.websocket.url.path}:{self.headers.read('X-Client')}"
 
     builder = ContainerBuilder()
-    configure_fastapi(builder)
+    builder.apply_bundle(FastAPIBundle())
     builder.register(WebSocketService)
     container = builder.build()
 

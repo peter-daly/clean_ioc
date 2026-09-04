@@ -2,7 +2,7 @@
 
 This document records the V2 architecture and implementation decisions made so far. It is intended for agents and maintainers extending V2 without accidentally restoring runtime graph construction, weakening build invariants, or breaking scope ownership.
 
-V2 is currently published in project metadata as `2.0.0b1`. Its public surface remains experimental.
+V2 is currently published in project metadata as `2.0.0b2`. Its public surface remains experimental.
 
 ## Core model
 
@@ -167,7 +167,7 @@ Ordinary `new_scope()` is cheap and never recompiles. It reuses the parent's pla
 
 Singleton anchoring is keyed by stable registration ID plus the requested runtime specialization. If an overlay asks for a parent-owned generic singleton specialization that was never compiled in the parent, the build fails with `overlay-singleton`; the overlay must register its own replacement.
 
-Framework/request data should use declared scope slots rather than post-build registration. `configure_fastapi()` declares the FastAPI boundary and `install_fastapi()` uses ASGI middleware to own one ordinary scope for a complete HTTP request or WebSocket connection. It also validates every route's `Resolve(...)` type and filter against the frozen plan at startup.
+Framework/request data should use declared scope slots rather than post-build registration. Applying `FastAPIBundle()` declares the FastAPI boundary exactly once per builder, and `install_fastapi()` uses ASGI middleware to own one ordinary scope for a complete HTTP request or WebSocket connection. It also validates every route's `Resolve(...)` type and filter against the frozen plan at startup.
 
 ## Generics and discovery
 

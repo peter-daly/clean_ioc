@@ -260,13 +260,13 @@ validates the separately registered application component graph and its ownershi
 
 ## Request and response boundary values
 
-Call `configure_fastapi` before `build()` when application components consume HTTP connection information or the framework-light header adapters:
+Apply `FastAPIBundle` before `build()` when application components consume HTTP connection information or the framework-light header adapters:
 
 ```python
 from clean_ioc.ext.fastapi import (
+    FastAPIBundle,
     RequestHeaderReader,
     ResponseHeaderWriter,
-    configure_fastapi,
 )
 
 
@@ -281,7 +281,7 @@ class HeaderAwareService:
 
 
 builder = ContainerBuilder()
-configure_fastapi(builder)
+builder.apply_bundle(FastAPIBundle())
 builder.register(HeaderAwareService)
 container = builder.build()
 
@@ -289,7 +289,8 @@ app = FastAPI()
 install_fastapi(app, container)
 ```
 
-No global `dependencies=[Depends(...)]` list is required. The configuration bundle:
+No global `dependencies=[Depends(...)]` list is required. `FastAPIBundle` runs at most once per builder, even when
+independently composed application bundles apply it more than once. It:
 
 - declares slots for `HTTPConnection`, `Request`, `WebSocket`, and `ResponseHeaderWriter`;
 - registers `RequestHeaderReader` as an ordinary scoped component;
@@ -360,7 +361,7 @@ with TestClient(create_app(test_scope)) as client:
 ```
 
 The installed application owns and closes the overlay. For request-specific values, use the slots installed by
-`configure_fastapi`. Ordinary request scopes reuse the existing plan; an overlay compiles a new plan.
+`FastAPIBundle`. Ordinary request scopes reuse the existing plan; an overlay compiles a new plan.
 
 ## Complete example
 

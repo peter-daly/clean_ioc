@@ -7,6 +7,7 @@ from starlette.datastructures import MutableHeaders
 from starlette.requests import HTTPConnection
 
 from clean_ioc import ComponentBuilder
+from clean_ioc.bundles import OnlyRunOncePerClassBundle
 from clean_ioc.functional_utils import constant
 from fastapi import Request, WebSocket
 
@@ -47,18 +48,19 @@ class ResponseHeaderWriter:
             headers[key] = value
 
 
-def configure_fastapi(builder: ComponentBuilder) -> None:
-    """Add the compiled boundary components supplied by :func:`install_fastapi`."""
+class FastAPIBundle(OnlyRunOncePerClassBundle):
+    """Declare the compiled boundary components supplied by ``install_fastapi``."""
 
-    builder.declare_scope_slot(HTTPConnection)
-    builder.declare_scope_slot(Request)
-    builder.declare_scope_slot(WebSocket)
-    builder.declare_scope_slot(ResponseHeaderWriter)
-    builder.register(RequestHeaderReader, lifespan="scoped")
+    def apply(self, builder: ComponentBuilder) -> None:
+        builder.declare_scope_slot(HTTPConnection)
+        builder.declare_scope_slot(Request)
+        builder.declare_scope_slot(WebSocket)
+        builder.declare_scope_slot(ResponseHeaderWriter)
+        builder.register(RequestHeaderReader, lifespan="scoped")
 
 
 __all__ = [
+    "FastAPIBundle",
     "RequestHeaderReader",
     "ResponseHeaderWriter",
-    "configure_fastapi",
 ]

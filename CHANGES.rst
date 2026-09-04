@@ -1,6 +1,12 @@
-2.0.0b1
+2.0.0b2
 -------
     Require Python 3.11 or newer.
+    Package optional FastAPI boundary declarations as a run-once-per-builder
+    ``FastAPIBundle`` and complete the shared builder protocol for nested bundles.
+
+
+2.0.0b1
+-------
     Split mutable composition into ``ContainerBuilder`` and ``ScopeBuilder`` and
     make ``Container`` and ``Scope`` immutable runtime types.
     Compile occurrence-specific component plans at ``build()`` without invoking

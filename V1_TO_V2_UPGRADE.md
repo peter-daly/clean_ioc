@@ -80,7 +80,7 @@ The following removals are deliberate. Do not preserve them with local aliases o
 | `clean_ioc.diagnostics` | `BuildReport`, `CompiledGraph`, manifests, and the `clean-ioc` CLI |
 | `clean_ioc.factories.use_registered` | `clean_ioc.factories.use_component` |
 | `clean_ioc.factories.use_from_current_graph` | `use_component` or an explicit `ResolutionContext` dependency |
-| `add_container_to_app` and `add_*_to_scope` | `configure_fastapi(builder)` plus `install_fastapi(app, container)` |
+| `add_container_to_app` and `add_*_to_scope` | `builder.apply_bundle(FastAPIBundle())` plus `install_fastapi(app, container)` |
 | `register_generic_decorator(...)` | `register_decorator(...)`, which handles open and closed generic services |
 
 The package root is the authoritative public import surface. Submodules documented by the V2 guide—such as
@@ -508,7 +508,7 @@ install_fastapi(app, container)
 
 The V2 extension requires FastAPI 0.121 or newer. It owns the root container for the application lifespan and creates one ordinary child scope for each complete HTTP request or WebSocket connection. `Resolve(Service)` still resolves a route dependency, but its filter is now a component filter. Every `Resolve` selection is checked against the compiled container during FastAPI startup.
 
-If application components consume `Request`, `WebSocket`, `RequestHeaderReader`, or `ResponseHeaderWriter`, call `configure_fastapi(builder)` before `build()`. The middleware provides those late boundary values automatically; remove V1 global `Depends(add_*_to_scope)` configuration. The old lifespan and individual provision helpers are not part of V2.
+If application components consume `Request`, `WebSocket`, `RequestHeaderReader`, or `ResponseHeaderWriter`, apply `FastAPIBundle()` before `build()`. The run-once bundle declares those boundary slots and supporting components; the middleware provides their late values automatically. Remove V1 global `Depends(add_*_to_scope)` configuration. The old lifespan and individual provision helpers are not part of V2.
 
 For test overrides, compile a `ScopeBuilder` overlay and pass that built scope to `install_fastapi` on a test application instance. Use the configured slots instead when only request data changes.
 

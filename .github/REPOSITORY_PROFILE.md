@@ -37,10 +37,10 @@ Enable **Releases**, **Packages**, and **Discussions**. Keep Issues enabled. Upl
 
 Share the kind of application, which features you use, and anything that made adoption harder than it should have been. Small examples are welcome. This thread is also the best place to request an integration or documentation walkthrough before opening a detailed feature issue.
 
-## First alpha after the compiler work
+## Beta release after the compiler work
 
-Use the v2.0.0a1 title:
+Use the v2.0.0b2 title:
 
 > Compile once, resolve the plan
 
-Lead with the `ContainerBuilder`/immutable `Container` split, strict `build()`, graph-free runtime execution, unified `Component` filters, scope slots, and experimental `ScopeBuilder` overlays. Label the release alpha and ask for composition roots that challenge the static model.
+Lead with the `ContainerBuilder`/immutable `Container` split, strict `build()`, graph-free runtime execution, unified `Component` filters, scope slots, and experimental `ScopeBuilder` overlays. Label the release beta and ask for composition roots that challenge the static model.

@@ -74,7 +74,8 @@ def test_public_helpers_use_only_v2_names():
     assert "use_from_current_graph" not in factories.__all__
 
     assert "install_fastapi" in fastapi_extension.__all__
-    assert "configure_fastapi" in fastapi_extension.__all__
+    assert "FastAPIBundle" in fastapi_extension.__all__
+    assert "configure_fastapi" not in fastapi_extension.__all__
     assert "add_container_to_app" not in fastapi_extension.__all__
     assert "register_fastapi_scope_slots" not in fastapi_extension.__all__
 

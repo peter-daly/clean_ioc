@@ -8,7 +8,7 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from clean_ioc import ContainerBuilder
-from clean_ioc.ext.fastapi import Resolve, configure_fastapi, install_fastapi
+from clean_ioc.ext.fastapi import Resolve, install_fastapi
 
 
 class LayerOne:
@@ -78,7 +78,6 @@ def create_native_fastapi_app() -> FastAPI:
 
 def create_clean_ioc_fastapi_app() -> FastAPI:
     builder = ContainerBuilder()
-    configure_fastapi(builder)
     for service_type in (LayerOne, LayerTwo, LayerThree, LayerFour, LayerFive):
         builder.register(service_type, lifespan="once_per_graph")
 
