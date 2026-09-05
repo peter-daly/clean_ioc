@@ -76,7 +76,7 @@ def test_request_scope_slot_rejects_singleton_capture_during_build():
     report = raised.value.report
     assert report is not None
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("SingletonService"))
-    assert issue.code == "captive-dependency"
+    assert issue.code == "captive-runtime-scope"
     assert issue.path[-1].endswith("Request")
 
 

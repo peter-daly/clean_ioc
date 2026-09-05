@@ -17,6 +17,16 @@ if TYPE_CHECKING:
 Lifespan: TypeAlias = Literal["transient", "once_per_graph", "scoped", "singleton"]
 
 
+class RuntimeOwnerKind(str, Enum):
+    """Stable category for a compiled cache or cleanup owner."""
+
+    none = "none"
+    resolution = "resolution"
+    scope = "scope"
+    singleton = "singleton"
+    supplied = "supplied"
+
+
 class ComponentKind(str, Enum):
     """The role an occurrence has in a compiled component plan."""
 
@@ -27,6 +37,7 @@ class ComponentKind(str, Enum):
     scope_slot = "scope_slot"
     value = "value"
     runtime_context = "runtime_context"
+    provider = "provider"
 
 
 class ComponentActivation(str, Enum):
@@ -38,6 +49,7 @@ class ComponentActivation(str, Enum):
     supplied = "supplied"
     collection = "collection"
     context = "context"
+    deferred = "deferred"
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +67,11 @@ class _ComponentRecord:
     activation: ComponentActivation
     requires_async: bool
     manages_cleanup: bool
+    cache_owner: RuntimeOwnerKind
+    cleanup_owner: RuntimeOwnerKind
+    owner_id: int | None
+    ownership_reason: str
+    provider_mode: Literal["sync", "async"] | None
     position: int | None
     argument: str | None
     generic_mapping: GenericTypeMap
@@ -63,6 +80,7 @@ class _ComponentRecord:
     decorator_ids: tuple[int, ...]
     decorated_id: int | None
     pre_configuration_ids: tuple[int, ...]
+    assembly: str | None
 
 
 @dataclass(slots=True)
@@ -80,6 +98,11 @@ class _ComponentDraft:
     activation: ComponentActivation
     requires_async: bool = False
     manages_cleanup: bool = False
+    cache_owner: RuntimeOwnerKind = RuntimeOwnerKind.none
+    cleanup_owner: RuntimeOwnerKind = RuntimeOwnerKind.none
+    owner_id: int | None = None
+    ownership_reason: str = "No runtime-owned cache or cleanup"
+    provider_mode: Literal["sync", "async"] | None = None
     position: int | None = None
     argument: str | None = None
     parent_id: int | None = None
@@ -87,6 +110,7 @@ class _ComponentDraft:
     decorator_ids: tuple[int, ...] = ()
     decorated_id: int | None = None
     pre_configuration_ids: tuple[int, ...] = ()
+    assembly: str | None = None
 
     def freeze(self) -> _ComponentRecord:
         return _ComponentRecord(
@@ -103,6 +127,11 @@ class _ComponentDraft:
             activation=self.activation,
             requires_async=self.requires_async,
             manages_cleanup=self.manages_cleanup,
+            cache_owner=self.cache_owner,
+            cleanup_owner=self.cleanup_owner,
+            owner_id=self.owner_id,
+            ownership_reason=self.ownership_reason,
+            provider_mode=self.provider_mode,
             position=self.position,
             argument=self.argument,
             generic_mapping=GenericTypeMap(self.service_type),
@@ -111,6 +140,7 @@ class _ComponentDraft:
             decorator_ids=self.decorator_ids,
             decorated_id=self.decorated_id,
             pre_configuration_ids=self.pre_configuration_ids,
+            assembly=self.assembly,
         )
 
 
@@ -215,6 +245,12 @@ class Component:
         return self._record.build_args
 
     @property
+    def assembly(self) -> str | None:
+        """Composition area where this component was defined; ``None`` is root."""
+
+        return self._record.assembly
+
+    @property
     def registration_tags(self) -> tuple[Tag, ...]:
         """Compatibility alias for pre-2.0 node filters."""
 
@@ -241,6 +277,34 @@ class Component:
     @property
     def manages_cleanup(self) -> bool:
         return self._record.manages_cleanup
+
+    @property
+    def cache_owner(self) -> RuntimeOwnerKind:
+        """Owner category of this occurrence's cached instance, if any."""
+
+        return self._record.cache_owner
+
+    @property
+    def cleanup_owner(self) -> RuntimeOwnerKind:
+        """Owner category selected for cleanup performed by this occurrence."""
+
+        return self._record.cleanup_owner
+
+    @property
+    def owner_occurrence_id(self) -> int | None:
+        """Occurrence responsible for promoted ownership, without a runtime identity."""
+
+        return self._record.owner_id
+
+    @property
+    def ownership_reason(self) -> str:
+        return self._record.ownership_reason
+
+    @property
+    def provider_mode(self) -> Literal["sync", "async"] | None:
+        """Invocation mode for a synthetic deferred provider occurrence."""
+
+        return self._record.provider_mode
 
     @property
     def position(self) -> int | None:

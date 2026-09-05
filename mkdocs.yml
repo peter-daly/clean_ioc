@@ -1,5 +1,5 @@
 site_name: Clean IoC
-site_description: Typed Python dependency injection with build-time component compilation, immutable runtime plans, explicit lifespans, generics, decorators, and FastAPI scopes.
+site_description: Typed Python dependency injection with compiled runtime plans and custom build-time architecture validation.
 site_author: Peter Daly
 site_url: https://peter-daly.github.io/clean_ioc/
 repo_name: peter-daly/clean_ioc
@@ -9,6 +9,7 @@ nav:
   - Home: index.md
   - Design rationale: why-clean-ioc.md
   - Build & Components: validation.md
+  - Custom Graph Validation: custom-validation.md
   - Compiler Tooling: compiler-tooling.md
   - Registration: simple-uses.md
   - Factories: factories.md
@@ -18,6 +19,7 @@ nav:
   - Scopes: scopes.md
   - Pre-Configurations: pre-configurations.md
   - Bundles: bundles.md
+  - Assemblies: assemblies.md
   - Advanced:
       - Filtering: advanced/filtering.md
       - Argument Policies: advanced/arguments.md

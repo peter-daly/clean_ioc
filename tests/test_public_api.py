@@ -57,19 +57,28 @@ def test_package_root_has_one_compiled_container_surface():
     assert "build_args" in inspect.signature(ContainerBuilder.get_component_id).parameters
     assert "build_args" in inspect.signature(ContainerBuilder.get_component_ids).parameters
     assert "add_validation_rule" in builder_methods
+    assert "install_assembly" in builder_methods
+    assert "install_assembly" in set(dir(ScopeBuilder))
+    assert "install_assembly" not in set(dir(clean_ioc.ComponentBuilder))
     assert inspect.signature(ContainerBuilder.add_validation_rule).parameters["strict_only"].kind is (
         inspect.Parameter.KEYWORD_ONLY
     )
     assert inspect.signature(ScopeBuilder.add_validation_rule).parameters["strict_only"].default is False
     assert inspect.signature(clean_ioc.Scope.validation_report).parameters["include_strict_rules"].default is False
     assert {
+        "AsyncProvider",
+        "Assembly",
         "INJECT",
         "REMOVE",
         "GraphVisit",
         "ParameterContext",
+        "Provider",
+        "ProviderScopeClosedError",
+        "Expose",
         "TypeAst",
         "ValidationContext",
         "ValidationRule",
+        "Use",
         "build_arg",
         "derive",
         "generic_arg",

@@ -19,6 +19,9 @@ container = builder.build()
 ```
 
 Bundles are composition-only. They are never injectable at runtime and cannot mutate a built container or scope.
+An existing bundle can also be used unchanged as an assembly's `root_bundle`; see
+[Assemblies and visibility](assemblies.md). The assembly applies that bundle to an isolated private builder, while
+nested bundles remain in the same assembly and retain their provenance path.
 
 The shared protocol also supports custom validation rules, so a bundle can install organization or framework policy
 along with its registrations:
@@ -32,6 +35,7 @@ class ArchitecturePolicyBundle(BaseBundle):
 
 Rules installed on a root builder are inherited by scope overlays and validate each overlay's complete compiled graph.
 The `strict_only=True` form lets a bundle install an expensive CI policy without adding it to application startup.
+See [Custom graph validation](custom-validation.md#package-rules-in-bundles) for a complete policy-bundle example.
 
 ## Run-once policies
 

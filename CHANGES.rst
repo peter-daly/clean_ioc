@@ -1,3 +1,18 @@
+2.0.0b6
+-------
+    Add immutable compilation explanations with selected and rejected candidates,
+    stable reason codes, declaration provenance, and ``clean-ioc explain``.
+    Add compiled cache and cleanup ownership proofs, owner-correct resource
+    finalization, closed-scope safety, and ``clean-ioc ownership``.
+    Add typed ``Provider[T]`` and ``AsyncProvider[T]`` handles that execute frozen
+    deferred plans without adding service lookup to the runtime hot path.
+    Add compile-time assemblies with private-by-default bundle registrations,
+    unchanged exposures, explicit root and cross-assembly uses, overlay support,
+    structured visibility diagnostics, provenance, and manifest-schema-3 tooling.
+    Expand BenchBro coverage for compiler features, strict validation, ownership,
+    runtime scaling, allocations, and FastAPI request integration.
+
+
 2.0.0b5
 -------
     Add strict-only custom graph rules that defer expensive validation and AST

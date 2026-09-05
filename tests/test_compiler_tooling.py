@@ -12,15 +12,20 @@ from clean_ioc import (
     INJECT,
     BuildIssue,
     BuildReport,
+    CandidateDecision,
+    CompilationExplanation,
     CompiledGraph,
     ComponentKind,
     ContainerBuilder,
     ContainerBuildError,
+    DecisionOutcome,
+    DefinitionOrigin,
     GraphManifest,
     GraphVisit,
     IssueSeverity,
     ResolutionContext,
     Scope,
+    SourceLocation,
     TypeAst,
     ValidationContext,
     derive,
@@ -53,6 +58,8 @@ def test_build_report_aggregates_independent_errors_and_failed_builder_is_reusab
 
     report = raised.value.report
     assert isinstance(report, BuildReport)
+    assert raised.value.explanations
+    assert any(explanation.subject.startswith("Argument 'missing'") for explanation in raised.value.explanations)
     assert [issue.code for issue in report.errors] == ["missing-component", "missing-component"]
     assert "FirstMissing" in report.errors[0].message
     assert "SecondMissing" in report.errors[1].message
@@ -1052,7 +1059,7 @@ def test_singleton_owned_paths_cannot_capture_supplied_scope_slots(edge):
     report = raised.value.report
     assert report is not None
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
-    assert issue.code == "captive-dependency"
+    assert issue.code == "captive-runtime-scope"
     assert issue.path[0].endswith("Service")
     assert issue.path[-1].endswith("Request")
     assert "cannot retain scoped" in issue.message
@@ -1375,7 +1382,7 @@ def test_graph_text_mermaid_and_json_renderers_are_available():
 
     assert "Resolve" in container.graph.to_text()
     assert container.graph.to_mermaid().startswith("flowchart TD")
-    assert json.loads(container.graph.manifest().to_json())["schema_version"] == 1
+    assert json.loads(container.graph.manifest().to_json())["schema_version"] == 3
 
 
 def test_graph_renderers_put_relationships_on_edges_and_keep_nodes_component_only():
@@ -1456,7 +1463,7 @@ def test_cli_check_graph_and_diff_contract(tmp_path: Path, capsys):
 
     baseline = tmp_path / "graph.json"
     assert main(["graph", target, "--format", "json", "--output", str(baseline)]) == 0
-    assert GraphManifest.from_json(baseline.read_text()).data["schema_version"] == 1
+    assert GraphManifest.from_json(baseline.read_text()).data["schema_version"] == 3
     capsys.readouterr()
 
     assert main(["diff", target, str(baseline)]) == 0
@@ -1517,6 +1524,186 @@ def test_cli_reports_invalid_builds_and_bad_targets(capsys):
     assert "missing-component" in capsys.readouterr().err
     assert main(["check", "not-a-locator"]) == 2
     assert "module:object" in capsys.readouterr().err
+
+
+def test_explain_records_default_named_filtered_and_collection_selection_without_rerunning_filters():
+    class Gateway:
+        pass
+
+    class DefaultGateway(Gateway):
+        pass
+
+    class StripeGateway(Gateway):
+        pass
+
+    calls = 0
+
+    def stripe(component):
+        nonlocal calls
+        calls += 1
+        return component.name == "stripe"
+
+    builder = ContainerBuilder()
+    default_id = builder.register(Gateway, DefaultGateway)
+    stripe_id = builder.register(Gateway, StripeGateway, name="stripe")
+    builder.mark_entrypoint(Gateway, filter=stripe)
+    graph = builder.build().graph
+    build_calls = calls
+
+    default = graph.explain(Gateway)
+    filtered = graph.explain(Gateway, filter=stripe)
+    named = graph.explain(Gateway, filter=cf.with_name("stripe"))
+    collection = graph.explain(list[Gateway])
+
+    assert calls == build_calls
+    assert default.selected[0].component_id == default_id
+    assert default.selected[0].reason_codes == ("selected-default",)
+    assert default.rejected[0].reason_codes == ("rejected-name",)
+    assert filtered.selected[0].component_id == stripe_id
+    assert filtered.selected[0].reason_codes == ("selected-explicit-filter",)
+    assert named.selected[0].component_id == filtered.selected[0].component_id
+    assert collection.selected[0].component_id == default_id
+    assert collection.selected[0].outcome is DecisionOutcome.included
+    assert collection.selected[0].reason_codes == ("included-collection",)
+    assert isinstance(default, CompilationExplanation)
+    assert isinstance(default.selected[0], CandidateDecision)
+    assert json.loads(default.to_json()) == default.to_dict()
+
+
+def test_explain_occurrences_captures_origins_bundles_argument_policies_and_applicability():
+    class Request:
+        pass
+
+    class Dependency:
+        pass
+
+    class Service:
+        def __init__(self, dependency: Dependency, request: Request, configured: str):
+            self.dependency = dependency
+            self.request = request
+            self.configured = configured
+
+    class Decorator:
+        def __init__(self, child: Service):
+            self.child = child
+
+    class RejectedDecorator:
+        def __init__(self, child: Service):
+            self.child = child
+
+    def configure() -> None:
+        pass
+
+    def bundle(builder):
+        builder.register(Dependency)
+        builder.declare_scope_slot(Request)
+        builder.register(
+            Service,
+            arguments={"configured": derive(lambda _: "secret")},
+        )
+        builder.register_decorator(Service, Decorator, decorated_arg="child")
+        builder.register_decorator(
+            Service,
+            RejectedDecorator,
+            decorated_arg="child",
+            when=lambda _: False,
+        )
+        builder.pre_configure(Service, configure)
+
+    builder = ContainerBuilder()
+    builder.apply_bundle(bundle)
+    graph = builder.build().graph
+    service = next(root.component for root in graph.roots if root.requested_type is Service)
+    dependency = next(item for item in service.dependencies if item.service_type is Dependency)
+    request = next(item for item in service.dependencies if item.service_type is Request)
+    configured = next(item for item in service.dependencies if item.service_type is str)
+    decorator = service.decorators[0]
+    pre_configuration = service.pre_configurations[0]
+
+    registration_origin = graph.explain(dependency).selected[0].origin
+    assert isinstance(registration_origin, DefinitionOrigin)
+    assert isinstance(registration_origin.location, SourceLocation)
+    assert registration_origin.kind == "registration"
+    assert registration_origin.layer == "root"
+    assert registration_origin.location.module == __name__
+    assert not Path(registration_origin.location.path or "/").is_absolute()
+    assert registration_origin.bundle_path[-1].endswith("bundle")
+
+    assert graph.explain(request).selected[0].origin.kind == "scope-slot"
+    assert graph.explain(configured).selected[0].reason_codes == ("argument-derived",)
+    decorator_explanation = graph.explain(decorator)
+    assert decorator_explanation.selected[0].reason_codes == ("decorator-filter-matched",)
+    assert decorator_explanation.rejected[0].reason_codes == ("decorator-filter-rejected",)
+    assert graph.explain(pre_configuration).selected[0].reason_codes == ("pre-configuration-filter-matched",)
+    assert "secret" not in configured.__repr__()
+    assert "secret" not in graph.explain(configured).to_json()
+
+
+def test_explain_overlay_anchoring_normal_scope_reuse_and_manifest_stability():
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service, lifespan="singleton")
+    container = builder.build()
+    before = container.graph.manifest(all_roots=True).to_json()
+
+    assert container.new_scope().graph is container.graph
+    overlay = container.new_scope_builder().build()
+    explanation = overlay.graph.explain(Service)
+
+    assert "anchored-parent-singleton" in explanation.selected[0].reason_codes
+    assert explanation.selected[0].origin.layer == "root"
+    assert container.graph.manifest(all_roots=True).to_json() == before
+
+
+def test_failed_filter_explanation_records_only_the_error_type_and_builder_remains_repairable():
+    class Service:
+        pass
+
+    repaired = False
+
+    def broken_filter(_):
+        if repaired:
+            return True
+        raise RuntimeError("do-not-copy-this-filter-secret")
+
+    builder = ContainerBuilder()
+    builder.register(Service, when=broken_filter)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    explanation_json = "\n".join(item.to_json() for item in raised.value.explanations)
+    assert "RuntimeError" in explanation_json
+    assert "do-not-copy-this-filter-secret" not in explanation_json
+
+    repaired = True
+    assert isinstance(builder.build().resolve(Service), Service)
+
+
+def test_cli_explain_text_json_path_and_invalid_selection(capsys):
+    target = "tests.tooling_targets:explain_builder"
+    service = "tests.tooling_targets:Dependency"
+
+    assert main(["explain", target, service, "--name", "named", "--format", "json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["selected"][0]["reason_codes"] == ["selected-explicit-filter"]
+    assert payload["selected"][0]["origin"]["location"]["path"] == "tests/tooling_targets.py"
+
+    assert main(["explain", target, service]) == 0
+    assert "selected-default" in capsys.readouterr().out
+    assert main(["explain", target, service, "--format", "json"]) == 0
+    default = json.loads(capsys.readouterr().out)
+    assert default["path"][0].startswith("root:tests.tooling_targets.Dependency:default:")
+    path = "/".join(default["path"])
+    assert main(["explain", target, "--path", path]) == 0
+    assert "Explain" in capsys.readouterr().out
+
+    assert main(["explain", target, "not-a-locator"]) == 2
+    assert "module:object" in capsys.readouterr().err
+    assert main(["explain", target, "--path", "root:missing"]) == 2
+    assert "explain-path-not-found" in capsys.readouterr().err
 
 
 def test_manifest_rejects_unknown_schema():

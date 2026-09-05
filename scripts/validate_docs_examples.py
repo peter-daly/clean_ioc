@@ -7,9 +7,15 @@ from typing import Generic, TypeVar
 import clean_ioc.component_filters as cf
 from clean_ioc import (
     INJECT,
+    Assembly,
+    BuildIssue,
     Component,
     ContainerBuilder,
     ContainerBuildError,
+    Expose,
+    IssueSeverity,
+    Use,
+    ValidationContext,
     build_arg,
     derive,
     generic_arg,
@@ -262,6 +268,105 @@ def validate_inject_and_generic_arg() -> None:
     assert container.resolve(Descriptor[int]).item_type is int  # noqa: S101
 
 
+def validate_custom_graph_rules() -> None:
+    class InfrastructureRepository:
+        pass
+
+    class DomainService:
+        def __init__(self, repository: InfrastructureRepository):
+            self.repository = repository
+
+    InfrastructureRepository.__module__ = "example.infrastructure"
+    DomainService.__module__ = "example.domain"
+
+    def enforce_architecture(context: ValidationContext):
+        for visit in context.graph.walk():
+            if len(visit.components) < 2:
+                continue
+            owner, dependency = visit.components[-2:]
+            if owner.implementation_type.__module__.startswith("example.domain") and (
+                dependency.implementation_type.__module__.startswith("example.infrastructure")
+            ):
+                yield visit.issue(
+                    "example-layer-boundary",
+                    "Domain components cannot depend directly on infrastructure components",
+                )
+
+    invalid_builder = ContainerBuilder()
+    invalid_builder.register(InfrastructureRepository)
+    invalid_builder.register(DomainService)
+    invalid_builder.add_validation_rule(enforce_architecture)
+
+    try:
+        invalid_builder.build()
+    except ContainerBuildError as error:
+        assert error.report is not None  # noqa: S101
+        assert error.report.errors[0].code == "example-layer-boundary"  # noqa: S101
+        assert error.report.errors[0].path[-1].endswith("InfrastructureRepository")  # noqa: S101
+    else:
+        raise AssertionError("custom architecture rule did not fail the build")
+
+    class InspectedService:
+        pass
+
+    strict_calls = 0
+
+    def expensive_rule(context: ValidationContext):
+        nonlocal strict_calls
+        strict_calls += 1
+        assert context.type_ast(InspectedService) is not None  # noqa: S101
+        return (
+            BuildIssue(
+                code="example-expensive-warning",
+                severity=IssueSeverity.warning,
+                message="Expensive policy warning",
+            ),
+        )
+
+    strict_builder = ContainerBuilder()
+    strict_builder.register(InspectedService)
+    strict_builder.add_validation_rule(expensive_rule, strict_only=True)
+    container = strict_builder.build()
+
+    assert strict_calls == 0  # noqa: S101
+    assert not container.build_report.issues  # noqa: S101
+    report = container.validation_report(include_strict_rules=True)
+    assert strict_calls == 1  # noqa: S101
+    assert report.warnings[0].code == "example-expensive-warning"  # noqa: S101
+    assert not container.build_report.issues  # noqa: S101
+
+
+def validate_assemblies() -> None:
+    class RootSettings:
+        pass
+
+    class PrivateClient:
+        def __init__(self, settings: RootSettings):
+            self.settings = settings
+
+    class PublicService:
+        def __init__(self, client: PrivateClient):
+            self.client = client
+
+    def feature_bundle(builder):
+        builder.register(PrivateClient)
+        builder.register(PublicService)
+
+    builder = ContainerBuilder()
+    builder.register(RootSettings, lifespan="singleton")
+    builder.install_assembly(
+        Assembly(
+            "feature",
+            feature_bundle,
+            uses=(Use.root(RootSettings),),
+            exposes=(Expose(PublicService),),
+        )
+    )
+    container = builder.build()
+    assert isinstance(container.resolve(PublicService).client, PrivateClient)  # noqa: S101
+    assert not container.has_component(PrivateClient)  # noqa: S101
+
+
 def main() -> None:
     validate_build_and_resolution()
     validate_failed_builder_is_reusable()
@@ -272,6 +377,8 @@ def main() -> None:
     validate_derived_injection()
     validate_build_arguments()
     validate_inject_and_generic_arg()
+    validate_custom_graph_rules()
+    validate_assemblies()
     asyncio.run(validate_async_factory())
     print("documentation examples validated")
 

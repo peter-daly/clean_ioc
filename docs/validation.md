@@ -48,6 +48,10 @@ context's `graph` is the complete `CompiledGraph`; `graph.walk()` visits every o
 semantic path, including decorators, pre-configurations, collections, configured values, runtime contexts, and scope
 slots.
 
+The examples below introduce the core API. See the dedicated [custom graph validation cookbook](custom-validation.md)
+for registration-uniqueness, architecture, metadata, lifespan, decorator, build-argument, AST, bundle, overlay, testing,
+and CI recipes.
+
 This example prevents a domain-layer component from depending directly on infrastructure:
 
 ```python

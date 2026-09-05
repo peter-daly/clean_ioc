@@ -800,20 +800,14 @@ class FactoryActivator(Activator):
     @classmethod
     def _contextmanager_finalizer(cls, cm: _GeneratorContextManager):
         def inner():
-            try:
-                cm.__exit__(None, None, None)
-            except Exception as ex:
-                logger.warning(f"Failed to close context manager {cm} with exception {ex}")
+            cm.__exit__(None, None, None)
 
         return inner
 
     @classmethod
     def _asynccontextmanager_finalizer(cls, cm: _AsyncGeneratorContextManager):
         async def inner():
-            try:
-                await cm.__aexit__(None, None, None)
-            except Exception as ex:
-                logger.warning(f"Failed to close async context manager {cm} with exception {ex}")
+            await cm.__aexit__(None, None, None)
 
         return inner
 

@@ -20,6 +20,10 @@ class Unused:
     pass
 
 
+class NamedDependency(Dependency):
+    pass
+
+
 class Missing:
     pass
 
@@ -49,6 +53,14 @@ def changed_builder() -> ContainerBuilder:
 def invalid_builder() -> ContainerBuilder:
     builder = ContainerBuilder()
     builder.register(InvalidApplication)
+    return builder
+
+
+def explain_builder() -> ContainerBuilder:
+    builder = ContainerBuilder()
+    builder.register(Dependency)
+    builder.register(Dependency, NamedDependency, name="named")
+    builder.register(Application)
     return builder
 
 

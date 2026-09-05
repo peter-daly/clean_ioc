@@ -8,6 +8,9 @@ Clean IoC is a typed dependency-injection container for Python. Version 2 separa
 `ContainerBuilder` from immutable runtime execution in `Container`. Application classes use standard constructors and
 do not need to inherit from Clean IoC types or use injection decorators.
 
+Its complete compiled graph is also an application policy surface: custom rules can enforce architecture, composition
+conventions, and source-level checks before runtime or in CI.
+
 ```bash
 pip install clean_ioc
 ```
@@ -83,7 +86,37 @@ reusable. After a successful build, the builder is immutable and cannot be built
 | Typed decorator chains | Logging, metrics, retries, caching, authorization |
 | Generic discovery | CQRS handlers, event consumers, validators, pipelines |
 | Declared scope slots | FastAPI requests, responses, tenant IDs, tracing context |
+| Typed deferred providers | On-demand sync or async activation with a frozen target plan |
 | Compiled scope overlays | Tenant, test, and plugin-specific composition |
+| Assemblies | Compiler-enforced private-by-default composition boundaries |
+| Custom graph validation | Executable architecture, conventions, and CI-only source checks |
+
+## Enforce application-specific architecture
+
+Custom validation rules receive the complete immutable compiled graph and return structured findings. They can enforce
+module boundaries, registration uniqueness, required decorators, naming and tag conventions, or policies found by
+inspecting implementation ASTs. Ordinary rules run during `build()`; expensive rules marked `strict_only=True` run in
+the strict-by-default `clean-ioc check` command instead.
+
+```python
+def forbid_domain_to_infrastructure(context):
+    for visit in context.graph.walk():
+        if len(visit.components) < 2:
+            continue
+        owner, dependency = visit.components[-2:]
+        if owner.implementation_type.__module__.startswith("my_app.domain") and (
+            dependency.implementation_type.__module__.startswith("my_app.infrastructure")
+        ):
+            yield visit.issue(
+                "my-app-layer-boundary",
+                "Domain code cannot depend directly on infrastructure",
+            )
+
+
+builder.add_validation_rule(forbid_domain_to_infrastructure)
+```
+
+See [Custom graph validation](custom-validation.md) for a complete rule cookbook and CI setup.
 
 ## Documentation
 
@@ -91,6 +124,9 @@ reusable. After a successful build, the builder is immutable and cannot be built
 - [Lifespans](lifespans.md) and [scopes](scopes.md) — ownership, slots, and overlays
 - [Filtering](advanced/filtering.md) — the unified `Component` model
 - [Factories](factories.md) — sync, async, generators, and context managers
+- [Special dependency types](advanced/special-dependency-types.md) — typed providers and runtime contexts
 - [Decorators](decorators.md) and [generics](generics.md) — compiled handler pipelines
+- [Assemblies](assemblies.md) — private registrations, explicit exposures, and declared cross-boundary uses
+- [Custom graph validation](custom-validation.md) — executable architecture and policy recipes
 - [FastAPI](extensions/fastapi.md) — request scopes and explicit request values
 - [Benchmarks](benchmarks.md) — build, runtime, and allocation experiments

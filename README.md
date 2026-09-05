@@ -17,6 +17,13 @@ policies do run at build time because their concrete results become part of the 
 executes the compiled activation instructions and maintains lifespan caches and cleanup state. It does not rebuild the
 dependency graph during resolution.
 
+The compiled graph is also an application policy surface. Custom validation rules can enforce architecture,
+registration conventions, required decorators, metadata, and even source-level AST rules before runtime.
+
+For larger compositions, opt-in assemblies make bundle registrations private by default. Explicit `Expose` and `Use`
+declarations turn cross-feature dependencies into a compiler-validated architecture contract without introducing
+runtime child containers, proxies, or aliases. See the [assemblies guide](docs/assemblies.md).
+
 > **2.0 beta:** the compiled API remains subject to breaking changes while the V2 surface is finalized. V1 is not
 > shipped as a parallel public API.
 
@@ -95,6 +102,59 @@ scoped component captures `once_per_graph` state. Lifespan checks are transitive
 transient components. A failed build leaves the builder reusable. A builder becomes immutable and single-use after a
 successful build.
 
+## Make architecture executable
+
+Clean IoC lets applications and libraries add their own validation rules to the build boundary. A rule receives the
+complete immutable graph—not just one constructor—and can report structured errors at the exact dependency path where
+an application-specific policy is broken.
+
+This rule prevents domain code from depending directly on infrastructure code:
+
+```python
+from collections.abc import Iterable
+
+from clean_ioc import BuildIssue, ValidationContext
+
+
+def enforce_architecture(context: ValidationContext) -> Iterable[BuildIssue]:
+    for visit in context.graph.walk():
+        if len(visit.components) < 2:
+            continue
+
+        owner, dependency = visit.components[-2:]
+        if (
+            owner.implementation_type.__module__.startswith("my_app.domain")
+            and dependency.implementation_type.__module__.startswith("my_app.infrastructure")
+        ):
+            yield visit.issue(
+                "my-app-domain-depends-on-infrastructure",
+                "Domain components cannot depend directly on infrastructure components",
+            )
+
+
+builder.add_validation_rule(enforce_architecture)
+```
+
+Ordinary custom errors fail `build()` alongside Clean IoC's built-in missing, circular, and captive-dependency checks.
+Custom warnings flow into the same `BuildReport`. Rules can inspect service and implementation types, names, tags,
+lifespans, decorators, scope slots, configured values, build arguments, and complete root-to-occurrence paths.
+
+Expensive rules can be kept out of application startup:
+
+```python
+builder.add_validation_rule(forbid_direct_environment_access, strict_only=True)
+```
+
+Strict-only rules run under the strict-by-default CLI check, making source and architecture analysis practical in CI:
+
+```bash
+clean-ioc check my_app.composition:application_builder
+```
+
+See the [custom graph validation guide](docs/custom-validation.md) for recipes covering duplicate registrations,
+architecture layers, metadata and lifespan conventions, required decorators, AST inspection, environment-specific
+composition, reusable rule factories, bundles, overlays, warnings, and CI policy.
+
 ## Graph inspection
 
 Mark application entry points to focus graph output and reachability analysis:
@@ -106,12 +166,15 @@ container = builder.build()
 print(container.build_report.to_text())
 print(container.graph.to_mermaid())
 container.graph.manifest().to_json()
+container.graph.ownership_report().to_json()
 ```
 
 ```bash
 clean-ioc check my_app.composition:application_builder
 clean-ioc graph my_app.composition:application_builder --format json -o dependency-graph.json
+clean-ioc ownership my_app.composition:application_builder --format json
 clean-ioc diff my_app.composition:application_builder dependency-graph.json
+clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGateway
 ```
 
 Each target can be a builder, a built container or scope, or a zero-argument factory function returning one.
@@ -119,8 +182,13 @@ Each target can be a builder, a built container or scope, or a zero-argument fac
 Build errors are aggregated across independent roots. Deterministic JSON manifests omit configured values and runtime
 identities, allowing wiring changes to be reviewed without serializing secrets. Entry points focus the default graph and
 enable warnings for unreachable registrations; every visible root is still compiled, validated, and resolvable.
+Manifest schema version 2 records the compiled cache and cleanup owner for every occurrence while continuing to read
+version 1 baselines. Cleanup-bearing transients retained by singletons are promoted to the singleton's declaring owner;
+ownership reports explain that decision without exposing runtime tokens or values.
 Expensive custom rules can be registered with `strict_only=True`, keeping their graph or source-AST inspection out of
 application startup while still running under the strict-by-default `clean-ioc check` command in CI.
+`container.graph.explain(...)` and `clean-ioc explain` show the recorded selected and rejected candidates, stable reason
+codes, bundle paths, and best-effort declaration locations without adding provenance to manifests or fingerprints.
 
 ## Component model
 
@@ -265,6 +333,7 @@ compiled container during application startup.
 - [Documentation](https://peter-daly.github.io/clean_ioc/)
 - [Compiled scopes](https://peter-daly.github.io/clean_ioc/scopes/)
 - [Compiler tooling](https://peter-daly.github.io/clean_ioc/compiler-tooling/)
+- [Custom graph validation](https://peter-daly.github.io/clean_ioc/custom-validation/)
 - [Component filtering](https://peter-daly.github.io/clean_ioc/advanced/filtering/)
 - [FastAPI integration](https://peter-daly.github.io/clean_ioc/extensions/fastapi/)
 - [Benchmarks](https://peter-daly.github.io/clean_ioc/benchmarks/)

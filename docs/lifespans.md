@@ -86,12 +86,24 @@ The compiler also rejects a singleton plan that retains a scoped component. Shor
 These checks happen before user activation and cover constructors, factories, decorators, collections, component edges
 selected by argument policies, pre-configuration dependencies, and supplied scope slots. A singleton therefore cannot
 capture a late-bound request value declared with `declare_scope_slot()`. Captive paths are reported with the
-`captive-dependency` issue code.
+`captive-runtime-scope` issue code; ordinary lifespan violations retain `captive-dependency`.
+
+`ResolutionContext` is effective `once_per_graph` state. Scoped and singleton components cannot capture it, directly
+or through a transient, decorator, collection, argument policy, or pre-configuration; those failures use
+`captive-resolution-context`. `Scope` is effective scoped state and cannot be captured by a singleton. A retained
+resolution context also stops accepting calls when its top-level resolution finishes.
 
 ## Cleanup ownership
 
-Scoped and singleton values may own generator/context-manager finalizers. Cleanup follows the cache owner:
+Ownership is compiled for every occurrence and is available from `container.graph.ownership_report()`. Generator and
+context-manager cleanup follows that frozen decision:
 
 - scoped value → scope exit;
 - root singleton → container exit;
 - overlay singleton → built `ScopeBuilder` scope exit.
+- cleanup-bearing transient beneath a singleton → that singleton's declaring owner;
+- other cleanup-bearing transient or once-per-graph value → resolving scope exit.
+
+Closing attempts every finalizer in reverse acquisition order. If several fail, cleanup continues and the failures are
+raised as an `ExceptionGroup` in finalization order. Closed scopes reject resolution, provision, and child-scope
+creation with `ScopeClosedError`.

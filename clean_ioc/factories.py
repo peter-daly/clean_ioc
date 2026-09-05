@@ -4,6 +4,7 @@ from typing import Any, Callable, TypeVar
 
 from .components import ComponentFilter, default_component_filter
 from .container import (
+    _ACTIVATION_LOCAL_CONTEXT_ATTRIBUTE,
     _RESOLUTION_REQUESTS_ATTRIBUTE,
     ResolutionContext,
     _ResolutionRequest,
@@ -33,6 +34,7 @@ def use_component(
         _RESOLUTION_REQUESTS_ATTRIBUTE,
         (_ResolutionRequest(service_type, filter, resolve_async=False),),
     )
+    setattr(factory, _ACTIVATION_LOCAL_CONTEXT_ATTRIBUTE, True)
     return factory
 
 
@@ -50,6 +52,7 @@ def use_component_async(
         _RESOLUTION_REQUESTS_ATTRIBUTE,
         (_ResolutionRequest(service_type, filter, resolve_async=True),),
     )
+    setattr(factory, _ACTIVATION_LOCAL_CONTEXT_ATTRIBUTE, True)
     return factory
 
 

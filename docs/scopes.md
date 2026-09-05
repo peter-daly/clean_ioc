@@ -124,3 +124,8 @@ unchanged. Build a new root when a key must be absent because overlays do not ha
 | Supply a request/framework value | `declare_scope_slot()` + `scope.provide()` |
 | Change child registrations/decorators | `new_scope_builder()` + `build()` |
 | Change the application root | Create a new `ContainerBuilder` |
+
+Scopes are idempotently closeable through synchronous or asynchronous context management. After exit, `resolve`,
+`resolve_async`, `provide`, `new_scope`, and `new_scope_builder` raise `ScopeClosedError`. Closing a parent does not
+implicitly close child scopes that have their own boundary; integrations should still nest scope contexts so inherited
+resources are not used after their owner closes.

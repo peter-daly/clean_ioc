@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
+from . import component_filters as cf
 from .container import ContainerBuilder, ContainerBuildError, Scope, ScopeBuilder
 from .tooling import BuildReport, GraphManifest, IssueSeverity
 
@@ -73,12 +74,32 @@ def _graph(args: argparse.Namespace) -> int:
     return 0
 
 
+def _ownership(args: argparse.Namespace) -> int:
+    report = _load_scope(args.target).graph.ownership_report()
+    _write(report.to_json() if args.format == "json" else report.to_text(), args.output)
+    return 0 if report.is_valid else 1
+
+
 def _diff(args: argparse.Namespace) -> int:
     current = _load_scope(args.target).graph.manifest(all_roots=args.all)
     baseline = GraphManifest.from_json(Path(args.baseline).read_text(encoding="utf-8"))
     difference = current.diff(baseline)
     _write(difference.to_json() if args.format == "json" else difference.to_text(), None)
     return 0 if difference.is_empty else 1
+
+
+def _explain(args: argparse.Namespace) -> int:
+    graph = _load_scope(args.target).graph
+    if args.path is not None:
+        if args.name is not None:
+            raise ValueError("--name cannot be combined with --path")
+        explanation = graph.explain(graph.component_at_path(args.path))
+    else:
+        service_type = _load_object(args.service)
+        filter = cf.with_name(args.name) if args.name is not None else None
+        explanation = graph.explain(service_type) if filter is None else graph.explain(service_type, filter=filter)
+    _write(explanation.to_json() if args.format == "json" else explanation.to_text(), args.output)
+    return 0
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -104,12 +125,28 @@ def _parser() -> argparse.ArgumentParser:
     graph.add_argument("-o", "--output", help="Write output to a file instead of stdout")
     graph.set_defaults(handler=_graph)
 
+    ownership = commands.add_parser("ownership", help="Show compiled cache and cleanup ownership proofs")
+    ownership.add_argument("target", help="module:object composition target")
+    ownership.add_argument("--format", choices=("text", "json"), default="text")
+    ownership.add_argument("-o", "--output", help="Write output to a file instead of stdout")
+    ownership.set_defaults(handler=_ownership)
+
     difference = commands.add_parser("diff", help="Compare a compiled graph with a JSON manifest")
     difference.add_argument("target", help="module:object composition target")
     difference.add_argument("baseline", help="baseline graph manifest")
     difference.add_argument("--format", choices=("text", "json"), default="text")
     difference.add_argument("--all", action="store_true", help="Compare every compiled root")
     difference.set_defaults(handler=_diff)
+
+    explain = commands.add_parser("explain", help="Explain a frozen compiler selection")
+    explain.add_argument("target", help="module:object composition target")
+    selection = explain.add_mutually_exclusive_group(required=True)
+    selection.add_argument("service", nargs="?", help="module:attribute service type")
+    selection.add_argument("--path", help="path from the current graph manifest")
+    explain.add_argument("--name", help="select a root with this exact name")
+    explain.add_argument("--format", choices=("text", "json"), default="text")
+    explain.add_argument("-o", "--output", help="write output to a file instead of stdout")
+    explain.set_defaults(handler=_explain)
     return parser
 
 

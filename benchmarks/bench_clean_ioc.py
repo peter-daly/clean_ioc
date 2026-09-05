@@ -1,10 +1,28 @@
 """BenchBro experiments for Clean IoC 2 build and runtime boundaries."""
 
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from typing import Any, Generic, TypeVar
 
 from benchbro import Case, system
 
-from clean_ioc import CompiledGraph, Container, ContainerBuilder, GraphDiff, GraphManifest, Scope
+from clean_ioc import (
+    Assembly,
+    BuildIssue,
+    BuildReport,
+    CompiledGraph,
+    ComponentBuilder,
+    Container,
+    ContainerBuilder,
+    Expose,
+    GraphDiff,
+    GraphManifest,
+    OwnershipReport,
+    Provider,
+    Scope,
+    Use,
+    ValidationContext,
+)
 
 
 class Leaf:
@@ -68,6 +86,43 @@ def create_generic_factory_product(
     return GenericFactoryProduct(dependency)
 
 
+class ProviderLevelOne:
+    def __init__(self, child: Provider[LevelTwo]):
+        self.child = child
+
+
+@contextmanager
+def create_managed_leaf() -> Iterator[Leaf]:
+    yield Leaf()
+
+
+def foundation_bundle(builder: ComponentBuilder) -> None:
+    for service_type in (Leaf, LevelFour, LevelThree):
+        builder.register(service_type)
+
+
+def application_bundle(builder: ComponentBuilder) -> None:
+    for service_type in (LevelTwo, LevelOne):
+        builder.register(service_type)
+
+
+def validate_graph_walk(context: ValidationContext) -> Iterable[BuildIssue]:
+    for _ in context.graph.walk():
+        pass
+    return ()
+
+
+def validate_implementation_asts(context: ValidationContext) -> Iterable[BuildIssue]:
+    inspected: set[type] = set()
+    for visit in context.graph.walk():
+        implementation_type = visit.component.implementation_type
+        if implementation_type in inspected:
+            continue
+        inspected.add(implementation_type)
+        context.type_ast(implementation_type)
+    return ()
+
+
 def build_graph_builder(*, mark_entrypoint: bool = False) -> ContainerBuilder:
     builder = ContainerBuilder()
     for service_type in (Leaf, LevelFour, LevelThree, LevelTwo, LevelOne):
@@ -75,6 +130,50 @@ def build_graph_builder(*, mark_entrypoint: bool = False) -> ContainerBuilder:
     if mark_entrypoint:
         builder.mark_entrypoint(LevelOne)
     return builder
+
+
+def build_feature_graph(scenario: str) -> Container:
+    if scenario in {"core", "ordinary-validation", "deferred-strict-validation"}:
+        builder = build_graph_builder()
+        if scenario == "ordinary-validation":
+            builder.add_validation_rule(validate_graph_walk)
+        elif scenario == "deferred-strict-validation":
+            builder.add_validation_rule(validate_implementation_asts, strict_only=True)
+        return builder.build()
+
+    if scenario == "resource-ownership":
+        builder = ContainerBuilder()
+        builder.register(Leaf, factory=create_managed_leaf, lifespan="transient")
+        for service_type in (LevelFour, LevelThree, LevelTwo, LevelOne):
+            builder.register(service_type, lifespan="singleton")
+        return builder.build()
+
+    if scenario == "typed-provider":
+        builder = ContainerBuilder()
+        for service_type in (Leaf, LevelFour, LevelThree, LevelTwo, ProviderLevelOne):
+            builder.register(service_type)
+        return builder.build()
+
+    if scenario == "assembly-boundaries":
+        builder = ContainerBuilder()
+        builder.install_assembly(
+            Assembly(
+                "foundation",
+                foundation_bundle,
+                exposes=(Expose(LevelThree),),
+            )
+        )
+        builder.install_assembly(
+            Assembly(
+                "application",
+                application_bundle,
+                uses=(Use("foundation", LevelThree),),
+                exposes=(Expose(LevelOne),),
+            )
+        )
+        return builder.build()
+
+    raise ValueError(f"Unknown compiler feature scenario: {scenario}")
 
 
 def build_transient_chain(depth: int) -> tuple[Container, type]:
@@ -158,6 +257,25 @@ def changed_tooling_manifest() -> GraphManifest:
     return builder.build().graph.manifest(all_roots=True)
 
 
+@system(scope="session")
+def strict_graph_validation_container() -> Container:
+    builder = build_graph_builder()
+    builder.add_validation_rule(validate_graph_walk, strict_only=True)
+    return builder.build()
+
+
+@system(scope="session")
+def strict_ast_validation_container() -> Container:
+    builder = build_graph_builder()
+    builder.add_validation_rule(validate_implementation_asts, strict_only=True)
+    return builder.build()
+
+
+@system(scope="session")
+def ownership_graph() -> CompiledGraph:
+    return build_feature_graph("resource-ownership").graph
+
+
 runtime = Case(
     name="compiled-runtime",
     tags=["core", "runtime"],
@@ -221,7 +339,7 @@ def resolve_transient_chain(scaled_transient_containers: dict[int, tuple[Contain
 build = Case(
     name="compiled-build",
     tags=["core", "build"],
-    min_iterations=20_000,
+    min_iterations=100,
     setup_timing="exclude",
     teardown_timing="exclude",
 )
@@ -253,10 +371,62 @@ def build_open_generic_factory_container() -> Container:
     return builder.build()
 
 
+build_features = Case(
+    name="compiled-build-features",
+    tags=["core", "build", "compiler-features"],
+    min_iterations=100,
+    setup_timing="exclude",
+    teardown_timing="exclude",
+)
+
+
+@build_features.benchmark(name="build-five-component-graph")
+@build_features.parametrize(
+    "scenario",
+    [
+        "core",
+        "ordinary-validation",
+        "deferred-strict-validation",
+        "resource-ownership",
+        "typed-provider",
+        "assembly-boundaries",
+    ],
+    ids=[
+        "core",
+        "ordinary-validation",
+        "deferred-strict-validation",
+        "resource-ownership",
+        "typed-provider",
+        "assembly-boundaries",
+    ],
+)
+def build_five_component_feature_graph(scenario: str) -> Container:
+    return build_feature_graph(scenario)
+
+
+validation = Case(
+    name="compiler-validation",
+    tags=["core", "tooling", "compiler-features", "validation"],
+    min_iterations=500,
+    setup_timing="exclude",
+    teardown_timing="exclude",
+)
+
+
+@validation.benchmark(name="run-deferred-graph-walk")
+def run_deferred_graph_walk(strict_graph_validation_container: Container) -> BuildReport:
+    return strict_graph_validation_container.validation_report(include_strict_rules=True)
+
+
+@validation.benchmark(name="run-deferred-type-ast-inspection")
+def run_deferred_type_ast_inspection(strict_ast_validation_container: Container) -> BuildReport:
+    return strict_ast_validation_container.validation_report(include_strict_rules=True)
+
+
 tooling = Case(
     name="compiler-tooling",
     tags=["core", "tooling"],
-    min_iterations=20_000,
+    min_iterations=500,
     setup_timing="exclude",
     teardown_timing="exclude",
 )
@@ -279,6 +449,16 @@ def diff_single_edge_change(
     changed_tooling_manifest: GraphManifest,
 ) -> GraphDiff:
     return changed_tooling_manifest.diff(tooling_manifest)
+
+
+@tooling.benchmark(name="create-resource-ownership-report")
+def create_resource_ownership_report(ownership_graph: CompiledGraph) -> OwnershipReport:
+    uncached = CompiledGraph(
+        ownership_graph.roots,
+        ownership_graph.entrypoints,
+        ownership_graph.assemblies,
+    )
+    return uncached.ownership_report()
 
 
 allocations = Case(

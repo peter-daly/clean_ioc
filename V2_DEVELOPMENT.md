@@ -2,7 +2,7 @@
 
 This document records the V2 architecture and implementation decisions made so far. It is intended for agents and maintainers extending V2 without accidentally restoring runtime graph construction, weakening build invariants, or breaking scope ownership.
 
-V2 is currently published in project metadata as `2.0.0b5`. Its public surface remains experimental.
+V2 is currently published in project metadata as `2.0.0b6`. Its public surface remains experimental.
 
 ## Core model
 
@@ -29,9 +29,32 @@ Container/Scope
   argument policies run during compilation and their concrete results become value nodes.
 - Runtime resolution executes `_Step` objects. It does not allocate legacy `DependencyNode`/object-graph structures.
 
+`Provider[T]` and `AsyncProvider[T]` are explicit deferred edges. Compilation unwraps and selects `T`, freezes a direct
+target step, and records a synthetic provider component with one deferred target child. Each provider call creates a
+fresh top-level resolution context in its bound scope; it never performs a service-type lookup. A provider captured by
+a singleton binds to that singleton's declaring owner scope and is rejected if its target reaches scoped state or a
+runtime scope/context edge. Unmarked provider roots are precompiled in a private root index so root resolution remains
+available without changing the ordinary all-registration graph view; mark a provider entry point when its synthetic root
+must be part of graph tooling.
+
 The compiler also prepares the common runtime decisions instead of rediscovering them on every resolve. It freezes each step's sync/async capability, builds direct maps for default root selection, and chooses a lifespan-specific registration step for transient, once-per-graph, scoped, or singleton behavior. Default cached root resolutions return the frozen value before allocating a per-resolution context. Runtime code should keep those paths specialized: do not restore recursive capability checks, repeated default-filter scans, or a generic lifespan switch to the hot path without measurements showing a benefit.
 
 Private machinery in `clean_ioc/_legacy.py` still supplies registration storage, activators, dependency parsing, and filters while the compiler is made self-contained. It is not a supported import path. The public runtime converts string-literal lifespans to the private enum only at this internal boundary. Do not expose that enum through components or route runtime resolution back through the old dependency graph.
+
+## Assembly visibility compilation
+
+`Assembly` wraps an ordinary bundle in a private builder layer. `Expose` resolves exactly one local registration and
+projects that unchanged registration into root candidate visibility; `Use` resolves exactly one root registration or
+named source exposure and admits its registration ID to a consuming assembly. The compiler switches to a registration's
+defining area while compiling its dependencies, decorators, pre-configurations, providers, and generic
+specializations. Runtime steps therefore remain direct and carry no visibility check, wrapper, alias, or extra owner.
+
+Assembly visibility is resolved before occurrence compilation and the declared use graph is rejected if cyclic.
+Every local closed root is compiled even when private. Root graph tooling retains the complete architecture graph;
+runtime root indexes contain only root registrations and exposures. Scope overlays offset inherited assemblies from
+new root layers so parent assembly uses retain their original root visibility, while a new overlay assembly may use a
+parent exposure. Never merge private assembly registries into `_Blueprint.layers`: doing so silently destroys the
+candidate boundary and allows root decorators or overlay registrations to patch private definitions.
 
 ## Argument compilation
 
@@ -178,7 +201,22 @@ Activation tracking uses small per-resolution stacks and direct ``try/finally`` 
 
 Scoped and singleton first activation is coordinated across threads and async tasks. Preserve `_Coordinator` behavior when modifying caching or activation; failures must wake waiters and permit later retries.
 
-Known follow-up: plain transients are allowed beneath singletons, but cleanup-bearing transient ownership and runtime-context capture deserve separate validation. In particular, `Scope`/`ResolutionContext` can provide dynamic access that static registration traversal cannot fully describe. Do not fold this into an unrelated feature without explicit semantics and tests.
+Resource ownership is a compilation result. Every occurrence records stable cache and cleanup owner categories, and every
+cleanup-capable activation step carries a private executable descriptor. A cleanup-bearing transient beneath a
+singleton is promoted to that singleton's declaring owner, including inherited parent singletons first activated from
+an overlay and overlay singletons first activated from an ordinary child. Other transient and once-per-graph resources
+close with the resolving scope. Decorators inherit the effective owner of the pipeline they decorate, and
+pre-configuration resources retain their declaring layer's owner token.
+
+`ResolutionContext` is resolution-local: scoped and singleton paths cannot capture it. `Scope` and supplied scope slots
+are scope-local and cannot be captured by a singleton. The built-in `use_component()` factories are the narrow
+exception: the compiler marks their injected context as activation-local and validates the statically compiled target
+edge instead. A retained `ResolutionContext` rejects calls once its top-level resolution finishes. Closed scopes reject
+resolution, provision, and child-scope operations with `ScopeClosedError`.
+
+Closing attempts every finalizer in reverse acquisition order. One failure is re-raised unchanged; multiple failures
+use `ExceptionGroup`/`BaseExceptionGroup`. A synchronous close records an async-finalizer error and continues remaining
+synchronous cleanup. Do not restore lifespan- or stack-based finalizer routing: compiled descriptors are authoritative.
 
 ## Scopes and overlays
 
@@ -217,8 +255,16 @@ Generic work relies on `typetoolbox`. Use the installed `using-typetoolbox` skil
 
 - `BuildIssue` and `BuildReport` for structured validation;
 - `CompiledGraph` with text and Mermaid renderers;
+- immutable compilation explanations with selected/rejected candidates, stable reason codes, and best-effort origins;
 - schema-version-1 `GraphManifest` with deterministic fingerprints;
 - `GraphDiff`/`GraphChange` for semantic added, removed, and changed paths.
+
+`CompiledGraph.explain(...)` reads the frozen decision index for a service request or exact component occurrence. It
+must never re-run a filter or activation callable. Default and declarative exact-name root selection can be answered
+from frozen candidate metadata; an arbitrary root filter is explainable only when that same object was evaluated during
+compilation, such as by an entry-point marker. Origin and decision history stay out of manifests and fingerprints, and
+explanation JSON must not include absolute paths, configured values, build-argument keys, closure state, callable
+representations, memory addresses, or runtime IDs.
 
 Manifests use qualified semantic identities rather than UUIDs, occurrence IDs, memory addresses, or configured values. Fixed/default values are represented by type and activation kind so secrets are not serialized. Preserve deterministic ordering and redaction when adding metadata.
 
