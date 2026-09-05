@@ -4,15 +4,21 @@ from dataclasses import dataclass
 from typing import Annotated, AsyncGenerator, TypeVar, cast
 
 from starlette.requests import HTTPConnection
-from starlette.types import ASGIApp, Receive, Send
-from starlette.types import Scope as ASGIScope
 
 from clean_ioc import ComponentFilter, Scope, default_component_filter
+from clean_ioc.ext.asgi import (
+    ASGIApp,
+    ASGIIntegrationError,
+    ASGIScope,
+    CleanIocMiddleware,
+    Receive,
+    Send,
+    get_scope,
+)
 from fastapi import Depends, FastAPI, Request, WebSocket, params
 
 TService = TypeVar("TService")
 
-_SCOPE_KEY = "clean_ioc.scope"
 _CONNECTION_PROVIDED_KEY = "clean_ioc.connection_provided"
 _INSTALLED_STATE_KEY = "clean_ioc_installed"
 _RESOLVE_METADATA_KEY = "__clean_ioc_resolve__"
@@ -62,44 +68,21 @@ def validate_fastapi_routes(app: FastAPI, root_scope: Scope) -> None:
         raise FastAPIIntegrationError(f"FastAPI routes contain unresolved Clean IoC entry points:\n{details}")
 
 
-class _CleanIocMiddleware:
-    """Own the root runtime and one child scope per HTTP/WebSocket operation."""
+class _CleanIocMiddleware(CleanIocMiddleware):
+    """Add FastAPI route validation to the shared ASGI lifecycle boundary."""
 
     def __init__(self, app: ASGIApp, *, root_scope: Scope, fastapi_app: FastAPI):
-        self.app = app
-        self.root_scope = root_scope
+        super().__init__(app, root_scope=root_scope)
         self.fastapi_app = fastapi_app
 
     async def __call__(self, scope: ASGIScope, receive: Receive, send: Send) -> None:
         scope_type = scope["type"]
         if scope_type == "lifespan":
             validate_fastapi_routes(self.fastapi_app, self.root_scope)
-            async with self.root_scope:
-                await self.app(scope, receive, send)
-            return
-
-        if scope_type not in ("http", "websocket"):
-            await self.app(scope, receive, send)
-            return
-
-        # Imported lazily to keep the boundary types independent of middleware setup.
-        from .dependencies import ResponseHeaderWriter
-
-        async with self.root_scope.new_scope() as request_scope:
-            scope[_SCOPE_KEY] = request_scope
-            header_writer = ResponseHeaderWriter()
-            if request_scope.has_scope_slot(ResponseHeaderWriter):
-                request_scope.provide(ResponseHeaderWriter, header_writer)
-
-            async def send_with_headers(message):
-                if message["type"] in ("http.response.start", "websocket.accept"):
-                    header_writer.apply(message)
-                await send(message)
-
-            try:
-                await self.app(scope, receive, send_with_headers)
-            finally:
-                scope.pop(_SCOPE_KEY, None)
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            if scope_type in ("http", "websocket"):
                 scope.pop(_CONNECTION_PROVIDED_KEY, None)
 
 
@@ -128,10 +111,10 @@ def _provide_connection_values(scope: Scope, connection: HTTPConnection) -> None
 async def _get_scope(connection: HTTPConnection) -> AsyncGenerator[Scope, None]:
     """Return the operation scope installed for an HTTP request or WebSocket."""
 
-    existing_scope = connection.scope.get(_SCOPE_KEY)
-    if existing_scope is None:
+    try:
+        request_scope = get_scope(connection.scope)
+    except ASGIIntegrationError:
         raise FastAPIIntegrationError("No Clean IoC request scope; call install_fastapi(app, container)")
-    request_scope = cast(Scope, existing_scope)
     _provide_connection_values(request_scope, connection)
     yield request_scope
 

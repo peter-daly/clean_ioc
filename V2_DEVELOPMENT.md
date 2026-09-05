@@ -2,7 +2,7 @@
 
 This document records the V2 architecture and implementation decisions made so far. It is intended for agents and maintainers extending V2 without accidentally restoring runtime graph construction, weakening build invariants, or breaking scope ownership.
 
-V2 is currently published in project metadata as `2.0.0b6`. Its public surface remains experimental.
+V2 is currently published in project metadata as `2.0.0b7`. Its public surface remains experimental.
 
 ## Core model
 
@@ -232,7 +232,11 @@ Ordinary `new_scope()` is cheap and never recompiles. It reuses the parent's pla
 
 Singleton anchoring is keyed by stable registration ID plus the requested runtime specialization. If an overlay asks for a parent-owned generic singleton specialization that was never compiled in the parent, the build fails with `overlay-singleton`; the overlay must register its own replacement.
 
-Framework/request data should use declared scope slots rather than post-build registration. Applying `FastAPIBundle()` declares the FastAPI boundary exactly once per builder, and `install_fastapi()` uses ASGI middleware to own one ordinary scope for a complete HTTP request or WebSocket connection. It also validates every route's `Resolve(...)` type and filter against the frozen plan at startup.
+Framework/request data should use declared scope slots rather than post-build registration. Applying `ASGIBundle()`
+declares the dependency-free ASGI boundary exactly once per builder, and `CleanIocMiddleware` owns one ordinary scope
+for a complete HTTP request or WebSocket connection. `FastAPIBundle()` extends that boundary with FastAPI request
+types, while `install_fastapi()` also validates every route's `Resolve(...)` type and filter against the frozen plan at
+startup. Protocol-specific routing, including health-check policy, remains application or framework code.
 
 ## Generics and discovery
 
@@ -295,6 +299,8 @@ a semantic change. Baselines are never updated implicitly.
 - `clean_ioc/container.py`: builders, compiler, activation steps, runtimes, scopes, caches, ownership, validation, generics, and discovery.
 - `clean_ioc/components.py`: immutable component graph and public builder/filter protocols.
 - `clean_ioc/tooling.py` and `clean_ioc/cli.py`: diagnostics, rendering, manifests, diffs, and command-line interface.
+- `clean_ioc/ext/asgi`: dependency-free ASGI lifespan, operation scopes, and boundary values.
+- `clean_ioc/ext/fastapi`: FastAPI-specific route resolution and startup validation layered over the ASGI extension.
 - `tests/test_container.py`: composition, generics, discovery, runtime, ownership, concurrency, and cleanup.
 - `tests/test_compiler_tooling.py`: structured reports, complete graph metadata, entry points, overlays, lifespan validation, manifests, and CLI behavior.
 - `benchmarks/bench_clean_ioc.py`: BenchBro build, runtime, tooling, scope, generic factory, graph-depth scaling, and Python-allocation experiments.

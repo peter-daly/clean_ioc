@@ -26,9 +26,11 @@ nav:
       - Special Dependency Types: advanced/special-dependency-types.md
       - Runtime container access: advanced/accessing-clean-ioc-within-dependency.md
   - Extensions:
+    - ASGI: extensions/asgi.md
     - FastAPI: extensions/fastapi.md
     - Potential future integrations: future-integrations.md
   - Examples:
+    - Minimal ASGI health server: examples/asgi-health-checks.md
     - FastAPI Clean Architecture: examples/clean-architecture.md
   - Benchmarks: benchmarks.md
   - Concepts:

@@ -5,6 +5,7 @@ import pytest
 
 import clean_ioc
 import clean_ioc.component_filters as component_filters
+import clean_ioc.ext.asgi as asgi_extension
 import clean_ioc.ext.fastapi as fastapi_extension
 import clean_ioc.factories as factories
 from clean_ioc import ContainerBuilder, ScopeBuilder
@@ -97,5 +98,11 @@ def test_public_helpers_use_only_v2_names():
     assert "configure_fastapi" not in fastapi_extension.__all__
     assert "add_container_to_app" not in fastapi_extension.__all__
     assert "register_fastapi_scope_slots" not in fastapi_extension.__all__
+
+    assert "CleanIocMiddleware" in asgi_extension.__all__
+    assert "ASGIBundle" in asgi_extension.__all__
+    assert "get_scope" in asgi_extension.__all__
+    assert "HealthCheckMiddleware" not in asgi_extension.__all__
+    assert "create_health_app" not in asgi_extension.__all__
 
     assert {"has_build_arg", "build_arg_is"}.issubset(component_filters.__all__)

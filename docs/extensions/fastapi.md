@@ -81,7 +81,8 @@ async def endpoint(service: Service = Resolve(Service)):
 ```
 
 `install_fastapi` owns the container for the application lifespan and an ordinary child scope for the full ASGI
-operation.
+operation. Its lifecycle behavior is provided by the dependency-free
+[ASGI extension](asgi.md); FastAPI adds route dependency resolution, framework request values, and startup validation.
 
 ## Deep application dependency chains
 
@@ -292,8 +293,9 @@ install_fastapi(app, container)
 No global `dependencies=[Depends(...)]` list is required. `FastAPIBundle` runs at most once per builder, even when
 independently composed application bundles apply it more than once. It:
 
-- declares slots for `HTTPConnection`, `Request`, `WebSocket`, and `ResponseHeaderWriter`;
-- registers `RequestHeaderReader` as an ordinary scoped component;
+- applies `ASGIBundle`, which declares `ASGIConnection`, `ResponseHeaderWriter`, and the scoped
+  `RequestHeaderReader`;
+- declares additional slots for `HTTPConnection`, `Request`, and `WebSocket`;
 - lets the middleware provide the current boundary values before resolution.
 
 Application code can inject `fastapi.Request` or `fastapi.WebSocket` directly when framework coupling is intentional. Prefer `RequestHeaderReader` and `ResponseHeaderWriter` in portable application services.

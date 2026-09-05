@@ -1,3 +1,10 @@
+2.0.0b7
+-------
+    Add a dependency-free ASGI extension for application lifespan ownership,
+    per-operation scopes, raw connection values, and framework-light headers,
+    with a separate minimal health-check server example.
+
+
 2.0.0b6
 -------
     Add immutable compilation explanations with selected and rejected candidates,
@@ -11,8 +18,6 @@
     structured visibility diagnostics, provenance, and manifest-schema-3 tooling.
     Expand BenchBro coverage for compiler features, strict validation, ownership,
     runtime scaling, allocations, and FastAPI request integration.
-
-
 2.0.0b5
 -------
     Add strict-only custom graph rules that defer expensive validation and AST

@@ -273,6 +273,27 @@ Pass these as plain strings to `lifespan=`. The exported `Lifespan` name is a `L
 
 Generator factories, context managers, and their async equivalents are finalized by their cache owner.
 
+## ASGI integration
+
+The dependency-free ASGI extension owns the container for the application lifespan and one ordinary child scope for
+each complete HTTP request or WebSocket connection:
+
+```python
+from clean_ioc.ext.asgi import CleanIocMiddleware, get_scope
+
+
+async def application(asgi_scope, receive, send):
+    handler = await get_scope(asgi_scope).resolve_async(RequestHandler)
+    await handler(asgi_scope, receive, send)
+
+
+app = CleanIocMiddleware(application, root_scope=container)
+```
+
+Routing remains application or framework code. See the
+[minimal health server](examples/asgi_health_checks), which implements `/health/liveness`, `/health/readiness`, and
+`/health/startup` as example routes rather than extension behavior.
+
 ## FastAPI integration
 
 FastAPI remains responsible for HTTP parameters, validation, and security dependencies. `Resolve` is the route-level
@@ -335,6 +356,7 @@ compiled container during application startup.
 - [Compiler tooling](https://peter-daly.github.io/clean_ioc/compiler-tooling/)
 - [Custom graph validation](https://peter-daly.github.io/clean_ioc/custom-validation/)
 - [Component filtering](https://peter-daly.github.io/clean_ioc/advanced/filtering/)
+- [ASGI integration](https://peter-daly.github.io/clean_ioc/extensions/asgi/)
 - [FastAPI integration](https://peter-daly.github.io/clean_ioc/extensions/fastapi/)
 - [Benchmarks](https://peter-daly.github.io/clean_ioc/benchmarks/)
 - [Contributing](CONTRIBUTING.md)
