@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python: ["3.11", "3.12", "3.13", "3.14"]
 
     steps:
       - name: Check out the repository
@@ -54,10 +54,42 @@ jobs:
       - name: Run pre-commit hooks
         run: uv run pre-commit run --all-files
 
+  fastapi-compatibility:
+    name: FastAPI ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: minimum (0.121.0)
+            requirement: fastapi==0.121.0
+          - label: latest
+            requirement: fastapi<1
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: |
+          uv sync --group dev
+          uv pip install --upgrade "${{ matrix.requirement }}"
+
+      - name: Run FastAPI integration tests
+        run: uv run pytest -q tests/ext/fast_api
+
   check-version:
     name: Check version against tags
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [tests, pre-commit]
+    needs: [tests, pre-commit, fastapi-compatibility]
     runs-on: ubuntu-latest
     outputs:
       should_release: ${{ steps.compare.outputs.should_release }}
@@ -78,11 +110,12 @@ jobs:
       - name: Compare package version with latest tag
         id: compare
         run: |
-          uv run python - <<'PY'
+          uv run --no-project --with packaging python - <<'PY'
           import os
-          import re
           import subprocess
           from pathlib import Path
+
+          from packaging.version import InvalidVersion, Version
 
           package_version = subprocess.run(
               ["uv", "version", "--short"],
@@ -91,7 +124,6 @@ jobs:
               text=True,
           ).stdout.strip()
 
-          tag_pattern = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
           tags = []
 
           completed = subprocess.run(
@@ -102,23 +134,23 @@ jobs:
           )
           for line in completed.stdout.splitlines():
               tag = line.strip()
-              match = tag_pattern.match(tag)
-              if match:
-                  tags.append((tuple(int(i) for i in match.groups()), tag))
+              try:
+                  tags.append((Version(tag.removeprefix("v")), tag))
+              except InvalidVersion:
+                  print(f"Ignoring non-PEP-440 tag {tag}")
 
-          version_match = re.match(r"^(\d+)\.(\d+)\.(\d+)$", package_version)
-          if not version_match:
+          try:
+              parsed_package_version = Version(package_version)
+          except InvalidVersion as error:
               raise SystemExit(
-                  f"Package version '{package_version}' is not strict semver (X.Y.Z)."
-              )
-
-          package_tuple = tuple(int(i) for i in version_match.groups())
+                  f"Package version {package_version!r} is not valid PEP 440: {error}"
+              ) from error
 
           latest_tag = "none"
           should_release = "true"
           if tags:
-              latest_tuple, latest_tag = max(tags, key=lambda item: item[0])
-              should_release = "true" if package_tuple > latest_tuple else "false"
+              latest_version, latest_tag = max(tags, key=lambda item: item[0])
+              should_release = "true" if parsed_package_version > latest_version else "false"
 
           with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as f:
               f.write(f"package_version={package_version}\n")

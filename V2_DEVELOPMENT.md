@@ -1,0 +1,336 @@
+# Clean IoC V2 engineering handoff
+
+This document records the V2 architecture and implementation decisions made so far. It is intended for agents and maintainers extending V2 without accidentally restoring runtime graph construction, weakening build invariants, or breaking scope ownership.
+
+V2 is currently published in project metadata as `2.0.0b7`. Its public surface remains experimental.
+
+## Core model
+
+V2 separates mutable composition from immutable runtime execution:
+
+```text
+ContainerBuilder
+    -> frozen composition blueprint
+    -> build-time discovery, validation, filtering, and generic specialization
+    -> occurrence-specific component graph and activation steps
+    -> immutable Container
+
+Container/Scope
+    -> select a compiled root
+    -> execute frozen activation steps
+    -> cache values and own cleanup
+```
+
+- `ContainerBuilder` and `ScopeBuilder` are the only mutable composition APIs.
+- `Container` and `Scope` contain frozen `_PlanSet` instances and expose no registration APIs.
+- A failed build leaves its builder reusable. A successful build makes the builder single-use.
+- Every visible closed root is compiled and validated. `mark_entrypoint()` only focuses tooling and reachability analysis; it does not weaken validation or make unmarked roots unresolvable.
+- Building never invokes user constructors, factories, generators, or context managers. Explicit `derive(...)`
+  argument policies run during compilation and their concrete results become value nodes.
+- Runtime resolution executes `_Step` objects. It does not allocate legacy `DependencyNode`/object-graph structures.
+
+`Provider[T]` and `AsyncProvider[T]` are explicit deferred edges. Compilation unwraps and selects `T`, freezes a direct
+target step, and records a synthetic provider component with one deferred target child. Each provider call creates a
+fresh top-level resolution context in its bound scope; it never performs a service-type lookup. A provider captured by
+a singleton binds to that singleton's declaring owner scope and is rejected if its target reaches scoped state or a
+runtime scope/context edge. Unmarked provider roots are precompiled in a private root index so root resolution remains
+available without changing the ordinary all-registration graph view; mark a provider entry point when its synthetic root
+must be part of graph tooling.
+
+The compiler also prepares the common runtime decisions instead of rediscovering them on every resolve. It freezes each step's sync/async capability, builds direct maps for default root selection, and chooses a lifespan-specific registration step for transient, once-per-graph, scoped, or singleton behavior. Default cached root resolutions return the frozen value before allocating a per-resolution context. Runtime code should keep those paths specialized: do not restore recursive capability checks, repeated default-filter scans, or a generic lifespan switch to the hot path without measurements showing a benefit.
+
+Private machinery in `clean_ioc/_legacy.py` still supplies registration storage, activators, dependency parsing, and filters while the compiler is made self-contained. It is not a supported import path. The public runtime converts string-literal lifespans to the private enum only at this internal boundary. Do not expose that enum through components or route runtime resolution back through the old dependency graph.
+
+## Assembly visibility compilation
+
+`Assembly` wraps an ordinary bundle in a private builder layer. `Expose` resolves exactly one local registration and
+projects that unchanged registration into root candidate visibility; `Use` resolves exactly one root registration or
+named source exposure and admits its registration ID to a consuming assembly. The compiler switches to a registration's
+defining area while compiling its dependencies, decorators, pre-configurations, providers, and generic
+specializations. Runtime steps therefore remain direct and carry no visibility check, wrapper, alias, or extra owner.
+
+Assembly visibility is resolved before occurrence compilation and the declared use graph is rejected if cyclic.
+Every local closed root is compiled even when private. Root graph tooling retains the complete architecture graph;
+runtime root indexes contain only root registrations and exposures. Scope overlays offset inherited assemblies from
+new root layers so parent assembly uses retain their original root visibility, while a new overlay assembly may use a
+parent exposure. Never merge private assembly registries into `_Blueprint.layers`: doing so silently destroys the
+candidate boundary and allows root decorators or overlay registrations to patch private definitions.
+
+## Argument compilation
+
+The only public override parameter is `arguments=`. Each entry is one of:
+
+- a plain value, compiled directly as `ComponentKind.value`;
+- `select(filter)`, compiled as a normal component or scope-slot edge;
+- `inject()`, compiled as the ordinary unnamed component/scope-slot edge even when a Python default exists;
+- `derive(function)`, evaluated synchronously during build for each static occurrence;
+- `build_arg(name, default=...)`, which projects one build input into a frozen value node;
+- `generic_arg(TypeVar | str)`, which projects an owning component's generic binding into a frozen value node.
+
+`ParameterContext` contains the specialized annotation, Python default state, and owning `Component`. A derived function
+may return a concrete value or `INJECT`; `INJECT` resumes normal unnamed component/scope-slot selection. Because that
+fallback is a normal edge rather than a runtime provider, it participates in all structural and lifespan validation.
+The owning component is still being compiled, so policies may rely on its identity, metadata, generic mapping, and
+already-known parent, but not on a completed dependency/decorator subtree. Builder preview queries compile temporary
+plans and can therefore evaluate policies before the final `build()`; purity is required.
+
+`build(build_args=...)` accepts application-defined composition inputs. Normalize them at the build boundary by
+validating string keys, making a shallow copy, and exposing that copy as an immutable mapping on `Component`,
+`ParameterContext`, `_PlanSet`/`Scope`, and `CompiledGraph`. Do not inject the mapping automatically. Derived policies,
+`build_arg(name)`, and filters consume it while compiling, and the selected wiring or projected value is frozen into the
+plan. Preview compilations must receive their explicit `build_args` too, including diagnostic recompilation after a
+failed build.
+
+A scope overlay shallowly merges its supplied arguments over the parent mapping. Newly compiled occurrences use the
+merged mapping. Clones anchored to a parent singleton or pre-configuration retain the mapping of their original
+compiled occurrence; this per-occurrence metadata is required for an honest graph. Ordinary scopes reuse their parent's
+mapping unchanged. Graph manifests, fingerprints, reports, and renderers must never serialize argument keys or values.
+There is intentionally no CLI parsing, implicit runtime injection, deep copy, or overlay removal sentinel for this
+input.
+
+Do not add activation-time value providers back to the public API. Runtime-changing values are ordinary registered
+factories or declared scope slots. Do not add a generic list modifier without a concrete use case and explicit graph
+semantics; collection `select(...)` currently filters candidates and preserves registration order. Unknown argument
+names fail compilation unless the activation callable accepts `**kwargs`. `REMOVE` is the patch sentinel.
+
+The private `_legacy_configuration.py` types only adapt this model to the legacy signature parser. They are not a
+public compatibility layer. `clean_ioc.configuration` and `clean_ioc.value_factories` are intentionally absent.
+
+## Immutable component model
+
+`clean_ioc/components.py` contains the unified public `Component` model used by filters and graph inspection. Registration metadata and compiled graph nodes are not separate public concepts in V2.
+
+Each compiled occurrence records:
+
+- service and implementation identity;
+- stable registration `id` and occurrence-specific `occurrence_id`;
+- lifespan, name, tags, argument, and generic mapping;
+- parent, dependencies, decorators, decorated component, and pre-configurations;
+- `ComponentKind`, `ComponentActivation`, `requires_async`, and `manages_cleanup`.
+
+Component kinds currently cover registrations, decorators, pre-configurations, collections, scope slots,
+fixed/default/derived values, and runtime contexts. When adding a new activation edge, represent it in this graph as
+well as in the runtime step tree. Filters, manifests, diagnostics, and reachability depend on the graph being complete.
+
+Draft records are mutable only while `_Compiler` is building the graph. `_ComponentGraph.freeze()` replaces them with immutable records before a runtime is returned.
+
+## Build and validation invariants
+
+`ContainerBuilder.build()` materializes pending discovery rules, specializes generics, compiles all roots, evaluates composition filters, builds structured diagnostics, and freezes the result.
+
+Current hard failures include missing components, circular paths, invalid generic specialization, invalid parent singleton specialization in an overlay, missing marked entry points, and captive lifespans.
+
+Captive lifespan rules are transitive across constructors, factories, decorators, collections, argument-selected
+component edges, and pre-configuration dependencies:
+
+```text
+singleton -> scoped                         invalid
+singleton -> once_per_graph                 invalid
+singleton -> transient -> once_per_graph    invalid
+scoped -> once_per_graph                    invalid
+scoped -> transient -> once_per_graph       invalid
+
+singleton/scoped -> plain transient         valid
+transient -> once_per_graph                  valid
+once_per_graph -> scoped/singleton           valid
+```
+
+Invalid lifespan paths use the `captive-dependency` issue code and retain the complete semantic path. A transient is allowed beneath a long-lived component but cannot hide an invalid descendant.
+
+Independent root failures are aggregated in `BuildReport`. `ContainerBuildError.report` carries the report after failure; successful runtimes expose it as `build_report`. Warnings are nonfatal in Python and may be promoted to failures by CLI policy. Current warnings include ambiguous selection and registrations unreachable from marked entry points.
+
+When changing validation:
+
+1. Validate the whole dependency path, not only direct constructor parameters.
+2. Preserve the error code and semantic component path.
+3. Keep a failed builder repairable.
+4. Test all compiled edge types when the rule is meant to be graph-wide.
+
+Custom validation rules are synchronous `ValidationRule` callbacks registered with
+`ComponentBuilder.add_validation_rule()`. Ordinary rules receive one ephemeral `ValidationContext` shared by every
+ordinary rule in a build after structural compilation and built-in complete-graph checks, then yield zero or more
+`BuildIssue` values. The context exposes the complete immutable `CompiledGraph`; custom errors fail the build and
+warnings use the existing Python and CLI policies. `CompiledGraph.walk()` always traverses every root and yields
+path-aware `GraphVisit` values; it is not focused by entry-point markers.
+
+`ValidationContext.type_ast(type)` lazily parses an inspectable Python class definition and caches the `TypeAst` result
+once per concrete type for that validation pass. Original filename and line positions are preserved. Missing source is
+represented by `None`; callers decide whether that is acceptable. AST nodes are shared and must be treated as read-only.
+The context and cache are discarded after validation rather than stored in `_PlanSet`, `CompiledGraph`, or the runtime,
+and source information must never enter graph manifests or fingerprints.
+
+Rules and their `strict_only` metadata are frozen in builder layers. Scope overlays inherit parent rules, run them
+parent-first against the complete overlay graph, then run locally declared rules. Ordinary scopes do not rerun
+validation. Rules marked `strict_only=True` are skipped by `build()` and run only through
+`Scope.validation_report(include_strict_rules=True)`, which returns a fresh aggregate report without mutating the stored
+build report or raising for its errors. `clean-ioc check` requests that strict report by default before applying warning
+promotion and ignore policies; `--no-strict` opts out. Each strict pass gets a new shared `ValidationContext`, so
+deferred AST work is also absent from startup.
+
+Preview queries and failed structural compilations do not run custom rules because no final graph exists. A callback
+exception, non-iterable return, or malformed issue becomes `validation-rule-error`, and subsequent rules still run.
+Keep rules synchronous, deterministic, and side-effect-free; explicit strict reports, failed builds, and overlay builds
+may execute the same callback again. Build inputs are available through the graph, but custom issue authors must not
+copy secrets into diagnostic fields.
+
+## Pre-configuration compilation and ownership
+
+`pre_configure()` stores an immutable `_PreConfigurationDefinition` with a stable ID, target service types, frozen dependency configuration, declaration order, one `when` filter, and failure policy. Definitions execute in declaration order within a layer and parent layers precede overlay layers. Do not route V2 pre-configurations back through the mutable legacy registry or restore separate registration/node filters.
+
+The compiler matches definitions against the actual compiled service type. This is important for open registrations specialized to closed generic aliases: an exact target such as `Service[int]` must not be treated as the iterable of its type arguments, while an open target must apply to its closed specializations.
+
+One definition has one `_CompiledPreConfiguration`, component occurrence, and `_PreConfigurationState` across all matching trigger roots in a compiled plan. Its dependency path is compiled inside an explicit singleton `_CompilerFrame`, independently of the triggering registration's lifespan. This makes scoped and `once_per_graph` captures build errors and makes recursive shared-trigger paths diagnosable.
+
+Scope overlays anchor an inherited initializer to the parent's compiled plan as well as its shared runtime state. Clone its component metadata into the overlay graph, but retain its parent activation steps; otherwise dependency selection would depend on which scope wins the first runtime trigger. A parent definition with no compiled plan cannot become newly applicable in an overlay and reports `overlay-pre-configuration`; declare it on the `ScopeBuilder` instead.
+
+Runtime execution is lazy and single-flight across sync and async callers. A successful attempt marks the shared state complete. A propagated failure wakes current waiters with the same failure but leaves the state retryable; `continue_on_failure=True` logs a configuration-function failure and marks the attempt complete. Dependency-resolution failures always propagate because activation did not occur. Keep dependency resolution and user-code activation outside the state lock.
+
+Pre-configuration generator/context-manager finalizers belong to the definition's declaring owner token. They must not be attached to whichever overlay happened to trigger the initializer first. Dependencies retain their own registration ownership.
+
+## Lifespans, activation, and cleanup
+
+- Public builder arguments and `Component.lifespan` use the literal strings `"transient"`, `"once_per_graph"`, `"scoped"`, and `"singleton"`; the private `IntEnum` is implementation machinery only.
+- `transient` activates on each dependency edge.
+- `once_per_graph` uses the `once_cache` owned by one `_RuntimeResolutionContext`/top-level resolve.
+- `scoped` uses the current scope cache and coordinator.
+- `singleton` uses the owner selected by the registration layer's owner token.
+
+Generator factories and context managers register finalizers with their cache owner. Sync and async resolution share the compiled plan, with async requirements determined at build time and enforced when selecting the runtime path. Keep resource acquisition and release in the same factory; registration-level cleanup callbacks are intentionally unsupported.
+
+Activation tracking uses small per-resolution stacks and direct ``try/finally`` cleanup. Cached values use a sentinel so ``None`` remains a valid scoped or singleton value. These details avoid per-component context-manager and generic cache-dispatch overhead while preserving circular-activation diagnostics and cleanup ownership.
+
+Scoped and singleton first activation is coordinated across threads and async tasks. Preserve `_Coordinator` behavior when modifying caching or activation; failures must wake waiters and permit later retries.
+
+Resource ownership is a compilation result. Every occurrence records stable cache and cleanup owner categories, and every
+cleanup-capable activation step carries a private executable descriptor. A cleanup-bearing transient beneath a
+singleton is promoted to that singleton's declaring owner, including inherited parent singletons first activated from
+an overlay and overlay singletons first activated from an ordinary child. Other transient and once-per-graph resources
+close with the resolving scope. Decorators inherit the effective owner of the pipeline they decorate, and
+pre-configuration resources retain their declaring layer's owner token.
+
+`ResolutionContext` is resolution-local: scoped and singleton paths cannot capture it. `Scope` and supplied scope slots
+are scope-local and cannot be captured by a singleton. The built-in `use_component()` factories are the narrow
+exception: the compiler marks their injected context as activation-local and validates the statically compiled target
+edge instead. A retained `ResolutionContext` rejects calls once its top-level resolution finishes. Closed scopes reject
+resolution, provision, and child-scope operations with `ScopeClosedError`.
+
+Closing attempts every finalizer in reverse acquisition order. One failure is re-raised unchanged; multiple failures
+use `ExceptionGroup`/`BaseExceptionGroup`. A synchronous close records an async-finalizer error and continues remaining
+synchronous cleanup. Do not restore lifespan- or stack-based finalizer routing: compiled descriptors are authoritative.
+
+## Scopes and overlays
+
+Ordinary `new_scope()` is cheap and never recompiles. It reuses the parent's plan, inherits provided slot values, and may inherit already-created scoped values. Runtime UUID strings are created lazily on first ``id`` access so unused diagnostic identity is not part of the scope-creation hot path. Declared slots are supplied with `scope.provide()` before the first resolution; undeclared, duplicate, late, or missing provisions fail.
+
+`new_scope_builder()` is the explicit child-composition boundary:
+
+- it layers new composition over the frozen parent blueprint and recompiles visible overlay roots;
+- it starts a fresh scoped cache boundary so inherited scoped registrations may use overlay dependencies;
+- singletons introduced by the overlay belong to the built overlay scope and are finalized there;
+- inherited root singletons stay anchored to their original frozen activation step and root owner;
+- overlay registrations and decorators must not silently rewire an inherited root singleton.
+
+Singleton anchoring is keyed by stable registration ID plus the requested runtime specialization. If an overlay asks for a parent-owned generic singleton specialization that was never compiled in the parent, the build fails with `overlay-singleton`; the overlay must register its own replacement.
+
+Framework/request data should use declared scope slots rather than post-build registration. Applying `ASGIBundle()`
+declares the dependency-free ASGI boundary exactly once per builder, and `CleanIocMiddleware` owns one ordinary scope
+for a complete HTTP request or WebSocket connection. `FastAPIBundle()` extends that boundary with FastAPI request
+types, while `install_fastapi()` also validates every route's `Resolve(...)` type and filter against the frozen plan at
+startup. Protocol-specific routing, including health-check policy, remains application or framework code.
+
+## Generics and discovery
+
+- Subclass and closed-generic registration discovery rules are queued on a builder and materialized at `build()` from the then-live Python class set.
+- Import candidate modules and retain dynamically created class objects until build. Python's subclass registry uses weak references.
+- Open generic registrations are templates, not directly resolvable roots. Closed occurrences are specialized when encountered in a compiled dependency path; explicitly register a closed service when it must be a root.
+- Generic factory dependencies are specialized from the requested service type and factory annotations. `factory_specialization=` supplies otherwise hidden bindings.
+- Unresolved/conflicting `TypeVar` bindings fail build. `ParamSpec` and `TypeVarTuple` are not supported.
+- Decorators are immutable builder definitions with stable IDs. Signature parsing, decorated-argument validation, dependency compilation, and generic specialization happen during build.
+- Open decorator definitions match actual closed component plans, not the subclass registry. This covers explicit registrations, factories, fallbacks, and discovered subclasses.
+- Generated closed generic decorator types are memoized so repeated builds do not leak new classes.
+- Higher decorator positions are outside lower positions; equal positions retain declaration order outside-to-inside. Runtime activation retains the inverse core-to-outside order.
+- Decorator components own their name and tags. `when=` is the only V2 applicability filter; it sees the completed undecorated core subtree.
+
+Generic work relies on `typetoolbox`. Use the installed `using-typetoolbox` skill before changing binding or subclass-discovery behavior.
+
+## Compiler tooling
+
+`clean_ioc/tooling.py` exposes read-only tooling over the exact compiled component plans:
+
+- `BuildIssue` and `BuildReport` for structured validation;
+- `CompiledGraph` with text and Mermaid renderers;
+- immutable compilation explanations with selected/rejected candidates, stable reason codes, and best-effort origins;
+- schema-version-1 `GraphManifest` with deterministic fingerprints;
+- `GraphDiff`/`GraphChange` for semantic added, removed, and changed paths.
+
+`CompiledGraph.explain(...)` reads the frozen decision index for a service request or exact component occurrence. It
+must never re-run a filter or activation callable. Default and declarative exact-name root selection can be answered
+from frozen candidate metadata; an arbitrary root filter is explainable only when that same object was evaluated during
+compilation, such as by an entry-point marker. Origin and decision history stay out of manifests and fingerprints, and
+explanation JSON must not include absolute paths, configured values, build-argument keys, closure state, callable
+representations, memory addresses, or runtime IDs.
+
+Manifests use qualified semantic identities rather than UUIDs, occurrence IDs, memory addresses, or configured values. Fixed/default values are represented by type and activation kind so secrets are not serialized. Preserve deterministic ordering and redaction when adding metadata.
+
+`mark_entrypoint(service_type, filter=...)` marks one selected root; marking `list[Service]` marks every filtered member. Marked roots become the default tooling view. Pass `all_roots=True` for the full compiled root set.
+
+`clean_ioc/cli.py` installs the `clean-ioc` command:
+
+- `check module:object [--strict | --no-strict] [--ignore CODE]` (strict by default);
+- `graph module:object --format text|mermaid|json [--all]`;
+- `diff module:object baseline.json [--all]`.
+
+A target may be a builder, a built scope/container, or a zero-argument factory returning either a builder or a built
+scope/container. The CLI invokes a factory once. Errors cannot be ignored. `diff` returns `0` for no change and `1` for
+a semantic change. Baselines are never updated implicitly.
+
+## Public extension guidance
+
+- Reusable bundles should accept the public `ComponentBuilder` protocol so they work with both builder types.
+- Apply bundles only during composition. Never give runtime objects mutation APIs.
+- Use `clean_ioc.component_filters` for component selection and `clean_ioc.type_filters` for Python type discovery.
+- A filter in composition is evaluated and frozen during build. A filter passed to `resolve()` only selects among compiled roots.
+- Prefer constructor/factory dependencies. Use `ResolutionContext` only for selection among already-compiled roots, not as an application-wide service locator.
+- If a feature changes activation, update both the `_Step` execution and static `Component` metadata.
+- If a feature changes ownership, test root container, ordinary child scope, nested scope, built overlay, sync cleanup, and async cleanup.
+
+## Implementation map
+
+- `clean_ioc/container.py`: builders, compiler, activation steps, runtimes, scopes, caches, ownership, validation, generics, and discovery.
+- `clean_ioc/components.py`: immutable component graph and public builder/filter protocols.
+- `clean_ioc/tooling.py` and `clean_ioc/cli.py`: diagnostics, rendering, manifests, diffs, and command-line interface.
+- `clean_ioc/ext/asgi`: dependency-free ASGI lifespan, operation scopes, and boundary values.
+- `clean_ioc/ext/fastapi`: FastAPI-specific route resolution and startup validation layered over the ASGI extension.
+- `tests/test_container.py`: composition, generics, discovery, runtime, ownership, concurrency, and cleanup.
+- `tests/test_compiler_tooling.py`: structured reports, complete graph metadata, entry points, overlays, lifespan validation, manifests, and CLI behavior.
+- `benchmarks/bench_clean_ioc.py`: BenchBro build, runtime, tooling, scope, generic factory, graph-depth scaling, and Python-allocation experiments.
+
+`tests/test_complex_dependencies.py` contains several historically difficult combinations of generics, decorators, contextual filtering, collections, and shared registrations. Re-run it when a compiler change affects graph traversal or specialization.
+
+## Verification workflow
+
+Run from the repository root:
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run ty check .
+uv run pytest .
+uv run python scripts/validate_docs_examples.py
+uv run pre-commit run --all-files
+uv build
+```
+
+Benchmarks use BenchBro 1.0. Confirm discovery before measuring:
+
+```bash
+uv run benchbro list --verbose
+uv run benchbro run benchmarks/bench_clean_ioc.py --case compiled-build --no-compare \
+  --output-json /tmp/clean-ioc-build.json --output-md /tmp/clean-ioc-build.md
+uv run benchbro run benchmarks/bench_clean_ioc.py --case compiler-tooling --no-compare \
+  --output-json /tmp/clean-ioc-tooling.json --output-md /tmp/clean-ioc-tooling.md
+```
+
+Use temporary output paths while shaping experiments. Do not opportunistically replace or commit machine-local `.benchbro` baselines. Consult the installed `use-benchbro` skill before changing benchmark boundaries or interpreting comparisons.
+
+For each V2 feature, the acceptance bar is: build-time invariants remain complete, runtime plans remain immutable, resolution does not reconstruct the dependency graph, ownership is explicit, static tooling describes the actual activation path, and failed composition is diagnosable before user code runs.

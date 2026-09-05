@@ -1,185 +1,175 @@
-# Filtering
+# Component filtering
 
-Filtering controls which registration is selected when multiple registrations match a service type.
-
-```python
-from clean_ioc import Container, DependencySettings, Lifespan, RemoveDependencySetting, Tag
-from clean_ioc.registration_filters import has_tag, with_id, with_name
-import clean_ioc.node_filters as nf
-```
-
-## Visual model
-
-Filtering happens during registration selection inside resolution.
-At a high level:
-
-```mermaid
-flowchart TD
-    A[Resolve service type] --> B[Collect registrations]
-    B --> C[Apply default or custom registration filter]
-    C --> D[Apply parent_node_filter checks]
-    D --> E[Take first match from registration order]
-    E --> F[Build instance and continue resolving children]
-```
-
-## Default behavior
-
-By default, `resolve(...)` uses unnamed registrations only.
+Clean IoC 2 uses one immutable `Component` model and one filter vocabulary everywhere.
 
 ```python
-container = Container()
-container.register(int, instance=1)
-container.register(int, instance=2, name="Two")
-
-print(container.resolve(int))                      # 1
-print(container.resolve(int, filter=with_name("Two")))  # 2
+import clean_ioc.component_filters as cf
+from clean_ioc import Component, ContainerBuilder, Tag, select
 ```
 
-Selection order is LIFO (last registration checked first):
+A component occurrence exposes:
 
-```mermaid
-flowchart LR
-    R3[Register named int Two] --> Q
-    R2[Register unnamed int one] --> Q
-    Q[Resolve int using default filter] --> U[Unnamed registrations only]
-    U --> Pick[Pick unnamed registration]
-```
+- stable registration `id` and occurrence-specific `occurrence_id`;
+- `service_type`, `implementation`, and normalized `implementation_type`;
+- `lifespan`, `name`, `tags`, `kind`, `activation`, and incoming `argument`;
+- activation properties including `requires_async` and `manages_cleanup`;
+- decorator `position` when the occurrence is a decorator;
+- `generic_mapping` and immutable `build_args`;
+- read-only `parent`, `dependencies`, `decorators`, `decorated`, and `pre_configurations`;
+- static descendant queries.
 
-## Registration ID filters
+`Component` does not expose a runtime `instance` or `instance_type`. Composition, dependency, decorator, and
+pre-configuration filters are evaluated at build time and their decisions are frozen. A filter passed directly to
+`resolve(...)` selects among the already-compiled roots at runtime; it cannot alter their dependency plans.
 
-`register(...)` returns the registration's unique ID. Use `with_id(...)` when that exact registration must be selected:
+## Root selection
 
 ```python
-container = Container()
-registration_id = container.register(str, instance="selected")
+builder = ContainerBuilder()
+builder.register(str, instance="development", name="dev")
+builder.register(str, instance="production", tags=[Tag("env", "prod")])
+container = builder.build()
 
-value = container.resolve(str, filter=with_id(registration_id))
-print(value)  # selected
+assert container.resolve(str, filter=cf.with_name("dev")) == "development"
+assert container.resolve(str, filter=cf.has_tag("env", "prod")) == "production"
 ```
 
-## Patching a registration
+The default filter selects unnamed components.
 
-Patch a registration before its first resolution when configuration needs to be layered after registration. The service type and registration ID identify the registration; dependency settings, lifespan, and tags are the only mutable fields.
+## Dependency selection
 
 ```python
 class Client:
-    def __init__(self, endpoint: str = "http://localhost", timeout: int = 5):
+    def __init__(self, endpoint: str):
         self.endpoint = endpoint
-        self.timeout = timeout
 
 
-client_registration_id = container.register(
+builder = ContainerBuilder()
+builder.register(str, instance="https://api.example", name="api")
+builder.register(
     Client,
-    dependency_config={"endpoint": "https://old.example", "timeout": 30},
-    tags=[Tag("environment", "development")],
+    arguments={"endpoint": select(cf.with_name("api"))},
 )
-
-container.patch_registration(
-    Client,
-    client_registration_id,
-    dependency_config={"endpoint": RemoveDependencySetting},
-    lifespan=Lifespan.singleton,
-    tags=[Tag("environment", "production")],
-)
-
-client = container.resolve(Client)
-print(client.endpoint)  # http://localhost
-print(client.timeout)   # 30
+container = builder.build()
 ```
 
-Dependency configuration is shallow-merged by parameter name. `RemoveDependencySetting` restores normal injection or a declared default for that parameter. Tags are merged by name, with later values replacing earlier ones. Patching after the registration has created an instance raises `RuntimeError`; a type/ID pair not owned by that scope raises `KeyError`.
+For collection arguments, the same predicate selects every matching component while preserving normal candidate order.
 
-## Name and tag filters
+## Contextual registration with `when=`
+
+`when` decides whether a registered component is eligible for one static occurrence. Parent-aware rules are explicit:
 
 ```python
-container = Container()
-container.register(str, instance="prod", tags=[Tag("env", "prod")])
-container.register(str, instance="dev", tags=[Tag("env", "dev")])
-
-value = container.resolve(str, filter=has_tag("env", "dev"))
-print(value)  # dev
-```
-
-## Top-down filtering with `dependency_config`
-
-Top-down means the parent registration constrains which child registration is allowed for a given argument.
-
-```mermaid
-flowchart TD
-    G[Greeter registration] --> M[Dependency config for message]
-    M --> F1[Filter by name hello]
-    F1 --> S1[Select string registration named hello]
-```
-
-```python
-class Greeter:
-    def __init__(self, message: str):
-        self.message = message
-
-
-container = Container()
-container.register(str, instance="Hello", name="hello")
-container.register(str, instance="Goodbye", name="bye")
-
-container.register(
-    Greeter,
-    name="hello_greeter",
-    dependency_config={"message": DependencySettings(filter=with_name("hello"))},
-)
-
-container.register(
-    Greeter,
-    name="bye_greeter",
-    dependency_config={"message": DependencySettings(filter=with_name("bye"))},
-)
-
-print(container.resolve(Greeter, filter=with_name("hello_greeter")).message)
-print(container.resolve(Greeter, filter=with_name("bye_greeter")).message)
-```
-
-## Bottom-up filtering with `parent_node_filter`
-
-Bottom-up means the child registration decides if it is eligible by inspecting the current parent node.
-
-```mermaid
-flowchart TD
-    P[Resolve NeedsB] --> AReq[Needs dependency A]
-    AReq --> RB[Registration mapping A to B with parent filter NeedsB]
-    AReq --> RC[Registration mapping A to C with parent filter NeedsC]
-    RB --> OK[Filter passes]
-    RC --> NO[Filter fails]
-    OK --> BInst[Build B instance]
-```
-
-```python
-class A:
+class SqlConnection:
     pass
 
 
-class B(A):
+class DocumentConnection:
     pass
 
 
-class C(A):
-    pass
-
-
-class NeedsB:
-    def __init__(self, a: A):
-        self.a = a
-
-
-class NeedsC:
-    def __init__(self, a: A):
-        self.a = a
-
-
-container = Container()
-container.register(A, B, parent_node_filter=nf.implementation_type_is(NeedsB))
-container.register(A, C, parent_node_filter=nf.implementation_type_is(NeedsC))
-container.register(NeedsB)
-container.register(NeedsC)
-
-print(type(container.resolve(NeedsB).a).__name__)  # B
-print(type(container.resolve(NeedsC).a).__name__)  # C
+builder.register(
+    Connection,
+    SqlConnection,
+    when=cf.parent(cf.has_tag("database", "sql")),
+)
+builder.register(
+    Connection,
+    DocumentConnection,
+    when=cf.parent(cf.has_tag("database", "document")),
+)
 ```
+
+The compiler builds occurrence-specific plans, so the same registration can make different decisions under different generic parents.
+
+## Decorator selection sees the undecorated core
+
+```python
+builder.register_decorator(
+    Handler,
+    TransactionDecorator,
+    when=cf.has_descendant(cf.service_type_is(SqlConnection)),
+)
+```
+
+All decorator predicates are evaluated against the completed undecorated component subtree. Dependencies introduced by one decorator cannot accidentally cause another decorator to become eligible.
+
+The same `when=` argument is available on `pre_configure(...)`.
+
+## Composing filters
+
+Built-in predicates are composable through `funcie`:
+
+```python
+production_stripe = cf.has_tag("env", "prod") & cf.with_name("stripe")
+not_singleton = ~cf.has_lifespan("singleton")
+```
+
+Useful helpers include:
+
+- `with_name`, `with_id`, `name_starts_with`, `name_ends_with`;
+- `implementation_is`, `implementation_type_is`, `implementation_matches_type_filter`;
+- `service_type_is`;
+- `has_tag`, `has_generic_arg`;
+- `has_lifespan`, `has_lifespan_in`;
+- `has_build_arg`, `build_arg_is`;
+- `parent`, `has_descendant`.
+
+Use `create_filter(callable)` for a custom composable predicate.
+
+`implementation_is(T)` compares `T` with the component's raw implementation. For a factory registration, that is the
+factory callable. `implementation_type_is(T)` compares the normalized implementation type, including a factory's
+annotated return type:
+
+```python
+def create_client() -> Client:
+    return Client()
+
+
+builder.register(Client, factory=create_client)
+
+factory = cf.implementation_is(create_client)
+produces_client = cf.implementation_type_is(Client)
+```
+
+Custom filters can inspect the same metadata:
+
+```python
+async_resource = cf.create_filter(
+    lambda component: component.requires_async and component.manages_cleanup,
+)
+```
+
+Build arguments provide explicit inputs for composition-time filtering:
+
+```python
+production = cf.build_arg_is("environment", "production")
+has_region = cf.has_build_arg("region")
+
+builder.register(
+    PaymentGateway,
+    ProductionGateway,
+    when=production & has_region,
+)
+container = builder.build(
+    build_args={"environment": "production", "region": "eu-west"},
+)
+```
+
+Missing keys do not match either helper. Custom filters can read `component.build_args` directly. Pass `build_args=` to
+builder preview queries when their temporary compilation should use the same composition inputs as the final build.
+
+## Component IDs and patching
+
+Builder queries use component terminology:
+
+```python
+component_id = builder.get_component_id(Service, filter=cf.with_name("primary"))
+component_ids = builder.get_component_ids(Service)
+exists = builder.has_component(Service, build_args={"environment": "production"})
+
+if component_id is not None:
+    builder.patch_component(Service, component_id, lifespan="singleton")
+```
+
+Queries and patches must happen before a successful `build()`.

@@ -1,3 +1,124 @@
+2.0.0b7
+-------
+    Add a dependency-free ASGI extension for application lifespan ownership,
+    per-operation scopes, raw connection values, and framework-light headers,
+    with a separate minimal health-check server example.
+
+
+2.0.0b6
+-------
+    Add immutable compilation explanations with selected and rejected candidates,
+    stable reason codes, declaration provenance, and ``clean-ioc explain``.
+    Add compiled cache and cleanup ownership proofs, owner-correct resource
+    finalization, closed-scope safety, and ``clean-ioc ownership``.
+    Add typed ``Provider[T]`` and ``AsyncProvider[T]`` handles that execute frozen
+    deferred plans without adding service lookup to the runtime hot path.
+    Add compile-time assemblies with private-by-default bundle registrations,
+    unchanged exposures, explicit root and cross-assembly uses, overlay support,
+    structured visibility diagnostics, provenance, and manifest-schema-3 tooling.
+    Expand BenchBro coverage for compiler features, strict validation, ownership,
+    runtime scaling, allocations, and FastAPI request integration.
+2.0.0b5
+-------
+    Add strict-only custom graph rules that defer expensive validation and AST
+    inspection until an explicit validation report or CLI check.
+    Make ``clean-ioc check`` strict by default, retaining ``--no-strict`` for
+    lightweight checks, and document factory functions returning built containers.
+
+
+2.0.0b4
+-------
+    Pass one ephemeral ``ValidationContext`` to custom graph rules and add lazy,
+    per-build AST inspection for Python implementation types.
+
+
+2.0.0b3
+-------
+    Add reusable custom build-time graph validation rules with structured findings,
+    overlay inheritance, and path-aware traversal of compiled occurrences.
+
+
+2.0.0b2
+-------
+    Require Python 3.11 or newer.
+    Package optional FastAPI boundary declarations as a run-once-per-builder
+    ``FastAPIBundle`` and complete the shared builder protocol for nested bundles.
+
+
+2.0.0b1
+-------
+    Split mutable composition into ``ContainerBuilder`` and ``ScopeBuilder`` and
+    make ``Container`` and ``Scope`` immutable runtime types.
+    Compile occurrence-specific component plans at ``build()`` without invoking
+    constructors, factories, generators, or context managers.
+    Replace ``dependency_config`` and mutable ``DependencySettings`` with one
+    ``arguments`` API for fixed values, explicit component selection, and pure
+    build-time derivation; remove runtime value providers and list reducers.
+    Add immutable user-defined ``build_args`` to root and overlay compilation,
+    exposing them to derivation and component filters, with
+    ``build_arg(name, default=...)`` for explicit frozen-value projection,
+    without implicit runtime injection or disclosure through graph diagnostics.
+    Add ``inject()`` for forcing unnamed injection over a Python default and
+    ``generic_arg(...)`` for freezing an owning component's generic binding.
+    Execute frozen activation instructions without allocating legacy dependency
+    graph nodes during normal resolution.
+    Specialize compiled runtime steps by lifespan, freeze sync capability and
+    default root selection at build, and defer runtime UUID creation until an ID
+    is inspected, reducing resolution and ordinary scope-creation overhead.
+    Make the compiled builder/runtime design the only public API: retire the V1
+    container and its registration/node filters, remove compatibility aliases,
+    and expose the implementation through ``clean_ioc.container`` rather than a
+    versioned module.
+    Replace public registration/node filtering with the immutable ``Component``
+    model and shared ``clean_ioc.component_filters`` predicates.
+    Add declared scope slots and locked ``Scope.provide()`` values for FastAPI and
+    other late framework inputs.
+    Add experimental scope overlays whose singletons belong to the built scope and
+    descendants.
+    Defer subclass, closed-generic, and generic-decorator discovery until
+    ``build()``, making the successful build snapshot complete and immutable.
+    Specialize closed and open generic factory dependencies at build time, with
+    explicit ``factory_specialization`` support for otherwise hidden TypeVars.
+    Replace the sealed-container prototype with BenchBro build, runtime, scope,
+    request-slot, and Python-allocation experiments.
+    Add entry-point markers, aggregated structured build reports, complete compiled
+    graph inspection, deterministic redacted manifests, semantic graph diffs, and
+    the ``clean-ioc check|graph|diff`` command-line interface.
+    Anchor inherited root singletons to their frozen root activation plans and
+    make a built scope overlay a fresh scoped-cache boundary.
+    Reject direct and transitive ``once_per_graph`` dependencies beneath scoped
+    or singleton components as captive dependencies during ``build()``.
+    Modernize the FastAPI extension for FastAPI 0.121+, with one-call ASGI
+    installation, HTTP and WebSocket scopes, automatic request/header values,
+    full-response cleanup, and startup validation of every ``Resolve`` route.
+    Remove the ``scoped_teardown`` registration option; generator and context-manager
+    factories now provide the single resource-cleanup model.
+    Make decorators stable builder definitions with IDs, owned metadata, patch/remove
+    operations, one ``when=`` filter, build-time validation, z-index graph rendering,
+    and open-generic specialization from actual compiled plans.
+    Replace the public V2 ``Lifespan`` enum values with ``Literal`` string arguments
+    and expose those same strings through components, filters, and graph manifests.
+    Compile pre-configurations as stable, shared singleton initializers with one
+    ``when=`` filter, declaration ordering, generic matching, captive-dependency
+    validation, concurrent single-flight execution, owner-correct cleanup, and
+    deterministic failure/retry behavior.
+
+
+1.25.0
+------
+    Add static ``Container.validate()`` checks for missing registrations, circular
+    dependencies, captive scoped dependencies, and async-only graphs.
+    Add ``Container.explain()`` with readable text and Mermaid dependency plans.
+    Raise dedicated ``CircularDependencyError`` and ``CaptiveDependencyError``
+    exceptions during runtime resolution.
+    Coordinate first-time scoped and singleton activation across concurrent threads
+    and async tasks, including safe failure and retry behavior.
+    Expand FastAPI support from 0.101.x to all compatible 0.x releases and test both
+    the minimum and latest supported versions in CI.
+    Add a runnable FastAPI Clean Architecture example, reproducible microbenchmarks,
+    and a documentation and project-positioning overhaul.
+
+
 0.0.1
 -----
     Registration and resolving works.

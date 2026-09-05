@@ -1,82 +1,140 @@
-import logging
-from contextlib import asynccontextmanager
-from typing import Annotated, AsyncGenerator
+from __future__ import annotations
 
-from clean_ioc.core import (
-    Container,
-    RegistrationFilter,
-    Scope,
-    TService,
-    default_registration_filter,
+from dataclasses import dataclass
+from typing import Annotated, AsyncGenerator, TypeVar, cast
+
+from starlette.requests import HTTPConnection
+
+from clean_ioc import ComponentFilter, Scope, default_component_filter
+from clean_ioc.ext.asgi import (
+    ASGIApp,
+    ASGIIntegrationError,
+    ASGIScope,
+    CleanIocMiddleware,
+    Receive,
+    Send,
+    get_scope,
 )
-from fastapi import Depends, FastAPI, Request, params
+from fastapi import Depends, FastAPI, Request, WebSocket, params
 
-logger = logging.getLogger(__name__)
+TService = TypeVar("TService")
 
-
-@asynccontextmanager
-async def add_container_to_app(app: FastAPI, container: Container):
-    """
-    Adds a container to the given FastAPI app.
-
-    Args:
-        app (FastAPI): The FastAPI app to add the container to.
-        container (Container): The container to be added.
-    """
-    async with add_root_scope_to_app(app, container):
-        yield
+_CONNECTION_PROVIDED_KEY = "clean_ioc.connection_provided"
+_INSTALLED_STATE_KEY = "clean_ioc_installed"
+_RESOLVE_METADATA_KEY = "__clean_ioc_resolve__"
 
 
-@asynccontextmanager
-async def add_root_scope_to_app(app: FastAPI, root_scope: Scope):
-    """
-    Adds the root scope to the given FastAPI app.
-
-    Args:
-        app (FastAPI): The FastAPI app to add the container to.
-        root_scope (Scope): The scope to be added.
-    """
-    async with root_scope:
-        logger.debug("adding root scope to the fast api app")
-        app.state.root_scope = root_scope
-        yield
-        logger.debug("releasing root scope from the fast api app")
+class FastAPIIntegrationError(RuntimeError):
+    """Raised when the FastAPI application and compiled container disagree."""
 
 
-def get_root_scope_from_app(app: FastAPI) -> Scope:
-    return app.state.root_scope
+@dataclass(frozen=True, slots=True)
+class _ResolveRequest:
+    service_type: type
+    filter: ComponentFilter
 
 
-async def get_scope(
-    request: Request,
-) -> AsyncGenerator[Scope, None]:
-    root_scope: Scope = get_root_scope_from_app(request.app)
+def _route_resolve_requests(app: FastAPI):
+    for route in app.routes:
+        dependant = getattr(route, "dependant", None)
+        if dependant is None:
+            continue
+        stack = list(getattr(dependant, "dependencies", ()))
+        seen: set[int] = set()
+        while stack:
+            dependency = stack.pop()
+            if id(dependency) in seen:
+                continue
+            seen.add(id(dependency))
+            request = getattr(getattr(dependency, "call", None), _RESOLVE_METADATA_KEY, None)
+            if request is not None:
+                yield route, cast(_ResolveRequest, request)
+            stack.extend(getattr(dependency, "dependencies", ()))
 
-    if "current_scope" in request.state._state:
-        yield request.state.current_scope
-    else:
-        async with root_scope.new_scope() as scope:
-            request.state.current_scope = scope
-            yield scope
+
+def validate_fastapi_routes(app: FastAPI, root_scope: Scope) -> None:
+    """Validate every ``Resolve`` dependency against the frozen root plan."""
+
+    missing: list[str] = []
+    for route, request in _route_resolve_requests(app):
+        if root_scope.has_component(request.service_type, request.filter):
+            continue
+        methods = getattr(route, "methods", None)
+        method_label = ",".join(sorted(methods)) if methods else "WEBSOCKET"
+        path = getattr(route, "path", "<unknown route>")
+        missing.append(f"{method_label} {path}: {request.service_type!r}")
+    if missing:
+        details = "\n".join(f"- {item}" for item in missing)
+        raise FastAPIIntegrationError(f"FastAPI routes contain unresolved Clean IoC entry points:\n{details}")
+
+
+class _CleanIocMiddleware(CleanIocMiddleware):
+    """Add FastAPI route validation to the shared ASGI lifecycle boundary."""
+
+    def __init__(self, app: ASGIApp, *, root_scope: Scope, fastapi_app: FastAPI):
+        super().__init__(app, root_scope=root_scope)
+        self.fastapi_app = fastapi_app
+
+    async def __call__(self, scope: ASGIScope, receive: Receive, send: Send) -> None:
+        scope_type = scope["type"]
+        if scope_type == "lifespan":
+            validate_fastapi_routes(self.fastapi_app, self.root_scope)
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            if scope_type in ("http", "websocket"):
+                scope.pop(_CONNECTION_PROVIDED_KEY, None)
+
+
+def install_fastapi(app: FastAPI, root_scope: Scope) -> FastAPI:
+    """Install Clean IoC lifecycle and request-scope management on ``app``."""
+
+    if getattr(app.state, _INSTALLED_STATE_KEY, False):
+        raise FastAPIIntegrationError("Clean IoC is already installed on this FastAPI application")
+    setattr(app.state, _INSTALLED_STATE_KEY, True)
+    app.add_middleware(_CleanIocMiddleware, root_scope=root_scope, fastapi_app=app)
+    return app
+
+
+def _provide_connection_values(scope: Scope, connection: HTTPConnection) -> None:
+    if connection.scope.get(_CONNECTION_PROVIDED_KEY):
+        return
+    if scope.has_scope_slot(HTTPConnection):
+        scope.provide(HTTPConnection, connection)
+    if isinstance(connection, Request) and scope.has_scope_slot(Request):
+        scope.provide(Request, connection)
+    if isinstance(connection, WebSocket) and scope.has_scope_slot(WebSocket):
+        scope.provide(WebSocket, connection)
+    connection.scope[_CONNECTION_PROVIDED_KEY] = True
+
+
+async def _get_scope(connection: HTTPConnection) -> AsyncGenerator[Scope, None]:
+    """Return the operation scope installed for an HTTP request or WebSocket."""
+
+    try:
+        request_scope = get_scope(connection.scope)
+    except ASGIIntegrationError:
+        raise FastAPIIntegrationError("No Clean IoC request scope; call install_fastapi(app, container)")
+    _provide_connection_values(request_scope, connection)
+    yield request_scope
 
 
 def Resolve(  # noqa: N802
     service_type: type[TService],
-    filter: RegistrationFilter = default_registration_filter,
+    filter: ComponentFilter = default_component_filter,
 ) -> Annotated[TService, params.Depends]:
-    """
-    Resolve a type from the clean_ioc container, acts as a FastAPI dependency.
-    This can be used as a drop in replacement for Depends in FastAPI routes.
+    """Create a FastAPI dependency that resolves ``service_type`` asynchronously."""
 
-    Args:
-        service_type: The type of the service to resolve.
-        filter: The registration filter to apply (default is the default registration filter).
-
-    Returns:
-        Annotated[TService, params.Depends]: A dependency resolver for the given service type and filter.
-    """
-
-    async def resolver(scope: Annotated[Scope, Depends(get_scope)]):
+    async def resolver(scope: Annotated[Scope, Depends(_get_scope, scope="request")]):
         return await scope.resolve_async(service_type, filter=filter)
 
+    setattr(resolver, _RESOLVE_METADATA_KEY, _ResolveRequest(service_type, filter))
     return Depends(resolver)
+
+
+__all__ = [
+    "FastAPIIntegrationError",
+    "Resolve",
+    "install_fastapi",
+    "validate_fastapi_routes",
+]

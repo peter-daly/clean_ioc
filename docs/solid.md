@@ -1,96 +1,57 @@
-# SOLID and Clean IoC
+# Dependency boundaries
 
-Clean IoC helps implement SOLID principles by making dependencies explicit and configurable.
+A dependency-injection container does not make an application modular by itself. Clean IoC provides construction and
+ownership mechanisms that can support a modular design, but interface quality and behavioral contracts remain application
+concerns.
 
-## Single Responsibility Principle (SRP)
+## Composition root
 
-A class should have one reason to change.
-In practice, this means separating business behavior from object construction, configuration, and infrastructure concerns.
-
-Common SRP violation:
-
-- class both performs domain logic and creates/manages its dependencies
-
-How Clean IoC helps:
-
-- constructors declare dependencies
-- container setup handles wiring/lifecycle externally
-- business classes stay focused on behavior
+Object construction, implementation selection, and lifespan policy belong at an application boundary:
 
 ```python
-class UserService:
-    def __init__(self, repo: "UserRepository"):
-        self.repo = repo
+builder.register(UserRepository, SqlUserRepository, lifespan="scoped")
+builder.register(UserService)
+container = builder.build()
 ```
 
-## Open/Closed Principle (OCP)
+`UserService` remains responsible for application behavior. The composition root is responsible for selecting
+`SqlUserRepository` and assigning its ownership boundary.
 
-Swap implementations through registration.
+## Abstractions and implementations
 
-Software should be open for extension, closed for modification.
-Instead of editing existing high-level classes to support a new backend/integration, add a new implementation and change registrations.
-
-Common OCP violation:
-
-- adding `if provider == ...` branching in service classes for each new implementation
-
-```python
-container.register(UserRepository, SqlUserRepository)
-# later
-container.register(UserRepository, InMemoryUserRepository)
-```
-
-## Liskov Substitution Principle (LSP)
-
-Resolve abstractions (`Protocol`/base classes), use compatible implementations.
-
-Any implementation registered for an abstraction should preserve the abstraction's behavioral contract.
-If consumers expect one behavior but a replacement breaks assumptions, substitutability fails.
-
-Common LSP violation:
-
-- implementation raises `NotImplementedError` for required operations of the abstraction
+High-level application services can depend on protocols or base classes while infrastructure supplies concrete
+implementations:
 
 ```python
 from typing import Protocol
 
 
 class Notifier(Protocol):
-    def send(self, message: str) -> None:
-        ...
+    def send(self, message: str) -> None: ...
+
+
+builder.register(Notifier, EmailNotifier)
 ```
 
-## Interface Segregation Principle (ISP)
+Changing the mapping does not require a change to consumers of `Notifier`. Clean IoC checks that the selected component
+can be constructed; it does not verify the behavioral semantics of the implementation.
 
-Split broad APIs and wire focused interfaces to the same concrete instance when useful.
+## Narrow interfaces and shared implementations
 
-Clients should not depend on methods they do not use.
-Prefer small interfaces per use case, then map multiple interfaces to a shared implementation when appropriate.
-
-Common ISP violation:
-
-- a large interface forcing unrelated consumers to depend on unused methods
+Several focused service types can refer to one concrete component when they require shared identity:
 
 ```python
-from clean_ioc.factories import use_from_current_graph
+from clean_ioc.factories import use_component
 
-container.register(Sender, MySender)
-container.register(BatchSender, factory=use_from_current_graph(MySender))
+builder.register(MySender)
+builder.register(Sender, factory=use_component(MySender))
+builder.register(BatchSender, factory=use_component(MySender))
 ```
 
-## Dependency Inversion Principle (DIP)
+`use_component()` creates compiler-visible edges to `MySender` and preserves `once_per_graph` identity during resolution.
 
-High-level modules depend on abstractions; container binds abstractions to concretes.
+## Validation limits
 
-Policies should depend on interfaces/protocols, not concrete low-level details.
-This reduces coupling and makes behavior changes a registration concern rather than a code rewrite.
-
-Common DIP violation:
-
-- service directly instantiates infrastructure classes (`self.repo = SqlRepo()`)
-
-```python
-container.register(UserRepository, SqlUserRepository)
-container.register(UserService)
-service = container.resolve(UserService)
-```
+The compiler validates component selection, dependency cycles, generic specialization, decorator and pre-configuration
+edges, and lifespan ownership. It cannot validate domain behavior, interface cohesion, or substitutability. Those remain
+properties of the application and its tests.

@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose a focused capability or integration.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the application architecture or workflow that is difficult today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API or behavior
+      description: A small code sketch is especially useful.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include direct construction, existing filters/factories, or framework-native injection where relevant.
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Design fit
+      options:
+        - label: Application classes can remain unaware of Clean IoC.
+          required: true
+        - label: The ownership/lifespan implications have been considered.
+          required: true

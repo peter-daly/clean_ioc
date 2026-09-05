@@ -1,148 +1,114 @@
 # Decorators
 
-`register_decorator` wraps resolved service instances.
+Decorators add cross-cutting behavior without modifying application components.
 
 ```python
-from typing import Protocol
-
-from clean_ioc import Container
-```
-
-## Clean IoC decorators vs Python `@decorator`
-
-Clean IoC decorators and Python decorators solve different problems:
-
-- Clean IoC decorators are runtime, instance-level wrappers applied during dependency resolution.
-- Python `@decorator` functions/classes are definition-time wrappers applied when a function/class is declared.
-
-### Clean IoC decorators (`register_decorator`)
-
-- Applied by the container after a service is constructed.
-- Can use dependency injection for decorator dependencies.
-- Can be filtered by registration, node context, and ordering (`position`).
-- Great for DI-driven cross-cutting concerns in object graphs.
-
-### Python decorators (`@my_decorator`)
-
-- Applied directly to functions/classes in source code.
-- Do not require a DI container.
-- Great for local behavior changes such as caching, retries, timing, auth checks, and function instrumentation.
-
-Both are valid and can be used together.
-
-For example, you can decorate a method with `@retry(...)` and still register a Clean IoC decorator around the service instance that owns that method.
-
-## Basic decorator
-
-```python
-class MessageSender(Protocol):
-    def send(self, message: str) -> None:
-        ...
+from clean_ioc import ContainerBuilder, Tag
 
 
-class EmailMessageSender:
-    def send(self, message: str) -> None:
-        print(f"EMAIL: {message}")
+class MessageSender:
+    def send(self, message: str): ...
 
 
-class LoggingMessageSender:
+class EmailMessageSender(MessageSender):
+    def send(self, message: str):
+        return f"email:{message}"
+
+
+class LoggingMessageSender(MessageSender):
     def __init__(self, child: MessageSender):
         self.child = child
 
-    def send(self, message: str) -> None:
-        print("before")
-        self.child.send(message)
-        print("after")
+    def send(self, message: str):
+        print("sending")
+        return self.child.send(message)
 
 
-container = Container()
-container.register(MessageSender, EmailMessageSender)
-container.register_decorator(MessageSender, LoggingMessageSender)
-
-sender = container.resolve(MessageSender)
-sender.send("hello")
+builder = ContainerBuilder()
+builder.register(MessageSender, EmailMessageSender)
+logging_id = builder.register_decorator(MessageSender, LoggingMessageSender)
+container = builder.build()
 ```
+
+The returned ID identifies the decorator definition across every compiled occurrence. The decorated argument is inferred from its service annotation. Missing, ambiguous, and invalid explicit arguments are reported during `build()`; set `decorated_arg="child"` to select one explicitly. Typed callable return annotations are also checked against the decorated service when compatibility can be determined.
 
 ## Ordering
 
-Lower `position` runs first. Highest position becomes outermost wrapper.
+Treat `position` as a decorator z-index: higher values are further outside and lower values are closer to the core component.
 
 ```python
-class A(Protocol):
-    def run(self) -> None:
-        ...
+TRANSACTION_POSITION = 100
+RESILIENCE_POSITION = 500
+OBSERVABILITY_POSITION = 1000
+
+builder.register_decorator(Service, TransactionDecorator, position=TRANSACTION_POSITION)
+builder.register_decorator(Service, RetryDecorator, position=RESILIENCE_POSITION)
+builder.register_decorator(Service, MetricsDecorator, position=OBSERVABILITY_POSITION)
+```
+
+Resolution produces `MetricsDecorator(RetryDecorator(TransactionDecorator(core)))`. Equal positions retain registration order from outside to inside. Named constants let independently authored bundles agree on broad layers while still choosing local values within a layer.
+
+## Static selection
+
+Use a component predicate with `when=`:
+
+```python
+import clean_ioc.component_filters as cf
+
+builder.register_decorator(
+    MessageSender,
+    RetryDecorator,
+    when=cf.has_tag("network", "remote"),
+)
+```
+
+Decorator predicates can inspect generic mappings, parents, and dependency descendants. Every predicate sees the completed undecorated core subtree; dependencies introduced by decorators are excluded from that decision.
+
+`when=` is the only V2 decorator-selection predicate. V1's `registration_filter` and `decorator_node_filter` parameters should be combined into it during migration.
+
+## IDs, metadata, and builder customization
+
+Decorators may have their own names and tags for inspection and reusable bundle conventions:
+
+```python
+metrics_id = builder.register_decorator(
+    Service,
+    MetricsDecorator,
+    name="service-metrics",
+    tags=[Tag("concern", "observability")],
+    position=OBSERVABILITY_POSITION,
+)
+
+builder.patch_decorator(Service, metrics_id, position=1100)
+```
+
+Use `remove_decorator(Service, metrics_id)` before build to suppress a definition. A `ScopeBuilder` may patch or remove an inherited decorator for plans it owns. Existing parent-owned singletons remain anchored to their root activation plan and are not rewired.
+
+## Compiled decorator dependencies
+
+Dependencies other than the decorated argument compile like ordinary component edges. The decorator inherits the core component's lifespan and participates in the same cleanup owner.
+
+Decorators may be classes or typed callables. Async decorator activation is supported through `resolve_async()`.
+
+## Open-generic policies
+
+Register an open service type once:
+
+```python
+from typing import Generic, TypeVar
 
 
-class BaseA:
-    def run(self) -> None:
-        print("base")
+TCommand = TypeVar("TCommand")
 
 
-class D1:
-    def __init__(self, child: A):
+class LoggingHandlerDecorator(Generic[TCommand]):
+    def __init__(self, child: CommandHandler[TCommand]):
         self.child = child
 
-    def run(self) -> None:
-        print("d1")
-        self.child.run()
 
-
-class D2:
-    def __init__(self, child: A):
-        self.child = child
-
-    def run(self) -> None:
-        print("d2")
-        self.child.run()
-
-
-container = Container()
-container.register(A, BaseA)
-container.register_decorator(A, D1, position=0)
-container.register_decorator(A, D2, position=10)
-
-root = container.resolve(A)
-root.run()
-# d2
-# d1
-# base
+builder.register_decorator(CommandHandler, LoggingHandlerDecorator)
 ```
 
-## Explicit `decorated_arg`
+The compiler specializes this definition for every closed `CommandHandler[T]` plan it encounters. This includes handlers supplied by subclass discovery, explicit closed registrations, open or closed factories, and fallback registrations. Generic callable decorators are supported by the same `register_decorator()` API.
 
-If auto-detection cannot find the decorated parameter, set it explicitly.
-
-```python
-class SenderDecorator:
-    def __init__(self, wrapped: MessageSender):
-        self.wrapped = wrapped
-
-    def send(self, message: str) -> None:
-        self.wrapped.send(message)
-
-
-container = Container()
-container.register(MessageSender, EmailMessageSender)
-container.register_decorator(MessageSender, SenderDecorator, decorated_arg="wrapped")
-```
-
-## Function decorators
-
-Decorator callables are supported as well.
-
-```python
-def decorate_sender(child: MessageSender):
-    class Decorated:
-        def send(self, message: str) -> None:
-            print("function decorator")
-            child.send(message)
-
-    return Decorated()
-
-
-container = Container()
-container.register(MessageSender, EmailMessageSender)
-container.register_decorator(MessageSender, decorate_sender, decorated_arg="child")
-
-container.resolve(MessageSender).send("hello")
-```
+Graph text lists decorators outside-to-inside and includes their positions. Component inspection and semantic manifests also expose decorator position, name, tags, dependencies, async requirements, and cleanup ownership.

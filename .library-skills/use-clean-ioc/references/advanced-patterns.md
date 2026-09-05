@@ -1,251 +1,85 @@
-# Advanced Clean IoC Patterns
-
-Use this reference only when the task requires behavior beyond direct registration, resolution, lifespans, and scopes.
-
-## Contents
-
-- [Factories and cleanup](#factories-and-cleanup)
-- [Dependency settings](#dependency-settings)
-- [Registration and node filtering](#registration-and-node-filtering)
-- [Decorators](#decorators)
-- [Bundles and pre-configuration](#bundles-and-pre-configuration)
-- [Subclass and generic discovery](#subclass-and-generic-discovery)
-- [Graph-aware injected types](#graph-aware-injected-types)
-- [Factory helpers](#factory-helpers)
-- [Value factories](#value-factories)
+# Advanced Clean IoC 2 patterns
 
 ## Factories and cleanup
 
-Type-annotate factory parameters so Clean IoC can inject them:
+Type-annotate factory parameters; they become compiled component edges. Sync/async functions, generators, and context-manager-shaped callables are supported. Factory code remains dormant during `build()`.
+
+Closed generic services automatically specialize ordinary TypeVars in factory dependencies. An open service registration is a reusable template for closed types encountered as dependencies during build; register a closed service explicitly when it must be resolved as a root. Use `factory_specialization=SomeClosedGeneric` only when the service and factory result cannot supply every binding. Unresolved or conflicting TypeVars fail the build; ParamSpec and TypeVarTuple are unsupported.
+
+Cleanup follows the cache owner:
+
+- scoped finalizer → owning scope;
+- root singleton finalizer → container;
+- `ScopeBuilder` singleton finalizer → built overlay scope.
+
+Keep acquisition and release in one generator or context-manager factory. Registration-level cleanup callbacks are not part of V2.
+
+An inherited root singleton remains anchored to its root activation plan and owner inside a `ScopeBuilder` overlay; overlay registrations and decorators do not rewire it. Singletons introduced by the overlay belong to the built scope. A built overlay starts a fresh scoped cache boundary, while ordinary nested scopes retain scoped inheritance.
+
+`once_per_graph` state cannot appear anywhere below a scoped or singleton component, including through transient components, factories, decorators, collections, provider fallbacks, or pre-configurations. Promote that dependency to the owner's lifespan or shorten the owner. Plain transient dependencies remain valid below long-lived components, and shorter-lived components may depend on scoped or singleton components.
+
+## Dependency settings and runtime providers
+
+Inline fixed values directly:
 
 ```python
-def client_factory(settings: Settings, transport: Transport) -> Client:
-    return Client(settings, transport)
-
-
-container.register(Client, factory=client_factory)
+builder.register(Client, dependency_config={"timeout": 5.0})
 ```
 
-Use `resolve_async(...)` when a factory is async. Use a generator, `@contextmanager`, async generator, or `@asynccontextmanager` to colocate acquisition and cleanup. Match the context type to the execution path and always exit the owning scope or container.
+Use `DependencySettings` for a component filter, component-list modifier, or value provider. Providers run at activation with a static `DependencyContext`; returning `EMPTY` executes the fallback edge compiled during build.
 
-Cleanup ownership follows lifespan:
-
-- `scoped` finalizers run when the owning scope exits;
-- `singleton` finalizers run when the root container exits;
-- resources resolved without exiting their owner do not flush automatically.
-
-## Dependency settings
-
-Inline a fixed constructor or factory argument directly in a registration's `dependency_config`:
-
-```python
-container.register(
-    Client,
-    dependency_config={"x": 12345},
-)
-```
-
-Use the exact parameter name as the key. A non-`DependencySettings` entry is converted internally to `DependencySettings(value_factory=constant(value))`, so it supplies that object unchanged and overrides any declared parameter default.
-
-Use an explicit `DependencySettings` when a parameter needs resolution behavior rather than a fixed value:
-
-```python
-from clean_ioc import Container, DependencySettings
-from clean_ioc.registration_filters import with_name
-
-container.register(str, instance="postgresql://prod", name="database_url")
-container.register(
-    Database,
-    dependency_config={
-        "url": DependencySettings(filter=with_name("database_url")),
-    },
-)
-```
-
-Each setting can define:
-
-- `filter`: select registrations for that parameter;
-- `value_factory`: supply or alter a parameter value;
-- `list_modifier`: reorder or reduce registrations before resolving a collection.
-
-Apply the configuration to the registration whose constructor/factory owns that parameter.
-
-## Registration and node filtering
-
-Use registration filters for top-down selection. Public helpers live in `clean_ioc.registration_filters`, including `with_name`, `with_id`, `has_tag`, `with_implementation`, and lifespan/name predicates. These predicates support composition where provided by `funcie`:
-
-```python
-from clean_ioc.registration_filters import has_tag, with_name
-
-production = has_tag("environment", "production")
-primary_or_fallback = with_name("primary") | with_name("fallback")
-```
-
-Pass filters to `resolve(...)`, `resolve_async(...)`, `Resolve(...)`, factory helpers, or `DependencySettings` according to where selection belongs.
-
-Use `parent_node_filter` for bottom-up selection, where a child registration decides whether it applies to its current parent:
-
-```python
-import clean_ioc.node_filters as nf
-
-container.register(
-    Gateway,
-    InternalGateway,
-    parent_node_filter=nf.implementation_type_is(InternalService),
-)
-```
-
-Use node filtering only when parent context genuinely changes the implementation. Prefer named/tagged top-down configuration for simpler cases.
-
-Use `DependencySettings(list_modifier=...)` when collection order or reduction is domain-specific. Keep modifiers deterministic and return a list of registrations.
+Prefer declared slots for request/framework values shared across components.
 
 ## Decorators
 
-Register Clean IoC decorators to wrap resolved service instances and inject additional decorator dependencies:
-
 ```python
-class LoggingHandler:
-    def __init__(self, child: Handler, logger: Logger):
-        self.child = child
-        self.logger = logger
-
-
-container.register(Handler, ConcreteHandler)
-container.register_decorator(Handler, LoggingHandler)
+builder.register(Handler, ConcreteHandler)
+builder.register_decorator(Handler, LoggingHandler, decorated_arg="child")
 ```
 
-Set `decorated_arg` when the wrapped parameter cannot be inferred from its annotation. Apply `registration_filter` to choose registrations and `decorator_node_filter` to choose graph positions.
+Treat `position` as a z-index: higher values are outside, lower values are nearest the core, and equal values retain registration order outside-to-inside. `when=` predicates are evaluated against the completed undecorated core subtree, before decorator dependencies are added. This prevents one decorator from making another decorator eligible.
 
-For multiple decorators, lower `position` values are applied first and higher values become outer wrappers. Test the resulting chain order explicitly.
+`register_decorator()` returns a stable definition ID for `patch_decorator()` and `remove_decorator()`. Definitions may have their own name and tags. Invalid decorated arguments and generic bindings fail during build with `invalid-decorator` findings.
 
-Function, generator, and async generator decorators are supported. Use the same sync/async ownership rules as factories.
+Register an open generic service with `register_decorator()` to define one policy for every closed plan the compiler encounters, including explicit and factory registrations. `register_generic_decorator()` is a compatibility wrapper.
 
-## Bundles and pre-configuration
+## Generic discovery
 
-Use a bundle to group related registrations:
+`register_subclasses(...)` and `register_generic_subclasses(...)` queue discovery rules. Import candidate modules before `build()`; the build takes the live subclass snapshot, materializes matching registrations, validates them, and freezes the plan. Narrow discovery with `subclass_type_filter` from `clean_ioc.type_filters`. Use `fallback_type=` for unmatched closed requests. Open decorator rules specialize from the resulting compiled plans rather than subclass discovery.
 
-```python
-def application_bundle(container: Container) -> None:
-    container.register(Repository, SqlRepository)
-    container.register(Service)
+The registration and decorator rules share the same build snapshot, so their declaration order does not control which concrete types are seen. Generated concrete decorator types are memoized process-wide. Use `types.new_class()` for dynamic parameterized generic bases, and retain dynamic class objects until build.
 
+The compiler creates occurrence-specific component plans, so the same stable component ID may have different parents and generic mappings under different roots.
 
-container.apply_bundle(application_bundle)
-```
+## Entry points and compiler tooling
 
-Use classes from `clean_ioc.bundles` when bundle execution must be restricted to once per class or instance.
+Call `builder.mark_entrypoint(Service)` for each public resolution request. Mark `list[Service]` when every matching implementation is an entry point. Markers focus `container.graph` renderers and enable `unreachable-component` warnings; every visible root remains compiled, validated, and resolvable.
 
-When application setup must customize part of a reusable bundle, retain the ID returned by `register(...)` and patch that registration before resolving it:
+Use `container.build_report` after success or `ContainerBuildError.report` after failure for structured issues. Independent root errors are aggregated. Use `container.graph.to_text()`, `.to_mermaid()`, or `.manifest()` for the entry-point view and pass `all_roots=True` for the complete root set. Manifests are deterministic and redact configured values. Compare them with `current.diff(baseline)`.
 
-```python
-from clean_ioc import Tag
+For CI, expose a builder or zero-argument composition factory as `module:object`, then run `clean-ioc check TARGET --strict`, `clean-ioc graph TARGET --format json -o graph.json`, or `clean-ioc diff TARGET graph.json`. Warning codes may be ignored explicitly; errors cannot. Baselines never update implicitly.
 
-registration_id = container.register(
-    Client,
-    dependency_config={"endpoint": "https://default.example"},
-    tags=[Tag("source", "bundle")],
-)
+## Bundles and component patches
 
-container.patch_registration(
-    Client,
-    registration_id,
-    dependency_config={"endpoint": "https://application.example"},
-    tags=[Tag("source", "application")],
-)
-```
+Bundles accept the shared `ComponentBuilder` protocol and are composition-only. Apply them to `ContainerBuilder` or `ScopeBuilder`, never a runtime.
 
-Patches shallow-merge dependency settings and merge tags by tag name. They may also replace the lifespan. Use `RemoveDependencySetting` to remove a dependency override. Patch only the registry that owns the ID and always patch before first resolution; late patches raise `RuntimeError`.
-
-Use `pre_configure(...)` for setup that must run before matching services are first built:
+Retain the ID returned by `register(...)` when a reusable bundle needs a pre-build customization:
 
 ```python
-container.pre_configure(Logger, configure_logging)
+component_id = builder.register(Client)
+builder.patch_component(Client, component_id, lifespan="singleton")
 ```
 
-Pre-configuration functions can receive injected dependencies. Use `registration_filter` to limit applicability. Set `continue_on_failure=True` only when setup failure is intentionally optional.
+Use `RemoveDependencySetting` to remove an inherited dependency override. Patches are unavailable after successful build.
 
-## Subclass and generic discovery
+## Pre-configuration
 
-Use `register_subclasses(Base)` to register imported, concrete subclasses as implementations of `Base`. Apply `subclass_type_filter` to narrow discovery.
+`pre_configure(Service, function, when=...)` returns a stable definition ID, compiles the function's dependencies as a singleton path, and runs the function once before an applicable component's first activation. Scoped and `once_per_graph` dependencies are invalid anywhere on that path. Passing several service types creates one shared initializer; applicable initializers run in declaration order, and concurrent triggers share one in-flight attempt. A propagated failure is retryable. `continue_on_failure=True` logs one tolerated failure and marks the initializer complete. Cleanup belongs to the builder layer that declared the initializer. Overlays retain an inherited initializer's frozen parent dependency plan; declare an initializer on the `ScopeBuilder` when it only applies to overlay components.
 
-Use `register_generic_subclasses(OpenGeneric)` for closed generic mappings:
+## Dynamic selection inside activation
 
-```python
-container.register_generic_subclasses(Handler)
-handler = container.resolve(Handler[CreateUser])
-```
+Inject `ResolutionContext` only when a component must select among already-compiled roots at runtime. It preserves `once_per_graph` identity and cannot mutate or compile composition.
 
-Import every module defining candidate subclasses before registration. Discovery cannot find classes that Python has not imported.
+Factory helpers such as `use_registered(...)` use the active compiled resolution context internally.
 
-Use `fallback_type=` for generic combinations with no exact discovered implementation. Exact closed mappings take precedence. Without a mapping or fallback, resolution raises `CannotResolveError`.
-
-Register generic decorators after subclass discovery:
-
-```python
-container.register_generic_subclasses(Handler)
-container.register_generic_decorator(Handler, LoggingHandlerDecorator)
-```
-
-Do not assume a generic decorator applies to unmatched fallback-only combinations; they are not part of the discovered closed mapping.
-
-## Graph-aware injected types
-
-Inject these public types only for cases that cannot remain ordinary constructor injection:
-
-- `Resolver`: resolve dynamically against the current container or scope;
-- `CurrentGraph`: find an instance already created within the active graph;
-- `DependencyContext`: inspect the current parent/dependency node;
-- `Container`, `Scope`, or `Registrator`: access their active registered instances directly.
-
-Use `Lifespan.transient` for dependencies whose factories derive values from `DependencyContext`, because graph context can vary between injection sites.
-
-Avoid turning graph-aware types into a service locator throughout application code. Confine dynamic resolution to composition boundaries and factories.
-
-## Factory helpers
-
-Import reusable factory builders from `clean_ioc.factories`:
-
-- `use_registered(...)` / `use_registered_async(...)`: expose another registered service, optionally with a filter;
-- `use_from_current_graph(...)` / `use_from_current_graph_async(...)`: reuse an object already created in the active graph through another service type;
-- `create_type_mapping(...)` / `create_type_mapping_async(...)`: resolve all matching services and key them into a dictionary.
-
-Example:
-
-```python
-from clean_ioc.factories import use_registered
-
-container.register(ConcreteSender)
-container.register(Sender, factory=use_registered(ConcreteSender))
-```
-
-Choose the async helper when the delegated resolution graph is asynchronous.
-
-## Value factories
-
-Prefer an inline `dependency_config` value for a fixed override:
-
-```python
-container.register(Client, dependency_config={"timeout": 5.0})
-```
-
-Import value factories as a module when the behavior itself must be represented explicitly:
-
-```python
-import clean_ioc.value_factories as vf
-from clean_ioc import DependencySettings
-
-container.register(
-    Client,
-    dependency_config={
-        "timeout": DependencySettings(value_factory=vf.set_value(5.0)),
-    },
-)
-```
-
-Use:
-
-- `vf.set_value(value)` to construct an explicit constant value factory;
-- `vf.use_default_value` to force the callable's declared default;
-- `vf.dont_use_default_value` to ignore the default and resolve the parameter from registrations.
-
-Prefer inline values for ordinary fixed overrides, a custom value factory for context-sensitive parameter overrides, and a registration factory for object construction. Do not mix those responsibilities.
+Avoid broad service-locator usage. Prefer explicit constructor dependencies and component filters when selection is static.

@@ -1,65 +1,133 @@
-# Clean IoC
+---
+description: Typed Python dependency injection with build-time component compilation, immutable runtime plans, explicit lifespans, generics, decorators, and FastAPI scopes.
+---
 
-Clean IoC is a dependency injection container for Python that keeps application code framework-agnostic.
+# Clean IoC 2
 
-It focuses on:
+Clean IoC is a typed dependency-injection container for Python. Version 2 separates mutable composition in
+`ContainerBuilder` from immutable runtime execution in `Container`. Application classes use standard constructors and
+do not need to inherit from Clean IoC types or use injection decorators.
 
-- constructor/factory injection using type hints
-- explicit registration and resolution
-- lifecycle control with `transient`, `once_per_graph`, `scoped`, `singleton`
-- filtering, decorators, and generic registration helpers
-
-## Install
+Its complete compiled graph is also an application policy surface: custom rules can enforce architecture, composition
+conventions, and source-level checks before runtime or in CI.
 
 ```bash
 pip install clean_ioc
 ```
 
-FastAPI integration:
-
-```bash
-pip install "clean_ioc[fastapi]"
-```
-
-## Quick Start
+## Minimal container
 
 ```python
-from clean_ioc import Container
+from typing import Protocol
+
+from clean_ioc import ContainerBuilder
 
 
-class UserRepository:
-    def get_user(self, user_id: str) -> dict:
-        return {"id": user_id, "name": "Ada"}
+class UserRepository(Protocol):
+    def get_name(self, user_id: str) -> str: ...
+
+
+class SqlUserRepository:
+    def get_name(self, user_id: str) -> str:
+        return "Ada"
 
 
 class UserService:
-    def __init__(self, repo: UserRepository):
-        self.repo = repo
-
-    def get_user(self, user_id: str) -> dict:
-        return self.repo.get_user(user_id)
+    def __init__(self, repository: UserRepository):
+        self.repository = repository
 
 
-container = Container()
-container.register(UserRepository)
-container.register(UserService)
+builder = ContainerBuilder()
+builder.register(UserRepository, SqlUserRepository, lifespan="scoped")
+builder.register(UserService)
 
-service = container.resolve(UserService)
-print(service.get_user("123"))
+container = builder.build()
+
+with container.new_scope() as scope:
+    service = scope.resolve(UserService)
+    assert service.repository.get_name("123") == "Ada"
 ```
 
-## Core Concepts
+`build()` specializes types, constructs occurrence-specific `Component` trees, evaluates filters, checks cycles and
+captive lifespans, evaluates explicit `derive(...)` argument policies, and freezes activation instructions. It does not
+invoke user constructors, factories, generators, or context managers.
 
-1. Register dependencies on `Container`/`Scope`.
-2. Resolve by type.
-3. Let the container recursively resolve child dependencies.
-4. Control reuse with lifespans.
+Runtime resolution executes the compiled plan without rediscovering registrations or allocating graph nodes.
 
-## Next Steps
+## Composition and runtime APIs
 
-- [Simple Uses](./simple-uses.md)
-- [Factories](./factories.md)
-- [Lifespans](./lifespans.md)
-- [Scopes](./scopes.md)
-- [Decorators](./decorators.md)
-- [Generics](./generics.md)
+| API | Responsibility |
+| --- | --- |
+| `ContainerBuilder` | Register, decorate, configure, declare slots, and compile the root plan |
+| `Container` | Resolve from the immutable root plan and own root singletons |
+| `ScopeBuilder` | Compile a child overlay without mutating its parent |
+| `Scope` | Resolve, cache scoped values, provide declared slots, and run cleanup |
+| `Component` | Read-only static occurrence model used by every filter and query |
+
+## Build-time validation
+
+```python
+builder = ContainerBuilder()
+builder.register(UserService)  # UserRepository is missing
+
+container = builder.build()  # raises ContainerBuildError
+```
+
+`build()` raises `ContainerBuildError` with a structured report for invalid plans. A failed build leaves the builder
+reusable. After a successful build, the builder is immutable and cannot be built again.
+
+## Core capabilities
+
+| Capability | Use it for |
+| --- | --- |
+| Four explicit lifespans | Settings, clients, request state, units of work, ordinary services |
+| Sync and async factories | Resource creation and deterministic cleanup |
+| Unified component filters | Root, dependency, parent, decorator, and pre-configuration selection |
+| Typed decorator chains | Logging, metrics, retries, caching, authorization |
+| Generic discovery | CQRS handlers, event consumers, validators, pipelines |
+| Declared scope slots | ASGI connections, FastAPI requests, tenant IDs, tracing context |
+| Typed deferred providers | On-demand sync or async activation with a frozen target plan |
+| Compiled scope overlays | Tenant, test, and plugin-specific composition |
+| Assemblies | Compiler-enforced private-by-default composition boundaries |
+| Custom graph validation | Executable architecture, conventions, and CI-only source checks |
+
+## Enforce application-specific architecture
+
+Custom validation rules receive the complete immutable compiled graph and return structured findings. They can enforce
+module boundaries, registration uniqueness, required decorators, naming and tag conventions, or policies found by
+inspecting implementation ASTs. Ordinary rules run during `build()`; expensive rules marked `strict_only=True` run in
+the strict-by-default `clean-ioc check` command instead.
+
+```python
+def forbid_domain_to_infrastructure(context):
+    for visit in context.graph.walk():
+        if len(visit.components) < 2:
+            continue
+        owner, dependency = visit.components[-2:]
+        if owner.implementation_type.__module__.startswith("my_app.domain") and (
+            dependency.implementation_type.__module__.startswith("my_app.infrastructure")
+        ):
+            yield visit.issue(
+                "my-app-layer-boundary",
+                "Domain code cannot depend directly on infrastructure",
+            )
+
+
+builder.add_validation_rule(forbid_domain_to_infrastructure)
+```
+
+See [Custom graph validation](custom-validation.md) for a complete rule cookbook and CI setup.
+
+## Documentation
+
+- [Registration patterns](simple-uses.md) — registration forms and the build boundary
+- [Lifespans](lifespans.md) and [scopes](scopes.md) — ownership, slots, and overlays
+- [Filtering](advanced/filtering.md) — the unified `Component` model
+- [Factories](factories.md) — sync, async, generators, and context managers
+- [Special dependency types](advanced/special-dependency-types.md) — typed providers and runtime contexts
+- [Decorators](decorators.md) and [generics](generics.md) — compiled handler pipelines
+- [Assemblies](assemblies.md) — private registrations, explicit exposures, and declared cross-boundary uses
+- [Custom graph validation](custom-validation.md) — executable architecture and policy recipes
+- [ASGI](extensions/asgi.md) — dependency-free lifespan and operation scopes
+- [FastAPI](extensions/fastapi.md) — request scopes and explicit request values
+- [Benchmarks](benchmarks.md) — build, runtime, and allocation experiments

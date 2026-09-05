@@ -1,24 +1,28 @@
-# Inversion of Control (IoC)
+# Inversion of control
 
-Inversion of Control means object creation/wiring is delegated to a coordinator (a container) instead of being hardcoded inside business classes.
+Inversion of control separates object construction from object behavior. Application classes declare their dependencies;
+an external composition root selects implementations and controls their ownership.
 
-## Without IoC
+## Direct construction
 
 ```python
 class UserService:
     def __init__(self):
-        self.repo = SqlUserRepository()  # hardcoded dependency
+        self.repository = SqlUserRepository()
 ```
 
-## With IoC
+`UserService` selects and constructs its own repository. Changing the repository or its lifespan requires changing the
+service.
+
+## Container-managed composition
 
 ```python
-from clean_ioc import Container
+from clean_ioc import ContainerBuilder
 
 
 class UserService:
-    def __init__(self, repo: "UserRepository"):
-        self.repo = repo
+    def __init__(self, repository: "UserRepository"):
+        self.repository = repository
 
 
 class UserRepository:
@@ -29,15 +33,19 @@ class SqlUserRepository(UserRepository):
     pass
 
 
-container = Container()
-container.register(UserRepository, SqlUserRepository)
-container.register(UserService)
+builder = ContainerBuilder()
+builder.register(UserRepository, SqlUserRepository)
+builder.register(UserService)
+container = builder.build()
 
 service = container.resolve(UserService)
 ```
 
-## Why this matters in Clean IoC
+The application class defines the dependency contract. The builder defines the implementation mapping, and the compiled
+container performs activation.
 
-- Dependencies are explicit in type hints.
-- Wiring logic lives in container setup, not business classes.
-- Swapping implementations is a registration change, not a code rewrite.
+## Clean IoC boundary
+
+Clean IoC applies inversion of control to construction, selection, lifespan caching, and cleanup. It does not control
+application behavior after activation. Container access normally remains in the composition root or framework boundary;
+application classes receive their collaborators through constructors.

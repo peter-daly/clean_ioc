@@ -1,102 +1,75 @@
 # Bundles
 
-Bundles group related registrations.
-
-A bundle is any callable with signature `Callable[[Container], None]`.
+A bundle packages repeatable composition against the shared `ComponentBuilder` protocol. The same bundle can target a root `ContainerBuilder` or an experimental `ScopeBuilder`.
 
 ```python
-from dataclasses import dataclass
+from clean_ioc import ComponentBuilder, ContainerBuilder
+from clean_ioc.bundles import BaseBundle
 
-from clean_ioc import Container
-from clean_ioc.bundles import OnlyRunOncePerClassBundle
+
+class ClientBundle(BaseBundle):
+    def apply(self, builder: ComponentBuilder):
+        builder.register(ClientConfig, instance=ClientConfig())
+        builder.register(ApiClient)
+
+
+builder = ContainerBuilder()
+builder.apply_bundle(ClientBundle())
+container = builder.build()
 ```
 
-## Function bundle
+Bundles are composition-only. They are never injectable at runtime and cannot mutate a built container or scope.
+An existing bundle can also be used unchanged as an assembly's `root_bundle`; see
+[Assemblies and visibility](assemblies.md). The assembly applies that bundle to an isolated private builder, while
+nested bundles remain in the same assembly and retain their provenance path.
+
+The shared protocol also supports custom validation rules, so a bundle can install organization or framework policy
+along with its registrations:
 
 ```python
-class ClientDependency:
-    def get_int(self) -> int:
-        return 10
-
-
-class Client:
-    def __init__(self, dep: ClientDependency):
-        self.dep = dep
-
-    def get_number(self) -> int:
-        return self.dep.get_int()
-
-
-def client_bundle(c: Container):
-    c.register(ClientDependency)
-    c.register(Client)
-
-
-container = Container()
-container.apply_bundle(client_bundle)
-
-client = container.resolve(Client)
-print(client.get_number())
+class ArchitecturePolicyBundle(BaseBundle):
+    def apply(self, builder: ComponentBuilder):
+        builder.add_validation_rule(enforce_architecture)
+        builder.add_validation_rule(inspect_all_source, strict_only=True)
 ```
 
-## Class-based bundle
+Rules installed on a root builder are inherited by scope overlays and validate each overlay's complete compiled graph.
+The `strict_only=True` form lets a bundle install an expensive CI policy without adding it to application startup.
+See [Custom graph validation](custom-validation.md#package-rules-in-bundles) for a complete policy-bundle example.
+
+## Run-once policies
+
+Use `OnlyRunOncePerInstanceBundle` when one bundle object may be applied repeatedly but should compose each builder once:
 
 ```python
-@dataclass
-class ClientConfig:
-    base_url: str
+from clean_ioc.bundles import OnlyRunOncePerInstanceBundle
 
 
-class ApiClient:
-    def __init__(self, config: ClientConfig):
-        self.base_url = config.base_url
-
-
-class ApiBundle(OnlyRunOncePerClassBundle):
-    def __init__(self, config: ClientConfig):
-        self.config = config
-
-    def apply(self, c: Container):
-        c.register(ClientConfig, instance=self.config)
-        c.register(ApiClient)
-
-
-container = Container()
-cfg = ClientConfig(base_url="https://example.com")
-
-container.apply_bundle(ApiBundle(cfg))
-container.apply_bundle(ApiBundle(cfg))  # ignored by OnlyRunOncePerClassBundle
-
-client = container.resolve(ApiClient)
-print(client.base_url)
+class InfrastructureBundle(OnlyRunOncePerInstanceBundle):
+    def apply(self, builder: ComponentBuilder):
+        builder.register(Database)
+        builder.register(Repository)
 ```
 
-## Customizing a bundle registration
+Use `OnlyRunOncePerClassBundle` when every instance of the bundle class shares one identifier per builder. Extend `RunOnceBundle` and implement `get_bundle_identifier()` for a custom policy.
 
-A configurable bundle can retain a registration ID so application setup can patch selected registration details before anything is resolved:
+Run history is keyed by the builder's ID, not by a runtime container.
+
+## Bundle-owned component IDs
+
+`register(...)` returns a component ID. A bundle may retain it for a later pre-build patch:
 
 ```python
-class ConfigurableApiBundle:
-    def __init__(self):
-        self.api_client_registration_id: str | None = None
+class ServiceBundle(BaseBundle):
+    component_id: str
 
-    def __call__(self, c: Container):
-        self.api_client_registration_id = c.register(ApiClient)
+    def apply(self, builder: ComponentBuilder):
+        self.component_id = builder.register(Service)
 
 
-configurable_bundle = ConfigurableApiBundle()
-container = Container()
-container.apply_bundle(configurable_bundle)
-
-assert configurable_bundle.api_client_registration_id is not None
-container.patch_registration(
-    ApiClient,
-    configurable_bundle.api_client_registration_id,
-    dependency_config={"config": cfg},
-)
-
-client = container.resolve(ApiClient)
-print(client.base_url)
+bundle = ServiceBundle()
+builder = ContainerBuilder()
+builder.apply_bundle(bundle)
+builder.patch_component(Service, bundle.component_id, lifespan="singleton")
+container = builder.build()
 ```
-
-Apply every patch before resolving the registration. Once a registration has created an instance, Clean IoC rejects further patches so cached lifespans and teardown ownership cannot become stale.

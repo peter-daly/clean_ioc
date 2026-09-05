@@ -1,295 +1,386 @@
-"""Validate key documentation examples as runnable smoke tests."""
+"""Validate the documented Clean IoC 2 composition and runtime boundaries."""
 
 import asyncio
 from contextlib import asynccontextmanager, contextmanager
-from typing import Generic, Protocol, TypeVar
+from typing import Generic, TypeVar
 
-import clean_ioc.value_factories as vf
-from clean_ioc import Container, DependencyContext, DependencySettings, Lifespan, Resolver, Tag
-from clean_ioc.factories import use_from_current_graph
-from clean_ioc.registration_filters import has_tag, with_name
+import clean_ioc.component_filters as cf
+from clean_ioc import (
+    INJECT,
+    Assembly,
+    BuildIssue,
+    Component,
+    ContainerBuilder,
+    ContainerBuildError,
+    Expose,
+    IssueSeverity,
+    Use,
+    ValidationContext,
+    build_arg,
+    derive,
+    generic_arg,
+    inject,
+)
 
 
-def _assert(condition: bool, message: str):
-    if not condition:
-        raise AssertionError(message)
-
-
-def validate_registration_modes():
-    class Repo:
-        def value(self) -> int:
-            return 1
-
-    class RepoImpl(Repo):
+def validate_build_and_resolution() -> None:
+    class Repository:
         pass
 
     class Service:
-        def __init__(self, repo: Repo):
-            self.repo = repo
+        def __init__(self, repository: Repository):
+            self.repository = repository
 
-    class Config:
-        def __init__(self, env: str):
-            self.env = env
+    builder = ContainerBuilder()
+    builder.register(Repository)
+    builder.register(Service)
+    container = builder.build()
 
-    container = Container()
-    container.register(Repo, RepoImpl)
-    container.register(Service)
-    _assert(isinstance(container.resolve(Service).repo, RepoImpl), "implementation registration failed")
-
-    container = Container()
-    container.register(RepoImpl)
-    _assert(isinstance(container.resolve(RepoImpl), RepoImpl), "concrete registration failed")
-
-    container = Container()
-
-    def config_factory() -> Config:
-        return Config(env="prod")
-
-    container.register(Config, factory=config_factory)
-    _assert(container.resolve(Config).env == "prod", "factory registration failed")
-
-    container = Container()
-    cfg = Config(env="test")
-    container.register(Config, instance=cfg)
-    _assert(container.resolve(Config) is cfg, "instance registration failed")
+    assert isinstance(container.resolve(Service).repository, Repository)  # noqa: S101
 
 
-def validate_filtering():
-    container = Container()
-    container.register(str, instance="dev", name="dev")
-    container.register(str, instance="prod", tags=[Tag("env", "prod")])
-    container.register(str, instance="staging", tags=[Tag("env", "staging")])
-
-    _assert(container.resolve(str, filter=with_name("dev")) == "dev", "with_name filtering failed")
-    _assert(container.resolve(str, filter=has_tag("env", "prod")) == "prod", "tag filtering failed")
-
-
-def validate_lifespans_and_scopes():
-    class A:
+def validate_failed_builder_is_reusable() -> None:
+    class Missing:
         pass
 
-    container = Container()
-    container.register(A, lifespan=Lifespan.singleton)
-    _assert(container.resolve(A) is container.resolve(A), "singleton reuse failed")
+    class Service:
+        def __init__(self, missing: Missing):
+            self.missing = missing
 
-    container = Container()
-    container.register(A, lifespan=Lifespan.transient)
-    _assert(container.resolve(A) is not container.resolve(A), "transient reuse failed")
+    builder = ContainerBuilder()
+    builder.register(Service)
+    try:
+        builder.build()
+    except ContainerBuildError:
+        builder.register(Missing)
+    else:
+        raise AssertionError("missing dependency did not fail build")
 
-    container = Container()
-    container.register(A, lifespan=Lifespan.scoped)
-    with container.new_scope() as s1:
-        a1 = s1.resolve(A)
-        a2 = s1.resolve(A)
-        _assert(a1 is a2, "scoped same-scope reuse failed")
-    with container.new_scope() as s2:
-        a3 = s2.resolve(A)
-    _assert(a1 is not a3, "scoped cross-scope isolation failed")
+    assert isinstance(builder.build().resolve(Service).missing, Missing)  # noqa: S101
 
 
-def validate_decorators():
-    class Sender(Protocol):
-        def send(self, text: str) -> str: ...
-
-    class BaseSender:
-        def send(self, text: str) -> str:
-            return f"base:{text}"
-
-    class LogDec:
-        def __init__(self, child: Sender):
-            self.child = child
-
-        def send(self, text: str) -> str:
-            return f"log:{self.child.send(text)}"
-
-    class MetricsDec:
-        def __init__(self, child: Sender):
-            self.child = child
-
-        def send(self, text: str) -> str:
-            return f"metrics:{self.child.send(text)}"
-
-    container = Container()
-    container.register(Sender, BaseSender)
-    container.register_decorator(Sender, LogDec, position=0)
-    container.register_decorator(Sender, MetricsDec, position=10)
-    value = container.resolve(Sender).send("x")
-    _assert(value == "metrics:log:base:x", "decorator ordering failed")
-
-
-def validate_value_factories():
-    class Client:
-        def __init__(self, number: int = 10):
-            self.number = number
-
-    container = Container()
-    container.register(int, instance=2)
-    container.register(
-        Client,
-        name="default",
-        dependency_config={"number": DependencySettings(value_factory=vf.use_default_value)},
-    )
-    container.register(
-        Client,
-        name="resolved",
-        dependency_config={"number": DependencySettings(value_factory=vf.dont_use_default_value)},
-    )
-    _assert(container.resolve(Client, filter=with_name("default")).number == 10, "use_default_value failed")
-    _assert(container.resolve(Client, filter=with_name("resolved")).number == 2, "dont_use_default_value failed")
-
-
-def validate_special_dependency_types():
-    class Logger:
-        def __init__(self, module_name: str):
-            self.module_name = module_name
-
-    class Client:
-        def __init__(self, logger: Logger):
-            self.logger = logger
-
-    def logger_factory(context: DependencyContext) -> Logger:
-        return Logger(module_name=context.parent.implementation.__module__)
-
-    container = Container()
-    container.register(Logger, factory=logger_factory, lifespan=Lifespan.transient)
-    container.register(Client)
-    client = container.resolve(Client)
-    _assert(client.logger.module_name == __name__, "DependencyContext factory failed")
-
-    class Sender:
+def validate_components_and_filters() -> None:
+    class Service:
         pass
 
-    class BatchSender:
+    seen: list[Component] = []
+
+    def when(component: Component) -> bool:
+        seen.append(component)
+        return True
+
+    builder = ContainerBuilder()
+    component_id = builder.register(Service, name="primary", when=when)
+    assert builder.get_component_id(Service, filter=cf.with_name("primary")) == component_id  # noqa: S101
+    container = builder.build()
+    build_calls = len(seen)
+
+    assert isinstance(container.resolve(Service, filter=cf.with_name("primary")), Service)  # noqa: S101
+    assert len(seen) == build_calls  # noqa: S101
+
+
+def validate_lifespans_slots_and_overlays() -> None:
+    class Request:
         pass
 
-    class SenderImpl(Sender, BatchSender):
+    class Handler:
+        def __init__(self, request: Request):
+            self.request = request
+
+    builder = ContainerBuilder()
+    builder.declare_scope_slot(Request)
+    builder.register(Handler)
+    container = builder.build()
+
+    request = Request()
+    with container.new_scope().provide(Request, request) as scope:
+        assert scope.resolve(Handler).request is request  # noqa: S101
+
+    class Root:
         pass
 
-    class UsesBoth:
-        def __init__(self, sender: Sender, batch_sender: BatchSender):
-            self.sender = sender
-            self.batch_sender = batch_sender
+    class Overlay(Root):
+        pass
 
-    container = Container()
-    container.register(Sender, SenderImpl)
-    container.register(BatchSender, factory=use_from_current_graph(SenderImpl))
-    container.register(UsesBoth)
-    obj = container.resolve(UsesBoth)
-    _assert(obj.sender is obj.batch_sender, "CurrentGraph helper failed")
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(Root, Overlay, lifespan="singleton")
+    with overlay_builder.build() as overlay:
+        assert isinstance(overlay.resolve(Root), Overlay)  # noqa: S101
 
 
-def validate_generics():
+def validate_generics_and_decorators() -> None:
     T = TypeVar("T")
 
-    class Event:
+    class Message:
         pass
 
-    class AEvent(Event):
-        pass
-
-    class BEvent(Event):
+    class A(Message):
         pass
 
     class Handler(Generic[T]):
-        def value(self) -> str:
-            raise NotImplementedError
+        pass
 
-    class AHandler(Handler[AEvent]):
-        def value(self) -> str:
-            return "A"
+    class AHandler(Handler[A]):
+        pass
 
-    class BHandler(Handler[BEvent]):
-        def value(self) -> str:
-            return "B"
+    class Decorator(Handler[T], Generic[T]):
+        def __init__(self, child: Handler[T]):
+            self.child = child
 
-    container = Container()
-    container.register_generic_subclasses(Handler)
-    _assert(container.resolve(Handler[AEvent]).value() == "A", "generic subclass A failed")
-    _assert(container.resolve(Handler[BEvent]).value() == "B", "generic subclass B failed")
+    builder = ContainerBuilder()
+    builder.register_generic_subclasses(Handler)
+    builder.register_decorator(Handler, Decorator, decorated_arg="child")
+    handler = builder.build().resolve(Handler[A])
 
-
-async def validate_async_factories():
-    class Token:
-        def __init__(self, value: str):
-            self.value = value
-
-    async def token_factory() -> Token:
-        return Token("abc")
-
-    @asynccontextmanager
-    async def token_cm_factory():
-        token = Token("cm")
-        yield token
-
-    container = Container()
-    container.register(Token, factory=token_factory)
-    token = await container.resolve_async(Token)
-    _assert(token.value == "abc", "async function factory failed")
-
-    container = Container()
-    container.register(Token, factory=token_cm_factory, lifespan=Lifespan.scoped)
-    async with container.new_scope() as scope:
-        token = await scope.resolve_async(Token)
-        _assert(token.value == "cm", "async contextmanager factory failed")
+    assert isinstance(handler, Decorator)  # noqa: S101
+    assert isinstance(handler.child, AHandler)  # noqa: S101
 
 
-def validate_generator_factories():
-    class Conn:
-        def __init__(self):
-            self.closed = False
+def validate_factories_and_cleanup() -> None:
+    class Resource:
+        pass
 
-        def close(self):
-            self.closed = True
-
-    last_conn: Conn | None = None
+    events: list[str] = []
 
     @contextmanager
-    def conn_factory():
-        nonlocal last_conn
-        conn = Conn()
-        last_conn = conn
-        try:
-            yield conn
-        finally:
-            conn.close()
+    def factory():
+        events.append("enter")
+        yield Resource()
+        events.append("exit")
 
-    container = Container()
-    container.register(Conn, factory=conn_factory, lifespan=Lifespan.scoped)
+    builder = ContainerBuilder()
+    builder.register(Resource, factory=factory, lifespan="scoped")
+    container = builder.build()
     with container.new_scope() as scope:
-        scope.resolve(Conn)
-    _assert(last_conn is not None and last_conn.closed, "contextmanager teardown failed")
+        scope.resolve(Resource)
+
+    assert events == ["enter", "exit"]  # noqa: S101
 
 
-def validate_resolver_injection():
+async def validate_async_factory() -> None:
+    class Resource:
+        pass
+
+    @asynccontextmanager
+    async def factory():
+        yield Resource()
+
+    builder = ContainerBuilder()
+    builder.register(Resource, factory=factory, lifespan="scoped")
+    container = builder.build()
+    async with container.new_scope() as scope:
+        assert isinstance(await scope.resolve_async(Resource), Resource)  # noqa: S101
+
+
+def validate_derived_injection() -> None:
+    class Dependency:
+        pass
+
+    class Service:
+        def __init__(self, dependency: Dependency):
+            self.dependency = dependency
+
+    def provider(context):
+        assert context.component.service_type is Service  # noqa: S101
+        return INJECT
+
+    builder = ContainerBuilder()
+    builder.register(Dependency)
+    builder.register(
+        Service,
+        arguments={"dependency": derive(provider)},
+    )
+    assert isinstance(builder.build().resolve(Service).dependency, Dependency)  # noqa: S101
+
+
+def validate_build_arguments() -> None:
     class Client:
-        def __init__(self, resolver: Resolver):
-            self.resolver = resolver
+        def __init__(self, timeout: int, environment: str, region: str):
+            self.timeout = timeout
+            self.environment = environment
+            self.region = region
 
-        def number(self):
-            return self.resolver.resolve(int)
+    class Publisher:
+        pass
 
-    container = Container()
-    container.register(int, instance=1)
-    container.register(Client)
-    _assert(container.resolve(Client).number() == 1, "resolver injection failed")
+    class LivePublisher(Publisher):
+        pass
 
-    with container.new_scope() as scope:
-        scope.register(int, instance=10)
-        _assert(scope.resolve(Client).number() == 10, "scope resolver override failed")
+    def timeout(context):
+        return 30 if context.build_args["environment"] == "production" else 5
+
+    build_args = {"environment": "production", "mode": "live"}
+    builder = ContainerBuilder()
+    builder.register(
+        Client,
+        arguments={
+            "timeout": derive(timeout),
+            "environment": build_arg("environment"),
+            "region": build_arg("region", default="global"),
+        },
+    )
+    builder.register(
+        Publisher,
+        LivePublisher,
+        when=cf.build_arg_is("mode", "live"),
+    )
+    assert builder.has_component(Publisher, build_args=build_args)  # noqa: S101
+
+    container = builder.build(build_args=build_args)
+    build_args["environment"] = "development"
+
+    assert container.resolve(Client).timeout == 30  # noqa: S101
+    assert container.resolve(Client).environment == "production"  # noqa: S101
+    assert container.resolve(Client).region == "global"  # noqa: S101
+    assert isinstance(container.resolve(Publisher), LivePublisher)  # noqa: S101
+    assert container.build_args["environment"] == "production"  # noqa: S101
 
 
-def main():
-    validate_registration_modes()
-    validate_filtering()
-    validate_lifespans_and_scopes()
-    validate_decorators()
-    validate_value_factories()
-    validate_special_dependency_types()
-    validate_generics()
-    validate_generator_factories()
-    validate_resolver_injection()
-    asyncio.run(validate_async_factories())
-    print("All documentation example validations passed.")
+def validate_inject_and_generic_arg() -> None:
+    TItem = TypeVar("TItem")
+
+    class Dependency:
+        pass
+
+    fallback = Dependency()
+    injected = Dependency()
+
+    class Service:
+        def __init__(self, dependency: Dependency = fallback):
+            self.dependency = dependency
+
+    class Descriptor(Generic[TItem]):
+        def __init__(self, item_type: type = object):
+            self.item_type = item_type
+
+    Service.__init__.__annotations__["dependency"] = Dependency
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, instance=injected)
+    builder.register(Service, arguments={"dependency": inject()})
+    builder.register(
+        Descriptor[int],
+        arguments={"item_type": generic_arg(TItem)},
+    )
+    container = builder.build()
+
+    assert container.resolve(Service).dependency is injected  # noqa: S101
+    assert container.resolve(Descriptor[int]).item_type is int  # noqa: S101
+
+
+def validate_custom_graph_rules() -> None:
+    class InfrastructureRepository:
+        pass
+
+    class DomainService:
+        def __init__(self, repository: InfrastructureRepository):
+            self.repository = repository
+
+    InfrastructureRepository.__module__ = "example.infrastructure"
+    DomainService.__module__ = "example.domain"
+
+    def enforce_architecture(context: ValidationContext):
+        for visit in context.graph.walk():
+            if len(visit.components) < 2:
+                continue
+            owner, dependency = visit.components[-2:]
+            if owner.implementation_type.__module__.startswith("example.domain") and (
+                dependency.implementation_type.__module__.startswith("example.infrastructure")
+            ):
+                yield visit.issue(
+                    "example-layer-boundary",
+                    "Domain components cannot depend directly on infrastructure components",
+                )
+
+    invalid_builder = ContainerBuilder()
+    invalid_builder.register(InfrastructureRepository)
+    invalid_builder.register(DomainService)
+    invalid_builder.add_validation_rule(enforce_architecture)
+
+    try:
+        invalid_builder.build()
+    except ContainerBuildError as error:
+        assert error.report is not None  # noqa: S101
+        assert error.report.errors[0].code == "example-layer-boundary"  # noqa: S101
+        assert error.report.errors[0].path[-1].endswith("InfrastructureRepository")  # noqa: S101
+    else:
+        raise AssertionError("custom architecture rule did not fail the build")
+
+    class InspectedService:
+        pass
+
+    strict_calls = 0
+
+    def expensive_rule(context: ValidationContext):
+        nonlocal strict_calls
+        strict_calls += 1
+        assert context.type_ast(InspectedService) is not None  # noqa: S101
+        return (
+            BuildIssue(
+                code="example-expensive-warning",
+                severity=IssueSeverity.warning,
+                message="Expensive policy warning",
+            ),
+        )
+
+    strict_builder = ContainerBuilder()
+    strict_builder.register(InspectedService)
+    strict_builder.add_validation_rule(expensive_rule, strict_only=True)
+    container = strict_builder.build()
+
+    assert strict_calls == 0  # noqa: S101
+    assert not container.build_report.issues  # noqa: S101
+    report = container.validation_report(include_strict_rules=True)
+    assert strict_calls == 1  # noqa: S101
+    assert report.warnings[0].code == "example-expensive-warning"  # noqa: S101
+    assert not container.build_report.issues  # noqa: S101
+
+
+def validate_assemblies() -> None:
+    class RootSettings:
+        pass
+
+    class PrivateClient:
+        def __init__(self, settings: RootSettings):
+            self.settings = settings
+
+    class PublicService:
+        def __init__(self, client: PrivateClient):
+            self.client = client
+
+    def feature_bundle(builder):
+        builder.register(PrivateClient)
+        builder.register(PublicService)
+
+    builder = ContainerBuilder()
+    builder.register(RootSettings, lifespan="singleton")
+    builder.install_assembly(
+        Assembly(
+            "feature",
+            feature_bundle,
+            uses=(Use.root(RootSettings),),
+            exposes=(Expose(PublicService),),
+        )
+    )
+    container = builder.build()
+    assert isinstance(container.resolve(PublicService).client, PrivateClient)  # noqa: S101
+    assert not container.has_component(PrivateClient)  # noqa: S101
+
+
+def main() -> None:
+    validate_build_and_resolution()
+    validate_failed_builder_is_reusable()
+    validate_components_and_filters()
+    validate_lifespans_slots_and_overlays()
+    validate_generics_and_decorators()
+    validate_factories_and_cleanup()
+    validate_derived_injection()
+    validate_build_arguments()
+    validate_inject_and_generic_arg()
+    validate_custom_graph_rules()
+    validate_assemblies()
+    asyncio.run(validate_async_factory())
+    print("documentation examples validated")
 
 
 if __name__ == "__main__":

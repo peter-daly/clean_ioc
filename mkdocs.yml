@@ -1,10 +1,17 @@
 site_name: Clean IoC
-site_url: https://example.com/
+site_description: Typed Python dependency injection with compiled runtime plans and custom build-time architecture validation.
+site_author: Peter Daly
+site_url: https://peter-daly.github.io/clean_ioc/
 repo_name: peter-daly/clean_ioc
 repo_url: https://github.com/peter-daly/clean_ioc
+edit_uri: edit/main/docs/
 nav:
   - Home: index.md
-  - Simple Uses: simple-uses.md
+  - Design rationale: why-clean-ioc.md
+  - Build & Components: validation.md
+  - Custom Graph Validation: custom-validation.md
+  - Compiler Tooling: compiler-tooling.md
+  - Registration: simple-uses.md
   - Factories: factories.md
   - Lifespans: lifespans.md
   - Generics: generics.md
@@ -12,20 +19,50 @@ nav:
   - Scopes: scopes.md
   - Pre-Configurations: pre-configurations.md
   - Bundles: bundles.md
+  - Assemblies: assemblies.md
   - Advanced:
       - Filtering: advanced/filtering.md
-      - Value Factories: advanced/value-factories.md
+      - Argument Policies: advanced/arguments.md
       - Special Dependency Types: advanced/special-dependency-types.md
-      - Clean Ioc Inside Dependencies: advanced/accessing-clean-ioc-within-dependency.md
+      - Runtime container access: advanced/accessing-clean-ioc-within-dependency.md
   - Extensions:
+    - ASGI: extensions/asgi.md
     - FastAPI: extensions/fastapi.md
-  - Background:
+    - Potential future integrations: future-integrations.md
+  - Examples:
+    - Minimal ASGI health server: examples/asgi-health-checks.md
+    - FastAPI Clean Architecture: examples/clean-architecture.md
+  - Benchmarks: benchmarks.md
+  - Concepts:
     - Inversion of Control: inversion-of-control.md
     - Dependency Injection: dependency-injection.md
-    - SOLID: solid.md
+    - Dependency boundaries: solid.md
 
 theme:
   name: material
+  features:
+    - content.code.copy
+    - content.action.edit
+    - navigation.footer
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue grey
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue grey
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
 plugins:
   - autorefs
   - glightbox
@@ -61,3 +98,10 @@ extra_css:
 extra_javascript:
   - https://unpkg.com/mermaid@10/dist/mermaid.min.js
   - assets/javascripts/mermaid-init.js
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/peter-daly/clean_ioc
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/clean-ioc/
