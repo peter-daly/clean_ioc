@@ -23,7 +23,7 @@ dependencies; it is enforcing application-specific rules over the complete occur
 - Cover high-value layering, decorator, lifespan, runtime-access, metadata, and capability rules.
 - Compose policies through existing `ComponentBuilder` methods without a second configuration system.
 - Produce stable issue codes and path-aware diagnostics.
-- Support ordinary build-time and strict-only CI policies.
+- Support build-mode and validation-mode CI policies.
 - Export standards-compliant SARIF with source locations when provenance exists.
 
 ## Non-goals
@@ -86,7 +86,7 @@ architecture = PolicyPack(
         cf.create_filter(lambda component: component.implementation_type.__module__.startswith("my_app.infrastructure")),
         Tag("owner", "platform"),
     ),
-    strict_only=False,
+    mode="build",
 )
 
 builder.apply_bundle(architecture)
@@ -122,9 +122,10 @@ One semantic occurrence produces at most one issue per rule. When the same regis
 each violating path is reported because its architectural context may differ. Issues are ordered by root order, graph
 walk order, pack order, then rule order.
 
-Graph-only policies run during `build()` by default. `PolicyPack(strict_only=True)` registers every contained rule as
-strict-only. Source-AST policies are not part of this initial pack; applications continue to use explicit strict-only
-rules for AST work.
+Graph-only policies run during `build()` by default. `PolicyPack(mode="validation")` makes every contained rule
+validate-only. The complete validation report retains stored build findings and adds the validate-only findings without
+rerunning build rules. Source-AST policies are not part of this initial pack; applications continue to use explicit
+validate-only rules for AST work.
 
 Capabilities use ordinary exact tags in the first release. A component may declare multiple capability tags, such as
 `network`, `filesystem`, `database`, `secrets`, or an application-defined value. Capabilities accumulate transitively;
@@ -177,8 +178,9 @@ does not fabricate a SARIF build result.
 
 ## Compatibility
 
-Existing custom rules, bundles, `--ignore`, `--strict`, and `--no-strict` behavior remain unchanged. Policy packs are
-opt-in and use the existing builder protocol. Adding `sarif` and `-o` extends the CLI without changing default output.
+Policy packs preserve the existing rule-mode selection, `--ignore` behavior, and strict warning handling. They
+are opt-in and use the existing builder protocol. Adding `sarif` and `-o` extends the CLI without changing default
+output.
 
 ## Rejected alternatives
 
@@ -202,7 +204,7 @@ opt-in and use the existing builder protocol. Adding `sarif` and `-o` extends th
 - Require decorators by exact specialized type and count without matching a similarly named type.
 - Validate lifespan, runtime-access, tag, and transitive capability rules on occurrence-specific paths.
 - Confirm overlay policy inheritance is parent-first and local packs run afterward.
-- Confirm strict-only packs are skipped by `build()` and included by explicit strict reports and the default CLI check.
+- Confirm validate-only packs are skipped by `build()` and included by explicit validation reports and every CLI check.
 - Aggregate multiple policy failures deterministically and continue after malformed custom rules.
 - Generate valid SARIF with and without source information and with structural build failures.
 - Prove SARIF and JSON never contain build-argument keys, values, absolute paths, or runtime identities.

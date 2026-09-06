@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from .tooling import ValidationRule
 
 Lifespan: TypeAlias = Literal["transient", "once_per_graph", "scoped", "singleton"]
+ValidationRuleMode: TypeAlias = Literal["build", "validation"]
 
 
 class RuntimeOwnerKind(str, Enum):
@@ -407,7 +408,7 @@ class ComponentBuilder(Protocol):
 
     def apply_bundle(self, bundle: Callable[[ComponentBuilder], None]) -> None: ...
 
-    def add_validation_rule(self, rule: ValidationRule, *, strict_only: bool = False) -> None: ...
+    def add_validation_rule(self, rule: ValidationRule, *, mode: ValidationRuleMode = "build") -> None: ...
 
     def register(
         self,

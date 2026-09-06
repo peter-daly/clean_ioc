@@ -57,10 +57,11 @@ Current issue codes include:
 
 Applications may add their own stable codes by registering a custom graph rule. Each rule receives a per-pass
 `ValidationContext` containing the graph and lazy type-AST inspection. Custom issues use the same report, JSON, CLI
-strictness, and warning-suppression behavior as compiler findings. Rules registered with `strict_only=True` are skipped
-during application builds and run only in an explicit strict validation pass. Use `context.graph.walk()` for a
-deterministic all-roots traversal; each returned `GraphVisit` retains the component objects and the matching diagnostic
-path. See [Custom graph validation](custom-validation.md) for the complete rule cookbook.
+strictness, and warning-suppression behavior as compiler findings. Rules use `mode="build"` by default. Set
+`mode="validation"` to skip a rule during application builds and run it only during explicit validation. Build rules are not
+rerun during that validation; their stored findings remain in the aggregate report. Use
+`context.graph.walk()` for a deterministic all-roots traversal; each returned `GraphVisit` retains the component objects
+and the matching diagnostic path. See [Custom graph validation](custom-validation.md) for the complete rule cookbook.
 
 ## Render the compiled graph
 
@@ -175,10 +176,10 @@ clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGat
 clean-ioc explain my_app.composition:application_builder --path 'root:my_app.Checkout:default:0/dependency:gateway:0'
 ```
 
-`check` is strict by default: it runs rules registered with `strict_only=True` and exits non-zero for build errors or
+`check` always runs the complete validation rule set and is strict by default: it exits non-zero for errors or
 unsuppressed warnings. `--ignore CODE` suppresses a warning code from either kind of rule; errors cannot be ignored.
-Pass `--no-strict` to skip strict-only rules and leave ordinary warnings informational. The explicit `--strict` form is
-also accepted when a CI command should state the policy directly.
+Pass `--no-strict` to leave warnings informational without skipping rules. The explicit `--strict` form is also accepted
+when a CI command should state the warning policy directly.
 
 `diff` exits `0` when the graph is unchanged and `1` when it changed. Add `--all` to `graph` or `diff` when the baseline should include every root rather than the entry-point view. Baselines are never updated implicitly.
 `ownership` emits the frozen all-roots ownership proof as text or JSON and does not activate components.

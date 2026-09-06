@@ -53,7 +53,7 @@ def _filtered_report(report: BuildReport, ignored: set[str]) -> BuildReport:
 def _check(args: argparse.Namespace) -> int:
     scope = _load_scope(args.target)
     report = _filtered_report(
-        scope.validation_report(include_strict_rules=args.strict),
+        scope.validation_report(),
         set(args.ignore),
     )
     _write(report.to_json() if args.format == "json" else report.to_text(), None)
@@ -113,7 +113,7 @@ def _parser() -> argparse.ArgumentParser:
         "--strict",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Run strict-only rules and fail when unsuppressed warnings remain (default: strict)",
+        help="Fail when unsuppressed warnings remain; rule selection is unchanged (default: strict)",
     )
     check.add_argument("--ignore", action="append", default=[], metavar="CODE", help="Ignore a warning code")
     check.set_defaults(handler=_check)

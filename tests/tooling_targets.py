@@ -82,7 +82,7 @@ def custom_warning_builder() -> ContainerBuilder:
     return builder
 
 
-def strict_warning_builder() -> ContainerBuilder:
+def validation_only_warning_builder() -> ContainerBuilder:
     builder = ContainerBuilder()
     builder.register(Application)
     builder.register(Dependency)
@@ -96,9 +96,27 @@ def strict_warning_builder() -> ContainerBuilder:
             ),
         )
 
-    builder.add_validation_rule(expensive_rule, strict_only=True)
+    builder.add_validation_rule(expensive_rule, mode="validation")
     return builder
 
 
-def strict_warning_container_factory() -> Container:
-    return strict_warning_builder().build()
+def validation_only_warning_container_factory() -> Container:
+    return validation_only_warning_builder().build()
+
+
+def validation_only_error_builder() -> ContainerBuilder:
+    builder = ContainerBuilder()
+    builder.register(Application)
+    builder.register(Dependency)
+
+    def validation_rule(_: ValidationContext):
+        return (
+            BuildIssue(
+                code="example-validation-error",
+                severity=IssueSeverity.error,
+                message="Example validation-only policy error",
+            ),
+        )
+
+    builder.add_validation_rule(validation_rule, mode="validation")
+    return builder

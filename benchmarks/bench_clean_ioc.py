@@ -133,12 +133,12 @@ def build_graph_builder(*, mark_entrypoint: bool = False) -> ContainerBuilder:
 
 
 def build_feature_graph(scenario: str) -> Container:
-    if scenario in {"core", "ordinary-validation", "deferred-strict-validation"}:
+    if scenario in {"core", "build-validation", "validation-only"}:
         builder = build_graph_builder()
-        if scenario == "ordinary-validation":
+        if scenario == "build-validation":
             builder.add_validation_rule(validate_graph_walk)
-        elif scenario == "deferred-strict-validation":
-            builder.add_validation_rule(validate_implementation_asts, strict_only=True)
+        elif scenario == "validation-only":
+            builder.add_validation_rule(validate_implementation_asts, mode="validation")
         return builder.build()
 
     if scenario == "resource-ownership":
@@ -258,16 +258,16 @@ def changed_tooling_manifest() -> GraphManifest:
 
 
 @system(scope="session")
-def strict_graph_validation_container() -> Container:
+def validation_only_graph_container() -> Container:
     builder = build_graph_builder()
-    builder.add_validation_rule(validate_graph_walk, strict_only=True)
+    builder.add_validation_rule(validate_graph_walk, mode="validation")
     return builder.build()
 
 
 @system(scope="session")
-def strict_ast_validation_container() -> Container:
+def validation_only_ast_container() -> Container:
     builder = build_graph_builder()
-    builder.add_validation_rule(validate_implementation_asts, strict_only=True)
+    builder.add_validation_rule(validate_implementation_asts, mode="validation")
     return builder.build()
 
 
@@ -385,16 +385,16 @@ build_features = Case(
     "scenario",
     [
         "core",
-        "ordinary-validation",
-        "deferred-strict-validation",
+        "build-validation",
+        "validation-only",
         "resource-ownership",
         "typed-provider",
         "assembly-boundaries",
     ],
     ids=[
         "core",
-        "ordinary-validation",
-        "deferred-strict-validation",
+        "build-validation",
+        "validation-only",
         "resource-ownership",
         "typed-provider",
         "assembly-boundaries",
@@ -414,13 +414,13 @@ validation = Case(
 
 
 @validation.benchmark(name="run-deferred-graph-walk")
-def run_deferred_graph_walk(strict_graph_validation_container: Container) -> BuildReport:
-    return strict_graph_validation_container.validation_report(include_strict_rules=True)
+def run_deferred_graph_walk(validation_only_graph_container: Container) -> BuildReport:
+    return validation_only_graph_container.validation_report()
 
 
 @validation.benchmark(name="run-deferred-type-ast-inspection")
-def run_deferred_type_ast_inspection(strict_ast_validation_container: Container) -> BuildReport:
-    return strict_ast_validation_container.validation_report(include_strict_rules=True)
+def run_deferred_type_ast_inspection(validation_only_ast_container: Container) -> BuildReport:
+    return validation_only_ast_container.validation_report()
 
 
 tooling = Case(

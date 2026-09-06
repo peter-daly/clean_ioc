@@ -38,6 +38,7 @@ from .components import (
     ComponentKind,
     Lifespan,
     RuntimeOwnerKind,
+    ValidationRuleMode,
     _ComponentDraft,
     _ComponentGraph,
     all_components,
@@ -355,7 +356,7 @@ class _PreConfigurationDefinition:
 @dataclass(frozen=True, slots=True)
 class _ValidationRuleDefinition:
     rule: ValidationRule
-    strict_only: bool
+    mode: ValidationRuleMode
     origin: DefinitionOrigin
 
 
@@ -4963,18 +4964,21 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
         _occurrence_explanations=types.MappingProxyType(dict(plan.occurrence_explanations)),
     )
     compiled_graph.ownership_report()
-    issues.extend(
-        _run_validation_rules(
-            compiled_graph,
-            (definition for definition in plan.blueprint.validation_rules if not definition.strict_only),
-        )
+    built_in_issues = tuple(dict.fromkeys(issues))
+    build_rule_issues = _run_validation_rules(
+        compiled_graph,
+        (definition for definition in plan.blueprint.validation_rules if definition.mode == "build"),
     )
 
-    deduplicated = tuple(dict.fromkeys(issues))
+    deduplicated = tuple(dict.fromkeys((*built_in_issues, *build_rule_issues)))
     report = BuildReport(deduplicated, checked_roots=len(all_roots))
     if not report.is_valid:
         raise ContainerBuildError(report=report)
-    return replace(plan, compiled_graph=compiled_graph, build_report=report)
+    return replace(
+        plan,
+        compiled_graph=compiled_graph,
+        build_report=report,
+    )
 
 
 def _compile_with_report(
@@ -5156,19 +5160,15 @@ class Scope(_RuntimeOwner):
     def build_report(self) -> BuildReport:
         return self._plan.build_report
 
-    def validation_report(self, *, include_strict_rules: bool = False) -> BuildReport:
-        """Return build findings, optionally running deferred strict-only rules."""
+    def validation_report(self) -> BuildReport:
+        """Return build findings plus a fresh run of validate-only rules."""
 
-        if not include_strict_rules:
-            return self.build_report
-        strict_issues = _run_validation_rules(
+        validation_rule_issues = _run_validation_rules(
             self.graph,
-            (definition for definition in self._plan.blueprint.validation_rules if definition.strict_only),
+            (definition for definition in self._plan.blueprint.validation_rules if definition.mode == "validation"),
         )
-        if not strict_issues:
-            return self.build_report
         return BuildReport(
-            tuple(dict.fromkeys((*self.build_report.issues, *strict_issues))),
+            tuple(dict.fromkeys((*self.build_report.issues, *validation_rule_issues))),
             checked_roots=self.build_report.checked_roots,
         )
 
@@ -5491,14 +5491,14 @@ class _BuilderBase:
             )
         )
 
-    def add_validation_rule(self, rule: ValidationRule, *, strict_only: bool = False) -> None:
-        """Add a synchronous graph rule, optionally deferred to strict validation."""
+    def add_validation_rule(self, rule: ValidationRule, *, mode: ValidationRuleMode = "build") -> None:
+        """Add a synchronous graph rule to the build or validation phase."""
 
         self._assert_mutable()
         if not callable(rule):
             raise TypeError("Validation rule must be callable")
-        if not isinstance(strict_only, bool):
-            raise TypeError("strict_only must be a bool")
+        if mode not in ("build", "validation"):
+            raise ValueError("mode must be 'build' or 'validation'")
         targets = (rule, getattr(rule, "__call__", None))
         if any(
             inspect.iscoroutinefunction(target) or inspect.isasyncgenfunction(target)
@@ -5509,7 +5509,7 @@ class _BuilderBase:
         self._validation_rules.append(
             _ValidationRuleDefinition(
                 rule,
-                strict_only,
+                mode,
                 self._definition_origin("validation-rule", None),
             )
         )

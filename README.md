@@ -135,21 +135,37 @@ def enforce_architecture(context: ValidationContext) -> Iterable[BuildIssue]:
 builder.add_validation_rule(enforce_architecture)
 ```
 
-Ordinary custom errors fail `build()` alongside Clean IoC's built-in missing, circular, and captive-dependency checks.
+Build-mode custom errors fail `build()` alongside Clean IoC's built-in missing, circular, and captive-dependency checks.
 Custom warnings flow into the same `BuildReport`. Rules can inspect service and implementation types, names, tags,
 lifespans, decorators, scope slots, configured values, build arguments, and complete root-to-occurrence paths.
 
 Expensive rules can be kept out of application startup:
 
 ```python
-builder.add_validation_rule(forbid_direct_environment_access, strict_only=True)
+builder.add_validation_rule(forbid_direct_environment_access, mode="validation")
 ```
 
-Strict-only rules run under the strict-by-default CLI check, making source and architecture analysis practical in CI:
+This is recommended for source inspection, AST parsing, and other expensive analysis, provided the full validation
+suite is mandatory in tests or CI. Build rules protect every startup; validate-only rules trade that startup guarantee
+for lower application-build cost. A CLI check runs each set once: build rules while constructing the container, then
+validate-only rules while creating the complete report.
+
+Validate-only rules still run under the CLI check, making source and architecture analysis practical in CI:
 
 ```bash
 clean-ioc check my_app.composition:application_builder
 ```
+
+Unit tests can run the same complete rule suite without activating application components:
+
+```python
+container = builder.build()
+report = container.validation_report()
+assert report.is_valid, report.to_text()
+```
+
+Build rules are not rerun in this validation pass. Their stored findings remain in the complete report, followed
+by fresh findings from validate-only rules.
 
 See the [custom graph validation guide](docs/custom-validation.md) for recipes covering duplicate registrations,
 architecture layers, metadata and lifespan conventions, required decorators, AST inspection, environment-specific
@@ -185,8 +201,9 @@ enable warnings for unreachable registrations; every visible root is still compi
 Manifest schema version 2 records the compiled cache and cleanup owner for every occurrence while continuing to read
 version 1 baselines. Cleanup-bearing transients retained by singletons are promoted to the singleton's declaring owner;
 ownership reports explain that decision without exposing runtime tokens or values.
-Expensive custom rules can be registered with `strict_only=True`, keeping their graph or source-AST inspection out of
-application startup while still running under the strict-by-default `clean-ioc check` command in CI.
+Expensive custom rules can be registered with `mode="validation"`, keeping their graph or source-AST inspection out
+of application startup while still running under `clean-ioc check` in CI. CLI strictness only controls whether warnings
+produce a failing exit code; errors fail in strict and non-strict modes.
 `container.graph.explain(...)` and `clean-ioc explain` show the recorded selected and rejected candidates, stable reason
 codes, bundle paths, and best-effort declaration locations without adding provenance to manifests or fingerprints.
 
@@ -346,7 +363,7 @@ compiled container during application startup.
 - Coordinated first activation across threads and event loops.
 - Bundles targeting one shared `ComponentBuilder` composition protocol.
 - Synchronous custom graph rules with structured findings, path-aware traversal, lazy type-AST inspection, and
-  strict-only CI execution.
+  separate build and validation execution.
 - BenchBro experiments separating build cost, runtime latency, and Python allocations.
 
 ## Project links

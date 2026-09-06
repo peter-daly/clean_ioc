@@ -309,11 +309,11 @@ def validate_custom_graph_rules() -> None:
     class InspectedService:
         pass
 
-    strict_calls = 0
+    validation_calls = 0
 
     def expensive_rule(context: ValidationContext):
-        nonlocal strict_calls
-        strict_calls += 1
+        nonlocal validation_calls
+        validation_calls += 1
         assert context.type_ast(InspectedService) is not None  # noqa: S101
         return (
             BuildIssue(
@@ -323,15 +323,15 @@ def validate_custom_graph_rules() -> None:
             ),
         )
 
-    strict_builder = ContainerBuilder()
-    strict_builder.register(InspectedService)
-    strict_builder.add_validation_rule(expensive_rule, strict_only=True)
-    container = strict_builder.build()
+    validation_builder = ContainerBuilder()
+    validation_builder.register(InspectedService)
+    validation_builder.add_validation_rule(expensive_rule, mode="validation")
+    container = validation_builder.build()
 
-    assert strict_calls == 0  # noqa: S101
+    assert validation_calls == 0  # noqa: S101
     assert not container.build_report.issues  # noqa: S101
-    report = container.validation_report(include_strict_rules=True)
-    assert strict_calls == 1  # noqa: S101
+    report = container.validation_report()
+    assert validation_calls == 1  # noqa: S101
     assert report.warnings[0].code == "example-expensive-warning"  # noqa: S101
     assert not container.build_report.issues  # noqa: S101
 

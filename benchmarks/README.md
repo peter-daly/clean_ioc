@@ -14,7 +14,7 @@ Use `uv run benchbro list --verbose` to inspect the discovered operations. The s
 
 - `compiled-runtime`: resolution, scope creation, and request-slot plan execution with composition excluded;
 - `compiled-build`: explicit root, scope-overlay, and open-generic factory compilation, including builder setup;
-- `compiled-build-features`: five-component builds that isolate ordinary validation, deferred strict validation
+- `compiled-build-features`: five-component builds that isolate build validation, validate-only rule
   registration, resource ownership, typed providers, and assembly visibility boundaries;
 - `compiler-validation`: deferred whole-graph walking and source AST inspection on an already-built graph;
 - `compiler-tooling`: uncached semantic manifest and ownership-report creation plus identical/single-change manifest diffs,

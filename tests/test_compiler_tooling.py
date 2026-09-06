@@ -500,9 +500,12 @@ def test_validation_context_caches_type_asts_without_attaching_them_to_the_graph
 
     builder = ContainerBuilder()
     builder.register(InspectedService)
-    builder.add_validation_rule(first_rule)
-    builder.add_validation_rule(second_rule)
+    builder.add_validation_rule(first_rule, mode="validation")
+    builder.add_validation_rule(second_rule, mode="validation")
     container = builder.build()
+    assert not contexts
+
+    container.validation_report()
 
     assert contexts[0] is contexts[1]
     type_ast = inspected[0]
@@ -530,24 +533,28 @@ def test_validation_context_type_ast_requires_a_type():
         captured[0].type_ast(cast(Any, "not-a-type"))
 
 
-def test_strict_only_validation_is_deferred_and_does_not_mutate_the_build_report():
+def test_full_validation_reuses_build_findings_and_runs_only_validate_only_rules():
     class InspectedService:
         def source_marker(self):
-            return "strict-only-type-ast-source-marker"
+            return "validation-only-type-ast-source-marker"
 
     class UnusedService:
         pass
 
-    ordinary_issue = BuildIssue(
-        code="example-ordinary-rule",
-        severity=IssueSeverity.warning,
-        message="Ordinary policy warning",
-    )
+    build_calls = 0
     contexts: list[ValidationContext] = []
     inspected: list[TypeAst] = []
 
-    def ordinary_rule(_: ValidationContext):
-        return (ordinary_issue,)
+    def build_rule(_: ValidationContext):
+        nonlocal build_calls
+        build_calls += 1
+        return (
+            BuildIssue(
+                code=f"example-build-rule-run-{build_calls}",
+                severity=IssueSeverity.warning,
+                message="Build policy warning",
+            ),
+        )
 
     def expensive_rule(context: ValidationContext):
         contexts.append(context)
@@ -555,7 +562,6 @@ def test_strict_only_validation_is_deferred_and_does_not_mutate_the_build_report
         assert type_ast is not None
         inspected.append(type_ast)
         return (
-            ordinary_issue,
             BuildIssue(
                 code="example-expensive-rule",
                 severity=IssueSeverity.error,
@@ -567,41 +573,48 @@ def test_strict_only_validation_is_deferred_and_does_not_mutate_the_build_report
     builder.register(InspectedService)
     builder.register(UnusedService)
     builder.mark_entrypoint(InspectedService)
-    builder.add_validation_rule(ordinary_rule)
-    builder.add_validation_rule(expensive_rule, strict_only=True)
+    builder.add_validation_rule(build_rule)
+    builder.add_validation_rule(expensive_rule, mode="validation")
     container = builder.build()
 
     assert not contexts
-    assert container.validation_report() is container.build_report
+    assert build_calls == 1
     assert container.build_report.is_valid
     assert [issue.code for issue in container.build_report.issues] == [
         "unreachable-component",
-        "example-ordinary-rule",
+        "example-build-rule-run-1",
     ]
     container.new_scope()
     assert not contexts
 
-    strict_report = container.validation_report(include_strict_rules=True)
+    validation_report = container.validation_report()
 
-    assert not strict_report.is_valid
-    assert [issue.code for issue in strict_report.issues] == [
+    assert build_calls == 1
+    assert not validation_report.is_valid
+    assert [issue.code for issue in validation_report.issues] == [
         "unreachable-component",
-        "example-ordinary-rule",
+        "example-build-rule-run-1",
         "example-expensive-rule",
     ]
     assert [issue.code for issue in container.build_report.issues] == [
         "unreachable-component",
-        "example-ordinary-rule",
+        "example-build-rule-run-1",
     ]
     assert len(contexts) == 1
-    assert "strict-only-type-ast-source-marker" in inspected[0].source
+    assert "validation-only-type-ast-source-marker" in inspected[0].source
 
-    container.validation_report(include_strict_rules=True)
+    next_validation_report = container.validation_report()
+    assert build_calls == 1
+    assert [issue.code for issue in next_validation_report.issues] == [
+        "unreachable-component",
+        "example-build-rule-run-1",
+        "example-expensive-rule",
+    ]
     assert len(contexts) == 2
     assert inspected[0] is not inspected[1]
 
 
-def test_strict_only_rules_inherit_parent_first_and_validate_the_complete_overlay():
+def test_full_validation_reuses_overlay_build_findings_and_runs_validate_only_rules():
     class ParentService:
         pass
 
@@ -609,7 +622,7 @@ def test_strict_only_rules_inherit_parent_first_and_validate_the_complete_overla
         pass
 
     duplicate = BuildIssue(
-        code="example-strict-duplicate",
+        code="example-validation-duplicate",
         severity=IssueSeverity.warning,
         message="Reported by both layers",
     )
@@ -619,9 +632,9 @@ def test_strict_only_rules_inherit_parent_first_and_validate_the_complete_overla
         calls.append(("parent", tuple(root.requested_type for root in context.graph.roots), context))
         return (
             BuildIssue(
-                code="example-parent-strict",
+                code="example-parent-validation",
                 severity=IssueSeverity.warning,
-                message="Parent strict rule",
+                message="Parent validation rule",
             ),
             duplicate,
         )
@@ -631,36 +644,35 @@ def test_strict_only_rules_inherit_parent_first_and_validate_the_complete_overla
         return (
             duplicate,
             BuildIssue(
-                code="example-child-strict",
+                code="example-child-validation",
                 severity=IssueSeverity.warning,
-                message="Child strict rule",
+                message="Child validation-only rule",
             ),
         )
 
     builder = ContainerBuilder()
     builder.register(ParentService)
-    builder.add_validation_rule(parent_rule, strict_only=True)
+    builder.add_validation_rule(parent_rule)
     container = builder.build()
-    assert not calls
+    assert [(name, roots) for name, roots, _ in calls] == [("parent", (ParentService,))]
+    calls.clear()
 
     overlay_builder = container.new_scope_builder()
     overlay_builder.register(OverlayService)
-    overlay_builder.add_validation_rule(child_rule, strict_only=True)
+    overlay_builder.add_validation_rule(child_rule, mode="validation")
     overlay = overlay_builder.build()
-    assert not calls
-
-    report = overlay.validation_report(include_strict_rules=True)
 
     expected_roots = (OverlayService, ParentService)
-    assert [(name, roots) for name, roots, _ in calls] == [
-        ("parent", expected_roots),
-        ("child", expected_roots),
-    ]
-    assert calls[0][2] is calls[1][2]
+    assert [(name, roots) for name, roots, _ in calls] == [("parent", expected_roots)]
+    calls.clear()
+
+    report = overlay.validation_report()
+
+    assert [(name, roots) for name, roots, _ in calls] == [("child", expected_roots)]
     assert [issue.code for issue in report.issues] == [
-        "example-parent-strict",
-        "example-strict-duplicate",
-        "example-child-strict",
+        "example-parent-validation",
+        "example-validation-duplicate",
+        "example-child-validation",
     ]
 
 
@@ -781,8 +793,8 @@ def test_async_validation_rules_are_rejected_before_build():
         with pytest.raises(TypeError, match="synchronous"):
             builder.add_validation_rule(cast(Any, rule))
 
-    with pytest.raises(TypeError, match="strict_only"):
-        builder.add_validation_rule(lambda _: (), strict_only=cast(Any, 1))
+    with pytest.raises(ValueError, match="mode"):
+        builder.add_validation_rule(lambda _: (), mode=cast(Any, "sometimes"))
 
 
 def test_rules_do_not_run_for_preview_structural_failure_or_ordinary_scopes():
@@ -1486,19 +1498,29 @@ def test_cli_strict_and_ignore_apply_to_custom_validation_warnings(capsys):
 @pytest.mark.parametrize(
     "target",
     [
-        "tests.tooling_targets:strict_warning_builder",
-        "tests.tooling_targets:strict_warning_container_factory",
+        "tests.tooling_targets:validation_only_warning_builder",
+        "tests.tooling_targets:validation_only_warning_container_factory",
     ],
 )
-def test_cli_strict_runs_deferred_validation_rules_for_builder_and_container_factories(target, capsys):
+def test_cli_always_runs_validation_only_rules_and_strict_controls_warning_failure(target, capsys):
     assert main(["check", target, "--no-strict"]) == 0
-    assert "example-expensive-warning" not in capsys.readouterr().out
+    assert "example-expensive-warning" in capsys.readouterr().out
 
     assert main(["check", target]) == 1
     assert "example-expensive-warning" in capsys.readouterr().out
 
     assert main(["check", target, "--ignore", "example-expensive-warning"]) == 0
     assert "example-expensive-warning" not in capsys.readouterr().out
+
+
+def test_cli_validation_only_errors_fail_in_strict_and_non_strict_modes(capsys):
+    target = "tests.tooling_targets:validation_only_error_builder"
+
+    assert main(["check", target, "--no-strict"]) == 1
+    assert "example-validation-error" in capsys.readouterr().out
+
+    assert main(["check", target, "--strict"]) == 1
+    assert "example-validation-error" in capsys.readouterr().out
 
 
 def test_cli_manifest_is_stable_across_processes():

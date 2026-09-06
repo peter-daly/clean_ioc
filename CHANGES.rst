@@ -1,3 +1,17 @@
+Unreleased
+----------
+
+
+2.0.0b8
+-------
+    Separate custom-rule execution from warning strictness. Replace
+    ``strict_only`` with the ``mode="build" | "validation"`` selector (defaulting
+    to build). Build and validate-only rules execute in disjoint phases, while
+    ``validation_report()`` retains stored build findings while adding fresh
+    validate-only findings. ``clean-ioc check`` exercises both phases in strict
+    and non-strict modes without rerunning build rules.
+
+
 2.0.0b7
 -------
     Add a dependency-free ASGI extension for application lifespan ownership,

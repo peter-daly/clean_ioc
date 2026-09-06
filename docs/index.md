@@ -95,8 +95,8 @@ reusable. After a successful build, the builder is immutable and cannot be built
 
 Custom validation rules receive the complete immutable compiled graph and return structured findings. They can enforce
 module boundaries, registration uniqueness, required decorators, naming and tag conventions, or policies found by
-inspecting implementation ASTs. Ordinary rules run during `build()`; expensive rules marked `strict_only=True` run in
-the strict-by-default `clean-ioc check` command instead.
+inspecting implementation ASTs. Rules run during `build()` by default; expensive rules can set
+`mode="validation"` and still run under `clean-ioc check` in both strict and non-strict modes.
 
 ```python
 def forbid_domain_to_infrastructure(context):

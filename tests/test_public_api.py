@@ -1,5 +1,6 @@
 import importlib.util
 import inspect
+from typing import Literal
 
 import pytest
 
@@ -61,11 +62,12 @@ def test_package_root_has_one_compiled_container_surface():
     assert "install_assembly" in builder_methods
     assert "install_assembly" in set(dir(ScopeBuilder))
     assert "install_assembly" not in set(dir(clean_ioc.ComponentBuilder))
-    assert inspect.signature(ContainerBuilder.add_validation_rule).parameters["strict_only"].kind is (
+    assert inspect.signature(ContainerBuilder.add_validation_rule).parameters["mode"].kind is (
         inspect.Parameter.KEYWORD_ONLY
     )
-    assert inspect.signature(ScopeBuilder.add_validation_rule).parameters["strict_only"].default is False
-    assert inspect.signature(clean_ioc.Scope.validation_report).parameters["include_strict_rules"].default is False
+    assert inspect.signature(ScopeBuilder.add_validation_rule).parameters["mode"].default == "build"
+    assert clean_ioc.ValidationRuleMode == Literal["build", "validation"]
+    assert tuple(inspect.signature(clean_ioc.Scope.validation_report).parameters) == ("self",)
     assert {
         "AsyncProvider",
         "Assembly",
@@ -79,6 +81,7 @@ def test_package_root_has_one_compiled_container_surface():
         "TypeAst",
         "ValidationContext",
         "ValidationRule",
+        "ValidationRuleMode",
         "Use",
         "build_arg",
         "derive",

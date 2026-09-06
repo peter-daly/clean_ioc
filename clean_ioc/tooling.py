@@ -1155,7 +1155,7 @@ def _type_ast(implementation_type: type) -> TypeAst | None:
 
 @dataclass(frozen=True, slots=True)
 class ValidationContext:
-    """Ephemeral helpers shared by every custom rule in one build."""
+    """Ephemeral helpers shared by custom rules in one execution pass."""
 
     graph: CompiledGraph
     assembly: str | None = None

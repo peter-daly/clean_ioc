@@ -43,7 +43,7 @@ A successful runtime exposes the same report as `container.build_report`. Mark p
 ## Custom graph rules
 
 Use `add_validation_rule()` to enforce application or organization policy against the complete immutable graph. A rule
-is synchronous, receives a per-build `ValidationContext`, and returns or yields zero or more `BuildIssue` values. The
+is synchronous, receives a per-pass `ValidationContext`, and returns or yields zero or more `BuildIssue` values. The
 context's `graph` is the complete `CompiledGraph`; `graph.walk()` visits every occurrence with its root and complete
 semantic path, including decorators, pre-configurations, collections, configured values, runtime contexts, and scope
 slots.
@@ -80,36 +80,39 @@ builder.add_validation_rule(enforce_architecture)
 ```
 
 `visit.issue()` creates an error by default and fills in the matching root and path. Pass
-`severity=IssueSeverity.warning` for an advisory finding. Errors fail `build()`; warnings appear on the successful
-runtime's report and participate in the strict-by-default `clean-ioc check` and `--ignore CODE` policies. Prefer an
-application or organization prefix for custom codes.
+`severity=IssueSeverity.warning` for an advisory finding. Errors from build rules fail `build()`; their warnings
+appear on the successful runtime's report. All findings participate in the strict-by-default `clean-ioc check` and
+`--ignore CODE` policies. Prefer an application or organization prefix for custom codes.
 
-Rules that are too expensive for application startup can be deferred to strict validation:
+Rules that are too expensive for application startup can be limited to validation mode:
 
 ```python
-builder.add_validation_rule(enforce_architecture, strict_only=True)
+builder.add_validation_rule(enforce_architecture, mode="validation")
 ```
 
-A strict-only rule is frozen into the graph policy but skipped by `build()`. The CLI runs deferred rules by default
-with `clean-ioc check ...`, which is suitable for CI. The default strict mode also makes every unsuppressed warning
-fatal; `--ignore CODE` can suppress warnings from either ordinary or strict-only rules, but never errors. Pass
-`--no-strict` to skip deferred rules and leave warnings informational.
+The `mode` argument is typed by the public `ValidationRuleMode = Literal["build", "validation"]` alias and defaults to
+`"build"`. A validation-mode rule is frozen into the graph policy but skipped by `build()`. `clean-ioc check ...`
+executes build and validate-only rules in their respective phases, which is suitable for CI. The default strict mode
+makes every unsuppressed warning fatal. `--ignore CODE` can suppress warnings from either build or validate-only rules,
+but never errors. Pass `--no-strict` to leave warnings informational without skipping any rules.
 
 For programmatic tooling, request a fresh aggregate report from an already-built container or scope:
 
 ```python
-report = container.validation_report(include_strict_rules=True)
+report = container.validation_report()
 ```
 
-This runs only the deferred rules and appends their findings after the stored build findings. It does not mutate
-`container.build_report` or raise for a strict-only error. Calling it again performs a new validation pass.
+This retains the complete stored `container.build_report`, including build-rule warnings, and adds one fresh execution
+of every rule registered with `mode="validation"`. Build rules are not rerun. The method does not mutate the stored
+report or raise for a validation error. Exact duplicate findings are removed within the new complete report. Calling it
+again performs another pass of validate-only rules.
 
 ### Inspecting implementation source
 
 `context.type_ast(type)` lazily extracts and parses an inspectable Python class definition. Results are cached within
-the validation context, so every rule in one build shares one parse per concrete type. The returned `TypeAst` includes
-the source filename, original first line, dedented source, and an `ast.ClassDef` whose line numbers match the original
-file.
+the validation context, so every selected rule in one pass shares one parse per concrete type. The returned `TypeAst`
+includes the source filename, original first line, dedented source, and an `ast.ClassDef` whose line numbers match the
+original file.
 
 ```python
 import ast
@@ -137,20 +140,21 @@ def forbid_direct_environment_access(context: ValidationContext):
                 )
 
 
-builder.add_validation_rule(forbid_direct_environment_access, strict_only=True)
+builder.add_validation_rule(forbid_direct_environment_access, mode="validation")
 ```
 
 Source inspection returns `None` for built-in, extension, dynamically generated, and otherwise unavailable class
 definitions. Each rule decides whether that should be ignored or reported. Treat the returned AST as read-only; copy it
 before using a mutating `ast.NodeTransformer`. The context and its cache are not stored on the resulting container or
-graph, and source data never enters manifests or fingerprints. Marking a source-inspection rule as strict-only also
-defers its inspection and parsing cost until a strict validation pass.
+graph, and source data never enters manifests or fingerprints. Excluding a source-inspection rule from build mode also
+defers its inspection and parsing cost until an explicit validation pass.
 
-Ordinary rules execute only after structural compilation produces a complete graph. They therefore do not run during
-builder preview queries or when missing dependencies, cycles, or another structural failure prevent that graph from
-existing. They do run alongside complete-graph findings such as a missing marked entry point. Strict-only rules require
-a successfully built graph and run only when strict validation is requested. A rule that raises, returns a non-iterable
-value, or yields a malformed issue produces `validation-rule-error`; later rules still run so the report remains useful.
+Build rules execute only after structural compilation produces a complete graph. They therefore do not run
+during builder preview queries or when missing dependencies, cycles, or another structural failure prevent that graph
+from existing. They do run alongside complete-graph findings such as a missing marked entry point. Validate-only rules
+require a successfully built graph and run only when `validation_report()` or `clean-ioc check` is requested. A rule
+that raises, returns a non-iterable value, or yields a malformed issue produces `validation-rule-error`; later rules
+still run so the report remains useful.
 
 Rules should be deterministic, side-effect-free, and safe to run again after a failed build. They may inspect
 `context.graph.build_args`, but Clean IoC does not automatically copy those inputs into a report: do not include secrets

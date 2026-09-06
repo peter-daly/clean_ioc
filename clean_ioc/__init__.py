@@ -10,6 +10,7 @@ from .components import (
     ComponentKind,
     Lifespan,
     RuntimeOwnerKind,
+    ValidationRuleMode,
     all_components,
     default_component_filter,
 )
@@ -99,6 +100,7 @@ __all__ = [
     "Use",
     "ValidationContext",
     "ValidationRule",
+    "ValidationRuleMode",
     "all_components",
     "build_arg",
     "default_component_filter",
