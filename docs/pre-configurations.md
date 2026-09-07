@@ -53,12 +53,12 @@ An initializer is effectively singleton even when the component that triggers it
 
 ```text
 pre-configuration -> scoped          invalid
-pre-configuration -> once_per_graph  invalid
+pre-configuration -> per_resolution  invalid
 pre-configuration -> transient       valid when its descendants are valid
 pre-configuration -> singleton       valid
 ```
 
-This validation is transitive, so a transient dependency cannot hide scoped or `once_per_graph` state. An inherited initializer keeps its frozen parent dependency plan; an overlay cannot rewire it by overriding one of those dependencies.
+This validation is transitive, so a transient dependency cannot hide scoped or `per_resolution` state. An inherited initializer keeps its frozen parent dependency plan; an overlay cannot rewire it by overriding one of those dependencies.
 
 A parent definition that had no applicable component, and therefore no compiled parent plan, cannot become newly applicable to an overlay registration. Declare that initializer on the `ScopeBuilder` instead.
 

@@ -2,6 +2,13 @@ Unreleased
 ----------
 
 
+2.0.0b9
+-------
+    Rename the default ``once_per_graph`` lifespan to ``per_resolution`` across
+    the public API, compiled metadata, diagnostics, and runtime internals so its
+    top-level resolution reuse boundary is explicit.
+
+
 2.0.0b8
 -------
     Separate custom-rule execution from warning strictness. Replace

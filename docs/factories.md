@@ -63,7 +63,7 @@ Keep resource acquisition and release together in the generator or context-manag
 
 ## Reusing another compiled component
 
-Factory helpers such as `use_component(...)` resolve through the current `ResolutionContext`, preserving `once_per_graph` identity:
+Factory helpers such as `use_component(...)` resolve through the current `ResolutionContext`, preserving `per_resolution` identity:
 
 ```python
 from clean_ioc.factories import use_component
@@ -73,7 +73,7 @@ builder.register(Sender, factory=use_component(SenderImpl))
 builder.register(BatchSender, factory=use_component(SenderImpl))
 ```
 
-`use_component()` and `use_component_async()` attach their target and filter as compiler metadata. The referenced root therefore appears as a dependency edge in the compiled graph and participates in missing-component, circular-dependency, captive-lifespan, and sync/async validation. Runtime use still resolves through the current context to preserve `once_per_graph` identity; it does not trigger registration discovery or graph compilation.
+`use_component()` and `use_component_async()` attach their target and filter as compiler metadata. The referenced root therefore appears as a dependency edge in the compiled graph and participates in missing-component, circular-dependency, captive-lifespan, and sync/async validation. Runtime use still resolves through the current context to preserve `per_resolution` identity; it does not trigger registration discovery or graph compilation.
 
 Direct calls made through an injected `ResolutionContext` remain dynamic because the compiler cannot inspect arbitrary
 function bodies. Use the helpers when the target is known during composition and should appear in the compiled graph.

@@ -60,7 +60,7 @@ The `compiler-tooling` case prepares compiled graphs and manifests as session sy
 
 The `fastapi-five-layer-request` case prepares two FastAPI applications and persistent `TestClient` instances outside the
 measured interval. Each measured invocation performs one request through five native cached `Depends` providers or five
-Clean IoC `once_per_graph` components. Request dispatch, dependency resolution, middleware, response serialization, and
+Clean IoC `per_resolution` components. Request dispatch, dependency resolution, middleware, response serialization, and
 garbage collection remain inside the measured interval.
 
 ## Running the suite

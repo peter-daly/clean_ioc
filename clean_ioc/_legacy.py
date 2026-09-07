@@ -180,7 +180,7 @@ default_decorated_node_filter = constant(True)
 
 class Lifespan(IntEnum):
     transient = 0
-    once_per_graph = 1
+    per_resolution = 1
     scoped = 2
     singleton = 3
 
@@ -446,7 +446,7 @@ class DependencyGraph(DependencyNode):
         super().__init__(
             service_type=service_type,
             implementation=DependencyGraph,
-            lifespan=Lifespan.once_per_graph,
+            lifespan=Lifespan.per_resolution,
         )
 
     def resolve(self, context: _ResolvingContext):
@@ -1575,7 +1575,7 @@ class _DependencyCache:
                 dependency_node,
             )
 
-        if registration.lifespan >= Lifespan.once_per_graph:
+        if registration.lifespan >= Lifespan.per_resolution:
             self._current_items[registration.id] = dependency_node
 
     def clean_up_parents(self):
@@ -1780,7 +1780,7 @@ class Registrator(Protocol):
         *,
         factory: Callable[..., TService] | None = None,
         instance: TService | None = None,
-        lifespan: Lifespan = Lifespan.once_per_graph,
+        lifespan: Lifespan = Lifespan.per_resolution,
         name: str | None = None,
         dependency_config: DependencyConfig = {},
         tags: Iterable[Tag] | None = None,
@@ -1812,7 +1812,7 @@ class Registrator(Protocol):
             instance:
                 Pre-constructed object to return for this registration.
             lifespan:
-                Controls reuse semantics (``transient``, ``once_per_graph``,
+                Controls reuse semantics (``transient``, ``per_resolution``,
                 ``scoped``, ``singleton``).
             name:
                 Optional name used by registration filters to disambiguate
@@ -2100,7 +2100,7 @@ class Scope:
         *,
         factory: Callable[..., TService] | None = None,
         instance: TService | None = None,
-        lifespan: Lifespan = Lifespan.once_per_graph,
+        lifespan: Lifespan = Lifespan.per_resolution,
         name: str | None = None,
         dependency_config: DependencyConfig = {},
         tags: Iterable[Tag] | None = None,
@@ -2564,7 +2564,7 @@ class Container(Scope):
         self,
         base_type: type,
         *,
-        lifespan: Lifespan = Lifespan.once_per_graph,
+        lifespan: Lifespan = Lifespan.per_resolution,
         subclass_type_filter: Callable[[type], bool] = always_true,
         name: str | None = None,
         tags: list[Tag] | None = None,
@@ -2605,7 +2605,7 @@ class Container(Scope):
         generic_service_type: type,
         *,
         fallback_type: type | None = None,
-        lifespan: Lifespan = Lifespan.once_per_graph,
+        lifespan: Lifespan = Lifespan.per_resolution,
         subclass_type_filter: Callable[[type], bool] = always_true,
         name: str | None = None,
         tags: list[Tag] | None = None,

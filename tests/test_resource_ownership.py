@@ -24,7 +24,7 @@ def test_ownership_report_proves_each_lifespan_and_transient_promotion():
     class TransientResource:
         pass
 
-    class GraphResource:
+    class ResolutionResource:
         pass
 
     class ScopedResource:
@@ -50,7 +50,7 @@ def test_ownership_report_proves_each_lifespan_and_transient_promotion():
     builder = ContainerBuilder()
     for service_type, lifespan in (
         (TransientResource, "transient"),
-        (GraphResource, "once_per_graph"),
+        (ResolutionResource, "per_resolution"),
         (ScopedResource, "scoped"),
         (SingletonResource, "singleton"),
     ):
@@ -67,7 +67,7 @@ def test_ownership_report_proves_each_lifespan_and_transient_promotion():
         RuntimeOwnerKind.none,
         RuntimeOwnerKind.scope,
     )
-    assert (by_type[GraphResource].cache_owner, by_type[GraphResource].cleanup_owner) == (
+    assert (by_type[ResolutionResource].cache_owner, by_type[ResolutionResource].cleanup_owner) == (
         RuntimeOwnerKind.resolution,
         RuntimeOwnerKind.scope,
     )
@@ -340,7 +340,7 @@ def test_runtime_contexts_remain_valid_for_short_lived_components():
     class Target:
         pass
 
-    class GraphLocal:
+    class ResolutionLocal:
         def __init__(self, context: ResolutionContext):
             self.context = context
             self.target = context.resolve(Target)
@@ -351,15 +351,15 @@ def test_runtime_contexts_remain_valid_for_short_lived_components():
 
     builder = ContainerBuilder()
     builder.register(Target, lifespan="transient")
-    builder.register(GraphLocal, lifespan="once_per_graph")
+    builder.register(ResolutionLocal, lifespan="per_resolution")
     builder.register(ScopedLocal, lifespan="scoped")
     container = builder.build()
     scope = container.new_scope()
 
-    graph_local = scope.resolve(GraphLocal)
-    assert isinstance(graph_local.target, Target)
+    resolution_local = scope.resolve(ResolutionLocal)
+    assert isinstance(resolution_local.target, Target)
     with pytest.raises(ScopeClosedError):
-        graph_local.context.resolve(Target)
+        resolution_local.context.resolve(Target)
     assert scope.resolve(ScopedLocal).scope is scope
 
 

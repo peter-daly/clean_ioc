@@ -14,7 +14,7 @@ from .metadata import Tag
 if TYPE_CHECKING:
     from .tooling import ValidationRule
 
-Lifespan: TypeAlias = Literal["transient", "once_per_graph", "scoped", "singleton"]
+Lifespan: TypeAlias = Literal["transient", "per_resolution", "scoped", "singleton"]
 ValidationRuleMode: TypeAlias = Literal["build", "validation"]
 
 
@@ -418,7 +418,7 @@ class ComponentBuilder(Protocol):
         factory: Callable[..., Any] | None = None,
         factory_specialization: object | None = None,
         instance: Any | None = None,
-        lifespan: Lifespan = "once_per_graph",
+        lifespan: Lifespan = "per_resolution",
         name: str | None = None,
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[Tag] | None = None,

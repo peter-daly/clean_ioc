@@ -21,7 +21,7 @@ Use `uv run benchbro list --verbose` to inspect the discovered operations. The s
   with composition excluded;
 - `compiled-allocations`: Python allocations reported by `tracemalloc`, not process RSS.
 - `fastapi-five-layer-request`: end-to-end `TestClient` requests through five cached FastAPI dependencies versus
-  five Clean IoC `once_per_graph` components.
+  five Clean IoC `per_resolution` components.
 
 Runtime containers and provided request scopes are prepared outside the measured interval. Build benchmarks deliberately include registration and compilation.
 Build cases use 100 iterations per repeat and tooling cases use 500 so each repeat is long enough for stable timing

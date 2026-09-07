@@ -42,7 +42,7 @@ Apply all registrations, decorators, pre-configurations, discovery rules, patche
 | `Container()` | `ContainerBuilder()` then `.build()` | Do not construct V2 `Container` directly. |
 | `container.register(...)` | `builder.register(...)` | The registration signature is largely preserved. |
 | `dependency_config={...}` | `arguments={...}` | Values, selection, and derivation are explicit V2 policies. |
-| `Lifespan.scoped` and other enum members | `"scoped"` and other string literals | V2 accepts `"transient"`, `"once_per_graph"`, `"scoped"`, and `"singleton"`. |
+| `Lifespan.scoped` and other enum members | `"scoped"` and other string literals | V2 accepts `"transient"`, `"per_resolution"`, `"scoped"`, and `"singleton"`. |
 | `container.patch_registration(...)` | `builder.patch_component(...)` | Patch only before a successful build. |
 | `container.pre_configure(...)` | `builder.pre_configure(...)` | It returns a stable definition ID; filters are component filters and run at build. |
 | pre-configuration `registration_filter=` | `when=` | V2 uses one component filter. |
@@ -296,7 +296,7 @@ builder.pre_configure(
 )
 ```
 
-The function remains lazy, but its signature and complete dependency path are compiled and validated during `build()`. A pre-configuration is effectively singleton-owned regardless of the triggering component's lifespan, so its path cannot contain scoped or `once_per_graph` state. Plain transient and singleton dependencies remain valid when their descendants are valid.
+The function remains lazy, but its signature and complete dependency path are compiled and validated during `build()`. A pre-configuration is effectively singleton-owned regardless of the triggering component's lifespan, so its path cannot contain scoped or `per_resolution` state. Plain transient and singleton dependencies remain valid when their descendants are valid.
 
 Passing several service types now creates one shared initializer. It runs once before the first applicable activation, in declaration order, and concurrent triggers share one in-flight attempt. In an overlay, inherited initializers run before those declared on the `ScopeBuilder`. Closed generic targets match exact compiled specializations; open generic targets match their specializations.
 
@@ -343,7 +343,7 @@ Use an ordinary scope for the same composition and new request/unit-of-work stat
 
 ## Lifespan migration
 
-V2 replaces the `Lifespan` enum with string literals. Remove the enum import and pass one of `"transient"`, `"once_per_graph"`, `"scoped"`, or `"singleton"`. The default remains `"once_per_graph"`.
+V2 replaces the `Lifespan` enum with string literals. Remove the enum import and pass one of `"transient"`, `"per_resolution"`, `"scoped"`, or `"singleton"`. The V1 `Lifespan.once_per_graph` member becomes `"per_resolution"`, which is also the V2 default.
 
 ```python
 # V1
@@ -361,18 +361,18 @@ Invalid paths include:
 
 ```text
 singleton -> scoped
-singleton -> once_per_graph
-singleton -> transient -> once_per_graph
-scoped -> once_per_graph
-scoped -> transient -> once_per_graph
+singleton -> per_resolution
+singleton -> transient -> per_resolution
+scoped -> per_resolution
+scoped -> transient -> per_resolution
 ```
 
 Valid examples include:
 
 ```text
 singleton/scoped -> plain transient
-transient -> once_per_graph
-once_per_graph -> scoped/singleton
+transient -> per_resolution
+per_resolution -> scoped/singleton
 ```
 
 When `build()` reports `captive-dependency`:
@@ -385,7 +385,7 @@ When `build()` reports `captive-dependency`:
 Example:
 
 ```python
-# Invalid: Repository defaults to once_per_graph beneath a scoped UnitOfWork.
+# Invalid: Repository defaults to per_resolution beneath a scoped UnitOfWork.
 builder.register(Repository, SqlRepository)
 builder.register(UnitOfWork, lifespan="scoped")
 
@@ -490,7 +490,7 @@ V1 code may inject `Registrator`, `Resolver`, `ScopeCreator`, `CurrentGraph`, or
 - If dynamic selection among compiled roots is unavoidable, inject public `ResolutionContext`.
 - Inject public `Scope` only when the service genuinely owns creation of nested runtime scopes.
 
-`ResolutionContext` can only select already-compiled roots and preserves `once_per_graph` identity. It is not a mutation or compilation API.
+`ResolutionContext` can only select already-compiled roots and preserves `per_resolution` identity. It is not a mutation or compilation API.
 
 ## FastAPI migration
 
@@ -536,7 +536,7 @@ If an integration needs a late external value, expose a helper that declares its
 | `Container`/`Scope` has no `register` | Runtime is immutable | Move composition earlier, declare a slot, or build an overlay. |
 | `BuilderAlreadyBuiltError` | Mutation or second build after success | Create a new builder; do not reuse a successful one. |
 | `ContainerBuildError: missing-component` | V2 compiled a root V1 had never exercised | Register the dependency or remove the invalid visible root. |
-| `captive-dependency` mentioning `once-per-graph` | Cached owner retained default graph-local state | Promote the dependency or shorten the owner. |
+| `captive-dependency` mentioning `per-resolution` | Cached owner retained default resolution-local state | Promote the dependency or shorten the owner. |
 | `missing-entrypoint` | Marker filter selected no root | Register/fix the root or correct its component filter. |
 | `unreachable-component` under `--strict` | Registration is outside all marked entry-point trees | Mark the real entry point, remove the registration, or explicitly ignore the warning. |
 | Old filter raises an attribute error during build | It expects `Registration`, `Node`, or an instance | Rewrite it against public `Component`. |
@@ -558,7 +558,7 @@ If an integration needs a late external value, expose a helper that declares its
 2. Convert each composition root to `ContainerBuilder -> build -> Container`. Do not scatter builders through application services.
 3. Move all mutations before build. Classify later mutations as root composition, scope slots, or explicit scope overlays.
 4. Rewrite filters against `Component` and remove runtime-instance predicates.
-5. Run the smallest affected tests. Fix every build report path, especially default `once_per_graph` dependencies beneath scoped/singleton owners.
+5. Run the smallest affected tests. Fix every build report path, especially default `per_resolution` dependencies beneath scoped/singleton owners.
 6. Import all discovery candidates before build and make generic roots/factory bindings explicit.
 7. Update integrations and bundles to accept `ComponentBuilder`; update runtime code to accept immutable `Scope`/`Container` only where necessary.
 8. Add regression tests that prove build-time failure or frozen runtime behavior rather than expecting a resolve-time error.

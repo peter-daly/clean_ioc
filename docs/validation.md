@@ -24,7 +24,7 @@ Build fails when a visible plan contains:
 - a missing component or scope-slot declaration;
 - a circular component path;
 - a singleton that captures a scoped component;
-- a singleton or scoped component that directly or transitively captures `once_per_graph` state;
+- a singleton or scoped component that directly or transitively captures `per_resolution` state;
 - an invalid decorator or pre-configuration dependency.
 
 ```python

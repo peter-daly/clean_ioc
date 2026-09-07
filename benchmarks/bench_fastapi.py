@@ -79,7 +79,7 @@ def create_native_fastapi_app() -> FastAPI:
 def create_clean_ioc_fastapi_app() -> FastAPI:
     builder = ContainerBuilder()
     for service_type in (LayerOne, LayerTwo, LayerThree, LayerFour, LayerFive):
-        builder.register(service_type, lifespan="once_per_graph")
+        builder.register(service_type, lifespan="per_resolution")
 
     app = FastAPI()
 

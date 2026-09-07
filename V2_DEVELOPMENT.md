@@ -2,7 +2,7 @@
 
 This document records the V2 architecture and implementation decisions made so far. It is intended for agents and maintainers extending V2 without accidentally restoring runtime graph construction, weakening build invariants, or breaking scope ownership.
 
-V2 is currently published in project metadata as `2.0.0b7`. Its public surface remains experimental.
+V2 is currently published in project metadata as `2.0.0b9`. Its public surface remains experimental.
 
 ## Core model
 
@@ -37,7 +37,7 @@ runtime scope/context edge. Unmarked provider roots are precompiled in a private
 available without changing the ordinary all-registration graph view; mark a provider entry point when its synthetic root
 must be part of graph tooling.
 
-The compiler also prepares the common runtime decisions instead of rediscovering them on every resolve. It freezes each step's sync/async capability, builds direct maps for default root selection, and chooses a lifespan-specific registration step for transient, once-per-graph, scoped, or singleton behavior. Default cached root resolutions return the frozen value before allocating a per-resolution context. Runtime code should keep those paths specialized: do not restore recursive capability checks, repeated default-filter scans, or a generic lifespan switch to the hot path without measurements showing a benefit.
+The compiler also prepares the common runtime decisions instead of rediscovering them on every resolve. It freezes each step's sync/async capability, builds direct maps for default root selection, and chooses a lifespan-specific registration step for transient, per-resolution, scoped, or singleton behavior. Default cached root resolutions return the frozen value before allocating a per-resolution context. Runtime code should keep those paths specialized: do not restore recursive capability checks, repeated default-filter scans, or a generic lifespan switch to the hot path without measurements showing a benefit.
 
 Private machinery in `clean_ioc/_legacy.py` still supplies registration storage, activators, dependency parsing, and filters while the compiler is made self-contained. It is not a supported import path. The public runtime converts string-literal lifespans to the private enum only at this internal boundary. Do not expose that enum through components or route runtime resolution back through the old dependency graph.
 
@@ -125,14 +125,14 @@ component edges, and pre-configuration dependencies:
 
 ```text
 singleton -> scoped                         invalid
-singleton -> once_per_graph                 invalid
-singleton -> transient -> once_per_graph    invalid
-scoped -> once_per_graph                    invalid
-scoped -> transient -> once_per_graph       invalid
+singleton -> per_resolution                 invalid
+singleton -> transient -> per_resolution    invalid
+scoped -> per_resolution                    invalid
+scoped -> transient -> per_resolution       invalid
 
 singleton/scoped -> plain transient         valid
-transient -> once_per_graph                  valid
-once_per_graph -> scoped/singleton           valid
+transient -> per_resolution                  valid
+per_resolution -> scoped/singleton           valid
 ```
 
 Invalid lifespan paths use the `captive-dependency` issue code and retain the complete semantic path. A transient is allowed beneath a long-lived component but cannot hide an invalid descendant.
@@ -184,7 +184,7 @@ issue authors must not copy secrets into diagnostic fields.
 
 The compiler matches definitions against the actual compiled service type. This is important for open registrations specialized to closed generic aliases: an exact target such as `Service[int]` must not be treated as the iterable of its type arguments, while an open target must apply to its closed specializations.
 
-One definition has one `_CompiledPreConfiguration`, component occurrence, and `_PreConfigurationState` across all matching trigger roots in a compiled plan. Its dependency path is compiled inside an explicit singleton `_CompilerFrame`, independently of the triggering registration's lifespan. This makes scoped and `once_per_graph` captures build errors and makes recursive shared-trigger paths diagnosable.
+One definition has one `_CompiledPreConfiguration`, component occurrence, and `_PreConfigurationState` across all matching trigger roots in a compiled plan. Its dependency path is compiled inside an explicit singleton `_CompilerFrame`, independently of the triggering registration's lifespan. This makes scoped and `per_resolution` captures build errors and makes recursive shared-trigger paths diagnosable.
 
 Scope overlays anchor an inherited initializer to the parent's compiled plan as well as its shared runtime state. Clone its component metadata into the overlay graph, but retain its parent activation steps; otherwise dependency selection would depend on which scope wins the first runtime trigger. A parent definition with no compiled plan cannot become newly applicable in an overlay and reports `overlay-pre-configuration`; declare it on the `ScopeBuilder` instead.
 
@@ -194,9 +194,9 @@ Pre-configuration generator/context-manager finalizers belong to the definition'
 
 ## Lifespans, activation, and cleanup
 
-- Public builder arguments and `Component.lifespan` use the literal strings `"transient"`, `"once_per_graph"`, `"scoped"`, and `"singleton"`; the private `IntEnum` is implementation machinery only.
+- Public builder arguments and `Component.lifespan` use the literal strings `"transient"`, `"per_resolution"`, `"scoped"`, and `"singleton"`; the private `IntEnum` is implementation machinery only.
 - `transient` activates on each dependency edge.
-- `once_per_graph` uses the `once_cache` owned by one `_RuntimeResolutionContext`/top-level resolve.
+- `per_resolution` uses the `resolution_cache` owned by one `_RuntimeResolutionContext`/top-level resolve.
 - `scoped` uses the current scope cache and coordinator.
 - `singleton` uses the owner selected by the registration layer's owner token.
 
@@ -209,7 +209,7 @@ Scoped and singleton first activation is coordinated across threads and async ta
 Resource ownership is a compilation result. Every occurrence records stable cache and cleanup owner categories, and every
 cleanup-capable activation step carries a private executable descriptor. A cleanup-bearing transient beneath a
 singleton is promoted to that singleton's declaring owner, including inherited parent singletons first activated from
-an overlay and overlay singletons first activated from an ordinary child. Other transient and once-per-graph resources
+an overlay and overlay singletons first activated from an ordinary child. Other transient and per-resolution resources
 close with the resolving scope. Decorators inherit the effective owner of the pipeline they decorate, and
 pre-configuration resources retain their declaring layer's owner token.
 

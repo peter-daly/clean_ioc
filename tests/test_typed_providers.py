@@ -135,8 +135,8 @@ def test_provider_collection_and_named_selection_are_frozen_during_build():
     assert calls == calls_after_build
 
 
-def test_provider_preserves_once_scoped_and_singleton_caching_per_call_and_scope():
-    class Once:
+def test_provider_preserves_per_resolution_scoped_and_singleton_caching_per_call_and_scope():
+    class PerResolution:
         pass
 
     class Scoped:
@@ -146,7 +146,7 @@ def test_provider_preserves_once_scoped_and_singleton_caching_per_call_and_scope
         pass
 
     class Pair:
-        def __init__(self, left: Once, right: Once):
+        def __init__(self, left: PerResolution, right: PerResolution):
             self.left = left
             self.right = right
 
@@ -162,7 +162,7 @@ def test_provider_preserves_once_scoped_and_singleton_caching_per_call_and_scope
             self.singleton = singleton
 
     builder = ContainerBuilder()
-    builder.register(Once, lifespan="once_per_graph")
+    builder.register(PerResolution, lifespan="per_resolution")
     builder.register(Pair, lifespan="transient")
     builder.register(Scoped, lifespan="scoped")
     builder.register(Singleton, lifespan="singleton")

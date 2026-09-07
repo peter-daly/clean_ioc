@@ -98,7 +98,7 @@ Derived argument policies and component filters can inspect the immutable mappin
 is frozen, while graph manifests and reports omit build-argument names and values.
 
 `build()` raises `ContainerBuildError` if a graph is incomplete, a singleton captures scoped state, or a singleton or
-scoped component captures `once_per_graph` state. Lifespan checks are transitive, including dependencies reached through
+scoped component captures `per_resolution` state. Lifespan checks are transitive, including dependencies reached through
 transient components. A failed build leaves the builder reusable. A builder becomes immutable and single-use after a
 successful build.
 
@@ -282,7 +282,7 @@ new scoped cache boundary and is finalized when that scope exits. The root conta
 | Lifespan | Reuse boundary | Typical ownership |
 | --- | --- | --- |
 | `transient` | Every dependency edge | Context-sensitive objects |
-| `once_per_graph` | One top-level resolve | Ordinary application services |
+| `per_resolution` | One top-level resolve | Ordinary application services |
 | `scoped` | One explicit scope | Request state, units of work, DB sessions |
 | `singleton` | Owning container or compiled overlay scope | Settings, pools, long-lived clients |
 
@@ -346,7 +346,7 @@ application graph from ordinary constructor annotations and keeps only `Resolve(
 | Route-level application dependency | `service: Service = Resolve(Service)` |
 | Request-owned component | `lifespan="scoped"` |
 | Application-owned component | `lifespan="singleton"` |
-| Shared value within one resolution | `lifespan="once_per_graph"` |
+| Shared value within one resolution | `lifespan="per_resolution"` |
 | Invalid component or lifespan graph | `ContainerBuildError` before activation |
 
 The integration creates an ordinary child scope for each complete HTTP request or WebSocket connection. Streaming

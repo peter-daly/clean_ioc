@@ -178,18 +178,18 @@ def test_use_component_self_reference_is_a_build_time_cycle():
 
 
 def test_use_component_target_participates_in_transitive_lifespan_validation():
-    class GraphLocal:
+    class ResolutionLocal:
         pass
 
     class TransientWrapper:
-        def __init__(self, graph_local: GraphLocal):
-            self.graph_local = graph_local
+        def __init__(self, resolution_local: ResolutionLocal):
+            self.resolution_local = resolution_local
 
     class SingletonService:
         pass
 
     builder = ContainerBuilder()
-    builder.register(GraphLocal)
+    builder.register(ResolutionLocal)
     builder.register(TransientWrapper, lifespan="transient")
     builder.register(SingletonService, factory=use_component(TransientWrapper), lifespan="singleton")
 
@@ -203,7 +203,7 @@ def test_use_component_target_participates_in_transitive_lifespan_validation():
     assert tuple(part.rsplit(".", 1)[-1] for part in issue.path) == (
         "SingletonService",
         "TransientWrapper",
-        "GraphLocal",
+        "ResolutionLocal",
     )
 
 
@@ -986,20 +986,20 @@ def test_overlay_anchors_parent_singletons_and_starts_a_fresh_scoped_cache():
 
 
 @pytest.mark.parametrize("owner_lifespan", ["singleton", "scoped"])
-def test_long_lived_components_cannot_transitively_capture_once_per_graph(owner_lifespan):
-    class GraphLocal:
+def test_long_lived_components_cannot_transitively_capture_per_resolution(owner_lifespan):
+    class ResolutionLocal:
         pass
 
     class TransientWrapper:
-        def __init__(self, graph_local: GraphLocal):
-            self.graph_local = graph_local
+        def __init__(self, resolution_local: ResolutionLocal):
+            self.resolution_local = resolution_local
 
     class Owner:
         def __init__(self, wrapper: TransientWrapper):
             self.wrapper = wrapper
 
     builder = ContainerBuilder()
-    builder.register(GraphLocal)
+    builder.register(ResolutionLocal)
     builder.register(TransientWrapper, lifespan="transient")
     builder.register(Owner, lifespan=owner_lifespan)
 
@@ -1013,9 +1013,9 @@ def test_long_lived_components_cannot_transitively_capture_once_per_graph(owner_
     assert tuple(part.rsplit(".", 1)[-1] for part in issue.path) == (
         "Owner",
         "TransientWrapper",
-        "GraphLocal",
+        "ResolutionLocal",
     )
-    assert "once-per-graph" in issue.message
+    assert "per-resolution" in issue.message
 
 
 @pytest.mark.parametrize("edge", ["constructor", "transient-wrapper", "decorator", "pre-configuration"])
@@ -1077,7 +1077,7 @@ def test_singleton_owned_paths_cannot_capture_supplied_scope_slots(edge):
     assert "cannot retain scoped" in issue.message
 
 
-@pytest.mark.parametrize("owner_lifespan", ["transient", "once_per_graph", "scoped"])
+@pytest.mark.parametrize("owner_lifespan", ["transient", "per_resolution", "scoped"])
 def test_shorter_lived_components_may_capture_supplied_scope_slots(owner_lifespan):
     class Request:
         pass
@@ -1101,60 +1101,60 @@ def test_shorter_lived_components_may_capture_supplied_scope_slots(owner_lifespa
     "edge",
     ["constructor", "factory", "decorator", "collection", "derived-inject", "pre-configuration"],
 )
-def test_once_per_graph_capture_is_rejected_across_compiled_edge_types(owner_lifespan, edge):
-    class GraphLocal:
+def test_per_resolution_capture_is_rejected_across_compiled_edge_types(owner_lifespan, edge):
+    class ResolutionLocal:
         pass
 
     class Service:
         pass
 
     builder = ContainerBuilder()
-    builder.register(GraphLocal)
+    builder.register(ResolutionLocal)
 
     if edge == "constructor":
 
         class ConstructorService(Service):
-            def __init__(self, graph_local: GraphLocal):
-                self.graph_local = graph_local
+            def __init__(self, resolution_local: ResolutionLocal):
+                self.resolution_local = resolution_local
 
         builder.register(Service, ConstructorService, lifespan=owner_lifespan)
     elif edge == "factory":
 
-        def create_service(graph_local: GraphLocal) -> Service:
+        def create_service(resolution_local: ResolutionLocal) -> Service:
             return Service()
 
         builder.register(Service, factory=create_service, lifespan=owner_lifespan)
     elif edge == "decorator":
 
         class ServiceDecorator(Service):
-            def __init__(self, child: Service, graph_local: GraphLocal):
+            def __init__(self, child: Service, resolution_local: ResolutionLocal):
                 self.child = child
-                self.graph_local = graph_local
+                self.resolution_local = resolution_local
 
         builder.register(Service, lifespan=owner_lifespan)
         builder.register_decorator(Service, ServiceDecorator, decorated_arg="child")
     elif edge == "collection":
 
         class CollectionService(Service):
-            def __init__(self, graph_locals: list[GraphLocal]):
-                self.graph_locals = graph_locals
+            def __init__(self, resolution_locals: list[ResolutionLocal]):
+                self.resolution_locals = resolution_locals
 
         builder.register(Service, CollectionService, lifespan=owner_lifespan)
     elif edge == "derived-inject":
 
         class ProviderService(Service):
-            def __init__(self, graph_local: GraphLocal):
-                self.graph_local = graph_local
+            def __init__(self, resolution_local: ResolutionLocal):
+                self.resolution_local = resolution_local
 
         builder.register(
             Service,
             ProviderService,
             lifespan=owner_lifespan,
-            arguments={"graph_local": derive(lambda context: INJECT)},
+            arguments={"resolution_local": derive(lambda context: INJECT)},
         )
     else:
 
-        def configure(graph_local: GraphLocal) -> None:
+        def configure(resolution_local: ResolutionLocal) -> None:
             pass
 
         builder.register(Service, lifespan=owner_lifespan)
@@ -1168,7 +1168,7 @@ def test_once_per_graph_capture_is_rejected_across_compiled_edge_types(owner_lif
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
     assert issue.code == "captive-dependency"
     assert issue.path[0].endswith("Service")
-    assert issue.path[-1].endswith("GraphLocal")
+    assert issue.path[-1].endswith("ResolutionLocal")
 
 
 @pytest.mark.parametrize("owner_lifespan", ["singleton", "scoped"])
@@ -1193,46 +1193,46 @@ def test_long_lived_components_may_capture_plain_transients(owner_lifespan):
 
 
 @pytest.mark.parametrize("dependency_lifespan", ["scoped", "singleton"])
-def test_once_per_graph_components_may_depend_on_longer_lived_components(dependency_lifespan):
+def test_per_resolution_components_may_depend_on_longer_lived_components(dependency_lifespan):
     class LongLived:
         pass
 
-    class GraphLocal:
+    class ResolutionLocal:
         def __init__(self, long_lived: LongLived):
             self.long_lived = long_lived
 
     builder = ContainerBuilder()
     builder.register(LongLived, lifespan=dependency_lifespan)
-    builder.register(GraphLocal)
+    builder.register(ResolutionLocal)
     container = builder.build()
 
-    first = container.resolve(GraphLocal)
-    second = container.resolve(GraphLocal)
+    first = container.resolve(ResolutionLocal)
+    second = container.resolve(ResolutionLocal)
 
     assert first is not second
     assert first.long_lived is second.long_lived
 
 
-def test_failed_once_per_graph_capture_build_remains_reusable():
-    class GraphLocal:
+def test_failed_per_resolution_capture_build_remains_reusable():
+    class ResolutionLocal:
         pass
 
     class SingletonService:
-        def __init__(self, graph_local: GraphLocal):
-            self.graph_local = graph_local
+        def __init__(self, resolution_local: ResolutionLocal):
+            self.resolution_local = resolution_local
 
     builder = ContainerBuilder()
-    component_id = builder.register(GraphLocal)
+    component_id = builder.register(ResolutionLocal)
     builder.register(SingletonService, lifespan="singleton")
 
     with pytest.raises(ContainerBuildError):
         builder.build()
 
-    builder.patch_component(GraphLocal, component_id, lifespan="singleton")
-    assert isinstance(builder.build().resolve(SingletonService).graph_local, GraphLocal)
+    builder.patch_component(ResolutionLocal, component_id, lifespan="singleton")
+    assert isinstance(builder.build().resolve(SingletonService).resolution_local, ResolutionLocal)
 
 
-@pytest.mark.parametrize("dependency_lifespan", ["once_per_graph", "scoped"])
+@pytest.mark.parametrize("dependency_lifespan", ["per_resolution", "scoped"])
 def test_singleton_pre_configuration_dependencies_are_validated_against_the_initializer(
     dependency_lifespan,
 ):

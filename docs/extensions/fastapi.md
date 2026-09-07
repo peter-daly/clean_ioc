@@ -20,7 +20,7 @@ Clean IoC V2 supports FastAPI 0.121 and newer.
 | HTTP parameters, security, and authorization | `Depends`, `Security`, `Header`, `Query`, and related APIs | Continue using FastAPI APIs |
 | Route-level application service | `Depends(provider_function)` | `Resolve(Service)` |
 | Deep application dependencies | Nested provider functions or FastAPI annotations in application constructors | Standard constructor annotations compiled from registrations |
-| Request reuse | Dependency callable cache, enabled by default | `once_per_graph` or request-owned `scoped` components |
+| Request reuse | Dependency callable cache, enabled by default | `per_resolution` or request-owned `scoped` components |
 | Application singleton | Application lifespan state or another application-managed cache | `lifespan="singleton"` |
 | Application graph validation | FastAPI validates the route dependency model | Clean IoC validates component selection, cycles, generic plans, decorators, and lifespan ownership |
 
@@ -146,7 +146,7 @@ async def create_order(service: OrderEndpointService = Resolve(OrderEndpointServ
     return await service.run()
 ```
 
-`OrderRepository`, `UnitOfWork`, `PlaceOrder`, and `OrderEndpointService` use the default `once_per_graph` lifespan. The
+`OrderRepository`, `UnitOfWork`, `PlaceOrder`, and `OrderEndpointService` use the default `per_resolution` lifespan. The
 database session is shared by every consumer in the request scope. The same compiled entry point can be resolved from a
 worker or CLI without recreating the FastAPI provider chain.
 
@@ -226,7 +226,7 @@ builder.register(
 | Clean IoC lifespan | Ownership in a FastAPI application |
 | --- | --- |
 | `transient` | New activation for each dependency edge |
-| `once_per_graph` | Shared within one top-level application-service resolution |
+| `per_resolution` | Shared within one top-level application-service resolution |
 | `scoped` | Shared for the complete HTTP request or WebSocket connection |
 | `singleton` | Shared by the application container and finalized at shutdown |
 

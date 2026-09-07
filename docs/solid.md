@@ -48,7 +48,7 @@ builder.register(Sender, factory=use_component(MySender))
 builder.register(BatchSender, factory=use_component(MySender))
 ```
 
-`use_component()` creates compiler-visible edges to `MySender` and preserves `once_per_graph` identity during resolution.
+`use_component()` creates compiler-visible edges to `MySender` and preserves `per_resolution` identity during resolution.
 
 ## Validation limits
 

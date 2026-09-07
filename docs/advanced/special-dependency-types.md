@@ -25,7 +25,7 @@ class BatchRunner:
 
 The compiler unwraps `T`, applies any `select(...)` policy once, validates the complete target graph, and stores a direct
 reference to its frozen activation step. A provider call starts a fresh top-level resolution in the scope where the
-handle was obtained. Transients are therefore new per call, `once_per_graph` values are shared only inside one call,
+handle was obtained. Transients are therefore new per call, `per_resolution` values are shared only inside one call,
 and scoped and singleton targets retain their normal caches.
 
 Use `AsyncProvider[T]` for a target that requires async resolution:
@@ -65,7 +65,7 @@ A singleton may retain a provider only when its deferred target contains no scop
 
 ## `ResolutionContext`
 
-`ResolutionContext` resolves an already-compiled root inside the active top-level resolve. It preserves `once_per_graph` identity.
+`ResolutionContext` resolves an already-compiled root inside the active top-level resolve. It preserves `per_resolution` identity.
 
 Prefer constructor injection. When the target type is known, prefer a typed provider. Use `ResolutionContext` or helpers
 such as `use_component(...)` only when the dependency type itself must be selected dynamically.

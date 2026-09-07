@@ -124,7 +124,7 @@ def _synthetic_origin() -> DefinitionOrigin:
 
 _LEGACY_LIFESPANS: dict[Lifespan, legacy.Lifespan] = {
     "transient": legacy.Lifespan.transient,
-    "once_per_graph": legacy.Lifespan.once_per_graph,
+    "per_resolution": legacy.Lifespan.per_resolution,
     "scoped": legacy.Lifespan.scoped,
     "singleton": legacy.Lifespan.singleton,
 }
@@ -2113,33 +2113,33 @@ class _TransientRegistrationStep(_RegistrationStep):
             context.registration_stack.pop()
 
 
-class _OncePerGraphRegistrationStep(_RegistrationStep):
+class _PerResolutionRegistrationStep(_RegistrationStep):
     __slots__ = ()
 
     def resolve(self, context: _RuntimeResolutionContext) -> Any:
         key = self.registration.id
-        value = context.once_cache.get(key, _CACHE_MISS)
+        value = context.resolution_cache.get(key, _CACHE_MISS)
         if value is not _CACHE_MISS:
             return value
         context.assert_allowed(self)
         context.registration_stack.append(self)
         try:
             value = self._activate(context)
-            context.once_cache[key] = value
+            context.resolution_cache[key] = value
             return value
         finally:
             context.registration_stack.pop()
 
     async def resolve_async(self, context: _RuntimeResolutionContext) -> Any:
         key = self.registration.id
-        value = context.once_cache.get(key, _CACHE_MISS)
+        value = context.resolution_cache.get(key, _CACHE_MISS)
         if value is not _CACHE_MISS:
             return value
         context.assert_allowed(self)
         context.registration_stack.append(self)
         try:
             value = await self._activate_async(context)
-            context.once_cache[key] = value
+            context.resolution_cache[key] = value
             return value
         finally:
             context.registration_stack.pop()
@@ -2271,7 +2271,7 @@ class _SingletonRegistrationStep(_RegistrationStep):
 
 _REGISTRATION_STEP_TYPES: dict[legacy.Lifespan, type[_RegistrationStep]] = {
     legacy.Lifespan.transient: _TransientRegistrationStep,
-    legacy.Lifespan.once_per_graph: _OncePerGraphRegistrationStep,
+    legacy.Lifespan.per_resolution: _PerResolutionRegistrationStep,
     legacy.Lifespan.scoped: _ScopedRegistrationStep,
     legacy.Lifespan.singleton: _SingletonRegistrationStep,
 }
@@ -2526,9 +2526,9 @@ class _Compiler:
             ),
             None,
         )
-        if long_lived is not None and lifespan == legacy.Lifespan.once_per_graph:
+        if long_lived is not None and lifespan == legacy.Lifespan.per_resolution:
             raise ContainerBuildError(
-                f"{_frame_description(long_lived)} cannot retain once-per-graph {label}",
+                f"{_frame_description(long_lived)} cannot retain per-resolution {label}",
                 code="captive-dependency",
                 path=self._current_path(label),
             )
@@ -2551,7 +2551,7 @@ class _Compiler:
                     code="captive-resolution-context",
                     path=self._current_path(service_type),
                 )
-            return "once_per_graph"
+            return "per_resolution"
         if service_type in (Scope, legacy.Scope, legacy.Resolver, legacy.ScopeCreator):
             singleton = next(
                 (item for item in reversed(self._retention_frames()) if item.lifespan == legacy.Lifespan.singleton),
@@ -2583,7 +2583,7 @@ class _Compiler:
             )
         if kind is ComponentKind.runtime_context:
             cache_owner = {
-                "once_per_graph": RuntimeOwnerKind.resolution,
+                "per_resolution": RuntimeOwnerKind.resolution,
                 "scoped": RuntimeOwnerKind.scope,
                 "singleton": RuntimeOwnerKind.singleton,
             }.get(lifespan, RuntimeOwnerKind.none)
@@ -2599,7 +2599,7 @@ class _Compiler:
             )
 
         cache_owner = {
-            "once_per_graph": RuntimeOwnerKind.resolution,
+            "per_resolution": RuntimeOwnerKind.resolution,
             "scoped": RuntimeOwnerKind.scope,
             "singleton": RuntimeOwnerKind.singleton,
         }.get(lifespan, RuntimeOwnerKind.none)
@@ -2615,7 +2615,7 @@ class _Compiler:
             return cache_owner, RuntimeOwnerKind.singleton, inherited, reason
         if lifespan == "scoped":
             return cache_owner, RuntimeOwnerKind.scope, None, "The scoped instance closes with the resolving scope"
-        if lifespan == "once_per_graph":
+        if lifespan == "per_resolution":
             cleanup = RuntimeOwnerKind.scope if manages_cleanup else RuntimeOwnerKind.none
             reason = (
                 "The resolution caches the instance and the resolving scope owns its cleanup"
@@ -5044,12 +5044,12 @@ def _compile_with_report(
 
 
 class _RuntimeResolutionContext:
-    __slots__ = ("active", "once_cache", "registration_stack", "scope")
+    __slots__ = ("active", "resolution_cache", "registration_stack", "scope")
 
     def __init__(self, scope: Scope):
         self.scope = scope
         self.active = True
-        self.once_cache: dict[str, Any] = {}
+        self.resolution_cache: dict[str, Any] = {}
         self.registration_stack: list[_RegistrationStep] = []
 
     def ensure_active(self) -> None:
@@ -5059,7 +5059,7 @@ class _RuntimeResolutionContext:
 
     def finish(self) -> None:
         self.active = False
-        self.once_cache.clear()
+        self.resolution_cache.clear()
 
     def resolve_root(self, service_type: Any, filter: ComponentFilter) -> Any:
         collection = _collection_request(service_type)
@@ -5532,7 +5532,7 @@ class _BuilderBase:
         factory: Callable[..., Any] | None = None,
         factory_specialization: object | None = None,
         instance: TService | None = None,
-        lifespan: Lifespan = "once_per_graph",
+        lifespan: Lifespan = "per_resolution",
         name: str | None = None,
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[legacy.Tag] | None = None,
@@ -5813,7 +5813,7 @@ class _BuilderBase:
         self,
         base_type: type,
         *,
-        lifespan: Lifespan = "once_per_graph",
+        lifespan: Lifespan = "per_resolution",
         subclass_type_filter: Callable[[type], bool] = legacy.always_true,
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,
@@ -5841,7 +5841,7 @@ class _BuilderBase:
         generic_service_type: type,
         *,
         fallback_type: type | None = None,
-        lifespan: Lifespan = "once_per_graph",
+        lifespan: Lifespan = "per_resolution",
         subclass_type_filter: Callable[[type], bool] = legacy.always_true,
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,

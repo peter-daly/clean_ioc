@@ -210,7 +210,7 @@ class _Planner:
         graph_node = DependencyNode(
             service_type=service_type,
             implementation=DependencyGraph,
-            lifespan=Lifespan.once_per_graph,
+            lifespan=Lifespan.per_resolution,
         )
         dependency = Dependency(
             name="__ROOT__",
@@ -233,7 +233,7 @@ class _Planner:
         graph_node = DependencyNode(
             service_type=registration.service_type,
             implementation=DependencyGraph,
-            lifespan=Lifespan.once_per_graph,
+            lifespan=Lifespan.per_resolution,
         )
         root = self._plan_registration(
             registration,

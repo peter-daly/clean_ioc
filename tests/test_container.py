@@ -42,7 +42,7 @@ P = ParamSpec("P")
 
 
 def test_lifespan_is_a_public_string_literal_and_component_metadata_uses_strings():
-    assert get_args(Lifespan) == ("transient", "once_per_graph", "scoped", "singleton")
+    assert get_args(Lifespan) == ("transient", "per_resolution", "scoped", "singleton")
 
     class Service:
         pass
@@ -61,6 +61,9 @@ def test_invalid_lifespan_string_is_rejected_during_composition():
 
     with pytest.raises(ValueError, match="lifespan must be one of"):
         builder.register(object, lifespan=cast(Any, "application"))
+
+    with pytest.raises(ValueError, match="lifespan must be one of"):
+        builder.register(object, lifespan=cast(Any, "once_per_graph"))
 
 
 def test_builder_compiles_an_immutable_container_and_is_single_use():
@@ -437,7 +440,7 @@ def test_runtime_resolution_does_not_allocate_legacy_dependency_nodes():
         assert isinstance(container.resolve(Service).dependency, Dependency)
 
 
-def test_once_per_graph_scoped_singleton_and_transient_lifespans():
+def test_per_resolution_scoped_singleton_and_transient_lifespans():
     class Item:
         pass
 
@@ -446,9 +449,9 @@ def test_once_per_graph_scoped_singleton_and_transient_lifespans():
             self.first = first
             self.second = second
 
-    for lifespan, same_within_graph, same_across_resolves in (
+    for lifespan, same_within_resolution, same_across_resolves in (
         ("transient", False, False),
-        ("once_per_graph", True, False),
+        ("per_resolution", True, False),
         ("scoped", True, True),
         ("singleton", True, True),
     ):
@@ -458,7 +461,7 @@ def test_once_per_graph_scoped_singleton_and_transient_lifespans():
         container = builder.build()
         first = container.resolve(Pair)
         second = container.resolve(Pair)
-        assert (first.first is first.second) is same_within_graph
+        assert (first.first is first.second) is same_within_resolution
         assert (first.first is second.first) is same_across_resolves
 
 
