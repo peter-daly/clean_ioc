@@ -46,6 +46,8 @@ from .components import (
     default_component_filter,
     normalize_implementation_type,
 )
+from .generic_utils import constructor_type
+from .generic_utils import resolve_typevar_bindings as _resolve_factory_typevars
 from .providers import AsyncProvider, Provider
 from .tooling import (
     BuildIssue,
@@ -202,7 +204,7 @@ def _validate_dependency_names(
     """Reject configured names that activation cannot pass to the callable."""
 
     try:
-        parameters = inspect.signature(implementation).parameters
+        parameters = inspect.signature(constructor_type(implementation) or implementation).parameters
     except (TypeError, ValueError):
         return
     if any(parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()):
@@ -1189,49 +1191,6 @@ def _unsupported_factory_type_parameters(annotation: Any) -> tuple[str, ...]:
 
     visit(annotation)
     return tuple(sorted(found))
-
-
-def _rebuild_type(annotation: Any, arguments: tuple[Any, ...]) -> Any:
-    if not arguments:
-        return annotation
-    if isinstance(annotation, types.UnionType):
-        result = arguments[0]
-        for argument in arguments[1:]:
-            result = result | argument
-        return result
-    copy_with = getattr(annotation, "copy_with", None)
-    if callable(copy_with):
-        return copy_with(arguments)
-    target = get_origin(annotation) or annotation
-    try:
-        return target[arguments[0] if len(arguments) == 1 else arguments]
-    except TypeError:
-        return annotation
-
-
-def _resolve_factory_typevars(
-    annotation: Any,
-    bindings: dict[str, Any],
-    *,
-    resolving: frozenset[str] = frozenset(),
-) -> Any:
-    if isinstance(annotation, TypeVar):
-        name = annotation.__name__
-        resolved = bindings.get(name, annotation)
-        if resolved is annotation or name in resolving:
-            return annotation
-        return _resolve_factory_typevars(resolved, bindings, resolving=resolving | {name})
-    if isinstance(annotation, list):
-        return [_resolve_factory_typevars(item, bindings, resolving=resolving) for item in annotation]
-    if isinstance(annotation, tuple):
-        return tuple(_resolve_factory_typevars(item, bindings, resolving=resolving) for item in annotation)
-    arguments = get_args(annotation)
-    if not arguments:
-        return annotation
-    resolved_arguments = tuple(
-        _resolve_factory_typevars(argument, bindings, resolving=resolving) for argument in arguments
-    )
-    return _rebuild_type(annotation, resolved_arguments)
 
 
 def _merge_factory_binding(
@@ -2312,13 +2271,15 @@ def _requires_async(activator_class: type, implementation: Any) -> bool:
 def _registration_activation(registration: legacy._Registration) -> ComponentActivation:
     if registration.is_instance:
         return ComponentActivation.instance
-    if isinstance(registration.implementation, type):
+    if constructor_type(registration.implementation) is not None:
         return ComponentActivation.constructor
     return ComponentActivation.factory
 
 
 def _callable_activation(implementation: Any) -> ComponentActivation:
-    return ComponentActivation.constructor if isinstance(implementation, type) else ComponentActivation.factory
+    return (
+        ComponentActivation.constructor if constructor_type(implementation) is not None else ComponentActivation.factory
+    )
 
 
 def _manages_cleanup(activator_class: type, implementation: Any) -> bool:
@@ -3923,6 +3884,19 @@ class _Compiler:
                 origin=self.origins.get(parent.occurrence_id),
             )
             return _ValueStep(value), component
+
+        if (
+            not isinstance(parent.implementation, type)
+            and constructor_type(parent.implementation) is not None
+            and (unresolved := _typevars_in(dependency.service_type))
+        ):
+            names = ", ".join(variable.__name__ for variable in unresolved)
+            raise ContainerBuildError(
+                f"Unable to resolve constructor TypeVar(s) {names} in {dependency.service_type!r} "
+                f"for argument {dependency.name!r} of {qualified_name(parent.implementation)}",
+                code="invalid-generic-specialization",
+                path=self._current_path(dependency.service_type),
+            )
 
         if dependency.service_type in (
             Scope,

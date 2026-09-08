@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Literal, Ma
 from typetoolbox.generics import GenericTypeMap
 from typing_extensions import TypeForm
 
+from .generic_utils import constructor_type
 from .metadata import Tag
 
 if TYPE_CHECKING:
@@ -150,13 +151,13 @@ class _ComponentDraft:
 def normalize_implementation_type(implementation: Any, service_type: Any) -> type:
     """Return a stable type for classes, instances, and factory callables."""
 
-    if isinstance(implementation, type):
-        return implementation
+    if (implementation_class := constructor_type(implementation)) is not None:
+        return implementation_class
     try:
         annotation = inspect.signature(implementation).return_annotation
     except (TypeError, ValueError):
         annotation = inspect.Signature.empty
-    if isinstance(annotation, type):
+    if annotation is not inspect.Signature.empty and isinstance(annotation, type):
         return annotation
     origin = getattr(service_type, "__origin__", None)
     # Python 3.14 exposes a class origin for unions. It describes the type

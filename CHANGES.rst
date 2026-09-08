@@ -1,5 +1,12 @@
 Unreleased
 ----------
+    Support constructor injection for directly registered closed generic classes
+    and closed service/implementation pairs, preserving the original class.
+    Specialise nested and inherited constructor dependencies from implementation
+    bindings, validate argument names against the real constructor, and report
+    missing closed dependencies during build. Correct constructor activation and
+    implementation type metadata. Public generic argument mappings continue to
+    follow the registered service for compatibility.
 
 
 2.0.0b10

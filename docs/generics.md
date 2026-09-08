@@ -51,6 +51,88 @@ Use `types.new_class()` for a dynamic parameterized base. A direct `type(..., (C
 
 Classes created after a successful build do not alter the immutable container. A failed build leaves the builder reusable and the next build rescans its own discovery rules.
 
+## Closed generic constructors
+
+Register closed classes directly, or provide a closed service and implementation pair:
+
+```python
+from typing import Generic, TypeVar, final
+
+from clean_ioc import ContainerBuilder
+
+Item = TypeVar("Item")
+Value = TypeVar("Value")
+
+
+class Repository(Generic[Value]):
+    pass
+
+
+class Service(Generic[Item]):
+    pass
+
+
+@final
+class Consumer(Service[Value], Generic[Value]):
+    def __init__(self, repository: Repository[Value], repositories: list[Repository[Value]]):
+        self.repository = repository
+        self.repositories = repositories
+
+
+builder = ContainerBuilder()
+builder.register(Repository[str], lifespan="singleton")
+builder.register(Consumer[str])
+builder.register(Service[int], Consumer[int])
+builder.register(Repository[int], lifespan="singleton")
+
+with builder.build() as container:
+    consumer = container.resolve(Consumer[str])
+    assert type(consumer) is Consumer
+    assert consumer.repository is container.resolve(Repository[str])
+    assert consumer.repositories == [consumer.repository]
+    assert type(container.resolve(Service[int])) is Consumer
+```
+
+Python 3.12+ class type-parameter syntax works too, for example `class Consumer[T]: ...`.
+Constructor annotations are specialised using the **implementation's** closed bindings,
+including inherited constructors, reordered parameters, and nested collections. Service and
+implementation parameters need not have matching names. Ordinary dependencies keep their annotations.
+The original class is constructed, including classes marked `@final`; no implementation subclass
+is generated. Retention of an instance's `__orig_class__` is not guaranteed.
+
+`Consumer[str]` and `Consumer[int]` remain distinct service keys, with their usual names,
+tags, filters, lifespans, and scope boundaries. Argument overrides, `select(...)`, `inject()`,
+Python defaults, and `derive(...)` use the specialised plan. `ParameterContext.annotation`
+is specialised before the policy runs. Unknown argument names are checked against the real
+constructor, including whether it accepts `**kwargs`; patching arguments uses the same rules.
+
+Missing required dependencies fail during `build()` with the closed dependency, constructor
+argument, and owning component in the diagnostic. Register the missing dependency and retry
+the same builder. Unresolved required TypeVars also fail, including inside collections, rather
+than producing an empty collection. Explicit values and defaults may satisfy an argument without
+requiring a concrete dependency binding. Constructors are never invoked during build, and
+both sync and async resolution execute the already compiled plan.
+
+### Component mapping policy
+
+For `register(Service[str], Consumer[str])`, component metadata retains
+`service_type == Service[str]`, `implementation == Consumer[str]`,
+`implementation_type is Consumer`, and `activation == ComponentActivation.constructor`.
+For compatibility, `component.generic_mapping`, `generic_arg(...)`, and `has_generic_arg(...)`
+continue to use the **service** mapping: `Item -> str` in this example. They do not merge in
+`Value -> str` from the implementation. Constructor substitution is independent of this policy.
+Where needed, inspect implementation bindings with
+`typetoolbox.generics.GenericTypeMap(component.implementation)`. This applies to both build-time
+filters and the frozen graph. An implementation registered under its own service key naturally
+exposes its own service mapping.
+
+Typetoolbox maps variables by name; distinct same-named TypeVars within one hierarchy can
+collide and are not supported by this feature. Its mapping may omit direct bindings for
+traditional inherited generics without an explicit `Generic[...]` base; constructor injection
+also uses the closed alias's direct parameters, but the public service mapping is unchanged.
+This feature does not add ParamSpec/TypeVarTuple support, implicit registration of missing
+closed dependencies, or implicit closing of bare generic registrations from parameter defaults.
+
 ## Generic factories
 
 A closed factory registration specializes TypeVars in every nested dependency annotation during `build()`:

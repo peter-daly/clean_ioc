@@ -1,17 +1,31 @@
 import types
 from collections import deque
 from typing import (
+    Any,
     Generic,
     Protocol,
     TypeVar,
+    Union,
     _GenericAlias,  # ty:ignore[unresolved-import]
     _SpecialGenericAlias,  # ty:ignore[unresolved-import]
+    get_args,
+    get_origin,
 )
 
 from typetoolbox.generics import GenericTypeMap
 
 TypingGenericAlias = (_GenericAlias, _SpecialGenericAlias, types.GenericAlias)
 GenericDefinitionClasses = (Generic, Protocol)
+
+
+def constructor_type(implementation: Any) -> type | None:
+    """Recognise classes and class aliases without mistaking unions for constructors."""
+    if isinstance(implementation, type):
+        return implementation
+    origin = get_origin(implementation)
+    if isinstance(origin, type) and origin not in (Union, types.UnionType):
+        return origin
+    return None
 
 
 def map_type_vars_to_parent(*, child_type: type | TypeVar | _GenericAlias, parent_type: type) -> type | TypeVar:
@@ -64,3 +78,46 @@ def get_generic_type_args(type: type):
                 queue.append(base_origin)
 
     return ()
+
+
+def _rebuild_type(annotation: Any, arguments: tuple[Any, ...]) -> Any:
+    if not arguments:
+        return annotation
+    if isinstance(annotation, types.UnionType):
+        result = arguments[0]
+        for argument in arguments[1:]:
+            result = result | argument
+        return result
+    copy_with = getattr(annotation, "copy_with", None)
+    if callable(copy_with):
+        return copy_with(arguments)
+    target = get_origin(annotation) or annotation
+    try:
+        return target[arguments[0] if len(arguments) == 1 else arguments]
+    except TypeError:
+        return annotation
+
+
+def resolve_typevar_bindings(
+    annotation: Any,
+    bindings: dict[str, Any],
+    *,
+    resolving: frozenset[str] = frozenset(),
+) -> Any:
+    if isinstance(annotation, TypeVar):
+        name = annotation.__name__
+        resolved = bindings.get(name, annotation)
+        if resolved is annotation or name in resolving:
+            return annotation
+        return resolve_typevar_bindings(resolved, bindings, resolving=resolving | {name})
+    if isinstance(annotation, list):
+        return [resolve_typevar_bindings(item, bindings, resolving=resolving) for item in annotation]
+    if isinstance(annotation, tuple):
+        return tuple(resolve_typevar_bindings(item, bindings, resolving=resolving) for item in annotation)
+    arguments = get_args(annotation)
+    if not arguments:
+        return annotation
+    resolved_arguments = tuple(
+        resolve_typevar_bindings(argument, bindings, resolving=resolving) for argument in arguments
+    )
+    return _rebuild_type(annotation, resolved_arguments)

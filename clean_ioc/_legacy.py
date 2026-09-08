@@ -38,10 +38,11 @@ from typetoolbox import get_subclasses
 from typetoolbox.generics import (
     GenericTypeMap,
     get_generic_bases,
+    resolve_typevars,
     try_to_map_generic_args_to_specialization,
 )
 
-from clean_ioc.generic_utils import map_type_vars_to_parent
+from clean_ioc.generic_utils import constructor_type, map_type_vars_to_parent, resolve_typevar_bindings
 from clean_ioc.utils import send_deprecation_warning, singleton
 
 from ._legacy_configuration import (
@@ -112,6 +113,7 @@ class ArgInfo:
 
 
 def _get_arg_info(subject: Callable, local_ns: dict = {}, global_ns: dict | None = None) -> dict[str, ArgInfo]:
+    subject = constructor_type(subject) or subject
     arg_spec_fn = subject if inspect.isfunction(subject) else subject.__init__
     args = get_type_hints(arg_spec_fn, global_ns, local_ns)
     signature = inspect.signature(subject)
@@ -669,7 +671,20 @@ class Dependency:
 
         self.name = name
         self.parent_implementation = parent_implementation
-        if isinstance(parent_implementation, type):
+        if not isinstance(parent_implementation, type) and constructor_type(parent_implementation) is not None:
+            # GenericTypeMap supplies inheritance bindings. Also honor the alias's
+            # direct parameters: traditional subclasses may omit Generic[T], which
+            # typetoolbox 0.4 does not include in its map of generic definitions.
+            origin = constructor_type(parent_implementation)
+            bindings = {
+                parameter.__name__: argument
+                for parameter, argument in zip(getattr(origin, "__parameters__", ()), get_args(parent_implementation))
+                if isinstance(parameter, TypeVar)
+            }
+            self.service_type = resolve_typevar_bindings(
+                resolve_typevars(service_type, parent_implementation), bindings
+            )
+        elif isinstance(parent_implementation, type):
             self.service_type = map_type_vars_to_parent(child_type=service_type, parent_type=parent_implementation)
         else:
             self.service_type = service_type
