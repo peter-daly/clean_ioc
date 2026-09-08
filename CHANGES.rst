@@ -1,5 +1,9 @@
 Unreleased
 ----------
+
+
+2.0.0b11
+--------
     Support constructor injection for directly registered closed generic classes
     and closed service/implementation pairs, preserving the original class.
     Specialise nested and inherited constructor dependencies from implementation
