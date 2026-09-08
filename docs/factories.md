@@ -18,6 +18,62 @@ container = builder.build()
 
 Factory parameters become compiled dependency edges. The factory itself does not run during `build()`.
 
+## Union service types
+
+Register a union as one service key when a factory can return either of two types. For example, a Redis client factory
+can choose between standalone and cluster clients using configuration:
+
+```python
+from redis import Redis
+from redis.cluster import RedisCluster
+
+from clean_ioc import ContainerBuilder
+
+RedisClient = Redis | RedisCluster
+
+
+class RedisConfig:
+    def __init__(self, url: str, cluster_mode: bool):
+        self.url = url
+        self.cluster_mode = cluster_mode
+
+
+def get_redis_client(config: RedisConfig) -> RedisClient:
+    if config.cluster_mode:
+        return RedisCluster.from_url(config.url)
+    return Redis.from_url(config.url)
+
+
+class Cache:
+    def __init__(self, client: RedisClient):
+        self.client = client
+
+
+builder = ContainerBuilder()
+builder.register(
+    RedisConfig,
+    instance=RedisConfig("redis://localhost:6379", cluster_mode=False),
+    lifespan="singleton",
+)
+builder.register(RedisClient, factory=get_redis_client, lifespan="singleton")
+builder.register(Cache)
+container = builder.build()
+client = container.resolve(RedisClient)  # Inferred as Redis | RedisCluster
+cache = container.resolve(Cache)
+```
+
+`A | B`, `Union[A, B]`, and assignment aliases such as `Client = A | B` are supported. Equivalent unions, including
+reversed member order, select the same key. You can also supply `instance=` or a concrete implementation class.
+Registering a union without any of these construction choices raises `TypeError`.
+
+The union is an explicit key: registering it does not register either member, and registrations under `A` or `B` do
+not satisfy a dependency on `A | B`. Named selection, async resolution, providers, caching and resource cleanup use
+the normal container rules. `A | None` does not make injection optional: a Python parameter default is used when
+present; otherwise the complete union requires a registration or scope slot. Use `inject()` to override a default.
+
+Public service-key annotations use `typing_extensions.TypeForm`, so type checkers supporting it retain the requested
+union as the result type. This support does not introduce unwrapping for Python's `type Client = A | B` alias syntax.
+
 ## Async factories
 
 ```python

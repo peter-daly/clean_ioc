@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from typing import assert_type
 from uuid import uuid4
 
 import pytest
@@ -16,6 +17,35 @@ from clean_ioc.ext.fastapi import (
     ResponseHeaderWriter,
     install_fastapi,
 )
+
+
+def test_resolve_accepts_an_explicit_union_service_with_precise_typing():
+    class StandaloneClient:
+        mode = "standalone"
+
+    class ClusterClient:
+        mode = "cluster"
+
+    Client = StandaloneClient | ClusterClient  # noqa: N806
+
+    async def factory() -> Client:
+        return ClusterClient()
+
+    builder = ContainerBuilder()
+    builder.register(Client, factory=factory, lifespan="scoped")
+    app = FastAPI()
+
+    @app.get("/")
+    async def read_root(client: Client = Resolve(Client)):
+        assert_type(client, StandaloneClient | ClusterClient)
+        return {"mode": client.mode}
+
+    assert_type(Resolve(Client), StandaloneClient | ClusterClient)
+    install_fastapi(app, builder.build())
+    with TestClient(app) as client:
+        response = client.get("/")
+        assert response.status_code == 200
+        assert response.json() == {"mode": "cluster"}
 
 
 def test_fastapi_bundle_runs_once_per_class_for_root_and_overlay_builders():

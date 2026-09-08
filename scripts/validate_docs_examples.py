@@ -2,7 +2,7 @@
 
 import asyncio
 from contextlib import asynccontextmanager, contextmanager
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, assert_type
 
 import clean_ioc.component_filters as cf
 from clean_ioc import (
@@ -367,6 +367,39 @@ def validate_assemblies() -> None:
     assert not container.has_component(PrivateClient)  # noqa: S101
 
 
+def validate_union_factory() -> None:
+    # Local clients exercise the Redis example without requiring Redis or a server.
+    class Redis:
+        pass
+
+    class RedisCluster:
+        pass
+
+    RedisClient = Redis | RedisCluster  # noqa: N806
+
+    class RedisConfig:
+        def __init__(self, cluster_mode: bool):
+            self.cluster_mode = cluster_mode
+
+    def get_redis_client(config: RedisConfig) -> RedisClient:
+        return RedisCluster() if config.cluster_mode else Redis()
+
+    class Cache:
+        def __init__(self, client: RedisClient):
+            self.client = client
+
+    for cluster_mode in (False, True):
+        builder = ContainerBuilder()
+        builder.register(RedisConfig, instance=RedisConfig(cluster_mode), lifespan="singleton")
+        builder.register(RedisClient, factory=get_redis_client, lifespan="singleton")
+        builder.register(Cache)
+        with builder.build() as container:
+            client = container.resolve(RedisClient)
+            assert_type(client, Redis | RedisCluster)
+            assert isinstance(client, RedisCluster if cluster_mode else Redis)  # noqa: S101
+            assert container.resolve(Cache).client is client  # noqa: S101
+
+
 def main() -> None:
     validate_build_and_resolution()
     validate_failed_builder_is_reusable()
@@ -374,6 +407,7 @@ def main() -> None:
     validate_lifespans_slots_and_overlays()
     validate_generics_and_decorators()
     validate_factories_and_cleanup()
+    validate_union_factory()
     validate_derived_injection()
     validate_build_arguments()
     validate_inject_and_generic_arg()

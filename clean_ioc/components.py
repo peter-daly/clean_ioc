@@ -5,9 +5,11 @@ from __future__ import annotations
 import inspect
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Literal, Mapping, Protocol, TypeAlias
+from types import UnionType
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Literal, Mapping, Protocol, TypeAlias, Union
 
 from typetoolbox.generics import GenericTypeMap
+from typing_extensions import TypeForm
 
 from .metadata import Tag
 
@@ -157,7 +159,9 @@ def normalize_implementation_type(implementation: Any, service_type: Any) -> typ
     if isinstance(annotation, type):
         return annotation
     origin = getattr(service_type, "__origin__", None)
-    if isinstance(origin, type):
+    # Python 3.14 exposes a class origin for unions. It describes the type
+    # expression, not the unknown concrete result of this factory.
+    if isinstance(origin, type) and origin not in (Union, UnionType):
         return origin
     return service_type if isinstance(service_type, type) else type(implementation)
 
@@ -376,7 +380,7 @@ class Component:
     def has_descendant(self, filter: ComponentFilter) -> bool:
         return any(filter(component) for component in self.descendants())
 
-    def has_dependant_service_type(self, service_type: type) -> bool:
+    def has_dependant_service_type(self, service_type: TypeForm[Any]) -> bool:
         return self.has_descendant(lambda component: component.service_type == service_type)
 
     def has_dependant_implementation_type(self, implementation_type: type) -> bool:
@@ -412,7 +416,7 @@ class ComponentBuilder(Protocol):
 
     def register(
         self,
-        service_type: type,
+        service_type: TypeForm[Any],
         implementation_type: type | None = None,
         *,
         factory: Callable[..., Any] | None = None,
@@ -427,7 +431,7 @@ class ComponentBuilder(Protocol):
 
     def register_decorator(
         self,
-        service_type: type,
+        service_type: TypeForm[Any],
         decorator_type: type | Callable,
         *,
         when: ComponentFilter = all_components,
@@ -440,7 +444,7 @@ class ComponentBuilder(Protocol):
 
     def patch_component(
         self,
-        service_type: type,
+        service_type: TypeForm[Any],
         component_id: str,
         *,
         arguments: Mapping[str, Any] | None = None,
@@ -465,7 +469,7 @@ class ComponentBuilder(Protocol):
 
     def pre_configure(
         self,
-        service_type: type | Iterable[type],
+        service_type: TypeForm[Any] | Iterable[TypeForm[Any]],
         configuration_function: Callable,
         *,
         when: ComponentFilter = all_components,
@@ -473,7 +477,7 @@ class ComponentBuilder(Protocol):
         continue_on_failure: bool = False,
     ) -> str: ...
 
-    def declare_scope_slot(self, service_type: type, name: str | None = None) -> Any: ...
+    def declare_scope_slot(self, service_type: TypeForm[Any], name: str | None = None) -> Any: ...
 
     def mark_entrypoint(
         self,

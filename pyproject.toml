@@ -1,6 +1,6 @@
 [project]
 name = "clean_ioc"
-version = "2.0.0b9"
+version = "2.0.0b10"
 description = "Typed Python dependency injection with build-time plan compilation and immutable runtimes"
 authors = [{ name = "Peter Daly" }]
 requires-python = ">=3.11,<4"
@@ -36,6 +36,7 @@ classifiers = [
 dependencies = [
     "funcie>=0.2.0",
     "typetoolbox>=0.4.0",
+    "typing_extensions>=4.13.0",
 ]
 
 [project.optional-dependencies]

@@ -182,11 +182,12 @@ wheels = [
 
 [[package]]
 name = "clean-ioc"
-version = "2.0.0b9"
+version = "2.0.0b10"
 source = { editable = "." }
 dependencies = [
     { name = "funcie" },
     { name = "typetoolbox" },
+    { name = "typing-extensions" },
 ]
 
 [package.optional-dependencies]
@@ -217,6 +218,7 @@ requires-dist = [
     { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.121.0,<1" },
     { name = "funcie", specifier = ">=0.2.0" },
     { name = "typetoolbox", specifier = ">=0.4.0" },
+    { name = "typing-extensions", specifier = ">=4.13.0" },
 ]
 provides-extras = ["fastapi"]
 

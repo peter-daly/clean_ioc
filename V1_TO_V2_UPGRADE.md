@@ -450,6 +450,21 @@ builder.register(Product, factory=create_product)
 
 Use `factory_specialization=SomeClosedGeneric` only when the requested service and return annotation cannot reveal every binding. Unresolved/conflicting `TypeVar` values fail build. `ParamSpec` and `TypeVarTuple` are unsupported.
 
+## Explicit union service types
+
+An assignment alias such as `RedisClient = Redis | RedisCluster` can replace a service protocol when a factory returns
+either concrete client. Register that exact union with `builder.register(RedisClient, factory=get_redis_client)` and
+request `RedisClient` in constructors or `container.resolve(RedisClient)`. Type checkers supporting `TypeForm` infer
+`Redis | RedisCluster` for the result. V2 now depends directly on `typing_extensions>=4.13.0`.
+
+The union must have an explicit factory, instance or implementation. It does not select among registrations for its
+members or register its members implicitly. Existing Python-default behaviour also applies to nullable unions;
+`A | None` alone does not request an automatic `None` fallback. Use assignment aliases or `typing.Union`; Python's
+`type Alias = ...` syntax does not gain new unwrapping behaviour. See [union factories](docs/factories.md#union-service-types).
+
+Tooling renders equivalent unions consistently across syntax and member order. Existing graphs containing unions
+may receive new fingerprints; identities for types without unions are unchanged.
+
 ## Diagnostics and failure handling
 
 V1 often discovered missing, circular, or captive dependencies during `resolve()`, unless code called `validate()` explicitly. V2 makes the successful build the validity boundary.

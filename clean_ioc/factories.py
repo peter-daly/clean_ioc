@@ -2,6 +2,8 @@
 
 from typing import Any, Callable, TypeVar
 
+from typing_extensions import TypeForm
+
 from .components import ComponentFilter, default_component_filter
 from .container import (
     _ACTIVATION_LOCAL_CONTEXT_ATTRIBUTE,
@@ -21,7 +23,7 @@ __all__ = [
 
 
 def use_component(
-    service_type: type[T],
+    service_type: TypeForm[T],
     filter: ComponentFilter = default_component_filter,
 ) -> Callable[[ResolutionContext], T]:
     """Create a factory that selects another component in the current graph."""
@@ -39,7 +41,7 @@ def use_component(
 
 
 def use_component_async(
-    service_type: type[T],
+    service_type: TypeForm[T],
     filter: ComponentFilter = default_component_filter,
 ) -> Callable[[ResolutionContext], Any]:
     """Create an async factory that selects another component in the current graph."""
@@ -57,7 +59,7 @@ def use_component_async(
 
 
 def create_type_mapping(
-    service_type: type[T],
+    service_type: TypeForm[T],
     key_getter: Callable[[T], Any],
     filter: ComponentFilter = default_component_filter,
 ):
@@ -71,7 +73,7 @@ def create_type_mapping(
 
 
 def create_type_mapping_async(
-    service_type: type[T],
+    service_type: TypeForm[T],
     key_getter: Callable[[T], Any],
     filter: ComponentFilter = default_component_filter,
 ):

@@ -10,8 +10,8 @@ import textwrap
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from html import escape
-from types import MappingProxyType
-from typing import Any, Callable, Iterable, Iterator, Mapping, TypeAlias, TypeVar, get_args, get_origin, overload
+from types import MappingProxyType, UnionType
+from typing import Any, Callable, Iterable, Iterator, Mapping, TypeAlias, TypeVar, Union, get_args, get_origin, overload
 
 from .components import (
     Component,
@@ -333,6 +333,9 @@ def qualified_name(value: Any) -> str:
         return f"TypeVar({value.__name__})"
     origin = get_origin(value)
     arguments = get_args(value)
+    if origin in (Union, UnionType):
+        rendered = ", ".join(sorted(qualified_name(argument) for argument in arguments))
+        return f"typing.Union[{rendered}]"
     if origin is not None:
         rendered = ", ".join(qualified_name(argument) for argument in arguments)
         return f"{qualified_name(origin)}[{rendered}]"

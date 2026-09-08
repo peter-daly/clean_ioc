@@ -18,6 +18,7 @@ from typing import Any, TypeVar, cast, get_args, get_origin
 from uuid import UUID, uuid4, uuid5
 
 from typetoolbox.generics import GenericTypeMap, get_generic_mapping
+from typing_extensions import TypeForm
 
 from . import _legacy as legacy
 from ._legacy_configuration import default_parameter_value_factory
@@ -287,7 +288,7 @@ class ResolutionContext:
 
     def resolve(
         self,
-        service_type: type[TService],
+        service_type: TypeForm[TService],
         filter: ComponentFilter = default_component_filter,
     ) -> TService:
         self._context.ensure_active()
@@ -298,7 +299,7 @@ class ResolutionContext:
 
     async def resolve_async(
         self,
-        service_type: type[TService],
+        service_type: TypeForm[TService],
         filter: ComponentFilter = default_component_filter,
     ) -> TService:
         self._context.ensure_active()
@@ -5234,7 +5235,7 @@ class Scope(_RuntimeOwner):
 
     def resolve(
         self,
-        service_type: type[TService],
+        service_type: TypeForm[TService],
         filter: ComponentFilter = default_component_filter,
     ) -> TService:
         self._ensure_open()
@@ -5269,7 +5270,7 @@ class Scope(_RuntimeOwner):
 
     async def resolve_async(
         self,
-        service_type: type[TService],
+        service_type: TypeForm[TService],
         filter: ComponentFilter = default_component_filter,
     ) -> TService:
         self._ensure_open()
@@ -5300,7 +5301,7 @@ class Scope(_RuntimeOwner):
         finally:
             context.finish()
 
-    def provide(self, service_type: type[TService], value: TService, name: str | None = None) -> Scope:
+    def provide(self, service_type: TypeForm[TService], value: TService, name: str | None = None) -> Scope:
         self._ensure_open()
         key = (service_type, name)
         if key not in self._plan.blueprint.slots:
@@ -5526,7 +5527,7 @@ class _BuilderBase:
 
     def register(
         self,
-        service_type: type[TService],
+        service_type: TypeForm[TService],
         implementation_type: type[TService] | None = None,
         *,
         factory: Callable[..., Any] | None = None,
@@ -5541,10 +5542,18 @@ class _BuilderBase:
         self._assert_mutable()
         if factory_specialization is not None and factory is None:
             raise ValueError("factory_specialization requires factory=")
+        is_union = get_origin(service_type) in (typing.Union, types.UnionType)
+        if is_union and factory is None and instance is None and implementation_type is None:
+            raise TypeError(
+                f"Union service {qualified_name(service_type)} requires a factory, instance or implementation type"
+            )
+        # Both legacy paths use the same constructor activator for classes, but
+        # the factory path registers only the requested key, not the implementation.
+        activation_factory = implementation_type if is_union and factory is None else factory
         component_id = self._composition.register(
-            service_type,
+            cast(type[TService], service_type),
             implementation_type,
-            factory=factory,
+            factory=activation_factory,
             instance=instance,
             lifespan=_legacy_lifespan(lifespan),
             name=name,
@@ -5562,7 +5571,7 @@ class _BuilderBase:
 
     def patch_component(
         self,
-        service_type: type,
+        service_type: TypeForm[Any],
         component_id: str,
         *,
         arguments: Mapping[str, Any] | None = None,
@@ -5572,7 +5581,7 @@ class _BuilderBase:
         self._assert_mutable()
         try:
             self._composition.patch_registration(
-                service_type,
+                cast(type, service_type),
                 component_id,
                 dependency_config=(
                     None if arguments is None else _arguments_to_dependency_config(arguments, allow_remove=True)
@@ -5748,7 +5757,7 @@ class _BuilderBase:
 
     def pre_configure(
         self,
-        service_type: type | Iterable[type],
+        service_type: TypeForm[Any] | Iterable[TypeForm[Any]],
         configuration_function: Callable[..., Any],
         *,
         when: ComponentFilter = all_components,
@@ -5784,7 +5793,7 @@ class _BuilderBase:
         self._pre_configuration_states[definition_id] = _PreConfigurationState()
         return definition_id
 
-    def declare_scope_slot(self, service_type: type, name: str | None = None) -> _BuilderBase:
+    def declare_scope_slot(self, service_type: TypeForm[Any], name: str | None = None) -> _BuilderBase:
         self._assert_mutable()
         slot = (service_type, name)
         self._slots.add(slot)

@@ -2,6 +2,16 @@ Unreleased
 ----------
 
 
+2.0.0b10
+--------
+    Support explicit union service keys with ``TypeForm`` annotations that
+    preserve union result types across registration, resolution and FastAPI.
+    Add a direct ``typing_extensions>=4.13.0`` dependency. Union registrations
+    require a factory, instance or implementation and do not register members.
+    Fix union service filters and canonicalize union identities in tooling;
+    existing union-containing graph fingerprints may change.
+
+
 2.0.0b9
 -------
     Rename the default ``once_per_graph`` lifespan to ``per_resolution`` across

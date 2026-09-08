@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Annotated, AsyncGenerator, TypeVar, cast
+from typing import Annotated, Any, AsyncGenerator, TypeVar, cast
 
 from starlette.requests import HTTPConnection
+from typing_extensions import TypeForm
 
 from clean_ioc import ComponentFilter, Scope, default_component_filter
 from clean_ioc.ext.asgi import (
@@ -30,7 +31,7 @@ class FastAPIIntegrationError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class _ResolveRequest:
-    service_type: type
+    service_type: TypeForm[Any]
     filter: ComponentFilter
 
 
@@ -120,7 +121,7 @@ async def _get_scope(connection: HTTPConnection) -> AsyncGenerator[Scope, None]:
 
 
 def Resolve(  # noqa: N802
-    service_type: type[TService],
+    service_type: TypeForm[TService],
     filter: ComponentFilter = default_component_filter,
 ) -> Annotated[TService, params.Depends]:
     """Create a FastAPI dependency that resolves ``service_type`` asynchronously."""

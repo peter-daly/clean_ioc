@@ -6,8 +6,10 @@ from collections.abc import Iterable
 from typing import Any, Callable, TypeVar
 
 from funcie import predicate
+from typing_extensions import TypeForm
 
 from .components import ComponentFilter, Lifespan, all_components
+from .tooling import qualified_name
 
 __all__ = [
     "all_components",
@@ -112,10 +114,10 @@ def implementation_matches_type_filter(type_filter: Callable[[type], bool]):
     )
 
 
-def service_type_is(service_type: type):
+def service_type_is(service_type: TypeForm[Any]):
     return _described(
         predicate(lambda component: component.service_type == service_type),
-        f"service_type_is({service_type.__module__}.{service_type.__qualname__})",
+        f"service_type_is({qualified_name(service_type)})",
     )
 
 
