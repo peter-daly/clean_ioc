@@ -7,7 +7,7 @@ from typing import Any, Generic, TypeVar
 from benchbro import Case, system
 
 from clean_ioc import (
-    Assembly,
+    Boundary,
     BuildIssue,
     BuildReport,
     CompiledGraph,
@@ -154,17 +154,17 @@ def build_feature_graph(scenario: str) -> Container:
             builder.register(service_type)
         return builder.build()
 
-    if scenario == "assembly-boundaries":
+    if scenario == "boundary-visibility":
         builder = ContainerBuilder()
-        builder.install_assembly(
-            Assembly(
+        builder.install_boundary(
+            Boundary(
                 "foundation",
                 foundation_bundle,
                 exposes=(Expose(LevelThree),),
             )
         )
-        builder.install_assembly(
-            Assembly(
+        builder.install_boundary(
+            Boundary(
                 "application",
                 application_bundle,
                 uses=(Use("foundation", LevelThree),),
@@ -389,7 +389,7 @@ build_features = Case(
         "validation-only",
         "resource-ownership",
         "typed-provider",
-        "assembly-boundaries",
+        "boundary-visibility",
     ],
     ids=[
         "core",
@@ -397,7 +397,7 @@ build_features = Case(
         "validation-only",
         "resource-ownership",
         "typed-provider",
-        "assembly-boundaries",
+        "boundary-visibility",
     ],
 )
 def build_five_component_feature_graph(scenario: str) -> Container:
@@ -456,7 +456,7 @@ def create_resource_ownership_report(ownership_graph: CompiledGraph) -> Ownershi
     uncached = CompiledGraph(
         ownership_graph.roots,
         ownership_graph.entrypoints,
-        ownership_graph.assemblies,
+        ownership_graph.boundaries,
     )
     return uncached.ownership_report()
 

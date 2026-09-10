@@ -20,9 +20,9 @@ dependency graph during resolution.
 The compiled graph is also an application policy surface. Custom validation rules can enforce architecture,
 registration conventions, required decorators, metadata, and even source-level AST rules before runtime.
 
-For larger compositions, opt-in assemblies make bundle registrations private by default. Explicit `Expose` and `Use`
+For larger compositions, opt-in boundaries make bundle registrations private by default. Explicit `Expose` and `Use`
 declarations turn cross-feature dependencies into a compiler-validated architecture contract without introducing
-runtime child containers, proxies, or aliases. See the [assemblies guide](docs/assemblies.md).
+runtime child containers, proxies, or aliases. See the [boundaries guide](docs/boundaries.md).
 
 > **2.0 beta:** the compiled API remains subject to breaking changes while the V2 surface is finalized. V1 is not
 > shipped as a parallel public API.
@@ -198,8 +198,9 @@ Each target can be a builder, a built container or scope, or a zero-argument fac
 Build errors are aggregated across independent roots. Deterministic JSON manifests omit configured values and runtime
 identities, allowing wiring changes to be reviewed without serializing secrets. Entry points focus the default graph and
 enable warnings for unreachable registrations; every visible root is still compiled, validated, and resolvable.
-Manifest schema version 2 records the compiled cache and cleanup owner for every occurrence while continuing to read
-version 1 baselines. Cleanup-bearing transients retained by singletons are promoted to the singleton's declaring owner;
+Manifests record the compiled cache and cleanup owner for every occurrence. Tooling JSON formats are unversioned
+during beta; regenerate saved graphs and baselines when the format changes. Schema versioning will begin after beta.
+Cleanup-bearing transients retained by singletons are promoted to the singleton's declaring owner;
 ownership reports explain that decision without exposing runtime tokens or values.
 Expensive custom rules can be registered with `mode="validation"`, keeping their graph or source-AST inspection out
 of application startup while still running under `clean-ioc check` in CI. CLI strictness only controls whether warnings

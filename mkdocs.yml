@@ -19,7 +19,7 @@ nav:
   - Scopes: scopes.md
   - Pre-Configurations: pre-configurations.md
   - Bundles: bundles.md
-  - Assemblies: assemblies.md
+  - Boundaries: boundaries.md
   - Advanced:
       - Filtering: advanced/filtering.md
       - Argument Policies: advanced/arguments.md

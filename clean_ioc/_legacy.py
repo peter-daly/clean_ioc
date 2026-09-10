@@ -648,6 +648,7 @@ class Dependency:
     }
 
     __slots__ = (
+        "declared_service_type",
         "default_value",
         "generic_collection_type",
         "is_current_graph",
@@ -688,6 +689,7 @@ class Dependency:
             self.service_type = map_type_vars_to_parent(child_type=service_type, parent_type=parent_implementation)
         else:
             self.service_type = service_type
+        self.declared_service_type = self.service_type
         self.settings = settings
         generic_origin = getattr(self.service_type, "__origin__", None)
 
@@ -1087,6 +1089,7 @@ class _Registration(Registration):
     __slots__ = (
         "_generic_mapping",
         "activator_class",
+        "declared_service_type",
         "dependencies",
         "id",
         "implementation",
@@ -1116,6 +1119,7 @@ class _Registration(Registration):
         is_root_owned_instance: bool = False,
     ):
         self.service_type = service_type
+        self.declared_service_type: Any = service_type
         self.implementation = implementation
         self.is_instance = is_instance
         self.is_root_owned_instance = is_root_owned_instance

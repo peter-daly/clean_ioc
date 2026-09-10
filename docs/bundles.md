@@ -1,6 +1,8 @@
 # Bundles
 
-A bundle packages repeatable composition against the shared `ComponentBuilder` protocol. The same bundle can target a root `ContainerBuilder` or an experimental `ScopeBuilder`.
+A bundle groups registrations; a boundary controls access to them. A bundle packages repeatable composition against
+the shared `ComponentBuilder` protocol. The same bundle can target a root `ContainerBuilder` or an experimental
+`ScopeBuilder`.
 
 ```python
 from clean_ioc import ComponentBuilder, ContainerBuilder
@@ -19,9 +21,20 @@ container = builder.build()
 ```
 
 Bundles are composition-only. They are never injectable at runtime and cannot mutate a built container or scope.
-An existing bundle can also be used unchanged as an assembly's `root_bundle`; see
-[Assemblies and visibility](assemblies.md). The assembly applies that bundle to an isolated private builder, while
-nested bundles remain in the same assembly and retain their provenance path.
+An existing bundle can also be used unchanged as a boundary's `root_bundle`; see
+[Boundaries and visibility](boundaries.md). The boundary applies that bundle to an isolated private builder, while
+nested bundles remain in the same boundary and retain their provenance path.
+
+```python
+from clean_ioc import Boundary, Expose
+
+builder = ContainerBuilder()
+builder.install_boundary(
+    Boundary("client", root_bundle=ClientBundle(), exposes=(Expose(ApiClient),))
+)
+container = builder.build()
+container.resolve(ApiClient)  # exposed; ClientConfig remains private
+```
 
 The shared protocol also supports custom validation rules, so a bundle can install organization or framework policy
 along with its registrations:

@@ -1,6 +1,6 @@
 # Typed deferred dependencies
 
-Status: Proposal
+Status: Done
 Priority: P1
 Dependencies: Resource ownership proof; compilation provenance for complete explanations
 Release gate: Must not ship before resource ownership and runtime-context capture rules are implemented

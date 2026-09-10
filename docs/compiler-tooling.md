@@ -96,10 +96,12 @@ for change in difference.changed:
     print(change.path)
 ```
 
-The writer uses manifest schema version `2`, adding `cache_owner`, `cleanup_owner`, and a semantic `owner_path` to every
-node. Version `1` baselines remain readable; absent ownership in those baselines stays unknown and therefore appears as
-a semantic change when compared with a version `2` graph. Other schema versions are rejected. A diff reports added,
-removed, and semantically changed component paths.
+Manifests include `cache_owner`, `cleanup_owner`, and a semantic `owner_path` on every node. A diff reports added,
+removed, and semantically changed component paths and boundary contracts.
+
+Graph manifests, build reports, and ownership reports are unversioned during beta. They omit schema version fields,
+and readers use the current format without version checks or migration adapters. Regenerate saved graphs and baselines
+when the format changes. Schema versioning will begin after beta. Deterministic ordering and redaction still apply.
 
 `OwnershipReport` is a frozen, activation-free proof over the compiled graph. Each record includes the component's
 semantic path, cache and cleanup categories, the cached ancestor responsible for promotion when applicable, and a

@@ -88,7 +88,7 @@ reusable. After a successful build, the builder is immutable and cannot be built
 | Declared scope slots | ASGI connections, FastAPI requests, tenant IDs, tracing context |
 | Typed deferred providers | On-demand sync or async activation with a frozen target plan |
 | Compiled scope overlays | Tenant, test, and plugin-specific composition |
-| Assemblies | Compiler-enforced private-by-default composition boundaries |
+| Boundaries | Compiler-enforced private-by-default composition boundaries |
 | Custom graph validation | Executable architecture, conventions, and CI-only source checks |
 
 ## Enforce application-specific architecture
@@ -126,7 +126,7 @@ See [Custom graph validation](custom-validation.md) for a complete rule cookbook
 - [Factories](factories.md) — sync, async, generators, and context managers
 - [Special dependency types](advanced/special-dependency-types.md) — typed providers and runtime contexts
 - [Decorators](decorators.md) and [generics](generics.md) — compiled handler pipelines
-- [Assemblies](assemblies.md) — private registrations, explicit exposures, and declared cross-boundary uses
+- [Boundaries](boundaries.md) — private registrations, explicit exposures, and declared cross-boundary uses
 - [Custom graph validation](custom-validation.md) — executable architecture and policy recipes
 - [ASGI](extensions/asgi.md) — dependency-free lifespan and operation scopes
 - [FastAPI](extensions/fastapi.md) — request scopes and explicit request values

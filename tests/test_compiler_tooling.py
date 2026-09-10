@@ -1394,7 +1394,7 @@ def test_graph_text_mermaid_and_json_renderers_are_available():
 
     assert "Resolve" in container.graph.to_text()
     assert container.graph.to_mermaid().startswith("flowchart TD")
-    assert json.loads(container.graph.manifest().to_json())["schema_version"] == 3
+    assert "schema_version" not in json.loads(container.graph.manifest().to_json())
 
 
 def test_graph_renderers_put_relationships_on_edges_and_keep_nodes_component_only():
@@ -1475,7 +1475,7 @@ def test_cli_check_graph_and_diff_contract(tmp_path: Path, capsys):
 
     baseline = tmp_path / "graph.json"
     assert main(["graph", target, "--format", "json", "--output", str(baseline)]) == 0
-    assert GraphManifest.from_json(baseline.read_text()).data["schema_version"] == 3
+    assert "schema_version" not in GraphManifest.from_json(baseline.read_text()).data
     capsys.readouterr()
 
     assert main(["diff", target, str(baseline)]) == 0
@@ -1728,6 +1728,26 @@ def test_cli_explain_text_json_path_and_invalid_selection(capsys):
     assert "explain-path-not-found" in capsys.readouterr().err
 
 
-def test_manifest_rejects_unknown_schema():
-    with pytest.raises(ValueError, match="Unsupported graph manifest schema"):
-        GraphManifest.from_json('{"schema_version": 99, "roots": []}')
+def test_tooling_json_is_unversioned_during_beta():
+    builder = ContainerBuilder()
+    builder.register(str, instance="value")
+    container = builder.build()
+
+    for payload in (
+        container.build_report.to_json(),
+        container.graph.ownership_report().to_json(),
+        container.graph.manifest().to_json(),
+    ):
+        assert "schema_version" not in json.loads(payload)
+
+    manifest = container.graph.manifest()
+    restored = GraphManifest.from_json(manifest.to_json())
+    assert restored.data == manifest.data
+    assert restored.fingerprint == manifest.fingerprint
+    assert restored.diff(manifest).is_empty
+
+
+@pytest.mark.parametrize("payload", ["[]", "null", "42", '"graph"'])
+def test_manifest_requires_a_json_object(payload):
+    with pytest.raises(ValueError, match="A graph manifest must be a JSON object"):
+        GraphManifest.from_json(payload)

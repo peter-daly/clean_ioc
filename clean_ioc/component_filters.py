@@ -10,6 +10,7 @@ from typing_extensions import TypeForm
 
 from .components import ComponentFilter, Lifespan, all_components
 from .tooling import qualified_name
+from .type_aliases import normalize_type_alias
 
 __all__ = [
     "all_components",
@@ -100,10 +101,11 @@ def implementation_is(implementation: Any):
     return _described(predicate(lambda component: component.implementation == implementation), "implementation_is")
 
 
-def implementation_type_is(implementation_type: type):
+def implementation_type_is(implementation_type: TypeForm[Any]):
+    implementation_type = normalize_type_alias(implementation_type)
     return _described(
         predicate(lambda component: component.implementation_type == implementation_type),
-        f"implementation_type_is({implementation_type.__module__}.{implementation_type.__qualname__})",
+        f"implementation_type_is({qualified_name(implementation_type)})",
     )
 
 
@@ -115,6 +117,7 @@ def implementation_matches_type_filter(type_filter: Callable[[type], bool]):
 
 
 def service_type_is(service_type: TypeForm[Any]):
+    service_type = normalize_type_alias(service_type)
     return _described(
         predicate(lambda component: component.service_type == service_type),
         f"service_type_is({qualified_name(service_type)})",

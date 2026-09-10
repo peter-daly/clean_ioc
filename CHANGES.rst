@@ -1,5 +1,34 @@
-Unreleased
-----------
+2.0.0b12
+--------
+
+    Support native and backported Python type aliases across composition,
+    generic specialization, graph tooling, and resolution while preserving
+    nominal NewType identity. Keep canonical class, generic, union, and provider
+    lookups on the existing fast paths without repeated alias normalization.
+
+    Add lazy provider maps with pure callable keys evaluated during compilation.
+    Inject read-only mappings of individually invocable sync or async providers
+    with frozen target selection, ordinary scope and cleanup ownership, and
+    redacted graph metadata.
+
+    Add structural generic factory registration with ``register_pattern()``.
+    Compile nested and repeated TypeVar bindings, class bounds/constraints,
+    deterministic specificity and ambiguity diagnostics, and closed Boundary
+    exposure using the existing frozen activation and ownership plans.
+    Exact registrations precede structural patterns and open fallbacks.
+    Matching remains build-time only; unseen runtime requests stay unavailable.
+
+    Rename ``Assembly`` to ``Boundary`` and ``clean_ioc.assemblies`` to
+    ``clean_ioc.boundaries``. Builders now use ``install_boundary()``;
+    component, graph, provenance, and validation metadata use ``boundary``
+    or ``boundaries``. Diagnostics and graph diffs use Boundary terminology.
+    The old API names are removed without compatibility aliases.
+    Bundles, ``root_bundle``, ``Expose``, and ``Use`` keep their behavior.
+    Graph manifests use ``boundaries``, ``boundary``, and ``source_boundary``
+    fields. Graph manifests, build reports, and ownership reports are unversioned
+    during beta. Remove schema version fields, version checks, and legacy
+    comparison branches. Regenerate saved graphs and baselines when their
+    format changes; schema versioning will begin after beta.
 
 
 2.0.0b11

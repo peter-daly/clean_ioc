@@ -37,23 +37,39 @@ runtime scope/context edge. Unmarked provider roots are precompiled in a private
 available without changing the ordinary all-registration graph view; mark a provider entry point when its synthetic root
 must be part of graph tooling.
 
+`register_provider_map(T, key=..., key_type=str, asynchronous=False, component_filter=all_components, name=None)`
+declares an ordinary selectable transient `Mapping[K, Provider[T]]` registration; `asynchronous=True` uses
+`AsyncProvider[T]`. The explicit key type supplies the injection identity even for empty maps. The compiler selects
+visible eligible registrations in existing candidate order (newest first), evaluates a pure synchronous metadata key
+once per selected target occurrence, and freezes a read-only key-to-index table. A `provider_map` graph node contains
+one ordinary deferred provider child per selected target. The specialized map step shares that table and creates fresh
+scope-bound handles on acquisition; neither target activation nor key rehashing is part of map construction.
+
+Map entry compilation uses the same provider retention boundary and target steps as individual providers, including
+singleton capture checks and owner binding. Target decorators, Boundary defining areas, inherited singleton anchoring,
+generic specialization, and nested aliases keep their existing semantics. Map names select map definitions; the
+declaration's `component_filter` selects targets. Declarations never merge. Graph manifests include the `provider_map`
+kind, `key_type`, and `provider_mode` without serializing computed keys, key hashes, or callbacks. Unchanged target
+topology with changed redacted keys intentionally has the same fingerprint. Ordinary
+non-map graph output and canonical runtime lookup paths remain unchanged.
+
 The compiler also prepares the common runtime decisions instead of rediscovering them on every resolve. It freezes each step's sync/async capability, builds direct maps for default root selection, and chooses a lifespan-specific registration step for transient, per-resolution, scoped, or singleton behavior. Default cached root resolutions return the frozen value before allocating a per-resolution context. Runtime code should keep those paths specialized: do not restore recursive capability checks, repeated default-filter scans, or a generic lifespan switch to the hot path without measurements showing a benefit.
 
 Private machinery in `clean_ioc/_legacy.py` still supplies registration storage, activators, dependency parsing, and filters while the compiler is made self-contained. It is not a supported import path. The public runtime converts string-literal lifespans to the private enum only at this internal boundary. Do not expose that enum through components or route runtime resolution back through the old dependency graph.
 
-## Assembly visibility compilation
+## Boundary visibility compilation
 
-`Assembly` wraps an ordinary bundle in a private builder layer. `Expose` resolves exactly one local registration and
+`Boundary` wraps an ordinary bundle in a private builder layer. `Expose` resolves exactly one local registration and
 projects that unchanged registration into root candidate visibility; `Use` resolves exactly one root registration or
-named source exposure and admits its registration ID to a consuming assembly. The compiler switches to a registration's
+named source exposure and admits its registration ID to a consuming boundary. The compiler switches to a registration's
 defining area while compiling its dependencies, decorators, pre-configurations, providers, and generic
 specializations. Runtime steps therefore remain direct and carry no visibility check, wrapper, alias, or extra owner.
 
-Assembly visibility is resolved before occurrence compilation and the declared use graph is rejected if cyclic.
+Boundary visibility is resolved before occurrence compilation and the declared use graph is rejected if cyclic.
 Every local closed root is compiled even when private. Root graph tooling retains the complete architecture graph;
-runtime root indexes contain only root registrations and exposures. Scope overlays offset inherited assemblies from
-new root layers so parent assembly uses retain their original root visibility, while a new overlay assembly may use a
-parent exposure. Never merge private assembly registries into `_Blueprint.layers`: doing so silently destroys the
+runtime root indexes contain only root registrations and exposures. Scope overlays offset inherited boundaries from
+new root layers so parent boundary uses retain their original root visibility, while a new overlay boundary may use a
+parent exposure. Never merge private boundary registries into `_Blueprint.layers`: doing so silently destroys the
 candidate boundary and allows root decorators or overlay registrations to patch private definitions.
 
 ## Argument compilation
@@ -258,15 +274,46 @@ startup. Protocol-specific routing, including health-check policy, remains appli
 
 Generic work relies on `typetoolbox`. Use the installed `using-typetoolbox` skill before changing binding or subclass-discovery behavior.
 
+Native `type` statement aliases and `typing_extensions.TypeAliasType` are normalized before registry grouping,
+generic mapping, dependency selection, and frozen-plan lookup. Alias parameters bind by identity before typetoolbox is
+invoked. Canonical targets drive components, manifests, fingerprints, caches, visibility, and ownership; alias failures
+are classified during preview/build and are not cached, so a repaired defining namespace can be retried. `NewType`
+declarations remain terminal nominal keys and require an explicit activation source.
+
 ## Compiler tooling
+
+Structural factory templates are declared with `register_pattern(Service[list[T]], factory=...)` on every public
+builder/bundle surface. `registration_patterns.py` performs identity-based structural binding and subsumption at build
+time; `container.py` specializes the unchanged factory into normal closed registration steps. Matching uses exact
+class origins/ordered arguments with repeated-variable equality, and ordinary class TypeVar bounds/constraints.
+Unsupported forms and same-named variable collisions are diagnosed before activation. Factory substitution is separate
+from the existing service-oriented `GenericTypeMap` metadata.
+
+Visible exact registrations precede patterns, which precede open fallbacks. Equivalent patterns keep ordinary layer
+and registration ordering; strictly more specific structures win, and incomparable matches fail. `when` and caller
+filters run after definition-tier selection and cannot trigger fallback. Closed public dependency/provider/map requests
+also compile as public pattern roots; private requests stay private, and entry-point markers do not introduce new
+pattern keys. Boundary Expose/Use accepts closed requests only for structural templates. Singleton anchoring, lifetime
+validation, decorators, resource ownership, and pre-configuration retain the normal compiler behavior.
+
+The growing-specialization guard rejects a non-shrinking request after 16 active specializations of one template or
+32 across all templates, also bounding cycles through many distinct templates.
+This is a bounded diagnostic, not a general termination proof. Compiler-local indexing/binding caches are discarded
+after build, and ordinary runtime lookup methods remain unchanged. No manifest/schema/version fields were added;
+template origin and selection diagnostics stay outside default semantic fingerprints. See `docs/generics.md` for the
+complete supported matching, filtering, exposure, and public-root rules.
 
 `clean_ioc/tooling.py` exposes read-only tooling over the exact compiled component plans:
 
 - `BuildIssue` and `BuildReport` for structured validation;
 - `CompiledGraph` with text and Mermaid renderers;
 - immutable compilation explanations with selected/rejected candidates, stable reason codes, and best-effort origins;
-- schema-version-1 `GraphManifest` with deterministic fingerprints;
+- unversioned `GraphManifest` with deterministic fingerprints;
 - `GraphDiff`/`GraphChange` for semantic added, removed, and changed paths.
+
+All Clean IoC tooling JSON formats remain unversioned during beta. Do not add schema version fields, version gates,
+legacy comparison branches, or migration adapters until the release leaves beta. Saved graphs and baselines should be
+regenerated when their format changes. Keep current-format round trips, deterministic fingerprints, and redaction intact.
 
 `CompiledGraph.explain(...)` reads the frozen decision index for a service request or exact component occurrence. It
 must never re-run a filter or activation callable. Default and declarative exact-name root selection can be answered

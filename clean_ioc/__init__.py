@@ -1,7 +1,7 @@
 """Clean IoC's public API."""
 
 from .arguments import INJECT, REMOVE, ParameterContext, build_arg, derive, generic_arg, inject, select
-from .assemblies import Assembly, Expose, Use
+from .boundaries import Boundary, Expose, Use
 from .components import (
     Component,
     ComponentActivation,
@@ -56,7 +56,7 @@ __all__ = [
     "INJECT",
     "REMOVE",
     "BuilderAlreadyBuiltError",
-    "Assembly",
+    "Boundary",
     "CannotResolveError",
     "Component",
     "ComponentActivation",

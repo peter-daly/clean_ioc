@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+from collections.abc import Hashable
 from dataclasses import dataclass
 from enum import Enum
 from types import UnionType
@@ -13,6 +14,7 @@ from typing_extensions import TypeForm
 
 from .generic_utils import constructor_type
 from .metadata import Tag
+from .type_aliases import normalize_type_alias
 
 if TYPE_CHECKING:
     from .tooling import ValidationRule
@@ -42,6 +44,7 @@ class ComponentKind(str, Enum):
     value = "value"
     runtime_context = "runtime_context"
     provider = "provider"
+    provider_map = "provider_map"
 
 
 class ComponentActivation(str, Enum):
@@ -84,7 +87,8 @@ class _ComponentRecord:
     decorator_ids: tuple[int, ...]
     decorated_id: int | None
     pre_configuration_ids: tuple[int, ...]
-    assembly: str | None
+    boundary: str | None
+    declared_service_type: Any | None
 
 
 @dataclass(slots=True)
@@ -114,7 +118,8 @@ class _ComponentDraft:
     decorator_ids: tuple[int, ...] = ()
     decorated_id: int | None = None
     pre_configuration_ids: tuple[int, ...] = ()
-    assembly: str | None = None
+    boundary: str | None = None
+    declared_service_type: Any | None = None
 
     def freeze(self) -> _ComponentRecord:
         return _ComponentRecord(
@@ -144,12 +149,16 @@ class _ComponentDraft:
             decorator_ids=self.decorator_ids,
             decorated_id=self.decorated_id,
             pre_configuration_ids=self.pre_configuration_ids,
-            assembly=self.assembly,
+            boundary=self.boundary,
+            declared_service_type=self.declared_service_type,
         )
 
 
 def normalize_implementation_type(implementation: Any, service_type: Any) -> type:
     """Return a stable type for classes, instances, and factory callables."""
+
+    implementation = normalize_type_alias(implementation)
+    service_type = normalize_type_alias(service_type)
 
     if (implementation_class := constructor_type(implementation)) is not None:
         return implementation_class
@@ -157,6 +166,8 @@ def normalize_implementation_type(implementation: Any, service_type: Any) -> typ
         annotation = inspect.signature(implementation).return_annotation
     except (TypeError, ValueError):
         annotation = inspect.Signature.empty
+    if annotation is not inspect.Signature.empty:
+        annotation = normalize_type_alias(annotation)
     if annotation is not inspect.Signature.empty and isinstance(annotation, type):
         return annotation
     origin = getattr(service_type, "__origin__", None)
@@ -219,6 +230,13 @@ class Component:
         return self._record.service_type
 
     @property
+    def declared_service_type(self) -> Any:
+        """Original alias spelling when one was declared, otherwise the canonical service type."""
+
+        declared = self._record.declared_service_type
+        return self._record.service_type if declared is None else declared
+
+    @property
     def implementation(self) -> Any:
         return self._record.implementation
 
@@ -251,10 +269,10 @@ class Component:
         return self._record.build_args
 
     @property
-    def assembly(self) -> str | None:
+    def boundary(self) -> str | None:
         """Composition area where this component was defined; ``None`` is root."""
 
-        return self._record.assembly
+        return self._record.boundary
 
     @property
     def registration_tags(self) -> tuple[Tag, ...]:
@@ -382,9 +400,11 @@ class Component:
         return any(filter(component) for component in self.descendants())
 
     def has_dependant_service_type(self, service_type: TypeForm[Any]) -> bool:
+        service_type = normalize_type_alias(service_type)
         return self.has_descendant(lambda component: component.service_type == service_type)
 
-    def has_dependant_implementation_type(self, implementation_type: type) -> bool:
+    def has_dependant_implementation_type(self, implementation_type: TypeForm[Any]) -> bool:
+        implementation_type = normalize_type_alias(implementation_type)
         return self.has_descendant(lambda component: component.implementation_type == implementation_type)
 
     def __repr__(self) -> str:
@@ -418,7 +438,7 @@ class ComponentBuilder(Protocol):
     def register(
         self,
         service_type: TypeForm[Any],
-        implementation_type: type | None = None,
+        implementation_type: TypeForm[Any] | None = None,
         *,
         factory: Callable[..., Any] | None = None,
         factory_specialization: object | None = None,
@@ -430,10 +450,33 @@ class ComponentBuilder(Protocol):
         when: ComponentFilter = all_components,
     ) -> str: ...
 
+    def register_pattern(
+        self,
+        service_type: TypeForm[Any],
+        *,
+        factory: Callable[..., Any],
+        lifespan: Lifespan = "per_resolution",
+        name: str | None = None,
+        arguments: Mapping[str, Any] | None = None,
+        tags: Iterable[Tag] | None = None,
+        when: ComponentFilter = all_components,
+    ) -> str: ...
+
+    def register_provider_map(
+        self,
+        service_type: TypeForm[Any],
+        *,
+        key: Callable[[Component], Hashable],
+        key_type: TypeForm[Any] = str,
+        asynchronous: bool = False,
+        component_filter: ComponentFilter = all_components,
+        name: str | None = None,
+    ) -> str: ...
+
     def register_decorator(
         self,
         service_type: TypeForm[Any],
-        decorator_type: type | Callable,
+        decorator_type: TypeForm[Any] | Callable[..., Any],
         *,
         when: ComponentFilter = all_components,
         decorated_arg: str | None = None,

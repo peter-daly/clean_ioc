@@ -19,7 +19,7 @@ class Expose:
 
 @dataclass(frozen=True, slots=True)
 class Use:
-    """Admit one unchanged root or exposed component into an assembly."""
+    """Admit one unchanged root or exposed component into a boundary."""
 
     source: str | None
     service_type: Any
@@ -36,7 +36,7 @@ class Use:
 
 
 @dataclass(frozen=True, slots=True)
-class Assembly:
+class Boundary:
     """An opt-in compile-time visibility boundary around an ordinary bundle."""
 
     name: str

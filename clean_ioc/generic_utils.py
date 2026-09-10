@@ -14,12 +14,18 @@ from typing import (
 
 from typetoolbox.generics import GenericTypeMap
 
+from .type_aliases import TypeAliasNormalizationError, normalize_type_alias
+
 TypingGenericAlias = (_GenericAlias, _SpecialGenericAlias, types.GenericAlias)
 GenericDefinitionClasses = (Generic, Protocol)
 
 
 def constructor_type(implementation: Any) -> type | None:
     """Recognise classes and class aliases without mistaking unions for constructors."""
+    try:
+        implementation = normalize_type_alias(implementation)
+    except TypeAliasNormalizationError:
+        return None
     if isinstance(implementation, type):
         return implementation
     origin = get_origin(implementation)

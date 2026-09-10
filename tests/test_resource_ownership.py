@@ -563,7 +563,7 @@ def test_concurrent_singleton_activation_registers_one_promoted_finalizer():
     assert events == ["enter", "exit"]
 
 
-def test_manifest_v2_serializes_ownership_and_v1_is_readable_as_unknown():
+def test_manifest_serializes_ownership_deterministically_without_a_version():
     class Service:
         pass
 
@@ -576,26 +576,15 @@ def test_manifest_v2_serializes_ownership_and_v1_is_readable_as_unknown():
     equivalent_container = equivalent.build()
     assert container.graph.ownership_report().to_json() == equivalent_container.graph.ownership_report().to_json()
     current = manifest.to_dict()
-    assert current["schema_version"] == 3
+    assert "schema_version" not in current
     assert current["roots"][0]["cache_owner"] == "singleton"
     assert current["roots"][0]["cleanup_owner"] == "singleton"
     assert current["roots"][0]["owner_path"] is None
 
-    def strip_ownership(node):
-        for field in ("cache_owner", "cleanup_owner", "owner_path"):
-            node.pop(field)
-        for relationship in ("dependencies", "decorators", "pre_configurations"):
-            for child in node[relationship]:
-                strip_ownership(child)
-
-    legacy = json.loads(json.dumps(current))
-    legacy["schema_version"] = 1
-    for root in legacy["roots"]:
-        strip_ownership(root)
-    baseline = GraphManifest.from_json(json.dumps(legacy))
-    assert "cache_owner" not in baseline.data["roots"][0]
-    difference = manifest.diff(baseline)
-    assert [change.path for change in difference.changed] == [current["roots"][0]["path"]]
+    baseline = GraphManifest.from_json(equivalent_container.graph.manifest().to_json())
+    assert baseline.to_dict() == current
+    assert baseline.fingerprint == manifest.fingerprint
+    assert manifest.diff(baseline).is_empty
 
 
 def test_reports_and_manifests_are_redacted_and_cli_renders_ownership(capsys):

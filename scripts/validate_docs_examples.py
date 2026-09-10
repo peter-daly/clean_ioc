@@ -1,19 +1,23 @@
 """Validate the documented Clean IoC 2 composition and runtime boundaries."""
 
 import asyncio
+from collections.abc import Mapping
 from contextlib import asynccontextmanager, contextmanager
+from dataclasses import dataclass
 from typing import Generic, TypeVar, assert_type
 
 import clean_ioc.component_filters as cf
 from clean_ioc import (
     INJECT,
-    Assembly,
+    AsyncProvider,
+    Boundary,
     BuildIssue,
     Component,
     ContainerBuilder,
     ContainerBuildError,
     Expose,
     IssueSeverity,
+    Provider,
     Use,
     ValidationContext,
     build_arg,
@@ -336,7 +340,7 @@ def validate_custom_graph_rules() -> None:
     assert not container.build_report.issues  # noqa: S101
 
 
-def validate_assemblies() -> None:
+def validate_boundaries() -> None:
     class RootSettings:
         pass
 
@@ -354,8 +358,8 @@ def validate_assemblies() -> None:
 
     builder = ContainerBuilder()
     builder.register(RootSettings, lifespan="singleton")
-    builder.install_assembly(
-        Assembly(
+    builder.install_boundary(
+        Boundary(
             "feature",
             feature_bundle,
             uses=(Use.root(RootSettings),),
@@ -400,6 +404,91 @@ def validate_union_factory() -> None:
             assert container.resolve(Cache).client is client  # noqa: S101
 
 
+def validate_provider_maps() -> None:
+    class PaymentGateway:
+        created = 0
+
+        def __init__(self):
+            PaymentGateway.created += 1
+
+    class StripeGateway(PaymentGateway):
+        pass
+
+    class PayPalGateway(PaymentGateway):
+        pass
+
+    class Checkout:
+        def __init__(self, gateways: Mapping[str, Provider[PaymentGateway]]):
+            self.gateways = gateways
+
+    builder = ContainerBuilder()
+    builder.register(PaymentGateway, StripeGateway, name="stripe", lifespan="scoped")
+    builder.register(PaymentGateway, PayPalGateway, name="paypal", lifespan="scoped")
+    builder.register_provider_map(PaymentGateway, key=lambda component: component.name)
+    builder.register_provider_map(
+        PaymentGateway,
+        key=lambda component: 7,
+        key_type=int,
+        component_filter=cf.with_name("stripe"),
+        asynchronous=True,
+    )
+    builder.register(Checkout)
+    with builder.build() as container:
+        with container.new_scope() as scope:
+            checkout = scope.resolve(Checkout)
+            assert PaymentGateway.created == 0  # noqa: S101
+            gateway = checkout.gateways["stripe"]()
+            assert isinstance(gateway, StripeGateway)  # noqa: S101
+            assert PaymentGateway.created == 1  # noqa: S101
+            async_map = scope.resolve(Mapping[int, AsyncProvider[PaymentGateway]])
+            assert asyncio.run(async_map[7]()) is gateway  # noqa: S101
+
+
+def validate_registration_patterns() -> None:
+    T = TypeVar("T")
+
+    class Serializer(Generic[T]):
+        def serialize(self, value: T) -> str:
+            raise NotImplementedError
+
+    @dataclass
+    class Order:
+        reference: str
+
+    class OrderSerializer(Serializer[Order]):
+        def serialize(self, value: Order) -> str:
+            return value.reference
+
+    class ListSerializer(Serializer[list[T]]):
+        def __init__(self, item_serializer: Serializer[T]):
+            self.item_serializer = item_serializer
+
+        def serialize(self, value: list[T]) -> str:
+            return "[" + ", ".join(self.item_serializer.serialize(item) for item in value) + "]"
+
+    def make_list_serializer(item_serializer: Serializer[T]) -> Serializer[list[T]]:
+        return ListSerializer(item_serializer)
+
+    class ExportOrders:
+        def __init__(self, serializer: Serializer[list[Order]]):
+            self.serializer = serializer
+
+    class ExportBatches:
+        def __init__(self, serializer: Serializer[list[list[Order]]]):
+            self.serializer = serializer
+
+    builder = ContainerBuilder()
+    builder.register(Serializer[Order], OrderSerializer)
+    builder.register_pattern(Serializer[list[T]], factory=make_list_serializer)
+    builder.register(ExportOrders)
+    builder.register(ExportBatches)
+    with builder.build() as container:
+        exporter = container.resolve(ExportOrders)
+        assert exporter.serializer.serialize([Order("A"), Order("B")]) == "[A, B]"  # noqa: S101
+        batches = container.resolve(ExportBatches)
+        assert batches.serializer.serialize([[Order("A")], [Order("B")]]) == "[[A], [B]]"  # noqa: S101
+
+
 def main() -> None:
     validate_build_and_resolution()
     validate_failed_builder_is_reusable()
@@ -412,7 +501,9 @@ def main() -> None:
     validate_build_arguments()
     validate_inject_and_generic_arg()
     validate_custom_graph_rules()
-    validate_assemblies()
+    validate_boundaries()
+    validate_provider_maps()
+    validate_registration_patterns()
     asyncio.run(validate_async_factory())
     print("documentation examples validated")
 

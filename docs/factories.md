@@ -72,7 +72,8 @@ the normal container rules. `A | None` does not make injection optional: a Pytho
 present; otherwise the complete union requires a registration or scope slot. Use `inject()` to override a default.
 
 Public service-key annotations use `typing_extensions.TypeForm`, so type checkers supporting it retain the requested
-union as the result type. This support does not introduce unwrapping for Python's `type Client = A | B` alias syntax.
+union as the result type. Native `type Client = A | B` declarations and `typing_extensions.TypeAliasType` aliases are
+transparent spellings of the same complete union key; the individual union members remain separate keys.
 
 ## Async factories
 

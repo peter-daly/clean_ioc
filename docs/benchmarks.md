@@ -47,6 +47,22 @@ be used to infer process-level memory consumption.
 
 Runtime containers and the provided request scope are session systems prepared outside the measured interval. Each runtime invocation performs exactly one resolve or scope creation.
 
+The `existing-lookup-paths` case covers default and filtered class lookup, cached closed generics and unions, provider
+and collection roots, and `has_component`. Keys, filters, singleton caches, and the container are prepared outside the
+measured interval. These operations use canonical types, not modern aliases, so they detect alias-normalization overhead
+in existing APIs that the ordinary class-resolution benchmarks would miss.
+
+`bench_provider_maps.py` adds ten focused cases: acquisition and prepared-key lookup for 1, 10, and 100 entries,
+transient and cached-singleton provider invocation, and complete map builds with 1 or 10 targets. Runtime fixtures
+prepare containers, annotations, keys, and singleton caches outside measurement. Acquisition creates handles without
+activating targets or recomputing keys; lookup returns a handle; invocation measures one target's existing provider
+path. The build cases include declarations, compilation, and container exit. Keep the existing lookup-path cases
+alongside these feature cases when checking regressions.
+
+For a feature comparison, capture the current working tree before edits and keep the same Python environment and
+benchmark definitions for both sides. Use unique named baselines and separate output paths: `--no-compare` can still
+create or backfill the selected baseline. Do not replace historical baselines or the tracked reports opportunistically.
+
 Build benchmarks deliberately include:
 
 - builder construction;

@@ -201,6 +201,131 @@ builder.register(
 
 `factory_specialization` is valid only with `factory=`. Build fails with `ContainerBuildError` when ordinary TypeVars remain unresolved or inferred sources conflict. ParamSpec and TypeVarTuple specialization are not supported. TypeVar lookup follows typetoolbox's name-based mapping model, so avoid distinct same-named TypeVars in one factory signature.
 
+## Structural registration patterns
+
+Use `register_pattern()` when the factory depends on the structure inside a service's type arguments:
+
+```python
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+from clean_ioc import ContainerBuilder
+
+T = TypeVar("T")
+
+
+class Serializer(Generic[T]):
+    def serialize(self, value: T) -> str:
+        raise NotImplementedError
+
+
+@dataclass
+class Order:
+    reference: str
+
+
+class OrderSerializer(Serializer[Order]):
+    def serialize(self, value: Order) -> str:
+        return value.reference
+
+
+class ListSerializer(Serializer[list[T]]):
+    def __init__(self, item_serializer: Serializer[T]):
+        self.item_serializer = item_serializer
+
+    def serialize(self, value: list[T]) -> str:
+        return "[" + ", ".join(self.item_serializer.serialize(item) for item in value) + "]"
+
+
+def make_list_serializer(item_serializer: Serializer[T]) -> Serializer[list[T]]:
+    return ListSerializer(item_serializer)
+
+
+class ExportOrders:
+    def __init__(self, serializer: Serializer[list[Order]]):
+        self.serializer = serializer
+
+
+builder = ContainerBuilder()
+builder.register(Serializer[Order], OrderSerializer)
+builder.register_pattern(Serializer[list[T]], factory=make_list_serializer)
+builder.register(ExportOrders)
+
+with builder.build() as container:
+    exporter = container.resolve(ExportOrders)
+    assert exporter.serializer.serialize([Order("A"), Order("B")]) == "[A, B]"
+```
+
+The same template handles finite nesting, such as `Serializer[list[list[Order]]]`. A dictionary template declared as
+`Serializer[dict[str, T]]` accepts only string keys. Concrete positions match exactly by canonical origin and ordered
+arguments; they do not use subclass dispatch. Repeated variables, as in `Serializer[tuple[T, T]]`, must bind equally.
+Transparent native and backported type aliases normalize before matching; `NewType` remains nominal.
+
+The signature is `register_pattern(service_type, *, factory, lifespan="per_resolution", name=None, arguments=None,
+tags=None, when=all_components) -> str`. Container builders, scope builders, and bundles using `ComponentBuilder`
+support it. The returned ID identifies the template; each closed specialization receives its own stable component ID.
+The original factory stays unchanged. Ordinary argument policies, decorators, providers, provider maps,
+pre-configuration, lifespans, and cleanup ownership apply to each compiled specialization.
+
+### Supported structures and factory bindings
+
+Patterns require a parameterized class containing at least one ordinary `TypeVar`. Terminal positions accept classes,
+nominal `NewType`s, and variables; nested aliases use class origins. Matching supports fixed-length tuples but excludes
+unions, `Any`, `Literal`, `Annotated`, callables, ellipsis tuples, bare generics, `ParamSpec`, and `TypeVarTuple`.
+These restrictions also apply to closed expressions bound to a variable. A bare generic is never closed from defaults.
+Synthetic collection and provider requests cannot be the outer pattern; register their element or target service
+pattern instead. Repeated bindings compare canonical structure, including equivalent `typing.List`/`list` spellings.
+
+Bounds and constraints must be ordinary unparameterized classes. Variable bindings use subclass checks against those
+classes (the origin for a parameterized binding); constraints accept any listed class or its subclasses, preserving
+the actual bound type. Parameterized bounds, forward bounds, and protocol bounds, including runtime-checkable protocols,
+are rejected. Concrete pattern positions still use exact matching.
+
+Factory variables must be the same `TypeVar` objects bound by the pattern. A result annotation, when supplied, must
+substitute to the closed service; generator and context-manager annotations use the yielded type. Unknown variables,
+conflicting results, and distinct same-named variables produce `pattern-incompatible-binding`. Factory defaults do not
+invent missing pattern bindings. Public `component.generic_mapping` remains the service mapping: for
+`Serializer[list[Order]]`, the service parameter maps to `list[Order]`, while the factory's pattern variable maps to
+`Order`. Typetoolbox's existing name-based metadata limitations remain; these two mappings are not merged.
+
+### Selection and visibility
+
+Selection first chooses a definition tier: exact closed registrations, then matching structural patterns, then existing
+open-generic fallbacks. A pattern is more specific if every expression it accepts is accepted by the other pattern and
+the reverse does not hold. Nested concrete structure, repeated-variable equality, and narrower bound/constraint domains
+participate in this relation. For example, `Serializer[list[T]]` beats `Serializer[U]`; `Serializer[tuple[T, T]]` beats
+`Serializer[tuple[T, U]]`. `Serializer[tuple[int, T]]` and `Serializer[tuple[U, str]]` are incomparable for
+`Serializer[tuple[int, str]]` and fail with `pattern-ambiguous` regardless of declaration order.
+
+Equivalent patterns retain all registrations, in ordinary newest-first order, with overlays ahead of parent layers.
+Visibility is applied before tier and specificity selection. Existing `when` conditions and caller/name filters run
+after that selection; rejecting the chosen tier does not create a fallback. Consequently an exact named registration
+can prevent an unnamed or differently named pattern from being selected. Collections and provider maps retain the
+eligible registrations in the winning equivalent-pattern group.
+
+A Boundary may expose or use an explicitly closed request, such as `Expose(Serializer[list[Order]])`; dependencies
+compile with the template's definition-site visibility. The declaration selects one template registration and exposes
+only that closed key. Open template exports/imports are rejected with `pattern-unsupported-exposure`; there is no
+template wildcard. Private specializations remain private. An inherited singleton keeps its parent's frozen plan;
+an overlay cannot introduce a previously uncompiled parent singleton specialization.
+
+### Frozen requests and diagnostics
+
+Templates alone enumerate no roots. A closed pattern request encountered in a public compiled dependency, provider,
+or provider-map target is also compiled as a public root with ordinary root filtering. Explicit closed Boundary
+exposures are roots too. Private dependency requests do not become public. `mark_entrypoint()` can focus an already
+compiled pattern request, but does not introduce a new request or grant runtime access. Unseen closed keys cannot be
+resolved, and runtime resolution, provider calls, and map lookups never perform matching.
+
+Ordinary cycles report `circular-dependency`. Growing specializations report `pattern-non-terminating-expansion`:
+the compiler rejects a non-shrinking request after 16 active specializations of the same template or 32 across all
+templates. This is a bounded
+guard, not a general termination proof; unusually deep finite growing constructions must use explicit registrations.
+Shrinking list nesting works normally. Invalid declarations use `pattern-invalid`; unsupported forms use
+`pattern-unsupported-form`. Errors include the closed request and compilation path. Failed builders remain repairable.
+Graph explanations identify winning, mismatched, shadowed, and less-specific templates without activating factories.
+Template origins stay out of semantic fingerprints, and programs without patterns retain their existing manifests.
+
 ## Filtering discovered subclasses
 
 `subclass_type_filter` uses predicates from `clean_ioc.type_filters`:
@@ -266,3 +391,36 @@ builder.register(Service, arguments={"command_name": derive(command_name)})
 ```
 
 Runtime caching still uses the stable component ID, preserving lifespan semantics across occurrences within one resolve.
+
+## Modern type aliases
+
+Native Python `type` statements and `typing_extensions.TypeAliasType` are transparent wherever a service type or
+dependency annotation is accepted. The alias and its expanded target select the same compiled component, cache, and
+cleanup owner, including aliases nested in generics, collections, unions, and typed providers:
+
+```python
+from typing import Generic, TypeVar
+from typing_extensions import TypeAliasType
+
+
+T = TypeVar("T")
+
+
+class Repository(Generic[T]):
+    pass
+
+
+Repo = TypeAliasType("Repo", Repository[T], type_params=(T,))
+
+builder.register(Repo[Order], lifespan="singleton")
+container = builder.build()
+assert container.resolve(Repo[Order]) is container.resolve(Repository[Order])
+```
+
+Alias parameters are bound before generic specialization, so nested aliases and reordered parameters retain their
+declared meaning. Open aliases expose only the template behavior already supported by their canonical generic target;
+`ParamSpec` and `TypeVarTuple` alias expansion is not supported. Alias forward references are evaluated from their
+defining module during preview/build and may be repaired before retrying a failed builder.
+
+`NewType` is different: it remains a nominal service key and never falls back to its supertype. Register a `NewType`
+with an explicit `instance=`, `factory=`, or `implementation_type`; a bare declaration is not treated as a constructor.

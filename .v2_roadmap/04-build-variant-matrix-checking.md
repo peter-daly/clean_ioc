@@ -164,7 +164,7 @@ for invalid matrix definitions, factories, output paths, or locators.
 
 ## Reports and serialization
 
-The JSON report has `schema_version: 1` and contains only:
+The JSON report remains unversioned during beta and contains only:
 
 - variant name;
 - valid/invalid state and redacted `BuildReport`;

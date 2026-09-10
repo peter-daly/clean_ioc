@@ -7,7 +7,7 @@ Dependencies: Compilation provenance; architecture policy conventions
 ## Summary
 
 Classify manifest changes by architectural meaning and default risk, identify the roots or entry points affected by each
-change, and let CI evaluate those changes against an explicit `DiffPolicy`. Existing schema-version-1 manifests and the
+change, and let CI evaluate those changes against an explicit `DiffPolicy`. Current unversioned manifests and the
 current raw `GraphDiff` interface remain valid.
 
 ## Problem and differentiation
@@ -25,7 +25,7 @@ reviewable architecture contract rather than a generic JSON snapshot.
   pre-configurations, names, tags, ordering, and future module boundaries.
 - Associate each change with affected compiled roots and marked entry points when that information is available.
 - Supply conservative default risk levels and an explicit policy override mechanism.
-- Keep existing manifests readable and keep the raw diff API/output available.
+- Read manifests in the current format and keep the raw diff API/output available.
 - Make policy evaluation deterministic, redacted, and suitable for CI.
 
 ## Non-goals
@@ -41,7 +41,7 @@ reviewable architecture contract rather than a generic JSON snapshot.
 - CI permits new unreferenced roots but rejects a lifespan or cleanup-owner change.
 - A reviewer sees that replacing one repository affects four command handlers and two HTTP entry points.
 - A platform team rejects newly introduced `capability=network` tags.
-- An old schema-version-1 baseline remains usable after semantic classification ships.
+- A baseline in the current format remains usable after semantic classification ships.
 
 ## Public model
 
@@ -147,7 +147,7 @@ manifests use the default `entrypoints` view, those roots are also reported as `
 
 `CompiledGraph.diff(baseline)` enriches the current side with its marked-entrypoint set. This allows an all-roots diff to
 identify current marked entry points affected by an added or changed occurrence. For a removed occurrence present only
-in an old schema-version-1 all-roots baseline, the entry-point status is unknowable; `affected_entrypoints` is empty and
+in an all-roots baseline without entry-point metadata, the entry-point status is unknowable; `affected_entrypoints` is empty and
 the root remains in `affected_roots`. Reports say `unknown`, never `unaffected`.
 
 Occurrence-specific manifest paths mean a shared registration changed under multiple roots appears once for each
@@ -182,19 +182,20 @@ clean-ioc diff my_app.composition:application_builder baseline.json --policy my_
 
 `--policy` loads a `DiffPolicy` from an import locator and is mutually exclusive with `--fail-on`. Both imply
 `--classify`. Without a policy, `--classify` retains the current exit behavior: `1` for any change. With a policy, exit
-`1` means at least one violation, even if allowed changes remain. Invalid policies and unsupported manifest schemas exit
+`1` means at least one violation, even if allowed changes remain. Invalid policies and malformed manifest input exit
 `2`.
 
-Text and JSON formats are supported. Raw output is unchanged unless classification is requested. Classified JSON has its
-own `schema_version: 1` independent of the graph manifest schema.
+Text and JSON formats are supported. Raw output is unchanged unless classification is requested. Classified JSON remains
+unversioned during beta, following the same policy as graph manifests and other Clean IoC reports.
 
 ## Manifest compatibility and privacy
 
-- The classifier reads existing graph-manifest schema version 1 without migration.
+- The classifier reads the current unversioned graph-manifest format.
 - No provenance, policy, risk, or approval data is written into the graph manifest or fingerprint.
 - Unknown node fields are preserved in raw changes and conservatively classified.
 - Values, build inputs, runtime IDs, absolute source paths, and callable representations remain absent.
-- A future manifest schema must ship an explicit classifier adapter; unsupported versions fail clearly.
+- During beta, format changes update the writer and classifier together; users regenerate saved baselines. Begin schema
+  versioning after beta, without introducing version checks or migration adapters now.
 
 ## Errors and failure modes
 
@@ -225,7 +226,7 @@ own `schema_version: 1` independent of the graph manifest schema.
 - Group replacements while preserving raw added and removed paths.
 - Identify affected entry points in default manifests and report unknown status for old all-roots baselines.
 - Evaluate thresholds, denied kinds, glob allowances, specificity, and declaration-order ties.
-- Read current schema-version-1 baselines and reject unsupported schemas.
+- Read unversioned baselines in the current format and reject malformed manifest input.
 - Prove the existing raw API and default CLI text/JSON remain byte-for-byte compatible.
 - Verify classified JSON schema, import-locator errors, and exit status with allowed and violating changes.
 - Prove reports contain no configured values, build inputs, runtime identities, provenance, or absolute paths.

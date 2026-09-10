@@ -5,6 +5,7 @@ from typing import Literal
 import pytest
 
 import clean_ioc
+import clean_ioc.boundaries as boundaries
 import clean_ioc.component_filters as component_filters
 import clean_ioc.ext.asgi as asgi_extension
 import clean_ioc.ext.fastapi as fastapi_extension
@@ -59,9 +60,9 @@ def test_package_root_has_one_compiled_container_surface():
     assert "build_args" in inspect.signature(ContainerBuilder.get_component_id).parameters
     assert "build_args" in inspect.signature(ContainerBuilder.get_component_ids).parameters
     assert "add_validation_rule" in builder_methods
-    assert "install_assembly" in builder_methods
-    assert "install_assembly" in set(dir(ScopeBuilder))
-    assert "install_assembly" not in set(dir(clean_ioc.ComponentBuilder))
+    assert "install_boundary" in builder_methods
+    assert "install_boundary" in set(dir(ScopeBuilder))
+    assert "install_boundary" not in set(dir(clean_ioc.ComponentBuilder))
     assert inspect.signature(ContainerBuilder.add_validation_rule).parameters["mode"].kind is (
         inspect.Parameter.KEYWORD_ONLY
     )
@@ -70,7 +71,7 @@ def test_package_root_has_one_compiled_container_surface():
     assert tuple(inspect.signature(clean_ioc.Scope.validation_report).parameters) == ("self",)
     assert {
         "AsyncProvider",
-        "Assembly",
+        "Boundary",
         "INJECT",
         "REMOVE",
         "GraphVisit",
@@ -89,6 +90,30 @@ def test_package_root_has_one_compiled_container_surface():
         "inject",
         "select",
     }.issubset(clean_ioc.__all__)
+
+
+def test_boundary_api_replaces_assembly_without_aliases():
+    assert clean_ioc.Boundary is boundaries.Boundary
+    assert clean_ioc.Expose is boundaries.Expose
+    assert clean_ioc.Use is boundaries.Use
+    assert tuple(inspect.signature(clean_ioc.Boundary).parameters) == ("name", "root_bundle", "uses", "exposes")
+    assert "Assembly" not in clean_ioc.__all__
+    assert not hasattr(clean_ioc, "Assembly")
+    assert not hasattr(boundaries, "Assembly")
+    assert importlib.util.find_spec("clean_ioc.assemblies") is None
+    for builder_type in (ContainerBuilder, ScopeBuilder):
+        assert not hasattr(builder_type, "install_assembly")
+    for metadata_type in (
+        clean_ioc.Component,
+        clean_ioc.GraphRoot,
+        clean_ioc.GraphVisit,
+        clean_ioc.DefinitionOrigin,
+        clean_ioc.ValidationContext,
+    ):
+        assert hasattr(metadata_type, "boundary")
+        assert not hasattr(metadata_type, "assembly")
+    assert hasattr(clean_ioc.CompiledGraph, "boundaries")
+    assert not hasattr(clean_ioc.CompiledGraph, "assemblies")
 
 
 def test_public_helpers_use_only_v2_names():

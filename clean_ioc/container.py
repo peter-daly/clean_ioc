@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import copy
 import inspect
 import logging
 import os
@@ -12,7 +13,7 @@ import threading
 import types
 import typing
 from collections import defaultdict, deque
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Hashable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field, replace
 from typing import Any, TypeVar, cast, get_args, get_origin
 from uuid import UUID, uuid4, uuid5
@@ -21,6 +22,7 @@ from typetoolbox.generics import GenericTypeMap, get_generic_mapping
 from typing_extensions import TypeForm
 
 from . import _legacy as legacy
+from . import registration_patterns as patterns
 from ._legacy_configuration import default_parameter_value_factory
 from .arguments import (
     INJECT,
@@ -30,7 +32,7 @@ from .arguments import (
     _FixedArgument,
     _SelectArgument,
 )
-from .assemblies import Assembly, Expose, Use
+from .boundaries import Boundary, Expose, Use
 from .components import (
     Component,
     ComponentActivation,
@@ -65,6 +67,7 @@ from .tooling import (
     _CandidateRecord,
     qualified_name,
 )
+from .type_aliases import TypeAliasNormalizationError, alias_label, is_new_type, normalize_type_alias
 
 TService = TypeVar("TService")
 
@@ -72,6 +75,15 @@ logger = logging.getLogger(__name__)
 
 _EMPTY_BUILD_ARGS: Mapping[str, Any] = types.MappingProxyType({})
 _PACKAGE_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+
+
+def _composition_type(value: Any) -> Any:
+    """Canonicalize an available alias while retaining unresolved declarations for build."""
+
+    try:
+        return normalize_type_alias(value)
+    except TypeAliasNormalizationError:
+        return value
 
 
 def _source_location() -> SourceLocation | None:
@@ -279,11 +291,17 @@ class ResolutionContext:
         self._requests = requests
 
     def _request(self, service_type: Any, filter: ComponentFilter) -> _CompiledResolutionRequest | None:
+        for item in self._requests:
+            if item.request.service_type == service_type and item.request.filter is filter:
+                return item
+        canonical_type = normalize_type_alias(service_type)
+        if canonical_type is service_type:
+            return None
         return next(
             (
                 item
                 for item in self._requests
-                if item.request.service_type == service_type and item.request.filter is filter
+                if item.request.service_type == canonical_type and item.request.filter is filter
             ),
             None,
         )
@@ -333,7 +351,7 @@ class _EntryPoint:
 class _DecoratorDefinition:
     id: str
     service_type: Any
-    decorator_type: type | Callable[..., Any]
+    decorator_type: Any
     decorated_arg: str | None
     arguments: Mapping[str, Any]
     position: int
@@ -363,6 +381,18 @@ class _ValidationRuleDefinition:
     origin: DefinitionOrigin
 
 
+@dataclass(frozen=True, slots=True)
+class _ProviderMapDefinition:
+    key: Callable[[Component], Hashable]
+    component_filter: ComponentFilter
+
+
+def _provider_map_factory() -> None:
+    """Registration marker; the compiler replaces activation with a map step."""
+
+    raise RuntimeError("Provider maps require a compiled activation step")
+
+
 class _DecoratorUnset:
     __slots__ = ()
 
@@ -390,6 +420,8 @@ class _Layer:
     slot_origins: dict[tuple[Any, str | None], DefinitionOrigin]
     entrypoints: tuple[_EntryPoint, ...]
     validation_rules: tuple[_ValidationRuleDefinition, ...]
+    provider_maps: Mapping[str, _ProviderMapDefinition]
+    pattern_ids: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -403,7 +435,7 @@ class _VisibilityTarget:
 
 
 @dataclass(frozen=True, slots=True)
-class _AssemblyBlueprint:
+class _BoundaryBlueprint:
     name: str
     layer: _Layer
     uses: tuple[Use, ...]
@@ -416,7 +448,7 @@ class _AssemblyBlueprint:
 @dataclass(frozen=True, slots=True)
 class _Blueprint:
     layers: tuple[_Layer, ...]
-    assemblies: tuple[_AssemblyBlueprint, ...] = ()
+    boundaries: tuple[_BoundaryBlueprint, ...] = ()
 
     @property
     def slots(self) -> frozenset[tuple[Any, str | None]]:
@@ -429,17 +461,17 @@ class _Blueprint:
     @property
     def validation_rules(self) -> tuple[_ValidationRuleDefinition, ...]:
         root = tuple(rule for layer in reversed(self.layers) for rule in layer.validation_rules)
-        local = tuple(rule for assembly in self.assemblies for rule in assembly.layer.validation_rules)
+        local = tuple(rule for boundary in self.boundaries for rule in boundary.layer.validation_rules)
         return (*root, *local)
 
-    def assembly(self, name: str) -> _AssemblyBlueprint | None:
-        return next((assembly for assembly in self.assemblies if assembly.name == name), None)
+    def boundary(self, name: str) -> _BoundaryBlueprint | None:
+        return next((boundary for boundary in self.boundaries if boundary.name == name), None)
 
     def registration_area(self, layer: _Layer) -> str | None:
-        return next((assembly.name for assembly in self.assemblies if assembly.layer is layer), None)
+        return next((boundary.name for boundary in self.boundaries if boundary.layer is layer), None)
 
-    def _root_layers_for(self, assembly: _AssemblyBlueprint) -> tuple[_Layer, ...]:
-        return self.layers[assembly.root_layer_offset :]
+    def _root_layers_for(self, boundary: _BoundaryBlueprint) -> tuple[_Layer, ...]:
+        return self.layers[boundary.root_layer_offset :]
 
     @staticmethod
     def _registrations_in(layers: Iterable[_Layer], service_type: Any) -> list[tuple[legacy._Registration, _Layer]]:
@@ -458,8 +490,8 @@ class _Blueprint:
         if area is None:
             layers = self.layers
         else:
-            assembly = self.assembly(area)
-            layers = () if assembly is None else (assembly.layer,)
+            boundary = self.boundary(area)
+            layers = () if boundary is None else (boundary.layer,)
         return self._registrations_in(layers, service_type)
 
     def registrations(self, service_type: Any, area: str | None = None) -> list[tuple[legacy._Registration, _Layer]]:
@@ -468,16 +500,16 @@ class _Blueprint:
         if area is None:
             visible_ids.extend(
                 target.registration_id
-                for assembly in self.assemblies
-                for target in assembly.resolved_exposes
+                for boundary in self.boundaries
+                for target in boundary.resolved_exposes
                 if target.registration_id is not None and _service_definition_matches(target.service_type, service_type)
             )
         else:
-            assembly = self.assembly(area)
-            if assembly is not None:
+            boundary = self.boundary(area)
+            if boundary is not None:
                 visible_ids.extend(
                     target.registration_id
-                    for target in assembly.resolved_uses
+                    for target in boundary.resolved_uses
                     if not target.slot
                     and target.registration_id is not None
                     and _service_definition_matches(target.service_type, service_type)
@@ -493,7 +525,7 @@ class _Blueprint:
         return found
 
     def registration_definition(self, component_id: str) -> tuple[legacy._Registration, _Layer] | None:
-        for layer in (*self.layers, *(assembly.layer for assembly in self.assemblies)):
+        for layer in (*self.layers, *(boundary.layer for boundary in self.boundaries)):
             for registrations in layer.registry._registrations.values():
                 for registration in registrations:
                     if registration.id == component_id and registration.id not in layer.internal_ids:
@@ -507,8 +539,8 @@ class _Blueprint:
                 return "", "The registration is visible in root composition"
             return "selected-local", "The registration is defined in the current composition area"
         if area is None:
-            return "selected-exposure", f"The component is exposed by assembly {definition_area!r}"
-        return "selected-use", f"Assembly {area!r} explicitly uses the component from {definition_area or 'root'!r}"
+            return "selected-exposure", f"The component is exposed by boundary {definition_area!r}"
+        return "selected-use", f"Boundary {area!r} explicitly uses the component from {definition_area or 'root'!r}"
 
     def registration_origin(self, registration_id: str, layer: _Layer) -> DefinitionOrigin:
         return layer.registration_origins.get(registration_id, _synthetic_origin())
@@ -526,13 +558,13 @@ class _Blueprint:
                 seen.add(slot)
                 found.append((slot[0], slot[1], origin))
         if area is not None:
-            assembly = self.assembly(area)
-            if assembly is None:
+            boundary = self.boundary(area)
+            if boundary is None:
                 return tuple(found)
-            for target in assembly.resolved_uses:
+            for target in boundary.resolved_uses:
                 if not target.slot or target.service_type != service_type:
                     continue
-                source_layers = self._root_layers_for(assembly)
+                source_layers = self._root_layers_for(boundary)
                 for layer in source_layers:
                     slot = (target.service_type, target.name)
                     origin = layer.slot_origins.get(slot)
@@ -548,7 +580,7 @@ class _Blueprint:
         layers = (
             self.layers
             if area is None
-            else (() if self.assembly(area) is None else (cast(_AssemblyBlueprint, self.assembly(area)).layer,))
+            else (() if self.boundary(area) is None else (cast(_BoundaryBlueprint, self.boundary(area)).layer,))
         )
         for layer_index, layer in enumerate(layers):
             removed.update(layer.removed_decorator_ids)
@@ -578,7 +610,7 @@ class _Blueprint:
         layers = (
             self.layers
             if area is None
-            else (() if self.assembly(area) is None else (cast(_AssemblyBlueprint, self.assembly(area)).layer,))
+            else (() if self.boundary(area) is None else (cast(_BoundaryBlueprint, self.boundary(area)).layer,))
         )
         return [
             (configuration, layer)
@@ -594,7 +626,7 @@ class _Blueprint:
         layers = (
             self.layers
             if area is None
-            else (() if self.assembly(area) is None else (cast(_AssemblyBlueprint, self.assembly(area)).layer,))
+            else (() if self.boundary(area) is None else (cast(_BoundaryBlueprint, self.boundary(area)).layer,))
         )
         for layer in layers:
             for service_type, registrations in layer.registry._registrations.items():
@@ -604,15 +636,15 @@ class _Blueprint:
 
     def root_service_types(self) -> tuple[Any, ...]:
         values = list(self.service_types(None))
-        values.extend(target.service_type for assembly in self.assemblies for target in assembly.resolved_exposes)
+        values.extend(target.service_type for boundary in self.boundaries for target in boundary.resolved_exposes)
         values.extend(
             (_collection_request(entrypoint.service_type) or (None, entrypoint.service_type))[1]
             for entrypoint in self.entrypoints
         )
         values.extend(
             (_collection_request(entrypoint.service_type) or (None, entrypoint.service_type))[1]
-            for assembly in self.assemblies
-            for entrypoint in assembly.layer.entrypoints
+            for boundary in self.boundaries
+            for entrypoint in boundary.layer.entrypoints
         )
         return tuple(dict.fromkeys(values))
 
@@ -634,7 +666,172 @@ def _clone_registry(source: legacy._Registry) -> legacy._Registry:
     return target
 
 
-_ASSEMBLY_NAME = re.compile(r"^[a-z][a-z0-9_-]*$")
+def _normalize_dependency_aliases(dependencies: dict[str, legacy.Dependency]) -> None:
+    for dependency in dependencies.values():
+        dependency.service_type = normalize_type_alias(dependency.service_type)
+        origin = get_origin(dependency.service_type)
+        dependency.generic_collection_type = dependency.GENERIC_COLLECTION_MAPPINGS.get(origin)
+
+
+def _normalize_layer_aliases(layer: _Layer) -> _Layer:
+    registry = _clone_registry(layer.registry)
+    normalized_registrations: dict[Any, deque[legacy._Registration]] = defaultdict(deque)
+    registration_copies: dict[int, legacy._Registration] = {}
+    for key, registrations in layer.registry._registrations.items():
+        canonical_key = normalize_type_alias(key)
+        for source_registration in registrations:
+            registration = registration_copies.get(id(source_registration))
+            if registration is None:
+                registration = copy.copy(source_registration)
+                registration.dependencies = {
+                    name: copy.copy(dependency) for name, dependency in source_registration.dependencies.items()
+                }
+                registration_copies[id(source_registration)] = registration
+                canonical_service = normalize_type_alias(registration.service_type)
+                if registration.id in layer.pattern_ids:
+                    try:
+                        patterns.validate_pattern(canonical_service)
+                        if get_origin(canonical_service) in legacy.Dependency.GENERIC_COLLECTION_MAPPINGS or get_origin(
+                            canonical_service
+                        ) in (Provider, AsyncProvider):
+                            raise patterns.PatternError(
+                                "Synthetic collection and provider requests cannot be outer registration patterns"
+                            )
+                        annotations = (
+                            *(normalize_type_alias(dep.service_type) for dep in registration.dependencies.values()),
+                            _factory_result_annotation(registration.implementation),
+                        )
+                        patterns.factory_bindings(canonical_service, canonical_service, annotations)
+                        if any(_unsupported_factory_type_parameters(annotation) for annotation in annotations):
+                            raise patterns.PatternError("Pattern factories support TypeVar parameters only")
+                    except patterns.PatternError as error:
+                        raise ContainerBuildError(
+                            str(error), code=error.code, path=(qualified_name(canonical_service),)
+                        ) from error
+                if registration.id in layer.provider_maps:
+                    key_type, provider_type = get_args(canonical_service)
+                    target_type = get_args(provider_type)[0]
+                    if (
+                        _typevars_in(canonical_service)
+                        or getattr(key_type, "__parameters__", ())
+                        or getattr(target_type, "__parameters__", ())
+                        or registration.lifespan != legacy.Lifespan.transient
+                        or registration.dependencies
+                    ):
+                        raise ContainerBuildError(
+                            "Provider maps require closed key and target types, "
+                            "transient lifespan, and no argument overrides",
+                            code="provider-map-invalid-declaration",
+                            path=(qualified_name(canonical_service),),
+                        )
+                canonical_implementation = normalize_type_alias(registration.implementation)
+                if canonical_implementation is not registration.implementation:
+                    settings = {name: dependency.settings for name, dependency in registration.dependencies.items()}
+                    registration.implementation = canonical_implementation
+                    registration.activator_class = registry._get_activator_class(canonical_implementation)
+                    registration.dependencies = legacy._set_up_dependencies(canonical_implementation, settings)
+                registration.service_type = canonical_service
+                registration._generic_mapping = None
+                _normalize_dependency_aliases(registration.dependencies)
+            normalized_registrations[canonical_key].append(registration)
+    registry._registrations = defaultdict(deque, normalized_registrations)
+    slots = frozenset((normalize_type_alias(service_type), name) for service_type, name in layer.slots)
+    slot_origins = {
+        (normalize_type_alias(service_type), name): origin
+        for (service_type, name), origin in layer.slot_origins.items()
+    }
+    return replace(
+        layer,
+        registry=registry,
+        factory_specializations={
+            component_id: normalize_type_alias(value) for component_id, value in layer.factory_specializations.items()
+        },
+        decorators=tuple(
+            replace(
+                definition,
+                service_type=normalize_type_alias(definition.service_type),
+                decorator_type=normalize_type_alias(definition.decorator_type),
+            )
+            for definition in layer.decorators
+        ),
+        pre_configurations=tuple(
+            replace(
+                definition,
+                service_types=tuple(normalize_type_alias(value) for value in definition.service_types),
+            )
+            for definition in layer.pre_configurations
+        ),
+        slots=slots,
+        slot_origins=slot_origins,
+        entrypoints=tuple(
+            replace(entrypoint, service_type=normalize_type_alias(entrypoint.service_type))
+            for entrypoint in layer.entrypoints
+        ),
+    )
+
+
+def _normalize_blueprint_aliases(blueprint: _Blueprint) -> _Blueprint:
+    layers = tuple(_normalize_layer_aliases(layer) for layer in blueprint.layers)
+    boundaries = tuple(
+        replace(
+            boundary,
+            layer=_normalize_layer_aliases(boundary.layer),
+            uses=tuple(replace(use, service_type=normalize_type_alias(use.service_type)) for use in boundary.uses),
+            exposes=tuple(
+                replace(expose, service_type=normalize_type_alias(expose.service_type)) for expose in boundary.exposes
+            ),
+        )
+        for boundary in blueprint.boundaries
+    )
+    return replace(blueprint, layers=layers, boundaries=boundaries)
+
+
+def _blueprint_alias_errors(blueprint: _Blueprint) -> tuple[TypeAliasNormalizationError, ...]:
+    errors: list[TypeAliasNormalizationError] = []
+    values: list[Any] = []
+    layers = (*blueprint.layers, *(boundary.layer for boundary in blueprint.boundaries))
+    for layer in layers:
+        values.extend(layer.registry._registrations)
+        for registrations in layer.registry._registrations.values():
+            for registration in registrations:
+                values.extend((registration.service_type, registration.implementation))
+                values.extend(dependency.service_type for dependency in registration.dependencies.values())
+        values.extend(layer.factory_specializations.values())
+        for definition in layer.decorators:
+            values.extend((definition.service_type, definition.decorator_type))
+        for definition in layer.pre_configurations:
+            values.extend(definition.service_types)
+        values.extend(service_type for service_type, _ in layer.slots)
+        values.extend(entrypoint.service_type for entrypoint in layer.entrypoints)
+    for boundary in blueprint.boundaries:
+        values.extend(use.service_type for use in boundary.uses)
+        values.extend(expose.service_type for expose in boundary.exposes)
+    for value in values:
+        try:
+            normalize_type_alias(value)
+        except TypeAliasNormalizationError as error:
+            errors.append(error)
+    unique = {(error.code, str(error)): error for error in errors}
+    return tuple(unique.values())
+
+
+def _alias_error_report(errors: Iterable[TypeAliasNormalizationError]) -> BuildReport:
+    return BuildReport(
+        tuple(
+            BuildIssue(
+                code=error.code,
+                severity=IssueSeverity.error,
+                message=str(error),
+                root=None,
+                path=(alias_label(error.alias),),
+            )
+            for error in errors
+        ),
+        checked_roots=0,
+    )
+
+
+_BOUNDARY_NAME = re.compile(r"^[a-z][a-z0-9_-]*$")
 
 
 def _service_definition_matches(definition: Any, request: Any) -> bool:
@@ -653,7 +850,7 @@ def _boundary_component(
     *,
     service_type: Any,
     build_args: Mapping[str, Any],
-    assembly: str | None,
+    boundary: str | None,
 ) -> Component:
     """Create metadata-only input for an Expose/Use selection predicate."""
 
@@ -671,7 +868,7 @@ def _boundary_component(
             build_args=build_args,
             kind=ComponentKind.registration,
             activation=_registration_activation(registration),
-            assembly=assembly,
+            boundary=boundary,
         )
     )
     graph.freeze()
@@ -690,6 +887,8 @@ def _compiled_boundary_component(
 
     compiler = _Compiler(blueprint, build_args=build_args)
     compiler._area = blueprint.registration_area(layer)
+    if registration.id in layer.pattern_ids:
+        registration = compiler._specialize_factory(registration, layer, service_type)
     component, _ = compiler._compile_registration(
         registration,
         layer,
@@ -708,9 +907,46 @@ def _boundary_registrations(
     service_type: Any,
 ) -> list[tuple[legacy._Registration, _Layer]]:
     candidates = blueprint._registrations_in(layers, service_type)
+    if not candidates:
+        available = []
+        if any(layer.pattern_ids for layer in layers):
+            available = [
+                candidate
+                for layer in layers
+                for component_id in reversed(layer.pattern_ids)
+                if (candidate := blueprint.registration_definition(component_id)) is not None
+                and get_origin(candidate[0].service_type) == get_origin(service_type)
+            ]
+        candidates = _winning_patterns(available, service_type)
     if not candidates and get_origin(service_type) is not None:
         candidates = blueprint._registrations_in(layers, get_origin(service_type))
     return candidates
+
+
+def _winning_patterns(
+    available: list[tuple[legacy._Registration, _Layer]], service_type: Any
+) -> list[tuple[legacy._Registration, _Layer]]:
+    if not available:
+        return []
+    try:
+        patterns.validate_structure(service_type, symbolic=False)
+        matching = [item for item in available if patterns.match(item[0].service_type, service_type) is not None]
+        winners = [
+            item
+            for item in matching
+            if not any(patterns.more_specific(other[0].service_type, item[0].service_type) for other in matching)
+        ]
+        if winners and any(
+            patterns.match(winners[0][0].service_type, item[0].service_type) is None
+            or patterns.match(item[0].service_type, winners[0][0].service_type) is None
+            for item in winners[1:]
+        ):
+            raise patterns.PatternError(
+                "Incomparable registration patterns match the same closed request", "pattern-ambiguous"
+            )
+        return winners
+    except patterns.PatternError as error:
+        raise ContainerBuildError(str(error), code=error.code, path=(qualified_name(service_type),)) from error
 
 
 def _select_boundary_registrations(
@@ -720,7 +956,7 @@ def _select_boundary_registrations(
     filter: ComponentFilter,
     *,
     build_args: Mapping[str, Any],
-    assembly: str | None,
+    boundary: str | None,
     code: str,
 ) -> list[tuple[legacy._Registration, _Layer]]:
     selected: list[tuple[legacy._Registration, _Layer]] = []
@@ -741,24 +977,24 @@ def _select_boundary_registrations(
                 registration,
                 service_type=service_type,
                 build_args=build_args,
-                assembly=blueprint.registration_area(layer),
+                boundary=blueprint.registration_area(layer),
             )
         try:
             matched = filter(component)
         except Exception as error:
             raise ContainerBuildError(
-                f"Assembly boundary filter {_filter_description(filter)} raised {type(error).__name__}",
+                f"Boundary filter {_filter_description(filter)} raised {type(error).__name__}",
                 code=code,
-                path=((assembly,) if assembly is not None else ()),
+                path=((boundary,) if boundary is not None else ()),
             ) from error
         if matched:
             selected.append((registration, layer))
     return selected
 
 
-def _assembly_cycle(assemblies: tuple[_AssemblyBlueprint, ...]) -> tuple[str, ...] | None:
+def _boundary_cycle(boundaries: tuple[_BoundaryBlueprint, ...]) -> tuple[str, ...] | None:
     graph = {
-        assembly.name: tuple(use.source for use in assembly.uses if use.source is not None) for assembly in assemblies
+        boundary.name: tuple(use.source for use in boundary.uses if use.source is not None) for boundary in boundaries
     }
     visited: set[str] = set()
     active: list[str] = []
@@ -785,51 +1021,63 @@ def _assembly_cycle(assemblies: tuple[_AssemblyBlueprint, ...]) -> tuple[str, ..
     return None
 
 
-def _prepare_assembly_visibility(
+def _prepare_boundary_visibility(
     blueprint: _Blueprint,
     *,
     build_args: Mapping[str, Any],
 ) -> _Blueprint:
     """Validate and resolve every visibility declaration before plan compilation."""
 
-    if not blueprint.assemblies:
+    if not blueprint.boundaries:
         return blueprint
     names: set[str] = set()
-    for assembly in blueprint.assemblies:
-        if not isinstance(assembly.name, str) or assembly.name == "root" or not _ASSEMBLY_NAME.fullmatch(assembly.name):
+    for boundary in blueprint.boundaries:
+        if not isinstance(boundary.name, str) or boundary.name == "root" or not _BOUNDARY_NAME.fullmatch(boundary.name):
             raise ContainerBuildError(
-                f"Invalid assembly name {assembly.name!r}; use ^[a-z][a-z0-9_-]*$ and do not use 'root'",
-                code="assembly-invalid-name",
-                path=(str(assembly.name),),
+                f"Invalid boundary name {boundary.name!r}; use ^[a-z][a-z0-9_-]*$ and do not use 'root'",
+                code="boundary-invalid-name",
+                path=(str(boundary.name),),
             )
-        if assembly.name in names:
-            code = "overlay-assembly-reopened" if assembly.root_layer_offset else "assembly-duplicate-name"
+        if boundary.name in names:
+            code = "overlay-boundary-reopened" if boundary.root_layer_offset else "boundary-duplicate-name"
             raise ContainerBuildError(
-                f"Assembly {assembly.name!r} is already installed and cannot be reopened",
+                f"Boundary {boundary.name!r} is already installed and cannot be reopened",
                 code=code,
-                path=(assembly.name,),
+                path=(boundary.name,),
             )
-        names.add(assembly.name)
-        if assembly.layer.slots:
+        names.add(boundary.name)
+        if boundary.layer.slots:
             raise ContainerBuildError(
-                f"Assembly {assembly.name!r} declares a private scope slot; private slots are not supported",
-                code="assembly-scope-slot-unsupported",
-                path=(assembly.name,),
+                f"Boundary {boundary.name!r} declares a private scope slot; private slots are not supported",
+                code="boundary-scope-slot-unsupported",
+                path=(boundary.name,),
             )
-        if not all(isinstance(item, Expose) for item in assembly.exposes):
-            raise TypeError("Assembly exposes must contain Expose declarations")
-        if not all(isinstance(item, Use) for item in assembly.uses):
-            raise TypeError("Assembly uses must contain Use declarations")
+        if not all(isinstance(item, Expose) for item in boundary.exposes):
+            raise TypeError("Boundary exposes must contain Expose declarations")
+        if not all(isinstance(item, Use) for item in boundary.uses):
+            raise TypeError("Boundary uses must contain Use declarations")
+        for declaration in (*boundary.exposes, *boundary.uses):
+            if patterns.variables(declaration.service_type) and any(
+                candidate is not None and get_origin(candidate[0].service_type) == get_origin(declaration.service_type)
+                for layer in (*blueprint.layers, *(item.layer for item in blueprint.boundaries))
+                for component_id in layer.pattern_ids
+                for candidate in (blueprint.registration_definition(component_id),)
+            ):
+                raise ContainerBuildError(
+                    "Structural templates cross Boundaries only through explicitly closed Expose/Use declarations",
+                    code="pattern-unsupported-exposure",
+                    path=(boundary.name, qualified_name(declaration.service_type)),
+                )
 
     blueprint = replace(
         blueprint,
-        assemblies=tuple(sorted(blueprint.assemblies, key=lambda item: item.name)),
+        boundaries=tuple(sorted(blueprint.boundaries, key=lambda item: item.name)),
     )
-    cycle = _assembly_cycle(blueprint.assemblies)
+    cycle = _boundary_cycle(blueprint.boundaries)
     if cycle is not None:
         raise ContainerBuildError(
-            f"Assembly use cycle: {' -> '.join(cycle)}",
-            code="assembly-use-cycle",
+            f"Boundary use cycle: {' -> '.join(cycle)}",
+            code="boundary-use-cycle",
             path=cycle,
         )
 
@@ -837,28 +1085,28 @@ def _prepare_assembly_visibility(
     # view. The exact one-component selections below replace these candidates
     # before normal compilation, so provisional visibility never reaches a
     # runtime plan.
-    provisional_exposures: list[_AssemblyBlueprint] = []
-    for assembly in blueprint.assemblies:
+    provisional_exposures: list[_BoundaryBlueprint] = []
+    for boundary in blueprint.boundaries:
         targets = tuple(
             _VisibilityTarget(
-                assembly.name,
+                boundary.name,
                 exposure.service_type,
                 registration.id,
                 registration.name,
                 tuple(registration.tags),
             )
-            for exposure in assembly.exposes
-            for registration, _ in _boundary_registrations(blueprint, (assembly.layer,), exposure.service_type)
+            for exposure in boundary.exposes
+            for registration, _ in _boundary_registrations(blueprint, (boundary.layer,), exposure.service_type)
         )
-        provisional_exposures.append(replace(assembly, resolved_exposes=targets))
-    blueprint = replace(blueprint, assemblies=tuple(provisional_exposures))
+        provisional_exposures.append(replace(boundary, resolved_exposes=targets))
+    blueprint = replace(blueprint, boundaries=tuple(provisional_exposures))
 
-    provisional_uses: list[_AssemblyBlueprint] = []
-    for assembly in blueprint.assemblies:
+    provisional_uses: list[_BoundaryBlueprint] = []
+    for boundary in blueprint.boundaries:
         targets: list[_VisibilityTarget] = []
-        for use in assembly.uses:
+        for use in boundary.uses:
             if use.source is None:
-                source_layers = blueprint._root_layers_for(assembly)
+                source_layers = blueprint._root_layers_for(boundary)
                 targets.extend(
                     _VisibilityTarget(
                         None,
@@ -876,90 +1124,90 @@ def _prepare_assembly_visibility(
                     if slot_type == use.service_type
                 )
             else:
-                source = blueprint.assembly(use.source)
+                source = blueprint.boundary(use.source)
                 if source is not None:
                     targets.extend(
                         replace(target, source=source.name, service_type=use.service_type)
                         for target in source.resolved_exposes
                         if _service_definition_matches(target.service_type, use.service_type)
                     )
-        provisional_uses.append(replace(assembly, resolved_uses=tuple(targets)))
-    blueprint = replace(blueprint, assemblies=tuple(provisional_uses))
+        provisional_uses.append(replace(boundary, resolved_uses=tuple(targets)))
+    blueprint = replace(blueprint, boundaries=tuple(provisional_uses))
 
-    resolved: list[_AssemblyBlueprint] = []
+    resolved: list[_BoundaryBlueprint] = []
     # Exposures are local-only, so all can be resolved before any Use.
-    for assembly in blueprint.assemblies:
+    for boundary in blueprint.boundaries:
         targets: list[_VisibilityTarget] = []
         selected_ids: set[str] = set()
-        for exposure in assembly.exposes:
+        for exposure in boundary.exposes:
             matches = _select_boundary_registrations(
                 blueprint,
-                (assembly.layer,),
+                (boundary.layer,),
                 exposure.service_type,
                 exposure.filter,
                 build_args=build_args,
-                assembly=assembly.name,
-                code="assembly-expose-not-found",
+                boundary=boundary.name,
+                code="boundary-expose-not-found",
             )
             if not matches:
                 # A matching import is a prohibited re-export rather than an absent local definition.
                 imported = any(
-                    _service_definition_matches(use.service_type, exposure.service_type) for use in assembly.uses
+                    _service_definition_matches(use.service_type, exposure.service_type) for use in boundary.uses
                 )
                 raise ContainerBuildError(
                     (
-                        f"Assembly {assembly.name!r} cannot re-export used {exposure.service_type!r}"
+                        f"Boundary {boundary.name!r} cannot re-export used {exposure.service_type!r}"
                         if imported
                         else (
-                            f"Assembly {assembly.name!r} exposes {exposure.service_type!r}, "
+                            f"Boundary {boundary.name!r} exposes {exposure.service_type!r}, "
                             "but no local component matches"
                         )
                     ),
-                    code=("assembly-reexport-unsupported" if imported else "assembly-expose-not-found"),
-                    path=(assembly.name, qualified_name(exposure.service_type)),
+                    code=("boundary-reexport-unsupported" if imported else "boundary-expose-not-found"),
+                    path=(boundary.name, qualified_name(exposure.service_type)),
                 )
             if len(matches) != 1:
                 raise ContainerBuildError(
-                    f"Assembly {assembly.name!r} exposure for {exposure.service_type!r} "
+                    f"Boundary {boundary.name!r} exposure for {exposure.service_type!r} "
                     f"matches {len(matches)} components",
-                    code="assembly-expose-ambiguous",
-                    path=(assembly.name, qualified_name(exposure.service_type)),
+                    code="boundary-expose-ambiguous",
+                    path=(boundary.name, qualified_name(exposure.service_type)),
                 )
             registration, _ = matches[0]
             if registration.id in selected_ids:
                 raise ContainerBuildError(
-                    f"Assembly {assembly.name!r} exposes the same component more than once",
-                    code="assembly-expose-ambiguous",
-                    path=(assembly.name, qualified_name(exposure.service_type)),
+                    f"Boundary {boundary.name!r} exposes the same component more than once",
+                    code="boundary-expose-ambiguous",
+                    path=(boundary.name, qualified_name(exposure.service_type)),
                 )
             selected_ids.add(registration.id)
             targets.append(
                 _VisibilityTarget(
-                    assembly.name,
+                    boundary.name,
                     exposure.service_type,
                     registration.id,
                     registration.name,
                     tuple(registration.tags),
                 )
             )
-        resolved.append(replace(assembly, resolved_exposes=tuple(targets)))
-    blueprint = replace(blueprint, assemblies=tuple(resolved))
+        resolved.append(replace(boundary, resolved_exposes=tuple(targets)))
+    blueprint = replace(blueprint, boundaries=tuple(resolved))
 
-    completed: list[_AssemblyBlueprint] = []
-    for assembly in blueprint.assemblies:
+    completed: list[_BoundaryBlueprint] = []
+    for boundary in blueprint.boundaries:
         targets: list[_VisibilityTarget] = []
         selected_keys: set[tuple[str | None, str | None, bool]] = set()
-        for use in assembly.uses:
+        for use in boundary.uses:
             if use.source is None:
-                source_layers = blueprint._root_layers_for(assembly)
+                source_layers = blueprint._root_layers_for(boundary)
                 matches = _select_boundary_registrations(
                     blueprint,
                     source_layers,
                     use.service_type,
                     use.filter,
                     build_args=build_args,
-                    assembly=assembly.name,
-                    code="assembly-use-not-found",
+                    boundary=boundary.name,
+                    code="boundary-use-not-found",
                 )
                 slot_matches: list[tuple[Any, str | None]] = []
                 for layer in source_layers:
@@ -986,15 +1234,15 @@ def _prepare_assembly_visibility(
                             slot_matches.append((slot_type, name))
                 if len(matches) + len(slot_matches) == 0:
                     raise ContainerBuildError(
-                        f"Assembly {assembly.name!r} uses root {use.service_type!r}, but no root component matches",
-                        code="assembly-use-not-found",
-                        path=(assembly.name, "root", qualified_name(use.service_type)),
+                        f"Boundary {boundary.name!r} uses root {use.service_type!r}, but no root component matches",
+                        code="boundary-use-not-found",
+                        path=(boundary.name, "root", qualified_name(use.service_type)),
                     )
                 if len(matches) + len(slot_matches) != 1:
                     raise ContainerBuildError(
-                        f"Assembly {assembly.name!r} use of root {use.service_type!r} matches multiple components",
-                        code="assembly-use-ambiguous",
-                        path=(assembly.name, "root", qualified_name(use.service_type)),
+                        f"Boundary {boundary.name!r} use of root {use.service_type!r} matches multiple components",
+                        code="boundary-use-ambiguous",
+                        path=(boundary.name, "root", qualified_name(use.service_type)),
                     )
                 if matches:
                     registration, _ = matches[0]
@@ -1005,12 +1253,12 @@ def _prepare_assembly_visibility(
                     slot_type, name = slot_matches[0]
                     target = _VisibilityTarget(None, slot_type, None, name, (), slot=True)
             else:
-                source = blueprint.assembly(use.source)
-                if source is None or source.root_layer_offset < assembly.root_layer_offset:
+                source = blueprint.boundary(use.source)
+                if source is None or source.root_layer_offset < boundary.root_layer_offset:
                     raise ContainerBuildError(
-                        f"Assembly {assembly.name!r} uses unknown source assembly {use.source!r}",
-                        code="assembly-use-source-not-found",
-                        path=(assembly.name, use.source),
+                        f"Boundary {boundary.name!r} uses unknown source boundary {use.source!r}",
+                        code="boundary-use-source-not-found",
+                        path=(boundary.name, use.source),
                     )
                 exposure_targets = [
                     target
@@ -1036,49 +1284,49 @@ def _prepare_assembly_visibility(
                             registration,
                             service_type=use.service_type,
                             build_args=build_args,
-                            assembly=blueprint.registration_area(layer),
+                            boundary=blueprint.registration_area(layer),
                         )
                     if use.filter(component):
                         selected.append(target)
                 if not selected:
                     local_private = bool(_boundary_registrations(blueprint, (source.layer,), use.service_type))
                     message = (
-                        f"Assembly {source.name!r} has matching private components; expose one before "
-                        f"assembly {assembly.name!r} can use it"
+                        f"Boundary {source.name!r} has matching private components; expose one before "
+                        f"boundary {boundary.name!r} can use it"
                         if local_private
                         else (
-                            f"Assembly {assembly.name!r} use of {use.service_type!r} "
+                            f"Boundary {boundary.name!r} use of {use.service_type!r} "
                             f"from {source.name!r} was not found"
                         )
                     )
                     raise ContainerBuildError(
                         message,
-                        code="assembly-use-not-found",
-                        path=(assembly.name, source.name, qualified_name(use.service_type)),
+                        code="boundary-use-not-found",
+                        path=(boundary.name, source.name, qualified_name(use.service_type)),
                     )
                 if len(selected) != 1:
                     raise ContainerBuildError(
-                        f"Assembly {assembly.name!r} use of {use.service_type!r} from {source.name!r} is ambiguous",
-                        code="assembly-use-ambiguous",
-                        path=(assembly.name, source.name, qualified_name(use.service_type)),
+                        f"Boundary {boundary.name!r} use of {use.service_type!r} from {source.name!r} is ambiguous",
+                        code="boundary-use-ambiguous",
+                        path=(boundary.name, source.name, qualified_name(use.service_type)),
                     )
                 selected_target = selected[0]
                 target = replace(selected_target, source=source.name, service_type=use.service_type)
             key = (target.source, target.registration_id or target.name, target.slot)
             if key in selected_keys:
                 raise ContainerBuildError(
-                    f"Assembly {assembly.name!r} uses the same component more than once",
-                    code="assembly-use-ambiguous",
-                    path=(assembly.name, qualified_name(use.service_type)),
+                    f"Boundary {boundary.name!r} uses the same component more than once",
+                    code="boundary-use-ambiguous",
+                    path=(boundary.name, qualified_name(use.service_type)),
                 )
             selected_keys.add(key)
             targets.append(target)
-        completed.append(replace(assembly, resolved_uses=tuple(targets)))
-    blueprint = replace(blueprint, assemblies=tuple(completed))
+        completed.append(replace(boundary, resolved_uses=tuple(targets)))
+    blueprint = replace(blueprint, boundaries=tuple(completed))
 
     for area, layers in (
         (None, blueprint.layers),
-        *((assembly.name, (assembly.layer,)) for assembly in blueprint.assemblies),
+        *((boundary.name, (boundary.layer,)) for boundary in blueprint.boundaries),
     ):
         for layer in layers:
             decorated_types = tuple(decorator.service_type for decorator in layer.decorators)
@@ -1093,20 +1341,19 @@ def _prepare_assembly_visibility(
                 if local_match:
                     continue
                 visible_targets = (
-                    (target for assembly in blueprint.assemblies for target in assembly.resolved_exposes)
+                    (target for boundary in blueprint.boundaries for target in boundary.resolved_exposes)
                     if area is None
                     else (
                         target
-                        for target in cast(_AssemblyBlueprint, blueprint.assembly(area)).resolved_uses
+                        for target in cast(_BoundaryBlueprint, blueprint.boundary(area)).resolved_uses
                         if not target.slot
                     )
                 )
                 if any(_decorator_service_matches(target_type, target.service_type) for target in visible_targets):
-                    label = "root" if area is None else f"assembly {area!r}"
+                    label = "root" if area is None else f"boundary {area!r}"
                     raise ContainerBuildError(
-                        f"A decorator or pre-configuration in {label} targets only a component "
-                        "across an assembly boundary",
-                        code="assembly-cross-boundary-decoration",
+                        f"A decorator or pre-configuration in {label} targets only a component across a boundary",
+                        code="boundary-cross-boundary-decoration",
                         path=(("root",) if area is None else (area, qualified_name(target_type))),
                     )
     return blueprint
@@ -1260,10 +1507,12 @@ def _factory_result_annotation(factory: Callable[..., Any]) -> Any:
         annotation = typing.get_type_hints(factory).get("return", inspect.Signature.empty)
     except (NameError, TypeError):
         annotation = inspect.signature(factory).return_annotation
+    if annotation is not inspect.Signature.empty:
+        annotation = normalize_type_alias(annotation)
     target = inspect.unwrap(factory)
     if inspect.isgeneratorfunction(target) or inspect.isasyncgenfunction(target):
         arguments = get_args(annotation)
-        return arguments[0] if arguments else inspect.Signature.empty
+        annotation = arguments[0] if arguments else inspect.Signature.empty
     return annotation
 
 
@@ -1359,13 +1608,15 @@ def _specialized_factory_dependencies(
 
     dependencies: dict[str, legacy.Dependency] = {}
     for name, dependency in registration.dependencies.items():
-        dependencies[name] = legacy.Dependency(
+        specialized = legacy.Dependency(
             name=dependency.name,
             parent_implementation=factory,
             service_type=_resolve_factory_typevars(dependency.service_type, bindings),
             settings=dependency.settings,
             default_value=dependency.default_value,
         )
+        specialized.declared_service_type = _resolve_factory_typevars(dependency.declared_service_type, bindings)
+        dependencies[name] = specialized
     return dependencies
 
 
@@ -1794,6 +2045,8 @@ class _DecoratorActivation:
 
 
 def _decorated_dependency_matches(annotation: Any, service_type: Any) -> bool:
+    annotation = normalize_type_alias(annotation)
+    service_type = normalize_type_alias(service_type)
     if annotation == service_type:
         return True
     annotation_origin = get_origin(annotation)
@@ -1802,9 +2055,9 @@ def _decorated_dependency_matches(annotation: Any, service_type: Any) -> bool:
 
 
 def _specialize_decorator_implementation(
-    decorator_type: type | Callable[..., Any],
+    decorator_type: Any,
     bindings: dict[str, Any],
-) -> type | Callable[..., Any]:
+) -> Any:
     if not isinstance(decorator_type, type):
         return decorator_type
     parameters = tuple(getattr(decorator_type, "__parameters__", ()))
@@ -1821,6 +2074,9 @@ def _specialize_decorator_implementation(
 
 
 def _decorator_result_matches_service(result_type: Any, service_type: Any) -> bool:
+    if result_type is not inspect.Signature.empty:
+        result_type = normalize_type_alias(result_type)
+    service_type = normalize_type_alias(service_type)
     if result_type in (Any, inspect.Signature.empty) or result_type == service_type:
         return True
     result_origin = get_origin(result_type) or result_type
@@ -2071,6 +2327,50 @@ class _TransientRegistrationStep(_RegistrationStep):
             return await self._activate_async(context)
         finally:
             context.registration_stack.pop()
+
+
+class _FrozenProviderMap(Mapping):
+    """Share frozen key topology, keeping scope-bound handles local to acquisition."""
+
+    __slots__ = ("_indices", "_providers")
+
+    def __init__(self, indices: Mapping[Hashable, int], providers: tuple[Any, ...]) -> None:
+        self._indices = indices
+        self._providers = providers
+
+    def __getitem__(self, key: Hashable) -> Any:
+        return self._providers[self._indices[key]]
+
+    def __iter__(self) -> Iterator[Hashable]:
+        return iter(self._indices)
+
+    def __len__(self) -> int:
+        return len(self._indices)
+
+
+@dataclass(frozen=True, slots=True)
+class _ProviderMapStep(_TransientRegistrationStep):
+    key_indices: Mapping[Hashable, int] = field(kw_only=True)
+
+    def _activate(self, context: _RuntimeResolutionContext) -> Any:
+        for configuration in self.pre_configurations:
+            configuration.run(context)
+        instance = _FrozenProviderMap(
+            self.key_indices, tuple(dependency.step.resolve(context) for dependency in self.dependencies)
+        )
+        for decorator in self.decorators:
+            instance = decorator.decorate(instance, context, self.registration.lifespan)
+        return instance
+
+    async def _activate_async(self, context: _RuntimeResolutionContext) -> Any:
+        for configuration in self.pre_configurations:
+            await configuration.run_async(context)
+        instance = _FrozenProviderMap(
+            self.key_indices, tuple(dependency.step.resolve(context) for dependency in self.dependencies)
+        )
+        for decorator in self.decorators:
+            instance = await decorator.decorate_async(instance, context, self.registration.lifespan)
+        return instance
 
 
 class _PerResolutionRegistrationStep(_RegistrationStep):
@@ -2325,7 +2625,7 @@ class _CompilerFrame:
 @dataclass(frozen=True, slots=True)
 class _CompiledCandidate:
     component: Component
-    step: _RegistrationStep
+    step: _Step
     origin: DefinitionOrigin
     eligible: bool
     reason_codes: tuple[str, ...]
@@ -2357,6 +2657,14 @@ class _Compiler:
         self._stack: list[legacy._Registration] = []
         self._frames: list[_CompilerFrame] = []
         self._specialized_factories: dict[tuple[str, tuple[Any, ...]], legacy._Registration] = {}
+        self._patterns: dict[Any, list[tuple[legacy._Registration, _Layer]]] = {}
+        for layer in (*blueprint.layers, *(boundary.layer for boundary in blueprint.boundaries)):
+            for component_id in reversed(layer.pattern_ids):
+                candidate = blueprint.registration_definition(component_id)
+                if candidate is not None:
+                    self._patterns.setdefault(get_origin(candidate[0].service_type), []).append(candidate)
+        self._pattern_sources: dict[str, str] = {}
+        self._pattern_requests: dict[Any, None] = {}
         self._compiled_pre_configurations: dict[str, _CompiledPreConfiguration] = {}
         self._compiling_pre_configurations: set[str] = set()
         self._anchored_singletons = anchored_singletons or {}
@@ -2379,6 +2687,13 @@ class _Compiler:
 
         def local(area: str | None) -> list[tuple[legacy._Registration, _Layer]]:
             found = self.blueprint.local_registrations(area, service_type)
+            if not found and self._patterns:
+                found = [
+                    item
+                    for item in self._patterns.get(get_origin(service_type), ())
+                    if self.blueprint.registration_area(item[1]) == area
+                    and patterns.match(item[0].service_type, service_type) is not None
+                ]
             if not found and get_origin(service_type) is not None:
                 found = self.blueprint.local_registrations(area, get_origin(service_type))
             return found
@@ -2387,15 +2702,15 @@ class _Compiler:
         if root_hidden and self._area is not None:
             hidden.append("root")
             hidden_definitions.extend((registration, layer, "rejected-not-used") for registration, layer in root_hidden)
-        for assembly in self.blueprint.assemblies:
-            if assembly.name == self._area:
+        for boundary in self.blueprint.boundaries:
+            if boundary.name == self._area:
                 continue
             private = [
-                (registration, layer) for registration, layer in local(assembly.name) if registration.id not in visible
+                (registration, layer) for registration, layer in local(boundary.name) if registration.id not in visible
             ]
             if private:
-                hidden.append(assembly.name)
-                exposed_ids = {target.registration_id for target in assembly.resolved_exposes}
+                hidden.append(boundary.name)
+                exposed_ids = {target.registration_id for target in boundary.resolved_exposes}
                 hidden_definitions.extend(
                     (
                         registration,
@@ -2412,9 +2727,9 @@ class _Compiler:
                 DecisionOutcome.rejected,
                 (reason_code,),
                 (
-                    "The component is exposed but the consuming assembly did not declare a matching Use"
+                    "The component is exposed but the consuming boundary did not declare a matching Use"
                     if reason_code == "rejected-not-used"
-                    else "The component is private because its defining assembly did not expose it"
+                    else "The component is private because its defining boundary did not expose it"
                 ),
                 self.blueprint.registration_origin(registration.id, layer),
             )
@@ -2433,7 +2748,7 @@ class _Compiler:
         suggestion = (
             "add Use.root(...)"
             if hidden == ["root"]
-            else "add an Expose declaration in the defining assembly and a matching Use declaration"
+            else "add an Expose declaration in the defining boundary and a matching Use declaration"
         )
         overlay_root = self._area is None and any(
             self.origins.get(frame.component.occurrence_id, _synthetic_origin()).layer == "overlay"
@@ -2441,7 +2756,7 @@ class _Compiler:
         )
         return ContainerBuildError(
             f"Matching component for {service_type!r} is private in {sources}; {suggestion}",
-            code=("overlay-assembly-private-component" if overlay_root else "assembly-private-component"),
+            code=("overlay-boundary-private-component" if overlay_root else "boundary-private-component"),
             path=self._current_path(service_type),
         )
 
@@ -2641,17 +2956,26 @@ class _Compiler:
         service_types: Iterable[Any] | None = None,
         *,
         area: str | None = None,
-        include_assemblies: bool = True,
+        include_boundaries: bool = True,
     ) -> _PlanSet:
         self._area = area
         roots: dict[Any, tuple[_RootPlan, ...]] = {}
         architecture_roots: list[tuple[str | None, Any, _RootPlan]] = []
         area_records: dict[str, dict[Any, tuple[_CandidateRecord, ...]]] = {}
-        selected_service_types = (
+        selected_service_types = list(
             tuple(service_types)
             if service_types is not None
             else (self.blueprint.root_service_types() if area is None else self.blueprint.service_types(area))
         )
+        if self._patterns and service_types is None and area is None:
+            declared = set(self.blueprint.service_types()) | {
+                target.service_type for boundary in self.blueprint.boundaries for target in boundary.resolved_exposes
+            }
+            selected_service_types = [
+                service_type
+                for service_type in selected_service_types
+                if service_type in declared or get_origin(service_type) not in self._patterns
+            ]
         for service_type in selected_service_types:
             # Open generic registrations are reusable activation templates, not
             # directly resolvable roots. Closed occurrences compile on demand
@@ -2708,14 +3032,18 @@ class _Compiler:
                         rejected=tuple(record.decision for record in records if not record.eligible),
                     ),
                 )
+            if self._patterns and area is None:
+                selected_service_types.extend(
+                    request for request in self._pattern_requests if request not in selected_service_types
+                )
         provider_roots = self._compile_provider_roots(roots)
         entrypoint_requests = (
             self.blueprint.entrypoints
             if area is None
             else (
                 ()
-                if self.blueprint.assembly(area) is None
-                else cast(_AssemblyBlueprint, self.blueprint.assembly(area)).layer.entrypoints
+                if self.blueprint.boundary(area) is None
+                else cast(_BoundaryBlueprint, self.blueprint.boundary(area)).layer.entrypoints
             )
         )
         for entrypoint in entrypoint_requests:
@@ -2733,14 +3061,14 @@ class _Compiler:
             roots[entrypoint.service_type] = plans
             architecture_roots.extend((area, entrypoint.service_type, plan) for plan in plans)
 
-        if service_types is None and area is None and include_assemblies:
-            for assembly in self.blueprint.assemblies:
-                self._area = assembly.name
+        if service_types is None and area is None and include_boundaries:
+            for boundary in self.blueprint.boundaries:
+                self._area = boundary.name
                 local_records: dict[Any, tuple[_CandidateRecord, ...]] = {}
-                local_service_types = self.blueprint.service_types(assembly.name)
+                local_service_types = self.blueprint.service_types(boundary.name)
                 entrypoint_types = tuple(
                     (_collection_request(entrypoint.service_type) or (None, entrypoint.service_type))[1]
-                    for entrypoint in assembly.layer.entrypoints
+                    for entrypoint in boundary.layer.entrypoints
                 )
                 for service_type in dict.fromkeys((*local_service_types, *entrypoint_types)):
                     if getattr(service_type, "__parameters__", ()):
@@ -2751,9 +3079,9 @@ class _Compiler:
                         _RootPlan(component=candidate.component, step=candidate.step) for candidate in eligible
                     )
                     architecture_roots.extend(
-                        (assembly.name, service_type, plan)
+                        (boundary.name, service_type, plan)
                         for plan in plans
-                        if plan.component.assembly == assembly.name
+                        if plan.component.boundary == boundary.name
                     )
                     local_records[service_type] = tuple(
                         _CandidateRecord(
@@ -2769,7 +3097,7 @@ class _Compiler:
                         )
                         for candidate in candidates
                     )
-                area_records[assembly.name] = local_records
+                area_records[boundary.name] = local_records
             self._area = None
         self.graph.freeze()
         default_root_groups = {
@@ -2950,11 +3278,62 @@ class _Compiler:
         if cached is not None:
             return cached
 
-        dependencies = _specialized_factory_dependencies(
-            registration,
-            requested_service_type,
-            layer.factory_specializations.get(registration.id),
-        )
+        is_pattern = registration.id in layer.pattern_ids
+        if is_pattern:
+            pattern_stack = [item for item in self._stack if item.id in self._pattern_sources]
+            active = [item for item in pattern_stack if self._pattern_sources[item.id] == registration.id]
+            if (
+                len(active) >= 16 and patterns.size(requested_service_type) >= patterns.size(active[-1].service_type)
+            ) or (
+                len(pattern_stack) >= 32
+                and patterns.size(requested_service_type) >= patterns.size(pattern_stack[-1].service_type)
+            ):
+                raise ContainerBuildError(
+                    "Registration pattern specialization keeps expanding; non-shrinking paths are limited to "
+                    "16 active specializations of one template or 32 across all templates",
+                    code="pattern-non-terminating-expansion",
+                    path=self._current_path(requested_service_type),
+                )
+            factory = cast(Callable[..., Any], registration.implementation)
+            result_annotation = _factory_result_annotation(factory)
+            annotations = (
+                *(dependency.service_type for dependency in registration.dependencies.values()),
+                result_annotation,
+            )
+            try:
+                bindings = patterns.factory_bindings(registration.service_type, requested_service_type, annotations)
+                if result_annotation is not inspect.Signature.empty:
+                    result = _resolve_factory_typevars(result_annotation, bindings)
+                    if not patterns.equivalent(result, requested_service_type):
+                        raise patterns.PatternError(
+                            "Factory result annotation conflicts with its closed pattern service",
+                            "pattern-incompatible-binding",
+                        )
+                if any(_unsupported_factory_type_parameters(annotation) for annotation in annotations):
+                    raise patterns.PatternError("Pattern factories support TypeVar parameters only")
+                dependencies = {}
+                for name, dependency in registration.dependencies.items():
+                    specialized_dependency = legacy.Dependency(
+                        name=dependency.name,
+                        parent_implementation=factory,
+                        service_type=_resolve_factory_typevars(dependency.service_type, bindings),
+                        settings=dependency.settings,
+                        default_value=dependency.default_value,
+                    )
+                    specialized_dependency.declared_service_type = _resolve_factory_typevars(
+                        dependency.declared_service_type, bindings
+                    )
+                    dependencies[name] = specialized_dependency
+            except patterns.PatternError as error:
+                raise ContainerBuildError(
+                    str(error), code=error.code, path=self._current_path(requested_service_type)
+                ) from error
+        else:
+            dependencies = _specialized_factory_dependencies(
+                registration,
+                requested_service_type,
+                layer.factory_specializations.get(registration.id),
+            )
         is_open_specialization = registration.service_type != requested_service_type
         if not is_open_specialization and dependencies is registration.dependencies:
             return registration
@@ -2973,9 +3352,73 @@ class _Compiler:
             if is_open_specialization
             else registration.id
         )
+        specialized.declared_service_type = registration.declared_service_type
         specialized.dependencies = dependencies
         self._specialized_factories[key] = specialized
+        if is_pattern:
+            self._pattern_sources[specialized.id] = registration.id
         return specialized
+
+    def _pattern_candidates(
+        self, service_type: Any, registrations: list[tuple[legacy._Registration, _Layer]]
+    ) -> tuple[list[tuple[legacy._Registration, _Layer]], list[_CompiledCandidate]]:
+        available = [
+            item
+            for item in self._patterns.get(get_origin(service_type), ())
+            if self.blueprint.registration_area(item[1]) == self._area
+            or any(item[0].id == registration.id for registration, _ in registrations)
+        ]
+        exact = [item for item in registrations if item[0].id not in item[1].pattern_ids]
+        try:
+            winners = exact or _winning_patterns(available, service_type)
+        except ContainerBuildError as error:
+            self.decision_history.append(
+                CompilationExplanation(
+                    subject=qualified_name(service_type),
+                    path=self._current_path(service_type),
+                    selected=(),
+                    rejected=tuple(
+                        CandidateDecision(
+                            registration.id,
+                            DecisionOutcome.rejected,
+                            (error.code or "pattern-invalid",),
+                            "The structural templates cannot select a unique supported specialization",
+                            self.blueprint.registration_origin(registration.id, layer),
+                        )
+                        for registration, layer in available
+                    ),
+                )
+            )
+            raise ContainerBuildError(str(error), code=error.code, path=self._current_path(service_type)) from error
+        selected_ids = {registration.id for registration, _ in winners}
+        rejected = []
+        for registration, layer in available:
+            if registration.id in selected_ids:
+                continue
+            if exact:
+                code, reason = "pattern-shadowed-by-exact", "An exact closed registration takes precedence"
+            elif patterns.match(registration.service_type, service_type) is None:
+                code, reason = "pattern-mismatch", "The template structure or TypeVar domain does not match"
+            else:
+                code, reason = "pattern-less-specific", "A structurally more specific template takes precedence"
+            rejected.append(
+                _CompiledCandidate(
+                    _boundary_component(
+                        registration,
+                        service_type=service_type,
+                        build_args=self.build_args,
+                        boundary=self.blueprint.registration_area(layer),
+                    ),
+                    _ValueStep(None),
+                    self.blueprint.registration_origin(registration.id, layer),
+                    False,
+                    (code,),
+                    reason,
+                )
+            )
+        if winners and not exact and self._area is None:
+            self._pattern_requests[service_type] = None
+        return winners, rejected
 
     def _draft(
         self,
@@ -2996,6 +3439,7 @@ class _Compiler:
         provider_mode: typing.Literal["sync", "async"] | None = None,
         build_args: Mapping[str, Any] | None = None,
         origin: DefinitionOrigin | None = None,
+        declared_service_type: Any | None = None,
     ) -> tuple[Component, _ComponentDraft]:
         occurrence = self._next_occurrence
         self._next_occurrence += 1
@@ -3026,7 +3470,8 @@ class _Compiler:
             position=position,
             parent_id=None if parent is None else parent.occurrence_id,
             argument=argument,
-            assembly=(origin.assembly if origin is not None else self._area),
+            boundary=(origin.boundary if origin is not None else self._area),
+            declared_service_type=declared_service_type,
         )
         component = self.graph.add(draft)
         self.origins[occurrence] = origin or _synthetic_origin()
@@ -3037,11 +3482,16 @@ class _Compiler:
         service_type: Any,
         parent: Component | None,
         argument: str | None,
+        *,
+        deferred_mode: typing.Literal["sync", "async"] | None = None,
     ) -> list[_CompiledCandidate]:
+        service_type = normalize_type_alias(service_type)
         registrations = self.blueprint.registrations(service_type, self._area)
+        candidates: list[_CompiledCandidate] = []
+        if self._patterns:
+            registrations, candidates = self._pattern_candidates(service_type, registrations)
         if not registrations and get_origin(service_type) is not None:
             registrations = self.blueprint.registrations(get_origin(service_type), self._area)
-        candidates: list[_CompiledCandidate] = []
         for source_registration, layer in registrations:
             origin = self.blueprint.registration_origin(source_registration.id, layer)
             try:
@@ -3070,12 +3520,36 @@ class _Compiler:
                 ) from error
             consumer_area = self._area
             definition_area = self.blueprint.registration_area(layer)
+            candidate_parent = parent
+            if deferred_mode is not None:
+                candidate_parent, _ = self._draft(
+                    component_id=f"provider-map-entry:{parent.id if parent else ''}:{source_registration.id}",
+                    service_type=(Provider if deferred_mode == "sync" else AsyncProvider)[service_type],
+                    implementation=Provider if deferred_mode == "sync" else AsyncProvider,
+                    lifespan="transient",
+                    name=None,
+                    tags=(),
+                    kind=ComponentKind.provider,
+                    activation=ComponentActivation.deferred,
+                    parent=parent,
+                    provider_mode=deferred_mode,
+                    origin=self.origins.get(parent.occurrence_id) if parent else None,
+                )
+                self._frames.append(
+                    _CompilerFrame(
+                        candidate_parent.service_type,
+                        legacy.Lifespan.transient,
+                        layer.owner_token,
+                        ComponentKind.provider,
+                        candidate_parent,
+                    )
+                )
             try:
                 self._area = definition_area
                 component, step = self._compile_registration(
                     registration,
                     layer,
-                    parent=parent,
+                    parent=candidate_parent,
                     argument=argument,
                     requested_service_type=service_type,
                     origin=origin,
@@ -3105,6 +3579,8 @@ class _Compiler:
                 raise
             finally:
                 self._area = consumer_area
+                if deferred_mode is not None:
+                    self._frames.pop()
             predicate = layer.registration_when.get(source_registration.id)
             component_record = cast(_ComponentDraft, self.graph.record(component.occurrence_id))
             original_parent_id = component_record.parent_id
@@ -3167,6 +3643,8 @@ class _Compiler:
                 consumer_area, source_registration.id, layer
             )
             codes: list[str] = ["registration-eligible"]
+            if source_registration.id in layer.pattern_ids:
+                codes.append("selected-registration-pattern")
             if boundary_code:
                 codes.append(boundary_code)
             reasons = [boundary_reason, "the contextual filter matched"]
@@ -3315,6 +3793,30 @@ class _Compiler:
         self.occurrence_explanations[component.occurrence_id] = explanation
         self.decision_history.append(explanation)
 
+    def _dependency_alias_result(
+        self,
+        result: tuple[_Step, Component | None],
+        declared_type: Any,
+        canonical_type: Any,
+    ) -> tuple[_Step, Component | None]:
+        component = result[1]
+        if component is None or declared_type == canonical_type:
+            return result
+        explanation = self.occurrence_explanations.get(component.occurrence_id)
+        if explanation is not None:
+            updated = replace(
+                explanation,
+                subject=(
+                    f"{explanation.subject} " f"({qualified_name(declared_type)} -> {qualified_name(canonical_type)})"
+                ),
+            )
+            self.occurrence_explanations[component.occurrence_id] = updated
+            for index in range(len(self.decision_history) - 1, -1, -1):
+                if self.decision_history[index] is explanation:
+                    self.decision_history[index] = updated
+                    break
+        return result
+
     def _compile_registration(
         self,
         registration: legacy._Registration,
@@ -3325,6 +3827,7 @@ class _Compiler:
         requested_service_type: Any,
         origin: DefinitionOrigin,
     ) -> tuple[Component, _RegistrationStep]:
+        map_definition = layer.provider_maps.get(registration.id)
         _validate_dependency_names(registration.implementation, registration.dependencies)
         if registration.lifespan == legacy.Lifespan.singleton and layer.owner_token in self._anchored_owner_tokens:
             anchored = self._anchored_singletons.get((registration.id, _runtime_type_key(requested_service_type)))
@@ -3371,17 +3874,20 @@ class _Compiler:
         component, draft = self._draft(
             component_id=registration.id,
             service_type=requested_service_type,
-            implementation=registration.implementation,
+            implementation=registration.implementation if map_definition is None else Mapping,
             lifespan=_component_lifespan(registration.lifespan),
             name=registration.name,
             tags=registration.tags,
-            kind=ComponentKind.registration,
-            activation=_registration_activation(registration),
+            kind=ComponentKind.registration if map_definition is None else ComponentKind.provider_map,
+            activation=_registration_activation(registration)
+            if map_definition is None
+            else ComponentActivation.collection,
             parent=parent,
             argument=argument,
             requires_async=_requires_async(registration.activator_class, registration.implementation),
             manages_cleanup=_manages_cleanup(registration.activator_class, registration.implementation),
             origin=origin,
+            declared_service_type=registration.declared_service_type,
         )
         self._stack.append(registration)
         self._frames.append(
@@ -3394,7 +3900,11 @@ class _Compiler:
             )
         )
         try:
-            dependencies = self._compile_dependencies(registration.dependencies, component)
+            key_indices: Mapping[Hashable, int] = {}
+            if map_definition is None:
+                dependencies = self._compile_dependencies(registration.dependencies, component)
+            else:
+                dependencies, key_indices = self._compile_provider_map(map_definition, component, draft)
             resolution_requests = self._compile_resolution_requests(registration.implementation, component)
             draft.dependency_ids += tuple(item.component.occurrence_id for item in resolution_requests)
             dependencies = self._bind_resolution_requests(
@@ -3408,7 +3918,8 @@ class _Compiler:
             # Component inspection presents the final pipeline outside-to-inside,
             # while runtime activation retains the core-to-outside order.
             draft.decorator_ids = tuple(item.component.occurrence_id for item in reversed(decorators))
-            step = _REGISTRATION_STEP_TYPES[registration.lifespan](
+            step_type = _REGISTRATION_STEP_TYPES[registration.lifespan] if map_definition is None else _ProviderMapStep
+            step = step_type(
                 registration=registration,
                 owner_token=layer.owner_token,
                 component=component,
@@ -3425,11 +3936,141 @@ class _Compiler:
                     and all(item.sync_supported for item in configurations)
                     and all(item.sync_supported for item in decorators)
                 ),
+                **({} if map_definition is None else {"key_indices": key_indices}),
             )
             return component, step
         finally:
             self._frames.pop()
             self._stack.pop()
+
+    def _compile_provider_map(
+        self, definition: _ProviderMapDefinition, component: Component, draft: _ComponentDraft
+    ) -> tuple[tuple[_CompiledDependency, ...], Mapping[Hashable, int]]:
+        _, provider_type = get_args(component.service_type)
+        mode, target = cast(tuple[typing.Literal["sync", "async"], Any], _provider_request(provider_type))
+        collection, target = self._validate_provider_target(provider_type, target)
+        if collection is not None:
+            raise ContainerBuildError(
+                "Provider map targets must be individual closed service types",
+                code="provider-invalid-target",
+                path=self._current_path(),
+            )
+        callback = definition.key
+        try:
+            valid_callback = callable(callback) and not any(
+                inspect.iscoroutinefunction(value) or inspect.isasyncgenfunction(value)
+                for value in (callback, getattr(callback, "__call__", None))
+            )
+        except Exception:
+            valid_callback = False
+        if not valid_callback:
+            raise ContainerBuildError(
+                "Provider map key must be a synchronous callable",
+                code="provider-map-invalid-key",
+                path=self._current_path(),
+            )
+        capturing_singleton = next(
+            (frame for frame in reversed(self._retention_frames()) if frame.lifespan == legacy.Lifespan.singleton),
+            None,
+        )
+        candidates = self._compile_candidates(target, component, None, deferred_mode=mode)
+        candidates = self._select_candidates(
+            candidates,
+            definition.component_filter,
+            service_type=target,
+            subject="Provider map target selection",
+            collection=True,
+            explanation_component=component,
+        )
+        indices: dict[Hashable, int] = {}
+        dependencies: list[_CompiledDependency] = []
+        child_ids: list[int] = []
+        for index, candidate in enumerate(candidates):
+            target_component = candidate.component
+            provider = cast(Component, target_component.parent)
+            provider_draft = cast(_ComponentDraft, self.graph.record(provider.occurrence_id))
+            provider_draft.dependency_ids = (target_component.occurrence_id,)
+            if mode == "sync" and not candidate.step.sync_supported:
+                raise ContainerBuildError(
+                    "Synchronous provider map target requires AsyncProvider",
+                    code="provider-requires-async",
+                    path=self._current_path(target),
+                )
+            if capturing_singleton is not None:
+                forbidden = self._provider_forbidden_path(target_component)
+                if forbidden is not None:
+                    raise ContainerBuildError(
+                        "Singleton cannot retain a provider map whose target reaches scoped state",
+                        code="provider-captive-scope",
+                        path=self._current_path(*(item.service_type for item in forbidden)),
+                    )
+            path = self._current_path(target)
+            try:
+                key = callback(target_component)
+            except Exception:
+                raise ContainerBuildError(
+                    "Provider map key evaluation failed", code="provider-map-key-evaluation", path=path
+                ) from None
+            if inspect.isawaitable(key) or inspect.isasyncgen(key):
+                try:
+                    if inspect.iscoroutine(key):
+                        key.close()
+                except Exception:  # noqa: S110
+                    # Invalid async results remain a safe, structured error even
+                    # when closing a started coroutine runs a failing finalizer.
+                    pass
+                raise ContainerBuildError(
+                    "Provider map key callback returned an asynchronous result",
+                    code="provider-map-invalid-key",
+                    path=path,
+                )
+            try:
+                hash(key)
+            except TypeError:
+                raise ContainerBuildError(
+                    "Provider map key is unhashable",
+                    code="provider-map-unhashable-key",
+                    path=path,
+                ) from None
+            except Exception:
+                raise ContainerBuildError(
+                    "Provider map key hashing failed", code="provider-map-key-evaluation", path=path
+                ) from None
+            try:
+                before = len(indices)
+                existing_index = indices.setdefault(key, index)
+            except Exception:
+                raise ContainerBuildError(
+                    "Provider map key hashing or equality failed", code="provider-map-key-evaluation", path=path
+                ) from None
+            if len(indices) == before:
+                raise ContainerBuildError(
+                    f"Provider map entries {existing_index} and {index} produced duplicate keys",
+                    code="provider-map-duplicate-key",
+                    path=path,
+                ) from None
+            provider_step = _ProviderStep(
+                mode, candidate.step, None if capturing_singleton is None else capturing_singleton.owner_token
+            )
+            dependencies.append(_CompiledDependency(str(index), provider_step))
+            child_ids.append(provider.occurrence_id)
+            self.occurrence_explanations[provider.occurrence_id] = CompilationExplanation(
+                subject=qualified_name(provider.service_type),
+                path=path,
+                selected=(
+                    CandidateDecision(
+                        target_component.id,
+                        DecisionOutcome.selected,
+                        ("provider-target-frozen",),
+                        "The provider map entry target was selected and frozen during compilation",
+                        candidate.origin,
+                    ),
+                ),
+                rejected=(),
+            )
+        draft.dependency_ids = tuple(child_ids)
+        draft.provider_mode = mode
+        return tuple(dependencies), types.MappingProxyType(indices)
 
     def _clone_component_tree(
         self,
@@ -3459,9 +4100,10 @@ class _Compiler:
             provider_mode=source.provider_mode,
             build_args=source.build_args,
             origin=self.origins.get(source.occurrence_id),
+            declared_service_type=source.declared_service_type,
         )
         draft.implementation_type = source.implementation_type
-        draft.assembly = source.assembly
+        draft.boundary = source.boundary
         draft.cache_owner = source.cache_owner
         draft.cleanup_owner = source.cleanup_owner
         draft.ownership_reason = source.ownership_reason
@@ -3525,6 +4167,7 @@ class _Compiler:
         )
         compiled: list[_CompiledResolutionRequest] = []
         for index, request in enumerate(requests):
+            request = replace(request, service_type=normalize_type_alias(request.service_type))
             candidates = self._compile_candidates(request.service_type, parent=None, argument=None)
             candidates = self._select_candidates(
                 candidates,
@@ -3813,6 +4456,11 @@ class _Compiler:
         dependency: legacy.Dependency,
         parent: Component,
     ) -> tuple[_Step, Component | None]:
+        declared_type = dependency.declared_service_type
+        dependency.service_type = normalize_type_alias(dependency.service_type)
+        dependency.generic_collection_type = dependency.GENERIC_COLLECTION_MAPPINGS.get(
+            get_origin(dependency.service_type)
+        )
         policy = dependency.settings.value_factory
         provider = _provider_request(dependency.service_type)
         if provider is not None:
@@ -3826,7 +4474,11 @@ class _Compiler:
                     code="provider-invalid-argument-policy",
                     path=self._current_path(dependency.service_type),
                 )
-            return self._compile_provider_dependency(dependency, parent, *provider)
+            return self._dependency_alias_result(
+                self._compile_provider_dependency(dependency, parent, *provider),
+                declared_type,
+                dependency.service_type,
+            )
         policy_code = "argument-default"
         if isinstance(policy, _FixedArgument):
             value = policy.value
@@ -3883,7 +4535,11 @@ class _Compiler:
                 reason="The argument policy compiled a fixed value; its value is redacted",
                 origin=self.origins.get(parent.occurrence_id),
             )
-            return _ValueStep(value), component
+            return self._dependency_alias_result(
+                (_ValueStep(value), component),
+                declared_type,
+                dependency.service_type,
+            )
 
         if (
             not isinstance(parent.implementation, type)
@@ -3927,7 +4583,11 @@ class _Compiler:
                 code="runtime-context",
                 reason="The annotation selects a frozen runtime context edge",
             )
-            return _ScopeStep(dependency.service_type), component
+            return self._dependency_alias_result(
+                (_ScopeStep(dependency.service_type), component),
+                declared_type,
+                dependency.service_type,
+            )
 
         if dependency.generic_collection_type:
             element_type = get_args(dependency.service_type)[0]
@@ -3955,13 +4615,17 @@ class _Compiler:
             )
             collection_draft.dependency_ids = tuple(candidate.component.occurrence_id for candidate in candidates)
             member_steps = tuple(candidate.step for candidate in candidates)
-            return (
-                _CollectionStep(
-                    dependency.generic_collection_type,
-                    member_steps,
-                    all(step.sync_supported for step in member_steps),
+            return self._dependency_alias_result(
+                (
+                    _CollectionStep(
+                        dependency.generic_collection_type,
+                        member_steps,
+                        all(step.sync_supported for step in member_steps),
+                    ),
+                    collection,
                 ),
-                collection,
+                declared_type,
+                dependency.service_type,
             )
 
         candidates = self._compile_candidates(dependency.service_type, parent, dependency.name)
@@ -3986,17 +4650,26 @@ class _Compiler:
                         path=path,
                     )
                 )
-            return candidates[0].step, candidates[0].component
+            return self._dependency_alias_result(
+                (candidates[0].step, candidates[0].component),
+                declared_type,
+                dependency.service_type,
+            )
 
         slot = self._matching_slot(dependency.service_type, dependency.settings.filter, parent, dependency.name)
         if slot is not None:
             name, component = slot
-            return _ProvidedStep(dependency.service_type, name), component
+            return self._dependency_alias_result(
+                (_ProvidedStep(dependency.service_type, name), component),
+                declared_type,
+                dependency.service_type,
+            )
         visibility_error = self._visibility_error(dependency.service_type)
         if visibility_error is not None:
             raise visibility_error
         raise ContainerBuildError(
-            f"No component for {dependency.service_type!r}, argument {dependency.name!r} of {parent.implementation!r}",
+            f"No component for {dependency.service_type!r}, argument {dependency.name!r} of {parent.implementation!r}"
+            + (f" (declared as {qualified_name(declared_type)})" if declared_type != dependency.service_type else ""),
             code="missing-component",
             path=self._current_path(dependency.service_type),
         )
@@ -4548,13 +5221,13 @@ def _run_validation_rules(
     issues: list[BuildIssue] = []
     contexts: dict[str | None, ValidationContext] = {}
     for definition in selected:
-        assembly = definition.origin.assembly
-        context = contexts.get(assembly)
+        boundary = definition.origin.boundary
+        context = contexts.get(boundary)
         if context is None:
             visible_graph = graph
-            if assembly is not None:
-                local_roots = tuple(root for root in graph.roots if root.area == assembly)
-                local_entrypoints = tuple(root for root in graph.entrypoints if root.area == assembly)
+            if boundary is not None:
+                local_roots = tuple(root for root in graph.roots if root.area == boundary)
+                local_entrypoints = tuple(root for root in graph.entrypoints if root.area == boundary)
                 visible_graph = replace(
                     graph,
                     roots=local_roots,
@@ -4562,8 +5235,8 @@ def _run_validation_rules(
                     _manifest_cache={},
                     _ownership_report_cache=[],
                 )
-            context = ValidationContext(visible_graph, assembly=assembly)
-            contexts[assembly] = context
+            context = ValidationContext(visible_graph, boundary=boundary)
+            contexts[boundary] = context
         issues.extend(_validation_rule_issues(definition.rule, context))
     return tuple(issues)
 
@@ -4601,7 +5274,7 @@ def _error_report(
     checked = 0
     areas = (
         (None, blueprint.root_service_types()),
-        *((assembly.name, blueprint.service_types(assembly.name)) for assembly in blueprint.assemblies),
+        *((boundary.name, blueprint.service_types(boundary.name)) for boundary in blueprint.boundaries),
     )
     for area, service_types in areas:
         for service_type in service_types:
@@ -4615,7 +5288,7 @@ def _error_report(
                     anchored_singletons=anchored_singleton_steps,
                     anchored_pre_configurations=anchored_pre_configuration_steps,
                     anchored_owner_tokens=anchored_owner_tokens,
-                ).compile((service_type,), area=area, include_assemblies=False)
+                ).compile((service_type,), area=area, include_boundaries=False)
             except Exception as error:
                 root = qualified_name(service_type)
                 code = _build_error_code(error)
@@ -4789,12 +5462,12 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
                 )
         entrypoints.append(matches[0])
 
-    for assembly in plan.blueprint.assemblies:
+    for boundary in plan.blueprint.boundaries:
         exposed_ids = {
-            target.registration_id for target in assembly.resolved_exposes if target.registration_id is not None
+            target.registration_id for target in boundary.resolved_exposes if target.registration_id is not None
         }
-        area_records = plan.area_root_candidates.get(assembly.name, {})
-        for request in assembly.layer.entrypoints:
+        area_records = plan.area_root_candidates.get(boundary.name, {})
+        for request in boundary.layer.entrypoints:
             collection = _collection_request(request.service_type)
             candidate_type = request.service_type if collection is None else collection[1]
             explanation, selected_records = _recorded_root_selection(
@@ -4805,46 +5478,46 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
                 records=area_records.get(candidate_type, ()),
             )
             known_root_selections[(candidate_type, id(request.filter))] = explanation
-            selected_local = tuple(record for record in selected_records if record.component.assembly == assembly.name)
+            selected_local = tuple(record for record in selected_records if record.component.boundary == boundary.name)
             if len(selected_local) != len(selected_records):
                 issues.append(
                     BuildIssue(
-                        code="assembly-entrypoint-not-local",
+                        code="boundary-entrypoint-not-local",
                         severity=IssueSeverity.error,
                         message=(
-                            f"Assembly {assembly.name!r} entry point {qualified_name(request.service_type)} "
+                            f"Boundary {boundary.name!r} entry point {qualified_name(request.service_type)} "
                             "selects a component admitted through Use"
                         ),
                         root=qualified_name(request.service_type),
-                        path=(assembly.name, qualified_name(request.service_type)),
+                        path=(boundary.name, qualified_name(request.service_type)),
                     )
                 )
                 continue
             if not selected_local:
                 issues.append(
                     BuildIssue(
-                        code="assembly-entrypoint-not-local",
+                        code="boundary-entrypoint-not-local",
                         severity=IssueSeverity.error,
                         message=(
-                            f"Assembly {assembly.name!r} entry point {qualified_name(request.service_type)} "
+                            f"Boundary {boundary.name!r} entry point {qualified_name(request.service_type)} "
                             "does not select one local component"
                         ),
                         root=qualified_name(request.service_type),
-                        path=(assembly.name, qualified_name(request.service_type)),
+                        path=(boundary.name, qualified_name(request.service_type)),
                     )
                 )
                 continue
             if any(record.component.id not in exposed_ids for record in selected_local):
                 issues.append(
                     BuildIssue(
-                        code="assembly-entrypoint-not-exposed",
+                        code="boundary-entrypoint-not-exposed",
                         severity=IssueSeverity.error,
                         message=(
-                            f"Assembly {assembly.name!r} entry point {qualified_name(request.service_type)} "
+                            f"Boundary {boundary.name!r} entry point {qualified_name(request.service_type)} "
                             "must also be declared with Expose"
                         ),
                         root=qualified_name(request.service_type),
-                        path=(assembly.name, qualified_name(request.service_type)),
+                        path=(boundary.name, qualified_name(request.service_type)),
                     )
                 )
                 continue
@@ -4854,16 +5527,16 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
                         code="ambiguous-selection",
                         severity=IssueSeverity.warning,
                         message=(
-                            f"Assembly {assembly.name!r} entry point {qualified_name(request.service_type)} "
+                            f"Boundary {boundary.name!r} entry point {qualified_name(request.service_type)} "
                             f"matches {len(selected_local)} local components; the first is selected"
                         ),
                         root=qualified_name(request.service_type),
-                        path=(assembly.name, qualified_name(request.service_type)),
+                        path=(boundary.name, qualified_name(request.service_type)),
                     )
                 )
                 selected_local = selected_local[:1]
             entrypoints.extend(
-                GraphRoot(request.service_type, record.component, assembly.name) for record in selected_local
+                GraphRoot(request.service_type, record.component, boundary.name) for record in selected_local
             )
 
     if entrypoints:
@@ -4893,9 +5566,9 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
                 )
             )
 
-    assembly_contracts = tuple(
+    boundary_contracts = tuple(
         {
-            "name": assembly.name,
+            "name": boundary.name,
             "exposures": [
                 {
                     "service": qualified_name(target.service_type),
@@ -4906,7 +5579,7 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
                     ],
                 }
                 for target in sorted(
-                    assembly.resolved_exposes,
+                    boundary.resolved_exposes,
                     key=lambda item: (qualified_name(item.service_type), item.name or ""),
                 )
             ],
@@ -4922,18 +5595,18 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
                     "scope_slot": target.slot,
                 }
                 for target in sorted(
-                    assembly.resolved_uses,
+                    boundary.resolved_uses,
                     key=lambda item: (item.source or "", qualified_name(item.service_type), item.name or ""),
                 )
             ],
         }
-        for assembly in sorted(plan.blueprint.assemblies, key=lambda item: item.name)
+        for boundary in sorted(plan.blueprint.boundaries, key=lambda item: item.name)
     )
     compiled_graph = CompiledGraph(
         roots=all_roots,
         build_args=plan.build_args,
         entrypoints=tuple(entrypoints),
-        assemblies=assembly_contracts,
+        boundaries=boundary_contracts,
         _root_candidates=types.MappingProxyType(dict(plan.root_candidates)),
         _known_root_selections=types.MappingProxyType(known_root_selections),
         _occurrence_explanations=types.MappingProxyType(dict(plan.occurrence_explanations)),
@@ -4964,8 +5637,14 @@ def _compile_with_report(
     anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
     anchored_owner_tokens: frozenset[str] = frozenset(),
 ) -> _PlanSet:
+    alias_errors = _blueprint_alias_errors(blueprint)
+    if alias_errors:
+        raise ContainerBuildError(report=_alias_error_report(alias_errors))
     try:
-        blueprint = _prepare_assembly_visibility(blueprint, build_args=build_args)
+        blueprint = _normalize_blueprint_aliases(blueprint)
+        blueprint = _prepare_boundary_visibility(blueprint, build_args=build_args)
+    except TypeAliasNormalizationError as error:
+        raise ContainerBuildError(report=_alias_error_report((error,))) from error
     except ContainerBuildError as error:
         issue = BuildIssue(
             code=error.code or "compile-error",
@@ -5156,42 +5835,59 @@ class Scope(_RuntimeOwner):
     def has_component(self, service_type: Any, filter: ComponentFilter = default_component_filter) -> bool:
         """Return whether the frozen plan contains a matching root component."""
 
-        plans = self._plan.roots.get(service_type, self._plan.provider_roots.get(service_type, ()))
+        plans = self._plan.roots.get(service_type)
+        if plans is None:
+            plans = self._plan.provider_roots.get(service_type)
+        if plans is None:
+            canonical_type = normalize_type_alias(service_type)
+            if canonical_type is service_type:
+                return False
+            return self.has_component(canonical_type, filter)
         return any(filter(_provider_selection_component(plan.component)) for plan in plans)
 
     def has_scope_slot(self, service_type: Any, name: str | None = None) -> bool:
         """Return whether this runtime can accept the supplied scope value."""
 
-        return (service_type, name) in self._plan.blueprint.slots
+        slots = self._plan.blueprint.slots
+        return (service_type, name) in slots or (normalize_type_alias(service_type), name) in slots
 
     def has_provision(self, service_type: Any, name: str | None = None) -> bool:
         """Return whether this scope or one of its parents supplied a slot value."""
 
         key = (service_type, name)
-        if key in self._provisions:
-            return True
-        return self.parent is not None and self.parent.has_provision(service_type, name)
+        if key not in self._plan.blueprint.slots:
+            key = (normalize_type_alias(service_type), name)
+        scope: Scope | None = self
+        while scope is not None:
+            if key in scope._provisions:
+                return True
+            scope = scope.parent
+        return False
 
     def _select_root(self, service_type: Any, filter: ComponentFilter) -> _RootPlan:
         self._ensure_open()
-        self._resolution_started = True
         if filter is default_component_filter:
             plan = self._plan.default_roots.get(service_type)
             if plan is not None:
+                self._resolution_started = True
                 return plan
-            if _provider_request(service_type) is not None:
-                plan = next(
-                    (
-                        candidate
-                        for candidate in self._plan.provider_roots.get(service_type, ())
-                        if candidate.component.name is None
-                    ),
-                    None,
-                )
-                if plan is not None:
-                    return plan
-        else:
-            plans = self._plan.roots.get(service_type, self._plan.provider_roots.get(service_type, ()))
+
+        # The plan's keys are already canonical. Normalize only unknown spellings,
+        # never a known key whose candidates were rejected by the caller's filter.
+        plans = self._plan.roots.get(service_type)
+        if plans is None:
+            plans = self._plan.provider_roots.get(service_type)
+        if plans is None and (service_type, None) not in self._plan.blueprint.slots:
+            canonical_type = normalize_type_alias(service_type)
+            if canonical_type is not service_type:
+                return self._select_root(canonical_type, filter)
+
+        self._resolution_started = True
+        if plans is not None and filter is default_component_filter:
+            plan = next((candidate for candidate in plans if candidate.component.name is None), None)
+            if plan is not None:
+                return plan
+        elif plans is not None:
             for plan in plans:
                 if filter(_provider_selection_component(plan.component)):
                     return plan
@@ -5201,11 +5897,28 @@ class Scope(_RuntimeOwner):
 
     def _select_roots(self, service_type: Any, filter: ComponentFilter) -> tuple[_RootPlan, ...]:
         self._ensure_open()
-        self._resolution_started = True
         if filter is default_component_filter:
-            return self._plan.default_root_groups.get(service_type, ())
-        plans = self._plan.roots.get(service_type, self._plan.provider_roots.get(service_type, ()))
-        return tuple(plan for plan in plans if filter(_provider_selection_component(plan.component)))
+            plans = self._plan.default_root_groups.get(service_type)
+            if plans is not None:
+                self._resolution_started = True
+                return plans
+            # Default collection selection does not synthesize groups of providers.
+            if service_type in self._plan.provider_roots:
+                self._resolution_started = True
+                return ()
+        else:
+            plans = self._plan.roots.get(service_type)
+            if plans is None:
+                plans = self._plan.provider_roots.get(service_type)
+            if plans is not None:
+                self._resolution_started = True
+                return tuple(plan for plan in plans if filter(_provider_selection_component(plan.component)))
+        if (service_type, None) not in self._plan.blueprint.slots:
+            canonical_type = normalize_type_alias(service_type)
+            if canonical_type is not service_type:
+                return self._select_roots(canonical_type, filter)
+        self._resolution_started = True
+        return ()
 
     def resolve(
         self,
@@ -5278,6 +5991,9 @@ class Scope(_RuntimeOwner):
     def provide(self, service_type: TypeForm[TService], value: TService, name: str | None = None) -> Scope:
         self._ensure_open()
         key = (service_type, name)
+        if key not in self._plan.blueprint.slots:
+            service_type = normalize_type_alias(service_type)
+            key = (service_type, name)
         if key not in self._plan.blueprint.slots:
             raise UndeclaredScopeSlotError(f"No scope slot declared for {service_type!r} named {name!r}")
         if self._resolution_started:
@@ -5361,7 +6077,7 @@ class _BuilderBase:
         self,
         *,
         owner_token: str | None = None,
-        assembly_name: str | None = None,
+        boundary_name: str | None = None,
         composition_layer: str | None = None,
     ) -> None:
         self.id = str(uuid4())
@@ -5372,12 +6088,14 @@ class _BuilderBase:
             for registration in registrations
         )
         self._owner_token = owner_token or str(uuid4())
-        self._assembly_name = assembly_name
+        self._boundary_name = boundary_name
         self._composition_layer = composition_layer
         self._registration_when: dict[str, ComponentFilter] = {}
         self._registration_origins: dict[str, DefinitionOrigin] = {}
         self._factory_ids: set[str] = set()
         self._factory_specializations: dict[str, object] = {}
+        self._provider_maps: dict[str, _ProviderMapDefinition] = {}
+        self._pattern_ids: list[str] = []
         self._decorators: list[_DecoratorDefinition] = []
         self._removed_decorator_ids: set[str] = set()
         self._next_decorator_order = 0
@@ -5390,7 +6108,7 @@ class _BuilderBase:
         self._entrypoints: list[_EntryPoint] = []
         self._validation_rules: list[_ValidationRuleDefinition] = []
         self._bundle_stack: list[str] = []
-        self._assemblies: list[_AssemblyBlueprint] = []
+        self._boundaries: list[_BoundaryBlueprint] = []
         self._built = False
 
     def _assert_mutable(self) -> None:
@@ -5410,7 +6128,7 @@ class _BuilderBase:
             layer=self._composition_layer or ("overlay" if hasattr(self, "_parent") else "root"),
             bundle_path=tuple(self._bundle_stack),
             definition_id=definition_id,
-            assembly=self._assembly_name,
+            boundary=self._boundary_name,
         )
 
     def _layer(self) -> _Layer:
@@ -5441,28 +6159,30 @@ class _BuilderBase:
             slot_origins=dict(self._slot_origins),
             entrypoints=tuple(self._entrypoints),
             validation_rules=tuple(self._validation_rules),
+            provider_maps=types.MappingProxyType(dict(self._provider_maps)),
+            pattern_ids=tuple(self._pattern_ids),
         )
 
-    def _install_assembly(self, assembly: Assembly) -> None:
+    def _install_boundary(self, boundary: Boundary) -> None:
         self._assert_mutable()
-        if not isinstance(assembly, Assembly):
-            raise TypeError("install_assembly() requires an Assembly")
-        if not callable(assembly.root_bundle):
-            raise TypeError("Assembly root_bundle must be callable")
+        if not isinstance(boundary, Boundary):
+            raise TypeError("install_boundary() requires a Boundary")
+        if not callable(boundary.root_bundle):
+            raise TypeError("Boundary root_bundle must be callable")
         # Composition is transactional: only retain the private layer after the
         # entire ordinary bundle has applied successfully.
-        private = _AssemblyBuilder(
+        private = _BoundaryBuilder(
             owner_token=self._owner_token,
-            assembly_name=assembly.name,
+            boundary_name=boundary.name,
             composition_layer="overlay" if hasattr(self, "_parent") else "root",
         )
-        private.apply_bundle(assembly.root_bundle)
-        self._assemblies.append(
-            _AssemblyBlueprint(
-                name=assembly.name,
+        private.apply_bundle(boundary.root_bundle)
+        self._boundaries.append(
+            _BoundaryBlueprint(
+                name=boundary.name,
                 layer=private._layer(),
-                uses=tuple(assembly.uses),
-                exposes=tuple(assembly.exposes),
+                uses=tuple(boundary.uses),
+                exposes=tuple(boundary.exposes),
             )
         )
 
@@ -5502,7 +6222,7 @@ class _BuilderBase:
     def register(
         self,
         service_type: TypeForm[TService],
-        implementation_type: type[TService] | None = None,
+        implementation_type: TypeForm[TService] | None = None,
         *,
         factory: Callable[..., Any] | None = None,
         factory_specialization: object | None = None,
@@ -5514,8 +6234,18 @@ class _BuilderBase:
         when: ComponentFilter = all_components,
     ) -> str:
         self._assert_mutable()
+        declared_service_type = service_type
+        service_type = _composition_type(service_type)
+        if implementation_type is not None:
+            implementation_type = _composition_type(implementation_type)
+        if factory_specialization is not None:
+            factory_specialization = _composition_type(factory_specialization)
         if factory_specialization is not None and factory is None:
             raise ValueError("factory_specialization requires factory=")
+        if is_new_type(service_type) and factory is None and instance is None and implementation_type is None:
+            raise TypeError(
+                f"NewType service {qualified_name(service_type)} requires a factory, instance or implementation type"
+            )
         is_union = get_origin(service_type) in (typing.Union, types.UnionType)
         if is_union and factory is None and instance is None and implementation_type is None:
             raise TypeError(
@@ -5537,10 +6267,63 @@ class _BuilderBase:
         )
         self._registration_when[component_id] = when
         self._registration_origins[component_id] = self._definition_origin("registration", component_id)
+        for registrations in self._composition._registry._registrations.values():
+            for registration in registrations:
+                if registration.id == component_id:
+                    registration.declared_service_type = declared_service_type
         if factory is not None:
             self._factory_ids.add(component_id)
             if factory_specialization is not None:
                 self._factory_specializations[component_id] = factory_specialization
+        return component_id
+
+    def register_pattern(
+        self,
+        service_type: TypeForm[Any],
+        *,
+        factory: Callable[..., Any],
+        lifespan: Lifespan = "per_resolution",
+        name: str | None = None,
+        arguments: Mapping[str, Any] | None = None,
+        tags: Iterable[legacy.Tag] | None = None,
+        when: ComponentFilter = all_components,
+    ) -> str:
+        """Declare a structural factory template specialized only during build."""
+        if not callable(factory):
+            raise TypeError("register_pattern requires a callable factory")
+        component_id = self.register(
+            service_type, factory=factory, lifespan=lifespan, name=name, arguments=arguments, tags=tags, when=when
+        )
+        self._pattern_ids.append(component_id)
+        self._registration_origins[component_id] = self._definition_origin("registration-pattern", component_id)
+        return component_id
+
+    def register_provider_map(
+        self,
+        service_type: TypeForm[Any],
+        *,
+        key: Callable[[Component], Hashable],
+        key_type: TypeForm[Any] = str,
+        asynchronous: bool = False,
+        component_filter: ComponentFilter = all_components,
+        name: str | None = None,
+    ) -> str:
+        """Declare a read-only map of frozen provider targets, keyed during build.
+
+        ``key_type`` defaults to ``str``; supply it explicitly for other key types.
+        ``asynchronous=True`` declares ``Mapping[K, AsyncProvider[T]]``.
+        Keys must be pure synchronous results with stable hash/equality behavior.
+        """
+
+        self._assert_mutable()
+        if not isinstance(asynchronous, bool):
+            raise TypeError("asynchronous must be a bool")
+        provider_type = AsyncProvider if asynchronous else Provider
+        annotation: Any = types.GenericAlias(Mapping, (key_type, provider_type[service_type]))
+        component_id = self.register(annotation, factory=_provider_map_factory, lifespan="transient", name=name)
+        self._factory_ids.discard(component_id)
+        self._provider_maps[component_id] = _ProviderMapDefinition(key, component_filter)
+        self._registration_origins[component_id] = self._definition_origin("provider-map", component_id)
         return component_id
 
     def patch_component(
@@ -5553,6 +6336,7 @@ class _BuilderBase:
         tags: Iterable[legacy.Tag] | None = None,
     ) -> None:
         self._assert_mutable()
+        service_type = _composition_type(service_type)
         try:
             self._composition.patch_registration(
                 cast(type, service_type),
@@ -5567,6 +6351,26 @@ class _BuilderBase:
         except KeyError:
             pass
 
+        declared_service_type = next(
+            (
+                candidate
+                for candidate in self._composition._registry._registrations
+                if _composition_type(candidate) == service_type
+            ),
+            None,
+        )
+        if declared_service_type is not None:
+            self._composition.patch_registration(
+                declared_service_type,
+                component_id,
+                dependency_config=(
+                    None if arguments is None else _arguments_to_dependency_config(arguments, allow_remove=True)
+                ),
+                lifespan=None if lifespan is None else _legacy_lifespan(lifespan),
+                tags=tags,
+            )
+            return
+
         registration = next(
             (
                 candidate
@@ -5578,12 +6382,12 @@ class _BuilderBase:
         if registration is None:
             installed_private = next(
                 (
-                    assembly.name
-                    for assembly in self._assemblies
+                    boundary.name
+                    for boundary in self._boundaries
                     if any(
                         candidate.id == component_id
-                        for candidate, _ in _Blueprint((), tuple(self._assemblies)).local_registrations(
-                            assembly.name, service_type
+                        for candidate, _ in _Blueprint((), tuple(self._boundaries)).local_registrations(
+                            boundary.name, service_type
                         )
                     )
                 ),
@@ -5591,11 +6395,11 @@ class _BuilderBase:
             )
             if installed_private is not None:
                 raise ContainerBuildError(
-                    f"Cannot patch private component {component_id!r} in assembly {installed_private!r}",
+                    f"Cannot patch private component {component_id!r} in boundary {installed_private!r}",
                     code=(
-                        "overlay-assembly-private-component"
+                        "overlay-boundary-private-component"
                         if hasattr(self, "_parent")
-                        else "assembly-private-component"
+                        else "boundary-private-component"
                     ),
                     path=(installed_private, qualified_name(service_type)),
                 )
@@ -5603,19 +6407,19 @@ class _BuilderBase:
             if parent is not None:
                 private = next(
                     (
-                        assembly.name
-                        for assembly in parent._plan.blueprint.assemblies
+                        boundary.name
+                        for boundary in parent._plan.blueprint.boundaries
                         if any(
                             candidate.id == component_id
-                            for candidate, _ in parent._plan.blueprint.local_registrations(assembly.name, service_type)
+                            for candidate, _ in parent._plan.blueprint.local_registrations(boundary.name, service_type)
                         )
                     ),
                     None,
                 )
                 if private is not None:
                     raise ContainerBuildError(
-                        f"Overlay cannot patch private component {component_id!r} in assembly {private!r}",
-                        code="overlay-assembly-private-component",
+                        f"Overlay cannot patch private component {component_id!r} in boundary {private!r}",
+                        code="overlay-boundary-private-component",
                         path=(private, qualified_name(service_type)),
                     )
             raise KeyError(f"No component found for {service_type} with ID {component_id}")
@@ -5630,7 +6434,7 @@ class _BuilderBase:
     def register_decorator(
         self,
         service_type: Any,
-        decorator_type: type | Callable,
+        decorator_type: TypeForm[Any] | Callable[..., Any],
         *,
         when: ComponentFilter = all_components,
         decorated_arg: str | None = None,
@@ -5640,6 +6444,8 @@ class _BuilderBase:
         tags: Iterable[legacy.Tag] | None = None,
     ) -> str:
         self._assert_mutable()
+        service_type = _composition_type(service_type)
+        decorator_type = _composition_type(decorator_type)
         decorator_id = str(uuid4())
         self._decorators.append(
             _DecoratorDefinition(
@@ -5663,11 +6469,12 @@ class _BuilderBase:
         service_type: Any,
         decorator_id: str,
     ) -> _DecoratorDefinition | None:
+        service_type = _composition_type(service_type)
         own = next(
             (
                 definition
                 for definition in reversed(self._decorators)
-                if definition.id == decorator_id and definition.service_type == service_type
+                if definition.id == decorator_id and _composition_type(definition.service_type) == service_type
             ),
             None,
         )
@@ -5691,6 +6498,7 @@ class _BuilderBase:
         tags: Iterable[legacy.Tag] | None = None,
     ) -> None:
         self._assert_mutable()
+        service_type = _composition_type(service_type)
         definition = self._find_decorator_definition(service_type, decorator_id)
         if definition is None:
             raise KeyError(f"No decorator found for {service_type} with ID {decorator_id}")
@@ -5724,6 +6532,7 @@ class _BuilderBase:
 
     def remove_decorator(self, service_type: Any, decorator_id: str) -> None:
         self._assert_mutable()
+        service_type = _composition_type(service_type)
         if self._find_decorator_definition(service_type, decorator_id) is None:
             raise KeyError(f"No decorator found for {service_type} with ID {decorator_id}")
         self._decorators = [definition for definition in self._decorators if definition.id != decorator_id]
@@ -5748,7 +6557,7 @@ class _BuilderBase:
             )
             else (service_type,)
         )
-        service_types = tuple(dict.fromkeys(service_types))
+        service_types = tuple(dict.fromkeys(_composition_type(value) for value in service_types))
         if not service_types:
             raise ValueError("pre_configure() requires at least one service type")
         definition_id = str(uuid4())
@@ -5769,6 +6578,7 @@ class _BuilderBase:
 
     def declare_scope_slot(self, service_type: TypeForm[Any], name: str | None = None) -> _BuilderBase:
         self._assert_mutable()
+        service_type = _composition_type(service_type)
         slot = (service_type, name)
         self._slots.add(slot)
         self._slot_origins.setdefault(slot, self._definition_origin("scope-slot", None))
@@ -5783,6 +6593,7 @@ class _BuilderBase:
         """Mark a public resolution request for graph and reachability tooling."""
 
         self._assert_mutable()
+        service_type = _composition_type(service_type)
         self._entrypoints.append(
             _EntryPoint(
                 service_type,
@@ -5861,9 +6672,18 @@ class _BuilderBase:
         build_args: Mapping[str, Any] | None = None,
     ) -> tuple[Component, ...]:
         self._assert_mutable()
+        blueprint = _Blueprint((self._layer(),), tuple(self._boundaries))
+        alias_errors = _blueprint_alias_errors(blueprint)
+        if alias_errors:
+            raise ContainerBuildError(report=_alias_error_report(alias_errors))
+        try:
+            service_type = normalize_type_alias(service_type)
+            blueprint = _normalize_blueprint_aliases(blueprint)
+        except TypeAliasNormalizationError as error:
+            raise ContainerBuildError(report=_alias_error_report((error,))) from error
         plan = _Compiler(
-            _prepare_assembly_visibility(
-                _Blueprint((self._layer(),), tuple(self._assemblies)),
+            _prepare_boundary_visibility(
+                blueprint,
                 build_args=self._effective_build_args(build_args),
             ),
             build_args=self._effective_build_args(build_args),
@@ -5908,15 +6728,15 @@ class _BuilderBase:
 class ContainerBuilder(_BuilderBase):
     """Mutable root composition API. Call :meth:`build` exactly once."""
 
-    def install_assembly(self, assembly: Assembly) -> None:
-        """Install an isolated assembly blueprint for the next build."""
+    def install_boundary(self, boundary: Boundary) -> None:
+        """Install an isolated boundary blueprint for the next build."""
 
-        self._install_assembly(assembly)
+        self._install_boundary(boundary)
 
     def build(self, *, build_args: Mapping[str, Any] | None = None) -> Container:
         self._assert_mutable()
         plan = _compile_with_report(
-            _Blueprint((self._layer(),), tuple(self._assemblies)),
+            _Blueprint((self._layer(),), tuple(self._boundaries)),
             build_args=self._effective_build_args(build_args),
         )
         container = Container(plan, self._owner_token)
@@ -5931,21 +6751,21 @@ class ScopeBuilder(_BuilderBase):
         super().__init__()
         self._parent = parent
 
-    def install_assembly(self, assembly: Assembly) -> None:
-        """Install a new overlay-owned assembly without reopening a parent."""
+    def install_boundary(self, boundary: Boundary) -> None:
+        """Install a new overlay-owned boundary without reopening a parent."""
 
-        self._install_assembly(assembly)
+        self._install_boundary(boundary)
 
     def build(self, *, build_args: Mapping[str, Any] | None = None) -> Scope:
         self._assert_mutable()
         self._parent._ensure_open()
-        inherited_assemblies = tuple(
-            replace(assembly, root_layer_offset=assembly.root_layer_offset + 1)
-            for assembly in self._parent._plan.blueprint.assemblies
+        inherited_boundaries = tuple(
+            replace(boundary, root_layer_offset=boundary.root_layer_offset + 1)
+            for boundary in self._parent._plan.blueprint.boundaries
         )
         blueprint = _Blueprint(
             (self._layer(), *self._parent._plan.blueprint.layers),
-            (*self._assemblies, *inherited_assemblies),
+            (*self._boundaries, *inherited_boundaries),
         )
         plan = _compile_with_report(
             blueprint,
@@ -5966,5 +6786,5 @@ class ScopeBuilder(_BuilderBase):
         return scope
 
 
-class _AssemblyBuilder(_BuilderBase):
-    """Private ComponentBuilder used while applying an Assembly root bundle."""
+class _BoundaryBuilder(_BuilderBase):
+    """Private ComponentBuilder used while applying a Boundary root bundle."""

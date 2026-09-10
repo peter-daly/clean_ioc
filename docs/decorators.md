@@ -111,4 +111,8 @@ builder.register_decorator(CommandHandler, LoggingHandlerDecorator)
 
 The compiler specializes this definition for every closed `CommandHandler[T]` plan it encounters. This includes handlers supplied by subclass discovery, explicit closed registrations, open or closed factories, and fallback registrations. Generic callable decorators are supported by the same `register_decorator()` API.
 
+Native and backported type aliases may be used for the decorated service, decorator class, wrapped argument, and
+callable result annotation. Matching and generic specialization use the expanded canonical types; `position` ordering
+and decorator IDs are unchanged.
+
 Graph text lists decorators outside-to-inside and includes their positions. Component inspection and semantic manifests also expose decorator position, name, tags, dependencies, async requirements, and cleanup ownership.

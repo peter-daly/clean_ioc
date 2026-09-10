@@ -7,10 +7,11 @@ from typing import Generic, Protocol, TypeVar
 import pytest
 
 from clean_ioc import (
-    Assembly,
+    Boundary,
     ContainerBuilder,
     ContainerBuildError,
     Expose,
+    GraphManifest,
     Provider,
     Tag,
     Use,
@@ -111,16 +112,16 @@ def orders_bundle(builder):
 def application_builder() -> ContainerBuilder:
     builder = ContainerBuilder()
     builder.register(Settings, instance=Settings("secret"))
-    builder.install_assembly(
-        Assembly(
+    builder.install_boundary(
+        Boundary(
             "payments",
             payments_bundle,
             uses=(Use.root(Settings),),
             exposes=(Expose(Gateway),),
         )
     )
-    builder.install_assembly(
-        Assembly(
+    builder.install_boundary(
+        Boundary(
             "orders",
             orders_bundle,
             uses=(Use("payments", Gateway),),
@@ -150,7 +151,7 @@ def test_private_by_default_exposed_at_root_and_used_explicitly():
     assert not container.has_component(Repository)
     assert container.has_component(Gateway)
     assert container.has_component(PlaceOrder)
-    assert {root.component.assembly for root in container.graph.entrypoints} == {"orders"}
+    assert {root.component.boundary for root in container.graph.entrypoints} == {"orders"}
 
 
 def test_exposure_and_use_preserve_named_tagged_singleton_identity():
@@ -172,15 +173,15 @@ def test_exposure_and_use_preserve_named_tagged_singleton_identity():
         builder.register(Checkout, arguments={"gateway": select(cf.with_name("stripe"))})
 
     builder = ContainerBuilder()
-    builder.install_assembly(
-        Assembly(
+    builder.install_boundary(
+        Boundary(
             "payments",
             payments,
             exposes=(Expose(Gateway, filter=cf.with_name("stripe")),),
         )
     )
-    builder.install_assembly(
-        Assembly(
+    builder.install_boundary(
+        Boundary(
             "checkout",
             checkout,
             uses=(Use("payments", Gateway, filter=cf.with_name("stripe")),),
@@ -195,20 +196,20 @@ def test_exposure_and_use_preserve_named_tagged_singleton_identity():
     assert not container.has_component(Gateway)
 
 
-def test_assembly_install_order_does_not_change_resolution_or_manifest():
+def test_boundary_install_order_does_not_change_resolution_or_manifest():
     first = application_builder().build()
     second_builder = ContainerBuilder()
     second_builder.register(Settings, instance=Settings("secret"))
-    second_builder.install_assembly(
-        Assembly(
+    second_builder.install_boundary(
+        Boundary(
             "orders",
             orders_bundle,
             uses=(Use("payments", Gateway),),
             exposes=(Expose(PlaceOrder),),
         )
     )
-    second_builder.install_assembly(
-        Assembly(
+    second_builder.install_boundary(
+        Boundary(
             "payments",
             payments_bundle,
             uses=(Use.root(Settings),),
@@ -229,8 +230,8 @@ def test_exposure_filters_inspect_the_original_compiled_component_subtree():
         builder.register(Gateway, SecondStructuralGateway)
 
     builder = ContainerBuilder()
-    builder.install_assembly(
-        Assembly(
+    builder.install_boundary(
+        Boundary(
             "feature",
             bundle,
             exposes=(Expose(Gateway, filter=cf.has_descendant(cf.service_type_is(FirstMarker))),),
@@ -242,13 +243,13 @@ def test_exposure_filters_inspect_the_original_compiled_component_subtree():
 def test_missing_visibility_reports_private_source_and_boundary_decisions():
     builder = ContainerBuilder()
     builder.register(Settings, instance=Settings("x"))
-    builder.install_assembly(Assembly("payments", payments_bundle, uses=(Use.root(Settings),)))
-    builder.install_assembly(Assembly("orders", orders_bundle, exposes=(Expose(PlaceOrder),)))
+    builder.install_boundary(Boundary("payments", payments_bundle, uses=(Use.root(Settings),)))
+    builder.install_boundary(Boundary("orders", orders_bundle, exposes=(Expose(PlaceOrder),)))
 
     with pytest.raises(ContainerBuildError) as captured:
         builder.build()
     assert captured.value.report is not None
-    assert {issue.code for issue in captured.value.report.errors} == {"assembly-private-component"}
+    assert {issue.code for issue in captured.value.report.errors} == {"boundary-private-component"}
     assert "payments" in captured.value.report.errors[0].message
     assert any(
         "rejected-not-exposed" in decision.reason_codes
@@ -258,42 +259,42 @@ def test_missing_visibility_reports_private_source_and_boundary_decisions():
 
 
 @pytest.mark.parametrize(
-    ("assembly", "expected"),
+    ("boundary", "expected"),
     [
-        (Assembly("root", lambda builder: None), "assembly-invalid-name"),
-        (Assembly("Bad.Name", lambda builder: None), "assembly-invalid-name"),
+        (Boundary("root", lambda builder: None), "boundary-invalid-name"),
+        (Boundary("Bad.Name", lambda builder: None), "boundary-invalid-name"),
     ],
 )
-def test_invalid_names_are_structured(assembly, expected):
+def test_invalid_names_are_structured(boundary, expected):
     builder = ContainerBuilder()
-    builder.install_assembly(assembly)
+    builder.install_boundary(boundary)
     assert issue_code(builder) == expected
 
 
 def test_duplicate_names_missing_sources_and_cycles_are_structured():
     duplicate = ContainerBuilder()
-    duplicate.install_assembly(Assembly("same", lambda builder: None))
-    duplicate.install_assembly(Assembly("same", lambda builder: None))
-    assert issue_code(duplicate) == "assembly-duplicate-name"
+    duplicate.install_boundary(Boundary("same", lambda builder: None))
+    duplicate.install_boundary(Boundary("same", lambda builder: None))
+    assert issue_code(duplicate) == "boundary-duplicate-name"
 
     missing = ContainerBuilder()
-    missing.install_assembly(Assembly("consumer", lambda builder: None, uses=(Use("missing", Gateway),)))
-    assert issue_code(missing) == "assembly-use-source-not-found"
+    missing.install_boundary(Boundary("consumer", lambda builder: None, uses=(Use("missing", Gateway),)))
+    assert issue_code(missing) == "boundary-use-source-not-found"
 
     cycle = ContainerBuilder()
-    cycle.install_assembly(Assembly("first", lambda builder: None, uses=(Use("second", Gateway),)))
-    cycle.install_assembly(Assembly("second", lambda builder: None, uses=(Use("first", Gateway),)))
+    cycle.install_boundary(Boundary("first", lambda builder: None, uses=(Use("second", Gateway),)))
+    cycle.install_boundary(Boundary("second", lambda builder: None, uses=(Use("first", Gateway),)))
     with pytest.raises(ContainerBuildError) as captured:
         cycle.build()
     assert captured.value.report is not None
-    assert captured.value.report.errors[0].code == "assembly-use-cycle"
+    assert captured.value.report.errors[0].code == "boundary-use-cycle"
     assert captured.value.report.errors[0].path == ("first", "second", "first")
 
 
 def test_expose_and_use_cardinality_and_reexport_are_validated():
     missing_exposure = ContainerBuilder()
-    missing_exposure.install_assembly(Assembly("empty", lambda builder: None, exposes=(Expose(Gateway),)))
-    assert issue_code(missing_exposure) == "assembly-expose-not-found"
+    missing_exposure.install_boundary(Boundary("empty", lambda builder: None, exposes=(Expose(Gateway),)))
+    assert issue_code(missing_exposure) == "boundary-expose-not-found"
 
     ambiguous_exposure = ContainerBuilder()
 
@@ -301,26 +302,26 @@ def test_expose_and_use_cardinality_and_reexport_are_validated():
         builder.register(Gateway)
         builder.register(Gateway)
 
-    ambiguous_exposure.install_assembly(
-        Assembly(
+    ambiguous_exposure.install_boundary(
+        Boundary(
             "payments",
             duplicate_gateways,
             exposes=(Expose(Gateway),),
         )
     )
-    assert issue_code(ambiguous_exposure) == "assembly-expose-ambiguous"
+    assert issue_code(ambiguous_exposure) == "boundary-expose-ambiguous"
 
     reexport = ContainerBuilder()
     reexport.register(Gateway)
-    reexport.install_assembly(
-        Assembly(
+    reexport.install_boundary(
+        Boundary(
             "adapter",
             lambda builder: None,
             uses=(Use.root(Gateway),),
             exposes=(Expose(Gateway),),
         )
     )
-    assert issue_code(reexport) == "assembly-reexport-unsupported"
+    assert issue_code(reexport) == "boundary-reexport-unsupported"
 
 
 def test_local_entrypoint_requires_local_exposure_and_cannot_mark_a_use():
@@ -330,8 +331,8 @@ def test_local_entrypoint_requires_local_exposure_and_cannot_mark_a_use():
         builder.register(Repository)
         builder.mark_entrypoint(Repository)
 
-    private.install_assembly(Assembly("orders", private_bundle))
-    assert issue_code(private) == "assembly-entrypoint-not-exposed"
+    private.install_boundary(Boundary("orders", private_bundle))
+    assert issue_code(private) == "boundary-entrypoint-not-exposed"
 
     imported = ContainerBuilder()
     imported.register(Settings, instance=Settings("x"))
@@ -339,8 +340,8 @@ def test_local_entrypoint_requires_local_exposure_and_cannot_mark_a_use():
     def imported_bundle(builder):
         builder.mark_entrypoint(Settings)
 
-    imported.install_assembly(Assembly("orders", imported_bundle, uses=(Use.root(Settings),)))
-    assert issue_code(imported) == "assembly-entrypoint-not-local"
+    imported.install_boundary(Boundary("orders", imported_bundle, uses=(Use.root(Settings),)))
+    assert issue_code(imported) == "boundary-entrypoint-not-local"
 
 
 def test_decorators_do_not_cross_boundaries_and_explicit_cross_attempt_is_rejected():
@@ -353,7 +354,7 @@ def test_decorators_do_not_cross_boundaries_and_explicit_cross_attempt_is_reject
         builder.register_decorator(Gateway, DecoratedGateway)
 
     local = ContainerBuilder()
-    local.install_assembly(Assembly("payments", bundle, exposes=(Expose(Gateway),)))
+    local.install_boundary(Boundary("payments", bundle, exposes=(Expose(Gateway),)))
     assert isinstance(local.build().resolve(Gateway), DecoratedGateway)
 
     cross = ContainerBuilder()
@@ -361,12 +362,12 @@ def test_decorators_do_not_cross_boundaries_and_explicit_cross_attempt_is_reject
     def gateway_bundle(builder):
         builder.register(Gateway)
 
-    cross.install_assembly(Assembly("payments", gateway_bundle, exposes=(Expose(Gateway),)))
+    cross.install_boundary(Boundary("payments", gateway_bundle, exposes=(Expose(Gateway),)))
     cross.register_decorator(Gateway, DecoratedGateway)
-    assert issue_code(cross) == "assembly-cross-boundary-decoration"
+    assert issue_code(cross) == "boundary-cross-boundary-decoration"
 
 
-def test_typed_provider_uses_the_defining_assembly_visibility():
+def test_typed_provider_uses_the_defining_boundary_visibility():
     class Deferred:
         def __init__(self, gateway: Provider[Gateway]):
             self.gateway = gateway
@@ -376,7 +377,7 @@ def test_typed_provider_uses_the_defining_assembly_visibility():
         builder.register(Deferred)
 
     builder = ContainerBuilder()
-    builder.install_assembly(Assembly("feature", bundle, exposes=(Expose(Deferred),)))
+    builder.install_boundary(Boundary("feature", bundle, exposes=(Expose(Deferred),)))
     container = builder.build()
     assert container.resolve(Deferred).gateway() is container.resolve(Deferred).gateway()
     assert not container.has_component(Gateway)
@@ -397,17 +398,17 @@ def test_root_scope_slot_can_be_used_but_private_slots_are_rejected():
 
     builder = ContainerBuilder()
     builder.declare_scope_slot(Request)
-    builder.install_assembly(Assembly("feature", bundle, uses=(Use.root(Request),), exposes=(Expose(Handler),)))
+    builder.install_boundary(Boundary("feature", bundle, uses=(Use.root(Request),), exposes=(Expose(Handler),)))
     container = builder.build()
     request = Request()
     assert container.new_scope().provide(Request, request).resolve(Handler).request is request
 
     private = ContainerBuilder()
-    private.install_assembly(Assembly("feature", lambda assembly_builder: assembly_builder.declare_scope_slot(Request)))
-    assert issue_code(private) == "assembly-scope-slot-unsupported"
+    private.install_boundary(Boundary("feature", lambda boundary_builder: boundary_builder.declare_scope_slot(Request)))
+    assert issue_code(private) == "boundary-scope-slot-unsupported"
 
 
-def test_overlay_can_add_an_assembly_use_parent_exposure_but_cannot_reopen_it():
+def test_overlay_can_add_a_boundary_use_parent_exposure_but_cannot_reopen_it():
     parent = application_builder().build()
 
     class Refund:
@@ -419,8 +420,8 @@ def test_overlay_can_add_an_assembly_use_parent_exposure_but_cannot_reopen_it():
     def refund_bundle(builder):
         builder.register(Refund)
 
-    overlay_builder.install_assembly(
-        Assembly(
+    overlay_builder.install_boundary(
+        Boundary(
             "refunds",
             refund_bundle,
             uses=(Use("payments", Gateway),),
@@ -431,56 +432,114 @@ def test_overlay_can_add_an_assembly_use_parent_exposure_but_cannot_reopen_it():
     assert overlay.resolve(Refund).gateway is parent.resolve(Gateway)
 
     reopened = parent.new_scope_builder()
-    reopened.install_assembly(Assembly("payments", lambda builder: None))
-    assert issue_code(reopened) == "overlay-assembly-reopened"
+    reopened.install_boundary(Boundary("payments", lambda builder: None))
+    assert issue_code(reopened) == "overlay-boundary-reopened"
 
 
-def test_manifest_provenance_rendering_and_semantic_diff_include_assemblies():
+def test_manifest_provenance_rendering_and_semantic_diff_include_boundaries():
     container = application_builder().build()
     graph = container.graph
     manifest = graph.manifest(all_roots=True)
 
-    assert manifest.data["schema_version"] == 3
-    assert [item["name"] for item in manifest.data["assemblies"]] == ["orders", "payments"]
-    assert any(node["assembly"] == "orders" for node in manifest.data["roots"])
-    assert "assembly=orders" in graph.to_text(all_roots=True)
+    assert "schema_version" not in manifest.data
+    assert [item["name"] for item in manifest.data["boundaries"]] == ["orders", "payments"]
+    assert any(node["boundary"] == "orders" for node in manifest.data["roots"])
+    assert "assemblies" not in manifest.data
+    order_node = next(node for node in manifest.data["roots"] if node["service"].endswith(".PlaceOrder"))
+    gateway_node = next(node for node in order_node["dependencies"] if node["argument"] == "gateway")
+    assert gateway_node["boundary"] == "payments"
+    assert gateway_node["source_boundary"] == "payments"
+    assert "source_assembly" not in gateway_node
+    assert "assembly" not in gateway_node
+    restored = GraphManifest.from_json(manifest.to_json())
+    assert restored.to_dict() == manifest.to_dict()
+    assert restored.fingerprint == manifest.fingerprint
+    assert restored.diff(manifest).is_empty
+    assert "boundary=orders" in graph.to_text(all_roots=True)
     assert "boundary:payments" in graph.to_mermaid(all_roots=True)
     order = next(root.component for root in graph.roots if root.component.service_type is PlaceOrder)
     explanation = graph.explain(order)
-    assert explanation.selected[0].origin.assembly == "orders"
+    assert explanation.selected[0].origin.boundary == "orders"
+    origin = explanation.selected[0].origin.to_dict()
+    assert origin["boundary"] == "orders"
+    assert "assembly" not in origin
+    assert {root.boundary for root in graph.entrypoints} == {"orders"}
+    assert {visit.boundary for visit in graph.walk()} == {None, "orders", "payments"}
+    ownership = graph.ownership_report().to_dict()
+    assert {record["boundary"] for record in ownership["records"]} == {None, "orders", "payments"}
+    assert all("assembly" not in record for record in ownership["records"])
     assert "selected-use" in next(
         graph.explain(child).selected[0].reason_codes for child in order.dependencies if child.service_type is Gateway
     )
 
     without = ContainerBuilder().build().graph.manifest(all_roots=True)
     changes = manifest.diff(without).semantic_changes
-    assert {change.category for change in changes} >= {"assembly-added"}
+    assert {change.category for change in changes} >= {"boundary-added"}
+    assert {change.category for change in without.diff(manifest).semantic_changes} == {"boundary-removed"}
+
+
+def test_semantic_diff_reports_removed_boundary_access_and_bypasses():
+    baseline = application_builder().build().graph.manifest(all_roots=True)
+    data = baseline.to_dict()
+    orders = next(boundary for boundary in data["boundaries"] if boundary["name"] == "orders")
+    orders["uses"] = []
+    orders["exposures"] = []
+    changed = GraphManifest(data)
+
+    changes = changed.diff(baseline).semantic_changes
+    assert {(change.category, change.risk) for change in changes} == {
+        ("boundary-use-removed", "high"),
+        ("boundary-exposure-removed", "high"),
+        ("boundary-bypassed", "critical"),
+    }
+    assert {(change.category, change.risk) for change in baseline.diff(changed).semantic_changes} == {
+        ("boundary-use-added", "high"),
+        ("boundary-exposure-added", "medium"),
+    }
+
+
+def test_semantic_diff_reports_a_component_moving_between_boundaries():
+    def bundle(builder):
+        builder.register(Repository)
+
+    def manifest(name):
+        builder = ContainerBuilder()
+        builder.install_boundary(Boundary(name, bundle, exposes=(Expose(Repository),)))
+        builder.mark_entrypoint(Repository)
+        return builder.build().graph.manifest()
+
+    changes = manifest("reporting").diff(manifest("orders")).semantic_changes
+    moved = [change for change in changes if change.category == "boundary-component-moved"]
+    assert len(moved) == 1
+    assert moved[0].before == {"boundary": "orders"}
+    assert moved[0].after == {"boundary": "reporting"}
+    assert moved[0].risk == "high"
 
 
 def test_root_and_local_validation_rules_receive_the_promised_graph_views():
     seen: list[tuple[str | None, set[str | None]]] = []
 
     def validate(context: ValidationContext):
-        seen.append((context.assembly, {root.area for root in context.graph.roots}))
+        seen.append((context.boundary, {root.area for root in context.graph.roots}))
         return ()
 
     builder = application_builder()
     builder.add_validation_rule(validate)
 
-    def local_bundle(assembly_builder):
-        assembly_builder.register(Repository)
-        assembly_builder.add_validation_rule(validate)
+    def local_bundle(boundary_builder):
+        boundary_builder.register(Repository)
+        boundary_builder.add_validation_rule(validate)
 
-    builder.install_assembly(Assembly("reporting", local_bundle))
+    builder.install_boundary(Boundary("reporting", local_bundle))
     builder.build()
 
-    root_view = next(areas for assembly, areas in seen if assembly is None)
-    local_view = next(areas for assembly, areas in seen if assembly == "reporting")
+    root_view = next(areas for boundary, areas in seen if boundary is None)
+    local_view = next(areas for boundary, areas in seen if boundary == "reporting")
     assert root_view >= {None, "orders", "payments", "reporting"}
     assert local_view == {"reporting"}
 
 
-def test_bundle_failure_is_transactional_and_bundle_cannot_install_nested_assembly():
+def test_bundle_failure_is_transactional_and_bundle_cannot_install_nested_boundary():
     calls = 0
 
     def broken(builder):
@@ -491,15 +550,15 @@ def test_bundle_failure_is_transactional_and_bundle_cannot_install_nested_assemb
 
     builder = ContainerBuilder()
     with pytest.raises(RuntimeError, match="stop"):
-        builder.install_assembly(Assembly("broken", broken))
+        builder.install_boundary(Boundary("broken", broken))
     assert calls == 1
-    assert builder.build().graph.assemblies == ()
+    assert builder.build().graph.boundaries == ()
 
     def nested(private_builder):
-        assert not hasattr(private_builder, "install_assembly")
+        assert not hasattr(private_builder, "install_boundary")
 
     nested_builder = ContainerBuilder()
-    nested_builder.install_assembly(Assembly("outer", nested))
+    nested_builder.install_boundary(Boundary("outer", nested))
     nested_builder.build()
 
 
@@ -525,7 +584,7 @@ def test_base_nested_and_run_once_bundles_keep_their_normal_behavior():
         builder.apply_bundle(once)
 
     builder = ContainerBuilder()
-    builder.install_assembly(Assembly("feature", outer, exposes=(Expose(Repository), Expose(PlaceOrder))))
+    builder.install_boundary(Boundary("feature", outer, exposes=(Expose(Repository), Expose(PlaceOrder))))
     container = builder.build()
     assert isinstance(container.resolve(Repository), Repository)
     assert isinstance(container.resolve(PlaceOrder), PlaceOrder)
@@ -533,7 +592,7 @@ def test_base_nested_and_run_once_bundles_keep_their_normal_behavior():
 
 
 @pytest.mark.asyncio
-async def test_sync_async_and_cleanup_factories_compile_inside_an_assembly():
+async def test_sync_async_and_cleanup_factories_compile_inside_a_boundary():
     class SyncResource:
         pass
 
@@ -573,8 +632,8 @@ async def test_sync_async_and_cleanup_factories_compile_inside_an_assembly():
         builder.register(AsyncContextResource, factory=async_context_factory, lifespan="scoped")
 
     builder = ContainerBuilder()
-    builder.install_assembly(
-        Assembly(
+    builder.install_boundary(
+        Boundary(
             "resources",
             bundle,
             exposes=(
@@ -594,7 +653,7 @@ async def test_sync_async_and_cleanup_factories_compile_inside_an_assembly():
     assert events == ["context-enter", "async-enter", "async-exit", "context-exit"]
 
 
-def test_generics_discovery_and_preconfigurations_stay_local_to_an_assembly():
+def test_generics_discovery_and_preconfigurations_stay_local_to_a_boundary():
     configured: list[str] = []
 
     def create_product(dependency: GenericDependency[TItem]) -> GenericProduct[TItem]:
@@ -611,8 +670,8 @@ def test_generics_discovery_and_preconfigurations_stay_local_to_an_assembly():
         builder.pre_configure(GenericConsumer, configure)
 
     builder = ContainerBuilder()
-    builder.install_assembly(
-        Assembly(
+    builder.install_boundary(
+        Boundary(
             "generic_feature",
             bundle,
             exposes=(Expose(GenericConsumer), Expose(DiscoveredService)),

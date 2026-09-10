@@ -21,6 +21,7 @@ from .components import (
     RuntimeOwnerKind,
     default_component_filter,
 )
+from .type_aliases import normalize_type_alias
 
 
 class IssueSeverity(str, Enum):
@@ -57,7 +58,7 @@ class DefinitionOrigin:
     layer: str
     bundle_path: tuple[str, ...]
     definition_id: str | None
-    assembly: str | None = None
+    boundary: str | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -66,7 +67,7 @@ class DefinitionOrigin:
             "layer": self.layer,
             "bundle_path": list(self.bundle_path),
             "definition_id": self.definition_id,
-            "assembly": self.assembly,
+            "boundary": self.boundary,
         }
 
 
@@ -138,8 +139,8 @@ class CompilationExplanation:
                     declared = f"{declared} at {location.path}{suffix}"
                 if origin.bundle_path:
                     declared = f"{declared} via {' > '.join(origin.bundle_path)}"
-                if origin.assembly is not None:
-                    declared = f"{declared} in assembly {origin.assembly}"
+                if origin.boundary is not None:
+                    declared = f"{declared} in boundary {origin.boundary}"
                 lines.append(
                     f"- {decision.component_id} [{decision.outcome.value}; {codes}]: "
                     f"{decision.reason} ({declared}, {origin.layer})"
@@ -208,7 +209,6 @@ class BuildReport:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "schema_version": 1,
             "valid": self.is_valid,
             "checked_roots": self.checked_roots,
             "issues": [issue.to_dict() for issue in self.issues],
@@ -249,7 +249,7 @@ class OwnershipRecord:
         return {
             "path": list(self.path),
             "service": qualified_name(self.component.service_type),
-            "assembly": self.component.assembly,
+            "boundary": self.component.boundary,
             "implementation": _implementation_name(self.component),
             "kind": self.component.kind.value,
             "lifespan": self.component.lifespan,
@@ -281,7 +281,6 @@ class OwnershipReport:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "schema_version": 1,
             "valid": self.is_valid,
             "records": [record.to_dict() for record in self.records],
             "issues": [issue.to_dict() for issue in self.issues],
@@ -299,9 +298,9 @@ class OwnershipReport:
             owner = record.cleanup_owner.value
             if record.owner_component is not None:
                 owner = f"{owner} via {qualified_name(record.owner_component.service_type)}"
-            area = record.component.assembly or "root"
+            area = record.component.boundary or "root"
             lines.append(
-                f"- {' -> '.join(record.path)} [assembly={area}]: "
+                f"- {' -> '.join(record.path)} [boundary={area}]: "
                 f"cache={record.cache_owner.value}, cleanup={owner}; {record.reason}"
             )
         lines.extend(f"- {issue}" for issue in self.issues)
@@ -359,8 +358,8 @@ class GraphRoot:
     area: str | None = None
 
     @property
-    def assembly(self) -> str | None:
-        return self.component.assembly
+    def boundary(self) -> str | None:
+        return self.component.boundary
 
 
 def _issue_path_name(component: Component) -> str:
@@ -389,10 +388,10 @@ class GraphVisit:
         return qualified_name(self.root.requested_type)
 
     @property
-    def assembly(self) -> str | None:
-        """The defining assembly of the visited occurrence."""
+    def boundary(self) -> str | None:
+        """The defining boundary of the visited occurrence."""
 
-        return self.component.assembly
+        return self.component.boundary
 
     @property
     def path(self) -> tuple[str, ...]:
@@ -437,16 +436,16 @@ def _component_description(component: Component) -> str:
         details.append("cleanup")
     if component.provider_mode is not None:
         details.append(f"provider={component.provider_mode}")
-    if component.assembly is not None:
-        details.append(f"assembly={component.assembly}")
+    if component.boundary is not None:
+        details.append(f"boundary={component.boundary}")
     return f"{target} [{', '.join(details)}]"
 
 
 def _dependency_relationship(component: Component) -> str:
     parent = component.parent
     boundary = ""
-    if parent is not None and parent.assembly != component.assembly:
-        source = component.assembly or "root"
+    if parent is not None and parent.boundary != component.boundary:
+        source = component.boundary or "root"
         boundary = f" via boundary:{source}"
     if component.parent is not None and component.parent.kind is ComponentKind.provider:
         return f"provides on demand{boundary}"
@@ -470,10 +469,10 @@ def _node_dict(
         "path": path,
         "order": order,
         "argument": component.argument,
-        "assembly": component.assembly,
-        "source_assembly": (
-            component.assembly
-            if component.parent is not None and component.parent.assembly != component.assembly
+        "boundary": component.boundary,
+        "source_boundary": (
+            component.boundary
+            if component.parent is not None and component.parent.boundary != component.boundary
             else None
         ),
         "service": qualified_name(component.service_type),
@@ -501,6 +500,9 @@ def _node_dict(
         metadata["deferred_target"] = (
             qualified_name(component.dependencies[0].service_type) if component.dependencies else None
         )
+    if component.kind is ComponentKind.provider_map:
+        metadata["provider_mode"] = component.provider_mode
+        metadata["key_type"] = qualified_name(get_args(component.service_type)[0])
     metadata["dependencies"] = [
         _node_dict(
             child,
@@ -605,13 +607,9 @@ def _flatten_nodes(roots: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]
 
 @dataclass(frozen=True, slots=True)
 class GraphManifest:
-    """Versioned and deterministic serialized component graph."""
+    """Deterministic serialized component graph; unversioned during beta."""
 
     data: dict[str, Any]
-
-    def __post_init__(self) -> None:
-        if self.data.get("schema_version") not in (1, 2, 3):
-            raise ValueError(f"Unsupported graph manifest schema {self.data.get('schema_version')!r}")
 
     @property
     def fingerprint(self) -> str:
@@ -638,142 +636,126 @@ class GraphManifest:
         baseline_paths = set(baseline_nodes)
         shared = current_paths & baseline_paths
         semantic: list[GraphChange] = []
-        current_schema = self.data.get("schema_version")
-        baseline_schema = baseline.data.get("schema_version")
-        if current_schema in (1, 2) or baseline_schema in (1, 2):
-            if self.data.get("assemblies") or baseline.data.get("assemblies"):
+        current_boundaries = {item["name"]: item for item in self.data.get("boundaries", ()) if "name" in item}
+        baseline_boundaries = {item["name"]: item for item in baseline.data.get("boundaries", ()) if "name" in item}
+        for name in sorted(current_boundaries.keys() - baseline_boundaries.keys()):
+            item = current_boundaries[name]
+            risk = "low" if not item.get("uses") and not item.get("exposures") else "medium"
+            semantic.append(GraphChange(f"boundary:{name}", {}, item, "boundary-added", risk))
+        for name in sorted(baseline_boundaries.keys() - current_boundaries.keys()):
+            semantic.append(GraphChange(f"boundary:{name}", baseline_boundaries[name], {}, "boundary-removed", "high"))
+        for name in sorted(current_boundaries.keys() & baseline_boundaries.keys()):
+            current = current_boundaries[name]
+            previous = baseline_boundaries[name]
+            current_uses = {json.dumps(item, sort_keys=True) for item in current.get("uses", ())}
+            previous_uses = {json.dumps(item, sort_keys=True) for item in previous.get("uses", ())}
+            for value in sorted(current_uses - previous_uses):
                 semantic.append(
                     GraphChange(
-                        "assemblies",
-                        {"schema_version": baseline_schema},
-                        {"schema_version": current_schema},
-                        "assembly-classification-unknown",
-                        "unknown",
+                        f"boundary:{name}:use",
+                        {},
+                        json.loads(value),
+                        "boundary-use-added",
+                        "high",
                     )
                 )
-        else:
-            current_assemblies = {item["name"]: item for item in self.data.get("assemblies", ()) if "name" in item}
-            baseline_assemblies = {item["name"]: item for item in baseline.data.get("assemblies", ()) if "name" in item}
-            for name in sorted(current_assemblies.keys() - baseline_assemblies.keys()):
-                item = current_assemblies[name]
-                risk = "low" if not item.get("uses") and not item.get("exposures") else "medium"
-                semantic.append(GraphChange(f"assembly:{name}", {}, item, "assembly-added", risk))
-            for name in sorted(baseline_assemblies.keys() - current_assemblies.keys()):
+            for value in sorted(previous_uses - current_uses):
                 semantic.append(
-                    GraphChange(f"assembly:{name}", baseline_assemblies[name], {}, "assembly-removed", "high")
+                    GraphChange(
+                        f"boundary:{name}:use",
+                        json.loads(value),
+                        {},
+                        "boundary-use-removed",
+                        "high",
+                    )
                 )
-            for name in sorted(current_assemblies.keys() & baseline_assemblies.keys()):
-                current = current_assemblies[name]
-                previous = baseline_assemblies[name]
-                current_uses = {json.dumps(item, sort_keys=True) for item in current.get("uses", ())}
-                previous_uses = {json.dumps(item, sort_keys=True) for item in previous.get("uses", ())}
-                for value in sorted(current_uses - previous_uses):
-                    semantic.append(
-                        GraphChange(
-                            f"assembly:{name}:use",
-                            {},
-                            json.loads(value),
-                            "assembly-use-added",
-                            "high",
-                        )
+            current_exposures = {json.dumps(item, sort_keys=True) for item in current.get("exposures", ())}
+            previous_exposures = {json.dumps(item, sort_keys=True) for item in previous.get("exposures", ())}
+            for value in sorted(current_exposures - previous_exposures):
+                semantic.append(
+                    GraphChange(
+                        f"boundary:{name}:exposure",
+                        {},
+                        json.loads(value),
+                        "boundary-exposure-added",
+                        "medium",
                     )
-                for value in sorted(previous_uses - current_uses):
-                    semantic.append(
-                        GraphChange(
-                            f"assembly:{name}:use",
-                            json.loads(value),
-                            {},
-                            "assembly-use-removed",
-                            "high",
-                        )
+                )
+            for value in sorted(previous_exposures - current_exposures):
+                semantic.append(
+                    GraphChange(
+                        f"boundary:{name}:exposure",
+                        json.loads(value),
+                        {},
+                        "boundary-exposure-removed",
+                        "high",
                     )
-                current_exposures = {json.dumps(item, sort_keys=True) for item in current.get("exposures", ())}
-                previous_exposures = {json.dumps(item, sort_keys=True) for item in previous.get("exposures", ())}
-                for value in sorted(current_exposures - previous_exposures):
-                    semantic.append(
-                        GraphChange(
-                            f"assembly:{name}:exposure",
-                            {},
-                            json.loads(value),
-                            "assembly-exposure-added",
-                            "medium",
-                        )
-                    )
-                for value in sorted(previous_exposures - current_exposures):
-                    semantic.append(
-                        GraphChange(
-                            f"assembly:{name}:exposure",
-                            json.loads(value),
-                            {},
-                            "assembly-exposure-removed",
-                            "high",
-                        )
-                    )
-            for path in sorted(shared):
-                before_assembly = baseline_nodes[path].get("assembly")
-                after_assembly = current_nodes[path].get("assembly")
-                if before_assembly != after_assembly:
-                    semantic.append(
-                        GraphChange(
-                            path,
-                            {"assembly": before_assembly},
-                            {"assembly": after_assembly},
-                            "assembly-component-moved",
-                            "high",
-                        )
-                    )
-
-            def boundary_bypasses(data: dict[str, Any]) -> dict[str, dict[str, Any]]:
-                contracts = {item["name"]: item for item in data.get("assemblies", ()) if "name" in item}
-                bypasses: dict[str, dict[str, Any]] = {}
-
-                def identity(node: dict[str, Any]) -> tuple[Any, Any, str]:
-                    tags = json.dumps(node.get("tags", ()), sort_keys=True)
-                    return node.get("service"), node.get("name"), tags
-
-                def declared(item: dict[str, Any], node: dict[str, Any]) -> bool:
-                    service, name, tags = identity(node)
-                    return (
-                        item.get("service") == service
-                        and item.get("name") == name
-                        and json.dumps(item.get("tags", ()), sort_keys=True) == tags
-                    )
-
-                def visit(node: dict[str, Any], consumer: str | None) -> None:
-                    source = node.get("assembly")
-                    if consumer != source and consumer is not None:
-                        uses = contracts.get(consumer, {}).get("uses", ())
-                        expected_source = source or "root"
-                        if not any(item.get("source") == expected_source and declared(item, node) for item in uses):
-                            bypasses[node.get("path", "unknown")] = node
-                    elif consumer is None and source is not None:
-                        exposures = contracts.get(source, {}).get("exposures", ())
-                        if not any(declared(item, node) for item in exposures):
-                            bypasses[node.get("path", "unknown")] = node
-                    for key in ("dependencies", "decorators", "pre_configurations"):
-                        for child in node.get(key, ()):
-                            visit(child, source)
-
-                for root in data.get("roots", ()):
-                    # A graph root is a visibility projection, not a dependency
-                    # edge; validate crossings below that root only.
-                    for key in ("dependencies", "decorators", "pre_configurations"):
-                        for child in root.get(key, ()):
-                            visit(child, root.get("assembly"))
-                return bypasses
-
-            current_bypasses = boundary_bypasses(self.data)
-            baseline_bypasses = boundary_bypasses(baseline.data)
-            for path in sorted(current_bypasses.keys() - baseline_bypasses.keys()):
+                )
+        for path in sorted(shared):
+            before_boundary = baseline_nodes[path].get("boundary")
+            after_boundary = current_nodes[path].get("boundary")
+            if before_boundary != after_boundary:
                 semantic.append(
                     GraphChange(
                         path,
-                        {},
-                        current_bypasses[path],
-                        "assembly-boundary-bypassed",
-                        "critical",
+                        {"boundary": before_boundary},
+                        {"boundary": after_boundary},
+                        "boundary-component-moved",
+                        "high",
                     )
                 )
+
+        def boundary_bypasses(data: dict[str, Any]) -> dict[str, dict[str, Any]]:
+            contracts = {item["name"]: item for item in data.get("boundaries", ()) if "name" in item}
+            bypasses: dict[str, dict[str, Any]] = {}
+
+            def identity(node: dict[str, Any]) -> tuple[Any, Any, str]:
+                tags = json.dumps(node.get("tags", ()), sort_keys=True)
+                return node.get("service"), node.get("name"), tags
+
+            def declared(item: dict[str, Any], node: dict[str, Any]) -> bool:
+                service, name, tags = identity(node)
+                return (
+                    item.get("service") == service
+                    and item.get("name") == name
+                    and json.dumps(item.get("tags", ()), sort_keys=True) == tags
+                )
+
+            def visit(node: dict[str, Any], consumer: str | None) -> None:
+                source = node.get("boundary")
+                if consumer != source and consumer is not None:
+                    uses = contracts.get(consumer, {}).get("uses", ())
+                    expected_source = source or "root"
+                    if not any(item.get("source") == expected_source and declared(item, node) for item in uses):
+                        bypasses[node.get("path", "unknown")] = node
+                elif consumer is None and source is not None:
+                    exposures = contracts.get(source, {}).get("exposures", ())
+                    if not any(declared(item, node) for item in exposures):
+                        bypasses[node.get("path", "unknown")] = node
+                for key in ("dependencies", "decorators", "pre_configurations"):
+                    for child in node.get(key, ()):
+                        visit(child, source)
+
+            for root in data.get("roots", ()):
+                # A graph root is a visibility projection, not a dependency
+                # edge; validate crossings below that root only.
+                for key in ("dependencies", "decorators", "pre_configurations"):
+                    for child in root.get(key, ()):
+                        visit(child, root.get("boundary"))
+            return bypasses
+
+        current_bypasses = boundary_bypasses(self.data)
+        baseline_bypasses = boundary_bypasses(baseline.data)
+        for path in sorted(current_bypasses.keys() - baseline_bypasses.keys()):
+            semantic.append(
+                GraphChange(
+                    path,
+                    {},
+                    current_bypasses[path],
+                    "boundary-bypassed",
+                    "critical",
+                )
+            )
 
         node_changes = tuple(
             GraphChange(path, baseline_nodes[path], current_nodes[path])
@@ -794,7 +776,7 @@ class CompiledGraph:
 
     roots: tuple[GraphRoot, ...]
     entrypoints: tuple[GraphRoot, ...] = ()
-    assemblies: tuple[dict[str, Any], ...] = ()
+    boundaries: tuple[dict[str, Any], ...] = ()
     build_args: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}), compare=False, repr=False)
     _root_candidates: Mapping[Any, tuple[_CandidateRecord, ...]] = field(
         default_factory=lambda: MappingProxyType({}), compare=False, repr=False
@@ -1019,10 +1001,26 @@ class CompiledGraph:
             explanation = self._occurrence_explanations.get(subject.occurrence_id)
             if explanation is None:
                 raise ValueError("explain-path-not-found: no compiler decision exists for this occurrence")
+            if subject.declared_service_type != subject.service_type and " -> " not in explanation.subject:
+                explanation = replace(
+                    explanation,
+                    subject=(
+                        f"{explanation.subject} "
+                        f"({qualified_name(subject.declared_service_type)} -> {qualified_name(subject.service_type)})"
+                    ),
+                )
             return replace(explanation, path=path)
         if not callable(filter):
             raise TypeError("filter must be callable")
-        return self._root_explanation(subject, filter)
+        declared_subject = subject
+        subject = normalize_type_alias(subject)
+        explanation = self._root_explanation(subject, filter)
+        if declared_subject != subject:
+            explanation = replace(
+                explanation,
+                subject=f"{qualified_name(declared_subject)} -> {qualified_name(subject)}",
+            )
+        return explanation
 
     def walk(self) -> Iterator[GraphVisit]:
         """Walk every compiled occurrence in deterministic depth-first order."""
@@ -1065,9 +1063,8 @@ class CompiledGraph:
             roots.append(node)
         manifest = GraphManifest(
             {
-                "schema_version": 3,
                 "view": "all_roots" if all_roots or not self.entrypoints else "entrypoints",
-                "assemblies": [dict(assembly) for assembly in self.assemblies],
+                "boundaries": [dict(boundary) for boundary in self.boundaries],
                 "roots": roots,
             }
         )
@@ -1161,7 +1158,7 @@ class ValidationContext:
     """Ephemeral helpers shared by custom rules in one execution pass."""
 
     graph: CompiledGraph
-    assembly: str | None = None
+    boundary: str | None = None
     _type_asts: dict[type, TypeAst | None] = field(default_factory=dict, init=False, compare=False, repr=False)
 
     def type_ast(self, implementation_type: type) -> TypeAst | None:

@@ -165,16 +165,16 @@ properly nesting scope contexts.
 
 ## Graph manifests
 
-Ownership changes executable cleanup behavior and must be reviewable. Introduce graph-manifest schema version 2 with
+Ownership changes executable cleanup behavior and must be reviewable. Extend the unversioned graph manifest with
 these additional node fields:
 
 - `cache_owner`: one `RuntimeOwnerKind` value;
 - `cleanup_owner`: one `RuntimeOwnerKind` value;
 - `owner_path`: the semantic manifest path of the owning component when applicable.
 
-`GraphManifest.from_json()` continues to read schema version 1. Missing ownership fields in a v1 baseline are classified
-as unknown ownership, not inferred. Writing uses schema version 2 once the ownership compiler ships. Fingerprints change
-because ownership is executable architecture. No runtime owner token, scope ID, object ID, or value is serialized.
+`GraphManifest.from_json()` reads the current format without version checks. Manifests remain unversioned during beta;
+regenerate saved baselines when ownership fields change. Fingerprints include ownership because it is executable
+architecture. No runtime owner token, scope ID, object ID, or value is serialized.
 
 ## Diagnostics and error codes
 
@@ -198,8 +198,8 @@ is present in `BuildIssue.path` and the ownership report.
 ## Compatibility
 
 Most valid graphs retain their behavior. Newly rejected runtime-context captures are intentional hardening during the V2
-beta. Cleanup-bearing transients below singletons remain supported through explicit owner promotion. The manifest writer
-moves to schema version 2 while retaining v1 read compatibility.
+beta. Cleanup-bearing transients below singletons remain supported through explicit owner promotion. Manifest formats
+remain unversioned until beta ends; no legacy readers or migration adapters are introduced.
 
 ## Rejected alternatives
 
@@ -215,7 +215,7 @@ moves to schema version 2 while retaining v1 read compatibility.
 1. Add the ownership compiler and compare its decisions with current runtime routing in tests.
 2. Enforce runtime-context capture rules and compiled finalizer routing.
 3. Add complete cleanup failure aggregation and closed-scope enforcement.
-4. Publish `OwnershipReport`, manifest schema 2, renderers, and semantic diff support.
+4. Publish `OwnershipReport`, unversioned manifests, renderers, and semantic diff support.
 5. Unblock typed deferred dependencies after every ownership acceptance test passes.
 
 ## Acceptance tests
@@ -228,5 +228,5 @@ moves to schema version 2 while retaining v1 read compatibility.
 - Run all sync and async finalizers in reverse acquisition order and aggregate one or multiple failures correctly.
 - Reject all runtime operations after close and preserve idempotent repeated close.
 - Render deterministic ownership reports without activating components.
-- Read schema-v1 manifests, write schema v2, classify ownership changes, and reject unsupported schemas.
+- Round-trip unversioned manifests, classify ownership changes, and preserve deterministic fingerprints.
 - Prove reports and manifests contain no owner tokens, UUIDs, cache keys, values, finalizers, or build inputs.
