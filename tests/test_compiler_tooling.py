@@ -10,6 +10,7 @@ import pytest
 import clean_ioc.component_filters as cf
 from clean_ioc import (
     INJECT,
+    AsyncProvider,
     BuildIssue,
     BuildReport,
     CandidateDecision,
@@ -32,6 +33,86 @@ from clean_ioc import (
 )
 from clean_ioc.cli import main
 from clean_ioc.factories import use_component, use_component_async
+
+
+def test_activation_report_separates_provider_target_slots_and_async_causes():
+    class Request:
+        pass
+
+    class AsyncLeaf:
+        pass
+
+    async def make_leaf() -> AsyncLeaf:
+        return AsyncLeaf()
+
+    class Application:
+        def __init__(self, request: Request, provider: AsyncProvider[AsyncLeaf]):
+            self.request = request
+            self.provider = provider
+
+    builder = ContainerBuilder()
+    builder.declare_scope_slot(Request)
+    builder.register(AsyncLeaf, factory=make_leaf)
+    builder.register(Application)
+    report = builder.build().graph.activation_report(Application)
+
+    assert report.scenario.value == "cold"
+    assert [item.kind for item in report.immediate_obligations] == ["scope_slot", "provider"]
+    assert not [item for item in report.async_causes if item.phase == "eager"]
+    assert [item.phase for item in report.async_causes] == ["deferred"]
+    assert any(
+        item.phase == "deferred" and item.component.endswith("AsyncLeaf") for item in report.potential_acquisitions
+    )
+    assert "Static analysis only" in report.to_text()
+
+
+def test_activation_report_warm_cache_is_an_assumption_not_runtime_state():
+    class Singleton:
+        pass
+
+    class Application:
+        def __init__(self, singleton: Singleton):
+            self.singleton = singleton
+
+    builder = ContainerBuilder()
+    builder.register(Singleton, lifespan="singleton")
+    builder.register(Application)
+    graph = builder.build().graph
+
+    cold = graph.activation_report(Application, scenario="cold")
+    warm = graph.activation_report(Application, scenario="warm_singletons")
+
+    assert any(item.component.endswith("Singleton") for item in cold.potential_acquisitions)
+    assert not any(item.component.endswith("Singleton") for item in warm.potential_acquisitions)
+    assert "assumptions" in warm.to_json()
+
+
+def test_activation_report_requires_an_unambiguous_root():
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service, name="first")
+    builder.register(Service, name="second")
+    graph = builder.build().graph
+
+    with pytest.raises(ValueError, match="activation-service-not-found"):
+        graph.activation_report(Service)
+
+
+def test_activation_report_does_not_activate_application_code():
+    class Service:
+        pass
+
+    def forbidden_factory() -> Service:
+        raise AssertionError("analysis must not run factories")
+
+    builder = ContainerBuilder()
+    builder.register(Service, factory=forbidden_factory)
+
+    report = builder.build().graph.activation_report(Service)
+
+    assert report.potential_acquisitions[0].component.endswith("Service")
 
 
 def test_build_report_aggregates_independent_errors_and_failed_builder_is_reusable():

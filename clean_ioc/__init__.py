@@ -28,6 +28,7 @@ from .container import (
     ScopeProvisionError,
     UndeclaredScopeSlotError,
 )
+from .graph_analysis import ActivationObligation, ActivationReport, ActivationScenario, ExecutionRelationship
 from .metadata import Tag
 from .providers import AsyncProvider, Provider
 from .tooling import (
@@ -69,11 +70,15 @@ __all__ = [
     "BuildIssue",
     "BuildReport",
     "AsyncProvider",
+    "ActivationObligation",
+    "ActivationReport",
+    "ActivationScenario",
     "CandidateDecision",
     "CompilationExplanation",
     "CompiledGraph",
     "DecisionOutcome",
     "Expose",
+    "ExecutionRelationship",
     "DefinitionOrigin",
     "Lifespan",
     "RuntimeOwnerKind",

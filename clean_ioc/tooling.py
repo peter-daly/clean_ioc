@@ -813,6 +813,17 @@ class CompiledGraph:
         self._ownership_report_cache.append(report)
         return report
 
+    def activation_report(self, component: Component | Any, *, scenario: str = "cold") -> Any:
+        """Describe static activation obligations for one compiled root.
+
+        This is an analysis of the frozen plan, not a runtime cache snapshot;
+        no component is resolved while producing the report.
+        """
+
+        from .graph_analysis import activation_report
+
+        return activation_report(self, component, scenario=scenario)
+
     def _component_paths(self, *, all_roots: bool) -> dict[str, Component]:
         counters: dict[tuple[str, str | None], int] = {}
         paths: dict[str, Component] = {}

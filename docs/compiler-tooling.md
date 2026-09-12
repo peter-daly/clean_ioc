@@ -75,9 +75,11 @@ text = container.graph.to_text()
 mermaid = container.graph.to_mermaid()
 manifest = container.graph.manifest()
 ownership = container.graph.ownership_report()
+activation = container.graph.activation_report(Checkout, scenario="cold")
 
 print(manifest.fingerprint)
 print(ownership.to_text())
+print(activation.to_text())
 ```
 
 Renderers and manifests show marked entry points by default. Pass `all_roots=True` to inspect every compiled root.
@@ -107,6 +109,27 @@ when the format changes. Schema versioning will begin after beta. Deterministic 
 semantic path, cache and cleanup categories, the cached ancestor responsible for promotion when applicable, and a
 value-free reason. Runtime owner tokens, cache keys, scope IDs, finalizer callables, configured values, and build inputs
 never appear in the report.
+
+## Inspect activation requirements
+
+`graph.activation_report()` describes one frozen root plan without resolving it. It separates immediate work from
+provider-target work that occurs only when a provider is called, reports concrete paths to required scope slots and
+async operations, and records cache assumptions explicitly. It is not a live cache or provision-state inspection.
+
+```python
+report = container.graph.activation_report(Checkout, scenario="warm_singletons")
+print(report.to_json())
+```
+
+The scenarios are `cold`, `warm_singletons`, and `warm_scope`. A warm cache assumption can show skipped construction,
+but it does not relax the runtime requirement to use an async resolve API for an async-capable root. Constructors and
+factories may perform arbitrary undeclared work; the report labels runtime-context resolution as unknown rather than
+claiming a complete trace. Use an exact component path for a named or collection root:
+
+```bash
+clean-ioc activation my_app.composition:builder --path 'root:my_app.services:Checkout:0'
+clean-ioc activation my_app.composition:builder my_app.services:Checkout --scenario cold --format json
+```
 
 ## Explain compiler decisions
 

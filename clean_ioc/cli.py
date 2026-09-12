@@ -80,6 +80,22 @@ def _ownership(args: argparse.Namespace) -> int:
     return 0 if report.is_valid else 1
 
 
+def _activation(args: argparse.Namespace) -> int:
+    graph = _load_scope(args.target).graph
+    if args.path is not None:
+        report = graph.activation_report(graph.component_at_path(args.path, all_roots=True), scenario=args.scenario)
+    else:
+        report = graph.activation_report(_load_object(args.service), scenario=args.scenario)
+    if args.format == "json":
+        value = report.to_json()
+    elif args.format == "mermaid":
+        value = report.to_mermaid()
+    else:
+        value = report.to_text()
+    _write(value, args.output)
+    return 0
+
+
 def _diff(args: argparse.Namespace) -> int:
     current = _load_scope(args.target).graph.manifest(all_roots=args.all)
     baseline = GraphManifest.from_json(Path(args.baseline).read_text(encoding="utf-8"))
@@ -130,6 +146,16 @@ def _parser() -> argparse.ArgumentParser:
     ownership.add_argument("--format", choices=("text", "json"), default="text")
     ownership.add_argument("-o", "--output", help="Write output to a file instead of stdout")
     ownership.set_defaults(handler=_ownership)
+
+    activation = commands.add_parser("activation", help="Describe static activation obligations for one root")
+    activation.add_argument("target", help="module:object composition target")
+    selection = activation.add_mutually_exclusive_group(required=True)
+    selection.add_argument("service", nargs="?", help="module:attribute unambiguous root service")
+    selection.add_argument("--path", help="exact path from the all-roots graph manifest")
+    activation.add_argument("--scenario", choices=("cold", "warm_singletons", "warm_scope"), default="cold")
+    activation.add_argument("--format", choices=("text", "json", "mermaid"), default="text")
+    activation.add_argument("-o", "--output", help="write output to a file instead of stdout")
+    activation.set_defaults(handler=_activation)
 
     difference = commands.add_parser("diff", help="Compare a compiled graph with a JSON manifest")
     difference.add_argument("target", help="module:object composition target")
