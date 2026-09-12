@@ -11,7 +11,20 @@ from dataclasses import dataclass, field, replace
 from enum import Enum
 from html import escape
 from types import MappingProxyType, UnionType
-from typing import Any, Callable, Iterable, Iterator, Mapping, TypeAlias, TypeVar, Union, get_args, get_origin, overload
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    Iterator,
+    Literal,
+    Mapping,
+    TypeAlias,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+    overload,
+)
 
 from .components import (
     Component,
@@ -789,6 +802,7 @@ class CompiledGraph:
     )
     _manifest_cache: dict[bool, GraphManifest] = field(default_factory=dict, compare=False, repr=False)
     _ownership_report_cache: list[OwnershipReport] = field(default_factory=list, compare=False, repr=False)
+    _analysis_index_cache: Any | None = field(default=None, compare=False, repr=False)
 
     def ownership_report(self) -> OwnershipReport:
         """Return the immutable ownership proof compiled for every graph occurrence."""
@@ -812,6 +826,87 @@ class CompiledGraph:
         )
         self._ownership_report_cache.append(report)
         return report
+
+    def analysis_index(self):
+        """Return the lazily built reverse graph analysis index."""
+
+        from .graph_analysis import graph_index
+
+        return graph_index(self)
+
+    def dependents(
+        self,
+        target: Any,
+        *,
+        match: Literal["occurrence", "registration"] = "registration",
+        include_deferred: bool = False,
+    ):
+        """Summarize roots and consumers affected by a compiled target."""
+
+        from .graph_analysis import dependency_impact
+
+        return dependency_impact(self, target, match=match, include_deferred=include_deferred)
+
+    def paths_between(
+        self,
+        root: Any,
+        dependency: Any,
+        *,
+        match: Literal["occurrence", "registration"] = "registration",
+        include_deferred: bool = True,
+        max_paths: int = 100,
+    ):
+        """Return bounded concrete paths between a root and dependency."""
+
+        from .graph_analysis import paths_between
+
+        return paths_between(
+            self,
+            root,
+            dependency,
+            match=match,
+            include_deferred=include_deferred,
+            max_paths=max_paths,
+        )
+
+    def shared_dependencies(
+        self,
+        first_root: Any,
+        second_root: Any,
+        *,
+        match: Literal["occurrence", "registration"] = "registration",
+        include_deferred: bool = True,
+    ):
+        """Return dependencies shared by two compiled roots."""
+
+        from .graph_analysis import shared_dependencies
+
+        return shared_dependencies(
+            self,
+            first_root,
+            second_root,
+            match=match,
+            include_deferred=include_deferred,
+        )
+
+    def sharing_report(self, target: Any | None = None):
+        """Return static cache-sharing groups for compiled occurrences."""
+
+        from .graph_analysis import sharing_report
+
+        return sharing_report(self, target)
+
+    def activation_report(
+        self,
+        target: Any,
+        *,
+        scenario: Literal["cold", "warm_singletons", "warm_scope"] = "cold",
+    ):
+        """Return static activation obligations for a compiled root."""
+
+        from .graph_analysis import activation_report
+
+        return activation_report(self, target, scenario=scenario)
 
     def _component_paths(self, *, all_roots: bool) -> dict[str, Component]:
         counters: dict[tuple[str, str | None], int] = {}

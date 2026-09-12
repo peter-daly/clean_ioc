@@ -102,6 +102,56 @@ def _explain(args: argparse.Namespace) -> int:
     return 0
 
 
+def _analysis_subject(graph: Any, service: str | None, path: str | None, *, all_roots: bool = True) -> Any:
+    if path is not None:
+        return graph.component_at_path(path, all_roots=all_roots)
+    if service is None:
+        raise ValueError("A service locator or --path is required")
+    return _load_object(service)
+
+
+def _impact(args: argparse.Namespace) -> int:
+    graph = _load_scope(args.target).graph
+    subject = _analysis_subject(graph, args.service, args.path, all_roots=args.all)
+    report = graph.dependents(subject, match=args.match, include_deferred=args.include_deferred)
+    if args.format == "json":
+        value = report.to_json()
+    elif args.format == "mermaid":
+        value = report.to_mermaid()
+    else:
+        value = report.to_text()
+    _write(value, args.output)
+    return 0
+
+
+def _sharing(args: argparse.Namespace) -> int:
+    graph = _load_scope(args.target).graph
+    subject = None if args.service is None and args.path is None else _analysis_subject(graph, args.service, args.path)
+    report = graph.sharing_report(subject)
+    if args.format == "json":
+        value = report.to_json()
+    elif args.format == "mermaid":
+        value = report.to_mermaid()
+    else:
+        value = report.to_text()
+    _write(value, args.output)
+    return 0
+
+
+def _activation(args: argparse.Namespace) -> int:
+    graph = _load_scope(args.target).graph
+    subject = _analysis_subject(graph, args.service, args.path)
+    report = graph.activation_report(subject, scenario=args.scenario)
+    if args.format == "json":
+        value = report.to_json()
+    elif args.format == "mermaid":
+        value = report.to_mermaid()
+    else:
+        value = report.to_text()
+    _write(value, args.output)
+    return 0
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="clean-ioc", description="Inspect compiled Clean IoC component plans")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -147,6 +197,34 @@ def _parser() -> argparse.ArgumentParser:
     explain.add_argument("--format", choices=("text", "json"), default="text")
     explain.add_argument("-o", "--output", help="write output to a file instead of stdout")
     explain.set_defaults(handler=_explain)
+
+    impact = commands.add_parser("impact", help="Show reverse dependencies for a compiled target")
+    impact.add_argument("target", help="module:object composition target")
+    impact.add_argument("service", nargs="?", help="module:attribute service type")
+    impact.add_argument("--path", help="manifest path for an exact occurrence")
+    impact.add_argument("--match", choices=("occurrence", "registration"), default="registration")
+    impact.add_argument("--include-deferred", action="store_true", help="Cross typed-provider deferred targets")
+    impact.add_argument("--all", action="store_true", help="Resolve --path against every compiled root")
+    impact.add_argument("--format", choices=("text", "mermaid", "json"), default="text")
+    impact.add_argument("-o", "--output", help="write output to a file instead of stdout")
+    impact.set_defaults(handler=_impact)
+
+    sharing = commands.add_parser("sharing", help="Show static cache-sharing groups")
+    sharing.add_argument("target", help="module:object composition target")
+    sharing.add_argument("service", nargs="?", help="optional module:attribute service type")
+    sharing.add_argument("--path", help="manifest path for an exact occurrence")
+    sharing.add_argument("--format", choices=("text", "mermaid", "json"), default="text")
+    sharing.add_argument("-o", "--output", help="write output to a file instead of stdout")
+    sharing.set_defaults(handler=_sharing)
+
+    activation = commands.add_parser("activation", help="Show static activation obligations for a root")
+    activation.add_argument("target", help="module:object composition target")
+    activation.add_argument("service", nargs="?", help="module:attribute service type")
+    activation.add_argument("--path", help="manifest path for an exact root occurrence")
+    activation.add_argument("--scenario", choices=("cold", "warm_singletons", "warm_scope"), default="cold")
+    activation.add_argument("--format", choices=("text", "mermaid", "json"), default="text")
+    activation.add_argument("-o", "--output", help="write output to a file instead of stdout")
+    activation.set_defaults(handler=_activation)
     return parser
 
 

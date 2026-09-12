@@ -5234,6 +5234,7 @@ def _run_validation_rules(
                     entrypoints=local_entrypoints,
                     _manifest_cache={},
                     _ownership_report_cache=[],
+                    _analysis_index_cache=None,
                 )
             context = ValidationContext(visible_graph, boundary=boundary)
             contexts[boundary] = context

@@ -10,6 +10,7 @@ import pytest
 import clean_ioc.component_filters as cf
 from clean_ioc import (
     INJECT,
+    AsyncProvider,
     BuildIssue,
     BuildReport,
     CandidateDecision,
@@ -23,6 +24,7 @@ from clean_ioc import (
     GraphManifest,
     GraphVisit,
     IssueSeverity,
+    Provider,
     ResolutionContext,
     Scope,
     SourceLocation,
@@ -1463,6 +1465,136 @@ def test_graph_renderers_show_decorator_positions_outside_to_inside():
     assert [item["position"] for item in decorators] == [1000, 100]
 
 
+def test_dependency_impact_distinguishes_eager_and_deferred_reachability():
+    class Service:
+        pass
+
+    class Worker:
+        def __init__(self, service: Service):
+            self.service = service
+
+    class DeferredWorker:
+        pass
+
+    class Root:
+        def __init__(self, worker: Worker, deferred: Provider[DeferredWorker]):
+            self.worker = worker
+            self.deferred = deferred
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register(Worker)
+    builder.register(DeferredWorker)
+    builder.register(Root)
+    builder.mark_entrypoint(Root)
+    graph = builder.build().graph
+
+    eager = graph.dependents(Service)
+    assert any(root.requested_type.endswith("Root") for root in eager.affected_roots)
+    assert any(relationship.parent.service.endswith("Worker") for relationship in eager.direct_consumers)
+
+    deferred_target = graph.entrypoints[0].component.dependencies[1].dependencies[0]
+    deferred = graph.dependents(deferred_target, match="occurrence")
+    assert not deferred.affected_roots
+    with_deferred = graph.dependents(deferred_target, match="occurrence", include_deferred=True)
+    assert any(root.requested_type.endswith("Root") for root in with_deferred.affected_roots)
+    assert any(relationship.phase == "deferred" for relationship in with_deferred.direct_consumers)
+    assert "DeferredWorker" in with_deferred.to_json()
+    assert with_deferred.to_mermaid().startswith("flowchart TD")
+
+
+def test_paths_between_and_shared_dependencies_are_bounded_and_registration_aware():
+    class Shared:
+        pass
+
+    class First:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    class Second:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    builder = ContainerBuilder()
+    builder.register(Shared)
+    builder.register(First)
+    builder.register(Second)
+    graph = builder.build().graph
+
+    graph_slice = graph.paths_between(First, Shared, max_paths=10)
+    assert len(graph_slice.paths) == 1
+    assert not graph_slice.truncated
+    assert "First" in graph_slice.to_text()
+
+    shared = graph.shared_dependencies(First, Second)
+    assert any(item.first_paths[0].service.endswith("Shared") for item in shared)
+
+
+def test_sharing_report_groups_repeated_singleton_occurrences_without_raw_ids():
+    class Database:
+        pass
+
+    class FirstRepository:
+        def __init__(self, database: Database):
+            self.database = database
+
+    class SecondRepository:
+        def __init__(self, database: Database):
+            self.database = database
+
+    class Root:
+        def __init__(self, first: FirstRepository, second: SecondRepository):
+            self.first = first
+            self.second = second
+
+    builder = ContainerBuilder()
+    builder.register(Database, lifespan="singleton")
+    builder.register(FirstRepository)
+    builder.register(SecondRepository)
+    builder.register(Root)
+    graph = builder.build().graph
+
+    report = graph.sharing_report(Database)
+    database_group = next(group for group in report.groups if group.service.endswith("Database"))
+    assert database_group.cache_category == "singleton owner cache"
+    assert len(database_group.occurrence_paths) >= 2
+    assert "singleton owner" in database_group.conditions[0]
+    assert "owner_token" not in report.to_json()
+    assert report.to_mermaid().startswith("flowchart TD")
+
+
+def test_activation_report_keeps_provider_target_obligations_deferred():
+    class Request:
+        pass
+
+    class AsyncLeaf:
+        pass
+
+    async def create_leaf() -> AsyncLeaf:
+        return AsyncLeaf()
+
+    class Root:
+        def __init__(self, request: Request, leaf: AsyncProvider[AsyncLeaf]):
+            self.request = request
+            self.leaf = leaf
+
+    builder = ContainerBuilder()
+    builder.declare_scope_slot(Request)
+    builder.register(AsyncLeaf, factory=create_leaf)
+    builder.register(Root)
+    graph = builder.build().graph
+
+    report = graph.activation_report(Root)
+    assert any(item.kind == "scope_slot" for item in report.immediate_obligations)
+    assert not any(item.kind == "async_requirement" for item in report.immediate_obligations)
+    assert any(item.kind == "async_requirement" for item in report.deferred_obligations)
+    assert any(item.phase == "deferred" for item in report.execution_relationships)
+
+    warm = graph.activation_report(Root, scenario="warm_singletons")
+    assert "warm_singletons" in warm.to_json()
+    assert report.to_mermaid().startswith("flowchart TD")
+
+
 def test_cli_check_graph_and_diff_contract(tmp_path: Path, capsys):
     target = "tests.tooling_targets:valid_builder"
     assert main(["check", target]) == 1
@@ -1482,6 +1614,13 @@ def test_cli_check_graph_and_diff_contract(tmp_path: Path, capsys):
     assert "unchanged" in capsys.readouterr().out
     assert main(["diff", "tests.tooling_targets:changed_builder", str(baseline)]) == 1
     assert "changed" in capsys.readouterr().out
+
+    assert main(["impact", target, "tests.tooling_targets:Dependency", "--format", "json"]) == 0
+    assert "Application" in capsys.readouterr().out
+    assert main(["sharing", target, "tests.tooling_targets:Dependency"]) == 0
+    assert "Sharing report" in capsys.readouterr().out
+    assert main(["activation", target, "tests.tooling_targets:Application"]) == 0
+    assert "Activation report" in capsys.readouterr().out
 
 
 def test_cli_strict_and_ignore_apply_to_custom_validation_warnings(capsys):
