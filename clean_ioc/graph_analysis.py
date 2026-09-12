@@ -7,6 +7,7 @@ import json
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from html import escape
+from itertools import pairwise
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Iterable, Literal, Mapping, Sequence
 
@@ -17,7 +18,7 @@ from .type_aliases import normalize_type_alias
 if TYPE_CHECKING:
     from .tooling import CompiledGraph
 
-RelationshipKind = Literal["dependency", "decorator", "pre_configuration"]
+RelationshipKind = Literal["dependency", "decorator", "pre_configuration", "deferred_target"]
 RelationshipPhase = Literal["eager", "deferred"]
 ImpactMatch = Literal["occurrence", "registration"]
 ActivationScenario = Literal["cold", "warm_singletons", "warm_scope"]
@@ -104,6 +105,12 @@ class ImpactRoot:
     deferred: bool
     boundary: str | None
 
+    @property
+    def service(self) -> str:
+        """Compatibility alias for graph-reference-shaped root consumers."""
+
+        return self.requested_type
+
     def to_dict(self) -> dict[str, object]:
         return {
             "requested_type": self.requested_type,
@@ -123,6 +130,14 @@ class DependencyImpact:
     affected_roots: tuple[ImpactRoot, ...]
     affected_entrypoints: tuple[ImpactRoot, ...]
     include_deferred: bool
+
+    @property
+    def witness_paths(self) -> Mapping[str, tuple[str, ...]]:
+        """Return deterministic semantic witness paths keyed by affected root."""
+
+        return MappingProxyType(
+            {root.path: tuple(reference.path for reference in root.witness_path) for root in self.affected_roots}
+        )
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -202,6 +217,14 @@ class GraphSlice:
     truncated: bool
     limit: int
 
+    @property
+    def max_paths(self) -> int:
+        return self.limit
+
+    @property
+    def returned_paths(self) -> int:
+        return len(self.paths)
+
     def to_dict(self) -> dict[str, object]:
         return {
             "paths": [[reference.to_dict() for reference in path] for path in self.paths],
@@ -221,6 +244,25 @@ class GraphSlice:
             lines.append("- none")
         for path in self.paths:
             lines.append("- " + " -> ".join(reference.service for reference in path))
+        return "\n".join(lines)
+
+    def to_mermaid(self) -> str:
+        references = {reference.path: reference for path in self.paths for reference in path}
+        ids = {path: f"n{index}" for index, path in enumerate(sorted(references))}
+        lines = ["flowchart TD"]
+        for path, node_id in ids.items():
+            reference = references[path]
+            label = escape(f"{reference.service}\\n{path}", quote=True)
+            lines.append(f'    {node_id}["{label}"]')
+        seen_edges: set[tuple[str, str]] = set()
+        for path in self.paths:
+            for parent, child in pairwise(path):
+                edge = (parent.path, child.path)
+                if edge in seen_edges:
+                    continue
+                seen_edges.add(edge)
+                arrow = "-.->" if child.phase == "deferred" else "-->"
+                lines.append(f"    {ids[parent.path]} {arrow} {ids[child.path]}")
         return "\n".join(lines)
 
 
@@ -457,15 +499,12 @@ def graph_index(graph: CompiledGraph) -> GraphIndex:
     ) -> None:
         current = reference(component, path, root_path, phase)
         if parent_ref is not None and edge_kind is not None:
-            relationship_phase = (
-                "deferred"
-                if parent_ref.component.kind is ComponentKind.provider and edge_kind == "dependency"
-                else phase
-            )
+            provider_target = parent_ref.component.kind is ComponentKind.provider and edge_kind == "dependency"
+            relationship_phase = "deferred" if provider_target else phase
             relationship = GraphRelationship(
                 parent_ref,
                 current,
-                edge_kind,
+                "deferred_target" if provider_target else edge_kind,
                 edge_order,
                 component.argument,
                 relationship_phase,
@@ -529,10 +568,11 @@ def dependency_impact(
     target: Any,
     *,
     match: ImpactMatch = "registration",
+    name: str | None = None,
     include_deferred: bool = False,
 ) -> DependencyImpact:
     index = graph_index(graph)
-    selected = _select_occurrences(graph, index, target, match=match)
+    selected = _select_occurrences(graph, index, target, match=match, name=name)
     selected_refs = tuple(
         reference
         for occurrence_id in selected
@@ -546,8 +586,8 @@ def dependency_impact(
         if include_deferred or relationship.phase == "eager"
     )
     reached = _reverse_reachable(index, selected, include_deferred=include_deferred)
-    roots = _impact_roots(graph.roots, index, reached, include_deferred=include_deferred)
-    entrypoints = _impact_roots(graph.entrypoints, index, reached, include_deferred=include_deferred)
+    roots = _impact_roots(graph.roots, index, reached, set(selected), include_deferred=include_deferred)
+    entrypoints = _impact_roots(graph.entrypoints, index, reached, set(selected), include_deferred=include_deferred)
     return DependencyImpact(
         tuple(sorted(selected_refs, key=lambda item: item.path)),
         tuple(sorted(direct, key=lambda item: (item.parent.path, item.child.path))),
@@ -566,9 +606,12 @@ def paths_between(
     include_deferred: bool = True,
     max_paths: int = 100,
 ) -> GraphSlice:
+    if max_paths < 1:
+        raise ValueError("impact-invalid-path-limit: max_paths must be at least 1")
     index = graph_index(graph)
     roots = _select_occurrences(graph, index, root, match="occurrence")
-    targets = set(_select_occurrences(graph, index, dependency, match=match))
+    dependency_match: ImpactMatch = "occurrence" if isinstance(dependency, Component) else match
+    targets = set(_select_occurrences(graph, index, dependency, match=dependency_match))
     paths: list[tuple[GraphReference, ...]] = []
     truncated = False
 
@@ -579,9 +622,9 @@ def paths_between(
                 current, path = stack.pop()
                 if current.component.occurrence_id in targets:
                     paths.append(path)
-                    if len(paths) >= max_paths:
-                        truncated = True
-                        return GraphSlice(tuple(paths), truncated, max_paths)
+                    if len(paths) > max_paths:
+                        return GraphSlice(tuple(paths[:max_paths]), True, max_paths)
+                    continue
                 for relationship in reversed(index.outgoing.get(current.component.occurrence_id, ())):
                     if relationship.parent.path != current.path:
                         continue
@@ -762,6 +805,7 @@ def _select_occurrences(
     target: Any,
     *,
     match: ImpactMatch,
+    name: str | None = None,
 ) -> tuple[int, ...]:
     if match not in ("occurrence", "registration"):
         raise ValueError("match must be 'occurrence' or 'registration'")
@@ -778,6 +822,7 @@ def _select_occurrences(
                 for references in index.references_by_occurrence.values()
                 for reference in references[:1]
                 if reference.component.service_type == service_type
+                and (name is None or reference.component.name == name)
             },
             key=lambda occurrence_id: index.references_for(occurrence_id)[0].path,
         )
@@ -849,6 +894,7 @@ def _impact_roots(
     roots: Iterable[GraphRoot],
     index: GraphIndex,
     reached: set[int],
+    selected: set[int],
     *,
     include_deferred: bool,
 ) -> tuple[ImpactRoot, ...]:
@@ -860,9 +906,8 @@ def _impact_roots(
             continue
         seen.add(occurrence_id)
         reference = index.primary_reference(root.component)
-        paths = [item for item in index.root_membership.get(occurrence_id, ()) if item.path == reference.path]
-        witness = tuple(paths[:1] or (reference,))
-        if not include_deferred and any(item.phase == "deferred" for item in witness):
+        witness = _witness_path(index, reference, selected, include_deferred=include_deferred)
+        if not witness:
             continue
         output.append(
             ImpactRoot(
@@ -874,6 +919,31 @@ def _impact_roots(
             )
         )
     return tuple(sorted(output, key=lambda item: item.path))
+
+
+def _witness_path(
+    index: GraphIndex,
+    start: GraphReference,
+    selected: set[int],
+    *,
+    include_deferred: bool,
+) -> tuple[GraphReference, ...]:
+    queue: deque[tuple[GraphReference, tuple[GraphReference, ...]]] = deque([(start, (start,))])
+    seen_paths: set[str] = set()
+    while queue:
+        current, path = queue.popleft()
+        if current.path in seen_paths:
+            continue
+        seen_paths.add(current.path)
+        if current.component.occurrence_id in selected:
+            return path
+        for relationship in index.outgoing.get(current.component.occurrence_id, ()):
+            if relationship.parent.path != current.path:
+                continue
+            if not include_deferred and relationship.phase == "deferred":
+                continue
+            queue.append((relationship.child, (*path, relationship.child)))
+    return ()
 
 
 def _descendant_references(

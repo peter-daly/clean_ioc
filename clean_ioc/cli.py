@@ -113,7 +113,8 @@ def _analysis_subject(graph: Any, service: str | None, path: str | None, *, all_
 def _impact(args: argparse.Namespace) -> int:
     graph = _load_scope(args.target).graph
     subject = _analysis_subject(graph, args.service, args.path, all_roots=args.all)
-    report = graph.dependents(subject, match=args.match, include_deferred=args.include_deferred)
+    match = "occurrence" if args.path is not None else args.match
+    report = graph.dependents(subject, match=match, name=args.name, include_deferred=args.include_deferred)
     if args.format == "json":
         value = report.to_json()
     elif args.format == "mermaid":
@@ -200,9 +201,11 @@ def _parser() -> argparse.ArgumentParser:
 
     impact = commands.add_parser("impact", help="Show reverse dependencies for a compiled target")
     impact.add_argument("target", help="module:object composition target")
-    impact.add_argument("service", nargs="?", help="module:attribute service type")
-    impact.add_argument("--path", help="manifest path for an exact occurrence")
+    impact_selection = impact.add_mutually_exclusive_group(required=True)
+    impact_selection.add_argument("service", nargs="?", help="module:attribute service type")
+    impact_selection.add_argument("--path", help="manifest path for an exact occurrence")
     impact.add_argument("--match", choices=("occurrence", "registration"), default="registration")
+    impact.add_argument("--name", help="select a registration with this exact name")
     impact.add_argument("--include-deferred", action="store_true", help="Cross typed-provider deferred targets")
     impact.add_argument("--all", action="store_true", help="Resolve --path against every compiled root")
     impact.add_argument("--format", choices=("text", "mermaid", "json"), default="text")

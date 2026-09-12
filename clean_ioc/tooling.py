@@ -839,13 +839,14 @@ class CompiledGraph:
         target: Any,
         *,
         match: Literal["occurrence", "registration"] = "registration",
+        name: str | None = None,
         include_deferred: bool = False,
     ):
         """Summarize roots and consumers affected by a compiled target."""
 
         from .graph_analysis import dependency_impact
 
-        return dependency_impact(self, target, match=match, include_deferred=include_deferred)
+        return dependency_impact(self, target, match=match, name=name, include_deferred=include_deferred)
 
     def paths_between(
         self,
