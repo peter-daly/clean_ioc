@@ -21,6 +21,12 @@ from .components import (
     RuntimeOwnerKind,
     default_component_filter,
 )
+from .graph_analysis import (
+    ContextualCacheCertainty,
+    ContextualCacheFinding,
+    SharingGroup,
+    SharingReport,
+)
 from .type_aliases import normalize_type_alias
 
 
@@ -441,6 +447,78 @@ def _component_description(component: Component) -> str:
     return f"{target} [{', '.join(details)}]"
 
 
+def _sharing_owner_label(cache_owner: RuntimeOwnerKind, layer: str, boundary: str | None) -> str:
+    """Render semantic ownership without exposing runtime owner identities."""
+
+    if cache_owner is RuntimeOwnerKind.singleton:
+        area = f"boundary:{boundary}" if boundary is not None else layer
+        return f"declaring singleton owner ({area})"
+    if cache_owner is RuntimeOwnerKind.scope:
+        return "active effective scope cache"
+    if cache_owner is RuntimeOwnerKind.resolution:
+        return "one resolution context"
+    if cache_owner is RuntimeOwnerKind.supplied:
+        return "supplied identity"
+    return "no container cache"
+
+
+def _sharing_conditions(component: Component, cache_owner: RuntimeOwnerKind) -> str:
+    if component.activation is ComponentActivation.instance:
+        return (
+            "This registration supplies an application-owned identity; cache eligibility does not prove that "
+            "Clean IoC constructed it"
+        )
+    if cache_owner is RuntimeOwnerKind.singleton:
+        return (
+            "Occurrences can reuse one value in this declaring owner; separate container builds and "
+            "overlay-owned registrations have separate owners"
+        )
+    if cache_owner is RuntimeOwnerKind.scope:
+        return (
+            "Reuse depends on the active scope cache and any inherited cached value; nested scopes do not "
+            "necessarily create a distinct value"
+        )
+    if cache_owner is RuntimeOwnerKind.resolution:
+        return "Reuse is limited to one resolution context; each provider invocation starts a new context"
+    if cache_owner is RuntimeOwnerKind.supplied:
+        return "This registration supplies an application-owned identity; it does not prove a constructor runs once"
+    return "No container cache: activation occurs for each executed dependency edge; factory results may still coincide"
+
+
+def _contextual_cache_comparison(
+    components: tuple[Component, ...],
+) -> tuple[ContextualCacheCertainty, tuple[str, ...]]:
+    """Compare compiler structure only; never inspect configured user values."""
+
+    baseline = components[0]
+    fields: list[str] = []
+    def dependency_signature(component: Component) -> tuple[str, ...]:
+        return tuple(dependency.id for dependency in component.dependencies)
+
+    def decorator_signature(component: Component) -> tuple[str, ...]:
+        return tuple(decorator.id for decorator in component.decorators)
+
+    def configuration_signature(component: Component) -> tuple[str, ...]:
+        return tuple(item.id for item in component.pre_configurations)
+    if any(dependency_signature(component) != dependency_signature(baseline) for component in components[1:]):
+        fields.append("selected_dependencies")
+    if any(decorator_signature(component) != decorator_signature(baseline) for component in components[1:]):
+        fields.append("decorator_order")
+    if any(configuration_signature(component) != configuration_signature(baseline) for component in components[1:]):
+        fields.append("pre_configuration_order")
+    if any(component.owner_occurrence_id != baseline.owner_occurrence_id for component in components[1:]):
+        fields.append("ownership_structure")
+    if not fields:
+        return ContextualCacheCertainty.equivalent_structure, ()
+    if any(
+        dependency.kind is ComponentKind.value
+        for component in components
+        for dependency in component.dependencies
+    ):
+        return ContextualCacheCertainty.unknown_values, tuple(fields)
+    return ContextualCacheCertainty.different, tuple(fields)
+
+
 def _dependency_relationship(component: Component) -> str:
     parent = component.parent
     boundary = ""
@@ -787,8 +865,12 @@ class CompiledGraph:
     _occurrence_explanations: Mapping[int, CompilationExplanation] = field(
         default_factory=lambda: MappingProxyType({}), compare=False, repr=False
     )
+    _occurrence_layers: Mapping[int, str] = field(
+        default_factory=lambda: MappingProxyType({}), compare=False, repr=False
+    )
     _manifest_cache: dict[bool, GraphManifest] = field(default_factory=dict, compare=False, repr=False)
     _ownership_report_cache: list[OwnershipReport] = field(default_factory=list, compare=False, repr=False)
+    _sharing_report_cache: list[SharingReport] = field(default_factory=list, compare=False, repr=False)
 
     def ownership_report(self) -> OwnershipReport:
         """Return the immutable ownership proof compiled for every graph occurrence."""
@@ -811,6 +893,63 @@ class CompiledGraph:
             (),
         )
         self._ownership_report_cache.append(report)
+        return report
+
+    def sharing_report(self) -> SharingReport:
+        """Describe static cache-sharing eligibility without resolving components.
+
+        References are derived from current graph paths.  They intentionally do
+        not reveal registration IDs, cache keys, or runtime owner tokens.
+        """
+
+        if self._sharing_report_cache:
+            return self._sharing_report_cache[0]
+        paths = self._component_paths(all_roots=True)
+        grouped: dict[tuple[str, RuntimeOwnerKind, str], list[tuple[str, Component]]] = {}
+        for path, component in paths.items():
+            if component.kind not in (ComponentKind.registration, ComponentKind.provider_map):
+                continue
+            # Component IDs are compiler identities and remain private.  The
+            # layer distinguishes independently declared overlay registrations.
+            key = (component.id, component.cache_owner, self._occurrence_layers.get(component.occurrence_id, "root"))
+            grouped.setdefault(key, []).append((path, component))
+
+        groups: list[SharingGroup] = []
+        findings: list[ContextualCacheFinding] = []
+        for number, ((_, cache_owner, layer), entries) in enumerate(
+            sorted(grouped.items(), key=lambda item: min(path for path, _ in item[1])), start=1
+        ):
+            entries.sort(key=lambda item: item[0])
+            sample = entries[0][1]
+            category = cache_owner.value
+            reference = f"sharing:{category}:{number}"
+            occurrence_paths = tuple(path for path, _ in entries)
+            owner = _sharing_owner_label(cache_owner, layer, sample.boundary)
+            groups.append(
+                SharingGroup(
+                    reference=reference,
+                    paths=occurrence_paths,
+                    cache_category=category,
+                    declaring_owner=owner,
+                    service=qualified_name(sample.service_type),
+                    conditions=_sharing_conditions(sample, cache_owner),
+                    activation=sample.activation.value,
+                )
+            )
+            cached = (RuntimeOwnerKind.singleton, RuntimeOwnerKind.scope, RuntimeOwnerKind.resolution)
+            if cache_owner in cached and len(entries) > 1:
+                certainty, fields = _contextual_cache_comparison(tuple(component for _, component in entries))
+                findings.append(
+                    ContextualCacheFinding(
+                        group=reference,
+                        paths=occurrence_paths,
+                        differing_fields=fields,
+                        evidence_paths=occurrence_paths,
+                        certainty=certainty,
+                    )
+                )
+        report = SharingReport(tuple(groups), tuple(findings))
+        self._sharing_report_cache.append(report)
         return report
 
     def _component_paths(self, *, all_roots: bool) -> dict[str, Component]:

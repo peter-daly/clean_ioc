@@ -80,6 +80,20 @@ def _ownership(args: argparse.Namespace) -> int:
     return 0 if report.is_valid else 1
 
 
+def _sharing(args: argparse.Namespace) -> int:
+    report = _load_scope(args.target).graph.sharing_report()
+    if args.path is not None:
+        report = report.for_path(args.path)
+    if args.format == "json":
+        value = report.to_json()
+    elif args.format == "mermaid":
+        value = report.to_mermaid()
+    else:
+        value = report.to_text()
+    _write(value, args.output)
+    return 0
+
+
 def _diff(args: argparse.Namespace) -> int:
     current = _load_scope(args.target).graph.manifest(all_roots=args.all)
     baseline = GraphManifest.from_json(Path(args.baseline).read_text(encoding="utf-8"))
@@ -130,6 +144,13 @@ def _parser() -> argparse.ArgumentParser:
     ownership.add_argument("--format", choices=("text", "json"), default="text")
     ownership.add_argument("-o", "--output", help="Write output to a file instead of stdout")
     ownership.set_defaults(handler=_ownership)
+
+    sharing = commands.add_parser("sharing", help="Show static cache-sharing eligibility")
+    sharing.add_argument("target", help="module:object composition target")
+    sharing.add_argument("--path", help="Limit output to the sharing group containing this manifest path")
+    sharing.add_argument("--format", choices=("text", "json", "mermaid"), default="text")
+    sharing.add_argument("-o", "--output", help="Write output to a file instead of stdout")
+    sharing.set_defaults(handler=_sharing)
 
     difference = commands.add_parser("diff", help="Compare a compiled graph with a JSON manifest")
     difference.add_argument("target", help="module:object composition target")

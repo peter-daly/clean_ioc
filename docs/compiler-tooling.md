@@ -172,6 +172,7 @@ clean-ioc check my_app.composition:application_container
 clean-ioc graph my_app.composition:application_builder --format mermaid
 clean-ioc graph my_app.composition:application_builder --format json -o dependency-graph.json
 clean-ioc ownership my_app.composition:application_builder --format json
+clean-ioc sharing my_app.composition:application_builder --format json
 clean-ioc diff my_app.composition:application_builder dependency-graph.json
 clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGateway
 clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGateway --name stripe --format json
@@ -185,6 +186,14 @@ when a CI command should state the warning policy directly.
 
 `diff` exits `0` when the graph is unchanged and `1` when it changed. Add `--all` to `graph` or `diff` when the baseline should include every root rather than the entry-point view. Baselines are never updated implicitly.
 `ownership` emits the frozen all-roots ownership proof as text or JSON and does not activate components.
+
+`sharing` emits a separate static report of which compiled registration occurrences are eligible to use the same
+container cache entry. Its graph-local references link back to manifest paths and never expose registration IDs,
+runtime scope IDs, cache keys, owner tokens, or configured values. A transient group means Clean IoC does not cache the
+activation; it does not assert that an application factory returns distinct objects. Scoped groups describe the active
+effective scope cache, including inherited values, while provider calls each get a fresh resolution context. When
+contextual occurrences target one cached registration, the report compares compiler structure only; a first successful
+activation supplies the cached result, without promising which concurrent caller succeeds first.
 `explain` exits `0` for an explanation, `1` when the target does not build, and `2` for an invalid target, service,
 manifest path, or ambiguous selection. `--path` and the service locator are mutually exclusive; the initial CLI supports
 default and exact-name root selection.

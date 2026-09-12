@@ -64,6 +64,15 @@ def explain_builder() -> ContainerBuilder:
     return builder
 
 
+def sharing_builder() -> ContainerBuilder:
+    """A small target retained for manual sharing CLI examples."""
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, lifespan="singleton")
+    builder.register(Application)
+    return builder
+
+
 def organization_warning(_: ValidationContext):
     return (
         BuildIssue(

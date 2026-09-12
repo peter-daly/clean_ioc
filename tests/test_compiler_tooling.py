@@ -1747,6 +1747,58 @@ def test_tooling_json_is_unversioned_during_beta():
     assert restored.diff(manifest).is_empty
 
 
+def test_sharing_report_groups_cache_identity_without_activation_or_raw_ids(capsys):
+    created = 0
+
+    class Database:
+        def __init__(self):
+            nonlocal created
+            created += 1
+
+    class Left:
+        def __init__(self, database: Database):
+            self.database = database
+
+    class Right:
+        def __init__(self, database: Database):
+            self.database = database
+
+    class Application:
+        def __init__(self, left: Left, right: Right):
+            self.left = left
+            self.right = right
+
+    builder = ContainerBuilder()
+    builder.register(Database, lifespan="singleton")
+    builder.register(Left)
+    builder.register(Right)
+    builder.register(Application)
+    container = builder.build()
+
+    report = container.graph.sharing_report()
+    database_groups = [group for group in report.groups if group.service.endswith(".Database")]
+    assert len(database_groups) == 1
+    group = database_groups[0]
+    assert group.cache_category == "singleton"
+    assert len(group.paths) >= 3
+    assert all(path.startswith("root:") for path in group.paths)
+    assert created == 0
+    payload = report.to_json()
+    assert "schema_version" not in payload
+    assert "cache_key" not in payload
+    assert "sharing:singleton:" in payload
+    assert "flowchart TD" in report.to_mermaid()
+
+    assert main(["sharing", "tests.tooling_targets:valid_builder", "--format", "json"]) == 0
+    assert "groups" in json.loads(capsys.readouterr().out)
+
+    from tests.tooling_targets import valid_builder
+
+    path = valid_builder().build().graph.sharing_report().groups[0].paths[0]
+    assert main(["sharing", "tests.tooling_targets:valid_builder", "--path", path]) == 0
+    assert path in capsys.readouterr().out
+
+
 @pytest.mark.parametrize("payload", ["[]", "null", "42", '"graph"'])
 def test_manifest_requires_a_json_object(payload):
     with pytest.raises(ValueError, match="A graph manifest must be a JSON object"):
