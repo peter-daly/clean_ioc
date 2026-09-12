@@ -183,12 +183,14 @@ print(container.build_report.to_text())
 print(container.graph.to_mermaid())
 container.graph.manifest().to_json()
 container.graph.ownership_report().to_json()
+container.graph.sharing_report().to_json()
 ```
 
 ```bash
 clean-ioc check my_app.composition:application_builder
 clean-ioc graph my_app.composition:application_builder --format json -o dependency-graph.json
 clean-ioc ownership my_app.composition:application_builder --format json
+clean-ioc sharing my_app.composition:application_builder --format json
 clean-ioc diff my_app.composition:application_builder dependency-graph.json
 clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGateway
 ```
@@ -202,6 +204,9 @@ Manifests record the compiled cache and cleanup owner for every occurrence. Tool
 during beta; regenerate saved graphs and baselines when the format changes. Schema versioning will begin after beta.
 Cleanup-bearing transients retained by singletons are promoted to the singleton's declaring owner;
 ownership reports explain that decision without exposing runtime tokens or values.
+Sharing reports are static eligibility reports: they group occurrences by their compiled cache identity without
+activating them or claiming factory results are distinct. They explain per-resolution, scope, singleton, transient,
+and supplied-instance semantics, and identify occurrence plans that can compete to initialize one cache.
 Expensive custom rules can be registered with `mode="validation"`, keeping their graph or source-AST inspection out
 of application startup while still running under `clean-ioc check` in CI. CLI strictness only controls whether warnings
 produce a failing exit code; errors fail in strict and non-strict modes.

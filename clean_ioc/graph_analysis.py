@@ -6,6 +6,7 @@ import hashlib
 import json
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
+from enum import Enum
 from html import escape
 from itertools import pairwise
 from types import MappingProxyType
@@ -297,6 +298,12 @@ class SharingGroup:
     occurrence_paths: tuple[str, ...]
     conditions: tuple[str, ...]
     boundary: str | None
+    declaring_owner: str = ""
+    activation: str = ""
+
+    @property
+    def paths(self) -> tuple[str, ...]:
+        return self.occurrence_paths
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -308,7 +315,17 @@ class SharingGroup:
             "occurrence_paths": list(self.occurrence_paths),
             "conditions": list(self.conditions),
             "boundary": self.boundary,
+            "declaring_owner": self.declaring_owner,
+            "activation": self.activation,
         }
+
+
+class ContextualCacheCertainty(str, Enum):
+    """What the compiler can establish about competing cached plans."""
+
+    different = "different"
+    equivalent_structure = "equivalent-structure"
+    unknown_values = "unknown-values"
 
 
 @dataclass(frozen=True, slots=True)
@@ -316,16 +333,26 @@ class ContextualCacheFinding:
     """Conservative note about occurrences that can initialize one cache group."""
 
     group_reference: str
-    certainty: Literal["different", "equivalent-structure", "unknown-values"]
+    certainty: ContextualCacheCertainty
     message: str
     evidence_paths: tuple[str, ...]
+    differing_fields: tuple[str, ...] = ()
+
+    @property
+    def group(self) -> str:
+        return self.group_reference
+
+    @property
+    def paths(self) -> tuple[str, ...]:
+        return self.evidence_paths
 
     def to_dict(self) -> dict[str, object]:
         return {
             "group_reference": self.group_reference,
-            "certainty": self.certainty,
+            "certainty": self.certainty.value,
             "message": self.message,
             "evidence_paths": list(self.evidence_paths),
+            "differing_fields": list(self.differing_fields),
         }
 
 
@@ -342,6 +369,16 @@ class SharingReport:
 
     def to_json(self, *, indent: int | None = 2) -> str:
         return json.dumps(self.to_dict(), indent=indent, sort_keys=True)
+
+    def for_path(self, path: str) -> SharingReport:
+        groups = tuple(group for group in self.groups if path in group.occurrence_paths)
+        if not groups:
+            raise ValueError(f"sharing-path-not-found: {path!r} is not in this sharing report")
+        references = {group.reference for group in groups}
+        return SharingReport(
+            groups,
+            tuple(finding for finding in self.findings if finding.group_reference in references),
+        )
 
     def to_text(self) -> str:
         lines = [f"Sharing report ({len(self.groups)} group{'s' if len(self.groups) != 1 else ''})"]
@@ -678,10 +715,10 @@ def shared_dependencies(
 def sharing_report(graph: CompiledGraph, target: Any | None = None) -> SharingReport:
     index = graph_index(graph)
     target_ids = None if target is None else set(_select_occurrences(graph, index, target, match="registration"))
-    grouped: dict[tuple[object, ...], list[GraphReference]] = defaultdict(list)
+    grouped: dict[tuple[str, RuntimeOwnerKind, str], list[GraphReference]] = defaultdict(list)
     for occurrence_id, references in index.references_by_occurrence.items():
         component = references[0].component
-        if component.kind not in (ComponentKind.registration, ComponentKind.decorator, ComponentKind.pre_configuration):
+        if component.kind not in (ComponentKind.registration, ComponentKind.provider_map):
             continue
         if (
             target_ids is not None
@@ -689,17 +726,20 @@ def sharing_report(graph: CompiledGraph, target: Any | None = None) -> SharingRe
             and component.id not in {index.references_for(item)[0].component.id for item in target_ids}
         ):
             continue
-        key = _sharing_key(component)
+        layer = graph._occurrence_layers.get(component.occurrence_id, "root")
+        key = (component.id, component.cache_owner, layer)
         grouped[key].extend(references)
 
     groups: list[SharingGroup] = []
     findings: list[ContextualCacheFinding] = []
     for index_number, (key, references) in enumerate(
-        sorted(grouped.items(), key=lambda item: (_reference_sort_key(item[1][0]), item[0]))
+        sorted(grouped.items(), key=lambda item: min(reference.path for reference in item[1])),
+        start=1,
     ):
         unique_paths = tuple(sorted({reference.path for reference in references}))
         sample = references[0].component
-        reference = _public_group_reference(index_number, unique_paths)
+        _, cache_owner, layer = key
+        reference = f"sharing:{cache_owner.value}:{index_number}"
         groups.append(
             SharingGroup(
                 reference=reference,
@@ -710,20 +750,24 @@ def sharing_report(graph: CompiledGraph, target: Any | None = None) -> SharingRe
                 occurrence_paths=unique_paths,
                 conditions=_sharing_conditions(sample),
                 boundary=sample.boundary,
+                declaring_owner=_sharing_owner_label(cache_owner, layer, sample.boundary),
+                activation=sample.activation.value,
             )
         )
         occurrence_components = _unique_components(reference_item.component for reference_item in references)
-        if len(occurrence_components) > 1 and sample.cache_owner is not RuntimeOwnerKind.none:
-            certainty = _compare_occurrence_structure(occurrence_components)
+        cached_owners = (RuntimeOwnerKind.singleton, RuntimeOwnerKind.scope, RuntimeOwnerKind.resolution)
+        if len(occurrence_components) > 1 and sample.cache_owner in cached_owners:
+            certainty, differing_fields = _compare_occurrence_structure(occurrence_components)
             findings.append(
                 ContextualCacheFinding(
-                    reference,
-                    certainty,
-                    (
+                    group_reference=reference,
+                    certainty=certainty,
+                    message=(
                         "Multiple occurrence plans can initialize this cache group; "
                         "the first successful activation supplies later cache hits."
                     ),
-                    unique_paths,
+                    evidence_paths=unique_paths,
+                    differing_fields=differing_fields,
                 )
             )
     return SharingReport(tuple(groups), tuple(findings))
@@ -1001,7 +1045,25 @@ def _cache_category(component: Component) -> str:
     return component.cache_owner.value
 
 
+def _sharing_owner_label(cache_owner: RuntimeOwnerKind, layer: str, boundary: str | None) -> str:
+    if cache_owner is RuntimeOwnerKind.singleton:
+        area = f"boundary:{boundary}" if boundary is not None else layer
+        return f"declaring singleton owner ({area})"
+    if cache_owner is RuntimeOwnerKind.scope:
+        return "active effective scope cache"
+    if cache_owner is RuntimeOwnerKind.resolution:
+        return "one resolution context"
+    if cache_owner is RuntimeOwnerKind.supplied:
+        return "supplied identity"
+    return "no container cache"
+
+
 def _sharing_conditions(component: Component) -> tuple[str, ...]:
+    if component.activation is ComponentActivation.instance:
+        return (
+            "This registration supplies an application-owned identity; cache eligibility does not prove that "
+            "Clean IoC constructed it.",
+        )
     if component.cache_owner is RuntimeOwnerKind.none:
         return ("No container cache is used; each executed edge activates independently.",)
     if component.cache_owner is RuntimeOwnerKind.resolution:
@@ -1028,9 +1090,37 @@ def _unique_components(components: Iterable[Component]) -> tuple[Component, ...]
 
 def _compare_occurrence_structure(
     components: tuple[Component, ...],
-) -> Literal["different", "equivalent-structure", "unknown-values"]:
-    signatures = {_structure_signature(component) for component in components}
-    return "equivalent-structure" if len(signatures) == 1 else "different"
+) -> tuple[ContextualCacheCertainty, tuple[str, ...]]:
+    baseline = components[0]
+    fields: list[str] = []
+    if any(
+        tuple(child.id for child in component.dependencies) != tuple(child.id for child in baseline.dependencies)
+        for component in components[1:]
+    ):
+        fields.append("selected_dependencies")
+    if any(
+        tuple((child.id, child.position) for child in component.decorators)
+        != tuple((child.id, child.position) for child in baseline.decorators)
+        for component in components[1:]
+    ):
+        fields.append("decorator_order")
+    if any(
+        tuple(child.id for child in component.pre_configurations)
+        != tuple(child.id for child in baseline.pre_configurations)
+        for component in components[1:]
+    ):
+        fields.append("pre_configuration_order")
+    if any(
+        (component.cache_owner, component.cleanup_owner, component.owner_occurrence_id)
+        != (baseline.cache_owner, baseline.cleanup_owner, baseline.owner_occurrence_id)
+        for component in components[1:]
+    ):
+        fields.append("ownership_structure")
+    if not fields:
+        return ContextualCacheCertainty.equivalent_structure, ()
+    if any(child.kind is ComponentKind.value for component in components for child in component.dependencies):
+        return ContextualCacheCertainty.unknown_values, tuple(fields)
+    return ContextualCacheCertainty.different, tuple(fields)
 
 
 def _structure_signature(component: Component) -> tuple[object, ...]:
