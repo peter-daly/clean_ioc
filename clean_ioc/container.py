@@ -2556,6 +2556,7 @@ class _PlanSet:
     compiler_issues: tuple[BuildIssue, ...] = ()
     root_candidates: Mapping[Any, tuple[_CandidateRecord, ...]] = field(default_factory=dict)
     occurrence_explanations: Mapping[int, CompilationExplanation] = field(default_factory=dict)
+    occurrence_layers: Mapping[int, str] = field(default_factory=dict)
     provider_roots: Mapping[Any, tuple[_RootPlan, ...]] = field(default_factory=dict)
     architecture_roots: tuple[tuple[str | None, Any, _RootPlan], ...] = ()
     area_root_candidates: Mapping[str, Mapping[Any, tuple[_CandidateRecord, ...]]] = field(default_factory=dict)
@@ -3114,6 +3115,9 @@ class _Compiler:
             compiler_issues=tuple(self.issues),
             root_candidates=types.MappingProxyType(dict(self.root_candidates)),
             occurrence_explanations=types.MappingProxyType(dict(self.occurrence_explanations)),
+            occurrence_layers=types.MappingProxyType(
+                {occurrence: origin.layer for occurrence, origin in self.origins.items()}
+            ),
             provider_roots=types.MappingProxyType(provider_roots),
             architecture_roots=tuple(architecture_roots),
             area_root_candidates=types.MappingProxyType(
@@ -5234,6 +5238,7 @@ def _run_validation_rules(
                     entrypoints=local_entrypoints,
                     _manifest_cache={},
                     _ownership_report_cache=[],
+                    _analysis_index_cache=None,
                 )
             context = ValidationContext(visible_graph, boundary=boundary)
             contexts[boundary] = context
@@ -5610,6 +5615,7 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
         _root_candidates=types.MappingProxyType(dict(plan.root_candidates)),
         _known_root_selections=types.MappingProxyType(known_root_selections),
         _occurrence_explanations=types.MappingProxyType(dict(plan.occurrence_explanations)),
+        _occurrence_layers=types.MappingProxyType(dict(plan.occurrence_layers)),
     )
     compiled_graph.ownership_report()
     built_in_issues = tuple(dict.fromkeys(issues))

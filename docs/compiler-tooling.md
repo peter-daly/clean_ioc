@@ -108,6 +108,44 @@ semantic path, cache and cleanup categories, the cached ancestor responsible for
 value-free reason. Runtime owner tokens, cache keys, scope IDs, finalizer callables, configured values, and build inputs
 never appear in the report.
 
+## Analyze graph impact, sharing, and activation
+
+Compiled graph analysis reuses the same semantic paths as manifests and does not activate application code. It keeps
+three ideas separate:
+
+- reverse dependency impact: which compiled roots and entry points can reach a target;
+- static sharing eligibility: which occurrences can use the same cache group under a runtime scenario;
+- activation obligations: what resolving a root can require immediately and what is deferred behind providers.
+
+```python
+impact = container.graph.dependents(PaymentGateway, match="registration")
+print(impact.to_text())
+
+sharing = container.graph.sharing_report(Database)
+print(sharing.to_json())
+
+activation = container.graph.activation_report(Checkout, scenario="cold")
+print(activation.to_text())
+```
+
+Use `match="occurrence"` with a component from `component_at_path(...)` when a repeated registration must be inspected
+at one exact graph position. Registration matching includes every occurrence of that exact registration. Deferred typed
+provider targets are excluded from impact summaries unless `include_deferred=True`.
+
+`SharingReport` describes static cache eligibility, not a live heap. Transient entries are reported as uncached
+activations. Per-resolution, scoped, singleton, and supplied groups state their assumptions without exporting raw
+registration IDs, cache keys, owner tokens, runtime scope IDs, configured values, or object representations.
+
+`ActivationReport` supports `cold`, `warm_singletons`, and `warm_scope` scenarios. These are hypothetical assumptions:
+the report does not inspect actual caches or provided scope values. Immediate obligations stop at provider handles;
+provider targets are listed as deferred obligations. A warm cache scenario may skip construction work in the summary,
+but public sync/async resolution constraints still come from the compiled root.
+
+The report also separates async causes, potential constructions, and cleanup owners. Execution relationships describe
+pre-configurations as before-core work, decorators as after-core work, provider targets as on-demand work, and async
+collection members as potentially concurrent rather than inventing a total execution order. Runtime-context resolution
+remains explicitly unknown because application code may issue declared or unrestricted requests.
+
 ## Explain compiler decisions
 
 `CompiledGraph.explain(...)` reports why a root or exact occurrence was selected and which candidates were rejected.
@@ -142,6 +180,32 @@ was evaluated for a marked entry point during compilation. Collection explanatio
 Configured values, build arguments, filter closure state, callable representations, memory addresses, and runtime IDs
 are never included. Provenance is deliberately absent from graph manifests, so it does not affect fingerprints.
 
+## Reverse dependencies and impact
+
+`graph.dependents(...)` builds a lazy, immutable sidecar index from the compiled plan. It does not run constructors,
+factories, filters, or argument policies, and it leaves manifests and their fingerprints unchanged. Select a concrete
+occurrence when its path matters, or select one registration to include every compiled occurrence of that registration:
+
+```python
+impact = container.graph.dependents(PaymentGateway, match="registration")
+for root in impact.affected_entrypoints:
+    print(root.path, impact.witness_paths[root.path])
+
+# Provider targets are a separate deferred edge category.
+including_deferred = container.graph.dependents(
+    PaymentGateway,
+    match="registration",
+    include_deferred=True,
+)
+```
+
+Type selectors reject ambiguity; pass `name=` for a named registration or use `graph.component_at_path(...)` for an
+exact occurrence. `GraphReference` serializes its semantic path and display metadata, never registration UUIDs or
+runtime identities. `graph.paths_between(root, dependency, max_paths=100)` returns a bounded `GraphSlice`; its
+`truncated`, `returned_paths`, and `max_paths` fields make an incomplete path list explicit. Use
+`graph.shared_dependencies(first_root, second_root)` to find registrations reachable from both roots without treating
+repeated occurrences as separate registrations.
+
 ## Use it from the command line
 
 Expose a builder, built scope, or zero-argument composition factory from an importable module:
@@ -173,9 +237,15 @@ clean-ioc graph my_app.composition:application_builder --format mermaid
 clean-ioc graph my_app.composition:application_builder --format json -o dependency-graph.json
 clean-ioc ownership my_app.composition:application_builder --format json
 clean-ioc diff my_app.composition:application_builder dependency-graph.json
+clean-ioc impact my_app.composition:application_builder my_app.ports:PaymentGateway
+clean-ioc impact my_app.composition:application_builder --path 'root:my_app.Checkout:default:0/dependency:gateway:0'
+clean-ioc sharing my_app.composition:application_builder my_app.infra:Database --format json
+clean-ioc activation my_app.composition:application_builder my_app.use_cases:Checkout --scenario warm_singletons
 clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGateway
 clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGateway --name stripe --format json
 clean-ioc explain my_app.composition:application_builder --path 'root:my_app.Checkout:default:0/dependency:gateway:0'
+clean-ioc impact my_app.composition:application_builder my_app.ports:PaymentGateway --match registration
+clean-ioc impact my_app.composition:application_builder --path 'root:my_app.Checkout:default:0/dependency:gateway:0'
 ```
 
 `check` always runs the complete validation rule set and is strict by default: it exits non-zero for errors or
@@ -185,9 +255,13 @@ when a CI command should state the warning policy directly.
 
 `diff` exits `0` when the graph is unchanged and `1` when it changed. Add `--all` to `graph` or `diff` when the baseline should include every root rather than the entry-point view. Baselines are never updated implicitly.
 `ownership` emits the frozen all-roots ownership proof as text or JSON and does not activate components.
+`impact`, `sharing`, and `activation` emit text, JSON, or Mermaid and exit `2` for invalid targets, paths, or ambiguous
+selectors. Impact analysis is informational; high fan-in does not fail a build.
 `explain` exits `0` for an explanation, `1` when the target does not build, and `2` for an invalid target, service,
 manifest path, or ambiguous selection. `--path` and the service locator are mutually exclusive; the initial CLI supports
 default and exact-name root selection.
+`impact` is informational and exits `0` even when no consumers are found; invalid paths, missing services, and
+ambiguous type selections exit `2`. Use `--include-deferred` to cross provider-target edges.
 
 Example CI policy:
 

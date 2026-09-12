@@ -10,6 +10,7 @@ import pytest
 import clean_ioc.component_filters as cf
 from clean_ioc import (
     INJECT,
+    AsyncProvider,
     BuildIssue,
     BuildReport,
     CandidateDecision,
@@ -23,6 +24,7 @@ from clean_ioc import (
     GraphManifest,
     GraphVisit,
     IssueSeverity,
+    Provider,
     ResolutionContext,
     Scope,
     SourceLocation,
@@ -32,6 +34,86 @@ from clean_ioc import (
 )
 from clean_ioc.cli import main
 from clean_ioc.factories import use_component, use_component_async
+
+
+def test_activation_report_separates_provider_target_slots_and_async_causes():
+    class Request:
+        pass
+
+    class AsyncLeaf:
+        pass
+
+    async def make_leaf() -> AsyncLeaf:
+        return AsyncLeaf()
+
+    class Application:
+        def __init__(self, request: Request, provider: AsyncProvider[AsyncLeaf]):
+            self.request = request
+            self.provider = provider
+
+    builder = ContainerBuilder()
+    builder.declare_scope_slot(Request)
+    builder.register(AsyncLeaf, factory=make_leaf)
+    builder.register(Application)
+    report = builder.build().graph.activation_report(Application)
+
+    assert report.scenario.value == "cold"
+    assert [item.kind for item in report.immediate_obligations] == ["scope_slot", "provider"]
+    assert not [item for item in report.async_causes if item.phase == "eager"]
+    assert [item.phase for item in report.async_causes] == ["deferred"]
+    assert any(
+        item.phase == "deferred" and item.component.endswith("AsyncLeaf") for item in report.potential_acquisitions
+    )
+    assert "Static analysis only" in report.to_text()
+
+
+def test_activation_report_warm_cache_is_an_assumption_not_runtime_state():
+    class Singleton:
+        pass
+
+    class Application:
+        def __init__(self, singleton: Singleton):
+            self.singleton = singleton
+
+    builder = ContainerBuilder()
+    builder.register(Singleton, lifespan="singleton")
+    builder.register(Application)
+    graph = builder.build().graph
+
+    cold = graph.activation_report(Application, scenario="cold")
+    warm = graph.activation_report(Application, scenario="warm_singletons")
+
+    assert any(item.component.endswith("Singleton") for item in cold.potential_acquisitions)
+    assert not any(item.component.endswith("Singleton") for item in warm.potential_acquisitions)
+    assert "assumptions" in warm.to_json()
+
+
+def test_activation_report_requires_an_unambiguous_root():
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service, name="first")
+    builder.register(Service, name="second")
+    graph = builder.build().graph
+
+    with pytest.raises(ValueError, match="activation-service-not-found"):
+        graph.activation_report(Service)
+
+
+def test_activation_report_does_not_activate_application_code():
+    class Service:
+        pass
+
+    def forbidden_factory() -> Service:
+        raise AssertionError("analysis must not run factories")
+
+    builder = ContainerBuilder()
+    builder.register(Service, factory=forbidden_factory)
+
+    report = builder.build().graph.activation_report(Service)
+
+    assert report.potential_acquisitions[0].component.endswith("Service")
 
 
 def test_build_report_aggregates_independent_errors_and_failed_builder_is_reusable():
@@ -1463,6 +1545,136 @@ def test_graph_renderers_show_decorator_positions_outside_to_inside():
     assert [item["position"] for item in decorators] == [1000, 100]
 
 
+def test_dependency_impact_distinguishes_eager_and_deferred_reachability():
+    class Service:
+        pass
+
+    class Worker:
+        def __init__(self, service: Service):
+            self.service = service
+
+    class DeferredWorker:
+        pass
+
+    class Root:
+        def __init__(self, worker: Worker, deferred: Provider[DeferredWorker]):
+            self.worker = worker
+            self.deferred = deferred
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register(Worker)
+    builder.register(DeferredWorker)
+    builder.register(Root)
+    builder.mark_entrypoint(Root)
+    graph = builder.build().graph
+
+    eager = graph.dependents(Service)
+    assert any(root.requested_type.endswith("Root") for root in eager.affected_roots)
+    assert any(relationship.parent.service.endswith("Worker") for relationship in eager.direct_consumers)
+
+    deferred_target = graph.entrypoints[0].component.dependencies[1].dependencies[0]
+    deferred = graph.dependents(deferred_target, match="occurrence")
+    assert not deferred.affected_roots
+    with_deferred = graph.dependents(deferred_target, match="occurrence", include_deferred=True)
+    assert any(root.requested_type.endswith("Root") for root in with_deferred.affected_roots)
+    assert any(relationship.phase == "deferred" for relationship in with_deferred.direct_consumers)
+    assert "DeferredWorker" in with_deferred.to_json()
+    assert with_deferred.to_mermaid().startswith("flowchart TD")
+
+
+def test_paths_between_and_shared_dependencies_are_bounded_and_registration_aware():
+    class Shared:
+        pass
+
+    class First:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    class Second:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    builder = ContainerBuilder()
+    builder.register(Shared)
+    builder.register(First)
+    builder.register(Second)
+    graph = builder.build().graph
+
+    graph_slice = graph.paths_between(First, Shared, max_paths=10)
+    assert len(graph_slice.paths) == 1
+    assert not graph_slice.truncated
+    assert "First" in graph_slice.to_text()
+
+    shared = graph.shared_dependencies(First, Second)
+    assert any(item.first_paths[0].service.endswith("Shared") for item in shared)
+
+
+def test_sharing_report_groups_repeated_singleton_occurrences_without_raw_ids():
+    class Database:
+        pass
+
+    class FirstRepository:
+        def __init__(self, database: Database):
+            self.database = database
+
+    class SecondRepository:
+        def __init__(self, database: Database):
+            self.database = database
+
+    class Root:
+        def __init__(self, first: FirstRepository, second: SecondRepository):
+            self.first = first
+            self.second = second
+
+    builder = ContainerBuilder()
+    builder.register(Database, lifespan="singleton")
+    builder.register(FirstRepository)
+    builder.register(SecondRepository)
+    builder.register(Root)
+    graph = builder.build().graph
+
+    report = graph.sharing_report(Database)
+    database_group = next(group for group in report.groups if group.service.endswith("Database"))
+    assert database_group.cache_category == "singleton owner cache"
+    assert len(database_group.occurrence_paths) >= 2
+    assert "singleton owner" in database_group.conditions[0]
+    assert "owner_token" not in report.to_json()
+    assert report.to_mermaid().startswith("flowchart TD")
+
+
+def test_activation_report_keeps_provider_target_obligations_deferred():
+    class Request:
+        pass
+
+    class AsyncLeaf:
+        pass
+
+    async def create_leaf() -> AsyncLeaf:
+        return AsyncLeaf()
+
+    class Root:
+        def __init__(self, request: Request, leaf: AsyncProvider[AsyncLeaf]):
+            self.request = request
+            self.leaf = leaf
+
+    builder = ContainerBuilder()
+    builder.declare_scope_slot(Request)
+    builder.register(AsyncLeaf, factory=create_leaf)
+    builder.register(Root)
+    graph = builder.build().graph
+
+    report = graph.activation_report(Root)
+    assert any(item.kind == "scope_slot" for item in report.immediate_obligations)
+    assert not any(item.kind == "async_requirement" for item in report.immediate_obligations)
+    assert any(item.kind == "async_requirement" for item in report.deferred_obligations)
+    assert any(item.phase == "deferred" for item in report.execution_relationships)
+
+    warm = graph.activation_report(Root, scenario="warm_singletons")
+    assert "warm_singletons" in warm.to_json()
+    assert report.to_mermaid().startswith("flowchart TD")
+
+
 def test_cli_check_graph_and_diff_contract(tmp_path: Path, capsys):
     target = "tests.tooling_targets:valid_builder"
     assert main(["check", target]) == 1
@@ -1482,6 +1694,13 @@ def test_cli_check_graph_and_diff_contract(tmp_path: Path, capsys):
     assert "unchanged" in capsys.readouterr().out
     assert main(["diff", "tests.tooling_targets:changed_builder", str(baseline)]) == 1
     assert "changed" in capsys.readouterr().out
+
+    assert main(["impact", target, "tests.tooling_targets:Dependency", "--format", "json"]) == 0
+    assert "Application" in capsys.readouterr().out
+    assert main(["sharing", target, "tests.tooling_targets:Dependency"]) == 0
+    assert "Sharing report" in capsys.readouterr().out
+    assert main(["activation", target, "tests.tooling_targets:Application"]) == 0
+    assert "Activation report" in capsys.readouterr().out
 
 
 def test_cli_strict_and_ignore_apply_to_custom_validation_warnings(capsys):
@@ -1728,6 +1947,20 @@ def test_cli_explain_text_json_path_and_invalid_selection(capsys):
     assert "explain-path-not-found" in capsys.readouterr().err
 
 
+def test_cli_impact_reports_json_and_query_errors(capsys):
+    target = "tests.tooling_targets:valid_builder"
+    service = "tests.tooling_targets:Dependency"
+
+    assert main(["impact", target, service, "--format", "json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["affected_entrypoints"]
+    assert payload["include_deferred"] is False
+    assert "occurrence_id" not in json.dumps(payload)
+
+    assert main(["impact", target, "--path", "root:missing"]) == 2
+    assert "explain-path-not-found" in capsys.readouterr().err
+
+
 def test_tooling_json_is_unversioned_during_beta():
     builder = ContainerBuilder()
     builder.register(str, instance="value")
@@ -1745,6 +1978,124 @@ def test_tooling_json_is_unversioned_during_beta():
     assert restored.data == manifest.data
     assert restored.fingerprint == manifest.fingerprint
     assert restored.diff(manifest).is_empty
+
+
+def test_reverse_dependency_analysis_keeps_paths_deferred_edges_and_entrypoints():
+    class Gateway:
+        pass
+
+    class Checkout:
+        def __init__(self, gateway: Gateway):
+            self.gateway = gateway
+
+    class RetryWorker:
+        def __init__(self, gateway: Provider[Gateway]):
+            self.gateway = gateway
+
+    builder = ContainerBuilder()
+    builder.register(Gateway)
+    builder.register(Checkout)
+    builder.register(RetryWorker)
+    builder.mark_entrypoint(Checkout)
+    builder.mark_entrypoint(RetryWorker)
+    graph = builder.build().graph
+
+    eager = graph.dependents(Gateway, match="registration")
+    deferred = graph.dependents(Gateway, match="registration", include_deferred=True)
+
+    assert {item.parent.service.rsplit(".", 1)[-1] for item in eager.direct_consumers} == {"Checkout"}
+    assert any(item.kind == "deferred_target" for item in deferred.direct_consumers)
+    assert {item.service.rsplit(".", 1)[-1] for item in eager.affected_entrypoints} == {"Checkout"}
+    assert {item.service.rsplit(".", 1)[-1] for item in deferred.affected_entrypoints} == {"Checkout", "RetryWorker"}
+    assert all("root:" in path for path in deferred.witness_paths)
+    assert "occurrence_id" not in deferred.to_json()
+
+
+def test_reverse_dependency_analysis_bounds_paths_and_rejects_ambiguous_type_selection():
+    class Shared:
+        pass
+
+    class First:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    class Second:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    class Root:
+        def __init__(self, first: First, second: Second):
+            self.first = first
+            self.second = second
+
+    builder = ContainerBuilder()
+    builder.register(Shared)
+    builder.register(First)
+    builder.register(Second)
+    builder.register(Root)
+    graph = builder.build().graph
+    root = next(item.component for item in graph.roots if item.requested_type is Root)
+    shared = next(item for item in root.descendants() if item.service_type is Shared)
+
+    sliced = graph.paths_between(root, shared, max_paths=1)
+    assert sliced.returned_paths == 1
+    assert sliced.truncated is False
+    assert sliced.max_paths == 1
+    assert sliced.to_mermaid().startswith("flowchart TD")
+    with pytest.raises(ValueError, match="analysis-ambiguous-occurrence"):
+        graph.dependents(Shared, match="occurrence")
+
+
+def test_sharing_report_groups_cache_identity_without_activation_or_raw_ids(capsys):
+    created = 0
+
+    class Database:
+        def __init__(self):
+            nonlocal created
+            created += 1
+
+    class Left:
+        def __init__(self, database: Database):
+            self.database = database
+
+    class Right:
+        def __init__(self, database: Database):
+            self.database = database
+
+    class Application:
+        def __init__(self, left: Left, right: Right):
+            self.left = left
+            self.right = right
+
+    builder = ContainerBuilder()
+    builder.register(Database, lifespan="singleton")
+    builder.register(Left)
+    builder.register(Right)
+    builder.register(Application)
+    container = builder.build()
+
+    report = container.graph.sharing_report()
+    database_groups = [group for group in report.groups if group.service.endswith(".Database")]
+    assert len(database_groups) == 1
+    group = database_groups[0]
+    assert group.cache_category == "singleton owner cache"
+    assert len(group.paths) >= 3
+    assert all(path.startswith("root:") for path in group.paths)
+    assert created == 0
+    payload = report.to_json()
+    assert "schema_version" not in payload
+    assert "cache_key" not in payload
+    assert "sharing:singleton:" in payload
+    assert "flowchart TD" in report.to_mermaid()
+
+    assert main(["sharing", "tests.tooling_targets:valid_builder", "--format", "json"]) == 0
+    assert "groups" in json.loads(capsys.readouterr().out)
+
+    from tests.tooling_targets import valid_builder
+
+    path = valid_builder().build().graph.sharing_report().groups[0].paths[0]
+    assert main(["sharing", "tests.tooling_targets:valid_builder", "--path", path]) == 0
+    assert path in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("payload", ["[]", "null", "42", '"graph"'])
