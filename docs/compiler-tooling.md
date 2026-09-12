@@ -142,6 +142,32 @@ was evaluated for a marked entry point during compilation. Collection explanatio
 Configured values, build arguments, filter closure state, callable representations, memory addresses, and runtime IDs
 are never included. Provenance is deliberately absent from graph manifests, so it does not affect fingerprints.
 
+## Reverse dependencies and impact
+
+`graph.dependents(...)` builds a lazy, immutable sidecar index from the compiled plan. It does not run constructors,
+factories, filters, or argument policies, and it leaves manifests and their fingerprints unchanged. Select a concrete
+occurrence when its path matters, or select one registration to include every compiled occurrence of that registration:
+
+```python
+impact = container.graph.dependents(PaymentGateway, match="registration")
+for root in impact.affected_entrypoints:
+    print(root.path, impact.witness_paths[root.path])
+
+# Provider targets are a separate deferred edge category.
+including_deferred = container.graph.dependents(
+    PaymentGateway,
+    match="registration",
+    include_deferred=True,
+)
+```
+
+Type selectors reject ambiguity; pass `name=` for a named registration or use `graph.component_at_path(...)` for an
+exact occurrence. `GraphReference` serializes its semantic path and display metadata, never registration UUIDs or
+runtime identities. `graph.paths_between(root, dependency, max_paths=100)` returns a bounded `GraphSlice`; its
+`truncated`, `returned_paths`, and `max_paths` fields make an incomplete path list explicit. Use
+`graph.shared_dependencies(first_root, second_root)` to find registrations reachable from both roots without treating
+repeated occurrences as separate registrations.
+
 ## Use it from the command line
 
 Expose a builder, built scope, or zero-argument composition factory from an importable module:
@@ -176,6 +202,8 @@ clean-ioc diff my_app.composition:application_builder dependency-graph.json
 clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGateway
 clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGateway --name stripe --format json
 clean-ioc explain my_app.composition:application_builder --path 'root:my_app.Checkout:default:0/dependency:gateway:0'
+clean-ioc impact my_app.composition:application_builder my_app.ports:PaymentGateway --match registration
+clean-ioc impact my_app.composition:application_builder --path 'root:my_app.Checkout:default:0/dependency:gateway:0'
 ```
 
 `check` always runs the complete validation rule set and is strict by default: it exits non-zero for errors or
@@ -188,6 +216,8 @@ when a CI command should state the warning policy directly.
 `explain` exits `0` for an explanation, `1` when the target does not build, and `2` for an invalid target, service,
 manifest path, or ambiguous selection. `--path` and the service locator are mutually exclusive; the initial CLI supports
 default and exact-name root selection.
+`impact` is informational and exits `0` even when no consumers are found; invalid paths, missing services, and
+ambiguous type selections exit `2`. Use `--include-deferred` to cross provider-target edges.
 
 Example CI policy:
 

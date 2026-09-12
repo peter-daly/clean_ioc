@@ -23,6 +23,7 @@ from clean_ioc import (
     GraphManifest,
     GraphVisit,
     IssueSeverity,
+    Provider,
     ResolutionContext,
     Scope,
     SourceLocation,
@@ -1728,6 +1729,20 @@ def test_cli_explain_text_json_path_and_invalid_selection(capsys):
     assert "explain-path-not-found" in capsys.readouterr().err
 
 
+def test_cli_impact_reports_json_and_query_errors(capsys):
+    target = "tests.tooling_targets:valid_builder"
+    service = "tests.tooling_targets:Dependency"
+
+    assert main(["impact", target, service, "--format", "json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["affected_entrypoints"]
+    assert payload["include_deferred"] is False
+    assert "occurrence_id" not in json.dumps(payload)
+
+    assert main(["impact", target, "--path", "root:missing"]) == 2
+    assert "explain-path-not-found" in capsys.readouterr().err
+
+
 def test_tooling_json_is_unversioned_during_beta():
     builder = ContainerBuilder()
     builder.register(str, instance="value")
@@ -1745,6 +1760,72 @@ def test_tooling_json_is_unversioned_during_beta():
     assert restored.data == manifest.data
     assert restored.fingerprint == manifest.fingerprint
     assert restored.diff(manifest).is_empty
+
+
+def test_reverse_dependency_analysis_keeps_paths_deferred_edges_and_entrypoints():
+    class Gateway:
+        pass
+
+    class Checkout:
+        def __init__(self, gateway: Gateway):
+            self.gateway = gateway
+
+    class RetryWorker:
+        def __init__(self, gateway: Provider[Gateway]):
+            self.gateway = gateway
+
+    builder = ContainerBuilder()
+    builder.register(Gateway)
+    builder.register(Checkout)
+    builder.register(RetryWorker)
+    builder.mark_entrypoint(Checkout)
+    builder.mark_entrypoint(RetryWorker)
+    graph = builder.build().graph
+
+    eager = graph.dependents(Gateway, match="registration")
+    deferred = graph.dependents(Gateway, match="registration", include_deferred=True)
+
+    assert {item.parent.service.rsplit(".", 1)[-1] for item in eager.direct_consumers} == {"Checkout"}
+    assert any(item.kind == "deferred_target" for item in deferred.direct_consumers)
+    assert {item.service.rsplit(".", 1)[-1] for item in eager.affected_entrypoints} == {"Checkout"}
+    assert {item.service.rsplit(".", 1)[-1] for item in deferred.affected_entrypoints} == {"Checkout", "RetryWorker"}
+    assert all("root:" in path for path in deferred.witness_paths)
+    assert "occurrence_id" not in deferred.to_json()
+
+
+def test_reverse_dependency_analysis_bounds_paths_and_rejects_ambiguous_type_selection():
+    class Shared:
+        pass
+
+    class First:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    class Second:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    class Root:
+        def __init__(self, first: First, second: Second):
+            self.first = first
+            self.second = second
+
+    builder = ContainerBuilder()
+    builder.register(Shared)
+    builder.register(First)
+    builder.register(Second)
+    builder.register(Root)
+    graph = builder.build().graph
+    root = next(item.component for item in graph.roots if item.requested_type is Root)
+    shared = next(item for item in root.descendants() if item.service_type is Shared)
+
+    sliced = graph.paths_between(root, shared, max_paths=1)
+    assert sliced.returned_paths == 1
+    assert sliced.truncated is False
+    assert sliced.max_paths == 1
+    assert sliced.to_mermaid().startswith("flowchart TD")
+    with pytest.raises(ValueError, match="impact-ambiguous-target"):
+        graph.dependents(Shared)
 
 
 @pytest.mark.parametrize("payload", ["[]", "null", "42", '"graph"'])

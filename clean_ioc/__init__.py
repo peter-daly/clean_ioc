@@ -28,6 +28,7 @@ from .container import (
     ScopeProvisionError,
     UndeclaredScopeSlotError,
 )
+from .graph_analysis import DependencyImpact, GraphIndex, GraphReference, GraphRelationship, GraphSlice
 from .metadata import Tag
 from .providers import AsyncProvider, Provider
 from .tooling import (
@@ -82,6 +83,11 @@ __all__ = [
     "GraphManifest",
     "GraphRoot",
     "GraphVisit",
+    "GraphIndex",
+    "GraphReference",
+    "GraphRelationship",
+    "DependencyImpact",
+    "GraphSlice",
     "IssueSeverity",
     "OwnershipRecord",
     "OwnershipReport",

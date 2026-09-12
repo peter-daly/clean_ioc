@@ -102,6 +102,26 @@ def _explain(args: argparse.Namespace) -> int:
     return 0
 
 
+def _impact(args: argparse.Namespace) -> int:
+    graph = _load_scope(args.target).graph
+    if args.path is not None:
+        subject = graph.component_at_path(args.path, all_roots=True)
+        if args.name is not None:
+            raise ValueError("--name cannot be combined with --path")
+        match = "occurrence"
+    else:
+        subject = _load_object(args.service)
+        match = args.match
+    report = graph.dependents(
+        subject,
+        match=match,
+        name=args.name,
+        include_deferred=args.include_deferred,
+    )
+    _write(report.to_json() if args.format == "json" else report.to_text(), args.output)
+    return 0
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="clean-ioc", description="Inspect compiled Clean IoC component plans")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -147,6 +167,18 @@ def _parser() -> argparse.ArgumentParser:
     explain.add_argument("--format", choices=("text", "json"), default="text")
     explain.add_argument("-o", "--output", help="write output to a file instead of stdout")
     explain.set_defaults(handler=_explain)
+
+    impact = commands.add_parser("impact", help="Show compiled reverse dependencies and affected roots")
+    impact.add_argument("target", help="module:object composition target")
+    selection = impact.add_mutually_exclusive_group(required=True)
+    selection.add_argument("service", nargs="?", help="module:attribute service type")
+    selection.add_argument("--path", help="exact occurrence path from an all-roots manifest")
+    impact.add_argument("--match", choices=("occurrence", "registration"), default="registration")
+    impact.add_argument("--name", help="select a registration with this exact name")
+    impact.add_argument("--include-deferred", action="store_true", help="cross deferred provider target edges")
+    impact.add_argument("--format", choices=("text", "json"), default="text")
+    impact.add_argument("-o", "--output", help="write output to a file instead of stdout")
+    impact.set_defaults(handler=_impact)
     return parser
 
 

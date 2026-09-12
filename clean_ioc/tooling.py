@@ -789,6 +789,62 @@ class CompiledGraph:
     )
     _manifest_cache: dict[bool, GraphManifest] = field(default_factory=dict, compare=False, repr=False)
     _ownership_report_cache: list[OwnershipReport] = field(default_factory=list, compare=False, repr=False)
+    _analysis_index_cache: list[Any] = field(default_factory=list, compare=False, repr=False)
+
+    def analysis_index(self) -> Any:
+        """Return the lazily-built, activation-free reverse graph index.
+
+        The index is a tooling sidecar: it is derived solely from immutable
+        compiled plans and is never consulted by resolution or scope creation.
+        """
+
+        if not self._analysis_index_cache:
+            from .graph_analysis import GraphIndex
+
+            self._analysis_index_cache.append(GraphIndex(self))
+        return self._analysis_index_cache[0]
+
+    def dependents(
+        self,
+        subject: Any,
+        *,
+        match: str = "occurrence",
+        name: str | None = None,
+        include_deferred: bool = False,
+    ) -> Any:
+        """Report compiled consumers of an occurrence or one registration.
+
+        ``subject`` may be a Component, GraphReference, or service type. Type
+        selectors reject ambiguity rather than evaluating user filters.
+        """
+
+        return self.analysis_index().dependents(subject, match=match, name=name, include_deferred=include_deferred)
+
+    def paths_between(
+        self,
+        root: Any,
+        dependency: Any,
+        *,
+        max_paths: int = 100,
+        include_deferred: bool = True,
+    ) -> Any:
+        """Return a bounded compiled path slice between two occurrences."""
+
+        return self.analysis_index().paths_between(
+            root, dependency, max_paths=max_paths, include_deferred=include_deferred
+        )
+
+    def shared_dependencies(
+        self,
+        first: Any,
+        second: Any,
+        *,
+        match: str = "registration",
+        include_deferred: bool = True,
+    ) -> Any:
+        """Return registrations or occurrences reachable from both roots."""
+
+        return self.analysis_index().shared_dependencies(first, second, match=match, include_deferred=include_deferred)
 
     def ownership_report(self) -> OwnershipReport:
         """Return the immutable ownership proof compiled for every graph occurrence."""
