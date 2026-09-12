@@ -141,6 +141,11 @@ the report does not inspect actual caches or provided scope values. Immediate ob
 provider targets are listed as deferred obligations. A warm cache scenario may skip construction work in the summary,
 but public sync/async resolution constraints still come from the compiled root.
 
+The report also separates async causes, potential constructions, and cleanup owners. Execution relationships describe
+pre-configurations as before-core work, decorators as after-core work, provider targets as on-demand work, and async
+collection members as potentially concurrent rather than inventing a total execution order. Runtime-context resolution
+remains explicitly unknown because application code may issue declared or unrestricted requests.
+
 ## Explain compiler decisions
 
 `CompiledGraph.explain(...)` reports why a root or exact occurrence was selected and which candidates were rejected.

@@ -19,10 +19,21 @@ from .type_aliases import normalize_type_alias
 if TYPE_CHECKING:
     from .tooling import CompiledGraph
 
-RelationshipKind = Literal["dependency", "decorator", "pre_configuration", "deferred_target"]
+RelationshipKind = Literal[
+    "dependency",
+    "decorator",
+    "pre_configuration",
+    "deferred_target",
+    "declared_resolution",
+]
 RelationshipPhase = Literal["eager", "deferred"]
 ImpactMatch = Literal["occurrence", "registration"]
-ActivationScenario = Literal["cold", "warm_singletons", "warm_scope"]
+
+
+class ActivationScenario(str, Enum):
+    cold = "cold"
+    warm_singletons = "warm_singletons"
+    warm_scope = "warm_scope"
 
 
 class GraphSelectionError(ValueError):
@@ -409,11 +420,22 @@ class SharingReport:
 
 @dataclass(frozen=True, slots=True)
 class ActivationObligation:
-    kind: Literal["scope_slot", "async_requirement", "initializer", "resource", "runtime_context"]
+    kind: str
     phase: RelationshipPhase
     path: str
     service: str
     message: str
+    async_required: bool = False
+    cache_owner: str | None = None
+    cleanup_owner: str | None = None
+
+    @property
+    def component(self) -> str:
+        return self.service
+
+    @property
+    def description(self) -> str:
+        return self.message
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -422,6 +444,11 @@ class ActivationObligation:
             "path": self.path,
             "service": self.service,
             "message": self.message,
+            "component": self.component,
+            "description": self.description,
+            "async_required": self.async_required,
+            "cache_owner": self.cache_owner,
+            "cleanup_owner": self.cleanup_owner,
         }
 
 
@@ -432,6 +459,15 @@ class ExecutionRelationship:
     kind: RelationshipKind
     phase: RelationshipPhase
     order: int
+    ordering: str = ""
+
+    @property
+    def source(self) -> str:
+        return self.parent_path
+
+    @property
+    def target(self) -> str:
+        return self.child_path
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -440,6 +476,7 @@ class ExecutionRelationship:
             "kind": self.kind,
             "phase": self.phase,
             "order": self.order,
+            "ordering": self.ordering,
         }
 
 
@@ -453,29 +490,57 @@ class ActivationReport:
     execution_relationships: tuple[ExecutionRelationship, ...]
     cache_skips: tuple[str, ...]
     unknown_runtime_work: tuple[str, ...]
+    async_causes: tuple[ActivationObligation, ...] = ()
+    potential_acquisitions: tuple[ActivationObligation, ...] = ()
+    cleanup_owners: tuple[ActivationObligation, ...] = ()
+
+    @property
+    def root(self) -> str:
+        return self.selected_root.service
+
+    @property
+    def root_path(self) -> str:
+        return self.selected_root.path
+
+    @property
+    def assumptions(self) -> tuple[str, ...]:
+        return self.scenario_assumptions
 
     def to_dict(self) -> dict[str, object]:
         return {
             "selected_root": self.selected_root.to_dict(),
-            "scenario": self.scenario,
+            "root": self.root,
+            "root_path": self.root_path,
+            "scenario": self.scenario.value,
+            "assumptions": list(self.assumptions),
             "scenario_assumptions": list(self.scenario_assumptions),
             "immediate_obligations": [item.to_dict() for item in self.immediate_obligations],
             "deferred_obligations": [item.to_dict() for item in self.deferred_obligations],
             "execution_relationships": [item.to_dict() for item in self.execution_relationships],
             "cache_skips": list(self.cache_skips),
             "unknown_runtime_work": list(self.unknown_runtime_work),
+            "async_causes": [item.to_dict() for item in self.async_causes],
+            "potential_acquisitions": [item.to_dict() for item in self.potential_acquisitions],
+            "cleanup_owners": [item.to_dict() for item in self.cleanup_owners],
         }
 
     def to_json(self, *, indent: int | None = 2) -> str:
         return json.dumps(self.to_dict(), indent=indent, sort_keys=True)
 
     def to_text(self) -> str:
-        lines = [f"Activation report for {self.selected_root.service}", f"Scenario: {self.scenario}"]
+        lines = [f"Activation report for {self.selected_root.service}", f"Scenario: {self.scenario.value}"]
         lines.extend(f"- assumes {assumption}" for assumption in self.scenario_assumptions)
         lines.append("Immediate obligations:")
         lines.extend(_obligation_lines(self.immediate_obligations))
         lines.append("Deferred obligations:")
         lines.extend(_obligation_lines(self.deferred_obligations))
+        for title, obligations in (
+            ("Async causes", self.async_causes),
+            ("Potential acquisitions", self.potential_acquisitions),
+            ("Cleanup owners", self.cleanup_owners),
+        ):
+            lines.append(f"{title}:")
+            lines.extend(_obligation_lines(obligations))
         if self.cache_skips:
             lines.append("Hypothetical cache hits:")
             lines.extend(f"- {path}" for path in self.cache_skips)
@@ -549,14 +614,17 @@ def graph_index(graph: CompiledGraph) -> GraphIndex:
             incoming[component.occurrence_id].append(relationship)
             outgoing[parent_ref.component.occurrence_id].append(relationship)
         for index, child in enumerate(component.dependencies):
-            child_phase = "deferred" if component.kind is ComponentKind.provider else phase
+            provider_target = component.kind is ComponentKind.provider
+            declared_resolution = child.argument is not None and child.argument.startswith("resolution")
+            child_phase = "deferred" if provider_target or declared_resolution else phase
+            child_kind: RelationshipKind = "declared_resolution" if declared_resolution else "dependency"
             visit(
                 child,
                 f"{path}/dependency:{child.argument or index}:{index}",
                 root_path,
                 child_phase,
                 current,
-                "dependency",
+                child_kind,
                 index,
             )
         for index, child in enumerate(component.pre_configurations):
@@ -777,57 +845,187 @@ def activation_report(
     graph: CompiledGraph,
     target: Any,
     *,
-    scenario: ActivationScenario = "cold",
+    scenario: str | ActivationScenario = "cold",
 ) -> ActivationReport:
-    if scenario not in ("cold", "warm_singletons", "warm_scope"):
-        raise ValueError("scenario must be one of 'cold', 'warm_singletons', or 'warm_scope'")
+    try:
+        selected_scenario = ActivationScenario(scenario)
+    except ValueError as error:
+        choices = ", ".join(item.value for item in ActivationScenario)
+        raise ValueError(f"activation-invalid-scenario: choose one of {choices}") from error
     index = graph_index(graph)
     root_id = _select_root_occurrence(graph, index, target)
     root_ref = index.primary_reference(_component_for_occurrence(index, root_id))
-    assumptions = _scenario_assumptions(scenario)
+    assumptions = _scenario_assumptions(selected_scenario)
     immediate: list[ActivationObligation] = []
     deferred: list[ActivationObligation] = []
+    async_causes: list[ActivationObligation] = []
+    acquisitions: list[ActivationObligation] = []
+    cleanup: list[ActivationObligation] = []
     relationships: list[ExecutionRelationship] = []
     cache_skips: list[str] = []
     unknown: list[str] = []
 
-    queue: deque[GraphReference] = deque([root_ref])
-    seen_paths: set[str] = set()
-    while queue:
-        reference = queue.popleft()
-        if reference.path in seen_paths:
-            continue
-        seen_paths.add(reference.path)
-        skipped = _scenario_skips(reference.component, scenario)
-        if skipped:
-            cache_skips.append(reference.path)
-            continue
-        _collect_obligation(reference, immediate if reference.phase == "eager" else deferred, unknown)
-        for relationship in index.outgoing.get(reference.component.occurrence_id, ()):
-            if relationship.parent.path != reference.path:
-                continue
-            relationships.append(
-                ExecutionRelationship(
-                    relationship.parent.path,
-                    relationship.child.path,
-                    relationship.kind,
-                    relationship.phase,
-                    relationship.order,
+    def obligation(
+        component: Component,
+        path: str,
+        phase: RelationshipPhase,
+        kind: str,
+        message: str,
+    ) -> ActivationObligation:
+        return ActivationObligation(
+            kind=kind,
+            phase=phase,
+            path=path,
+            service=qualified_name(component.service_type),
+            message=message,
+            async_required=component.requires_async,
+            cache_owner=component.cache_owner.value,
+            cleanup_owner=component.cleanup_owner.value,
+        )
+
+    def visit(component: Component, path: str, phase: RelationshipPhase) -> None:
+        phase_obligations = immediate if phase == "eager" else deferred
+        if component.kind is ComponentKind.provider:
+            immediate.append(
+                obligation(
+                    component,
+                    path,
+                    "eager",
+                    "provider",
+                    "Acquire a provider handle; invoking its target is deferred",
                 )
             )
-            queue.append(relationship.child)
+            for order, child in enumerate(component.dependencies):
+                child_path = f"{path}/dependency:{child.argument or order}:{order}"
+                relationships.append(
+                    ExecutionRelationship(path, child_path, "deferred_target", "deferred", order, "on demand")
+                )
+                visit(child, child_path, "deferred")
+            return
+
+        if component.kind is ComponentKind.scope_slot:
+            phase_obligations.append(
+                obligation(
+                    component,
+                    path,
+                    phase,
+                    "scope_slot",
+                    "A matching value must be supplied by the active scope",
+                )
+            )
+            return
+
+        if component.kind is ComponentKind.runtime_context:
+            phase_obligations.append(
+                obligation(
+                    component,
+                    path,
+                    phase,
+                    "runtime_context",
+                    "Runtime context is supplied by the resolver",
+                )
+            )
+            unknown.append(f"{path}: runtime context can perform declared or unrestricted resolution at runtime")
+
+        if component.requires_async:
+            async_obligation = obligation(
+                component,
+                path,
+                phase,
+                "async_requirement",
+                "This compiled operation requires asynchronous activation",
+            )
+            phase_obligations.append(async_obligation)
+            async_causes.append(async_obligation)
+
+        if component.kind is ComponentKind.pre_configuration:
+            phase_obligations.append(
+                obligation(
+                    component,
+                    path,
+                    phase,
+                    "initializer",
+                    "Pre-configuration runs before core activation on first use",
+                )
+            )
+
+        skipped = _scenario_skips(component, selected_scenario)
+        if component.activation in (ComponentActivation.constructor, ComponentActivation.factory) and not skipped:
+            acquisitions.append(
+                obligation(
+                    component,
+                    path,
+                    phase,
+                    "construction",
+                    "May construct or invoke the registered factory",
+                )
+            )
+
+        if component.manages_cleanup:
+            cleanup_obligation = obligation(
+                component,
+                path,
+                phase,
+                "resource",
+                "Cleanup is retained by the compiled cleanup owner",
+            )
+            phase_obligations.append(cleanup_obligation)
+            cleanup.append(cleanup_obligation)
+
+        if skipped:
+            cache_skips.append(path)
+            return
+
+        for order, configuration in enumerate(component.pre_configurations):
+            child_path = f"{path}/pre_configuration:{order}"
+            relationships.append(
+                ExecutionRelationship(
+                    path,
+                    child_path,
+                    "pre_configuration",
+                    phase,
+                    order,
+                    "before core activation",
+                )
+            )
+            visit(configuration, child_path, phase)
+
+        for order, child in enumerate(component.dependencies):
+            child_path = f"{path}/dependency:{child.argument or order}:{order}"
+            declared_resolution = child.argument is not None and child.argument.startswith("resolution")
+            child_phase: RelationshipPhase = "deferred" if declared_resolution else phase
+            kind: RelationshipKind = "declared_resolution" if declared_resolution else "dependency"
+            ordering = (
+                "on explicit runtime request"
+                if declared_resolution
+                else "potentially concurrent collection member"
+                if component.kind is ComponentKind.collection
+                else "before core activation"
+            )
+            relationships.append(ExecutionRelationship(path, child_path, kind, child_phase, order, ordering))
+            visit(child, child_path, child_phase)
+
+        for order, decorator in enumerate(component.decorators):
+            child_path = f"{path}/decorator:{order}"
+            relationships.append(
+                ExecutionRelationship(path, child_path, "decorator", phase, order, "after core activation")
+            )
+            visit(decorator, child_path, phase)
+
+    visit(root_ref.component, root_ref.path, "eager")
 
     return ActivationReport(
         selected_root=root_ref,
-        scenario=scenario,
+        scenario=selected_scenario,
         scenario_assumptions=assumptions,
-        immediate_obligations=tuple(sorted(immediate, key=lambda item: (item.path, item.kind))),
-        deferred_obligations=tuple(sorted(deferred, key=lambda item: (item.path, item.kind))),
-        execution_relationships=tuple(
-            sorted(relationships, key=lambda item: (item.parent_path, item.order, item.child_path))
-        ),
-        cache_skips=tuple(sorted(dict.fromkeys(cache_skips))),
-        unknown_runtime_work=tuple(sorted(dict.fromkeys(unknown))),
+        immediate_obligations=tuple(immediate),
+        deferred_obligations=tuple(deferred),
+        execution_relationships=tuple(relationships),
+        cache_skips=tuple(dict.fromkeys(cache_skips)),
+        unknown_runtime_work=tuple(dict.fromkeys(unknown)),
+        async_causes=tuple(async_causes),
+        potential_acquisitions=tuple(acquisitions),
+        cleanup_owners=tuple(cleanup),
     )
 
 
@@ -901,9 +1099,12 @@ def _select_root_occurrence(graph: CompiledGraph, index: GraphIndex, target: Any
         root
         for root in graph.roots
         if root.requested_type == service_type or root.component.service_type == service_type
+        if root.component.name is None
     ]
     if not matches:
-        raise GraphSelectionError(f"activation-root-not-found: {qualified_name(service_type)} is not a compiled root")
+        raise GraphSelectionError(
+            f"activation-service-not-found: {qualified_name(service_type)} is not an unambiguous compiled root"
+        )
     if len(matches) > 1:
         raise GraphSelectionError(
             f"activation-ambiguous-root: {qualified_name(service_type)} matches {len(matches)} roots; use --path"
@@ -1134,18 +1335,22 @@ def _structure_signature(component: Component) -> tuple[object, ...]:
 
 
 def _scenario_assumptions(scenario: ActivationScenario) -> tuple[str, ...]:
-    if scenario == "cold":
+    base = ("Static analysis only; runtime cache and provision state are not inspected.",)
+    if scenario is ActivationScenario.cold:
         return (
+            *base,
             "relevant caches are empty",
             "shared pre-configurations have not completed",
             "no inherited scoped values are assumed",
         )
-    if scenario == "warm_singletons":
+    if scenario is ActivationScenario.warm_singletons:
         return (
+            *base,
             "relevant singleton caches and shared pre-configurations are complete",
             "scoped and per-resolution caches remain cold",
         )
     return (
+        *base,
         "relevant singleton and scoped caches are populated",
         "per-resolution caches remain cold",
         "deferred provider calls are not assumed to happen",
@@ -1153,9 +1358,12 @@ def _scenario_assumptions(scenario: ActivationScenario) -> tuple[str, ...]:
 
 
 def _scenario_skips(component: Component, scenario: ActivationScenario) -> bool:
-    if scenario == "warm_singletons" and component.cache_owner is RuntimeOwnerKind.singleton:
+    if scenario is ActivationScenario.warm_singletons and component.cache_owner is RuntimeOwnerKind.singleton:
         return True
-    if scenario == "warm_scope" and component.cache_owner in (RuntimeOwnerKind.singleton, RuntimeOwnerKind.scope):
+    if scenario is ActivationScenario.warm_scope and component.cache_owner in (
+        RuntimeOwnerKind.singleton,
+        RuntimeOwnerKind.scope,
+    ):
         return True
     return False
 

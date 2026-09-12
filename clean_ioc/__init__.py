@@ -31,6 +31,7 @@ from .container import (
 from .graph_analysis import (
     ActivationObligation,
     ActivationReport,
+    ActivationScenario,
     ContextualCacheCertainty,
     ContextualCacheFinding,
     DependencyImpact,
@@ -88,6 +89,7 @@ __all__ = [
     "AsyncProvider",
     "ActivationObligation",
     "ActivationReport",
+    "ActivationScenario",
     "CandidateDecision",
     "CompilationExplanation",
     "CompiledGraph",

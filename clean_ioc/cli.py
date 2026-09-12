@@ -222,8 +222,9 @@ def _parser() -> argparse.ArgumentParser:
 
     activation = commands.add_parser("activation", help="Show static activation obligations for a root")
     activation.add_argument("target", help="module:object composition target")
-    activation.add_argument("service", nargs="?", help="module:attribute service type")
-    activation.add_argument("--path", help="manifest path for an exact root occurrence")
+    activation_selection = activation.add_mutually_exclusive_group(required=True)
+    activation_selection.add_argument("service", nargs="?", help="module:attribute service type")
+    activation_selection.add_argument("--path", help="manifest path for an exact root occurrence")
     activation.add_argument("--scenario", choices=("cold", "warm_singletons", "warm_scope"), default="cold")
     activation.add_argument("--format", choices=("text", "mermaid", "json"), default="text")
     activation.add_argument("-o", "--output", help="write output to a file instead of stdout")
