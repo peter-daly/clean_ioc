@@ -1,0 +1,2884 @@
+import ast
+import json
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any, Generic, Literal, NewType, TypeVar, cast
+
+import pytest
+
+import clean_ioc.component_filters as cf
+from clean_ioc import (
+    INJECT,
+    AsyncProvider,
+    BuildIssue,
+    BuildReport,
+    CandidateDecision,
+    CompilationAttempt,
+    CompilationExplanation,
+    CompiledGraph,
+    ComponentKind,
+    ContainerBuilder,
+    ContainerBuildError,
+    DecisionOutcome,
+    DefinitionOrigin,
+    GraphManifest,
+    GraphVisit,
+    IssueSeverity,
+    PartialEdge,
+    PartialGraph,
+    PartialNode,
+    Provider,
+    ResolutionContext,
+    Scope,
+    SourceLocation,
+    TypeAst,
+    ValidationContext,
+    build_arg,
+    derive,
+    generic_arg,
+    inject,
+    select,
+)
+from clean_ioc.cli import main
+from clean_ioc.factories import use_component, use_component_async
+from clean_ioc.tooling import qualified_name
+
+
+def _failed_partial_graph(error: ContainerBuildError) -> PartialGraph:
+    assert error.partial_graph is not None
+    return error.partial_graph
+
+
+def test_argument_explanations_are_frozen_redacted_and_do_not_rerun_derivations():
+    class Dependency:
+        pass
+
+    class Service:
+        def __init__(self, dependency: Dependency, timeout: int = 30, environment: str = "secret-default"):
+            self.dependency = dependency
+
+    calls = 0
+
+    def timeout(context):
+        nonlocal calls
+        calls += 1
+        return 5
+
+    builder = ContainerBuilder()
+    builder.register(Dependency)
+    builder.register(
+        Service,
+        arguments={"dependency": inject(), "timeout": derive(timeout), "environment": build_arg("token")},
+    )
+    graph = builder.build(build_args={"token": "super-secret"}).graph
+    service = next(root.component for root in graph.roots if root.component.service_type is Service)
+
+    records = {item.parameter: item for item in graph.explain_arguments(service)}
+    assert records["dependency"].policy_kind == "inject"
+    assert records["dependency"].result_category == "component_edge"
+    assert records["timeout"].policy_kind == "derive"
+    assert records["timeout"].evaluation_phase == "compilation"
+    assert records["environment"].policy_kind == "build_argument"
+    assert "super-secret" not in str([item.to_dict() for item in records.values()])
+    assert "secret-default" not in str([item.to_dict() for item in records.values()])
+    assert calls == 1
+    graph.explain_arguments(service)
+    assert calls == 1
+
+
+def test_generic_specialization_explanation_keeps_substituted_dependency_annotations():
+    TItem = TypeVar("TItem")
+
+    class Repository(Generic[TItem]):
+        def __init__(self, item_type: type[TItem]):
+            self.item_type = item_type
+
+    builder = ContainerBuilder()
+    builder.register(Repository[int], arguments={"item_type": generic_arg(TItem)})
+    graph = builder.build().graph
+    component = next(root.component for root in graph.roots if root.component.service_type == Repository[int])
+
+    explanation = graph.explain_specialization(component)
+    assert explanation.requested_service.endswith("Repository[int]")
+    assert explanation.service_bindings
+    assert graph.explain_arguments(component)[0].policy_kind == "generic_argument"
+
+
+def test_explanation_records_structural_factory_substitutions_and_never_stringifies_values():
+    TItem = TypeVar("TItem")
+
+    class Serializer(Generic[TItem]):
+        pass
+
+    class HostileValue:
+        def __str__(self):
+            raise AssertionError("tooling must not stringify configured values")
+
+        __repr__ = __str__
+
+    def factory(child: Serializer[TItem], configured: object) -> Serializer[list[TItem]]:
+        del child, configured
+        return Serializer()
+
+    class Root:
+        def __init__(self, serializer: Serializer[list[int]]):
+            self.serializer = serializer
+
+    builder = ContainerBuilder()
+    builder.register(Serializer[int], factory=Serializer)
+    builder.register_pattern(Serializer[list[TItem]], factory=factory, arguments={"configured": HostileValue()})
+    builder.register(Root)
+    graph = builder.build().graph
+    component = next(visit.component for visit in graph.walk() if visit.component.service_type == Serializer[list[int]])
+
+    specialization = graph.explain_specialization(component)
+    assert specialization.selected_tier == "structural_pattern"
+    assert specialization.factory_pattern_bindings
+    assert [name for name, _ in specialization.factory_pattern_bindings] == ["TItem"]
+    assert specialization.dependency_annotations
+    assert specialization.dependency_annotations[0][0] == "child"
+    assert specialization.dependency_annotations[0][1].endswith("Serializer[TypeVar(TItem)]")
+    assert specialization.dependency_annotations[0][2].endswith("Serializer[int]")
+    rendered = [record.to_dict() for record in graph.explain_arguments(component)]
+    assert "tooling must not stringify" not in str(rendered)
+
+
+def test_safe_declaration_labels_preserve_literal_and_newtype_identity():
+    First = NewType("First", int)
+    Second = NewType("Second", int)
+
+    assert qualified_name(Literal["alpha"]) == "typing.Literal[alpha]"
+    assert qualified_name(Literal["first"]) != qualified_name(Literal["second"])
+    assert qualified_name(Literal[1]) != qualified_name(Literal[2])
+    assert qualified_name(First) != qualified_name(Second)
+
+    class Service:
+        def __init__(self, value: Literal["alpha"]):
+            self.value = value
+
+    builder = ContainerBuilder()
+    builder.register(Service, arguments={"value": "alpha"})
+    manifest = builder.build().graph.manifest().to_json()
+    assert "typing.Literal[alpha]" in manifest
+
+
+def test_parameter_explanation_serialization_is_deterministic_and_provenance_is_opt_in():
+    class Dependency:
+        pass
+
+    class Service:
+        def __init__(self, dependency: Dependency):
+            self.dependency = dependency
+
+    def build():
+        builder = ContainerBuilder()
+        builder.register(Dependency)
+        builder.register(Service)
+        graph = builder.build().graph
+        component = next(root.component for root in graph.roots if root.component.service_type is Service)
+        return graph.explain_arguments(component)[0]
+
+    first, second = build(), build()
+    assert first.to_dict() == second.to_dict()
+    assert "provenance" not in first.to_dict()
+    assert first.to_dict(include_provenance=True)["provenance"] is not None
+
+
+def test_closed_generic_constructor_keeps_declared_and_resolved_parameter_annotations():
+    TItem = TypeVar("TItem")
+
+    class Dependency(Generic[TItem]):
+        pass
+
+    class Service(Generic[TItem]):
+        def __init__(self, dependency: Dependency[TItem]):
+            self.dependency = dependency
+
+    class Root:
+        def __init__(self, service: Service[int]):
+            self.service = service
+
+    builder = ContainerBuilder()
+    builder.register(Dependency[int])
+    builder.register(Service[int])
+    builder.register(Root)
+    graph = builder.build().graph
+    service = next(visit.component for visit in graph.walk() if visit.component.service_type == Service[int])
+    parameter = graph.explain_arguments(service)[0]
+    assert parameter.declared_annotation.endswith("Dependency[TypeVar(TItem)]")
+    assert parameter.canonical_annotation.endswith("Dependency[int]")
+
+
+def test_failed_derivation_does_not_disclose_exception_text_in_text_or_json():
+    class Service:
+        def __init__(self, value: str):
+            self.value = value
+
+    def fail(_):
+        raise RuntimeError("derive-secret-value")
+
+    builder = ContainerBuilder()
+    builder.register(Service, arguments={"value": derive(fail)})
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    assert "derive-secret-value" not in str(raised.value)
+    assert raised.value.report is not None
+    assert "derive-secret-value" not in raised.value.report.to_json()
+
+
+def test_activation_report_separates_provider_target_slots_and_async_causes():
+    class Request:
+        pass
+
+    class AsyncLeaf:
+        pass
+
+    async def make_leaf() -> AsyncLeaf:
+        return AsyncLeaf()
+
+    class Application:
+        def __init__(self, request: Request, provider: AsyncProvider[AsyncLeaf]):
+            self.request = request
+            self.provider = provider
+
+    builder = ContainerBuilder()
+    builder.declare_scope_slot(Request)
+    builder.register(AsyncLeaf, factory=make_leaf)
+    builder.register(Application)
+    report = builder.build().graph.activation_report(Application)
+
+    assert report.scenario.value == "cold"
+    assert [item.kind for item in report.immediate_obligations] == ["scope_slot", "provider"]
+    assert not [item for item in report.async_causes if item.phase == "eager"]
+    assert [item.phase for item in report.async_causes] == ["deferred"]
+    assert any(
+        item.phase == "deferred" and item.component.endswith("AsyncLeaf") for item in report.potential_acquisitions
+    )
+    assert "Static analysis only" in report.to_text()
+
+
+def test_activation_report_warm_cache_is_an_assumption_not_runtime_state():
+    class Singleton:
+        pass
+
+    class Application:
+        def __init__(self, singleton: Singleton):
+            self.singleton = singleton
+
+    builder = ContainerBuilder()
+    builder.register(Singleton, lifespan="singleton")
+    builder.register(Application)
+    graph = builder.build().graph
+
+    cold = graph.activation_report(Application, scenario="cold")
+    warm = graph.activation_report(Application, scenario="warm_singletons")
+
+    assert any(item.component.endswith("Singleton") for item in cold.potential_acquisitions)
+    assert not any(item.component.endswith("Singleton") for item in warm.potential_acquisitions)
+    assert "assumptions" in warm.to_json()
+
+
+def test_activation_report_requires_an_unambiguous_root():
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service, name="first")
+    builder.register(Service, name="second")
+    graph = builder.build().graph
+
+    with pytest.raises(ValueError, match="activation-service-not-found"):
+        graph.activation_report(Service)
+
+
+def test_activation_report_does_not_activate_application_code():
+    class Service:
+        pass
+
+    def forbidden_factory() -> Service:
+        raise AssertionError("analysis must not run factories")
+
+    builder = ContainerBuilder()
+    builder.register(Service, factory=forbidden_factory)
+
+    report = builder.build().graph.activation_report(Service)
+
+    assert report.potential_acquisitions[0].component.endswith("Service")
+
+
+def test_build_report_aggregates_independent_errors_and_failed_builder_is_reusable():
+    class FirstMissing:
+        pass
+
+    class SecondMissing:
+        pass
+
+    class First:
+        def __init__(self, missing: FirstMissing):
+            self.missing = missing
+
+    class Second:
+        def __init__(self, missing: SecondMissing):
+            self.missing = missing
+
+    builder = ContainerBuilder()
+    builder.register(First)
+    builder.register(Second)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert isinstance(report, BuildReport)
+    assert raised.value.explanations
+    assert any(explanation.subject.startswith("Argument 'missing'") for explanation in raised.value.explanations)
+    assert [issue.code for issue in report.errors] == ["missing-component", "missing-component"]
+    assert "FirstMissing" in report.errors[0].message
+    assert "SecondMissing" in report.errors[1].message
+    assert report.errors[0].path[-1].endswith("FirstMissing")
+    assert report.errors[1].path[-1].endswith("SecondMissing")
+
+    builder.register(FirstMissing)
+    builder.register(SecondMissing)
+    assert builder.build().build_report.is_valid
+
+
+def test_complete_component_graph_includes_special_injection_edges_and_redacts_values():
+    class Request:
+        pass
+
+    class Application:
+        def __init__(
+            self,
+            request: Request,
+            context: ResolutionContext,
+            scope: Scope,
+            configured: str,
+            defaulted: str = "top-secret",
+        ):
+            self.request = request
+            self.context = context
+            self.scope = scope
+            self.configured = configured
+            self.defaulted = defaulted
+
+    def configured_value(context):
+        assert not context.has_default
+        return "compiled-secret"
+
+    builder = ContainerBuilder()
+    builder.declare_scope_slot(Request)
+    builder.register(
+        Application,
+        arguments={"configured": derive(configured_value)},
+    )
+    builder.mark_entrypoint(Application)
+    container = builder.build()
+    application = next(root.component for root in container.graph.entrypoints)
+
+    assert {component.kind for component in application.dependencies} == {
+        ComponentKind.scope_slot,
+        ComponentKind.runtime_context,
+        ComponentKind.value,
+    }
+    manifest = container.graph.manifest().to_json()
+    assert "top-secret" not in manifest
+    assert "compiled-secret" not in manifest
+    assert '"activation": "supplied"' in manifest
+
+
+def test_use_component_target_is_visible_and_missing_targets_fail_at_build():
+    class Missing:
+        pass
+
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service, factory=use_component(Missing))
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
+    assert issue.code == "missing-component"
+    assert issue.path[0].endswith("Service")
+    assert issue.path[-1].endswith("Missing")
+
+
+def test_use_component_filter_selects_the_same_compiled_and_runtime_target():
+    class Dependency:
+        pass
+
+    class DefaultDependency(Dependency):
+        pass
+
+    class SelectedDependency(Dependency):
+        pass
+
+    class Alias:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, DefaultDependency)
+    builder.register(Dependency, SelectedDependency, name="selected")
+    builder.register(Alias, factory=use_component(Dependency, filter=cf.with_name("selected")))
+    container = builder.build()
+
+    alias_component = next(component for component in container.components if component.service_type is Alias)
+    target = next(component for component in alias_component.dependencies if component.service_type is Dependency)
+    assert target.implementation_type is SelectedDependency
+    assert isinstance(container.resolve(Alias), SelectedDependency)
+
+
+def test_use_component_self_reference_is_a_build_time_cycle():
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service, factory=use_component(Service))
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
+    assert issue.code == "circular-dependency"
+
+
+def test_use_component_target_participates_in_transitive_lifespan_validation():
+    class ResolutionLocal:
+        pass
+
+    class TransientWrapper:
+        def __init__(self, resolution_local: ResolutionLocal):
+            self.resolution_local = resolution_local
+
+    class SingletonService:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(ResolutionLocal)
+    builder.register(TransientWrapper, lifespan="transient")
+    builder.register(SingletonService, factory=use_component(TransientWrapper), lifespan="singleton")
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("SingletonService"))
+    assert issue.code == "captive-dependency"
+    assert tuple(part.rsplit(".", 1)[-1] for part in issue.path) == (
+        "SingletonService",
+        "TransientWrapper",
+        "ResolutionLocal",
+    )
+
+
+@pytest.mark.asyncio
+async def test_use_component_sync_mode_rejects_async_targets_but_async_mode_compiles():
+    class AsyncTarget:
+        pass
+
+    class Service:
+        pass
+
+    async def create_target() -> AsyncTarget:
+        return AsyncTarget()
+
+    invalid_builder = ContainerBuilder()
+    invalid_builder.register(AsyncTarget, factory=create_target)
+    invalid_builder.register(Service, factory=use_component(AsyncTarget))
+
+    with pytest.raises(ContainerBuildError) as raised:
+        invalid_builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
+    assert issue.code == "async-required"
+
+    builder = ContainerBuilder()
+    builder.register(AsyncTarget, factory=create_target)
+    builder.register(Service, factory=use_component_async(AsyncTarget))
+    container = builder.build()
+
+    assert isinstance(await container.resolve_async(Service), AsyncTarget)
+
+
+def test_use_component_uses_the_frozen_target_of_an_anchored_singleton():
+    class Dependency:
+        pass
+
+    class RootDependency(Dependency):
+        pass
+
+    class OverlayDependency(Dependency):
+        pass
+
+    class SingletonAlias:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, RootDependency, lifespan="singleton")
+    builder.register(SingletonAlias, factory=use_component(Dependency), lifespan="singleton")
+    container = builder.build()
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(Dependency, OverlayDependency, lifespan="singleton")
+    overlay = overlay_builder.build()
+
+    assert isinstance(overlay.resolve(SingletonAlias), RootDependency)
+    assert overlay.resolve(SingletonAlias) is container.resolve(SingletonAlias)
+
+
+def test_semantic_manifests_are_process_independent_and_diff_wiring_changes():
+    class Dependency:
+        pass
+
+    class FirstDependency(Dependency):
+        pass
+
+    class SecondDependency(Dependency):
+        pass
+
+    class Application:
+        def __init__(self, dependency: Dependency):
+            self.dependency = dependency
+
+    def build(implementation):
+        builder = ContainerBuilder()
+        builder.register(Dependency, implementation)
+        builder.register(Application)
+        builder.mark_entrypoint(Application)
+        return builder.build()
+
+    first = build(FirstDependency).graph.manifest()
+    equivalent = build(FirstDependency).graph.manifest()
+    changed = build(SecondDependency).graph.manifest()
+
+    assert first.to_json() == equivalent.to_json()
+    assert first.fingerprint == equivalent.fingerprint
+    assert equivalent.diff(first).is_empty
+    difference = changed.diff(first)
+    assert not difference.is_empty
+    assert any(change.path.endswith("dependency:dependency:0") for change in difference.changed)
+    assert GraphManifest.from_json(first.to_json()).to_json() == first.to_json()
+
+
+def test_entrypoint_markers_focus_graphs_without_weakening_validation():
+    class Dependency:
+        pass
+
+    class Application:
+        def __init__(self, dependency: Dependency):
+            self.dependency = dependency
+
+    class Unused:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Dependency)
+    builder.register(Application)
+    builder.register(Unused)
+    builder.mark_entrypoint(Application)
+    container = builder.build()
+
+    assert [issue.code for issue in container.build_report.warnings] == ["unreachable-component"]
+    assert len(container.graph.manifest().data["roots"]) == 1
+    assert len(container.graph.manifest(all_roots=True).data["roots"]) == 3
+    assert container.resolve(Unused).__class__ is Unused
+
+
+def test_custom_validation_rules_receive_the_complete_graph_and_aggregate_with_builtin_findings():
+    class Service:
+        pass
+
+    class MissingEntrypoint:
+        pass
+
+    received: list[CompiledGraph] = []
+
+    def validate(context: ValidationContext):
+        graph = context.graph
+        received.append(graph)
+        assert {root.requested_type for root in graph.roots} == {Service}
+        return (
+            BuildIssue(
+                code="example-domain-error",
+                severity=IssueSeverity.error,
+                message="The application graph violates a domain rule",
+            ),
+        )
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.mark_entrypoint(MissingEntrypoint)
+    builder.add_validation_rule(validate)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    assert [issue.code for issue in report.errors] == ["missing-entrypoint", "example-domain-error"]
+    assert len(received) == 1
+
+
+def test_custom_validation_warning_order_deduplication_build_args_and_failed_builder_retry():
+    class Service:
+        pass
+
+    duplicate = BuildIssue(
+        code="example-duplicate",
+        severity=IssueSeverity.warning,
+        message="Reported once",
+    )
+
+    def validate(context: ValidationContext):
+        graph = context.graph
+        if graph.build_args.get("ready"):
+            return (duplicate, duplicate)
+        return (
+            BuildIssue(
+                code="example-not-ready",
+                severity=IssueSeverity.error,
+                message="Composition is not ready",
+            ),
+            duplicate,
+            duplicate,
+        )
+
+    def validate_later(_: ValidationContext):
+        return (
+            BuildIssue(
+                code="example-later",
+                severity=IssueSeverity.warning,
+                message="Later rule",
+            ),
+        )
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.add_validation_rule(validate)
+    builder.add_validation_rule(validate_later)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build(build_args={"ready": False})
+
+    report = raised.value.report
+    assert report is not None
+    assert [issue.code for issue in report.issues] == [
+        "example-not-ready",
+        "example-duplicate",
+        "example-later",
+    ]
+
+    container = builder.build(build_args={"ready": True})
+    assert [issue.code for issue in container.build_report.issues] == [
+        "example-duplicate",
+        "example-later",
+    ]
+
+
+def test_graph_walk_preserves_paths_across_every_compiled_edge_kind():
+    class Plugin:
+        pass
+
+    class Request:
+        pass
+
+    class Service:
+        def __init__(
+            self,
+            plugins: list[Plugin],
+            request: Request,
+            context: ResolutionContext,
+            configured: str,
+        ):
+            self.plugins = plugins
+            self.request = request
+            self.context = context
+            self.configured = configured
+
+    class Decorator:
+        def __init__(self, child: Service, plugin: Plugin):
+            self.child = child
+            self.plugin = plugin
+
+    def configure(plugin: Plugin) -> None:
+        del plugin
+
+    builder = ContainerBuilder()
+    builder.register(Plugin, lifespan="singleton")
+    builder.declare_scope_slot(Request)
+    builder.register(Service, arguments={"configured": "fixed"})
+    builder.register_decorator(Service, Decorator, decorated_arg="child")
+    builder.pre_configure(Service, configure)
+    graph = builder.build().graph
+
+    visits = tuple(visit for visit in graph.walk() if visit.root.requested_type is Service)
+    assert all(isinstance(visit, GraphVisit) for visit in visits)
+    assert [visit.component.occurrence_id for visit in graph.walk()] == [
+        visit.component.occurrence_id for visit in graph.walk()
+    ]
+    assert {
+        ComponentKind.registration,
+        ComponentKind.collection,
+        ComponentKind.scope_slot,
+        ComponentKind.runtime_context,
+        ComponentKind.value,
+        ComponentKind.pre_configuration,
+        ComponentKind.decorator,
+    }.issubset({visit.component.kind for visit in visits})
+
+    decorator = next(visit for visit in visits if visit.component.kind is ComponentKind.decorator)
+    configuration = next(visit for visit in visits if visit.component.kind is ComponentKind.pre_configuration)
+    assert decorator.component is decorator.components[-1]
+    assert decorator.path[-1].endswith("Decorator")
+    assert configuration.path[-1].endswith("configure")
+
+    issue = decorator.issue("example-layer-boundary", "Forbidden dependency direction")
+    assert issue.root is not None and issue.root.endswith("Service")
+    assert issue.path == decorator.path
+
+
+def test_validation_context_caches_type_asts_without_attaching_them_to_the_graph():
+    class InspectedService:
+        def source_marker(self):
+            return "type-ast-source-marker"
+
+    contexts: list[ValidationContext] = []
+    inspected: list[TypeAst] = []
+
+    def first_rule(context: ValidationContext):
+        contexts.append(context)
+        first = context.type_ast(InspectedService)
+        second = context.type_ast(InspectedService)
+        assert first is not None
+        assert first is second
+        inspected.append(first)
+        return ()
+
+    def second_rule(context: ValidationContext):
+        contexts.append(context)
+        assert context.type_ast(InspectedService) is inspected[0]
+        assert context.type_ast(int) is None
+        return ()
+
+    builder = ContainerBuilder()
+    builder.register(InspectedService)
+    builder.add_validation_rule(first_rule, mode="validation")
+    builder.add_validation_rule(second_rule, mode="validation")
+    container = builder.build()
+    assert not contexts
+
+    container.validation_report()
+
+    assert contexts[0] is contexts[1]
+    type_ast = inspected[0]
+    assert isinstance(type_ast.node, ast.ClassDef)
+    assert type_ast.node.name == "InspectedService"
+    assert type_ast.filename.endswith("test_compiler_tooling.py")
+    assert type_ast.node.lineno >= type_ast.first_line
+    assert "type-ast-source-marker" in type_ast.source
+    assert not hasattr(container.graph, "type_ast")
+    assert "type-ast-source-marker" not in container.graph.manifest(all_roots=True).to_json()
+
+
+def test_validation_context_type_ast_requires_a_type():
+    captured: list[ValidationContext] = []
+
+    def validate(context: ValidationContext):
+        captured.append(context)
+        return ()
+
+    builder = ContainerBuilder()
+    builder.add_validation_rule(validate)
+    builder.build()
+
+    with pytest.raises(TypeError, match="requires a type"):
+        captured[0].type_ast(cast(Any, "not-a-type"))
+
+
+def test_full_validation_reuses_build_findings_and_runs_only_validate_only_rules():
+    class InspectedService:
+        def source_marker(self):
+            return "validation-only-type-ast-source-marker"
+
+    class UnusedService:
+        pass
+
+    build_calls = 0
+    contexts: list[ValidationContext] = []
+    inspected: list[TypeAst] = []
+
+    def build_rule(_: ValidationContext):
+        nonlocal build_calls
+        build_calls += 1
+        return (
+            BuildIssue(
+                code=f"example-build-rule-run-{build_calls}",
+                severity=IssueSeverity.warning,
+                message="Build policy warning",
+            ),
+        )
+
+    def expensive_rule(context: ValidationContext):
+        contexts.append(context)
+        type_ast = context.type_ast(InspectedService)
+        assert type_ast is not None
+        inspected.append(type_ast)
+        return (
+            BuildIssue(
+                code="example-expensive-rule",
+                severity=IssueSeverity.error,
+                message="Expensive policy failed",
+            ),
+        )
+
+    builder = ContainerBuilder()
+    builder.register(InspectedService)
+    builder.register(UnusedService)
+    builder.mark_entrypoint(InspectedService)
+    builder.add_validation_rule(build_rule)
+    builder.add_validation_rule(expensive_rule, mode="validation")
+    container = builder.build()
+
+    assert not contexts
+    assert build_calls == 1
+    assert container.build_report.is_valid
+    assert [issue.code for issue in container.build_report.issues] == [
+        "unreachable-component",
+        "example-build-rule-run-1",
+    ]
+    container.new_scope()
+    assert not contexts
+
+    validation_report = container.validation_report()
+
+    assert build_calls == 1
+    assert not validation_report.is_valid
+    assert [issue.code for issue in validation_report.issues] == [
+        "unreachable-component",
+        "example-build-rule-run-1",
+        "example-expensive-rule",
+    ]
+    assert [issue.code for issue in container.build_report.issues] == [
+        "unreachable-component",
+        "example-build-rule-run-1",
+    ]
+    assert len(contexts) == 1
+    assert "validation-only-type-ast-source-marker" in inspected[0].source
+
+    next_validation_report = container.validation_report()
+    assert build_calls == 1
+    assert [issue.code for issue in next_validation_report.issues] == [
+        "unreachable-component",
+        "example-build-rule-run-1",
+        "example-expensive-rule",
+    ]
+    assert len(contexts) == 2
+    assert inspected[0] is not inspected[1]
+
+
+def test_full_validation_reuses_overlay_build_findings_and_runs_validate_only_rules():
+    class ParentService:
+        pass
+
+    class OverlayService:
+        pass
+
+    duplicate = BuildIssue(
+        code="example-validation-duplicate",
+        severity=IssueSeverity.warning,
+        message="Reported by both layers",
+    )
+    calls: list[tuple[str, tuple[object, ...], ValidationContext]] = []
+
+    def parent_rule(context: ValidationContext):
+        calls.append(("parent", tuple(root.requested_type for root in context.graph.roots), context))
+        return (
+            BuildIssue(
+                code="example-parent-validation",
+                severity=IssueSeverity.warning,
+                message="Parent validation rule",
+            ),
+            duplicate,
+        )
+
+    def child_rule(context: ValidationContext):
+        calls.append(("child", tuple(root.requested_type for root in context.graph.roots), context))
+        return (
+            duplicate,
+            BuildIssue(
+                code="example-child-validation",
+                severity=IssueSeverity.warning,
+                message="Child validation-only rule",
+            ),
+        )
+
+    builder = ContainerBuilder()
+    builder.register(ParentService)
+    builder.add_validation_rule(parent_rule)
+    container = builder.build()
+    assert [(name, roots) for name, roots, _ in calls] == [("parent", (ParentService,))]
+    calls.clear()
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(OverlayService)
+    overlay_builder.add_validation_rule(child_rule, mode="validation")
+    overlay = overlay_builder.build()
+
+    expected_roots = (OverlayService, ParentService)
+    assert [(name, roots) for name, roots, _ in calls] == [("parent", expected_roots)]
+    calls.clear()
+
+    report = overlay.validation_report()
+
+    assert [(name, roots) for name, roots, _ in calls] == [("child", expected_roots)]
+    assert [issue.code for issue in report.issues] == [
+        "example-parent-validation",
+        "example-validation-duplicate",
+        "example-child-validation",
+    ]
+
+
+def test_architecture_validation_rule_can_report_the_forbidden_occurrence_path():
+    class InfrastructureRepository:
+        pass
+
+    class DomainService:
+        def __init__(self, repository: InfrastructureRepository):
+            self.repository = repository
+
+    InfrastructureRepository.__module__ = "example.infrastructure"
+    DomainService.__module__ = "example.domain"
+
+    def enforce_boundaries(context: ValidationContext):
+        graph = context.graph
+        for visit in graph.walk():
+            if len(visit.components) < 2:
+                continue
+            parent, dependency = visit.components[-2:]
+            if parent.implementation_type.__module__ == "example.domain" and (
+                dependency.implementation_type.__module__ == "example.infrastructure"
+            ):
+                yield visit.issue(
+                    "example-domain-depends-on-infrastructure",
+                    "Domain components cannot depend directly on infrastructure components",
+                )
+
+    builder = ContainerBuilder()
+    builder.register(InfrastructureRepository)
+    builder.register(DomainService)
+    builder.add_validation_rule(enforce_boundaries)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = report.errors[0]
+    assert issue.code == "example-domain-depends-on-infrastructure"
+    assert tuple(part.rsplit(".", 1)[-1] for part in issue.path) == (
+        "DomainService",
+        "InfrastructureRepository",
+    )
+
+
+def test_validation_rule_failures_are_structured_and_later_rules_continue():
+    class Service:
+        pass
+
+    def partially_failing(_: ValidationContext):
+        yield BuildIssue(
+            code="example-before-failure",
+            severity=IssueSeverity.warning,
+            message="This finding is retained",
+        )
+        raise ValueError("broken validator")
+
+    def malformed(_: ValidationContext):
+        return (
+            BuildIssue(
+                code="",
+                severity=IssueSeverity.warning,
+                message="Invalid empty code",
+            ),
+        )
+
+    def missing_result(_: ValidationContext):
+        return None
+
+    def later(_: ValidationContext):
+        return (
+            BuildIssue(
+                code="example-after-failure",
+                severity=IssueSeverity.warning,
+                message="Later rules still execute",
+            ),
+        )
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.add_validation_rule(partially_failing)
+    builder.add_validation_rule(malformed)
+    builder.add_validation_rule(missing_result)
+    builder.add_validation_rule(later)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    assert [issue.code for issue in report.issues] == [
+        "example-before-failure",
+        "validation-rule-error",
+        "validation-rule-error",
+        "validation-rule-error",
+        "example-after-failure",
+    ]
+    assert "broken validator" in report.issues[1].message
+    assert "malformed BuildIssue" in report.issues[2].message
+    assert "NoneType" in report.issues[3].message
+
+
+def test_async_validation_rules_are_rejected_before_build():
+    async def validate(_: ValidationContext):
+        return ()
+
+    async def generate(_: ValidationContext):
+        if False:
+            yield BuildIssue("unreachable", IssueSeverity.error, "unreachable")
+
+    class AsyncRule:
+        async def __call__(self, _: ValidationContext):
+            return ()
+
+    builder = ContainerBuilder()
+    for rule in (validate, generate, AsyncRule()):
+        with pytest.raises(TypeError, match="synchronous"):
+            builder.add_validation_rule(cast(Any, rule))
+
+    with pytest.raises(ValueError, match="mode"):
+        builder.add_validation_rule(lambda _: (), mode=cast(Any, "sometimes"))
+
+
+def test_rules_do_not_run_for_preview_structural_failure_or_ordinary_scopes():
+    class Missing:
+        pass
+
+    class InvalidService:
+        def __init__(self, missing: Missing):
+            self.missing = missing
+
+    calls: list[tuple[object, ...]] = []
+
+    def validate(context: ValidationContext):
+        graph = context.graph
+        calls.append(tuple(root.requested_type for root in graph.roots))
+        return ()
+
+    invalid_builder = ContainerBuilder()
+    invalid_builder.register(InvalidService)
+    invalid_builder.add_validation_rule(validate)
+
+    with pytest.raises(ContainerBuildError):
+        invalid_builder.build()
+    assert not calls
+
+    valid_builder = ContainerBuilder()
+    valid_builder.register(Missing)
+    valid_builder.add_validation_rule(validate)
+    assert valid_builder.has_component(Missing)
+    assert not calls
+    container = valid_builder.build()
+    assert calls == [(Missing,)]
+    container.new_scope()
+    assert calls == [(Missing,)]
+
+
+def test_overlay_inherits_parent_rules_and_runs_parent_before_child_against_all_roots():
+    class ParentService:
+        pass
+
+    class OverlayService:
+        pass
+
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    def parent_rule(context: ValidationContext):
+        graph = context.graph
+        calls.append(("parent", tuple(root.requested_type for root in graph.roots)))
+        return (
+            BuildIssue(
+                code="example-parent-rule",
+                severity=IssueSeverity.warning,
+                message="Parent rule",
+            ),
+        )
+
+    def child_rule(context: ValidationContext):
+        graph = context.graph
+        calls.append(("child", tuple(root.requested_type for root in graph.roots)))
+        return (
+            BuildIssue(
+                code="example-child-rule",
+                severity=IssueSeverity.warning,
+                message="Child rule",
+            ),
+        )
+
+    builder = ContainerBuilder()
+    builder.register(ParentService)
+    builder.add_validation_rule(parent_rule)
+    container = builder.build()
+    calls.clear()
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(OverlayService)
+    overlay_builder.add_validation_rule(child_rule)
+    overlay = overlay_builder.build()
+
+    expected_roots = (OverlayService, ParentService)
+    assert calls == [("parent", expected_roots), ("child", expected_roots)]
+    assert [issue.code for issue in overlay.build_report.warnings] == [
+        "example-parent-rule",
+        "example-child-rule",
+    ]
+
+
+def test_missing_and_ambiguous_entrypoints_have_structured_findings():
+    class Missing:
+        pass
+
+    missing_builder = ContainerBuilder()
+    missing_builder.mark_entrypoint(Missing)
+    with pytest.raises(ContainerBuildError) as raised:
+        missing_builder.build()
+    report = raised.value.report
+    assert report is not None
+    assert report.errors[0].code == "missing-entrypoint"
+
+    class Service:
+        pass
+
+    class First(Service):
+        pass
+
+    class Second(Service):
+        pass
+
+    ambiguous_builder = ContainerBuilder()
+    ambiguous_builder.register(Service, First)
+    ambiguous_builder.register(Service, Second)
+    ambiguous_builder.mark_entrypoint(Service)
+    report = ambiguous_builder.build().build_report
+    assert any(issue.code == "ambiguous-selection" for issue in report.warnings)
+
+
+def test_collection_entrypoint_marks_every_matching_member():
+    class Handler:
+        pass
+
+    class First(Handler):
+        pass
+
+    class Second(Handler):
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Handler, First)
+    builder.register(Handler, Second)
+    builder.mark_entrypoint(list[Handler])
+    container = builder.build()
+
+    assert len(container.graph.entrypoints) == 2
+    assert not container.build_report.warnings
+
+    missing_builder = ContainerBuilder()
+    missing_builder.mark_entrypoint(list[Handler])
+    with pytest.raises(ContainerBuildError) as raised:
+        missing_builder.build()
+    report = raised.value.report
+    assert report is not None
+    assert report.errors[0].code == "missing-entrypoint"
+
+
+def test_overlay_anchors_parent_singletons_and_starts_a_fresh_scoped_cache():
+    class Dependency:
+        pass
+
+    class RootDependency(Dependency):
+        pass
+
+    class OverlayDependency(Dependency):
+        pass
+
+    class SingletonService:
+        def __init__(self, dependency: Dependency):
+            self.dependency = dependency
+
+    class ScopedService:
+        def __init__(self, dependency: Dependency):
+            self.dependency = dependency
+
+    class OverlaySingletonDecorator:
+        def __init__(self, child: SingletonService, dependency: Dependency):
+            self.child = child
+            self.dependency = dependency
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, RootDependency, lifespan="singleton")
+    builder.register(SingletonService, lifespan="singleton")
+    builder.register(ScopedService, lifespan="scoped")
+    container = builder.build()
+    parent_scoped = container.resolve(ScopedService)
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(Dependency, OverlayDependency, lifespan="scoped")
+    overlay_builder.register_decorator(
+        SingletonService,
+        OverlaySingletonDecorator,
+        decorated_arg="child",
+    )
+    overlay = overlay_builder.build()
+    overlay_singleton = overlay.resolve(SingletonService)
+    overlay_scoped = overlay.resolve(ScopedService)
+
+    assert isinstance(overlay_singleton.dependency, RootDependency)
+    assert overlay_singleton is container.resolve(SingletonService)
+    assert overlay_scoped is not parent_scoped
+    assert isinstance(overlay_scoped.dependency, OverlayDependency)
+
+
+@pytest.mark.parametrize("owner_lifespan", ["singleton", "scoped"])
+def test_long_lived_components_cannot_transitively_capture_per_resolution(owner_lifespan):
+    class ResolutionLocal:
+        pass
+
+    class TransientWrapper:
+        def __init__(self, resolution_local: ResolutionLocal):
+            self.resolution_local = resolution_local
+
+    class Owner:
+        def __init__(self, wrapper: TransientWrapper):
+            self.wrapper = wrapper
+
+    builder = ContainerBuilder()
+    builder.register(ResolutionLocal)
+    builder.register(TransientWrapper, lifespan="transient")
+    builder.register(Owner, lifespan=owner_lifespan)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Owner"))
+    assert issue.code == "captive-dependency"
+    assert tuple(part.rsplit(".", 1)[-1] for part in issue.path) == (
+        "Owner",
+        "TransientWrapper",
+        "ResolutionLocal",
+    )
+    assert "per-resolution" in issue.message
+
+
+@pytest.mark.parametrize("edge", ["constructor", "transient-wrapper", "decorator", "pre-configuration"])
+def test_singleton_owned_paths_cannot_capture_supplied_scope_slots(edge):
+    class Request:
+        pass
+
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.declare_scope_slot(Request)
+
+    if edge == "constructor":
+
+        class ConstructorService(Service):
+            def __init__(self, request: Request):
+                self.request = request
+
+        builder.register(Service, ConstructorService, lifespan="singleton")
+    elif edge == "transient-wrapper":
+
+        class TransientWrapper:
+            def __init__(self, request: Request):
+                self.request = request
+
+        class WrappedService(Service):
+            def __init__(self, wrapper: TransientWrapper):
+                self.wrapper = wrapper
+
+        builder.register(TransientWrapper, lifespan="transient")
+        builder.register(Service, WrappedService, lifespan="singleton")
+    elif edge == "decorator":
+
+        class ServiceDecorator(Service):
+            def __init__(self, child: Service, request: Request):
+                self.child = child
+                self.request = request
+
+        builder.register(Service, lifespan="singleton")
+        builder.register_decorator(Service, ServiceDecorator, decorated_arg="child")
+    else:
+
+        def configure(request: Request) -> None:
+            pass
+
+        builder.register(Service, lifespan="transient")
+        builder.pre_configure(Service, configure)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
+    assert issue.code == "captive-runtime-scope"
+    assert issue.path[0].endswith("Service")
+    assert issue.path[-1].endswith("Request")
+    assert "cannot retain scoped" in issue.message
+
+
+@pytest.mark.parametrize("owner_lifespan", ["transient", "per_resolution", "scoped"])
+def test_shorter_lived_components_may_capture_supplied_scope_slots(owner_lifespan):
+    class Request:
+        pass
+
+    class Service:
+        def __init__(self, request: Request):
+            self.request = request
+
+    builder = ContainerBuilder()
+    builder.declare_scope_slot(Request)
+    builder.register(Service, lifespan=owner_lifespan)
+    container = builder.build()
+
+    request = Request()
+    with container.new_scope().provide(Request, request) as scope:
+        assert scope.resolve(Service).request is request
+
+
+@pytest.mark.parametrize("owner_lifespan", ["singleton", "scoped"])
+@pytest.mark.parametrize(
+    "edge",
+    ["constructor", "factory", "decorator", "collection", "derived-inject", "pre-configuration"],
+)
+def test_per_resolution_capture_is_rejected_across_compiled_edge_types(owner_lifespan, edge):
+    class ResolutionLocal:
+        pass
+
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(ResolutionLocal)
+
+    if edge == "constructor":
+
+        class ConstructorService(Service):
+            def __init__(self, resolution_local: ResolutionLocal):
+                self.resolution_local = resolution_local
+
+        builder.register(Service, ConstructorService, lifespan=owner_lifespan)
+    elif edge == "factory":
+
+        def create_service(resolution_local: ResolutionLocal) -> Service:
+            return Service()
+
+        builder.register(Service, factory=create_service, lifespan=owner_lifespan)
+    elif edge == "decorator":
+
+        class ServiceDecorator(Service):
+            def __init__(self, child: Service, resolution_local: ResolutionLocal):
+                self.child = child
+                self.resolution_local = resolution_local
+
+        builder.register(Service, lifespan=owner_lifespan)
+        builder.register_decorator(Service, ServiceDecorator, decorated_arg="child")
+    elif edge == "collection":
+
+        class CollectionService(Service):
+            def __init__(self, resolution_locals: list[ResolutionLocal]):
+                self.resolution_locals = resolution_locals
+
+        builder.register(Service, CollectionService, lifespan=owner_lifespan)
+    elif edge == "derived-inject":
+
+        class ProviderService(Service):
+            def __init__(self, resolution_local: ResolutionLocal):
+                self.resolution_local = resolution_local
+
+        builder.register(
+            Service,
+            ProviderService,
+            lifespan=owner_lifespan,
+            arguments={"resolution_local": derive(lambda context: INJECT)},
+        )
+    else:
+
+        def configure(resolution_local: ResolutionLocal) -> None:
+            pass
+
+        builder.register(Service, lifespan=owner_lifespan)
+        builder.pre_configure(Service, configure)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
+    assert issue.code == "captive-dependency"
+    assert issue.path[0].endswith("Service")
+    assert issue.path[-1].endswith("ResolutionLocal")
+
+
+@pytest.mark.parametrize("owner_lifespan", ["singleton", "scoped"])
+def test_long_lived_components_may_capture_plain_transients(owner_lifespan):
+    class Logger:
+        pass
+
+    class Service:
+        def __init__(self, logger: Logger):
+            self.logger = logger
+
+    builder = ContainerBuilder()
+    builder.register(Logger, lifespan="transient")
+    builder.register(Service, lifespan=owner_lifespan)
+    container = builder.build()
+
+    first = container.resolve(Service)
+    second = container.resolve(Service)
+
+    assert first is second
+    assert first.logger is second.logger
+
+
+@pytest.mark.parametrize("dependency_lifespan", ["scoped", "singleton"])
+def test_per_resolution_components_may_depend_on_longer_lived_components(dependency_lifespan):
+    class LongLived:
+        pass
+
+    class ResolutionLocal:
+        def __init__(self, long_lived: LongLived):
+            self.long_lived = long_lived
+
+    builder = ContainerBuilder()
+    builder.register(LongLived, lifespan=dependency_lifespan)
+    builder.register(ResolutionLocal)
+    container = builder.build()
+
+    first = container.resolve(ResolutionLocal)
+    second = container.resolve(ResolutionLocal)
+
+    assert first is not second
+    assert first.long_lived is second.long_lived
+
+
+def test_failed_per_resolution_capture_build_remains_reusable():
+    class ResolutionLocal:
+        pass
+
+    class SingletonService:
+        def __init__(self, resolution_local: ResolutionLocal):
+            self.resolution_local = resolution_local
+
+    builder = ContainerBuilder()
+    component_id = builder.register(ResolutionLocal)
+    builder.register(SingletonService, lifespan="singleton")
+
+    with pytest.raises(ContainerBuildError):
+        builder.build()
+
+    builder.patch_component(ResolutionLocal, component_id, lifespan="singleton")
+    assert isinstance(builder.build().resolve(SingletonService).resolution_local, ResolutionLocal)
+
+
+@pytest.mark.parametrize("dependency_lifespan", ["per_resolution", "scoped"])
+def test_singleton_pre_configuration_dependencies_are_validated_against_the_initializer(
+    dependency_lifespan,
+):
+    class ConfigurationDependency:
+        pass
+
+    class TransientTarget:
+        pass
+
+    def configure(dependency: ConfigurationDependency) -> None:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(ConfigurationDependency, lifespan=dependency_lifespan)
+    builder.register(TransientTarget, lifespan="transient")
+    builder.pre_configure(TransientTarget, configure)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("TransientTarget"))
+    assert issue.code == "captive-dependency"
+    assert tuple(part.rsplit(".", 1)[-1] for part in issue.path) == (
+        "TransientTarget",
+        "configure",
+        "ConfigurationDependency",
+    )
+
+
+def test_missing_pre_configuration_dependency_is_reported_at_build():
+    class MissingDependency:
+        pass
+
+    class Service:
+        pass
+
+    def configure(dependency: MissingDependency) -> None:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.pre_configure(Service, configure)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
+    assert issue.code == "missing-component"
+    assert tuple(part.rsplit(".", 1)[-1] for part in issue.path) == (
+        "Service",
+        "configure",
+        "MissingDependency",
+    )
+
+
+def test_shared_pre_configuration_dependency_cannot_trigger_the_same_definition():
+    class First:
+        pass
+
+    class Second:
+        pass
+
+    def configure(second: Second) -> None:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(First)
+    builder.register(Second, lifespan="singleton")
+    builder.pre_configure((First, Second), configure)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(
+        issue
+        for issue in report.errors
+        if issue.code == "circular-dependency" and "Circular pre-configuration trigger" in issue.message
+    )
+    assert "Circular pre-configuration trigger" in issue.message
+    assert tuple(part.rsplit(".", 1)[-1] for part in issue.path) == (
+        "First",
+        "configure",
+        "Second",
+        "configure",
+    )
+
+
+def test_inherited_pre_configuration_keeps_its_frozen_parent_dependency_plan():
+    class Dependency:
+        pass
+
+    class OverlayDependency(Dependency):
+        pass
+
+    class Service:
+        pass
+
+    configured_with: list[type] = []
+
+    def configure(dependency: Dependency) -> None:
+        configured_with.append(type(dependency))
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, lifespan="singleton")
+    builder.register(Service, lifespan="transient")
+    builder.pre_configure(Service, configure)
+    container = builder.build()
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(Dependency, OverlayDependency, lifespan="singleton")
+    overlay = overlay_builder.build()
+
+    overlay.resolve(Service)
+
+    assert configured_with == [Dependency]
+
+
+def test_inherited_pre_configuration_requires_a_frozen_parent_plan():
+    class ExistingService:
+        pass
+
+    class OverlayService:
+        pass
+
+    def configure() -> None:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(ExistingService)
+    builder.pre_configure(OverlayService, configure)
+    container = builder.build()
+
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(OverlayService)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        overlay_builder.build()
+
+    report = raised.value.report
+    assert report is not None
+    issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("OverlayService"))
+    assert issue.code == "overlay-pre-configuration"
+    assert "has no frozen parent plan" in issue.message
+
+
+def test_graph_text_mermaid_and_json_renderers_are_available():
+    class Service:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    container = builder.build()
+
+    assert "Resolve" in container.graph.to_text()
+    assert container.graph.to_mermaid().startswith("flowchart TD")
+    assert "schema_version" not in json.loads(container.graph.manifest().to_json())
+
+
+def test_graph_renderers_put_relationships_on_edges_and_keep_nodes_component_only():
+    class Repository:
+        pass
+
+    class Service:
+        def __init__(self, repository: Repository):
+            self.repository = repository
+
+    class TracedService:
+        def __init__(self, child: Service):
+            self.child = child
+
+    def configure_service() -> None:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Repository)
+    builder.register(Service)
+    builder.register_decorator(Service, TracedService, decorated_arg="child")
+    builder.pre_configure(Service, configure_service)
+    builder.mark_entrypoint(Service)
+    graph = builder.build().graph
+
+    text = graph.to_text()
+    mermaid = graph.to_mermaid()
+
+    assert "depends on: repository → " in text
+    assert "decorated by → " in text
+    assert "pre-configured by → " in text
+    assert "→ repository: " not in text
+    assert "|depends on: repository|" in mermaid
+    assert "|decorated by|" in mermaid
+    assert "|pre-configured by|" in mermaid
+    assert '["repository: ' not in mermaid
+
+    root = graph.manifest().data["roots"][0]
+    repository = next(item for item in root["dependencies"] if item["service"].endswith("Repository"))
+    assert repository["argument"] == "repository"
+
+
+def test_graph_renderers_show_decorator_positions_outside_to_inside():
+    class Service:
+        pass
+
+    class Inner:
+        def __init__(self, child: Service):
+            self.child = child
+
+    class Outer:
+        def __init__(self, child: Service):
+            self.child = child
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register_decorator(Service, Inner, position=100)
+    builder.register_decorator(Service, Outer, position=1000)
+    graph = builder.build().graph
+
+    text = graph.to_text()
+    assert text.index("Outer") < text.index("Inner")
+    assert "position=1000" in text
+    decorators = graph.manifest().data["roots"][0]["decorators"]
+    assert [item["implementation"].split(".")[-1] for item in decorators] == ["Outer", "Inner"]
+    assert [item["position"] for item in decorators] == [1000, 100]
+
+
+def test_dependency_impact_distinguishes_eager_and_deferred_reachability():
+    class Service:
+        pass
+
+    class Worker:
+        def __init__(self, service: Service):
+            self.service = service
+
+    class DeferredWorker:
+        pass
+
+    class Root:
+        def __init__(self, worker: Worker, deferred: Provider[DeferredWorker]):
+            self.worker = worker
+            self.deferred = deferred
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register(Worker)
+    builder.register(DeferredWorker)
+    builder.register(Root)
+    builder.mark_entrypoint(Root)
+    graph = builder.build().graph
+
+    eager = graph.dependents(Service)
+    assert any(root.requested_type.endswith("Root") for root in eager.affected_roots)
+    assert any(len(root.witness_path) > 1 for root in eager.affected_roots)
+    assert any(relationship.parent.service.endswith("Worker") for relationship in eager.direct_consumers)
+
+    deferred_target = graph.entrypoints[0].component.dependencies[1].dependencies[0]
+    deferred = graph.dependents(deferred_target, match="occurrence")
+    assert not deferred.affected_roots
+    with_deferred = graph.dependents(deferred_target, match="occurrence", include_deferred=True)
+    assert any(root.requested_type.endswith("Root") for root in with_deferred.affected_roots)
+    assert any(relationship.phase == "deferred" for relationship in with_deferred.direct_consumers)
+    assert "DeferredWorker" in with_deferred.to_json()
+    assert with_deferred.to_mermaid().startswith("flowchart TD")
+
+
+def test_paths_between_and_shared_dependencies_are_bounded_and_registration_aware():
+    class Shared:
+        pass
+
+    class First:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    class Second:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    builder = ContainerBuilder()
+    builder.register(Shared)
+    builder.register(First)
+    builder.register(Second)
+    graph = builder.build().graph
+
+    graph_slice = graph.paths_between(First, Shared, max_paths=10)
+    assert len(graph_slice.paths) == 1
+    assert not graph_slice.truncated
+    assert "First" in graph_slice.to_text()
+
+    shared = graph.shared_dependencies(First, Second)
+    assert any(item.first_paths[0].service.endswith("Shared") for item in shared)
+
+
+def test_sharing_report_groups_repeated_singleton_occurrences_without_raw_ids():
+    class Database:
+        pass
+
+    class FirstRepository:
+        def __init__(self, database: Database):
+            self.database = database
+
+    class SecondRepository:
+        def __init__(self, database: Database):
+            self.database = database
+
+    class Root:
+        def __init__(self, first: FirstRepository, second: SecondRepository):
+            self.first = first
+            self.second = second
+
+    builder = ContainerBuilder()
+    builder.register(Database, lifespan="singleton")
+    builder.register(FirstRepository)
+    builder.register(SecondRepository)
+    builder.register(Root)
+    graph = builder.build().graph
+
+    report = graph.sharing_report(Database)
+    database_group = next(group for group in report.groups if group.service.endswith("Database"))
+    assert database_group.cache_category == "singleton owner cache"
+    assert len(database_group.occurrence_paths) >= 2
+    assert "singleton owner" in database_group.conditions[0]
+    assert "owner_token" not in report.to_json()
+    assert report.to_mermaid().startswith("flowchart TD")
+
+
+def test_activation_report_keeps_provider_target_obligations_deferred():
+    class Request:
+        pass
+
+    class AsyncLeaf:
+        pass
+
+    async def create_leaf() -> AsyncLeaf:
+        return AsyncLeaf()
+
+    class Root:
+        def __init__(self, request: Request, leaf: AsyncProvider[AsyncLeaf]):
+            self.request = request
+            self.leaf = leaf
+
+    builder = ContainerBuilder()
+    builder.declare_scope_slot(Request)
+    builder.register(AsyncLeaf, factory=create_leaf)
+    builder.register(Root)
+    graph = builder.build().graph
+
+    report = graph.activation_report(Root)
+    assert any(item.kind == "scope_slot" for item in report.immediate_obligations)
+    assert not any(item.kind == "async_requirement" for item in report.immediate_obligations)
+    assert any(item.kind == "async_requirement" for item in report.deferred_obligations)
+    assert any(item.phase == "deferred" for item in report.execution_relationships)
+
+    warm = graph.activation_report(Root, scenario="warm_singletons")
+    assert "warm_singletons" in warm.to_json()
+    assert report.to_mermaid().startswith("flowchart TD")
+
+
+def test_cli_check_graph_and_diff_contract(tmp_path: Path, capsys):
+    target = "tests.tooling_targets:valid_builder"
+    assert main(["check", target]) == 1
+    assert "unreachable-component" in capsys.readouterr().out
+
+    assert main(["check", target, "--no-strict"]) == 0
+    capsys.readouterr()
+    assert main(["check", target, "--ignore", "unreachable-component"]) == 0
+    capsys.readouterr()
+
+    baseline = tmp_path / "graph.json"
+    assert main(["graph", target, "--format", "json", "--output", str(baseline)]) == 0
+    assert "schema_version" not in GraphManifest.from_json(baseline.read_text()).data
+    capsys.readouterr()
+
+    assert main(["diff", target, str(baseline)]) == 0
+    assert "unchanged" in capsys.readouterr().out
+    assert main(["diff", "tests.tooling_targets:changed_builder", str(baseline)]) == 1
+    assert "changed" in capsys.readouterr().out
+
+    assert main(["impact", target, "tests.tooling_targets:Dependency", "--format", "json"]) == 0
+    assert "Application" in capsys.readouterr().out
+    assert main(["sharing", target, "tests.tooling_targets:Dependency"]) == 0
+    assert "Sharing report" in capsys.readouterr().out
+    assert main(["activation", target, "tests.tooling_targets:Application"]) == 0
+    assert "Activation report" in capsys.readouterr().out
+
+
+def test_cli_strict_and_ignore_apply_to_custom_validation_warnings(capsys):
+    target = "tests.tooling_targets:custom_warning_builder"
+
+    assert main(["check", target]) == 1
+    assert "example-organization-warning" in capsys.readouterr().out
+
+    assert main(["check", target, "--no-strict"]) == 0
+    capsys.readouterr()
+    assert main(["check", target, "--ignore", "example-organization-warning"]) == 0
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "tests.tooling_targets:validation_only_warning_builder",
+        "tests.tooling_targets:validation_only_warning_container_factory",
+    ],
+)
+def test_cli_always_runs_validation_only_rules_and_strict_controls_warning_failure(target, capsys):
+    assert main(["check", target, "--no-strict"]) == 0
+    assert "example-expensive-warning" in capsys.readouterr().out
+
+    assert main(["check", target]) == 1
+    assert "example-expensive-warning" in capsys.readouterr().out
+
+    assert main(["check", target, "--ignore", "example-expensive-warning"]) == 0
+    assert "example-expensive-warning" not in capsys.readouterr().out
+
+
+def test_cli_validation_only_errors_fail_in_strict_and_non_strict_modes(capsys):
+    target = "tests.tooling_targets:validation_only_error_builder"
+
+    assert main(["check", target, "--no-strict"]) == 1
+    assert "example-validation-error" in capsys.readouterr().out
+
+    assert main(["check", target, "--strict"]) == 1
+    assert "example-validation-error" in capsys.readouterr().out
+
+
+def test_cli_manifest_is_stable_across_processes():
+    command = [
+        sys.executable,
+        "-m",
+        "clean_ioc.cli",
+        "graph",
+        "tests.tooling_targets:valid_builder",
+        "--format",
+        "json",
+    ]
+
+    first = subprocess.run(command, check=True, capture_output=True, text=True)  # noqa: S603
+    second = subprocess.run(command, check=True, capture_output=True, text=True)  # noqa: S603
+
+    assert json.loads(first.stdout) == json.loads(second.stdout)
+    assert " at 0x" not in first.stdout
+
+
+def test_cli_reports_invalid_builds_and_bad_targets(capsys):
+    assert main(["check", "tests.tooling_targets:invalid_builder"]) == 1
+    assert "missing-component" in capsys.readouterr().err
+    assert main(["check", "not-a-locator"]) == 2
+    assert "module:object" in capsys.readouterr().err
+
+
+def test_failed_build_exposes_frozen_redacted_partial_graph_and_cli(capsys):
+    class Missing:
+        pass
+
+    class Service:
+        def __init__(self, token: Missing):
+            pass
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    diagnostic = raised.value.partial_graph
+    assert diagnostic is not None
+    assert diagnostic.to_json() == diagnostic.to_json()
+    assert "Partial diagnostic graph — build failed" in diagnostic.to_text()
+    assert "missing-component" in diagnostic.to_text()
+    assert "token" in diagnostic.to_text()
+    assert "No component for" not in diagnostic.to_json()
+    assert "flowchart TD" in diagnostic.to_mermaid()
+
+    builder.register(Missing)
+    repaired = builder.build()
+    assert repaired.resolve(Service).__class__ is Service
+
+    # The command writes an artifact but still reports the failed build.
+    assert main(["graph", "tests.tooling_targets:invalid_builder", "--on-error", "partial"]) == 1
+    assert "Partial diagnostic graph — build failed" in capsys.readouterr().out
+
+
+def test_partial_graph_marks_cycle_back_references_and_unexamined_candidates():
+    class First:
+        def __init__(self, second: object):
+            pass
+
+    class Second:
+        def __init__(self, first: First):
+            pass
+
+    class Alternative(First):
+        pass
+
+    First.__init__.__annotations__["second"] = Second
+    builder = ContainerBuilder()
+    builder.register(First)
+    builder.register(First, Alternative)
+    builder.register(Second)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    attempt = _failed_partial_graph(raised.value).attempts[0]
+    assert attempt.witness_path
+    labels = {node.id: node.label.rsplit(".", 1)[-1] for node in attempt.nodes}
+    assert any(
+        edge.back_reference and labels.get(edge.source) == "Second" and labels.get(edge.target) == "First"
+        for edge in attempt.edges
+    )
+    assert any(node.state.value == "failed" and node.kind == "candidate" for node in attempt.nodes)
+    # The alternative was known but compilation stopped before it was evaluated.
+    assert any(node.state.value == "not-examined" for node in attempt.nodes)
+
+
+def test_partial_graph_retains_complete_structure_for_build_rule_failure():
+    class Dependency:
+        pass
+
+    class Service:
+        def __init__(self, dependency: Dependency):
+            pass
+
+    def reject(context: ValidationContext):
+        yield BuildIssue("rule-failed", IssueSeverity.error, "the rule rejected this graph")
+
+    builder = ContainerBuilder()
+    builder.register(Dependency)
+    builder.register(Service)
+    builder.add_validation_rule(reject)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    attempt = _failed_partial_graph(raised.value).attempts[0]
+    assert attempt.issue_code == "rule-failed"
+    assert {node.label for node in attempt.nodes} >= {
+        qualified_name(Service),
+        qualified_name(Dependency),
+    }
+    assert any(edge.state.value == "complete" for edge in attempt.edges)
+
+
+def test_partial_graph_never_formats_hostile_user_exceptions():
+    class HostileError(Exception):
+        def __str__(self):
+            raise AssertionError("diagnostic must not call __str__")
+
+    class Service:
+        pass
+
+    def hostile(_):
+        raise HostileError()
+
+    builder = ContainerBuilder()
+    builder.register(Service, when=hostile)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    assert raised.value.partial_graph is not None
+    assert "compile-error" in raised.value.partial_graph.to_json()
+
+
+def test_partial_graph_marks_throwing_selection_filter_failed_and_later_candidate_unexamined():
+    class Service:
+        pass
+
+    class First(Service):
+        pass
+
+    class Later(Service):
+        pass
+
+    class Root:
+        def __init__(self, service: Service):
+            self.service = service
+
+    def throwing_filter(_: object) -> bool:
+        raise RuntimeError("configured secret must not be rendered")
+
+    builder = ContainerBuilder()
+    builder.register(Service, Later)
+    builder.register(Service, First)
+    builder.register(Root, arguments={"service": select(throwing_filter)})
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    graph = raised.value.partial_graph
+    assert graph is not None
+    candidates = [(node.label, node.state.value) for node in graph.attempts[0].nodes if node.kind == "candidate"]
+    assert any(label.endswith(qualified_name(First)) and state == "failed" for label, state in candidates)
+    assert any(label.endswith(qualified_name(Later)) and state == "not-examined" for label, state in candidates)
+
+
+def test_partial_graph_marks_throwing_decorator_filter_failed_and_later_decorator_unexamined():
+    class Service:
+        pass
+
+    class BrokenDecorator(Service):
+        def __init__(self, decorated: Service):
+            self.decorated = decorated
+
+    class LaterDecorator(Service):
+        def __init__(self, decorated: Service):
+            self.decorated = decorated
+
+    def throwing_filter(_: object) -> bool:
+        raise RuntimeError("configured secret must not be rendered")
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register_decorator(Service, LaterDecorator, decorated_arg="decorated")
+    builder.register_decorator(Service, BrokenDecorator, when=throwing_filter, decorated_arg="decorated")
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    graph = raised.value.partial_graph
+    assert graph is not None
+    candidates = [(node.label, node.state.value) for node in graph.attempts[0].nodes if node.kind == "candidate"]
+    states = {state for _, state in candidates}
+    assert "failed" in states
+    assert "not-examined" in states
+    assert "rejected" not in states
+
+
+def test_partial_graph_marks_throwing_pre_configuration_filter_failed_and_later_one_unexamined():
+    class Service:
+        pass
+
+    def broken_configuration() -> None:
+        pass
+
+    def later_configuration() -> None:
+        pass
+
+    def throwing_filter(_: object) -> bool:
+        raise RuntimeError("configured secret must not be rendered")
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.pre_configure(Service, broken_configuration, when=throwing_filter)
+    builder.pre_configure(Service, later_configuration)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    graph = raised.value.partial_graph
+    assert graph is not None
+    candidates = [(node.label, node.state.value) for node in graph.attempts[0].nodes if node.kind == "candidate"]
+    assert any(
+        label.endswith(qualified_name(broken_configuration)) and state == "failed" for label, state in candidates
+    )
+    assert any(
+        label.endswith(qualified_name(later_configuration)) and state == "not-examined" for label, state in candidates
+    )
+
+
+def test_partial_graph_mermaid_uses_opaque_ids_for_diagnostic_data():
+    # PartialGraph is public and compiler-generated ids may include a parameter
+    # name.  Renderer identifiers must never interpolate either kind of data.
+    hostile_id = 'bad["] --> injected["'
+    graph = PartialGraph(
+        (
+            CompilationAttempt(
+                "root",
+                nodes=(PartialNode(hostile_id, hostile_id),),
+                edges=(PartialEdge(hostile_id, None, hostile_id),),
+            ),
+        )
+    )
+
+    rendered = graph.to_mermaid()
+    assert 'a1_n0["' in rendered
+    assert "a1_unknown" not in rendered
+    assert f"a1_{hostile_id}" not in rendered
+    assert "&quot;" in rendered
+
+
+def test_partial_graph_is_equal_for_equivalent_failing_builds():
+    class Missing:
+        pass
+
+    class Service:
+        def __init__(self, missing: Missing):
+            pass
+
+    def diagnostic() -> str:
+        builder = ContainerBuilder()
+        builder.register(Service)
+        with pytest.raises(ContainerBuildError) as raised:
+            builder.build()
+        return _failed_partial_graph(raised.value).to_json()
+
+    assert diagnostic() == diagnostic()
+
+
+def test_partial_graph_retains_bounded_retry_accounting_without_skipping_roots():
+    class Missing:
+        pass
+
+    class Bad:
+        def __init__(self, missing: Missing):
+            pass
+
+    builder = ContainerBuilder()
+    for number in range(505):
+        builder.register(type(f"Good{number}", (), {}))
+    builder.register(Bad)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    error = raised.value
+    graph = _failed_partial_graph(error).to_dict()
+    assert error.report is not None
+    assert error.report.checked_roots == 506
+    assert graph["total_attempts"] == 507
+    assert graph["retained_attempts"] == len(graph["attempts"]) == 101
+    assert graph["omitted_attempts"] == 406
+    assert graph["total_roots"] == 506
+    assert graph["retained_roots"] == 100
+    assert graph["omitted_roots"] == 406
+    assert graph["truncated"] is True
+
+
+def test_unallocated_candidates_have_safe_distinct_declaration_links_and_are_deterministic():
+    def diagnostic() -> str:
+        class Missing:
+            pass
+
+        class Service:
+            pass
+
+        class Bad(Service):
+            def __init__(self, missing: Missing):
+                pass
+
+        class LaterA(Service):
+            pass
+
+        class LaterB(Service):
+            pass
+
+        builder = ContainerBuilder()
+        builder.register(Service, LaterA)
+        builder.register(Service, LaterB)
+        builder.register(Service, Bad)
+        with pytest.raises(ContainerBuildError) as raised:
+            builder.build()
+        graph = _failed_partial_graph(raised.value).to_dict()
+        attempt = graph["attempts"][0]
+        candidates = [node for node in attempt["nodes"] if node["kind"] == "candidate"]
+        declarations = [node for node in attempt["nodes"] if node["kind"] == "declaration"]
+        labels = {node["label"] for node in candidates}
+        assert any(label.endswith("LaterA") for label in labels)
+        assert any(label.endswith("LaterB") for label in labels)
+        for candidate in candidates:
+            if candidate["state"] == "not-examined":
+                assert candidate["declaration_ref"]
+                declaration = next(
+                    node for node in declarations if node["declaration_ref"] == candidate["declaration_ref"]
+                )
+                assert declaration["id"] in {
+                    edge["source"] for edge in attempt["edges"] if edge["target"] == candidate["id"]
+                }
+        rendered = json.dumps(graph, sort_keys=True)
+        assert "builtins.str" not in rendered and " at 0x" not in rendered
+        return _failed_partial_graph(raised.value).to_json()
+
+    assert diagnostic() == diagnostic()
+
+
+def test_partial_attempt_witness_clipping_is_structured():
+    from clean_ioc.container import _Blueprint, _Compiler
+
+    builder = ContainerBuilder()
+    compiler = _Compiler(_Blueprint((builder._layer(),)))
+    path = tuple(f"node-{index}" for index in range(40))
+    attempt = compiler.partial_attempt(ContainerBuildError(code="missing-component", path=path))
+    assert attempt.truncated is True
+    assert attempt.witness_total == 40 and attempt.witness_omitted == 8
+    assert len(attempt.witness_path) == 33
+    assert "omitted" in attempt.witness_path[16]
+
+
+def test_generic_specialization_failure_has_safe_declaration_candidate_link():
+    def diagnostic() -> str:
+        item = TypeVar("item")
+
+        class Dependency(Generic[item]):
+            pass
+
+        class Product(Generic[item]):
+            pass
+
+        class StrProduct(Product[str]):
+            pass
+
+        def conflicting(dependency: Dependency[item]) -> Product[item]:
+            return Product()
+
+        builder = ContainerBuilder()
+        builder.register(Product[int], factory=conflicting, factory_specialization=StrProduct)
+        with pytest.raises(ContainerBuildError) as raised:
+            builder.build()
+        attempt = _failed_partial_graph(raised.value).to_dict()["attempts"][0]
+        candidate = next(node for node in attempt["nodes"] if node["kind"] == "candidate")
+        declaration = next(
+            node
+            for node in attempt["nodes"]
+            if node["kind"] == "declaration" and node["declaration_ref"] == candidate["declaration_ref"]
+        )
+        assert "conflicting" in candidate["label"] and "conflicting" in declaration["label"]
+        assert any(
+            edge["source"] == declaration["id"] and edge["target"] == candidate["id"] for edge in attempt["edges"]
+        )
+        payload = _failed_partial_graph(raised.value).to_json()
+        assert " at 0x" not in payload and "builtins.str" not in payload
+        return payload
+
+    assert diagnostic() == diagnostic()
+
+
+def test_partial_declaration_capture_is_bounded():
+    from clean_ioc.container import _Blueprint, _Compiler
+
+    builder = ContainerBuilder()
+    compiler = _Compiler(_Blueprint((builder._layer(),)))
+    for number in range(501):
+        compiler._record_partial_declaration_edge((None, "declaration", f"decl-{number}", "test", False))
+    attempt = compiler.partial_attempt(ContainerBuildError(code="compile-error"))
+    declarations = [node for node in attempt.nodes if node.kind == "declaration"]
+    assert len(declarations) == 500
+    assert attempt.truncated is True
+
+
+def test_partial_graph_caps_validation_issue_nodes_after_500_compiled_roots():
+    builder = ContainerBuilder()
+    roots = tuple(type(f"Root{number}", (), {}) for number in range(500))
+    for root in roots:
+        builder.register(root)
+
+    def reject_all(_: ValidationContext):
+        for root in roots:
+            yield BuildIssue("bulk-rule-failed", IssueSeverity.error, "rejected", path=(qualified_name(root),))
+
+    builder.add_validation_rule(reject_all)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    assert raised.value.report is not None
+    assert len(raised.value.report.errors) == 500
+    graph = raised.value.partial_graph
+    assert graph is not None
+    attempt = graph.attempts[0]
+    assert attempt.issue_code == "bulk-rule-failed"
+    assert len(attempt.nodes) <= 500
+    assert len(attempt.edges) <= 500
+    assert attempt.truncated is True
+    issue_edges = [edge for edge in attempt.edges if edge.label == "issue"]
+    retained_ids = {node.id for node in attempt.nodes}
+    assert len(issue_edges) == 500
+    assert all(edge.state.value == "failed" and edge.target in retained_ids for edge in issue_edges)
+    assert all(edge.source is None and edge.target is not None for edge in issue_edges)
+
+
+def test_partial_graph_links_validation_issue_to_the_exact_shared_occurrence_path():
+    class Shared:
+        pass
+
+    class RootA:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    class RootB:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    issue_code = "root-b-shared-rule"
+
+    def reject_root_b_shared(context: ValidationContext):
+        visit = next(
+            visit
+            for visit in context.graph.walk()
+            if visit.root.component.service_type is RootB and visit.component.service_type is Shared
+        )
+        path = tuple(qualified_name(component.service_type) for component in visit.components)
+        yield BuildIssue(issue_code, IssueSeverity.error, "rejected", root=qualified_name(RootB), path=path)
+
+    builder = ContainerBuilder()
+    builder.register(Shared)
+    builder.register(RootA)
+    builder.register(RootB)
+    builder.add_validation_rule(reject_root_b_shared)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    graph = _failed_partial_graph(raised.value)
+    attempt = graph.attempts[0]
+    labels = {node.id: node.label for node in attempt.nodes}
+    root_a_id = next(node.id for node in attempt.nodes if node.label == qualified_name(RootA))
+    root_b_id = next(node.id for node in attempt.nodes if node.label == qualified_name(RootB))
+    root_a_shared = next(edge.target for edge in attempt.edges if edge.source == root_a_id and edge.label == "shared")
+    root_b_shared = next(edge.target for edge in attempt.edges if edge.source == root_b_id and edge.label == "shared")
+    issue_edge = next(edge for edge in attempt.edges if edge.label == "issue" and edge.issue_code == issue_code)
+
+    assert issue_edge.target is not None
+    assert labels[issue_edge.target] == qualified_name(Shared)
+    assert issue_edge.target == root_b_shared
+    assert issue_edge.target != root_a_shared
+
+
+def test_partial_graph_links_graph_visit_decorator_issue_to_its_decorator_occurrence():
+    class Service:
+        pass
+
+    class Decorated(Service):
+        def __init__(self, service: Service):
+            self.service = service
+
+    issue_code = "decorator-rule"
+
+    def reject_decorator(context: ValidationContext):
+        visit = next(visit for visit in context.graph.walk() if visit.component.kind is ComponentKind.decorator)
+        yield visit.issue(issue_code, "rejected")
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register_decorator(Service, Decorated, decorated_arg="service")
+    builder.add_validation_rule(reject_decorator)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    attempt = _failed_partial_graph(raised.value).attempts[0]
+    decorator = next(node for node in attempt.nodes if node.kind == ComponentKind.decorator.value)
+    issue_edge = next(edge for edge in attempt.edges if edge.label == "issue" and edge.issue_code == issue_code)
+    assert issue_edge.target == decorator.id
+    assert not any(node.kind == "issue" and node.issue_code == issue_code for node in attempt.nodes)
+
+
+def test_partial_graph_does_not_invent_decorator_paths_from_allocation_parent():
+    class Service:
+        pass
+
+    class Decorated(Service):
+        def __init__(self, service: Service):
+            self.service = service
+
+    class Root:
+        def __init__(self, service: Service):
+            self.service = service
+
+    unanchored_code = "decorator-unanchored"
+    exact_code = "decorator-exact"
+
+    def check_paths(_: ValidationContext):
+        yield BuildIssue(
+            unanchored_code,
+            IssueSeverity.error,
+            "not a GraphVisit path",
+            root=qualified_name(Root),
+            path=(qualified_name(Root), qualified_name(Decorated)),
+        )
+        yield BuildIssue(
+            exact_code,
+            IssueSeverity.error,
+            "the GraphVisit path",
+            root=qualified_name(Root),
+            path=(qualified_name(Root), qualified_name(Service), qualified_name(Decorated)),
+        )
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register(Root)
+    builder.register_decorator(Service, Decorated, decorated_arg="service")
+    builder.add_validation_rule(check_paths)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    attempt = _failed_partial_graph(raised.value).attempts[0]
+    root = next(node for node in attempt.nodes if node.label == qualified_name(Root))
+    service_id = next(edge.target for edge in attempt.edges if edge.source == root.id and edge.label == "service")
+    decorator_id = next(
+        edge.target for edge in attempt.edges if edge.source == service_id and edge.label == "decorator"
+    )
+    exact_edge = next(edge for edge in attempt.edges if edge.label == "issue" and edge.issue_code == exact_code)
+    unanchored_edge = next(
+        edge for edge in attempt.edges if edge.label == "issue" and edge.issue_code == unanchored_code
+    )
+    assert exact_edge.target == decorator_id
+    assert unanchored_edge.target is not None
+    unanchored = next(node for node in attempt.nodes if node.id == unanchored_edge.target)
+    assert unanchored.kind == "issue"
+    assert "unanchored" in unanchored.label
+
+
+def test_partial_graph_links_graph_visit_pre_configuration_issue_to_its_occurrence():
+    class Service:
+        pass
+
+    def configure() -> None:
+        pass
+
+    issue_code = "pre-configuration-rule"
+
+    def reject_pre_configuration(context: ValidationContext):
+        visit = next(visit for visit in context.graph.walk() if visit.component.kind is ComponentKind.pre_configuration)
+        yield visit.issue(issue_code, "rejected")
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.pre_configure(Service, configure)
+    builder.add_validation_rule(reject_pre_configuration)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    attempt = _failed_partial_graph(raised.value).attempts[0]
+    configuration = next(node for node in attempt.nodes if node.kind == ComponentKind.pre_configuration.value)
+    issue_edge = next(edge for edge in attempt.edges if edge.label == "issue" and edge.issue_code == issue_code)
+    assert issue_edge.target == configuration.id
+    assert not any(node.kind == "issue" and node.issue_code == issue_code for node in attempt.nodes)
+
+
+def test_explain_records_default_named_filtered_and_collection_selection_without_rerunning_filters():
+    class Gateway:
+        pass
+
+    class DefaultGateway(Gateway):
+        pass
+
+    class StripeGateway(Gateway):
+        pass
+
+    calls = 0
+
+    def stripe(component):
+        nonlocal calls
+        calls += 1
+        return component.name == "stripe"
+
+    builder = ContainerBuilder()
+    default_id = builder.register(Gateway, DefaultGateway)
+    stripe_id = builder.register(Gateway, StripeGateway, name="stripe")
+    builder.mark_entrypoint(Gateway, filter=stripe)
+    graph = builder.build().graph
+    build_calls = calls
+
+    default = graph.explain(Gateway)
+    filtered = graph.explain(Gateway, filter=stripe)
+    named = graph.explain(Gateway, filter=cf.with_name("stripe"))
+    collection = graph.explain(list[Gateway])
+
+    assert calls == build_calls
+    assert default.selected[0].component_id == default_id
+    assert default.selected[0].reason_codes == ("selected-default",)
+    assert default.rejected[0].reason_codes == ("rejected-name",)
+    assert filtered.selected[0].component_id == stripe_id
+    assert filtered.selected[0].reason_codes == ("selected-explicit-filter",)
+    assert named.selected[0].component_id == filtered.selected[0].component_id
+    assert collection.selected[0].component_id == default_id
+    assert collection.selected[0].outcome is DecisionOutcome.included
+    assert collection.selected[0].reason_codes == ("included-collection",)
+    assert isinstance(default, CompilationExplanation)
+    assert isinstance(default.selected[0], CandidateDecision)
+    assert json.loads(default.to_json()) == default.to_dict()
+
+
+def test_explain_occurrences_captures_origins_bundles_argument_policies_and_applicability():
+    class Request:
+        pass
+
+    class Dependency:
+        pass
+
+    class Service:
+        def __init__(self, dependency: Dependency, request: Request, configured: str):
+            self.dependency = dependency
+            self.request = request
+            self.configured = configured
+
+    class Decorator:
+        def __init__(self, child: Service):
+            self.child = child
+
+    class RejectedDecorator:
+        def __init__(self, child: Service):
+            self.child = child
+
+    def configure() -> None:
+        pass
+
+    def bundle(builder):
+        builder.register(Dependency)
+        builder.declare_scope_slot(Request)
+        builder.register(
+            Service,
+            arguments={"configured": derive(lambda _: "secret")},
+        )
+        builder.register_decorator(Service, Decorator, decorated_arg="child")
+        builder.register_decorator(
+            Service,
+            RejectedDecorator,
+            decorated_arg="child",
+            when=lambda _: False,
+        )
+        builder.pre_configure(Service, configure)
+
+    builder = ContainerBuilder()
+    builder.apply_bundle(bundle)
+    graph = builder.build().graph
+    service = next(root.component for root in graph.roots if root.requested_type is Service)
+    dependency = next(item for item in service.dependencies if item.service_type is Dependency)
+    request = next(item for item in service.dependencies if item.service_type is Request)
+    configured = next(item for item in service.dependencies if item.service_type is str)
+    decorator = service.decorators[0]
+    pre_configuration = service.pre_configurations[0]
+
+    registration_origin = graph.explain(dependency).selected[0].origin
+    assert isinstance(registration_origin, DefinitionOrigin)
+    assert isinstance(registration_origin.location, SourceLocation)
+    assert registration_origin.kind == "registration"
+    assert registration_origin.layer == "root"
+    assert registration_origin.location.module == __name__
+    assert not Path(registration_origin.location.path or "/").is_absolute()
+    assert registration_origin.bundle_path[-1].endswith("bundle")
+
+    assert graph.explain(request).selected[0].origin.kind == "scope-slot"
+    assert graph.explain(configured).selected[0].reason_codes == ("argument-derived",)
+    decorator_explanation = graph.explain(decorator)
+    assert decorator_explanation.selected[0].reason_codes == ("decorator-filter-matched",)
+    assert decorator_explanation.rejected[0].reason_codes == ("decorator-filter-rejected",)
+    assert graph.explain(pre_configuration).selected[0].reason_codes == ("pre-configuration-filter-matched",)
+    assert "secret" not in configured.__repr__()
+    assert "secret" not in graph.explain(configured).to_json()
+
+
+def test_explain_overlay_anchoring_normal_scope_reuse_and_manifest_stability():
+    class Dependency:
+        pass
+
+    class Service:
+        def __init__(self, dependency: Dependency):
+            self.dependency = dependency
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, lifespan="singleton")
+    builder.register(Service, lifespan="singleton")
+    container = builder.build()
+    before = container.graph.manifest(all_roots=True).to_json()
+
+    assert container.new_scope().graph is container.graph
+    overlay = container.new_scope_builder().build()
+    explanation = overlay.graph.explain(Service)
+
+    assert "anchored-parent-singleton" in explanation.selected[0].reason_codes
+    assert explanation.selected[0].origin.layer == "root"
+    component = next(root.component for root in overlay.graph.roots if root.component.service_type is Service)
+    assert overlay.graph.explain_arguments(component)[0].selected_components[0].startswith("root:")
+    assert container.graph.manifest(all_roots=True).to_json() == before
+
+
+def test_failed_filter_explanation_records_only_the_error_type_and_builder_remains_repairable():
+    class Service:
+        pass
+
+    repaired = False
+
+    def broken_filter(_):
+        if repaired:
+            return True
+        raise RuntimeError("do-not-copy-this-filter-secret")
+
+    builder = ContainerBuilder()
+    builder.register(Service, when=broken_filter)
+
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    explanation_json = "\n".join(item.to_json() for item in raised.value.explanations)
+    assert "RuntimeError" in explanation_json
+    assert "do-not-copy-this-filter-secret" not in explanation_json
+
+    repaired = True
+    assert isinstance(builder.build().resolve(Service), Service)
+
+
+def test_cli_explain_text_json_path_and_invalid_selection(capsys):
+    target = "tests.tooling_targets:explain_builder"
+    service = "tests.tooling_targets:Dependency"
+
+    assert main(["explain", target, service, "--name", "named", "--format", "json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["selected"][0]["reason_codes"] == ["selected-explicit-filter"]
+    assert payload["selected"][0]["origin"]["location"]["path"] == "tests/tooling_targets.py"
+
+    assert main(["explain", target, service]) == 0
+    assert "selected-default" in capsys.readouterr().out
+    application_path = "root:tests.tooling_targets.Application:default:0"
+    assert main(["explain", target, "--path", application_path, "--arguments"]) == 0
+    assert "dependency: implicit_injection" in capsys.readouterr().out
+    assert main(["explain", target, "--path", application_path, "--argument", "dependency"]) == 2
+    assert "requires --arguments" in capsys.readouterr().err
+    generic_target = "tests.tooling_targets:generic_explain_builder"
+    generic_path = "root:tests.tooling_targets.GenericApplication:default:0/dependency:serializer:0"
+    assert main(["explain", generic_target, "--path", generic_path, "--specialization"]) == 0
+    specialization_text = capsys.readouterr().out
+    assert "Selected tier: structural_pattern" in specialization_text
+    assert "Factory-pattern bindings:" in specialization_text
+    assert "Dependency substitutions:" in specialization_text
+    assert main(["explain", target, service, "--format", "json"]) == 0
+    default = json.loads(capsys.readouterr().out)
+    assert default["path"][0].startswith("root:tests.tooling_targets.Dependency:default:")
+    path = "/".join(default["path"])
+    assert main(["explain", target, "--path", path]) == 0
+    assert "Explain" in capsys.readouterr().out
+
+    assert main(["explain", target, "not-a-locator"]) == 2
+    assert "module:object" in capsys.readouterr().err
+    assert main(["explain", target, "--path", "root:missing"]) == 2
+    assert "explain-path-not-found" in capsys.readouterr().err
+
+
+def test_cli_impact_reports_json_and_query_errors(capsys):
+    target = "tests.tooling_targets:valid_builder"
+    service = "tests.tooling_targets:Dependency"
+
+    assert main(["impact", target, service, "--format", "json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["affected_entrypoints"]
+    assert payload["include_deferred"] is False
+    assert "occurrence_id" not in json.dumps(payload)
+
+    assert main(["impact", target, "--path", "root:missing"]) == 2
+    assert "explain-path-not-found" in capsys.readouterr().err
+
+
+def test_tooling_json_is_unversioned_during_beta():
+    builder = ContainerBuilder()
+    builder.register(str, instance="value")
+    container = builder.build()
+
+    for payload in (
+        container.build_report.to_json(),
+        container.graph.ownership_report().to_json(),
+        container.graph.manifest().to_json(),
+    ):
+        assert "schema_version" not in json.loads(payload)
+
+    manifest = container.graph.manifest()
+    restored = GraphManifest.from_json(manifest.to_json())
+    assert restored.data == manifest.data
+    assert restored.fingerprint == manifest.fingerprint
+    assert restored.diff(manifest).is_empty
+
+
+def test_reverse_dependency_analysis_keeps_paths_deferred_edges_and_entrypoints():
+    class Gateway:
+        pass
+
+    class Checkout:
+        def __init__(self, gateway: Gateway):
+            self.gateway = gateway
+
+    class RetryWorker:
+        def __init__(self, gateway: Provider[Gateway]):
+            self.gateway = gateway
+
+    builder = ContainerBuilder()
+    builder.register(Gateway)
+    builder.register(Checkout)
+    builder.register(RetryWorker)
+    builder.mark_entrypoint(Checkout)
+    builder.mark_entrypoint(RetryWorker)
+    graph = builder.build().graph
+
+    eager = graph.dependents(Gateway, match="registration")
+    deferred = graph.dependents(Gateway, match="registration", include_deferred=True)
+
+    assert {item.parent.service.rsplit(".", 1)[-1] for item in eager.direct_consumers} == {"Checkout"}
+    assert any(item.kind == "deferred_target" for item in deferred.direct_consumers)
+    assert {item.service.rsplit(".", 1)[-1] for item in eager.affected_entrypoints} == {"Checkout"}
+    assert {item.service.rsplit(".", 1)[-1] for item in deferred.affected_entrypoints} == {"Checkout", "RetryWorker"}
+    assert all("root:" in path for path in deferred.witness_paths)
+    assert "occurrence_id" not in deferred.to_json()
+
+
+def test_reverse_dependency_analysis_bounds_paths_and_rejects_ambiguous_type_selection():
+    class Shared:
+        pass
+
+    class First:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    class Second:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    class Root:
+        def __init__(self, first: First, second: Second):
+            self.first = first
+            self.second = second
+
+    builder = ContainerBuilder()
+    builder.register(Shared)
+    builder.register(First)
+    builder.register(Second)
+    builder.register(Root)
+    graph = builder.build().graph
+    root = next(item.component for item in graph.roots if item.requested_type is Root)
+    shared = next(item for item in root.descendants() if item.service_type is Shared)
+
+    sliced = graph.paths_between(root, shared, max_paths=1)
+    assert sliced.returned_paths == 1
+    assert sliced.truncated is False
+    assert sliced.max_paths == 1
+    assert sliced.to_mermaid().startswith("flowchart TD")
+    with pytest.raises(ValueError, match="analysis-ambiguous-occurrence"):
+        graph.dependents(Shared, match="occurrence")
+
+
+def test_sharing_report_groups_cache_identity_without_activation_or_raw_ids(capsys):
+    created = 0
+
+    class Database:
+        def __init__(self):
+            nonlocal created
+            created += 1
+
+    class Left:
+        def __init__(self, database: Database):
+            self.database = database
+
+    class Right:
+        def __init__(self, database: Database):
+            self.database = database
+
+    class Application:
+        def __init__(self, left: Left, right: Right):
+            self.left = left
+            self.right = right
+
+    builder = ContainerBuilder()
+    builder.register(Database, lifespan="singleton")
+    builder.register(Left)
+    builder.register(Right)
+    builder.register(Application)
+    container = builder.build()
+
+    report = container.graph.sharing_report()
+    database_groups = [group for group in report.groups if group.service.endswith(".Database")]
+    assert len(database_groups) == 1
+    group = database_groups[0]
+    assert group.cache_category == "singleton owner cache"
+    assert len(group.paths) >= 3
+    assert all(path.startswith("root:") for path in group.paths)
+    assert created == 0
+    payload = report.to_json()
+    assert "schema_version" not in payload
+    assert "cache_key" not in payload
+    assert "sharing:singleton:" in payload
+    assert "flowchart TD" in report.to_mermaid()
+
+    assert main(["sharing", "tests.tooling_targets:valid_builder", "--format", "json"]) == 0
+    assert "groups" in json.loads(capsys.readouterr().out)
+
+    from tests.tooling_targets import valid_builder
+
+    path = valid_builder().build().graph.sharing_report().groups[0].paths[0]
+    assert main(["sharing", "tests.tooling_targets:valid_builder", "--path", path]) == 0
+    assert path in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("payload", ["[]", "null", "42", '"graph"'])
+def test_manifest_requires_a_json_object(payload):
+    with pytest.raises(ValueError, match="A graph manifest must be a JSON object"):
+        GraphManifest.from_json(payload)
