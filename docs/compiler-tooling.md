@@ -32,6 +32,34 @@ builder.mark_entrypoint(list[MessageHandler])
 
 A successful runtime exposes its immutable `BuildReport` as `container.build_report`. A failed build raises `ContainerBuildError` with the same report on `error.report`.
 
+## Inspect a failed build
+
+Failed builds also expose `error.partial_graph`: a frozen, non-executable diagnostic snapshot. It records only
+structural labels, completed draft branches, observed failing parameter edges, and known selection candidates.
+Evaluated candidates are marked `complete`, `failed`, or `rejected`; known candidates compilation did not visit are
+marked `not-examined`, never rejected. Cycles use explicit back-reference edges and attempts
+retain their safe witness paths. It deliberately does not freeze a
+runtime graph, execute constructors or callbacks, or serialize configured values or exception text.
+
+```python
+from clean_ioc import ContainerBuildError
+
+try:
+    builder.build()
+except ContainerBuildError as error:
+    print(error.partial_graph.to_text())
+```
+
+Independent error-report retries remain separate attempts in this artifact; they are not merged into a graph that
+looks coherent. Capture is bounded (500 nodes and edges per attempt), and reports truncation explicitly. JSON includes
+graph-level `total_attempts`, `retained_attempts`, `omitted_attempts`, `total_roots`, `retained_roots`, and
+`omitted_roots`; each attempt includes `witness_total` and `witness_omitted` when its witness path is clipped. Use the CLI
+to write an artifact while retaining a failing exit status:
+
+```console
+clean-ioc graph my_app.composition:application_builder --on-error partial --format json -o failed-graph.json
+```
+
 ```python
 from clean_ioc import ContainerBuildError
 
@@ -180,6 +208,36 @@ was evaluated for a marked entry point during compilation. Collection explanatio
 Configured values, build arguments, filter closure state, callable representations, memory addresses, and runtime IDs
 are never included. Provenance is deliberately absent from graph manifests, so it does not affect fingerprints.
 
+### Explain parameter policies and generic substitutions
+
+For an exact occurrence, `explain_arguments()` reports the policy that was compiled for every parameter. It records the
+declared and canonical annotation, whether Python supplied a default, the result category, and selected semantic graph
+paths;
+fixed and derived values are reported only as redacted values. Inspection reads frozen data and does not call `derive`,
+filters, constructors, or factories again.
+
+```python
+component = container.graph.component_at_path(
+    "root:my_app.Checkout:default:0/dependency:serializer:0"
+)
+for parameter in container.graph.explain_arguments(component):
+    print(parameter.parameter, parameter.policy_kind, parameter.result_category)
+
+specialization = container.graph.explain_specialization(component)
+print(specialization.service_bindings)
+print(specialization.factory_pattern_bindings)  # a distinct TypeVar scope
+```
+
+`build_arg(...)` is identified as an explicit build input but its key and value are never exposed. `generic_arg(...)`,
+`derive(...)`, `inject()`, `select()`, fixed arguments, Python defaults, and implicit injection remain distinct policy
+kinds. Generic records preserve before/after dependency annotations and keep service and structural factory-pattern
+bindings separate. They are compiler evidence, not a new runtime type check. `ParameterExplanation.to_dict()` omits
+provenance by default so equivalent builds serialize identically; pass `include_provenance=True` when source metadata is
+needed for an interactive or local report.
+Only successful specializations have a graph occurrence and therefore a `GenericBindingExplanation`; an unsuccessful
+build exposes its existing redacted selection/failure explanations instead of reconstructing bindings by re-running
+user code.
+
 ## Reverse dependencies and impact
 
 `graph.dependents(...)` builds a lazy, immutable sidecar index from the compiled plan. It does not run constructors,
@@ -244,6 +302,9 @@ clean-ioc activation my_app.composition:application_builder my_app.use_cases:Che
 clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGateway
 clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGateway --name stripe --format json
 clean-ioc explain my_app.composition:application_builder --path 'root:my_app.Checkout:default:0/dependency:gateway:0'
+clean-ioc explain my_app.composition:application_builder --path 'root:my_app.Checkout:default:0' --arguments
+clean-ioc explain my_app.composition:application_builder --path 'root:my_app.Checkout:default:0' --arguments --argument timeout --format json
+clean-ioc explain my_app.composition:application_builder --path 'root:my_app.Checkout:default:0/dependency:serializer:0' --specialization
 clean-ioc impact my_app.composition:application_builder my_app.ports:PaymentGateway --match registration
 clean-ioc impact my_app.composition:application_builder --path 'root:my_app.Checkout:default:0/dependency:gateway:0'
 ```

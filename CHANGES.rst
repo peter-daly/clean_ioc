@@ -1,3 +1,21 @@
+2.0.0b13
+--------
+
+    Add frozen partial diagnostic graphs for failed builds, including bounded
+    compilation attempts, witness paths, candidate outcomes, cycle back
+    references, and CLI rendering through ``graph --on-error partial``.
+
+    Record parameter-policy outcomes and generic substitutions in compiled
+    graph metadata. Expose argument and specialization explanations through the
+    Python API and ``clean-ioc explain`` CLI without re-running user callbacks.
+
+    Allow subclass discovery rules to declare module names with
+    ``ensure_import_modules=``. Build imports every declared module before taking any
+    live subclass snapshot, making discovery independent of rule order. Package
+    children remain opt-in through ``include_children=True``. Built containers and
+    scopes expose the concrete imported names through ``ensured_import_modules``.
+
+
 2.0.0b12
 --------
 

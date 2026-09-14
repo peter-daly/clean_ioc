@@ -17,6 +17,9 @@ No user constructor, factory, generator, or context manager runs during this wor
 
 A successful build therefore establishes the runtime invariant: the `Container` contains one complete, immutable, structurally valid component plan. Later Python subclasses do not join or invalidate that plan.
 
+For the implementation walkthrough, see [How compilation works](compilation-process.md): blueprint inputs, candidate
+selection, occurrence-specific graph construction, executable steps, and the final `_PlanSet`.
+
 ## Strict failures
 
 Build fails when a visible plan contains:

@@ -3,7 +3,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Generic, Literal, NewType, TypeVar, cast
 
 import pytest
 
@@ -14,6 +14,7 @@ from clean_ioc import (
     BuildIssue,
     BuildReport,
     CandidateDecision,
+    CompilationAttempt,
     CompilationExplanation,
     CompiledGraph,
     ComponentKind,
@@ -24,16 +25,207 @@ from clean_ioc import (
     GraphManifest,
     GraphVisit,
     IssueSeverity,
+    PartialEdge,
+    PartialGraph,
+    PartialNode,
     Provider,
     ResolutionContext,
     Scope,
     SourceLocation,
     TypeAst,
     ValidationContext,
+    build_arg,
     derive,
+    generic_arg,
+    inject,
+    select,
 )
 from clean_ioc.cli import main
 from clean_ioc.factories import use_component, use_component_async
+from clean_ioc.tooling import qualified_name
+
+
+def _failed_partial_graph(error: ContainerBuildError) -> PartialGraph:
+    assert error.partial_graph is not None
+    return error.partial_graph
+
+
+def test_argument_explanations_are_frozen_redacted_and_do_not_rerun_derivations():
+    class Dependency:
+        pass
+
+    class Service:
+        def __init__(self, dependency: Dependency, timeout: int = 30, environment: str = "secret-default"):
+            self.dependency = dependency
+
+    calls = 0
+
+    def timeout(context):
+        nonlocal calls
+        calls += 1
+        return 5
+
+    builder = ContainerBuilder()
+    builder.register(Dependency)
+    builder.register(
+        Service,
+        arguments={"dependency": inject(), "timeout": derive(timeout), "environment": build_arg("token")},
+    )
+    graph = builder.build(build_args={"token": "super-secret"}).graph
+    service = next(root.component for root in graph.roots if root.component.service_type is Service)
+
+    records = {item.parameter: item for item in graph.explain_arguments(service)}
+    assert records["dependency"].policy_kind == "inject"
+    assert records["dependency"].result_category == "component_edge"
+    assert records["timeout"].policy_kind == "derive"
+    assert records["timeout"].evaluation_phase == "compilation"
+    assert records["environment"].policy_kind == "build_argument"
+    assert "super-secret" not in str([item.to_dict() for item in records.values()])
+    assert "secret-default" not in str([item.to_dict() for item in records.values()])
+    assert calls == 1
+    graph.explain_arguments(service)
+    assert calls == 1
+
+
+def test_generic_specialization_explanation_keeps_substituted_dependency_annotations():
+    TItem = TypeVar("TItem")
+
+    class Repository(Generic[TItem]):
+        def __init__(self, item_type: type[TItem]):
+            self.item_type = item_type
+
+    builder = ContainerBuilder()
+    builder.register(Repository[int], arguments={"item_type": generic_arg(TItem)})
+    graph = builder.build().graph
+    component = next(root.component for root in graph.roots if root.component.service_type == Repository[int])
+
+    explanation = graph.explain_specialization(component)
+    assert explanation.requested_service.endswith("Repository[int]")
+    assert explanation.service_bindings
+    assert graph.explain_arguments(component)[0].policy_kind == "generic_argument"
+
+
+def test_explanation_records_structural_factory_substitutions_and_never_stringifies_values():
+    TItem = TypeVar("TItem")
+
+    class Serializer(Generic[TItem]):
+        pass
+
+    class HostileValue:
+        def __str__(self):
+            raise AssertionError("tooling must not stringify configured values")
+
+        __repr__ = __str__
+
+    def factory(child: Serializer[TItem], configured: object) -> Serializer[list[TItem]]:
+        del child, configured
+        return Serializer()
+
+    class Root:
+        def __init__(self, serializer: Serializer[list[int]]):
+            self.serializer = serializer
+
+    builder = ContainerBuilder()
+    builder.register(Serializer[int], factory=Serializer)
+    builder.register_pattern(Serializer[list[TItem]], factory=factory, arguments={"configured": HostileValue()})
+    builder.register(Root)
+    graph = builder.build().graph
+    component = next(visit.component for visit in graph.walk() if visit.component.service_type == Serializer[list[int]])
+
+    specialization = graph.explain_specialization(component)
+    assert specialization.selected_tier == "structural_pattern"
+    assert specialization.factory_pattern_bindings
+    assert [name for name, _ in specialization.factory_pattern_bindings] == ["TItem"]
+    assert specialization.dependency_annotations
+    assert specialization.dependency_annotations[0][0] == "child"
+    assert specialization.dependency_annotations[0][1].endswith("Serializer[TypeVar(TItem)]")
+    assert specialization.dependency_annotations[0][2].endswith("Serializer[int]")
+    rendered = [record.to_dict() for record in graph.explain_arguments(component)]
+    assert "tooling must not stringify" not in str(rendered)
+
+
+def test_safe_declaration_labels_preserve_literal_and_newtype_identity():
+    First = NewType("First", int)
+    Second = NewType("Second", int)
+
+    assert qualified_name(Literal["alpha"]) == "typing.Literal[alpha]"
+    assert qualified_name(Literal["first"]) != qualified_name(Literal["second"])
+    assert qualified_name(Literal[1]) != qualified_name(Literal[2])
+    assert qualified_name(First) != qualified_name(Second)
+
+    class Service:
+        def __init__(self, value: Literal["alpha"]):
+            self.value = value
+
+    builder = ContainerBuilder()
+    builder.register(Service, arguments={"value": "alpha"})
+    manifest = builder.build().graph.manifest().to_json()
+    assert "typing.Literal[alpha]" in manifest
+
+
+def test_parameter_explanation_serialization_is_deterministic_and_provenance_is_opt_in():
+    class Dependency:
+        pass
+
+    class Service:
+        def __init__(self, dependency: Dependency):
+            self.dependency = dependency
+
+    def build():
+        builder = ContainerBuilder()
+        builder.register(Dependency)
+        builder.register(Service)
+        graph = builder.build().graph
+        component = next(root.component for root in graph.roots if root.component.service_type is Service)
+        return graph.explain_arguments(component)[0]
+
+    first, second = build(), build()
+    assert first.to_dict() == second.to_dict()
+    assert "provenance" not in first.to_dict()
+    assert first.to_dict(include_provenance=True)["provenance"] is not None
+
+
+def test_closed_generic_constructor_keeps_declared_and_resolved_parameter_annotations():
+    TItem = TypeVar("TItem")
+
+    class Dependency(Generic[TItem]):
+        pass
+
+    class Service(Generic[TItem]):
+        def __init__(self, dependency: Dependency[TItem]):
+            self.dependency = dependency
+
+    class Root:
+        def __init__(self, service: Service[int]):
+            self.service = service
+
+    builder = ContainerBuilder()
+    builder.register(Dependency[int])
+    builder.register(Service[int])
+    builder.register(Root)
+    graph = builder.build().graph
+    service = next(visit.component for visit in graph.walk() if visit.component.service_type == Service[int])
+    parameter = graph.explain_arguments(service)[0]
+    assert parameter.declared_annotation.endswith("Dependency[TypeVar(TItem)]")
+    assert parameter.canonical_annotation.endswith("Dependency[int]")
+
+
+def test_failed_derivation_does_not_disclose_exception_text_in_text_or_json():
+    class Service:
+        def __init__(self, value: str):
+            self.value = value
+
+    def fail(_):
+        raise RuntimeError("derive-secret-value")
+
+    builder = ContainerBuilder()
+    builder.register(Service, arguments={"value": derive(fail)})
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    assert "derive-secret-value" not in str(raised.value)
+    assert raised.value.report is not None
+    assert "derive-secret-value" not in raised.value.report.to_json()
 
 
 def test_activation_report_separates_provider_target_slots_and_async_causes():
@@ -1571,6 +1763,7 @@ def test_dependency_impact_distinguishes_eager_and_deferred_reachability():
 
     eager = graph.dependents(Service)
     assert any(root.requested_type.endswith("Root") for root in eager.affected_roots)
+    assert any(len(root.witness_path) > 1 for root in eager.affected_roots)
     assert any(relationship.parent.service.endswith("Worker") for relationship in eager.direct_consumers)
 
     deferred_target = graph.entrypoints[0].component.dependencies[1].dependencies[0]
@@ -1767,6 +1960,574 @@ def test_cli_reports_invalid_builds_and_bad_targets(capsys):
     assert "module:object" in capsys.readouterr().err
 
 
+def test_failed_build_exposes_frozen_redacted_partial_graph_and_cli(capsys):
+    class Missing:
+        pass
+
+    class Service:
+        def __init__(self, token: Missing):
+            pass
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    diagnostic = raised.value.partial_graph
+    assert diagnostic is not None
+    assert diagnostic.to_json() == diagnostic.to_json()
+    assert "Partial diagnostic graph — build failed" in diagnostic.to_text()
+    assert "missing-component" in diagnostic.to_text()
+    assert "token" in diagnostic.to_text()
+    assert "No component for" not in diagnostic.to_json()
+    assert "flowchart TD" in diagnostic.to_mermaid()
+
+    builder.register(Missing)
+    repaired = builder.build()
+    assert repaired.resolve(Service).__class__ is Service
+
+    # The command writes an artifact but still reports the failed build.
+    assert main(["graph", "tests.tooling_targets:invalid_builder", "--on-error", "partial"]) == 1
+    assert "Partial diagnostic graph — build failed" in capsys.readouterr().out
+
+
+def test_partial_graph_marks_cycle_back_references_and_unexamined_candidates():
+    class First:
+        def __init__(self, second: object):
+            pass
+
+    class Second:
+        def __init__(self, first: First):
+            pass
+
+    class Alternative(First):
+        pass
+
+    First.__init__.__annotations__["second"] = Second
+    builder = ContainerBuilder()
+    builder.register(First)
+    builder.register(First, Alternative)
+    builder.register(Second)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    attempt = _failed_partial_graph(raised.value).attempts[0]
+    assert attempt.witness_path
+    labels = {node.id: node.label.rsplit(".", 1)[-1] for node in attempt.nodes}
+    assert any(
+        edge.back_reference and labels.get(edge.source) == "Second" and labels.get(edge.target) == "First"
+        for edge in attempt.edges
+    )
+    assert any(node.state.value == "failed" and node.kind == "candidate" for node in attempt.nodes)
+    # The alternative was known but compilation stopped before it was evaluated.
+    assert any(node.state.value == "not-examined" for node in attempt.nodes)
+
+
+def test_partial_graph_retains_complete_structure_for_build_rule_failure():
+    class Dependency:
+        pass
+
+    class Service:
+        def __init__(self, dependency: Dependency):
+            pass
+
+    def reject(context: ValidationContext):
+        yield BuildIssue("rule-failed", IssueSeverity.error, "the rule rejected this graph")
+
+    builder = ContainerBuilder()
+    builder.register(Dependency)
+    builder.register(Service)
+    builder.add_validation_rule(reject)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    attempt = _failed_partial_graph(raised.value).attempts[0]
+    assert attempt.issue_code == "rule-failed"
+    assert {node.label for node in attempt.nodes} >= {
+        qualified_name(Service),
+        qualified_name(Dependency),
+    }
+    assert any(edge.state.value == "complete" for edge in attempt.edges)
+
+
+def test_partial_graph_never_formats_hostile_user_exceptions():
+    class HostileError(Exception):
+        def __str__(self):
+            raise AssertionError("diagnostic must not call __str__")
+
+    class Service:
+        pass
+
+    def hostile(_):
+        raise HostileError()
+
+    builder = ContainerBuilder()
+    builder.register(Service, when=hostile)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    assert raised.value.partial_graph is not None
+    assert "compile-error" in raised.value.partial_graph.to_json()
+
+
+def test_partial_graph_marks_throwing_selection_filter_failed_and_later_candidate_unexamined():
+    class Service:
+        pass
+
+    class First(Service):
+        pass
+
+    class Later(Service):
+        pass
+
+    class Root:
+        def __init__(self, service: Service):
+            self.service = service
+
+    def throwing_filter(_: object) -> bool:
+        raise RuntimeError("configured secret must not be rendered")
+
+    builder = ContainerBuilder()
+    builder.register(Service, Later)
+    builder.register(Service, First)
+    builder.register(Root, arguments={"service": select(throwing_filter)})
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    graph = raised.value.partial_graph
+    assert graph is not None
+    candidates = [(node.label, node.state.value) for node in graph.attempts[0].nodes if node.kind == "candidate"]
+    assert any(label.endswith(qualified_name(First)) and state == "failed" for label, state in candidates)
+    assert any(label.endswith(qualified_name(Later)) and state == "not-examined" for label, state in candidates)
+
+
+def test_partial_graph_marks_throwing_decorator_filter_failed_and_later_decorator_unexamined():
+    class Service:
+        pass
+
+    class BrokenDecorator(Service):
+        def __init__(self, decorated: Service):
+            self.decorated = decorated
+
+    class LaterDecorator(Service):
+        def __init__(self, decorated: Service):
+            self.decorated = decorated
+
+    def throwing_filter(_: object) -> bool:
+        raise RuntimeError("configured secret must not be rendered")
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register_decorator(Service, LaterDecorator, decorated_arg="decorated")
+    builder.register_decorator(Service, BrokenDecorator, when=throwing_filter, decorated_arg="decorated")
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    graph = raised.value.partial_graph
+    assert graph is not None
+    candidates = [(node.label, node.state.value) for node in graph.attempts[0].nodes if node.kind == "candidate"]
+    states = {state for _, state in candidates}
+    assert "failed" in states
+    assert "not-examined" in states
+    assert "rejected" not in states
+
+
+def test_partial_graph_marks_throwing_pre_configuration_filter_failed_and_later_one_unexamined():
+    class Service:
+        pass
+
+    def broken_configuration() -> None:
+        pass
+
+    def later_configuration() -> None:
+        pass
+
+    def throwing_filter(_: object) -> bool:
+        raise RuntimeError("configured secret must not be rendered")
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.pre_configure(Service, broken_configuration, when=throwing_filter)
+    builder.pre_configure(Service, later_configuration)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    graph = raised.value.partial_graph
+    assert graph is not None
+    candidates = [(node.label, node.state.value) for node in graph.attempts[0].nodes if node.kind == "candidate"]
+    assert any(
+        label.endswith(qualified_name(broken_configuration)) and state == "failed" for label, state in candidates
+    )
+    assert any(
+        label.endswith(qualified_name(later_configuration)) and state == "not-examined" for label, state in candidates
+    )
+
+
+def test_partial_graph_mermaid_uses_opaque_ids_for_diagnostic_data():
+    # PartialGraph is public and compiler-generated ids may include a parameter
+    # name.  Renderer identifiers must never interpolate either kind of data.
+    hostile_id = 'bad["] --> injected["'
+    graph = PartialGraph(
+        (
+            CompilationAttempt(
+                "root",
+                nodes=(PartialNode(hostile_id, hostile_id),),
+                edges=(PartialEdge(hostile_id, None, hostile_id),),
+            ),
+        )
+    )
+
+    rendered = graph.to_mermaid()
+    assert 'a1_n0["' in rendered
+    assert "a1_unknown" not in rendered
+    assert f"a1_{hostile_id}" not in rendered
+    assert "&quot;" in rendered
+
+
+def test_partial_graph_is_equal_for_equivalent_failing_builds():
+    class Missing:
+        pass
+
+    class Service:
+        def __init__(self, missing: Missing):
+            pass
+
+    def diagnostic() -> str:
+        builder = ContainerBuilder()
+        builder.register(Service)
+        with pytest.raises(ContainerBuildError) as raised:
+            builder.build()
+        return _failed_partial_graph(raised.value).to_json()
+
+    assert diagnostic() == diagnostic()
+
+
+def test_partial_graph_retains_bounded_retry_accounting_without_skipping_roots():
+    class Missing:
+        pass
+
+    class Bad:
+        def __init__(self, missing: Missing):
+            pass
+
+    builder = ContainerBuilder()
+    for number in range(505):
+        builder.register(type(f"Good{number}", (), {}))
+    builder.register(Bad)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    error = raised.value
+    graph = _failed_partial_graph(error).to_dict()
+    assert error.report is not None
+    assert error.report.checked_roots == 506
+    assert graph["total_attempts"] == 507
+    assert graph["retained_attempts"] == len(graph["attempts"]) == 101
+    assert graph["omitted_attempts"] == 406
+    assert graph["total_roots"] == 506
+    assert graph["retained_roots"] == 100
+    assert graph["omitted_roots"] == 406
+    assert graph["truncated"] is True
+
+
+def test_unallocated_candidates_have_safe_distinct_declaration_links_and_are_deterministic():
+    def diagnostic() -> str:
+        class Missing:
+            pass
+
+        class Service:
+            pass
+
+        class Bad(Service):
+            def __init__(self, missing: Missing):
+                pass
+
+        class LaterA(Service):
+            pass
+
+        class LaterB(Service):
+            pass
+
+        builder = ContainerBuilder()
+        builder.register(Service, LaterA)
+        builder.register(Service, LaterB)
+        builder.register(Service, Bad)
+        with pytest.raises(ContainerBuildError) as raised:
+            builder.build()
+        graph = _failed_partial_graph(raised.value).to_dict()
+        attempt = graph["attempts"][0]
+        candidates = [node for node in attempt["nodes"] if node["kind"] == "candidate"]
+        declarations = [node for node in attempt["nodes"] if node["kind"] == "declaration"]
+        labels = {node["label"] for node in candidates}
+        assert any(label.endswith("LaterA") for label in labels)
+        assert any(label.endswith("LaterB") for label in labels)
+        for candidate in candidates:
+            if candidate["state"] == "not-examined":
+                assert candidate["declaration_ref"]
+                declaration = next(
+                    node for node in declarations if node["declaration_ref"] == candidate["declaration_ref"]
+                )
+                assert declaration["id"] in {
+                    edge["source"] for edge in attempt["edges"] if edge["target"] == candidate["id"]
+                }
+        rendered = json.dumps(graph, sort_keys=True)
+        assert "builtins.str" not in rendered and " at 0x" not in rendered
+        return _failed_partial_graph(raised.value).to_json()
+
+    assert diagnostic() == diagnostic()
+
+
+def test_partial_attempt_witness_clipping_is_structured():
+    from clean_ioc.container import _Blueprint, _Compiler
+
+    builder = ContainerBuilder()
+    compiler = _Compiler(_Blueprint((builder._layer(),)))
+    path = tuple(f"node-{index}" for index in range(40))
+    attempt = compiler.partial_attempt(ContainerBuildError(code="missing-component", path=path))
+    assert attempt.truncated is True
+    assert attempt.witness_total == 40 and attempt.witness_omitted == 8
+    assert len(attempt.witness_path) == 33
+    assert "omitted" in attempt.witness_path[16]
+
+
+def test_generic_specialization_failure_has_safe_declaration_candidate_link():
+    def diagnostic() -> str:
+        item = TypeVar("item")
+
+        class Dependency(Generic[item]):
+            pass
+
+        class Product(Generic[item]):
+            pass
+
+        class StrProduct(Product[str]):
+            pass
+
+        def conflicting(dependency: Dependency[item]) -> Product[item]:
+            return Product()
+
+        builder = ContainerBuilder()
+        builder.register(Product[int], factory=conflicting, factory_specialization=StrProduct)
+        with pytest.raises(ContainerBuildError) as raised:
+            builder.build()
+        attempt = _failed_partial_graph(raised.value).to_dict()["attempts"][0]
+        candidate = next(node for node in attempt["nodes"] if node["kind"] == "candidate")
+        declaration = next(
+            node
+            for node in attempt["nodes"]
+            if node["kind"] == "declaration" and node["declaration_ref"] == candidate["declaration_ref"]
+        )
+        assert "conflicting" in candidate["label"] and "conflicting" in declaration["label"]
+        assert any(
+            edge["source"] == declaration["id"] and edge["target"] == candidate["id"] for edge in attempt["edges"]
+        )
+        payload = _failed_partial_graph(raised.value).to_json()
+        assert " at 0x" not in payload and "builtins.str" not in payload
+        return payload
+
+    assert diagnostic() == diagnostic()
+
+
+def test_partial_declaration_capture_is_bounded():
+    from clean_ioc.container import _Blueprint, _Compiler
+
+    builder = ContainerBuilder()
+    compiler = _Compiler(_Blueprint((builder._layer(),)))
+    for number in range(501):
+        compiler._record_partial_declaration_edge((None, "declaration", f"decl-{number}", "test", False))
+    attempt = compiler.partial_attempt(ContainerBuildError(code="compile-error"))
+    declarations = [node for node in attempt.nodes if node.kind == "declaration"]
+    assert len(declarations) == 500
+    assert attempt.truncated is True
+
+
+def test_partial_graph_caps_validation_issue_nodes_after_500_compiled_roots():
+    builder = ContainerBuilder()
+    roots = tuple(type(f"Root{number}", (), {}) for number in range(500))
+    for root in roots:
+        builder.register(root)
+
+    def reject_all(_: ValidationContext):
+        for root in roots:
+            yield BuildIssue("bulk-rule-failed", IssueSeverity.error, "rejected", path=(qualified_name(root),))
+
+    builder.add_validation_rule(reject_all)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    assert raised.value.report is not None
+    assert len(raised.value.report.errors) == 500
+    graph = raised.value.partial_graph
+    assert graph is not None
+    attempt = graph.attempts[0]
+    assert attempt.issue_code == "bulk-rule-failed"
+    assert len(attempt.nodes) <= 500
+    assert len(attempt.edges) <= 500
+    assert attempt.truncated is True
+    issue_edges = [edge for edge in attempt.edges if edge.label == "issue"]
+    retained_ids = {node.id for node in attempt.nodes}
+    assert len(issue_edges) == 500
+    assert all(edge.state.value == "failed" and edge.target in retained_ids for edge in issue_edges)
+    assert all(edge.source is None and edge.target is not None for edge in issue_edges)
+
+
+def test_partial_graph_links_validation_issue_to_the_exact_shared_occurrence_path():
+    class Shared:
+        pass
+
+    class RootA:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    class RootB:
+        def __init__(self, shared: Shared):
+            self.shared = shared
+
+    issue_code = "root-b-shared-rule"
+
+    def reject_root_b_shared(context: ValidationContext):
+        visit = next(
+            visit
+            for visit in context.graph.walk()
+            if visit.root.component.service_type is RootB and visit.component.service_type is Shared
+        )
+        path = tuple(qualified_name(component.service_type) for component in visit.components)
+        yield BuildIssue(issue_code, IssueSeverity.error, "rejected", root=qualified_name(RootB), path=path)
+
+    builder = ContainerBuilder()
+    builder.register(Shared)
+    builder.register(RootA)
+    builder.register(RootB)
+    builder.add_validation_rule(reject_root_b_shared)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    graph = _failed_partial_graph(raised.value)
+    attempt = graph.attempts[0]
+    labels = {node.id: node.label for node in attempt.nodes}
+    root_a_id = next(node.id for node in attempt.nodes if node.label == qualified_name(RootA))
+    root_b_id = next(node.id for node in attempt.nodes if node.label == qualified_name(RootB))
+    root_a_shared = next(edge.target for edge in attempt.edges if edge.source == root_a_id and edge.label == "shared")
+    root_b_shared = next(edge.target for edge in attempt.edges if edge.source == root_b_id and edge.label == "shared")
+    issue_edge = next(edge for edge in attempt.edges if edge.label == "issue" and edge.issue_code == issue_code)
+
+    assert issue_edge.target is not None
+    assert labels[issue_edge.target] == qualified_name(Shared)
+    assert issue_edge.target == root_b_shared
+    assert issue_edge.target != root_a_shared
+
+
+def test_partial_graph_links_graph_visit_decorator_issue_to_its_decorator_occurrence():
+    class Service:
+        pass
+
+    class Decorated(Service):
+        def __init__(self, service: Service):
+            self.service = service
+
+    issue_code = "decorator-rule"
+
+    def reject_decorator(context: ValidationContext):
+        visit = next(visit for visit in context.graph.walk() if visit.component.kind is ComponentKind.decorator)
+        yield visit.issue(issue_code, "rejected")
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register_decorator(Service, Decorated, decorated_arg="service")
+    builder.add_validation_rule(reject_decorator)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    attempt = _failed_partial_graph(raised.value).attempts[0]
+    decorator = next(node for node in attempt.nodes if node.kind == ComponentKind.decorator.value)
+    issue_edge = next(edge for edge in attempt.edges if edge.label == "issue" and edge.issue_code == issue_code)
+    assert issue_edge.target == decorator.id
+    assert not any(node.kind == "issue" and node.issue_code == issue_code for node in attempt.nodes)
+
+
+def test_partial_graph_does_not_invent_decorator_paths_from_allocation_parent():
+    class Service:
+        pass
+
+    class Decorated(Service):
+        def __init__(self, service: Service):
+            self.service = service
+
+    class Root:
+        def __init__(self, service: Service):
+            self.service = service
+
+    unanchored_code = "decorator-unanchored"
+    exact_code = "decorator-exact"
+
+    def check_paths(_: ValidationContext):
+        yield BuildIssue(
+            unanchored_code,
+            IssueSeverity.error,
+            "not a GraphVisit path",
+            root=qualified_name(Root),
+            path=(qualified_name(Root), qualified_name(Decorated)),
+        )
+        yield BuildIssue(
+            exact_code,
+            IssueSeverity.error,
+            "the GraphVisit path",
+            root=qualified_name(Root),
+            path=(qualified_name(Root), qualified_name(Service), qualified_name(Decorated)),
+        )
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register(Root)
+    builder.register_decorator(Service, Decorated, decorated_arg="service")
+    builder.add_validation_rule(check_paths)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    attempt = _failed_partial_graph(raised.value).attempts[0]
+    root = next(node for node in attempt.nodes if node.label == qualified_name(Root))
+    service_id = next(edge.target for edge in attempt.edges if edge.source == root.id and edge.label == "service")
+    decorator_id = next(
+        edge.target for edge in attempt.edges if edge.source == service_id and edge.label == "decorator"
+    )
+    exact_edge = next(edge for edge in attempt.edges if edge.label == "issue" and edge.issue_code == exact_code)
+    unanchored_edge = next(
+        edge for edge in attempt.edges if edge.label == "issue" and edge.issue_code == unanchored_code
+    )
+    assert exact_edge.target == decorator_id
+    assert unanchored_edge.target is not None
+    unanchored = next(node for node in attempt.nodes if node.id == unanchored_edge.target)
+    assert unanchored.kind == "issue"
+    assert "unanchored" in unanchored.label
+
+
+def test_partial_graph_links_graph_visit_pre_configuration_issue_to_its_occurrence():
+    class Service:
+        pass
+
+    def configure() -> None:
+        pass
+
+    issue_code = "pre-configuration-rule"
+
+    def reject_pre_configuration(context: ValidationContext):
+        visit = next(visit for visit in context.graph.walk() if visit.component.kind is ComponentKind.pre_configuration)
+        yield visit.issue(issue_code, "rejected")
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.pre_configure(Service, configure)
+    builder.add_validation_rule(reject_pre_configuration)
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+
+    attempt = _failed_partial_graph(raised.value).attempts[0]
+    configuration = next(node for node in attempt.nodes if node.kind == ComponentKind.pre_configuration.value)
+    issue_edge = next(edge for edge in attempt.edges if edge.label == "issue" and edge.issue_code == issue_code)
+    assert issue_edge.target == configuration.id
+    assert not any(node.kind == "issue" and node.issue_code == issue_code for node in attempt.nodes)
+
+
 def test_explain_records_default_named_filtered_and_collection_selection_without_rerunning_filters():
     class Gateway:
         pass
@@ -1881,10 +2642,15 @@ def test_explain_occurrences_captures_origins_bundles_argument_policies_and_appl
 
 
 def test_explain_overlay_anchoring_normal_scope_reuse_and_manifest_stability():
-    class Service:
+    class Dependency:
         pass
 
+    class Service:
+        def __init__(self, dependency: Dependency):
+            self.dependency = dependency
+
     builder = ContainerBuilder()
+    builder.register(Dependency, lifespan="singleton")
     builder.register(Service, lifespan="singleton")
     container = builder.build()
     before = container.graph.manifest(all_roots=True).to_json()
@@ -1895,6 +2661,8 @@ def test_explain_overlay_anchoring_normal_scope_reuse_and_manifest_stability():
 
     assert "anchored-parent-singleton" in explanation.selected[0].reason_codes
     assert explanation.selected[0].origin.layer == "root"
+    component = next(root.component for root in overlay.graph.roots if root.component.service_type is Service)
+    assert overlay.graph.explain_arguments(component)[0].selected_components[0].startswith("root:")
     assert container.graph.manifest(all_roots=True).to_json() == before
 
 
@@ -1934,6 +2702,18 @@ def test_cli_explain_text_json_path_and_invalid_selection(capsys):
 
     assert main(["explain", target, service]) == 0
     assert "selected-default" in capsys.readouterr().out
+    application_path = "root:tests.tooling_targets.Application:default:0"
+    assert main(["explain", target, "--path", application_path, "--arguments"]) == 0
+    assert "dependency: implicit_injection" in capsys.readouterr().out
+    assert main(["explain", target, "--path", application_path, "--argument", "dependency"]) == 2
+    assert "requires --arguments" in capsys.readouterr().err
+    generic_target = "tests.tooling_targets:generic_explain_builder"
+    generic_path = "root:tests.tooling_targets.GenericApplication:default:0/dependency:serializer:0"
+    assert main(["explain", generic_target, "--path", generic_path, "--specialization"]) == 0
+    specialization_text = capsys.readouterr().out
+    assert "Selected tier: structural_pattern" in specialization_text
+    assert "Factory-pattern bindings:" in specialization_text
+    assert "Dependency substitutions:" in specialization_text
     assert main(["explain", target, service, "--format", "json"]) == 0
     default = json.loads(capsys.readouterr().out)
     assert default["path"][0].startswith("root:tests.tooling_targets.Dependency:default:")

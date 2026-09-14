@@ -7,6 +7,7 @@ import hashlib
 import inspect
 import json
 import textwrap
+import unicodedata
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from html import escape
@@ -34,7 +35,7 @@ from .components import (
     RuntimeOwnerKind,
     default_component_filter,
 )
-from .type_aliases import normalize_type_alias
+from .type_aliases import alias_label, is_new_type, is_type_alias, normalize_type_alias
 
 
 class IssueSeverity(str, Enum):
@@ -168,6 +169,65 @@ class CompilationExplanation:
 
 
 @dataclass(frozen=True, slots=True)
+class ParameterExplanation:
+    """Frozen, redacted account of one compiled callable parameter."""
+
+    owner: str
+    parameter: str
+    declared_annotation: str
+    canonical_annotation: str
+    has_default: bool
+    policy_kind: str
+    evaluation_phase: str
+    result_category: str
+    result_type: str
+    selected_components: tuple[str, ...] = ()
+    provenance: DefinitionOrigin | None = None
+
+    def to_dict(self, *, include_provenance: bool = False) -> dict[str, object]:
+        result: dict[str, object] = {
+            "owner": self.owner,
+            "parameter": self.parameter,
+            "declared_annotation": self.declared_annotation,
+            "canonical_annotation": self.canonical_annotation,
+            "has_default": self.has_default,
+            "policy_kind": self.policy_kind,
+            "evaluation_phase": self.evaluation_phase,
+            "result_category": self.result_category,
+            "result_type": self.result_type,
+            "selected_components": list(self.selected_components),
+        }
+        if include_provenance:
+            result["provenance"] = None if self.provenance is None else self.provenance.to_dict()
+        return result
+
+
+@dataclass(frozen=True, slots=True)
+class GenericBindingExplanation:
+    """Frozen generic substitutions used by one compiled component occurrence."""
+
+    requested_service: str
+    template_identity: str
+    selected_tier: str
+    service_bindings: tuple[tuple[str, str], ...] = ()
+    factory_pattern_bindings: tuple[tuple[str, str], ...] = ()
+    dependency_annotations: tuple[tuple[str, str, str], ...] = ()
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "requested_service": self.requested_service,
+            "template_identity": self.template_identity,
+            "selected_tier": self.selected_tier,
+            "service_bindings": dict(self.service_bindings),
+            "factory_pattern_bindings": dict(self.factory_pattern_bindings),
+            "dependency_annotations": [
+                {"parameter": name, "before": before, "after": after}
+                for name, before, after in self.dependency_annotations
+            ],
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class _CandidateRecord:
     """Private compiler-to-tooling record used to answer root queries."""
 
@@ -244,6 +304,190 @@ class BuildReport:
 
     def __str__(self) -> str:
         return self.to_text()
+
+
+class PartialState(str, Enum):
+    """What compilation established about a diagnostic graph item."""
+
+    complete = "complete"
+    failed = "failed"
+    rejected = "rejected"
+    not_examined = "not-examined"
+
+
+@dataclass(frozen=True, slots=True)
+class PartialNode:
+    """A value-free component occurrence captured before a failed build unwinds."""
+
+    id: str
+    label: str
+    state: PartialState = PartialState.complete
+    kind: str | None = None
+    lifespan: str | None = None
+    issue_code: str | None = None
+    declaration_ref: str | None = None
+    occurrence_ref: str | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "id": self.id,
+            "label": self.label,
+            "state": self.state.value,
+            "kind": self.kind,
+            "lifespan": self.lifespan,
+            "issue_code": self.issue_code,
+            "declaration_ref": self.declaration_ref,
+            "occurrence_ref": self.occurrence_ref,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PartialEdge:
+    """A structural relationship observed while compiling a failed attempt."""
+
+    source: str | None
+    target: str | None
+    label: str
+    state: PartialState = PartialState.complete
+    issue_code: str | None = None
+    back_reference: bool = False
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "source": self.source,
+            "target": self.target,
+            "label": self.label,
+            "state": self.state.value,
+            "issue_code": self.issue_code,
+            "back_reference": self.back_reference,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class CompilationAttempt:
+    """One independent compiler attempt; attempts are deliberately never merged."""
+
+    root: str | None
+    nodes: tuple[PartialNode, ...] = ()
+    edges: tuple[PartialEdge, ...] = ()
+    issue_code: str = "compile-error"
+    truncated: bool = False
+    witness_path: tuple[str, ...] = ()
+    succeeded: bool = False
+    witness_total: int = 0
+    witness_omitted: int = 0
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "root": self.root,
+            "issue_code": self.issue_code,
+            "truncated": self.truncated,
+            "witness_path": list(self.witness_path),
+            "succeeded": self.succeeded,
+            "witness_total": self.witness_total or len(self.witness_path),
+            "witness_omitted": self.witness_omitted,
+            "nodes": [node.to_dict() for node in self.nodes],
+            "edges": [edge.to_dict() for edge in self.edges],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PartialGraph:
+    """Frozen, non-executable, bounded evidence from failed compilation."""
+
+    attempts: tuple[CompilationAttempt, ...]
+    inconsistent_retries: bool = False
+    truncated: bool = False
+    total_attempts: int = 0
+    omitted_attempts: int = 0
+    retained_attempts: int = 0
+    total_roots: int = 0
+    retained_roots: int = 0
+    omitted_roots: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "title": "Partial diagnostic graph — build failed",
+            "attempts": [attempt.to_dict() for attempt in self.attempts],
+            "inconsistent_retries": self.inconsistent_retries,
+            "truncated": self.truncated,
+            "total_attempts": self.total_attempts or len(self.attempts),
+            "omitted_attempts": self.omitted_attempts,
+            "retained_attempts": self.retained_attempts or len(self.attempts),
+            "total_roots": self.total_roots,
+            "retained_roots": self.retained_roots,
+            "omitted_roots": self.omitted_roots,
+        }
+
+    def to_json(self, *, indent: int | None = 2) -> str:
+        return json.dumps(self.to_dict(), indent=indent, sort_keys=True)
+
+    def to_text(self) -> str:
+        lines = ["Partial diagnostic graph — build failed"]
+        if self.inconsistent_retries:
+            lines.append("Retry outcomes were inconsistent; attempts are shown separately.")
+        for number, attempt in enumerate(self.attempts, 1):
+            location = " -> ".join(attempt.witness_path)
+            lines.append(
+                f"Attempt {number} ({attempt.root or 'pre-graph'}): [{attempt.issue_code}]"
+                + (f" path={location}" if location else "")
+            )
+            for node in attempt.nodes:
+                lines.append(f"  {node.id}: {node.label} [{node.state.value}]")
+            for edge in attempt.edges:
+                source = edge.source or "declaration"
+                target = edge.target or "missing"
+                lines.append(
+                    f"  {source} --{edge.label}--> {target} [{edge.state.value}]"
+                    + (f" [{edge.issue_code}]" if edge.issue_code else "")
+                    + (" [back-reference]" if edge.back_reference else "")
+                )
+            if attempt.truncated:
+                lines.append("  … capture truncated")
+        return "\n".join(lines)
+
+    def to_mermaid(self) -> str:
+        def quote(value: str) -> str:
+            # Mermaid labels are HTML text; escape every user-controlled value
+            # before applying Mermaid's quote/backslash syntax.
+            normalized = "".join(
+                " " if unicodedata.category(character) in {"Cc", "Zl", "Zp"} else character for character in value
+            )
+            return escape(normalized, quote=True).replace("\\", "\\\\").replace('"', "&quot;")
+
+        lines = ["---", "title: Partial diagnostic graph — build failed", "---", "flowchart TD"]
+        for number, attempt in enumerate(self.attempts, 1):
+            prefix = f"a{number}_"
+            # Partial node ids are diagnostic data, not Mermaid identifiers.  In
+            # particular, a missing dependency's generated id can contain a
+            # user-authored parameter name.  Assign opaque renderer ids so that
+            # such data can only ever occur in an escaped label.
+            node_ids = {node.id: f"{prefix}n{index}" for index, node in enumerate(attempt.nodes)}
+            unknown_ids: dict[str, str] = {}
+
+            def rendered_id(node_id: str | None, *, role: str, edge_index: int) -> str:
+                if node_id is None:
+                    return f"{prefix}failure_{role}_{edge_index}"
+                if node_id in node_ids:
+                    return node_ids[node_id]
+                return unknown_ids.setdefault(node_id, f"{prefix}unknown_{len(unknown_ids)}")
+
+            for node in attempt.nodes:
+                lines.append(f'  {node_ids[node.id]}["{quote(node.label)} ({node.state.value})"]')
+            for index, edge in enumerate(attempt.edges):
+                source = rendered_id(edge.source, role="source", edge_index=index)
+                target = rendered_id(edge.target, role="target", edge_index=index)
+                if edge.source is None:
+                    lines.append(f'  {source}["{quote(edge.issue_code or attempt.issue_code)}"]')
+                if edge.target is None:
+                    lines.append(f'  {target}["{quote(edge.issue_code or "missing")}"]')
+                lines.append(f'  {source} -->|"{quote(edge.label)}"| {target}')
+            if not attempt.nodes and not attempt.edges:
+                failure = f"{prefix}pregraph"
+                path = " -> ".join(attempt.witness_path) or "declaration"
+                detail = f"[{attempt.issue_code}] {path}"
+                lines.append(f'  {failure}["{quote(detail)}"]')
+        return "\n".join(lines)
 
 
 @dataclass(frozen=True, slots=True)
@@ -343,21 +587,47 @@ def qualified_name(value: Any) -> str:
         return "None"
     if isinstance(value, TypeVar):
         return f"TypeVar({value.__name__})"
+    if is_type_alias(value):
+        return alias_label(value)
+    if is_new_type(value):
+        module = getattr(value, "__module__", None)
+        name = getattr(value, "__qualname__", None) or getattr(value, "__name__", None)
+        if isinstance(name, str) and isinstance(module, str | type(None)):
+            return name if module in (None, "builtins") else f"{module}.{name}"
     origin = get_origin(value)
     arguments = get_args(value)
+    if origin is Literal:
+
+        def literal_label(item: Any) -> str:
+            # Preserve beta's existing manifest spelling (notably
+            # ``typing.Literal[alpha]``) while only formatting exact built-ins.
+            if item is None:
+                return "None"
+            item_type = type(item)
+            if item_type in (str,):
+                return item
+            if item_type in (bool, int, float):
+                return str(item)
+            if item_type in (bytes,):
+                return bytes.__repr__(item)
+            if isinstance(item, Enum):
+                return f"{qualified_name(type(item))}.{item.name}"
+            return qualified_name(type(item))
+
+        return f"typing.Literal[{', '.join(literal_label(item) for item in arguments)}]"
     if origin in (Union, UnionType):
         rendered = ", ".join(sorted(qualified_name(argument) for argument in arguments))
         return f"typing.Union[{rendered}]"
     if origin is not None:
         rendered = ", ".join(qualified_name(argument) for argument in arguments)
         return f"{qualified_name(origin)}[{rendered}]"
-    module = getattr(value, "__module__", None)
-    qualname = getattr(value, "__qualname__", None) or getattr(value, "__name__", None)
-    if qualname is not None:
-        return qualname if module in (None, "builtins") else f"{module}.{qualname}"
-    text = str(value).replace("typing.", "")
-    if " at 0x" not in text:
-        return text
+    if isinstance(value, type) or inspect.isroutine(value):
+        module = getattr(value, "__module__", None)
+        qualname = getattr(value, "__qualname__", None) or getattr(value, "__name__", None)
+        if isinstance(qualname, str) and isinstance(module, str | type(None)):
+            return qualname if module in (None, "builtins") else f"{module}.{qualname}"
+    # Do not fall back to ``str(value)``/``repr(value)``: user-authored
+    # objects can run code, throw, or disclose configured values there.
     value_type = type(value)
     return f"{value_type.__module__}.{value_type.__qualname__}"
 
@@ -803,6 +1073,12 @@ class CompiledGraph:
     _occurrence_layers: Mapping[int, str] = field(
         default_factory=lambda: MappingProxyType({}), compare=False, repr=False
     )
+    _parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = field(
+        default_factory=lambda: MappingProxyType({}), compare=False, repr=False
+    )
+    _generic_explanations: Mapping[int, GenericBindingExplanation] = field(
+        default_factory=lambda: MappingProxyType({}), compare=False, repr=False
+    )
     _manifest_cache: dict[bool, GraphManifest] = field(default_factory=dict, compare=False, repr=False)
     _ownership_report_cache: list[OwnershipReport] = field(default_factory=list, compare=False, repr=False)
     _analysis_index_cache: Any | None = field(default=None, compare=False, repr=False)
@@ -1119,6 +1395,22 @@ class CompiledGraph:
                 explanation,
                 subject=f"{qualified_name(declared_subject)} -> {qualified_name(subject)}",
             )
+        return explanation
+
+    def explain_arguments(self, component: Component) -> tuple[ParameterExplanation, ...]:
+        """Return frozen parameter evidence for one exact graph occurrence."""
+        self._path_for_component(component)
+        records = self._parameter_explanations.get(component.occurrence_id)
+        if records is None:
+            raise ValueError("explain-arguments-not-recorded: no parameter evidence exists for this occurrence")
+        return tuple(records[name] for name in sorted(records))
+
+    def explain_specialization(self, component: Component) -> GenericBindingExplanation:
+        """Return frozen generic substitutions for one exact occurrence."""
+        self._path_for_component(component)
+        explanation = self._generic_explanations.get(component.occurrence_id)
+        if explanation is None:
+            raise ValueError("explain-specialization-not-recorded: this occurrence has no generic specialization")
         return explanation
 
     def walk(self) -> Iterator[GraphVisit]:

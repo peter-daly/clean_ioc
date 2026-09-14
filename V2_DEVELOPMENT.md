@@ -262,7 +262,7 @@ startup. Protocol-specific routing, including health-check policy, remains appli
 ## Generics and discovery
 
 - Subclass and closed-generic registration discovery rules are queued on a builder and materialized at `build()` from the then-live Python class set.
-- Import candidate modules and retain dynamically created class objects until build. Python's subclass registry uses weak references.
+- Declare candidate modules with `ensure_import_modules=` on a subclass discovery rule, or import them before build. Package children are imported recursively only with `include_children=True`, and the built runtime reports the concrete names through `ensured_import_modules`. Retain dynamically created class objects until build; Python's subclass registry uses weak references.
 - Open generic registrations are templates, not directly resolvable roots. Closed occurrences are specialized when encountered in a compiled dependency path; explicitly register a closed service when it must be a root.
 - Generic factory dependencies are specialized from the requested service type and factory annotations. `factory_specialization=` supplies otherwise hidden bindings.
 - Unresolved/conflicting `TypeVar` bindings fail build. `ParamSpec` and `TypeVarTuple` are not supported.

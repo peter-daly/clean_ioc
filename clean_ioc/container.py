@@ -5,9 +5,11 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import copy
+import importlib
 import inspect
 import logging
 import os
+import pkgutil
 import re
 import threading
 import types
@@ -55,16 +57,24 @@ from .tooling import (
     BuildIssue,
     BuildReport,
     CandidateDecision,
+    CompilationAttempt,
     CompilationExplanation,
     CompiledGraph,
     DecisionOutcome,
     DefinitionOrigin,
+    GenericBindingExplanation,
     GraphRoot,
     IssueSeverity,
+    ParameterExplanation,
+    PartialEdge,
+    PartialGraph,
+    PartialNode,
+    PartialState,
     SourceLocation,
     ValidationContext,
     ValidationRule,
     _CandidateRecord,
+    _issue_path_name,
     qualified_name,
 )
 from .type_aliases import TypeAliasNormalizationError, alias_label, is_new_type, normalize_type_alias
@@ -245,11 +255,13 @@ class ContainerBuildError(RuntimeError):
         code: str | None = None,
         path: tuple[str, ...] = (),
         explanations: tuple[CompilationExplanation, ...] = (),
+        partial_graph: PartialGraph | None = None,
     ):
         self.report = report
         self.code = code
         self.path = path
         self.explanations = explanations
+        self.partial_graph = partial_graph
         super().__init__(message or (report.to_text() if report is not None else "Container build failed"))
 
 
@@ -422,6 +434,7 @@ class _Layer:
     validation_rules: tuple[_ValidationRuleDefinition, ...]
     provider_maps: Mapping[str, _ProviderMapDefinition]
     pattern_ids: tuple[str, ...]
+    ensured_import_modules: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -811,7 +824,7 @@ def _blueprint_alias_errors(blueprint: _Blueprint) -> tuple[TypeAliasNormalizati
             normalize_type_alias(value)
         except TypeAliasNormalizationError as error:
             errors.append(error)
-    unique = {(error.code, str(error)): error for error in errors}
+    unique = {(error.code, alias_label(error.alias)): error for error in errors}
     return tuple(unique.values())
 
 
@@ -821,7 +834,7 @@ def _alias_error_report(errors: Iterable[TypeAliasNormalizationError]) -> BuildR
             BuildIssue(
                 code=error.code,
                 severity=IssueSeverity.error,
-                message=str(error),
+                message=f"Type alias normalization failed [{error.code}].",
                 root=None,
                 path=(alias_label(error.alias),),
             )
@@ -1459,8 +1472,8 @@ def _merge_factory_binding(
     existing = _resolve_factory_typevars(existing, bindings, resolving=frozenset({name}))
     if existing != value:
         raise ContainerBuildError(
-            f"Conflicting TypeVar {name!r} for factory {factory!r} while compiling "
-            f"{service_type!r}: {existing!r} != {value!r}"
+            f"Conflicting TypeVar {name!r} for factory {qualified_name(factory)} while compiling "
+            f"{qualified_name(service_type)}: incompatible resolved bindings"
         )
 
 
@@ -1520,7 +1533,7 @@ def _specialized_factory_dependencies(
     registration: legacy._Registration,
     service_type: Any,
     explicit_specialization: object | None,
-) -> dict[str, legacy.Dependency]:
+) -> tuple[dict[str, legacy.Dependency], tuple[tuple[str, Any, Any], ...]]:
     factory = cast(Callable[..., Any], registration.implementation)
     result_annotation = _factory_result_annotation(factory)
     annotations = (
@@ -1533,12 +1546,12 @@ def _specialized_factory_dependencies(
     if unsupported:
         names = ", ".join(unsupported)
         raise ContainerBuildError(
-            f"Unsupported generic factory type parameter(s) {names} for factory {factory!r}; "
+            f"Unsupported generic factory type parameter(s) {names} for factory {qualified_name(factory)}; "
             "only TypeVar is supported"
         )
     typevars = {item.__name__: item for annotation in annotations for item in _typevars_in(annotation)}
     if not typevars:
-        return registration.dependencies
+        return registration.dependencies, ()
 
     bindings: dict[str, Any] = {}
     service_mapping = GenericTypeMap(service_type)
@@ -1568,7 +1581,7 @@ def _specialized_factory_dependencies(
             explicit_mapping = get_generic_mapping(explicit_specialization)
         except (TypeError, ValueError) as error:
             raise ContainerBuildError(
-                f"Invalid factory_specialization {explicit_specialization!r} for factory {factory!r}"
+                f"Invalid factory_specialization for factory {qualified_name(factory)}"
             ) from error
         for name, typevar in typevars.items():
             mapped = explicit_mapping.get(name, _NO_TYPEVAR_DEFAULT)
@@ -1602,22 +1615,27 @@ def _specialized_factory_dependencies(
     if unresolved:
         names = ", ".join(unresolved)
         raise ContainerBuildError(
-            f"Unable to resolve TypeVar(s) {names} for factory {factory!r} while compiling {service_type!r}; "
+            f"Unable to resolve TypeVar(s) {names} for factory {qualified_name(factory)} while compiling "
+            f"{qualified_name(service_type)}; "
             "register a closed generic service or pass factory_specialization="
         )
 
     dependencies: dict[str, legacy.Dependency] = {}
+    annotations: list[tuple[str, Any, Any]] = []
     for name, dependency in registration.dependencies.items():
+        before = dependency.declared_service_type
+        after = _resolve_factory_typevars(dependency.service_type, bindings)
         specialized = legacy.Dependency(
             name=dependency.name,
             parent_implementation=factory,
-            service_type=_resolve_factory_typevars(dependency.service_type, bindings),
+            service_type=after,
             settings=dependency.settings,
             default_value=dependency.default_value,
         )
         specialized.declared_service_type = _resolve_factory_typevars(dependency.declared_service_type, bindings)
         dependencies[name] = specialized
-    return dependencies
+        annotations.append((name, before, after))
+    return dependencies, tuple(annotations)
 
 
 def _index_registration(registry: legacy._Registry, registration: legacy._Registration) -> None:
@@ -1660,11 +1678,49 @@ def _unique_subclasses(base_type: type, filter: Callable[[type], bool]) -> tuple
     return tuple(found)
 
 
+def _module_imports(value: str | Iterable[str]) -> tuple[str, ...]:
+    modules = (value,) if isinstance(value, str) else tuple(value)
+    if any(not isinstance(module, str) or not module for module in modules):
+        raise TypeError("ensure_import_modules must be a module name or an iterable of module names")
+    return tuple(dict.fromkeys(modules))
+
+
+def _ensure_discovery_imports(rules: Iterable[_RegistrationDiscovery]) -> tuple[str, ...]:
+    ensured: list[str] = []
+    seen: set[str] = set()
+    traversed_packages: set[str] = set()
+
+    def ensure(module_name: str) -> types.ModuleType:
+        module = importlib.import_module(module_name)
+        if module.__name__ not in seen:
+            seen.add(module.__name__)
+            ensured.append(module.__name__)
+        return module
+
+    for rule in rules:
+        for module_name in rule.ensure_import_modules:
+            module = ensure(module_name)
+            if not rule.include_children or module.__name__ in traversed_packages:
+                continue
+            traversed_packages.add(module.__name__)
+            package_path = getattr(module, "__path__", None)
+            if package_path is None:
+                continue
+            child_names = sorted(
+                module_info.name for module_info in pkgutil.walk_packages(package_path, prefix=f"{module.__name__}.")
+            )
+            for child_name in child_names:
+                ensure(child_name)
+    return tuple(ensured)
+
+
 @dataclass(slots=True)
 class _RegistrationDiscovery:
     base_type: type
     generic: bool
     fallback_type: type | None
+    ensure_import_modules: tuple[str, ...]
+    include_children: bool
     lifespan: legacy.Lifespan
     subclass_type_filter: Callable[[type], bool]
     name: str | None
@@ -2556,6 +2612,8 @@ class _PlanSet:
     compiler_issues: tuple[BuildIssue, ...] = ()
     root_candidates: Mapping[Any, tuple[_CandidateRecord, ...]] = field(default_factory=dict)
     occurrence_explanations: Mapping[int, CompilationExplanation] = field(default_factory=dict)
+    parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = field(default_factory=dict)
+    generic_explanations: Mapping[int, GenericBindingExplanation] = field(default_factory=dict)
     occurrence_layers: Mapping[int, str] = field(default_factory=dict)
     provider_roots: Mapping[Any, tuple[_RootPlan, ...]] = field(default_factory=dict)
     architecture_roots: tuple[tuple[str | None, Any, _RootPlan], ...] = ()
@@ -2650,6 +2708,8 @@ class _Compiler:
         anchored_singletons: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
         anchored_pre_configurations: dict[str, _CompiledPreConfiguration] | None = None,
         anchored_owner_tokens: frozenset[str] = frozenset(),
+        inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = types.MappingProxyType({}),
+        inherited_generic_explanations: Mapping[int, GenericBindingExplanation] = types.MappingProxyType({}),
     ):
         self.blueprint = blueprint
         self.build_args = build_args
@@ -2671,12 +2731,318 @@ class _Compiler:
         self._anchored_singletons = anchored_singletons or {}
         self._anchored_pre_configurations = anchored_pre_configurations or {}
         self._anchored_owner_tokens = anchored_owner_tokens
+        self._inherited_parameter_explanations = inherited_parameter_explanations
+        self._inherited_generic_explanations = inherited_generic_explanations
         self._area: str | None = None
         self.issues: list[BuildIssue] = []
         self.root_candidates: dict[Any, tuple[_CandidateRecord, ...]] = {}
         self.occurrence_explanations: dict[int, CompilationExplanation] = {}
+        self.parameter_explanations: dict[int, dict[str, ParameterExplanation]] = {}
+        self.generic_explanations: dict[int, GenericBindingExplanation] = {}
+        self._factory_pattern_bindings: dict[str, tuple[tuple[str, str], ...]] = {}
+        self._specialized_dependency_annotations: dict[str, tuple[tuple[str, Any, Any], ...]] = {}
         self.origins: dict[int, DefinitionOrigin] = {}
         self.decision_history: list[CompilationExplanation] = []
+        # This is diagnostic-only evidence.  It never participates in steps or graph freezing.
+        self._partial_edges: list[tuple[int, str, str, int | None]] = []
+        self._partial_back_references: set[int] = set()
+        self._partial_declaration_edges: list[tuple[int | None, str, str, str, bool]] = []
+        # Candidate results are captured at the point a predicate or structural
+        # compile actually completes.  Absence means not examined, not rejected.
+        self._partial_candidates: list[tuple[str, str, PartialState, str | None]] = []
+        self._partial_candidate_labels: dict[str, str] = {}
+        self._partial_truncated = False
+
+    def _record_partial_candidate(self, item: tuple[str, str, PartialState, str | None]) -> None:
+        if len(self._partial_candidates) >= 500:
+            self._partial_truncated = True
+            return
+        self._partial_candidates.append(item)
+
+    def _record_partial_edge(self, item: tuple[int, str, str, int | None]) -> int | None:
+        if len(self._partial_edges) >= 500:
+            self._partial_truncated = True
+            return None
+        self._partial_edges.append(item)
+        return len(self._partial_edges) - 1
+
+    def _record_partial_declaration_edge(self, item: tuple[int | None, str, str, str, bool]) -> None:
+        if len(self._partial_declaration_edges) >= 500:
+            self._partial_truncated = True
+            return
+        self._partial_declaration_edges.append(item)
+
+    def partial_attempt(self, error: BaseException, *, root: str | None = None) -> CompilationAttempt:
+        """Copy only safe structural draft data while it is still available."""
+        limit = 500
+        records = self.graph._records if self.graph._records is not None else self.graph._drafts
+        drafts = sorted(records.values(), key=lambda draft: draft.occurrence_id)
+        truncated = (
+            len(drafts) > limit
+            or len(self._partial_edges) > limit
+            or len(self._partial_candidates) > limit
+            or self._partial_truncated
+        )
+        drafts = drafts[:limit]
+        node_items = [
+            PartialNode(
+                str(draft.occurrence_id),
+                _issue_path_name(cast(Component, draft)),
+                PartialState.complete,
+                draft.kind.value,
+                draft.lifespan,
+            )
+            for draft in drafts
+        ]
+        # Validation rules describe semantic paths, while a partial graph uses
+        # attempt-local occurrence ids.  Retain the full ancestry for every
+        # captured occurrence so an issue for a shared service cannot be
+        # attached to the first node with the same leaf label.
+        drafts_by_occurrence = {draft.occurrence_id: draft for draft in drafts}
+        traversal_parents: dict[int, list[int]] = defaultdict(list)
+        for draft in drafts:
+            if draft.parent_id is not None and draft.kind not in (
+                ComponentKind.decorator,
+                ComponentKind.pre_configuration,
+            ):
+                traversal_parents[draft.occurrence_id].append(draft.parent_id)
+            # Decorators and pre-configurations deliberately retain their own
+            # compilation parent, but GraphVisit presents them under the
+            # component that owns the pipeline.  Use that same traversal edge
+            # for validation paths rather than their draft allocation parent.
+            for child_id in (*draft.pre_configuration_ids, *draft.decorator_ids):
+                traversal_parents[child_id].append(draft.occurrence_id)
+        semantic_paths: dict[int, tuple[tuple[str, ...], ...]] = {}
+
+        def semantic_paths_for(
+            occurrence_id: int, ancestors: frozenset[int] = frozenset()
+        ) -> tuple[tuple[str, ...], ...]:
+            if occurrence_id in ancestors or occurrence_id not in drafts_by_occurrence:
+                return ()
+            cached = semantic_paths.get(occurrence_id)
+            if cached is not None:
+                return cached
+            draft = drafts_by_occurrence[occurrence_id]
+            parents = tuple(dict.fromkeys(traversal_parents.get(occurrence_id, ())))
+            label = _issue_path_name(cast(Component, draft))
+            if not parents:
+                result = ((label,),)
+            else:
+                result = tuple(
+                    dict.fromkeys(
+                        (*parent_path, label)
+                        for parent_id in parents
+                        for parent_path in semantic_paths_for(parent_id, ancestors | frozenset({occurrence_id}))
+                    )
+                )
+            semantic_paths[occurrence_id] = result
+            return result
+
+        path_index: dict[tuple[str, ...], list[str]] = {}
+        for draft in drafts:
+            for path in semantic_paths_for(draft.occurrence_id):
+                path_index.setdefault(path, []).append(str(draft.occurrence_id))
+        code = (
+            error.report.errors[0].code
+            if isinstance(error, ContainerBuildError) and error.report is not None and error.report.errors
+            else _build_error_code(error)
+        )
+        edges: list[PartialEdge] = []
+        edges_by_source = list(self._partial_edges[:limit])
+        # A completed graph has frozen dependency ids but no mutable edge log.
+        if not edges_by_source:
+            for draft in drafts:
+                edges_by_source.extend((draft.occurrence_id, "dependency", "", child) for child in draft.dependency_ids)
+        # Draft metadata carries non-parameter structural links too.  These are
+        # descriptive edges only and never turn into executable steps.
+        for draft in drafts:
+            if draft.parent_id is not None:
+                edges_by_source.append(
+                    (draft.parent_id, "contains", qualified_name(draft.service_type), draft.occurrence_id)
+                )
+            if draft.decorated_id is not None:
+                edges_by_source.append((draft.occurrence_id, "decorates", "", draft.decorated_id))
+            edges_by_source.extend((draft.occurrence_id, "decorator", "", child) for child in draft.decorator_ids)
+            edges_by_source.extend(
+                (draft.occurrence_id, "pre-configuration", "", child) for child in draft.pre_configuration_ids
+            )
+        for edge_index, (source, label, requested, target) in enumerate(edges_by_source[:limit]):
+            state = PartialState.complete if target is not None else PartialState.failed
+            target_id = None if target is None else str(target)
+            if target_id is None:
+                target_id = next((node.id for node in reversed(node_items) if node.label == requested), None)
+            if target_id is None:
+                if len(node_items) < limit:
+                    target_id = f"missing_{source}_{label}"
+                    node_items.append(PartialNode(target_id, requested, PartialState.failed))
+                else:
+                    # Keep the observed failed edge but never exceed the
+                    # documented node budget merely to invent its endpoint.
+                    truncated = True
+            back_reference = edge_index in self._partial_back_references
+            edges.append(
+                PartialEdge(
+                    str(source),
+                    target_id,
+                    label,
+                    PartialState.failed if back_reference else state,
+                    code if back_reference else (None if target is not None else code),
+                    back_reference=back_reference,
+                )
+            )
+        if isinstance(error, ContainerBuildError) and error.report is not None:
+            # Rule and finalization findings are linked to the matching
+            # structural occurrence when they provide a path; otherwise the
+            # declaration edge retains the issue without inventing a node.
+            for issue in error.report.errors:
+                if len(edges) >= limit:
+                    truncated = True
+                    break
+                requested_path = issue.path
+                if issue.root is not None and (not requested_path or requested_path[0] != issue.root):
+                    requested_path = (issue.root, *requested_path)
+                matches = path_index.get(requested_path, ()) if requested_path else ()
+                target = matches[0] if len(matches) == 1 else None
+                if target is None:
+                    if len(node_items) >= limit:
+                        truncated = True
+                        break
+                    if len(matches) > 1:
+                        issue_location = "ambiguous target"
+                    else:
+                        issue_location = "unanchored"
+                    target = f"issue_{len(node_items)}"
+                    node_items.append(
+                        PartialNode(
+                            target,
+                            f"Issue [{issue.code}] ({issue_location})",
+                            PartialState.failed,
+                            "issue",
+                            issue_code=issue.code,
+                        )
+                    )
+                edges.append(PartialEdge(None, target, "issue", PartialState.failed, issue.code))
+        for source, label, target_label, issue_code, back_reference in self._partial_declaration_edges[:limit]:
+            if len(node_items) >= limit or len(edges) >= limit:
+                truncated = True
+                break
+            target = f"declaration_{len(node_items)}"
+            node_items.append(
+                PartialNode(target, target_label, PartialState.failed, "declaration", issue_code=issue_code)
+            )
+            edges.append(
+                PartialEdge(
+                    None if source is None else str(source),
+                    target,
+                    label,
+                    PartialState.failed,
+                    issue_code,
+                    back_reference=back_reference,
+                )
+            )
+        # A draft which still owns an unresolved edge did not complete
+        # structural compilation.  Do not describe it as complete merely
+        # because allocation happened before descent.
+        failed_sources = {
+            edge.source for edge in edges if edge.state is PartialState.failed and edge.source is not None
+        }
+        node_items = [
+            replace(node, state=PartialState.failed, issue_code=node.issue_code or code)
+            if node.id in failed_sources and node.state is PartialState.complete
+            else node
+            for node in node_items
+        ]
+        seen_candidates: set[tuple[str, str]] = set()
+        candidates = list(self._partial_candidates)
+        for explanation in self.decision_history:
+            for decision in (*explanation.selected, *explanation.rejected):
+                state = (
+                    PartialState.complete if decision.outcome is not DecisionOutcome.rejected else PartialState.rejected
+                )
+                candidates.append(
+                    (
+                        explanation.subject,
+                        decision.component_id,
+                        state,
+                        decision.reason_codes[0] if decision.reason_codes else None,
+                    )
+                )
+        failed_keys = {
+            (subject, candidate) for subject, candidate, state, _ in candidates if state is PartialState.failed
+        }
+        for subject, candidate, state, issue_code in candidates[:limit]:
+            occurrence = next((draft for draft in drafts if draft.id == candidate), None)
+            required_nodes = 1 if occurrence is not None else 2
+            if len(node_items) + required_nodes > limit or len(edges) >= limit:
+                truncated = True
+                break
+            key = (subject, candidate)
+            if key in seen_candidates or (key in failed_keys and state is not PartialState.failed):
+                continue
+            seen_candidates.add(key)
+            # Registration ids are UUIDs and must not leak into a stable public
+            # artifact.  The attempt-local ordinal is deterministic because
+            # compiler decisions are retained in evaluation order.
+            node_id = f"candidate_{len(node_items)}"
+            implementation = (
+                qualified_name(occurrence.implementation)
+                if occurrence is not None
+                else self._partial_candidate_labels.get(candidate, subject)
+            )
+            node_items.append(
+                PartialNode(
+                    node_id,
+                    f"Candidate {len(seen_candidates)}: {implementation}",
+                    state,
+                    "candidate",
+                    issue_code=issue_code,
+                    declaration_ref=f"declaration:{len(seen_candidates)}:{subject}",
+                    occurrence_ref=None if occurrence is None else str(occurrence.occurrence_id),
+                )
+            )
+            if occurrence is None:
+                declaration_id = f"candidate_declaration_{len(node_items)}"
+                node_items.append(
+                    PartialNode(
+                        declaration_id,
+                        f"Declaration for {implementation}",
+                        PartialState.not_examined,
+                        "declaration",
+                        declaration_ref=f"declaration:{len(seen_candidates)}:{subject}",
+                    )
+                )
+                edges.append(PartialEdge(declaration_id, node_id, "candidate", state, issue_code))
+            else:
+                edges.append(PartialEdge(str(occurrence.occurrence_id), node_id, "candidate", state, issue_code))
+        # A failure before allocation remains explicit rather than inventing a component.
+        if not node_items or not edges:
+            path = error.path if isinstance(error, ContainerBuildError) else ()
+            edges.append(PartialEdge(None, None, " -> ".join(path) or "declaration", PartialState.failed, code))
+        if root is None and isinstance(error, ContainerBuildError) and error.path:
+            root = error.path[0]
+        path = error.path if isinstance(error, ContainerBuildError) else ()
+        witness_total = len(path)
+        witness_omitted = 0
+        if len(path) > 32:
+            omitted = len(path) - 32
+            witness_omitted = omitted
+            path = (*path[:16], f"… {omitted} path segments omitted", *path[-16:])
+            truncated = True
+        return CompilationAttempt(
+            root,
+            tuple(node_items),
+            tuple(edges),
+            code,
+            truncated,
+            path,
+            witness_total=witness_total,
+            witness_omitted=witness_omitted,
+        )
+
+    def partial_success_attempt(self, *, root: str) -> CompilationAttempt:
+        """Record a retry which compiled successfully without merging it with failures."""
+        attempt = self.partial_attempt(ContainerBuildError(code="retry-succeeded"), root=root)
+        return replace(attempt, succeeded=True)
 
     def _current_path(self, *tail: Any) -> tuple[str, ...]:
         return tuple(qualified_name(value) for value in (*(frame.label for frame in self._frames), *tail))
@@ -3115,6 +3481,13 @@ class _Compiler:
             compiler_issues=tuple(self.issues),
             root_candidates=types.MappingProxyType(dict(self.root_candidates)),
             occurrence_explanations=types.MappingProxyType(dict(self.occurrence_explanations)),
+            parameter_explanations=types.MappingProxyType(
+                {
+                    occurrence: types.MappingProxyType(dict(records))
+                    for occurrence, records in self.parameter_explanations.items()
+                }
+            ),
+            generic_explanations=types.MappingProxyType(dict(self.generic_explanations)),
             occurrence_layers=types.MappingProxyType(
                 {occurrence: origin.layer for occurrence, origin in self.origins.items()}
             ),
@@ -3283,6 +3656,7 @@ class _Compiler:
             return cached
 
         is_pattern = registration.id in layer.pattern_ids
+        dependency_annotations: tuple[tuple[str, Any, Any], ...] = ()
         if is_pattern:
             pattern_stack = [item for item in self._stack if item.id in self._pattern_sources]
             active = [item for item in pattern_stack if self._pattern_sources[item.id] == registration.id]
@@ -3317,10 +3691,12 @@ class _Compiler:
                     raise patterns.PatternError("Pattern factories support TypeVar parameters only")
                 dependencies = {}
                 for name, dependency in registration.dependencies.items():
+                    before = dependency.declared_service_type
+                    after = _resolve_factory_typevars(dependency.service_type, bindings)
                     specialized_dependency = legacy.Dependency(
                         name=dependency.name,
                         parent_implementation=factory,
-                        service_type=_resolve_factory_typevars(dependency.service_type, bindings),
+                        service_type=after,
                         settings=dependency.settings,
                         default_value=dependency.default_value,
                     )
@@ -3328,12 +3704,13 @@ class _Compiler:
                         dependency.declared_service_type, bindings
                     )
                     dependencies[name] = specialized_dependency
+                    dependency_annotations += ((name, before, after),)
             except patterns.PatternError as error:
                 raise ContainerBuildError(
                     str(error), code=error.code, path=self._current_path(requested_service_type)
                 ) from error
         else:
-            dependencies = _specialized_factory_dependencies(
+            dependencies, dependency_annotations = _specialized_factory_dependencies(
                 registration,
                 requested_service_type,
                 layer.factory_specializations.get(registration.id),
@@ -3358,6 +3735,26 @@ class _Compiler:
         )
         specialized.declared_service_type = registration.declared_service_type
         specialized.dependencies = dependencies
+        if dependency_annotations:
+            self._specialized_dependency_annotations[specialized.id] = dependency_annotations
+        if is_pattern:
+            # Pattern bindings are a separate scope from service bindings.
+            # Number duplicate names deterministically instead of implying they
+            # are one TypeVar merely because their display names match.
+            seen: dict[str, int] = {}
+            rendered: list[tuple[str, str]] = []
+            for binding_key, value in sorted(
+                bindings.items(),
+                key=lambda item: (
+                    item[0] if isinstance(item[0], str) else getattr(item[0], "__name__", ""),
+                    qualified_name(item[1]),
+                ),
+            ):
+                name = binding_key if isinstance(binding_key, str) else getattr(binding_key, "__name__", "TypeVar")
+                seen[name] = seen.get(name, 0) + 1
+                rendered_name = name if isinstance(binding_key, str) else f"{name}#{seen[name]}"
+                rendered.append((rendered_name, qualified_name(value)))
+            self._factory_pattern_bindings[specialized.id] = tuple(rendered)
         self._specialized_factories[key] = specialized
         if is_pattern:
             self._pattern_sources[specialized.id] = registration.id
@@ -3496,11 +3893,25 @@ class _Compiler:
             registrations, candidates = self._pattern_candidates(service_type, registrations)
         if not registrations and get_origin(service_type) is not None:
             registrations = self.blueprint.registrations(get_origin(service_type), self._area)
-        for source_registration, layer in registrations:
+        for registration_index, (source_registration, layer) in enumerate(registrations):
             origin = self.blueprint.registration_origin(source_registration.id, layer)
+            self._partial_candidate_labels[source_registration.id] = qualified_name(source_registration.implementation)
             try:
                 registration = self._specialize_factory(source_registration, layer, service_type)
             except ContainerBuildError as error:
+                self._record_partial_candidate(
+                    (
+                        qualified_name(service_type),
+                        source_registration.id,
+                        PartialState.failed,
+                        error.code or "generic-specialization",
+                    )
+                )
+                for pending, _ in registrations[registration_index + 1 :]:
+                    self._partial_candidate_labels[pending.id] = qualified_name(pending.implementation)
+                    self._record_partial_candidate(
+                        (qualified_name(service_type), pending.id, PartialState.not_examined, None)
+                    )
                 self.decision_history.append(
                     CompilationExplanation(
                         subject=qualified_name(service_type),
@@ -3559,6 +3970,21 @@ class _Compiler:
                     origin=origin,
                 )
             except ContainerBuildError as error:
+                # The structural compilation failed before its `when` predicate
+                # could run; diagnostic output must not call it rejected.
+                self._record_partial_candidate(
+                    (
+                        qualified_name(service_type),
+                        registration.id,
+                        PartialState.failed,
+                        error.code or _build_error_code(error),
+                    )
+                )
+                for pending, _ in registrations[registration_index + 1 :]:
+                    self._partial_candidate_labels[pending.id] = qualified_name(pending.implementation)
+                    self._record_partial_candidate(
+                        (qualified_name(service_type), pending.id, PartialState.not_examined, None)
+                    )
                 if (
                     error.code == "overlay-singleton"
                     and registration.lifespan == legacy.Lifespan.singleton
@@ -3597,6 +4023,9 @@ class _Compiler:
             try:
                 registration_matches = predicate is None or predicate(component)
             except Exception as error:
+                self._record_partial_candidate(
+                    (qualified_name(service_type), registration.id, PartialState.failed, "filter-evaluation-failed")
+                )
                 failed = CandidateDecision(
                     component.id,
                     DecisionOutcome.rejected,
@@ -3617,6 +4046,9 @@ class _Compiler:
                 raise
             try:
                 if not registration_matches:
+                    self._record_partial_candidate(
+                        (qualified_name(service_type), registration.id, PartialState.rejected, "rejected-filter")
+                    )
                     candidates.append(
                         _CompiledCandidate(
                             component,
@@ -3630,6 +4062,9 @@ class _Compiler:
                     continue
                 if registration.parent_node_filter is not legacy.default_parent_node_filter:
                     if component.parent is None or not registration.parent_node_filter(cast(Any, component.parent)):
+                        self._record_partial_candidate(
+                            (qualified_name(service_type), registration.id, PartialState.rejected, "rejected-filter")
+                        )
                         candidates.append(
                             _CompiledCandidate(
                                 component,
@@ -3694,7 +4129,7 @@ class _Compiler:
         rejected: list[CandidateDecision] = []
         description = _filter_description(filter)
         default_selection = description.endswith("default_component_filter")
-        for candidate in considered:
+        for candidate_index, candidate in enumerate(considered):
             if not candidate.eligible:
                 rejected.append(
                     CandidateDecision(
@@ -3709,6 +4144,17 @@ class _Compiler:
             try:
                 matched = filter(candidate.component)
             except Exception as error:
+                self._partial_candidate_labels[candidate.component.id] = qualified_name(
+                    candidate.component.implementation
+                )
+                self._record_partial_candidate(
+                    (subject, candidate.component.id, PartialState.failed, "filter-evaluation-failed")
+                )
+                for pending in considered[candidate_index + 1 :]:
+                    self._partial_candidate_labels[pending.component.id] = qualified_name(
+                        pending.component.implementation
+                    )
+                    self._record_partial_candidate((subject, pending.component.id, PartialState.not_examined, None))
                 rejected.append(
                     CandidateDecision(
                         candidate.component.id,
@@ -3844,7 +4290,12 @@ class _Compiler:
                 )
             return self._clone_component_tree(anchored.component, parent=parent, argument=argument), anchored
         if registration in self._stack:
-            path = " -> ".join(str(item.service_type) for item in (*self._stack, registration))
+            for index in range(len(self._partial_edges) - 1, -1, -1):
+                _, _, requested, target = self._partial_edges[index]
+                if target is None and requested == qualified_name(registration.service_type):
+                    self._partial_back_references.add(index)
+                    break
+            path = " -> ".join(qualified_name(item.service_type) for item in (*self._stack, registration))
             raise ContainerBuildError(
                 f"Circular component dependency: {path}",
                 code="circular-dependency",
@@ -3907,6 +4358,7 @@ class _Compiler:
             key_indices: Mapping[Hashable, int] = {}
             if map_definition is None:
                 dependencies = self._compile_dependencies(registration.dependencies, component)
+                self._record_generic_explanation(component, registration.dependencies)
             else:
                 dependencies, key_indices = self._compile_provider_map(map_definition, component, draft)
             resolution_requests = self._compile_resolution_requests(registration.implementation, component)
@@ -4124,6 +4576,16 @@ class _Compiler:
         explanation = self.occurrence_explanations.get(source.occurrence_id)
         if explanation is not None:
             self.occurrence_explanations[component.occurrence_id] = explanation
+        parameters = self.parameter_explanations.get(source.occurrence_id) or (
+            self._inherited_parameter_explanations.get(source.occurrence_id)
+        )
+        if parameters is not None:
+            self.parameter_explanations[component.occurrence_id] = dict(parameters)
+        generic = self.generic_explanations.get(source.occurrence_id) or self._inherited_generic_explanations.get(
+            source.occurrence_id
+        )
+        if generic is not None:
+            self.generic_explanations[component.occurrence_id] = generic
 
         dependencies = tuple(
             self._clone_component_tree(child, parent=component, mapped=mapping) for child in source.dependencies
@@ -4142,6 +4604,17 @@ class _Compiler:
             if decorated is not None and decorated.occurrence_id in mapping:
                 decorator_draft = cast(_ComponentDraft, self.graph.record(decorator.occurrence_id))
                 decorator_draft.decorated_id = mapping[decorated.occurrence_id].occurrence_id
+        if parameters is not None:
+            self.parameter_explanations[component.occurrence_id] = {
+                name: replace(
+                    record,
+                    selected_components=tuple(
+                        str(mapping[int(item)].occurrence_id) if item.isdigit() and int(item) in mapping else item
+                        for item in record.selected_components
+                    ),
+                )
+                for name, record in parameters.items()
+            }
         return component
 
     def _compile_dependencies(
@@ -4152,13 +4625,107 @@ class _Compiler:
         compiled: list[_CompiledDependency] = []
         child_ids: list[int] = []
         for name, dependency in dependencies.items():
+            # Record the requested edge before descent.  If descent fails the incomplete
+            # edge is retained solely by the diagnostic snapshot, never by a plan.
+            edge_index = self._record_partial_edge(
+                (parent.occurrence_id, name, qualified_name(dependency.service_type), None)
+            )
             step, child = self._compile_dependency(dependency, parent)
+            if edge_index is not None:
+                self._partial_edges[edge_index] = (
+                    parent.occurrence_id,
+                    name,
+                    qualified_name(dependency.service_type),
+                    None if child is None else child.occurrence_id,
+                )
+            self._record_parameter_explanation(parent, dependency, child)
             compiled.append(_CompiledDependency(name, step))
             if child is not None:
                 child_ids.append(child.occurrence_id)
         record = cast(_ComponentDraft, self.graph.record(parent.occurrence_id))
         record.dependency_ids = tuple(child_ids)
         return tuple(compiled)
+
+    def _record_parameter_explanation(
+        self, parent: Component, dependency: legacy.Dependency, child: Component | None
+    ) -> None:
+        """Store post-compilation facts without inspecting policy closures or values."""
+        policy = dependency.settings.value_factory
+        if isinstance(policy, _FixedArgument):
+            policy_kind = "fixed"
+        elif isinstance(policy, _DerivedArgument):
+            policy_kind = policy.policy_kind
+        elif isinstance(policy, _SelectArgument):
+            policy_kind = policy.policy_kind
+        elif dependency.default_value is legacy.EMPTY:
+            policy_kind = "implicit_injection"
+        else:
+            policy_kind = "python_default"
+        category = "component_edge"
+        if child is not None:
+            category = {
+                ComponentKind.value: "fixed_value",
+                ComponentKind.scope_slot: "slot",
+                ComponentKind.collection: "collection",
+                ComponentKind.provider: "provider",
+                ComponentKind.runtime_context: "runtime_context",
+            }.get(child.kind, "component_edge")
+        record = ParameterExplanation(
+            owner=qualified_name(parent.implementation),
+            parameter=dependency.name,
+            declared_annotation=qualified_name(dependency.declared_service_type),
+            canonical_annotation=qualified_name(dependency.service_type),
+            has_default=dependency.default_value is not legacy.EMPTY,
+            policy_kind=policy_kind,
+            evaluation_phase="compilation" if category == "fixed_value" else "runtime",
+            result_category=category,
+            result_type=qualified_name(dependency.service_type),
+            # Occurrence IDs are private compiler evidence until finalization,
+            # when they become deterministic semantic graph paths.
+            selected_components=() if child is None else (str(child.occurrence_id),),
+            provenance=self.origins.get(parent.occurrence_id),
+        )
+        self.parameter_explanations.setdefault(parent.occurrence_id, {})[dependency.name] = record
+
+    def _record_generic_explanation(self, component: Component, dependencies: Mapping[str, legacy.Dependency]) -> None:
+        mapping = tuple(
+            sorted(
+                ((str(key), qualified_name(value)) for key, value in component.generic_mapping.items()),
+                key=lambda item: item[0],
+            )
+        )
+        substitutions = tuple(
+            sorted(
+                (
+                    (name, qualified_name(dependency.declared_service_type), qualified_name(dependency.service_type))
+                    for name, dependency in dependencies.items()
+                    if dependency.declared_service_type != dependency.service_type
+                ),
+                key=lambda item: item[0],
+            )
+        )
+        specialized_annotations = self._specialized_dependency_annotations.get(component.id)
+        if specialized_annotations is not None:
+            substitutions = tuple(
+                (name, qualified_name(before), qualified_name(after)) for name, before, after in specialized_annotations
+            )
+        if not mapping and not substitutions and component.declared_service_type == component.service_type:
+            return
+        pattern_bindings = self._factory_pattern_bindings.get(component.id, ())
+        self.generic_explanations[component.occurrence_id] = GenericBindingExplanation(
+            requested_service=qualified_name(component.service_type),
+            template_identity=qualified_name(component.declared_service_type),
+            selected_tier=(
+                "structural_pattern"
+                if pattern_bindings
+                else "specialized"
+                if component.declared_service_type != component.service_type
+                else "exact"
+            ),
+            service_bindings=mapping,
+            factory_pattern_bindings=pattern_bindings,
+            dependency_annotations=substitutions,
+        )
 
     def _compile_resolution_requests(
         self,
@@ -4500,9 +5067,13 @@ class _Compiler:
             try:
                 value = policy.function(context)
             except Exception as error:
+                detail = type(error).__name__
+                if policy.policy_kind == "generic_argument" and policy.generic_key is not None:
+                    binding = policy.generic_key if isinstance(policy.generic_key, str) else policy.generic_key.__name__
+                    detail = f"generic binding {binding} unavailable ({detail})"
                 raise ContainerBuildError(
                     f"Could not derive argument {dependency.name!r} for "
-                    f"{qualified_name(parent.implementation)}: {error}",
+                    f"{qualified_name(parent.implementation)}: {detail}",
                     code="invalid-derived-argument",
                     path=self._current_path(dependency.service_type),
                 ) from error
@@ -4672,7 +5243,8 @@ class _Compiler:
         if visibility_error is not None:
             raise visibility_error
         raise ContainerBuildError(
-            f"No component for {dependency.service_type!r}, argument {dependency.name!r} of {parent.implementation!r}"
+            f"No component for {qualified_name(dependency.service_type)}, argument {dependency.name!r} of "
+            f"{qualified_name(parent.implementation)}"
             + (f" (declared as {qualified_name(declared_type)})" if declared_type != dependency.service_type else ""),
             code="missing-component",
             path=self._current_path(dependency.service_type),
@@ -4729,10 +5301,18 @@ class _Compiler:
         decisions: list[CandidateDecision] = []
         definitions = self.blueprint.pre_configurations(parent.service_type, self._area)
         applicability: list[tuple[_PreConfigurationDefinition, _Layer, bool]] = []
-        for definition, layer in definitions:
+        for definition_index, (definition, layer) in enumerate(definitions):
             try:
                 matched = definition.when(parent)
             except Exception as error:
+                subject = f"Pre-configurations for {qualified_name(parent.service_type)}"
+                self._partial_candidate_labels[definition.id] = qualified_name(definition.configuration_fn)
+                self._record_partial_candidate(
+                    (subject, definition.id, PartialState.failed, "pre-configuration-filter-failed")
+                )
+                for pending, _ in definitions[definition_index + 1 :]:
+                    self._partial_candidate_labels[pending.id] = qualified_name(pending.configuration_fn)
+                    self._record_partial_candidate((subject, pending.id, PartialState.not_examined, None))
                 decisions.append(
                     CandidateDecision(
                         definition.id,
@@ -4774,9 +5354,28 @@ class _Compiler:
         for definition, layer, matched in applicability:
             if not matched:
                 continue
+            self._record_partial_declaration_edge(
+                (
+                    parent.occurrence_id,
+                    "pre-configuration",
+                    qualified_name(definition.configuration_fn),
+                    "pre-configuration-pending",
+                    False,
+                )
+            )
             existing = self._compiled_pre_configurations.get(definition.id)
             if existing is not None:
                 items.append(existing)
+                self._partial_declaration_edges = [
+                    edge
+                    for edge in self._partial_declaration_edges
+                    if not (
+                        edge[0] == parent.occurrence_id
+                        and edge[1] == "pre-configuration"
+                        and edge[2] == qualified_name(definition.configuration_fn)
+                        and edge[3] == "pre-configuration-pending"
+                    )
+                ]
                 continue
             if layer.owner_token in self._anchored_owner_tokens:
                 anchored = self._anchored_pre_configurations.get(definition.id)
@@ -4796,6 +5395,15 @@ class _Compiler:
                 items.append(compiled)
                 continue
             if definition.id in self._compiling_pre_configurations:
+                self._record_partial_declaration_edge(
+                    (
+                        parent.occurrence_id,
+                        "pre-configuration",
+                        qualified_name(definition.configuration_fn),
+                        "circular-dependency",
+                        True,
+                    )
+                )
                 raise ContainerBuildError(
                     f"Circular pre-configuration trigger for {qualified_name(definition.configuration_fn)}",
                     code="circular-dependency",
@@ -4841,6 +5449,7 @@ class _Compiler:
             )
             try:
                 compiled_dependencies = self._compile_dependencies(dependencies, component)
+                self._record_generic_explanation(component, dependencies)
             finally:
                 self._frames.pop()
                 self._compiling_pre_configurations.remove(definition.id)
@@ -4863,6 +5472,16 @@ class _Compiler:
             )
             self._compiled_pre_configurations[definition.id] = compiled
             items.append(compiled)
+            self._partial_declaration_edges = [
+                edge
+                for edge in self._partial_declaration_edges
+                if not (
+                    edge[0] == parent.occurrence_id
+                    and edge[1] == "pre-configuration"
+                    and edge[2] == qualified_name(definition.configuration_fn)
+                    and edge[3] == "pre-configuration-pending"
+                )
+            ]
         explanation = CompilationExplanation(
             subject=f"Pre-configurations for {qualified_name(parent.service_type)}",
             path=self._current_path(parent.service_type),
@@ -4884,10 +5503,17 @@ class _Compiler:
         # undecorated core subtree before any decorator dependencies are added.
         selected: list[_DecoratorDefinition] = []
         decisions: list[CandidateDecision] = []
-        for decorator, _ in self.blueprint.decorators(core.service_type, self._area):
+        definitions = self.blueprint.decorators(core.service_type, self._area)
+        for decorator_index, (decorator, _) in enumerate(definitions):
             try:
                 matched = decorator.when(core)
             except Exception as error:
+                subject = f"Decorators for {qualified_name(core.service_type)}"
+                self._partial_candidate_labels[decorator.id] = qualified_name(decorator.decorator_type)
+                self._record_partial_candidate((subject, decorator.id, PartialState.failed, "decorator-filter-failed"))
+                for pending, _ in definitions[decorator_index + 1 :]:
+                    self._partial_candidate_labels[pending.id] = qualified_name(pending.decorator_type)
+                    self._record_partial_candidate((subject, pending.id, PartialState.not_examined, None))
                 decisions.append(
                     CandidateDecision(
                         decorator.id,
@@ -4931,6 +5557,15 @@ class _Compiler:
             try:
                 decorator = _materialize_decorator(definition, core.service_type, core.implementation_type)
             except ContainerBuildError as error:
+                self._record_partial_declaration_edge(
+                    (
+                        core.occurrence_id,
+                        "decorator",
+                        qualified_name(definition.decorator_type),
+                        "invalid-decorator",
+                        False,
+                    )
+                )
                 raise ContainerBuildError(
                     str(error),
                     code="invalid-decorator",
@@ -4968,6 +5603,7 @@ class _Compiler:
             )
             try:
                 dependencies = self._compile_dependencies(decorator.dependencies, component)
+                self._record_generic_explanation(component, decorator.dependencies)
             finally:
                 self._frames.pop()
             items.append(
@@ -5249,20 +5885,16 @@ def _run_validation_rules(
 def _build_error_code(error: BaseException) -> str:
     if isinstance(error, ContainerBuildError) and error.code is not None:
         return error.code
-    message = str(error).lower()
-    if "no component" in message:
-        return "missing-component"
-    if "circular" in message:
-        return "circular-dependency"
-    if "cannot retain scoped" in message:
-        return "captive-dependency"
-    if "typevar" in message or "generic" in message or "specialization" in message:
-        return "generic-specialization"
-    if "decorator" in message:
-        return "invalid-decorator"
-    if "parent-owned singleton" in message:
-        return "overlay-singleton"
+    # Exceptions from user filters, derivations, and factories may implement a
+    # hostile __str__/__repr__.  Error classification must never execute it.
     return "compile-error"
+
+
+def _safe_error_message(error: BaseException) -> str:
+    """Return a stable message without inspecting arbitrary exception text."""
+    if isinstance(error, ContainerBuildError) and error.args and isinstance(error.args[0], str):
+        return error.args[0]
+    return f"Compilation failed [{_build_error_code(error)}]."
 
 
 def _error_report(
@@ -5273,10 +5905,13 @@ def _error_report(
     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
     anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
     anchored_owner_tokens: frozenset[str] = frozenset(),
-) -> BuildReport:
+) -> tuple[BuildReport, tuple[CompilationAttempt, ...], tuple[int, int]]:
     issues: list[BuildIssue] = []
-    seen: set[tuple[str, str, str]] = set()
+    attempts: list[CompilationAttempt] = []
+    seen: set[tuple[str, str, tuple[str, ...]]] = set()
     checked = 0
+    attempt_limit = 100
+    total_attempts = 0
     areas = (
         (None, blueprint.root_service_types()),
         *((boundary.name, blueprint.service_types(boundary.name)) for boundary in blueprint.boundaries),
@@ -5286,18 +5921,25 @@ def _error_report(
             if getattr(service_type, "__parameters__", ()):
                 continue
             checked += 1
+            total_attempts += 1
+            compiler = _Compiler(
+                blueprint,
+                build_args=build_args,
+                anchored_singletons=anchored_singleton_steps,
+                anchored_pre_configurations=anchored_pre_configuration_steps,
+                anchored_owner_tokens=anchored_owner_tokens,
+            )
             try:
-                _Compiler(
-                    blueprint,
-                    build_args=build_args,
-                    anchored_singletons=anchored_singleton_steps,
-                    anchored_pre_configurations=anchored_pre_configuration_steps,
-                    anchored_owner_tokens=anchored_owner_tokens,
-                ).compile((service_type,), area=area, include_boundaries=False)
+                compiler.compile((service_type,), area=area, include_boundaries=False)
+                if len(attempts) < attempt_limit:
+                    attempts.append(compiler.partial_success_attempt(root=qualified_name(service_type)))
             except Exception as error:
                 root = qualified_name(service_type)
+                if len(attempts) < attempt_limit:
+                    attempts.append(compiler.partial_attempt(error, root=root))
                 code = _build_error_code(error)
-                key = (code, root, str(error))
+                path = error.path if isinstance(error, ContainerBuildError) and error.path else (root,)
+                key = (code, root, path)
                 if key in seen:
                     continue
                 seen.add(key)
@@ -5305,21 +5947,24 @@ def _error_report(
                     BuildIssue(
                         code=code,
                         severity=IssueSeverity.error,
-                        message=str(error),
+                        message=_safe_error_message(error),
                         root=root,
-                        path=(error.path if isinstance(error, ContainerBuildError) and error.path else (root,)),
+                        path=path,
                     )
                 )
     if not issues:
-        message = str(original)
         issues.append(
             BuildIssue(
                 code=_build_error_code(original),
                 severity=IssueSeverity.error,
-                message=message,
+                message=_safe_error_message(original),
             )
         )
-    return BuildReport(tuple(issues), checked_roots=checked)
+    return (
+        BuildReport(tuple(issues), checked_roots=checked),
+        tuple(attempts),
+        (total_attempts, total_attempts - len(attempts)),
+    )
 
 
 def _recorded_root_selection(
@@ -5615,8 +6260,31 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
         _root_candidates=types.MappingProxyType(dict(plan.root_candidates)),
         _known_root_selections=types.MappingProxyType(known_root_selections),
         _occurrence_explanations=types.MappingProxyType(dict(plan.occurrence_explanations)),
+        _parameter_explanations=types.MappingProxyType(dict(plan.parameter_explanations)),
+        _generic_explanations=types.MappingProxyType(dict(plan.generic_explanations)),
         _occurrence_layers=types.MappingProxyType(dict(plan.occurrence_layers)),
     )
+    occurrence_paths = {
+        str(component.occurrence_id): path
+        for path, component in compiled_graph._component_paths(all_roots=True).items()
+    }
+    parameter_explanations = types.MappingProxyType(
+        {
+            occurrence: types.MappingProxyType(
+                {
+                    name: replace(
+                        record,
+                        selected_components=tuple(
+                            occurrence_paths.get(item, item) for item in record.selected_components
+                        ),
+                    )
+                    for name, record in records.items()
+                }
+            )
+            for occurrence, records in plan.parameter_explanations.items()
+        }
+    )
+    compiled_graph = replace(compiled_graph, _parameter_explanations=parameter_explanations)
     compiled_graph.ownership_report()
     built_in_issues = tuple(dict.fromkeys(issues))
     build_rule_issues = _run_validation_rules(
@@ -5642,30 +6310,50 @@ def _compile_with_report(
     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
     anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
     anchored_owner_tokens: frozenset[str] = frozenset(),
+    inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = types.MappingProxyType({}),
+    inherited_generic_explanations: Mapping[int, GenericBindingExplanation] = types.MappingProxyType({}),
 ) -> _PlanSet:
     alias_errors = _blueprint_alias_errors(blueprint)
     if alias_errors:
-        raise ContainerBuildError(report=_alias_error_report(alias_errors))
+        report = _alias_error_report(alias_errors)
+        raise ContainerBuildError(
+            report=report,
+            partial_graph=PartialGraph(
+                (CompilationAttempt(None, issue_code=report.errors[0].code, witness_path=report.errors[0].path),)
+            ),
+        )
     try:
         blueprint = _normalize_blueprint_aliases(blueprint)
         blueprint = _prepare_boundary_visibility(blueprint, build_args=build_args)
     except TypeAliasNormalizationError as error:
-        raise ContainerBuildError(report=_alias_error_report((error,))) from error
+        report = _alias_error_report((error,))
+        raise ContainerBuildError(
+            report=report,
+            partial_graph=PartialGraph(
+                (CompilationAttempt(None, issue_code=report.errors[0].code, witness_path=report.errors[0].path),)
+            ),
+        ) from error
     except ContainerBuildError as error:
         issue = BuildIssue(
             code=error.code or "compile-error",
             severity=IssueSeverity.error,
-            message=str(error),
+            message=_safe_error_message(error),
             root=(error.path[0] if error.path else None),
             path=error.path,
         )
-        raise ContainerBuildError(report=BuildReport((issue,), checked_roots=0)) from error
+        report = BuildReport((issue,), checked_roots=0)
+        raise ContainerBuildError(
+            report=report,
+            partial_graph=PartialGraph((CompilationAttempt(None, issue_code=issue.code, witness_path=issue.path),)),
+        ) from error
     compiler = _Compiler(
         blueprint,
         build_args=build_args,
         anchored_singletons=anchored_singleton_steps,
         anchored_pre_configurations=anchored_pre_configuration_steps,
         anchored_owner_tokens=anchored_owner_tokens,
+        inherited_parameter_explanations=inherited_parameter_explanations,
+        inherited_generic_explanations=inherited_generic_explanations,
     )
     try:
         plan = compiler.compile()
@@ -5675,8 +6363,9 @@ def _compile_with_report(
             raise ContainerBuildError(
                 report=error.report,
                 explanations=tuple(compiler.decision_history),
+                partial_graph=PartialGraph((compiler.partial_attempt(error),)),
             ) from error
-        report = _error_report(
+        report, retries, retry_counts = _error_report(
             blueprint,
             error,
             build_args=build_args,
@@ -5687,9 +6376,20 @@ def _compile_with_report(
         raise ContainerBuildError(
             report=report,
             explanations=tuple(compiler.decision_history),
+            partial_graph=PartialGraph(
+                (compiler.partial_attempt(error), *retries),
+                inconsistent_retries=any(attempt.succeeded for attempt in retries),
+                truncated=retry_counts[1] > 0,
+                total_attempts=1 + retry_counts[0],
+                omitted_attempts=retry_counts[1],
+                retained_attempts=1 + len(retries),
+                total_roots=retry_counts[0],
+                retained_roots=len(retries),
+                omitted_roots=retry_counts[1],
+            ),
         ) from error
     except Exception as error:
-        report = _error_report(
+        report, retries, retry_counts = _error_report(
             blueprint,
             error,
             build_args=build_args,
@@ -5700,6 +6400,17 @@ def _compile_with_report(
         raise ContainerBuildError(
             report=report,
             explanations=tuple(compiler.decision_history),
+            partial_graph=PartialGraph(
+                (compiler.partial_attempt(error), *retries),
+                inconsistent_retries=any(attempt.succeeded for attempt in retries),
+                truncated=retry_counts[1] > 0,
+                total_attempts=1 + retry_counts[0],
+                omitted_attempts=retry_counts[1],
+                retained_attempts=1 + len(retries),
+                total_roots=retry_counts[0],
+                retained_roots=len(retries),
+                omitted_roots=retry_counts[1],
+            ),
         ) from error
 
 
@@ -5837,6 +6548,16 @@ class Scope(_RuntimeOwner):
         """Immutable user inputs supplied for this plan's compilation."""
 
         return self._plan.build_args
+
+    @property
+    def ensured_import_modules(self) -> tuple[str, ...]:
+        """Concrete module names explicitly imported for subclass discovery."""
+
+        layers = (
+            *self._plan.blueprint.layers,
+            *(boundary.layer for boundary in self._plan.blueprint.boundaries),
+        )
+        return tuple(dict.fromkeys(module_name for layer in layers for module_name in layer.ensured_import_modules))
 
     def has_component(self, service_type: Any, filter: ComponentFilter = default_component_filter) -> bool:
         """Return whether the frozen plan contains a matching root component."""
@@ -6142,6 +6863,10 @@ class _BuilderBase:
         registration_when = dict(self._registration_when)
         registration_origins = dict(self._registration_origins)
 
+        # Imports from every rule happen before any rule takes its live subclass
+        # snapshot. This keeps declaration order from changing discovery results.
+        ensured_import_modules = _ensure_discovery_imports(self._registration_discoveries)
+
         discovered = legacy._Registry()
         for rule in self._registration_discoveries:
             rule.materialize(discovered, registration_when, registration_origins)
@@ -6167,6 +6892,7 @@ class _BuilderBase:
             validation_rules=tuple(self._validation_rules),
             provider_maps=types.MappingProxyType(dict(self._provider_maps)),
             pattern_ids=tuple(self._pattern_ids),
+            ensured_import_modules=ensured_import_modules,
         )
 
     def _install_boundary(self, boundary: Boundary) -> None:
@@ -6613,20 +7339,31 @@ class _BuilderBase:
         self,
         base_type: type,
         *,
+        ensure_import_modules: str | Iterable[str] = (),
+        include_children: bool = False,
         lifespan: Lifespan = "per_resolution",
         subclass_type_filter: Callable[[type], bool] = legacy.always_true,
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
     ) -> None:
-        """Queue concrete subclass discovery for the next successful build."""
+        """Queue concrete subclass discovery for the next successful build.
+
+        Declared module names are imported before any discovery rule takes its
+        live subclass snapshot. ``include_children=True`` recursively imports
+        discoverable children of declared packages.
+        """
 
         self._assert_mutable()
+        if not isinstance(include_children, bool):
+            raise TypeError("include_children must be a bool")
         self._registration_discoveries.append(
             _RegistrationDiscovery(
                 base_type=base_type,
                 generic=False,
                 fallback_type=None,
+                ensure_import_modules=_module_imports(ensure_import_modules),
+                include_children=include_children,
                 lifespan=_legacy_lifespan(lifespan),
                 subclass_type_filter=subclass_type_filter,
                 name=name,
@@ -6641,20 +7378,31 @@ class _BuilderBase:
         generic_service_type: type,
         *,
         fallback_type: type | None = None,
+        ensure_import_modules: str | Iterable[str] = (),
+        include_children: bool = False,
         lifespan: Lifespan = "per_resolution",
         subclass_type_filter: Callable[[type], bool] = legacy.always_true,
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
     ) -> None:
-        """Queue closed-generic subclass discovery for the build snapshot."""
+        """Queue closed-generic subclass discovery for the build snapshot.
+
+        Declared module names are imported before any discovery rule takes its
+        live subclass snapshot. ``include_children=True`` recursively imports
+        discoverable children of declared packages.
+        """
 
         self._assert_mutable()
+        if not isinstance(include_children, bool):
+            raise TypeError("include_children must be a bool")
         self._registration_discoveries.append(
             _RegistrationDiscovery(
                 base_type=generic_service_type,
                 generic=True,
                 fallback_type=fallback_type,
+                ensure_import_modules=_module_imports(ensure_import_modules),
+                include_children=include_children,
                 lifespan=_legacy_lifespan(lifespan),
                 subclass_type_filter=subclass_type_filter,
                 name=name,
@@ -6779,6 +7527,8 @@ class ScopeBuilder(_BuilderBase):
             anchored_singleton_steps=_anchored_singletons(self._parent._plan),
             anchored_pre_configuration_steps=_anchored_pre_configurations(self._parent._plan),
             anchored_owner_tokens=frozenset(self._parent._owners),
+            inherited_parameter_explanations=self._parent._plan.parameter_explanations,
+            inherited_generic_explanations=self._parent._plan.generic_explanations,
         )
         scope = Scope(
             plan,

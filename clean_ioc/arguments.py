@@ -43,11 +43,14 @@ class ParameterContext:
 @dataclass(frozen=True, slots=True)
 class _SelectArgument:
     filter: ComponentFilter
+    policy_kind: str = "select"
 
 
 @dataclass(frozen=True, slots=True)
 class _DerivedArgument:
     function: Callable[[ParameterContext], Any]
+    policy_kind: str = "derive"
+    generic_key: TypeVar | str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,13 +98,14 @@ def build_arg(name: str, *, default: Any = _MISSING_BUILD_ARG) -> _DerivedArgume
             return default
         return context.build_args[name]
 
-    return _DerivedArgument(resolve_build_arg)
+    # Keep this intent as data. Tooling must not inspect a closure later.
+    return _DerivedArgument(resolve_build_arg, policy_kind="build_argument")
 
 
 def inject() -> _SelectArgument:
     """Force normal unnamed component injection, ignoring a Python default."""
 
-    return _SelectArgument(default_component_filter)
+    return _SelectArgument(default_component_filter, policy_kind="inject")
 
 
 def generic_arg(key: TypeVar | str) -> _DerivedArgument:
@@ -113,7 +117,7 @@ def generic_arg(key: TypeVar | str) -> _DerivedArgument:
     def resolve_generic_arg(context: ParameterContext) -> Any:
         return context.component.generic_mapping[key]
 
-    return _DerivedArgument(resolve_generic_arg)
+    return _DerivedArgument(resolve_generic_arg, policy_kind="generic_argument", generic_key=key)
 
 
 def derive(function: Callable[[ParameterContext], Any]) -> _DerivedArgument:

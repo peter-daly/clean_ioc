@@ -672,6 +672,9 @@ class Dependency:
 
         self.name = name
         self.parent_implementation = parent_implementation
+        # Preserve the signature declaration before closed/inherited generic
+        # substitution so compiler explanations can show both annotations.
+        self.declared_service_type = service_type
         if not isinstance(parent_implementation, type) and constructor_type(parent_implementation) is not None:
             # GenericTypeMap supplies inheritance bindings. Also honor the alias's
             # direct parameters: traditional subclasses may omit Generic[T], which
@@ -689,7 +692,6 @@ class Dependency:
             self.service_type = map_type_vars_to_parent(child_type=service_type, parent_type=parent_implementation)
         else:
             self.service_type = service_type
-        self.declared_service_type = self.service_type
         self.settings = settings
         generic_origin = getattr(self.service_type, "__origin__", None)
 

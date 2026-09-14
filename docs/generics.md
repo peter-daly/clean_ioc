@@ -30,7 +30,34 @@ container = builder.build()
 handler = container.resolve(CommandHandler[CreateOrder])
 ```
 
-`register_generic_subclasses(...)` records a discovery rule and returns `None`. `build()` takes the live subclass snapshot, creates the closed registrations, validates them, and freezes them into the runtime plan. Open generic registrations act as reusable activation templates; only closed occurrences are runtime roots.
+`register_generic_subclasses(...)` records a discovery rule and returns `None`. Module names declared with `ensure_import_modules=` are imported during `build()`, before any subclass rule takes its live snapshot. Pass one module name or an iterable of names. Imports declared by any rule happen before all discovery, so rule order cannot make a class disappear. The option only ensures imports; it does not filter discovery by module.
+
+```python
+builder.register_generic_subclasses(
+    CommandHandler,
+    ensure_import_modules=(
+        "my_app.create_order",
+        "my_app.cancel_order",
+    ),
+)
+```
+
+Named packages do not import their children by default. Set `include_children=True` to recursively import every discoverable child module:
+
+```python
+builder.register_generic_subclasses(
+    CommandHandler,
+    ensure_import_modules="my_app.command_handlers",
+    include_children=True,
+)
+container = builder.build()
+
+assert "my_app.command_handlers.create_order" in container.ensured_import_modules
+```
+
+`container.ensured_import_modules` returns the concrete module names ensured by the compiled plan, including recursively imported children. Built overlay scopes expose the combined modules from their inherited and local plans.
+
+The build then creates the closed registrations, validates them, and freezes them into the runtime plan. Open generic registrations act as reusable activation templates; only closed occurrences are runtime roots. `register_subclasses(...)` supports the same `ensure_import_modules=` declaration for non-generic bases.
 
 This means a class created after the rule is declared but before `build()` is included:
 
@@ -47,7 +74,7 @@ DynamicHandler = types.new_class(
 container = builder.build()
 ```
 
-Use `types.new_class()` for a dynamic parameterized base. A direct `type(..., (CommandHandler[CreateOrder],), ...)` call does not resolve generic MRO entries. Candidate modules must be imported and dynamic class objects must still be alive when `build()` starts.
+Use `types.new_class()` for a dynamic parameterized base. A direct `type(..., (CommandHandler[CreateOrder],), ...)` call does not resolve generic MRO entries. Candidate modules not named by `ensure_import_modules=` must already be imported, and dynamic class objects must still be alive when `build()` starts.
 
 Classes created after a successful build do not alter the immutable container. A failed build leaves the builder reusable and the next build rescans its own discovery rules.
 

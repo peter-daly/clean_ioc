@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import json
 import sys
 from pathlib import Path
 from typing import Any, Sequence
@@ -63,7 +64,19 @@ def _check(args: argparse.Namespace) -> int:
 
 
 def _graph(args: argparse.Namespace) -> int:
-    graph = _load_scope(args.target).graph
+    try:
+        graph = _load_scope(args.target).graph
+    except ContainerBuildError as error:
+        if args.on_error != "partial" or error.partial_graph is None:
+            raise
+        if args.format == "json":
+            value = error.partial_graph.to_json()
+        elif args.format == "mermaid":
+            value = error.partial_graph.to_mermaid()
+        else:
+            value = error.partial_graph.to_text()
+        _write(value, args.output)
+        return 1
     if args.format == "json":
         value = graph.manifest(all_roots=args.all).to_json()
     elif args.format == "mermaid":
@@ -89,20 +102,78 @@ def _diff(args: argparse.Namespace) -> int:
 
 
 def _explain(args: argparse.Namespace) -> int:
+    if args.argument is not None and not args.arguments:
+        raise ValueError("--argument requires --arguments")
     graph = _load_scope(args.target).graph
+    component = None
     if args.path is not None:
         if args.name is not None:
             raise ValueError("--name cannot be combined with --path")
-        explanation = graph.explain(graph.component_at_path(args.path))
+        component = graph.component_at_path(args.path)
+        explanation = graph.explain(component)
     else:
         service_type = _load_object(args.service)
         filter = cf.with_name(args.name) if args.name is not None else None
         explanation = graph.explain(service_type) if filter is None else graph.explain(service_type, filter=filter)
-    _write(explanation.to_json() if args.format == "json" else explanation.to_text(), args.output)
+        selected = explanation.selected[0] if explanation.selected else None
+        component = next(
+            (
+                visit.component
+                for visit in graph.walk()
+                if visit.component.id == (selected.component_id if selected else None)
+            ),
+            None,
+        )
+    if args.arguments:
+        if component is None:
+            raise ValueError("explain-arguments-not-recorded: select an exact occurrence with --path")
+        records = graph.explain_arguments(component)
+        if args.argument is not None:
+            records = tuple(record for record in records if record.parameter == args.argument)
+            if not records:
+                raise ValueError(f"explain-argument-not-found: {args.argument!r}")
+        value = (
+            json.dumps({"arguments": [record.to_dict() for record in records]}, indent=2, sort_keys=True)
+            if args.format == "json"
+            else "\n".join(
+                f"{record.parameter}: {record.policy_kind} -> {record.result_category} ({record.result_type})"
+                for record in records
+            )
+        )
+    elif args.specialization:
+        if component is None:
+            raise ValueError("explain-specialization-not-recorded: select an exact occurrence with --path")
+        record = graph.explain_specialization(component)
+        if args.format == "json":
+            value = json.dumps(record.to_dict(), indent=2, sort_keys=True)
+        else:
+            lines = [
+                f"Specialization {record.requested_service}",
+                f"Template: {record.template_identity}",
+                f"Selected tier: {record.selected_tier}",
+                "Service bindings:",
+            ]
+            lines.extend(f"- {name} -> {bound}" for name, bound in record.service_bindings)
+            if not record.service_bindings:
+                lines.append("- none")
+            lines.append("Factory-pattern bindings:")
+            lines.extend(f"- {name} -> {bound}" for name, bound in record.factory_pattern_bindings)
+            if not record.factory_pattern_bindings:
+                lines.append("- none")
+            lines.append("Dependency substitutions:")
+            lines.extend(f"- {name}: {before} -> {after}" for name, before, after in record.dependency_annotations)
+            if not record.dependency_annotations:
+                lines.append("- none")
+            value = "\n".join(lines)
+    else:
+        value = explanation.to_json() if args.format == "json" else explanation.to_text()
+    _write(value, args.output)
     return 0
 
 
 def _analysis_subject(graph: Any, service: str | None, path: str | None, *, all_roots: bool = True) -> Any:
+    if path is not None and service is not None:
+        raise ValueError("--path cannot be combined with a service locator")
     if path is not None:
         return graph.component_at_path(path, all_roots=all_roots)
     if service is None:
@@ -173,6 +244,12 @@ def _parser() -> argparse.ArgumentParser:
     graph.add_argument("target", help="module:object composition target")
     graph.add_argument("--format", choices=("text", "mermaid", "json"), default="text")
     graph.add_argument("--all", action="store_true", help="Include every compiled root")
+    graph.add_argument(
+        "--on-error",
+        choices=("raise", "partial"),
+        default="raise",
+        help="render a non-executable partial diagnostic graph when the build fails",
+    )
     graph.add_argument("-o", "--output", help="Write output to a file instead of stdout")
     graph.set_defaults(handler=_graph)
 
@@ -195,6 +272,10 @@ def _parser() -> argparse.ArgumentParser:
     selection.add_argument("service", nargs="?", help="module:attribute service type")
     selection.add_argument("--path", help="path from the current graph manifest")
     explain.add_argument("--name", help="select a root with this exact name")
+    detail = explain.add_mutually_exclusive_group()
+    detail.add_argument("--arguments", action="store_true", help="show recorded parameter outcomes")
+    detail.add_argument("--specialization", action="store_true", help="show recorded generic substitutions")
+    explain.add_argument("--argument", help="limit --arguments to one parameter")
     explain.add_argument("--format", choices=("text", "json"), default="text")
     explain.add_argument("-o", "--output", help="write output to a file instead of stdout")
     explain.set_defaults(handler=_explain)

@@ -473,6 +473,33 @@ class ComponentBuilder(Protocol):
         name: str | None = None,
     ) -> str: ...
 
+    def register_subclasses(
+        self,
+        base_type: type,
+        *,
+        ensure_import_modules: str | Iterable[str] = (),
+        include_children: bool = False,
+        lifespan: Lifespan = "per_resolution",
+        subclass_type_filter: Callable[[type], bool] = ...,
+        name: str | None = None,
+        tags: Iterable[Tag] | None = None,
+        when: ComponentFilter = all_components,
+    ) -> None: ...
+
+    def register_generic_subclasses(
+        self,
+        generic_service_type: type,
+        *,
+        fallback_type: type | None = None,
+        ensure_import_modules: str | Iterable[str] = (),
+        include_children: bool = False,
+        lifespan: Lifespan = "per_resolution",
+        subclass_type_filter: Callable[[type], bool] = ...,
+        name: str | None = None,
+        tags: Iterable[Tag] | None = None,
+        when: ComponentFilter = all_components,
+    ) -> None: ...
+
     def register_decorator(
         self,
         service_type: TypeForm[Any],

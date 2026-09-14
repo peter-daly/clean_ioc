@@ -120,6 +120,7 @@ See [Custom graph validation](custom-validation.md) for a complete rule cookbook
 
 ## Documentation
 
+- [Compilation process](compilation-process.md) — compiler internals, occurrence graphs, execution steps, and caches
 - [Registration patterns](simple-uses.md) — registration forms and the build boundary
 - [Lifespans](lifespans.md) and [scopes](scopes.md) — ownership, slots, and overlays
 - [Filtering](advanced/filtering.md) — the unified `Component` model

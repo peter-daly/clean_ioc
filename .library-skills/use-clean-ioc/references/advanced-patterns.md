@@ -45,7 +45,7 @@ Register an open generic service with `register_decorator()` to define one polic
 
 ## Generic discovery
 
-`register_subclasses(...)` and `register_generic_subclasses(...)` queue discovery rules. Import candidate modules before `build()`; the build takes the live subclass snapshot, materializes matching registrations, validates them, and freezes the plan. Narrow discovery with `subclass_type_filter` from `clean_ioc.type_filters`. Use `fallback_type=` for unmatched closed requests. Open decorator rules specialize from the resulting compiled plans rather than subclass discovery.
+`register_subclasses(...)` and `register_generic_subclasses(...)` queue discovery rules. Declare candidate module names with `ensure_import_modules=` (one string or an iterable), or import them before `build()`. Every declared module is imported before any rule takes the live subclass snapshot; the build then materializes matching registrations, validates them, and freezes the plan. The option does not filter discovery by module. Named packages import recursively only with `include_children=True`; query the concrete names afterward through `container.ensured_import_modules`. Narrow discovery with `subclass_type_filter` from `clean_ioc.type_filters`. Use `fallback_type=` for unmatched closed requests. Open decorator rules specialize from the resulting compiled plans rather than subclass discovery.
 
 The registration and decorator rules share the same build snapshot, so their declaration order does not control which concrete types are seen. Generated concrete decorator types are memoized process-wide. Use `types.new_class()` for dynamic parameterized generic bases, and retain dynamic class objects until build.
 

@@ -1,5 +1,7 @@
 """Importable composition targets used by CLI tests."""
 
+from typing import Generic, TypeVar
+
 from clean_ioc import BuildIssue, Container, ContainerBuilder, IssueSeverity, ValidationContext
 
 
@@ -33,6 +35,23 @@ class InvalidApplication:
         self.missing = missing
 
 
+TItem = TypeVar("TItem")
+
+
+class Serializer(Generic[TItem]):
+    pass
+
+
+class GenericApplication:
+    def __init__(self, serializer: Serializer[list[int]]):
+        self.serializer = serializer
+
+
+def make_serializer(child: Serializer[TItem]) -> Serializer[list[TItem]]:
+    del child
+    return Serializer()
+
+
 def valid_builder() -> ContainerBuilder:
     builder = ContainerBuilder()
     builder.register(Dependency)
@@ -61,6 +80,14 @@ def explain_builder() -> ContainerBuilder:
     builder.register(Dependency)
     builder.register(Dependency, NamedDependency, name="named")
     builder.register(Application)
+    return builder
+
+
+def generic_explain_builder() -> ContainerBuilder:
+    builder = ContainerBuilder()
+    builder.register(Serializer[int], factory=Serializer)
+    builder.register_pattern(Serializer[list[TItem]], factory=make_serializer)
+    builder.register(GenericApplication)
     return builder
 
 

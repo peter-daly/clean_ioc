@@ -3,6 +3,7 @@
 import asyncio
 import gc
 import inspect
+import sys
 import threading
 import types
 import weakref
@@ -730,13 +731,15 @@ def test_build_arg_validates_its_name_and_reports_missing_values_during_build():
             self.environment = environment
 
     builder = ContainerBuilder()
-    builder.register(Service, arguments={"environment": build_arg("environment")})
+    builder.register(Service, arguments={"environment": build_arg("super-secret-build-key")})
 
     with pytest.raises(ContainerBuildError) as raised:
         builder.build()
 
     assert raised.value.report is not None
     assert raised.value.report.errors[0].code == "invalid-derived-argument"
+    assert "super-secret-build-key" not in str(raised.value)
+    assert "super-secret-build-key" not in raised.value.report.to_json()
 
 
 def test_inject_forces_ordinary_component_injection_over_a_python_default():
@@ -1371,6 +1374,120 @@ def test_subclass_discovery_runs_at_build_and_seals_the_snapshot():
     assert too_late_service_type not in {component.implementation_type for component in container.components}
 
 
+def test_subclass_discovery_imports_declared_modules_at_build(tmp_path, monkeypatch):
+    class Service:
+        pass
+
+    class AlreadyImported(Service):
+        pass
+
+    base_module_name = "clean_ioc_subclass_import_base"
+    implementation_module_name = "clean_ioc_subclass_import_target"
+    base_module = types.ModuleType(base_module_name)
+    setattr(base_module, "Service", Service)
+    monkeypatch.setitem(sys.modules, base_module_name, base_module)
+    monkeypatch.syspath_prepend(str(tmp_path))
+    (tmp_path / f"{implementation_module_name}.py").write_text(
+        f"from {base_module_name} import Service\n\nclass ImportedService(Service):\n    pass\n"
+    )
+
+    builder = ContainerBuilder()
+    builder.register_subclasses(Service, ensure_import_modules=implementation_module_name)
+
+    assert implementation_module_name not in sys.modules
+    container = builder.build()
+
+    imported = sys.modules[implementation_module_name]
+    assert isinstance(container.resolve(Service), getattr(imported, "ImportedService"))
+    implementations = {component.implementation_type for component in container.components}
+    assert AlreadyImported in implementations
+    assert container.ensured_import_modules == (implementation_module_name,)
+    monkeypatch.delitem(sys.modules, implementation_module_name)
+
+
+@pytest.mark.parametrize("include_children", [False, True])
+def test_subclass_discovery_optionally_imports_package_children(tmp_path, monkeypatch, include_children):
+    class Service:
+        pass
+
+    suffix = "children" if include_children else "root_only"
+    base_module_name = f"clean_ioc_package_import_base_{suffix}"
+    package_name = f"clean_ioc_package_import_target_{suffix}"
+    base_module = types.ModuleType(base_module_name)
+    setattr(base_module, "Service", Service)
+    monkeypatch.setitem(sys.modules, base_module_name, base_module)
+    monkeypatch.syspath_prepend(str(tmp_path))
+
+    package = tmp_path / package_name
+    nested_package = package / "nested"
+    nested_package.mkdir(parents=True)
+    (package / "__init__.py").write_text("")
+    (package / "direct.py").write_text(
+        f"from {base_module_name} import Service\n\nclass DirectService(Service):\n    pass\n"
+    )
+    (nested_package / "__init__.py").write_text("")
+    (nested_package / "leaf.py").write_text(
+        f"from {base_module_name} import Service\n\nclass NestedService(Service):\n    pass\n"
+    )
+
+    builder = ContainerBuilder()
+    builder.register_subclasses(
+        Service,
+        ensure_import_modules=package_name,
+        include_children=include_children,
+    )
+    container = builder.build()
+
+    expected_modules = (package_name,)
+    if include_children:
+        expected_modules += (
+            f"{package_name}.direct",
+            f"{package_name}.nested",
+            f"{package_name}.nested.leaf",
+        )
+        implementations = {component.implementation_type for component in container.components}
+        assert getattr(sys.modules[f"{package_name}.direct"], "DirectService") in implementations
+        assert getattr(sys.modules[f"{package_name}.nested.leaf"], "NestedService") in implementations
+    else:
+        assert f"{package_name}.direct" not in sys.modules
+        assert f"{package_name}.nested.leaf" not in sys.modules
+        assert container.components == ()
+    assert container.ensured_import_modules == expected_modules
+
+    for module_name in reversed(expected_modules):
+        monkeypatch.delitem(sys.modules, module_name)
+
+
+def test_all_declared_modules_are_imported_before_any_subclass_snapshot(tmp_path, monkeypatch):
+    class FirstService:
+        pass
+
+    class SecondService:
+        pass
+
+    base_module_name = "clean_ioc_ordered_import_base"
+    implementation_module_name = "clean_ioc_ordered_import_target"
+    base_module = types.ModuleType(base_module_name)
+    setattr(base_module, "SecondService", SecondService)
+    monkeypatch.setitem(sys.modules, base_module_name, base_module)
+    monkeypatch.syspath_prepend(str(tmp_path))
+    (tmp_path / f"{implementation_module_name}.py").write_text(
+        f"from {base_module_name} import SecondService\n\nclass ImportedSecond(SecondService):\n    pass\n"
+    )
+
+    builder = ContainerBuilder()
+    builder.register_subclasses(SecondService)
+    builder.register_subclasses(
+        FirstService,
+        ensure_import_modules=[implementation_module_name, implementation_module_name],
+    )
+    container = builder.build()
+
+    imported = sys.modules[implementation_module_name]
+    assert isinstance(container.resolve(SecondService), getattr(imported, "ImportedSecond"))
+    monkeypatch.delitem(sys.modules, implementation_module_name)
+
+
 def test_generic_subclass_and_decorator_discovery_share_the_build_snapshot():
     class Handler(Generic[T]):
         pass
@@ -1392,6 +1509,35 @@ def test_generic_subclass_and_decorator_discovery_share_the_build_snapshot():
 
     assert type(resolved).__name__ == "__DecoratedGeneric__HandlerDecorator"
     assert isinstance(getattr(resolved, "child"), late_handler_type)
+
+
+def test_generic_subclass_discovery_imports_declared_modules_at_build(tmp_path, monkeypatch):
+    class Handler(Generic[T]):
+        pass
+
+    base_module_name = "clean_ioc_generic_import_base"
+    implementation_module_name = "clean_ioc_generic_import_target"
+    base_module = types.ModuleType(base_module_name)
+    setattr(base_module, "Handler", Handler)
+    monkeypatch.setitem(sys.modules, base_module_name, base_module)
+    monkeypatch.syspath_prepend(str(tmp_path))
+    (tmp_path / f"{implementation_module_name}.py").write_text(
+        f"from {base_module_name} import Handler\n\n"
+        "class Command:\n    pass\n\n"
+        "class ImportedHandler(Handler[Command]):\n    pass\n"
+    )
+
+    builder = ContainerBuilder()
+    builder.register_generic_subclasses(Handler, ensure_import_modules=[implementation_module_name])
+    container = builder.build()
+
+    imported = sys.modules[implementation_module_name]
+    service_type = cast(Any, Handler)[getattr(imported, "Command")]
+    assert isinstance(
+        container.resolve(service_type),
+        getattr(imported, "ImportedHandler"),
+    )
+    monkeypatch.delitem(sys.modules, implementation_module_name)
 
 
 @pytest.mark.parametrize("generic_first", [True, False])
@@ -1908,8 +2054,10 @@ def test_generic_factory_build_errors_explain_unresolved_and_conflicting_typevar
     unresolved_builder.register(Product, factory=unresolved)
     unresolved_builder.register(Product[int], factory=unresolved)
 
-    with pytest.raises(ContainerBuildError, match="Unable to resolve TypeVar.*TDependency"):
+    with pytest.raises(ContainerBuildError, match="Unable to resolve TypeVar.*TDependency") as raised:
         unresolved_builder.build()
+    assert " at 0x" not in str(raised.value)
+    assert "unresolved" in str(raised.value)
 
     def conflicting(dependency: Dependency[TItem]) -> Product[TItem]:
         return Product()
@@ -1917,8 +2065,11 @@ def test_generic_factory_build_errors_explain_unresolved_and_conflicting_typevar
     conflicting_builder = ContainerBuilder()
     conflicting_builder.register(Product[int], factory=conflicting, factory_specialization=StrProduct)
 
-    with pytest.raises(ContainerBuildError, match="Conflicting TypeVar.*TItem"):
+    with pytest.raises(ContainerBuildError, match="Conflicting TypeVar.*TItem") as raised:
         conflicting_builder.build()
+    assert " at 0x" not in str(raised.value)
+    assert raised.value.report is not None
+    assert " at 0x" not in raised.value.report.to_json()
 
     builder = ContainerBuilder()
     with pytest.raises(ValueError, match="factory_specialization requires factory"):

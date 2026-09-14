@@ -429,7 +429,7 @@ V1 subclass and generic discovery happened when `register_subclasses()` or relat
 
 Migration requirements:
 
-- import modules containing candidate subclasses before `build()`;
+- declare modules containing candidate subclasses with `ensure_import_modules=` on the discovery rule, or import them before `build()`; package children require `include_children=True`;
 - retain dynamically created class objects until build because Python subclass tracking uses weak references;
 - do not expect discovery methods to return registration IDs—they return `None` in V2;
 - use `subclass_type_filter` from `clean_ioc.type_filters`, while component `when=` controls occurrence selection;
