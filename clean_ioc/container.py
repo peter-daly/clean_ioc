@@ -17,7 +17,7 @@ import typing
 from collections import defaultdict, deque
 from collections.abc import Callable, Hashable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field, replace
-from typing import Any, TypeVar, cast, get_args, get_origin
+from typing import Any, TypeVar, cast, get_args, get_origin, overload
 from uuid import UUID, uuid4, uuid5
 
 from typetoolbox.generics import GenericTypeMap, get_generic_mapping
@@ -52,6 +52,7 @@ from .components import (
 )
 from .generic_utils import constructor_type
 from .generic_utils import resolve_typevar_bindings as _resolve_factory_typevars
+from .provider_maps import ProviderMapGroup
 from .providers import AsyncProvider, Provider
 from .tooling import (
     BuildIssue,
@@ -80,6 +81,7 @@ from .tooling import (
 from .type_aliases import TypeAliasNormalizationError, alias_label, is_new_type, normalize_type_alias
 
 TService = TypeVar("TService")
+K = TypeVar("K")
 
 logger = logging.getLogger(__name__)
 
@@ -395,8 +397,9 @@ class _ValidationRuleDefinition:
 
 @dataclass(frozen=True, slots=True)
 class _ProviderMapDefinition:
-    key: Callable[[Component], Hashable]
+    key: Callable[[Component], Hashable] | None
     component_filter: ComponentFilter
+    group: ProviderMapGroup[Any, Any] | None = None
 
 
 def _provider_map_factory() -> None:
@@ -433,6 +436,7 @@ class _Layer:
     entrypoints: tuple[_EntryPoint, ...]
     validation_rules: tuple[_ValidationRuleDefinition, ...]
     provider_maps: Mapping[str, _ProviderMapDefinition]
+    contributions: Mapping[str, Mapping[ProviderMapGroup[Any, Any], Hashable]]
     pattern_ids: tuple[str, ...]
     ensured_import_modules: tuple[str, ...]
 
@@ -2689,6 +2693,8 @@ class _CompiledCandidate:
     eligible: bool
     reason_codes: tuple[str, ...]
     reason: str
+    source_registration_id: str | None = None
+    source_layer: _Layer | None = None
 
 
 def _frame_description(frame: _CompilerFrame) -> str:
@@ -3885,6 +3891,7 @@ class _Compiler:
         argument: str | None,
         *,
         deferred_mode: typing.Literal["sync", "async"] | None = None,
+        provider_map_group: ProviderMapGroup[Any, Any] | None = None,
     ) -> list[_CompiledCandidate]:
         service_type = normalize_type_alias(service_type)
         registrations = self.blueprint.registrations(service_type, self._area)
@@ -3893,6 +3900,12 @@ class _Compiler:
             registrations, candidates = self._pattern_candidates(service_type, registrations)
         if not registrations and get_origin(service_type) is not None:
             registrations = self.blueprint.registrations(get_origin(service_type), self._area)
+        if provider_map_group is not None:
+            registrations = [
+                (registration, layer)
+                for registration, layer in registrations
+                if provider_map_group in layer.contributions.get(registration.id, {})
+            ]
         for registration_index, (source_registration, layer) in enumerate(registrations):
             origin = self.blueprint.registration_origin(source_registration.id, layer)
             self._partial_candidate_labels[source_registration.id] = qualified_name(source_registration.implementation)
@@ -4107,6 +4120,8 @@ class _Compiler:
                     True,
                     tuple(codes),
                     "; ".join(reasons),
+                    source_registration.id,
+                    layer,
                 )
             )
         return candidates
@@ -4412,24 +4427,31 @@ class _Compiler:
                 path=self._current_path(),
             )
         callback = definition.key
-        try:
-            valid_callback = callable(callback) and not any(
-                inspect.iscoroutinefunction(value) or inspect.isasyncgenfunction(value)
-                for value in (callback, getattr(callback, "__call__", None))
-            )
-        except Exception:
-            valid_callback = False
-        if not valid_callback:
-            raise ContainerBuildError(
-                "Provider map key must be a synchronous callable",
-                code="provider-map-invalid-key",
-                path=self._current_path(),
-            )
+        if definition.group is None:
+            try:
+                valid_callback = callable(callback) and not any(
+                    inspect.iscoroutinefunction(value) or inspect.isasyncgenfunction(value)
+                    for value in (callback, getattr(callback, "__call__", None))
+                )
+            except Exception:
+                valid_callback = False
+            if not valid_callback:
+                raise ContainerBuildError(
+                    "Provider map key must be a synchronous callable",
+                    code="provider-map-invalid-key",
+                    path=self._current_path(),
+                )
         capturing_singleton = next(
             (frame for frame in reversed(self._retention_frames()) if frame.lifespan == legacy.Lifespan.singleton),
             None,
         )
-        candidates = self._compile_candidates(target, component, None, deferred_mode=mode)
+        candidates = self._compile_candidates(
+            target,
+            component,
+            None,
+            deferred_mode=mode,
+            provider_map_group=definition.group,
+        )
         candidates = self._select_candidates(
             candidates,
             definition.component_filter,
@@ -4461,12 +4483,17 @@ class _Compiler:
                         path=self._current_path(*(item.service_type for item in forbidden)),
                     )
             path = self._current_path(target)
-            try:
-                key = callback(target_component)
-            except Exception:
-                raise ContainerBuildError(
-                    "Provider map key evaluation failed", code="provider-map-key-evaluation", path=path
-                ) from None
+            if definition.group is not None:
+                if candidate.source_layer is None or candidate.source_registration_id is None:
+                    raise RuntimeError("Provider-map contribution source was not retained during compilation")
+                key = candidate.source_layer.contributions[candidate.source_registration_id][definition.group]
+            else:
+                try:
+                    key = cast(Callable[[Component], Hashable], callback)(target_component)
+                except Exception:
+                    raise ContainerBuildError(
+                        "Provider map key evaluation failed", code="provider-map-key-evaluation", path=path
+                    ) from None
             if inspect.isawaitable(key) or inspect.isasyncgen(key):
                 try:
                     if inspect.iscoroutine(key):
@@ -6822,6 +6849,7 @@ class _BuilderBase:
         self._factory_ids: set[str] = set()
         self._factory_specializations: dict[str, object] = {}
         self._provider_maps: dict[str, _ProviderMapDefinition] = {}
+        self._contributions: dict[str, Mapping[ProviderMapGroup[Any, Any], Hashable]] = {}
         self._pattern_ids: list[str] = []
         self._decorators: list[_DecoratorDefinition] = []
         self._removed_decorator_ids: set[str] = set()
@@ -6891,6 +6919,7 @@ class _BuilderBase:
             entrypoints=tuple(self._entrypoints),
             validation_rules=tuple(self._validation_rules),
             provider_maps=types.MappingProxyType(dict(self._provider_maps)),
+            contributions=types.MappingProxyType(dict(self._contributions)),
             pattern_ids=tuple(self._pattern_ids),
             ensured_import_modules=ensured_import_modules,
         )
@@ -6964,6 +6993,7 @@ class _BuilderBase:
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
+        contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
     ) -> str:
         self._assert_mutable()
         declared_service_type = service_type
@@ -6974,6 +7004,21 @@ class _BuilderBase:
             factory_specialization = _composition_type(factory_specialization)
         if factory_specialization is not None and factory is None:
             raise ValueError("factory_specialization requires factory=")
+        normalized_contributions: dict[ProviderMapGroup[Any, Any], Hashable] | None = None
+        if contributes is not None:
+            if not isinstance(contributes, Mapping):
+                raise TypeError("contributes must be a mapping of ProviderMapGroup to key")
+            normalized_contributions = {}
+            for group, contribution_key in contributes.items():
+                if not isinstance(group, ProviderMapGroup):
+                    raise TypeError("contributes keys must be ProviderMapGroup instances")
+                group_service_type = _composition_type(group.service_type)
+                if not _service_definition_matches(service_type, group_service_type):
+                    raise TypeError(
+                        f"Registration service {qualified_name(service_type)} is incompatible with "
+                        f"provider map group {group.name!r} targeting {qualified_name(group_service_type)}"
+                    )
+                normalized_contributions[group] = contribution_key
         if is_new_type(service_type) and factory is None and instance is None and implementation_type is None:
             raise TypeError(
                 f"NewType service {qualified_name(service_type)} requires a factory, instance or implementation type"
@@ -6998,6 +7043,8 @@ class _BuilderBase:
             parent_node_filter=legacy.default_parent_node_filter,
         )
         self._registration_when[component_id] = when
+        if normalized_contributions is not None:
+            self._contributions[component_id] = types.MappingProxyType(normalized_contributions)
         self._registration_origins[component_id] = self._definition_origin("registration", component_id)
         for registrations in self._composition._registry._registrations.values():
             for registration in registrations:
@@ -7030,11 +7077,33 @@ class _BuilderBase:
         self._registration_origins[component_id] = self._definition_origin("registration-pattern", component_id)
         return component_id
 
+    @overload
+    def register_provider_map(
+        self,
+        service_type: ProviderMapGroup[K, TService],
+        *,
+        asynchronous: bool = False,
+        component_filter: ComponentFilter = all_components,
+        name: str | None = None,
+    ) -> str: ...
+
+    @overload
     def register_provider_map(
         self,
         service_type: TypeForm[Any],
         *,
         key: Callable[[Component], Hashable],
+        key_type: TypeForm[Any] = str,
+        asynchronous: bool = False,
+        component_filter: ComponentFilter = all_components,
+        name: str | None = None,
+    ) -> str: ...
+
+    def register_provider_map(
+        self,
+        service_type: TypeForm[Any] | ProviderMapGroup[Any, Any],
+        *,
+        key: Callable[[Component], Hashable] | None = None,
         key_type: TypeForm[Any] = str,
         asynchronous: bool = False,
         component_filter: ComponentFilter = all_components,
@@ -7050,11 +7119,19 @@ class _BuilderBase:
         self._assert_mutable()
         if not isinstance(asynchronous, bool):
             raise TypeError("asynchronous must be a bool")
+        group = service_type if isinstance(service_type, ProviderMapGroup) else None
+        if group is not None:
+            if key is not None:
+                raise TypeError("group-based provider maps receive keys from contributions, not key=")
+            service_type = group.service_type
+            key_type = group.key_type
+        elif key is None:
+            raise TypeError("register_provider_map requires key= unless given a ProviderMapGroup")
         provider_type = AsyncProvider if asynchronous else Provider
         annotation: Any = types.GenericAlias(Mapping, (key_type, provider_type[service_type]))
         component_id = self.register(annotation, factory=_provider_map_factory, lifespan="transient", name=name)
         self._factory_ids.discard(component_id)
-        self._provider_maps[component_id] = _ProviderMapDefinition(key, component_filter)
+        self._provider_maps[component_id] = _ProviderMapDefinition(key, component_filter, group)
         self._registration_origins[component_id] = self._definition_origin("provider-map", component_id)
         return component_id
 

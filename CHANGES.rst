@@ -1,3 +1,11 @@
+2.0.0b14
+--------
+
+    Add ``ProviderMapGroup`` and registration ``contributes=`` metadata for
+    explicitly curated provider maps. Group membership is selected before map
+    target compilation and does not alter ordinary service resolution.
+
+
 2.0.0b13
 --------
 
@@ -14,7 +22,6 @@
     live subclass snapshot, making discovery independent of rule order. Package
     children remain opt-in through ``include_children=True``. Built containers and
     scopes expose the concrete imported names through ``ensured_import_modules``.
-
 
 2.0.0b12
 --------

@@ -115,6 +115,28 @@ register_provider_map(
 ) -> str                       # Registration ID
 ```
 
+### Explicit provider-map groups
+
+When a map must include only opt-in registrations, declare a `ProviderMapGroup` and add a contribution when
+registering each target. This selection happens before target graphs are compiled, which is useful when another
+implementation of the same service consumes the map itself:
+
+```python
+from clean_ioc import ProviderMapGroup
+
+delegated_gateways = ProviderMapGroup("delegated-gateways", str, PaymentGateway)
+
+builder.register(PaymentGateway, StripeGateway, name="stripe", contributes={delegated_gateways: "stripe"})
+builder.register(PaymentGateway, PayPalGateway, name="paypal", contributes={delegated_gateways: "paypal"})
+builder.register_provider_map(delegated_gateways)
+```
+
+The group declares `Mapping[str, Provider[PaymentGateway]]`; contribution values become the map keys. A
+contribution is additive metadata only: it does not affect ordinary resolution, names, collection membership, or
+visibility. Thus a named contributor remains selectable with `cf.with_name("stripe")`, and an unnamed contributor
+remains eligible for ordinary unnamed resolution. Duplicate contributed keys fail during build just like duplicate
+callback keys. `component_filter` remains available and runs after the explicitly selected target graphs compile.
+
 Supply `key_type` for non-string keys, including empty maps. The callback's return annotation is never inferred.
 For example, `key=lambda component: component.implementation_type, key_type=type` declares
 `Mapping[type, Provider[PaymentGateway]]`. Keys must conform to the declared key type and retain stable equality and

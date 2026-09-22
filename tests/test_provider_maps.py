@@ -18,6 +18,7 @@ from clean_ioc import (
     ContainerBuildError,
     Expose,
     Provider,
+    ProviderMapGroup,
     ProviderScopeClosedError,
     ResolutionContext,
     Scope,
@@ -28,6 +29,132 @@ from clean_ioc import (
 
 def codes(error):
     return {issue.code for issue in error.value.report.errors}
+
+
+def test_provider_map_group_selects_contributors_before_compiling_delegator():
+    class MessageProcessor:
+        async def process_message(self) -> str:
+            raise NotImplementedError
+
+    delegated = ProviderMapGroup("delegated-processors", str, MessageProcessor)
+
+    class CommandProcessor(MessageProcessor):
+        async def process_message(self) -> str:
+            return "command"
+
+    class DelegatingProcessor(MessageProcessor):
+        def __init__(self, processors: Mapping[str, AsyncProvider[MessageProcessor]]):
+            self.processors = processors
+
+        async def process_message(self) -> str:
+            return await (await self.processors["command"]()).process_message()
+
+    builder = ContainerBuilder()
+    builder.register(
+        MessageProcessor,
+        CommandProcessor,
+        name="command",
+        contributes={delegated: "command"},
+    )
+    builder.register_provider_map(delegated, asynchronous=True)
+    builder.register(MessageProcessor, DelegatingProcessor)
+
+    container = builder.build()
+    delegator = container.resolve(MessageProcessor)
+    assert isinstance(delegator, DelegatingProcessor)
+    assert list(delegator.processors) == ["command"]
+    assert isinstance(container.resolve(MessageProcessor, cf.with_name("command")), CommandProcessor)
+
+
+def test_provider_map_group_contributions_do_not_change_ordinary_resolution():
+    class Service:
+        pass
+
+    group = ProviderMapGroup("services", str, Service)
+    builder = ContainerBuilder()
+    builder.register(Service, contributes={group: "default"})
+    builder.register_provider_map(group)
+
+    container = builder.build()
+    assert isinstance(container.resolve(Service), Service)
+    assert isinstance(container.resolve(Mapping[str, Provider[Service]])["default"](), Service)
+
+
+def test_provider_map_group_duplicate_contribution_keys_fail():
+    class Service:
+        pass
+
+    group = ProviderMapGroup("services", str, Service)
+    builder = ContainerBuilder()
+    builder.register(Service, name="first", contributes={group: "same"})
+    builder.register(Service, name="second", contributes={group: "same"})
+    builder.register_provider_map(group)
+
+    with pytest.raises(ContainerBuildError) as error:
+        builder.build()
+    assert "provider-map-duplicate-key" in codes(error)
+
+
+def test_provider_map_groups_are_identity_tokens_and_one_registration_can_contribute_to_many():
+    class Service:
+        pass
+
+    first = ProviderMapGroup("same", str, Service)
+    second = ProviderMapGroup("same", str, Service)
+    builder = ContainerBuilder()
+    builder.register(Service, contributes={first: "first", second: "second"})
+    builder.register_provider_map(first, name="first")
+    builder.register_provider_map(second, name="second")
+    container = builder.build()
+
+    first_map = container.resolve(Mapping[str, Provider[Service]], cf.with_name("first"))
+    second_map = container.resolve(Mapping[str, Provider[Service]], cf.with_name("second"))
+    assert list(first_map) == ["first"]
+    assert list(second_map) == ["second"]
+
+
+def test_provider_map_group_rejects_incompatible_contributions_transactionally():
+    class Service:
+        pass
+
+    class Other:
+        pass
+
+    group = ProviderMapGroup("services", str, Service)
+    builder = ContainerBuilder()
+    with pytest.raises(TypeError, match="incompatible"):
+        builder.register(Other, contributes={group: "wrong"})
+    builder.register(Service, contributes={group: "right"})
+    builder.register_provider_map(group)
+    assert list(builder.build().resolve(Mapping[str, Provider[Service]])) == ["right"]
+
+
+def test_provider_map_group_filters_before_component_filter_and_keeps_contributing_cycles():
+    class Service:
+        pass
+
+    group = ProviderMapGroup("services", str, Service)
+    calls = []
+    builder = ContainerBuilder()
+    builder.register(Service, name="excluded")
+    builder.register(Service, name="included", contributes={group: "included"})
+    builder.register_provider_map(group, component_filter=lambda component: calls.append(component.name) or True)
+    assert list(builder.build().resolve(Mapping[str, Provider[Service]])) == ["included"]
+    assert calls == ["included"]
+
+    class Recursive:
+        pass
+
+    def recursive_factory(providers: Mapping[str, Provider[Recursive]]) -> Recursive:
+        return Recursive()
+
+    recursive_group = ProviderMapGroup("recursive", str, Recursive)
+    recursive = ContainerBuilder()
+    recursive.register(Recursive, factory=recursive_factory, contributes={recursive_group: "recursive"})
+    recursive.register_provider_map(recursive_group)
+    with pytest.raises(ContainerBuildError) as error:
+        recursive.build()
+    assert "circular-dependency" in codes(error)
 
 
 def test_named_ordered_read_only_map_is_lazy_and_compilation_stays_frozen(monkeypatch):
@@ -634,6 +761,54 @@ def test_scope_builder_declarations_and_boundary_use_of_an_exposed_map():
         with overlay_builder.build() as overlay:
             assert list(overlay.resolve(map_type, cf.with_name("overlay"))) == ["local"]
             assert list(overlay.resolve(Consumer).values) == ["private"]
+
+
+def test_group_provider_maps_see_overlay_contributions_but_anchored_singletons_stay_frozen():
+    class Service:
+        pass
+
+    class Consumer:
+        def __init__(self, values: Mapping[str, Provider[Service]]):
+            self.values = values
+
+    group = ProviderMapGroup("services", str, Service)
+    map_type = Mapping[str, Provider[Service]]
+    builder = ContainerBuilder()
+    builder.register(Service, name="parent", contributes={group: "parent"})
+    builder.register_provider_map(group)
+    builder.register(Consumer, lifespan="singleton")
+    with builder.build() as container:
+        parent_consumer = container.resolve(Consumer)
+        assert list(parent_consumer.values) == ["parent"]
+        overlay_builder = container.new_scope_builder()
+        overlay_builder.register(Service, name="overlay", contributes={group: "overlay"})
+        overlay_builder.register_provider_map(group, name="overlay-map")
+        with overlay_builder.build() as overlay:
+            overlay_map = overlay.resolve(map_type, cf.with_name("overlay-map"))
+            assert list(overlay_map) == ["overlay", "parent"]
+            assert list(overlay.resolve(Consumer).values) == ["parent"]
+
+
+def test_provider_map_group_key_failures_are_structured_and_redacted():
+    class Service:
+        pass
+
+    secret = "group-key-secret"  # noqa: S105
+
+    class BrokenKey:
+        def __hash__(self):
+            raise RuntimeError(secret)
+
+    group = ProviderMapGroup("services", str, Service)
+    builder = ContainerBuilder()
+    builder.register(Service, contributes={group: BrokenKey()})
+    builder.register_provider_map(group)
+    with pytest.raises(ContainerBuildError) as error:
+        builder.build()
+    assert "provider-map-key-evaluation" in codes(error)
+    assert secret not in str(error.value)
+    assert error.value.report is not None
+    assert secret not in json.dumps(error.value.report.to_dict())
 
 
 def test_newtype_key_identity_is_not_its_supertype():

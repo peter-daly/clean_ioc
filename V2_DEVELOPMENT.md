@@ -53,6 +53,14 @@ kind, `key_type`, and `provider_mode` without serializing computed keys, key has
 topology with changed redacted keys intentionally has the same fingerprint. Ordinary
 non-map graph output and canonical runtime lookup paths remain unchanged.
 
+`ProviderMapGroup[K, T]` is an identity token, rather than a value descriptor: two same-shaped declarations remain
+separate maps. `register(..., contributes={group: key})` persists immutable contribution metadata in the declaring
+layer without changing ordinary service resolution. For a group map, the compiler applies boundary visibility and
+existing exact/pattern precedence, retains only contributions to that identity, then specializes and compiles those
+targets. Contribution keys use the same redacted hash/equality and duplicate-key validation as callback keys.
+Contributions are validated transactionally before a registration mutates composition, including compatibility with
+the group's declared target type. Do not expose registration metadata or a registration-filter API for this feature.
+
 The compiler also prepares the common runtime decisions instead of rediscovering them on every resolve. It freezes each step's sync/async capability, builds direct maps for default root selection, and chooses a lifespan-specific registration step for transient, per-resolution, scoped, or singleton behavior. Default cached root resolutions return the frozen value before allocating a per-resolution context. Runtime code should keep those paths specialized: do not restore recursive capability checks, repeated default-filter scans, or a generic lifespan switch to the hot path without measurements showing a benefit.
 
 Private machinery in `clean_ioc/_legacy.py` still supplies registration storage, activators, dependency parsing, and filters while the compiler is made self-contained. It is not a supported import path. The public runtime converts string-literal lifespans to the private enum only at this internal boundary. Do not expose that enum through components or route runtime resolution back through the old dependency graph.

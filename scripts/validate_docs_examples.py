@@ -18,6 +18,7 @@ from clean_ioc import (
     Expose,
     IssueSeverity,
     Provider,
+    ProviderMapGroup,
     Use,
     ValidationContext,
     build_arg,
@@ -421,10 +422,13 @@ def validate_provider_maps() -> None:
         def __init__(self, gateways: Mapping[str, Provider[PaymentGateway]]):
             self.gateways = gateways
 
+    delegated = ProviderMapGroup("delegated-gateways", str, PaymentGateway)
+
     builder = ContainerBuilder()
-    builder.register(PaymentGateway, StripeGateway, name="stripe", lifespan="scoped")
+    builder.register(PaymentGateway, StripeGateway, name="stripe", lifespan="scoped", contributes={delegated: "stripe"})
     builder.register(PaymentGateway, PayPalGateway, name="paypal", lifespan="scoped")
     builder.register_provider_map(PaymentGateway, key=lambda component: component.name)
+    builder.register_provider_map(delegated, name="explicit")
     builder.register_provider_map(
         PaymentGateway,
         key=lambda component: 7,
@@ -440,6 +444,8 @@ def validate_provider_maps() -> None:
             gateway = checkout.gateways["stripe"]()
             assert isinstance(gateway, StripeGateway)  # noqa: S101
             assert PaymentGateway.created == 1  # noqa: S101
+            explicit = scope.resolve(Mapping[str, Provider[PaymentGateway]], cf.with_name("explicit"))
+            assert isinstance(explicit["stripe"](), StripeGateway)  # noqa: S101
             async_map = scope.resolve(Mapping[int, AsyncProvider[PaymentGateway]])
             assert asyncio.run(async_map[7]()) is gateway  # noqa: S101
 

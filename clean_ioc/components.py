@@ -7,13 +7,27 @@ from collections.abc import Hashable
 from dataclasses import dataclass
 from enum import Enum
 from types import UnionType
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Literal, Mapping, Protocol, TypeAlias, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterable,
+    Iterator,
+    Literal,
+    Mapping,
+    Protocol,
+    TypeAlias,
+    TypeVar,
+    Union,
+    overload,
+)
 
 from typetoolbox.generics import GenericTypeMap
 from typing_extensions import TypeForm
 
 from .generic_utils import constructor_type
 from .metadata import Tag
+from .provider_maps import ProviderMapGroup
 from .type_aliases import normalize_type_alias
 
 if TYPE_CHECKING:
@@ -21,6 +35,8 @@ if TYPE_CHECKING:
 
 Lifespan: TypeAlias = Literal["transient", "per_resolution", "scoped", "singleton"]
 ValidationRuleMode: TypeAlias = Literal["build", "validation"]
+K = TypeVar("K")
+TProviderService = TypeVar("TProviderService")
 
 
 class RuntimeOwnerKind(str, Enum):
@@ -448,6 +464,7 @@ class ComponentBuilder(Protocol):
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
+        contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
     ) -> str: ...
 
     def register_pattern(
@@ -462,11 +479,33 @@ class ComponentBuilder(Protocol):
         when: ComponentFilter = all_components,
     ) -> str: ...
 
+    @overload
+    def register_provider_map(
+        self,
+        service_type: ProviderMapGroup[K, TProviderService],
+        *,
+        asynchronous: bool = False,
+        component_filter: ComponentFilter = all_components,
+        name: str | None = None,
+    ) -> str: ...
+
+    @overload
     def register_provider_map(
         self,
         service_type: TypeForm[Any],
         *,
         key: Callable[[Component], Hashable],
+        key_type: TypeForm[Any] = str,
+        asynchronous: bool = False,
+        component_filter: ComponentFilter = all_components,
+        name: str | None = None,
+    ) -> str: ...
+
+    def register_provider_map(
+        self,
+        service_type: TypeForm[Any] | ProviderMapGroup[Any, Any],
+        *,
+        key: Callable[[Component], Hashable] | None = None,
         key_type: TypeForm[Any] = str,
         asynchronous: bool = False,
         component_filter: ComponentFilter = all_components,

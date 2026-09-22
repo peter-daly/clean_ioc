@@ -47,6 +47,7 @@ from .graph_analysis import (
     SharingReport,
 )
 from .metadata import Tag
+from .provider_maps import ProviderMapGroup
 from .providers import AsyncProvider, Provider
 from .tooling import (
     BuildIssue,
@@ -132,6 +133,7 @@ __all__ = [
     "PartialNode",
     "PartialState",
     "Provider",
+    "ProviderMapGroup",
     "ProviderScopeClosedError",
     "ResolutionContext",
     "Scope",

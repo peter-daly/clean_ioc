@@ -33,6 +33,7 @@ def test_v1_modules_are_not_shipped(module_name: str):
 def test_package_root_has_one_compiled_container_surface():
     assert "ContainerBuilder" in clean_ioc.__all__
     assert "Container" in clean_ioc.__all__
+    assert "ProviderMapGroup" in clean_ioc.__all__
     assert not {
         "CaptiveDependencyError",
         "CircularDependencyError",
@@ -54,6 +55,14 @@ def test_package_root_has_one_compiled_container_surface():
     assert "parent_node_filter" not in inspect.signature(ContainerBuilder.register).parameters
     assert "dependency_config" not in inspect.signature(ContainerBuilder.register).parameters
     assert "arguments" in inspect.signature(ContainerBuilder.register).parameters
+    assert "contributes" in inspect.signature(ContainerBuilder.register).parameters
+    assert "contributes" in inspect.signature(clean_ioc.ComponentBuilder.register).parameters
+    protocol_provider_map = inspect.signature(clean_ioc.ComponentBuilder.register_provider_map)
+    concrete_provider_map = inspect.signature(ContainerBuilder.register_provider_map)
+    assert "key" in protocol_provider_map.parameters
+    assert "key" in concrete_provider_map.parameters
+    assert len(__import__("typing").get_overloads(clean_ioc.ComponentBuilder.register_provider_map)) == 2
+    assert len(__import__("typing").get_overloads(ContainerBuilder.register_provider_map)) == 2
     assert "build_args" in inspect.signature(ContainerBuilder.build).parameters
     assert "build_args" in inspect.signature(ScopeBuilder.build).parameters
     assert "build_args" in inspect.signature(ContainerBuilder.has_component).parameters

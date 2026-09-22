@@ -421,6 +421,11 @@ stores frozen key-to-index information and provider targets. Runtime map acquisi
 looking up a key and calling its handle activates the selected target without repeating key calculation or selection.
 See [special dependency types](advanced/special-dependency-types.md).
 
+`ProviderMapGroup` maps make the candidate set explicit before specialization and target compilation: only visible
+registrations whose `contributes` metadata contains that exact group identity are considered. Contributions are
+composition metadata, not a resolution filter. The existing `component_filter` then runs on the compiled selected
+targets, and all ordinary cycle, ownership, async, boundary, and key validation remains in force.
+
 ## Decorators and shared pre-configurations
 
 Decorator applicability is evaluated against the completed undecorated core subtree before decorator dependencies
