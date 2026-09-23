@@ -3514,6 +3514,7 @@ class _Compiler:
         draft.service_type = requested_service_type
         draft.name = registration.name
         draft.tags = tuple(registration.tags)
+        draft.argument = None
         self.graph.freeze()
         return component
 

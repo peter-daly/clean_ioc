@@ -50,7 +50,9 @@ explicit registrations + discovery materialization -> normalized immutable defin
        -> source_filter(Component) -> RegistrationInfo -> template factory
   -> immutable generated definitions + selection/provenance evidence
   -> one boundary visibility consistency check with generated definitions included
-  -> fresh normal compiler -> target when -> decorator dependencies -> frozen runtime plans
+  -> fresh normal compiler -> generated target when on _undecorated_component_view(core)
+       (ordinary decorator when keeps its existing view)
+  -> decorator dependencies -> frozen runtime plans
 ```
 
 The new internal `_Compiler._compile_source_core` is the reusable phase seam. It consumes a fresh compiler containing
@@ -68,6 +70,8 @@ Build-time argument derivations/filters remain ordinary compiler callbacks, subj
 Anchored singleton handling is deliberately different from recompilation: clone the frozen parent component tree,
 omitting every decorator branch, while preserving the parent's selected dependencies, owner metadata, and untouched
 activation step. Definition-side root name/tags/service key are restored when the anchored view used a public alias.
+The canonical source root's `argument` is explicitly reset to `None`, even when the first anchored singleton step was
+captured from a consumer dependency; descendant argument names remain unchanged.
 This avoids both leaking decorator-only descendants into the source predicate and rewiring a parent singleton to
 an overlay resource. New non-anchored source contexts use the current overlay blueprint normally.
 
@@ -77,6 +81,31 @@ filter sees that parentless core; its dependencies still apply contextual condit
 the source definition's `when`, argument filters, and visibility again. An exact `select(cf.with_id(source.id))` failure
 never falls back to another registration. Inspection failure in a source dependency is an ordinary build failure, not
 an incomplete metadata fallback.
+
+## Generated-target applicability view: review-corrected M05 interface
+
+Ordinary `_compile_decorators` receives a core without its own attached decorators, but its selected dependencies may
+already have decorators. `Component.descendants()` traverses those branches. The original M01 contract overstated
+what that existing seam excludes; ordinary behavior must remain compatible.
+
+The internal `components._undecorated_component_view(core) -> Component` now supplies the required generated-template
+view. At the existing applicability seam, after core dependencies/pre-configurations complete and before attaching
+target decorators, M05 skips snapshot creation when there are no generated candidates; otherwise it takes one
+snapshot and reuses it for every generated-template `when` at that occurrence.
+Ordinary `when` still receives the original component. The helper copies current graph records into a separate frozen
+inspection graph with all attached `decorator_ids` removed. Original occurrence IDs, parent links, argument names,
+selected dependency identities, boundary metadata, generic facts and ownership metadata remain intact. No dependency
+selection, filters, constructors, factory functions, or activation plans run while making the snapshot. Parent context
+is exactly the context available at that compilation point; it is not re-rooted or artificially completed.
+
+The helper accepts both in-progress draft graphs and already frozen graphs. Later compiler mutations cannot attach
+decorators to its snapshot. It retains the original parent/context nodes to support ordinary parent filters; removing
+attached decorator pipelines does not erase a real decorator parent when the target itself is its dependency.
+This metadata snapshot is separate from runtime plan publication. The M01 helper copies the whole currently known
+graph; M05 must assess restricting copies to relevant occurrence context to avoid work scaling with unrelated roots.
+Do not copy once per template. M05 may optimize copying reachable records, but
+must retain these semantics and the new probe. The helper is not yet wired into generated definitions because the
+public template pipeline belongs to M04/M05.
 
 ## Cycles and boundary feedback: resolved decisions
 
@@ -152,6 +181,7 @@ DerivedServices matching, and target-to-decorator binding.
 
 - `clean_ioc/container.py`: disposable exact source-core compilation, recursion-wide decorator suppression, and
   decorator-free anchored metadata cloning. Normal compilation is unchanged unless the private seam is invoked.
+- `clean_ioc/components.py`: immutable recursively undecorated occurrence snapshot for generated-template predicates.
 - `clean_ioc/generic_utils.py`: identity-based nominal service projection seed for M02 contract validation/M03 binding.
 - `tests/test_decorator_template_feasibility.py`: 13 portable probes for completed/frozen source graphs, no constructor
   or factory activation, decorator-descendant exclusion, exact closed keys, contextual conditions/exact binding,
@@ -180,3 +210,24 @@ Executed with repository `.venv` Python 3.14.4; imports resolve to this working 
 No full `make ci`, full Python matrix, or bark-core integration claimed; those remain assigned to later milestones.
 Checkpoint pre-commit hooks are coordinator-run and must be recorded separately. Public documentation comprehension
 has not run because no public documentation changed. Independent review is required before M01 acceptance/M02.
+
+## Independent-review repairs (implementation verification reopened)
+
+The reviewer requested two bounded corrections; both are implemented, pending independent recheck:
+
+1. Canonical anchored source root retained a dependency argument from the first selected parent step. Reset only
+   its root argument to `None`. The strengthened overlay probe registers a Consumer before its singleton Source,
+   verifies the anchor retains `argument="source"`, the canonical view has no parent/argument, its resource retains
+   `argument="resource"`, cache/cleanup ownership is preserved, and runtime resolution returns the existing singleton.
+2. Ordinary descendant traversal includes decorators attached to dependency nodes. Add the separate immutable
+   `_undecorated_component_view` helper and a probe showing `Target -> Dependency -> DependencyDecorator -> Marker`:
+   ordinary `when` still sees Marker, generated-template view does not. The probe checks in-progress and frozen graph
+   inputs, non-root parent filters, selected named dependency identity, argument/ownership facts, immutable snapshots,
+   and ordinary runtime decorator application. Update the parent contract and M05 interface accordingly.
+
+Repair verification: feasibility suite **14 passed in 0.18s**. Ruff and ty pass for `components.py`, `container.py`,
+and the feasibility tests. Format and diff checks pass. The focused repair regression command
+`.venv/bin/python -m pytest tests/test_decorator_template_feasibility.py tests/test_container.py
+tests/test_compiler_tooling.py tests/test_resource_ownership.py tests/test_boundaries.py -q --disable-warnings --maxfail=3`
+passed **277 tests in 2.41s**. No commits, M02
+implementation, public documentation, or bark-core changes were made by this repair turn.

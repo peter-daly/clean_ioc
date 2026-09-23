@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Hashable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from types import UnionType
 from typing import (
@@ -426,6 +426,23 @@ class Component:
 
     def __repr__(self) -> str:
         return f"Component({self.service_type!r} -> {self.implementation!r}, occurrence={self.occurrence_id})"
+
+
+def _undecorated_component_view(component: Component) -> Component:
+    """Snapshot an occurrence for generated-template applicability predicates.
+
+    Hide attached decorator pipelines throughout the graph without recompiling
+    selected dependencies or changing occurrence, parent, or ownership metadata.
+    Ancestors retain the context available at this compilation point. This is
+    an inspection graph only; ordinary decorator predicates keep their old view.
+    """
+    source = component._graph
+    records = source._records
+    if records is None:
+        records = {key: draft.freeze() for key, draft in source._drafts.items()}
+    graph = _ComponentGraph()
+    graph._records = {key: replace(record, decorator_ids=()) for key, record in records.items()}
+    return Component(graph, component.occurrence_id)
 
 
 ComponentFilter: TypeAlias = Callable[[Component], bool]

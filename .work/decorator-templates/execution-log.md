@@ -10,6 +10,8 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 | Milestone | Gate | Status | Local clean-ioc commit | Evidence |
 | --- | --- | --- | --- | --- |
 | 01 | Search | Passed | `da20679d89cf0779c8c30365196375901f62e8b5` | [Search evidence](01-search.md); 76 focused baseline tests; lint/type/full-unit-test commit hooks passed |
-| 01 | Implementation verification | Passed; checkpoint pending | Pending | Astra High `/root/m01_implementation`; [handoff](01-handoff.md); 13 probes, 277 focused regressions, 98 final container/probe tests, Ruff/ty passed; coordinator repeated 13 probes |
+| 01 | Implementation verification | Passed | `ae33390c8e255a2a0c386cfc36bae42e2de0af6c` | Astra High `/root/m01_implementation`; [handoff](01-handoff.md); 13 probes, 277 focused regressions, 98 final container/probe tests, Ruff/ty passed; coordinator repeated 13 probes; full-unit/lint/type commit hooks passed |
+| 01 | Independent technical review | Round 1 requests changes | Pending | Astra High `/root/m01_review`; [findings](01-review.md): canonical source argument and recursive target-filter view |
+| 01 | Implementation verification, repair | Passed; checkpoint pending | Pending | Both review findings repaired; 14 probes and 277 focused regressions plus Ruff/ty/format passed; coordinator repeated 14 probes |
 
 Implementation/review/documentation gates not listed here have not passed. M02–M10 have not started.

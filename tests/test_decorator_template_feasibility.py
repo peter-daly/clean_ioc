@@ -7,6 +7,7 @@ import pytest
 
 from clean_ioc import Boundary, ContainerBuilder, ContainerBuildError, Expose, Tag, Use, select
 from clean_ioc import component_filters as cf
+from clean_ioc.components import _undecorated_component_view
 from clean_ioc.container import (
     _anchored_pre_configurations,
     _anchored_singletons,
@@ -252,7 +253,12 @@ def test_overlay_source_core_preserves_anchored_dependencies_and_skips_frozen_de
         def __init__(self, inner: Source, marker: Marker):
             self.inner = inner
 
+    class Consumer:
+        def __init__(self, source: Source):
+            self.source = source
+
     builder = ContainerBuilder()
+    builder.register(Consumer)
     parent_resource = builder.register(Resource, lifespan="singleton", tags=[Tag("area", "parent")])
     builder.register(Marker, lifespan="singleton")
     source_id = builder.register(Source, lifespan="singleton")
@@ -262,21 +268,97 @@ def test_overlay_source_core_preserves_anchored_dependencies_and_skips_frozen_de
     overlay = parent.new_scope_builder()
     overlay.register(Resource, lifespan="singleton", tags=[Tag("area", "overlay")])
     blueprint = _Blueprint((overlay._layer(), *parent._plan.blueprint.layers))
+    anchors = _anchored_singletons(parent._plan)
+    anchored = next(step for step in anchors.values() if step.component.id == source_id)
+    assert anchored.component.argument == "source"
     source = _core(
         blueprint,
         source_id,
         Source,
-        anchored_singletons=_anchored_singletons(parent._plan),
+        anchored_singletons=anchors,
         anchored_pre_configurations=_anchored_pre_configurations(parent._plan),
         anchored_owner_tokens=frozenset(parent._owners),
     )
     assert source.decorators == ()
+    assert source.parent is None
+    assert source.argument is None
+    assert source.dependencies[0].argument == "resource"
+    assert source.cache_owner == anchored.component.cache_owner
+    assert source.cleanup_owner == anchored.component.cleanup_owner
+    assert anchored.component.argument == "source"
     assert [item.id for item in source.descendants()] == [parent_resource]
     assert cf.has_descendant(cf.has_tag("area", "parent"))(source)
     assert not cf.has_descendant(cf.has_tag("area", "overlay"))(source)
     scope = overlay.build()
     assert scope.resolve(Source) is existing
     assert len(next(root.component for root in parent.graph.roots if root.component.id == source_id).decorators) == 1
+
+
+def test_generated_target_view_hides_nested_decorators_and_preserves_occurrence_context():
+    class Marker:
+        pass
+
+    class Dependency:
+        pass
+
+    class DependencyDecorator:
+        def __init__(self, inner: Dependency, marker: Marker):
+            self.inner = inner
+
+    class Target:
+        def __init__(self, dependency: Dependency):
+            self.dependency = dependency
+
+    class Consumer:
+        def __init__(self, target: Target):
+            self.target = target
+
+    class TargetDecorator:
+        def __init__(self, inner: Target):
+            self.inner = inner
+
+    captured = []
+
+    def ordinary_when(component):
+        # Normal compilation has already decorated this target's dependencies.
+        # Generated-template predicates must see a separate recursive core view.
+        assert cf.has_descendant(cf.implementation_type_is(Marker))(component)
+        view = _undecorated_component_view(component)
+        assert not cf.has_descendant(cf.implementation_type_is(Marker))(view)
+        assert view.id == component.id
+        assert view.occurrence_id == component.occurrence_id
+        assert view.argument == component.argument
+        assert view.dependencies[0].id == component.dependencies[0].id
+        assert view.dependencies[0].argument == "dependency"
+        assert view.dependencies[0].name == "chosen"
+        assert view.cache_owner == component.cache_owner
+        if component.parent is not None:
+            assert view.parent is not None
+            assert view.parent.occurrence_id == component.parent.occurrence_id
+            assert view.parent.implementation_type is Consumer
+            assert cf.parent(cf.implementation_type_is(Consumer))(view)
+        captured.append(view)
+        return True
+
+    builder = ContainerBuilder()
+    builder.register(Consumer)
+    builder.register(Marker)
+    builder.register(Dependency, name="chosen")
+    builder.register(Dependency, name="other")
+    target_id = builder.register(Target, arguments={"dependency": select(cf.with_name("chosen"))})
+    builder.register_decorator(Dependency, DependencyDecorator, decorated_arg="inner")
+    builder.register_decorator(Target, TargetDecorator, decorated_arg="inner", when=ordinary_when)
+    container = builder.build()
+    assert len(captured) == 2
+    assert any(view.parent is not None for view in captured)
+    # The snapshots remain undecorated after runtime compilation adds pipelines.
+    assert all(view.decorators == () and view.dependencies[0].decorators == () for view in captured)
+    assert all(view._graph._records is not None and not view._graph._drafts for view in captured)
+    frozen_target = next(root.component for root in container.graph.roots if root.component.id == target_id)
+    assert len(frozen_target.decorators) == len(frozen_target.dependencies[0].decorators) == 1
+    frozen_view = _undecorated_component_view(frozen_target)
+    assert not cf.has_descendant(cf.implementation_type_is(Marker))(frozen_view)
+    assert isinstance(container.resolve(Consumer).target, TargetDecorator)
 
 
 def test_discovery_snapshot_identity_and_source_deduplication_survive_retries():

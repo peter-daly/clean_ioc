@@ -23,7 +23,11 @@ sync/async activation, and cached plans. Identify the M03/M04 interfaces and cur
 ## Implementation assignment
 
 - Wire generated definitions into group/derived target selection and generic specialization.
-- Evaluate normal `when` against the completed undecorated target tree; all decorators see the same core facts.
+- Evaluate generated-template `when` against one `_undecorated_component_view(core)` snapshot per target occurrence
+  (M01 helper in `components.py`). It excludes attached decorator branches recursively while retaining original
+  parent/argument context and selected dependency/owner facts. Reuse that snapshot for every generated predicate
+  at the occurrence, skip it with no generated candidates, and assess copying only relevant context for scale.
+  Keep ordinary decorator predicates on their existing view; do not recompile targets as roots.
 - Compile source argument selection by exact registration identity. Preserve source conditions/configuration,
   generic specialization, and declared lifespan without reconstructing the source implementation.
 - Retain existing decorated-argument validation, callable/class support, async behaviour, cleanup, and target lifespan.

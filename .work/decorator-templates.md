@@ -57,7 +57,9 @@ bark-core policy; Clean IoC does not gain transaction-specific knowledge.
 - Clean IoC's `_decorator_service_matches()` matches exact service keys or the same generic origin. Registering a rule
   on `OperationHandler` currently does not match registrations under `CommandHandler`.
 - `_layer()` materializes discovery; `_Blueprint.decorators()` selects definitions; `_compile_decorators()` evaluates
-  applicability against the undecorated graph. Extend those stages instead of introducing runtime registration hooks.
+  ordinary applicability before attaching the current target's decorators. Dependency occurrences can already have
+  decorators, and `Component.descendants()` traverses them. Generated-template applicability therefore needs M01's
+  recursively undecorated snapshot view; extend these build-time stages without changing ordinary decorator semantics.
 
 ## Chosen API direction (M01; independent review pending)
 
@@ -166,7 +168,8 @@ either location. There is no dedicated implementation-family parameter or new ty
 
 1. Evaluate `source_filter` against the completed undecorated source subtree, before invoking the template factory.
    Support ordinary composition of type, name, tag, generic, lifespan, and descendant filters. Dependencies introduced
-   only by decorators are excluded, as they are for target `when`.
+   only by decorators are excluded. Generated-template target `when` also excludes attached decorator branches
+   recursively through the separate M01 snapshot view; ordinary decorator predicates retain their existing behavior.
 2. Chosen context: the source's canonical root occurrence within its declaring composition area for the current
    build, with no consumer parent. `parent(...)` therefore does not match there. Selection does not vary with whichever
    handler first happens to request the UoW. Respect boundary visibility and overlay ownership when identifying this
@@ -337,8 +340,11 @@ DecoratorTemplate(
 
 ### Applicability, ordering, and identity
 
-1. Every `when` sees the same completed undecorated target subtree. Resources introduced only by another decorator
-   cannot activate a UoW template. Existing parent/descendant and generic-mapping component filters keep their meaning.
+1. Every generated-template `when` sees the same completed, recursively undecorated target subtree via
+   `_undecorated_component_view(core)`. Resources introduced only by a decorator, including a dependency's decorator,
+   cannot activate a template. Preserve original target parent/argument context, occurrence identity, selected
+   dependencies, and ownership metadata; do not recompile a target as a new root to obtain this view. Ordinary
+   decorator predicates keep their existing view and semantics.
 2. Existing position ordering is unchanged: higher positions are outside. At equal positions, use template declaration
    order relative to ordinary decorator declarations, then source registration declaration order within a template,
    outside to inside. Deferred sources follow existing explicit-before-discovered ordering. Do not order by UUID,
