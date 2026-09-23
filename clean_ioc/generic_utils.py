@@ -127,3 +127,55 @@ def resolve_typevar_bindings(
         resolve_typevar_bindings(argument, bindings, resolving=resolving) for argument in arguments
     )
     return _rebuild_type(annotation, resolved_arguments)
+
+
+def _resolve_typevar_identities(annotation: Any, bindings: dict[TypeVar, Any]) -> Any:
+    """Substitute one inheritance edge without conflating same-named variables."""
+    if isinstance(annotation, TypeVar):
+        return bindings.get(annotation, annotation)
+    if isinstance(annotation, list):
+        return [_resolve_typevar_identities(item, bindings) for item in annotation]
+    arguments = get_args(annotation)
+    if not arguments:
+        return annotation
+    return _rebuild_type(annotation, tuple(_resolve_typevar_identities(item, bindings) for item in arguments))
+
+
+def _project_service_type(service_type: Any, contract_type: Any) -> Any | None:
+    """Project an explicit registered-service hierarchy onto a generic base.
+
+    Return the base with its inherited arguments, None for unrelated types, and
+    reject conflicting inheritance paths. Unresolved variables remain variables;
+    matching a closed contract or binding a decorator is a later compiler step.
+    This deliberately does not infer membership from an implementation class.
+    """
+    service_type = normalize_type_alias(service_type)
+    contract_type = normalize_type_alias(contract_type)
+    contract_origin = get_origin(contract_type) or contract_type
+    if not isinstance(contract_origin, type):
+        return None
+    results: list[Any] = []
+
+    def visit(current: Any, path: frozenset[type]) -> None:
+        origin = get_origin(current) or current
+        if not isinstance(origin, type) or origin in path:
+            return
+        parameters = getattr(origin, "__parameters__", ())
+        arguments = get_args(current) or parameters
+        bindings = dict(zip(parameters, arguments, strict=True)) if parameters else {}
+        if origin is contract_origin:
+            projected = _rebuild_type(origin, arguments)
+            if projected not in results:
+                results.append(projected)
+            return
+        # getattr(__orig_bases__) can inherit stale bases from a grandparent.
+        # Only declarations on this class describe its immediate generic edges.
+        for base in vars(origin).get("__orig_bases__", origin.__bases__):
+            if (get_origin(base) or base) in GenericDefinitionClasses:
+                continue
+            visit(_resolve_typevar_identities(base, bindings), path | {origin})
+
+    visit(service_type, frozenset())
+    if len(results) > 1:
+        raise ValueError(f"Ambiguous service projection from {service_type!r} to {contract_type!r}: {results!r}")
+    return results[0] if results else None

@@ -1,6 +1,6 @@
 # 01 — Contract and compiler feasibility
 
-Status: In progress; search gate passed. Dependency: none.
+Status: In progress; implementation verification passed, independent review pending. Dependency: none.
 Read the [workflow](README.md) and [feature contract](../decorator-templates.md).
 
 | Role | Model | Reasoning |

@@ -2873,6 +2873,7 @@ class _Compiler:
     ):
         self.blueprint = blueprint
         self.build_args = build_args
+        self._source_inspection = False
         self.graph = _ComponentGraph()
         self._next_occurrence = 1
         self._stack: list[legacy._Registration] = []
@@ -3478,6 +3479,44 @@ class _Compiler:
             path=self._current_path(component.service_type),
         )
 
+    def _compile_source_core(self, registration_id: str, requested_service_type: Any) -> Component:
+        """Inspect one exact definition in a disposable, undecorated graph.
+
+        The caller supplies a normalized, visibility-prepared blueprint and an
+        already-visible source ID. A source's own contextual condition belongs
+        to its eventual injection occurrence, not this parentless metadata view.
+        Dependency conditions are still evaluated by the ordinary compiler.
+        No activation steps from this compiler may be published as runtime plans.
+        """
+        if self._source_inspection or self.graph._drafts or self.graph._records is not None:
+            raise RuntimeError("Source inspection requires a fresh compiler")
+        self._source_inspection = True
+        candidate = self.blueprint.registration_definition(registration_id)
+        if candidate is None:
+            raise KeyError(registration_id)
+        source, layer = candidate
+        requested_service_type = normalize_type_alias(requested_service_type)
+        if requested_service_type != source.service_type or getattr(requested_service_type, "__parameters__", ()):
+            raise ValueError("Source inspection requires the definition's exact closed service key")
+        self._area = self.blueprint.registration_area(layer)
+        registration = self._specialize_factory(source, layer, requested_service_type)
+        component, _ = self._compile_registration(
+            registration,
+            layer,
+            parent=None,
+            argument=None,
+            requested_service_type=requested_service_type,
+            origin=self.blueprint.registration_origin(source.id, layer),
+        )
+        # An anchored singleton can carry an exported alias in its frozen view.
+        # Source filtering always observes the definition-side contract/metadata.
+        draft = cast(_ComponentDraft, self.graph.record(component.occurrence_id))
+        draft.service_type = requested_service_type
+        draft.name = registration.name
+        draft.tags = tuple(registration.tags)
+        self.graph.freeze()
+        return component
+
     def compile(
         self,
         service_types: Iterable[Any] | None = None,
@@ -3485,6 +3524,8 @@ class _Compiler:
         area: str | None = None,
         include_boundaries: bool = True,
     ) -> _PlanSet:
+        if self._source_inspection:
+            raise RuntimeError("Source inspection cannot publish runtime plans")
         self._area = area
         roots: dict[Any, tuple[_RootPlan, ...]] = {}
         architecture_roots: list[tuple[str | None, Any, _RootPlan]] = []
@@ -4805,10 +4846,13 @@ class _Compiler:
         )
         draft.pre_configuration_ids = tuple(child.occurrence_id for child in configurations)
         decorators = tuple(
-            self._clone_component_tree(child, parent=parent, mapped=mapping) for child in source.decorators
+            self._clone_component_tree(child, parent=parent, mapped=mapping)
+            for child in (() if self._source_inspection else source.decorators)
         )
         draft.decorator_ids = tuple(child.occurrence_id for child in decorators)
-        for source_decorator, decorator in zip(source.decorators, decorators, strict=True):
+        for source_decorator, decorator in zip(
+            () if self._source_inspection else source.decorators, decorators, strict=True
+        ):
             decorated = source_decorator.decorated
             if decorated is not None and decorated.occurrence_id in mapping:
                 decorator_draft = cast(_ComponentDraft, self.graph.record(decorator.occurrence_id))
@@ -5708,6 +5752,8 @@ class _Compiler:
         registration: legacy._Registration,
         core: Component,
     ) -> tuple[_CompiledDecorator, ...]:
+        if self._source_inspection:
+            return ()
         # Applicability is deliberately evaluated against the completed,
         # undecorated core subtree before any decorator dependencies are added.
         selected: list[_DecoratorDefinition] = []

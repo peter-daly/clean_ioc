@@ -59,9 +59,9 @@ bark-core policy; Clean IoC does not gain transaction-specific knowledge.
 - `_layer()` materializes discovery; `_Blueprint.decorators()` selects definitions; `_compile_decorators()` evaluates
   applicability against the undecorated graph. Extend those stages instead of introducing runtime registration hooks.
 
-## Proposed API direction
+## Chosen API direction (M01; independent review pending)
 
-Names and spelling below are proposals, not existing APIs. Implement a small registration-to-template factory so a
+M01 settles the spellings below; they are not existing public APIs yet. Implement a registration-to-template factory so a
 source's metadata can configure normal decorator options without changing the `ComponentFilter` contract.
 
 ```python
@@ -94,7 +94,7 @@ template_id = builder.register_decorator_template(
 )
 ```
 
-For separate backend policies, declare family-specific templates instead of the catch-all above. Proposed spelling:
+For separate backend policies, declare family-specific templates instead of the catch-all above. Chosen spelling:
 
 ```python
 sqlalchemy_template_id = builder.register_decorator_template(
@@ -125,7 +125,9 @@ either location. There is no dedicated implementation-family parameter or new ty
   variable identity, with a way to inspect a particular base such as `SqlAlchemyUnitOfWork`; a flat dictionary keyed
   only by variable name is insufficient. It is not a compiled `Component`, and exposes neither runtime instances nor
   dependency occurrences. Unknown implementation bindings for factories must remain explicitly unknown.
-  Reuse an existing suitable public definition view if available rather than adding a competing representation.
+  M01 found no suitable existing definition view. Add `RegistrationInfo.implementation_bindings(base_type)` returning
+  an immutable TypeVar-keyed mapping, or `None` when no static binding can be established; an unresolved variable
+  remains a TypeVar value. Never infer implementation bindings by activating a factory.
 - The factory returns one immutable decorator specification per source. Existing argument policies bind the exact
   source; `select(cf.with_id(source.id))` must never silently fall back to another registration with the same name/type.
 - Optional `source_filter: ComponentFilter = cf.all_components` narrows sources before the template factory is invoked.
@@ -138,9 +140,10 @@ either location. There is no dedicated implementation-family parameter or new ty
 - The factory may close over source metadata when constructing `when`; `when` itself always accepts one `Component`.
   Do not overload `when` with a two-argument predicate or a filter-factory signature.
 - Add the registration API to `ComponentBuilder`, so root, scope, and boundary builders and bundles share it.
-- Return a template ID. Provide pre-build removal and replacement of the template's factory/options by ID; retain
-  generated decorator IDs for inspection. Reuse current patch/remove conventions where practical. Exact method names
-  should be settled with the first public-API tests, before compiler implementation.
+- Return a template ID. Add `patch_decorator_template(template_id, *, for_each=UNCHANGED,
+  source_filter=UNCHANGED, template=UNCHANGED)` and `remove_decorator_template(template_id)`. Patching replaces supplied
+  fields and preserves ID/order; replacing the factory replaces its returned options. Missing IDs raise `KeyError`.
+  Overlay patch/removal shadows inherited definitions by ID; generated decorator IDs remain available for inspection.
 
 ## Behavioural contract
 
@@ -164,21 +167,28 @@ either location. There is no dedicated implementation-family parameter or new ty
 1. Evaluate `source_filter` against the completed undecorated source subtree, before invoking the template factory.
    Support ordinary composition of type, name, tag, generic, lifespan, and descendant filters. Dependencies introduced
    only by decorators are excluded, as they are for target `when`.
-2. Proposed context: the source's canonical root occurrence within its declaring composition area for the current
+2. Chosen context: the source's canonical root occurrence within its declaring composition area for the current
    build, with no consumer parent. `parent(...)` therefore does not match there. Selection does not vary with whichever
    handler first happens to request the UoW. Respect boundary visibility and overlay ownership when identifying this
-   occurrence, and deduplicate selected sources by registration identity rather than dependency occurrence.
+   occurrence, and deduplicate selected sources by registration identity rather than dependency occurrence. The source
+   definition's own contextual `when` is not used to discard this parentless inspection root: actual injection must
+   satisfy that condition. Dependency conditions still run under their normal parents during inspection.
 3. Source selection and target applicability are separate decisions. Evaluating `source_filter` once per source context
    does not bypass registration-level conditions or argument policies at the actual injected source occurrence.
    Target `when` continues to evaluate independently for each handler occurrence.
 4. This requires compiled source-subtree information, so expansion cannot be a metadata-only loop immediately after
-   `_layer()`. The compiler spike must establish a safe phase for source core compilation and template expansion before
-   affected target decoration. Ensure source inspection neither freezes incomplete target plans nor starts recursive
-   template expansion. Reject unsupported expansion dependency cycles with a build diagnostic; do not use traversal
-   order or repeatedly execute user callbacks until a fixed point appears.
+   `_layer()`. M01 establishes a disposable, recursively undecorated compiler pass after ordinary boundary visibility
+   is prepared. Its frozen Components are inspection metadata only; normal runtime compilation starts fresh after
+   expansion. A source may depend on a target candidate: this does not recursively expand templates. If generated
+   decorator injection closes an activation cycle, reject it with the existing deterministic `circular-dependency`
+   diagnostic plus template/source provenance. Boundary Use/Expose filters can themselves inspect decorated trees;
+   after expansion, recheck visibility once against the expanded blueprint. Changed or newly invalid selections fail
+   with `template-visibility-cycle`, preserving the original boundary cause. Never iterate user callbacks to a fixed
+   point or silently use a different source visibility snapshot.
 5. Keep filter evaluation and expansion build-time only, including failed-build retry behaviour. Record selection
    evidence for inspection without rerunning filters. Resolve the canonical-root context and compiler phase in the
-   spike before accepting this API; do not silently restrict `ComponentFilter` to a metadata-only subset.
+   spike before accepting this API; do not silently restrict `ComponentFilter` to a metadata-only subset. M01
+   implementation decisions and probes are recorded in `decorator-templates/01-handoff.md`.
 
 ### Independent source-family policies
 
@@ -224,7 +234,7 @@ either location. There is no dedicated implementation-family parameter or new ty
 
 ### Explicit service groups and generic mapping
 
-Proposed name: `ServiceGroup`. It is a shared identity for a set of opted-in registrations and declares their common
+Chosen name: `ServiceGroup`. It is a shared identity for a set of opted-in registrations and declares their common
 service contract. It borrows the explicit contribution model from `ProviderMapGroup`, but needs no map keys, provider
 factories, or injectable collection. For this item its consumer is a decorator template; generalizing other Clean IoC
 APIs to consume groups is not required. Keep existing `ProviderMapGroup` and its `contributes` API compatible.
@@ -257,7 +267,7 @@ DecoratorTemplate(
 
 The declaration is not separately registered as a service. Bundle authors import the same group object. Membership is
 stored on each builder's registration definitions, not in a mutable global list on the declaration. Thus later bundles,
-deferred discovery, and overlays contribute through normal composition. `groups=` is proposed API spelling.
+deferred discovery, and overlays contribute through normal composition. `groups=` is the chosen API spelling.
 
 1. Groups use object identity, as provider-map groups do. Same-name declarations are different groups; names are
    diagnostic labels. Multiple registrations can join one group and one registration can join multiple groups. Repeated
@@ -403,7 +413,7 @@ models/helpers in a dedicated module if that avoids further enlarging the compil
 | Source filter combines type, name, and tag conditions | Existing component-filter semantics select only intended sources |
 | Source filter inspects descendants or parent | Completed undecorated source graph; documented canonical-root parent context |
 | Source factory exposes only a broad service type | No activation for type discovery; explicit tags remain usable for selection |
-| Source inspection would recursively depend on template expansion | Deterministic build diagnostic, not incomplete plans or order-dependent selection |
+| Expansion changes boundary visibility or creates an activation cycle | Deterministic build diagnostic, not incomplete plans or order-dependent selection |
 | One family template is removed or replaced | Other families' generated definitions remain unchanged |
 | Handler uses DB A; another uses DB B; a third uses both | One A boundary, one B boundary, and both boundaries respectively |
 | Several repository dependencies use the same DB | One boundary per source/template, not per matching resource occurrence |

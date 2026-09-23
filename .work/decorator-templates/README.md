@@ -1,6 +1,6 @@
 # Decorator templates — sequential milestones
 
-Status: Executing sequentially. M01 search gate passed; later gates and milestones remain pending.
+Status: Executing sequentially. M01 implementation verification passed; independent review and later gates remain pending.
 
 [Feature contract](../decorator-templates.md) is the source of truth for behaviour and constraints.
 This directory replaces that work item's broad implementation sequence with independently reviewable milestones.
