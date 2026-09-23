@@ -1,6 +1,6 @@
 # 02 — Explicit service-group membership
 
-Status: Not started. Dependency: 01 accepted.
+Status: Search accepted; implementation awaits search checkpoint. Dependency: 01 accepted (final checkpoint `485e27d`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 01 handoff.
 
 | Role | Model | Reasoning |
