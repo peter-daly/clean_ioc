@@ -9,12 +9,12 @@ policy for diff classification
 ## Summary
 
 Add opt-in `Boundary` declarations that give existing bundles a compile-time visibility boundary. Registrations made by
-a boundary's `root_bundle` are private by default. `Expose` makes an unchanged local component visible at the root,
-and `Use` admits an unchanged exposed component into another boundary.
+a boundary's `root_bundle` are private by default. `Expose` makes a local component visible at the root, optionally
+under a public name, and `Use` admits an exposed component into another boundary.
 
-A boundary segregates composition; it is not a Python module, package, plugin loader, runtime child container, or
-aliasing mechanism. Crossing a boundary never changes a component's service type, name, tags, decorators, lifespan,
-instance identity, cache, or cleanup owner.
+A boundary segregates composition; it is not a Python module, package, plugin loader, or runtime child container.
+Crossing a boundary never changes a component's decorators, lifespan, registration identity, runtime instance, cache,
+or cleanup owner. A `BoundaryAlias` may project a distinct public service type, name, and complete tag set.
 
 ## Core decisions
 
@@ -24,11 +24,12 @@ The first release follows four rules:
 2. Another boundary sees an exposure only after explicitly declaring a use of it.
 3. The root composition sees every exposure as a normal resolution candidate; entry-point marking does not affect
    visibility.
-4. `Expose` and `Use` only change visibility. They never rename, retag, clone, proxy, or re-register a component.
+4. `Expose` and `Use` change visibility. `BoundaryAlias` may define a complete external selection identity, but never
+   clones, proxies, or re-registers a component.
 
-Consequently, a component registered with `name="stripe"` is exposed and used as `name="stripe"`. There is no
-`public_name`, `as_name`, `local_name`, or similar translation field. If an application genuinely needs an alias, it
-must create a separate explicit registration outside the boundary feature.
+By default, a component registered with `name="stripe"` is exposed and used with its original type, name, and tags.
+Declaring `Expose(..., alias=BoundaryAlias(PaymentGateway, name="primary", tags=(...)))` keeps the source identity on
+the defining side while root composition and consuming boundaries select the complete public identity.
 
 ## Problem and differentiation
 
@@ -47,7 +48,7 @@ make their public surface part of a statically validated dependency graph.
 - Keep boundary registrations private by default.
 - Reuse ordinary Clean IoC bundles as the contents of a boundary.
 - Require explicit `Use` declarations for dependencies on the root or another boundary.
-- Keep component identity and all selection metadata unchanged across boundaries.
+- Preserve registration/runtime identity while allowing an explicit boundary alias to project public selection metadata.
 - Preserve constructor injection, factories, generics, decorators, pre-configurations, lifespans, ownership, and typed
   deferred dependencies within the visibility model.
 - Record boundary identity and boundary crossings in provenance, graph rendering, manifests, and semantic diffs.
@@ -63,7 +64,7 @@ make their public surface part of a statically validated dependency graph.
 - Providing a security sandbox against direct construction, Python imports, or deliberate service-locator use.
 - Runtime installation, enablement, unloading, or mutation of boundaries.
 - Creating a child container or runtime lookup boundary for each boundary.
-- Renaming or retagging components while exposing or using them.
+- Retagging components or renaming them implicitly while exposing or using them; public projection is explicit.
 - Automatically exporting everything created by a bundle.
 - Allowing one boundary to reopen or patch another boundary's private registrations.
 
@@ -74,7 +75,8 @@ make their public surface part of a statically validated dependency graph.
 - A build fails when orders accidentally requests a private payments implementation.
 - An existing third-party bundle can be used unchanged as a boundary's `root_bundle`.
 - A graph diff reports that a component became exposed or that one boundary gained a new dependency.
-- A named or tagged component keeps the same selection identity inside and outside its boundary.
+- A named or tagged component keeps the same selection identity unless its exposure explicitly supplies a
+  `BoundaryAlias`.
 - Orders can mark its exposed `PlaceOrder` component as an intended application root from inside its bundle.
 
 ## Full example
@@ -258,19 +260,27 @@ above. `Use` does not turn a named component into the default.
 
 ## Proposed public API
 
-Add `clean_ioc.boundaries` and re-export its three declarations from `clean_ioc`:
+Add `clean_ioc.boundaries` and re-export its four declarations from `clean_ioc`:
 
 ```python
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from clean_ioc import ComponentBuilder, ComponentFilter, default_component_filter
+from clean_ioc import ComponentBuilder, ComponentFilter, Tag, default_component_filter
+
+
+@dataclass(frozen=True, slots=True)
+class BoundaryAlias:
+    service_type: object
+    name: str | None = None
+    tags: tuple[Tag, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class Expose:
     service_type: object
     filter: ComponentFilter = default_component_filter
+    alias: BoundaryAlias | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -326,13 +336,14 @@ Inside a boundary:
 4. Registrations from another boundary are invisible unless that boundary exposes them and the consumer declares a
    matching `Use`.
 5. If local and used components both match, existing ordering and ambiguity behavior applies; `Use` is not an override.
-6. Filters run against the original component, so its name, tags, implementation type, lifespan, and generic mapping
-   are unchanged.
+6. An `Expose` filter runs against the local component type, name, and tags. Root and consuming-boundary filters see the
+   complete `BoundaryAlias` identity when supplied; implementation type, lifespan, and generic mapping remain unchanged.
 
 At the root:
 
 - root registrations retain their existing visibility;
-- exposed boundary components join the root-visible candidate set unchanged;
+- exposed boundary components join the root-visible candidate set with unchanged registration identity and their
+  declared public type, name, and tags;
 - private boundary components are not root-resolution candidates;
 - normal filters and collection resolution operate over root registrations plus matching exposures;
 - duplicate candidates retain existing ambiguity diagnostics and deterministic collection ordering.
@@ -356,7 +367,8 @@ The compiler adds composition-area visibility before its existing occurrence-spe
 1. Freeze root layers and every installed boundary's private registration blueprint.
 2. Validate boundary names, duplicate declarations, `Expose` cardinality, and `Use` targets.
 3. Build the directed boundary-use graph and reject any cycle, even if no constructor cycle currently traverses it.
-4. Resolve each `Expose` against local definitions only and record the unchanged component identity.
+4. Resolve each `Expose` against local definitions only and record the unchanged registration identity plus complete
+   external service, name, and tag identity.
 5. Resolve each `Use` against root definitions or the named boundary's resolved exposures.
 6. Compile roots in each area using only local candidates plus resolved uses. Contextual registration filters cannot see
    a caller beyond an exposure boundary.
@@ -463,8 +475,8 @@ Keep graph manifests unversioned during beta and include:
 
 - the defining boundary on every component node;
 - a deterministic top-level list of boundaries;
-- each resolved exposure's unchanged service, name, and tags;
-- each resolved use's source area and unchanged selected component identity;
+- each resolved exposure's source service/name/tags and public service/name/tags;
+- each resolved use's source area, visible name, and unchanged selected component identity;
 - the source boundary on every cross-boundary dependency edge.
 
 Boundary declarations and resolved visibility affect fingerprints because they change the architecture contract. The
@@ -493,7 +505,8 @@ ownership from Python type locations or add legacy comparison branches during be
 - Private registrations are never candidates outside their defining boundary.
 - Every cross-boundary dependency edge corresponds to one resolved `Use`.
 - Every root-visible boundary component corresponds to one resolved `Expose`.
-- Every `Expose` and `Use` preserves the selected component's type, name, tags, lifespan, implementation, and identity.
+- Every `Expose` and `Use` preserves the selected component's lifespan, implementation, registration identity, cache,
+  instance, and cleanup owner; `BoundaryAlias` may replace its type, name, and tags only in external selection views.
 - No exposure or use creates an activation step or changes resource ownership.
 - A boundary can expose only a component it defines locally.
 - The boundary-use graph is acyclic and independent of installation order.
@@ -533,7 +546,8 @@ Applications that never call `install_boundary()` retain their current registry,
 behavior. Existing bundles remain global when passed to `apply_bundle()` and become private only when explicitly passed
 as a boundary's `root_bundle`. No bundle is isolated implicitly.
 
-`Container.resolve()` and `Scope.resolve()` are unchanged. Component names and tags retain their existing behavior.
+`Container.resolve()` and `Scope.resolve()` are unchanged. Unaliased components retain their existing selection
+behavior; external occurrences of an aliased exposure report and select by its public type, name, and tags.
 Manifests remain unversioned during beta. Regenerate saved graphs and baselines when their format changes. No legacy
 visibility fields are translated, and schema versioning will begin after beta.
 
@@ -550,10 +564,8 @@ dependency selection; they do not conceal qualified type names from developers w
 
 - **Call the feature modules or packages:** both terms already have precise Python meanings and imply source-layout or
   import behavior that this feature does not provide.
-- **Rename components at a boundary:** two names for one component make filters, diagnostics, and resolution dependent
-  on which side is asking. Aliasing is a separate registration concern.
-- **Copy tags into a separate public registration:** that creates two metadata identities and raises the same ambiguity
-  as renaming. The unchanged component and all its tags are visible when exposed.
+- **Copy aliases into separate public registrations:** that changes activation identity and ownership. Boundary aliases
+  are selection views over the same source registration.
 - **Make every bundle isolated:** this silently changes existing applications and third-party composition.
 - **Use tags as boundaries:** tags guide filters but do not remove candidates from visibility.
 - **Allow implicit root fallback:** boundaries fail open whenever a local dependency is missing.
@@ -566,7 +578,7 @@ dependency selection; they do not conceal qualified type names from developers w
 
 ## Incremental rollout
 
-1. Add immutable `Boundary`, `Expose`, and `Use` declarations; private boundary builders; local-only compilation; root
+1. Add immutable `Boundary`, `BoundaryAlias`, `Expose`, and `Use` declarations; private boundary builders; local-only compilation; root
    exposure; and unchanged identity semantics.
 2. Add cross-boundary and root uses, cycle detection, private-component diagnostics, and installation-order independence.
 3. Integrate contextual filters, discovery, decorators, pre-configurations, generics, typed providers, and complete
@@ -586,8 +598,8 @@ the top-level re-exports are the compatibility commitment.
   registration behavior.
 - Resolve local dependencies, root uses, cross-boundary uses, unnamed exposures, named exposures, and tag-selected
   exposures.
-- Prove that names, tags, component IDs, instances, lifespans, caches, and cleanup owners are unchanged across exposure
-  and use boundaries.
+- Prove that component IDs, instances, lifespans, caches, and cleanup owners are unchanged across exposure and use
+  boundaries, while an explicit alias type, name, and tags are visible only outside the defining boundary.
 - Reject direct access to private root and boundary registrations with actionable issue paths.
 - Reject missing and ambiguous uses and exposures, attempted re-exports, unsupported local scope slots, duplicate names,
   invalid names, and every length of boundary-use cycle.

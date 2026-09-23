@@ -101,11 +101,13 @@ def test_package_root_has_one_compiled_container_surface():
     }.issubset(clean_ioc.__all__)
 
 
-def test_boundary_api_replaces_assembly_without_aliases():
+def test_boundary_api_replaces_assembly_without_legacy_api_aliases():
     assert clean_ioc.Boundary is boundaries.Boundary
     assert clean_ioc.Expose is boundaries.Expose
     assert clean_ioc.Use is boundaries.Use
     assert tuple(inspect.signature(clean_ioc.Boundary).parameters) == ("name", "root_bundle", "uses", "exposes")
+    assert tuple(inspect.signature(clean_ioc.BoundaryAlias).parameters) == ("service_type", "name", "tags")
+    assert tuple(inspect.signature(clean_ioc.Expose).parameters) == ("service_type", "filter", "alias")
     assert "Assembly" not in clean_ioc.__all__
     assert not hasattr(clean_ioc, "Assembly")
     assert not hasattr(boundaries, "Assembly")

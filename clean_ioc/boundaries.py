@@ -7,14 +7,25 @@ from dataclasses import dataclass
 from typing import Any
 
 from .components import ComponentBuilder, ComponentFilter, default_component_filter
+from .metadata import Tag
+
+
+@dataclass(frozen=True, slots=True)
+class BoundaryAlias:
+    """Define the complete public identity of an exposed component."""
+
+    service_type: Any
+    name: str | None = None
+    tags: tuple[Tag, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class Expose:
-    """Make one unchanged, locally-defined component visible at the root."""
+    """Make one local component visible, optionally through a public alias."""
 
     service_type: Any
     filter: ComponentFilter = default_component_filter
+    alias: BoundaryAlias | None = None
 
 
 @dataclass(frozen=True, slots=True)

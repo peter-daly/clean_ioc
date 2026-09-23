@@ -68,10 +68,14 @@ Private machinery in `clean_ioc/_legacy.py` still supplies registration storage,
 ## Boundary visibility compilation
 
 `Boundary` wraps an ordinary bundle in a private builder layer. `Expose` resolves exactly one local registration and
-projects that unchanged registration into root candidate visibility; `Use` resolves exactly one root registration or
-named source exposure and admits its registration ID to a consuming boundary. The compiler switches to a registration's
-defining area while compiling its dependencies, decorators, pre-configurations, providers, and generic
-specializations. Runtime steps therefore remain direct and carry no visibility check, wrapper, alias, or extra owner.
+projects that registration into root candidate visibility. An optional `BoundaryAlias` defines the complete public
+service type, name, and tag set; without one, all three are preserved. `Use` resolves exactly one root registration or
+named source exposure and admits its registration ID and public identity to a consuming boundary. The
+compiler switches to a registration's defining area while compiling its dependencies, decorators, pre-configurations,
+providers, and generic specializations. Runtime steps therefore remain direct and carry no visibility check, wrapper,
+proxy registration, or extra owner. Exposure aliases change selection metadata only on the consuming side. Multiple
+distinct aliases may share one registration ID and therefore the same lifespan, cache, instance, and cleanup owner.
+Boundary manifests retain both source and public identities so contract diffs explain the projection.
 
 Boundary visibility is resolved before occurrence compilation and the declared use graph is rejected if cyclic.
 Every local closed root is compiled even when private. Root graph tooling retains the complete architecture graph;
@@ -301,7 +305,8 @@ Visible exact registrations precede patterns, which precede open fallbacks. Equi
 and registration ordering; strictly more specific structures win, and incomparable matches fail. `when` and caller
 filters run after definition-tier selection and cannot trigger fallback. Closed public dependency/provider/map requests
 also compile as public pattern roots; private requests stay private, and entry-point markers do not introduce new
-pattern keys. Boundary Expose/Use accepts closed requests only for structural templates. Singleton anchoring, lifetime
+pattern keys. Boundary Expose/Use may select a structural template family; a closed public alias request maps back to
+the source pattern before specialization, and only the completed source occurrence receives public metadata. Singleton anchoring, lifetime
 validation, decorators, resource ownership, and pre-configuration retain the normal compiler behavior.
 
 The growing-specialization guard rejects a non-shrinking request after 16 active specializations of one template or

@@ -3,7 +3,7 @@ import sys
 import types
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import asynccontextmanager, contextmanager
-from typing import Any, Generic, Literal, NewType, Protocol, TypeVar
+from typing import Any, Generic, Literal, NewType, Protocol, TypeVar, cast
 from typing import List as TypingList
 
 import pytest
@@ -12,6 +12,7 @@ from typing_extensions import TypeAliasType
 from clean_ioc import (
     AsyncProvider,
     Boundary,
+    BoundaryAlias,
     CannotResolveError,
     ContainerBuilder,
     ContainerBuildError,
@@ -39,8 +40,16 @@ class Serializer(Generic[T]):
         return "[" + ", ".join(self.child.serialize(item) for item in value) + "]"
 
 
+class PublicSerializer(Generic[T]):
+    pass
+
+
 def make_list_serializer(item_serializer: Serializer[T]) -> Serializer[list[T]]:
     return Serializer("list", item_serializer)
+
+
+def make_dict_serializer(item_serializer: Serializer[T]) -> Serializer[dict[str, T]]:
+    return Serializer("dict", item_serializer)
 
 
 def request(builder, annotation, *, arguments=None):
@@ -393,7 +402,7 @@ def test_growing_and_ordinary_cycles_have_different_codes():
         assert "RecursionError" not in str(error.value)
 
 
-def test_closed_boundary_exposure_definition_visibility_and_no_wildcard():
+def test_closed_and_open_aliased_boundary_pattern_exposures_compile_source_specializations():
     def bundle(builder):
         builder.register(Serializer[int], factory=lambda: Serializer("private"))
         builder.register_pattern(Serializer[list[T]], factory=make_list_serializer)
@@ -406,11 +415,105 @@ def test_closed_boundary_exposure_definition_visibility_and_no_wildcard():
     assert not container.has_component(Serializer[int])
     assert not container.has_component(Serializer[list[str]])
 
+    class Consumer:
+        def __init__(self, value: PublicSerializer[list[int]]):
+            self.value = value
+
+    Consumer.__init__.__annotations__["value"] = PublicSerializer[list[int]]
+
+    def consumer_bundle(private):
+        private.register(Consumer)
+
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("serialization", bundle, exposes=(Expose(Serializer[list[T]]),)))
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "pattern-unsupported-exposure" in error_codes(error)
+    builder.install_boundary(
+        Boundary(
+            "serialization",
+            bundle,
+            exposes=(
+                Expose(
+                    Serializer[list[T]],
+                    alias=BoundaryAlias(PublicSerializer[list[T]]),
+                ),
+            ),
+        )
+    )
+    builder.install_boundary(
+        Boundary(
+            "consumer",
+            consumer_bundle,
+            uses=(Use("serialization", PublicSerializer[list[T]]),),
+            exposes=(Expose(Consumer),),
+        )
+    )
+    container = builder.build()
+    assert cast(Any, container.resolve(Consumer).value).child.label == "private"
+    assert cast(Any, container.resolve(PublicSerializer[list[int]])).child.label == "private"
+    assert not container.has_component(PublicSerializer[list[str]])
+
+
+def test_public_alias_patterns_with_one_origin_route_by_complete_structure():
+    class Consumer:
+        def __init__(
+            self,
+            list_value: PublicSerializer[list[int]],
+            dict_value: PublicSerializer[dict[str, int]],
+        ):
+            self.list_value = list_value
+            self.dict_value = dict_value
+
+    Consumer.__init__.__annotations__["list_value"] = PublicSerializer[list[int]]
+    Consumer.__init__.__annotations__["dict_value"] = PublicSerializer[dict[str, int]]
+
+    def source(builder):
+        builder.register(Serializer[int], factory=lambda: Serializer("leaf"))
+        builder.register_pattern(Serializer[list[T]], factory=make_list_serializer)
+        builder.register_pattern(Serializer[dict[str, T]], factory=make_dict_serializer)
+
+    def consumer(builder):
+        builder.register(Consumer)
+
+    builder = ContainerBuilder()
+    builder.install_boundary(
+        Boundary(
+            "serialization",
+            source,
+            exposes=(
+                Expose(
+                    Serializer[list[T]],
+                    alias=BoundaryAlias(PublicSerializer[list[T]]),
+                ),
+                Expose(
+                    Serializer[dict[str, T]],
+                    alias=BoundaryAlias(PublicSerializer[dict[str, T]]),
+                ),
+            ),
+        )
+    )
+    builder.install_boundary(
+        Boundary(
+            "consumer",
+            consumer,
+            uses=(
+                Use(
+                    "serialization",
+                    PublicSerializer[list[int]],
+                    filter=cf.service_type_is(PublicSerializer[list[int]]),
+                ),
+                Use(
+                    "serialization",
+                    PublicSerializer[dict[str, int]],
+                    filter=cf.service_type_is(PublicSerializer[dict[str, int]]),
+                ),
+            ),
+            exposes=(Expose(Consumer),),
+        )
+    )
+    container = builder.build()
+    resolved = container.resolve(Consumer)
+    assert cast(Any, resolved.list_value).label == "list"
+    assert cast(Any, resolved.dict_value).label == "dict"
+    assert container.has_component(PublicSerializer[list[int]])
+    assert container.has_component(PublicSerializer[dict[str, int]])
 
 
 def test_boundary_closed_use_and_private_patterns():

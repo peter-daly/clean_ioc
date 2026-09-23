@@ -1,3 +1,14 @@
+2.0.0b16
+--------
+
+    Add ``BoundaryAlias`` so ``Expose(..., alias=...)`` can publish a
+    boundary-local component under a complete public service type, name, and
+    tag contract without adding a proxy or registration. Root and consuming
+    boundaries select the public identity while manifests retain the source
+    mapping and registration identity, caching, lifespan, and cleanup ownership
+    remain unchanged.
+
+
 2.0.0b15
 --------
 

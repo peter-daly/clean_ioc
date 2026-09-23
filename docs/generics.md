@@ -330,11 +330,21 @@ after that selection; rejecting the chosen tier does not create a fallback. Cons
 can prevent an unnamed or differently named pattern from being selected. Collections and provider maps retain the
 eligible registrations in the winning equivalent-pattern group.
 
-A Boundary may expose or use an explicitly closed request, such as `Expose(Serializer[list[Order]])`; dependencies
-compile with the template's definition-site visibility. The declaration selects one template registration and exposes
-only that closed key. Open template exports/imports are rejected with `pattern-unsupported-exposure`; there is no
-template wildcard. Private specializations remain private. An inherited singleton keeps its parent's frozen plan;
-an overlay cannot introduce a previously uncompiled parent singleton specialization.
+A Boundary may expose or use an explicitly closed request, such as `Expose(Serializer[list[Order]])`, or publish a
+selected template family with an open declaration. A `BoundaryAlias` may map that family onto a different public generic
+service. Each encountered closed public request maps back to the source expression, then compiles and specializes with
+the template's definition-site visibility before the public identity is projected. Templates still enumerate no roots:
+only closed requests discovered during compilation become resolvable. Private specializations remain private. An
+inherited singleton keeps its parent's frozen plan; an overlay cannot introduce a previously uncompiled parent singleton
+specialization. Source and public alias declarations must contain the same number of generic variables, so an alias
+cannot turn a closed source such as `Internal[int]` into an unconstrained public family such as `Public[T]`.
+
+Distinct variables are paired one-to-one in first-appearance order, not by variable name. Repeated occurrences of one
+variable count once. A closed public request must bind every public variable, and applying those bindings to the paired
+source variables must leave a closed source request; otherwise the build fails with `boundary-alias-incompatible`.
+Concrete structure remains part of each declaration, so an alias can deliberately map
+`InternalSerializer[list[T]]` to `PublicSerializer[T]`, but it cannot invent a source binding that the public request
+does not provide. Bounds, constraints, and repeated-variable equality still apply during matching and specialization.
 
 ### Frozen requests and diagnostics
 

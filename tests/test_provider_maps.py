@@ -3,7 +3,7 @@ import json
 import sys
 from collections.abc import Mapping
 from contextlib import asynccontextmanager, contextmanager
-from typing import Any, Generic, NewType, TypeVar
+from typing import Any, Generic, NewType, TypeVar, cast
 from typing import Mapping as TypingMapping
 
 import pytest
@@ -13,6 +13,7 @@ import clean_ioc.component_filters as cf
 from clean_ioc import (
     AsyncProvider,
     Boundary,
+    BoundaryAlias,
     ComponentKind,
     ContainerBuilder,
     ContainerBuildError,
@@ -584,6 +585,36 @@ def test_boundary_map_visibility_exports_and_bundle_protocol():
     assert list(container.resolve(map_type)) == ["a"]
     assert isinstance(container.resolve(map_type)["a"](), Service)
     assert not container.has_component(Service)
+
+
+def test_boundary_alias_projects_provider_map_only_after_source_plan_compilation():
+    class Service:
+        pass
+
+    class PublicProviders:
+        pass
+
+    def source(builder):
+        builder.register(Service, name="service")
+        builder.register_provider_map(Service, key=lambda component: component.name)
+
+    source_map = Mapping[str, Provider[Service]]
+    builder = ContainerBuilder()
+    builder.install_boundary(
+        Boundary(
+            "source",
+            source,
+            exposes=(Expose(source_map, alias=BoundaryAlias(PublicProviders)),),
+        )
+    )
+    container = builder.build()
+
+    providers = cast(Any, container.resolve(PublicProviders))
+    assert list(providers) == ["service"]
+    assert isinstance(providers["service"](), Service)
+    public_root = next(root for root in container.graph.roots if root.requested_type is PublicProviders)
+    assert public_root.component.service_type is PublicProviders
+    assert public_root.component.kind is ComponentKind.provider_map
 
 
 def test_uncalled_missing_target_and_recursive_maps_fail_build():

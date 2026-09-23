@@ -22,7 +22,9 @@ registration conventions, required decorators, metadata, and even source-level A
 
 For larger compositions, opt-in boundaries make bundle registrations private by default. Explicit `Expose` and `Use`
 declarations turn cross-feature dependencies into a compiler-validated architecture contract without introducing
-runtime child containers, proxies, or aliases. See the [boundaries guide](docs/boundaries.md).
+runtime child containers or proxy registrations. `BoundaryAlias` may optionally project a complete public service type,
+name, and tag set while the source activation plan and runtime identity remain unchanged. See the
+[boundaries guide](docs/boundaries.md).
 
 > **2.0 beta:** the compiled API remains subject to breaking changes while the V2 surface is finalized. V1 is not
 > shipped as a parallel public API.

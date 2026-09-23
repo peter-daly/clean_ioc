@@ -34,7 +34,7 @@ from .arguments import (
     _FixedArgument,
     _SelectArgument,
 )
-from .boundaries import Boundary, Expose, Use
+from .boundaries import Boundary, BoundaryAlias, Expose, Use
 from .components import (
     BundleRunScope,
     Component,
@@ -449,6 +449,9 @@ class _VisibilityTarget:
     registration_id: str | None
     name: str | None
     tags: tuple[legacy.Tag, ...]
+    source_service_type: Any | None = None
+    source_name: str | None = None
+    source_tags: tuple[legacy.Tag, ...] = ()
     slot: bool = False
 
 
@@ -514,32 +517,44 @@ class _Blueprint:
 
     def registrations(self, service_type: Any, area: str | None = None) -> list[tuple[legacy._Registration, _Layer]]:
         found = self.local_registrations(area, service_type)
-        visible_ids: list[str] = []
+        seen = {registration.id for registration, _ in found}
+        found.extend(
+            (registration, layer)
+            for registration, layer, _ in self.visible_registrations(service_type, area)
+            if registration.id not in seen
+        )
+        return found
+
+    def visible_registrations(
+        self, service_type: Any, area: str | None = None
+    ) -> list[tuple[legacy._Registration, _Layer, _VisibilityTarget]]:
+        visible_targets: Iterable[_VisibilityTarget]
         if area is None:
-            visible_ids.extend(
-                target.registration_id
+            visible_targets = (
+                target
                 for boundary in self.boundaries
                 for target in boundary.resolved_exposes
-                if target.registration_id is not None and _service_definition_matches(target.service_type, service_type)
+                if target.registration_id is not None and _public_service_matches(target.service_type, service_type)
             )
         else:
             boundary = self.boundary(area)
-            if boundary is not None:
-                visible_ids.extend(
-                    target.registration_id
+            visible_targets = (
+                ()
+                if boundary is None
+                else (
+                    target
                     for target in boundary.resolved_uses
                     if not target.slot
                     and target.registration_id is not None
-                    and _service_definition_matches(target.service_type, service_type)
+                    and _public_service_matches(target.service_type, service_type)
                 )
-        seen = {registration.id for registration, _ in found}
-        for component_id in visible_ids:
-            if component_id in seen:
-                continue
+            )
+        found: list[tuple[legacy._Registration, _Layer, _VisibilityTarget]] = []
+        for target in visible_targets:
+            component_id = cast(str, target.registration_id)
             candidate = self.registration_definition(component_id)
             if candidate is not None:
-                found.append(candidate)
-                seen.add(component_id)
+                found.append((*candidate, target))
         return found
 
     def registration_definition(self, component_id: str) -> tuple[legacy._Registration, _Layer] | None:
@@ -549,6 +564,23 @@ class _Blueprint:
                     if registration.id == component_id and registration.id not in layer.internal_ids:
                         return registration, layer
         return None
+
+    def visibility_targets(
+        self, area: str | None, component_id: str, service_type: Any
+    ) -> tuple[_VisibilityTarget, ...]:
+        targets: Iterable[_VisibilityTarget]
+        if area is None:
+            targets = (target for boundary in self.boundaries for target in boundary.resolved_exposes)
+        else:
+            boundary = self.boundary(area)
+            targets = () if boundary is None else boundary.resolved_uses
+        return tuple(
+            target
+            for target in targets
+            if not target.slot
+            and target.registration_id == component_id
+            and _public_service_matches(target.service_type, service_type)
+        )
 
     def visibility_reason(self, area: str | None, component_id: str, layer: _Layer) -> tuple[str, str]:
         definition_area = self.registration_area(layer)
@@ -796,7 +828,16 @@ def _normalize_blueprint_aliases(blueprint: _Blueprint) -> _Blueprint:
             layer=_normalize_layer_aliases(boundary.layer),
             uses=tuple(replace(use, service_type=normalize_type_alias(use.service_type)) for use in boundary.uses),
             exposes=tuple(
-                replace(expose, service_type=normalize_type_alias(expose.service_type)) for expose in boundary.exposes
+                replace(
+                    expose,
+                    service_type=normalize_type_alias(expose.service_type),
+                    alias=(
+                        expose.alias
+                        if not isinstance(expose.alias, BoundaryAlias)
+                        else replace(expose.alias, service_type=normalize_type_alias(expose.alias.service_type))
+                    ),
+                )
+                for expose in boundary.exposes
             ),
         )
         for boundary in blueprint.boundaries
@@ -824,6 +865,9 @@ def _blueprint_alias_errors(blueprint: _Blueprint) -> tuple[TypeAliasNormalizati
     for boundary in blueprint.boundaries:
         values.extend(use.service_type for use in boundary.uses)
         values.extend(expose.service_type for expose in boundary.exposes)
+        values.extend(
+            expose.alias.service_type for expose in boundary.exposes if isinstance(expose.alias, BoundaryAlias)
+        )
     for value in values:
         try:
             normalize_type_alias(value)
@@ -850,6 +894,7 @@ def _alias_error_report(errors: Iterable[TypeAliasNormalizationError]) -> BuildR
 
 
 _BOUNDARY_NAME = re.compile(r"^[a-z][a-z0-9_-]*$")
+_UNCHANGED_COMPONENT_NAME = object()
 
 
 def _service_definition_matches(definition: Any, request: Any) -> bool:
@@ -863,12 +908,84 @@ def _service_definition_matches(definition: Any, request: Any) -> bool:
     return get_origin(definition) == request_origin and bool(_typevars_in(definition))
 
 
+def _public_service_matches(definition: Any, request: Any) -> bool:
+    """Match a public contract structurally rather than by generic origin alone."""
+
+    if definition == request:
+        return True
+    request_origin = get_origin(request)
+    if request_origin is not None and definition == request_origin:
+        return True
+    if not patterns.variables(definition):
+        return False
+    try:
+        return patterns.match(definition, request) is not None
+    except patterns.PatternError:
+        return False
+
+
+def _tag_sort_key(tag: legacy.Tag) -> tuple[str, bool, str]:
+    return (tag.name, tag.value is not None, tag.value or "")
+
+
+def _exposure_target(
+    boundary: str,
+    exposure: Expose,
+    registration: legacy._Registration,
+) -> _VisibilityTarget:
+    alias = exposure.alias
+    public_tags = tuple(registration.tags) if alias is None else tuple(alias.tags)
+    return _VisibilityTarget(
+        boundary,
+        exposure.service_type if alias is None else alias.service_type,
+        registration.id,
+        registration.name if alias is None else alias.name,
+        public_tags,
+        source_service_type=exposure.service_type,
+        source_name=registration.name,
+        source_tags=tuple(registration.tags),
+    )
+
+
+def _source_request_for_visibility(target: _VisibilityTarget, public_request: Any) -> Any:
+    """Map a closed public alias request back onto its source declaration."""
+
+    source = target.source_service_type
+    if source is None or target.service_type == public_request:
+        return source or public_request
+    public_variables = patterns.variables(target.service_type)
+    if not public_variables:
+        return source
+    bindings = patterns.match(target.service_type, public_request)
+    if bindings is None:
+        raise ContainerBuildError(
+            "A boundary alias cannot map the public request onto its source service",
+            code="boundary-alias-incompatible",
+            path=(qualified_name(target.service_type), qualified_name(public_request)),
+        )
+    by_name = {variable.__name__: value for variable, value in bindings.items()}
+    source_variables = patterns.variables(source)
+    if len(source_variables) == len(public_variables):
+        for source_variable, public_variable in zip(source_variables, public_variables, strict=True):
+            by_name.setdefault(source_variable.__name__, bindings[public_variable])
+    resolved = _resolve_factory_typevars(source, by_name)
+    if _typevars_in(resolved):
+        raise ContainerBuildError(
+            "A boundary alias leaves source service TypeVars unresolved",
+            code="boundary-alias-incompatible",
+            path=(qualified_name(target.service_type), qualified_name(source)),
+        )
+    return resolved
+
+
 def _boundary_component(
     registration: legacy._Registration,
     *,
     service_type: Any,
     build_args: Mapping[str, Any],
     boundary: str | None,
+    name: str | None | object = _UNCHANGED_COMPONENT_NAME,
+    tags: tuple[legacy.Tag, ...] | None = None,
 ) -> Component:
     """Create metadata-only input for an Expose/Use selection predicate."""
 
@@ -881,8 +998,8 @@ def _boundary_component(
             implementation=registration.implementation,
             implementation_type=normalize_implementation_type(registration.implementation, service_type),
             lifespan=_component_lifespan(registration.lifespan),
-            name=registration.name,
-            tags=tuple(registration.tags),
+            name=registration.name if name is _UNCHANGED_COMPONENT_NAME else cast(str | None, name),
+            tags=tuple(registration.tags) if tags is None else tags,
             build_args=build_args,
             kind=ComponentKind.registration,
             activation=_registration_activation(registration),
@@ -900,6 +1017,9 @@ def _compiled_boundary_component(
     *,
     service_type: Any,
     build_args: Mapping[str, Any],
+    name: str | None | object = _UNCHANGED_COMPONENT_NAME,
+    tags: tuple[legacy.Tag, ...] | None = None,
+    public_service_type: Any | None = None,
 ) -> Component:
     """Compile one metadata occurrence so structural filters see its subtree."""
 
@@ -915,6 +1035,12 @@ def _compiled_boundary_component(
         requested_service_type=service_type,
         origin=blueprint.registration_origin(registration.id, layer),
     )
+    if name is not _UNCHANGED_COMPONENT_NAME:
+        cast(_ComponentDraft, compiler.graph.record(component.occurrence_id)).name = cast(str | None, name)
+    if tags is not None:
+        cast(_ComponentDraft, compiler.graph.record(component.occurrence_id)).tags = tags
+    if public_service_type is not None:
+        cast(_ComponentDraft, compiler.graph.record(component.occurrence_id)).service_type = public_service_type
     compiler.graph.freeze()
     return component
 
@@ -1074,19 +1200,40 @@ def _prepare_boundary_visibility(
             raise TypeError("Boundary exposes must contain Expose declarations")
         if not all(isinstance(item, Use) for item in boundary.uses):
             raise TypeError("Boundary uses must contain Use declarations")
-        for declaration in (*boundary.exposes, *boundary.uses):
-            if patterns.variables(declaration.service_type) and any(
-                candidate is not None and get_origin(candidate[0].service_type) == get_origin(declaration.service_type)
-                for layer in (*blueprint.layers, *(item.layer for item in blueprint.boundaries))
-                for component_id in layer.pattern_ids
-                for candidate in (blueprint.registration_definition(component_id),)
-            ):
+        if any(
+            exposure.alias is not None and not isinstance(exposure.alias, BoundaryAlias)
+            for exposure in boundary.exposes
+        ):
+            raise TypeError("Expose alias must be a BoundaryAlias or None")
+        if any(
+            exposure.alias is not None and exposure.alias.name is not None and not isinstance(exposure.alias.name, str)
+            for exposure in boundary.exposes
+        ):
+            raise TypeError("BoundaryAlias name must be a string or None")
+        if any(
+            exposure.alias is not None
+            and (
+                not isinstance(exposure.alias.tags, tuple)
+                or not all(isinstance(tag, legacy.Tag) for tag in exposure.alias.tags)
+            )
+            for exposure in boundary.exposes
+        ):
+            raise TypeError("BoundaryAlias tags must be a tuple of Tag values")
+        for exposure in boundary.exposes:
+            if exposure.alias is None:
+                continue
+            source_variables = patterns.variables(exposure.service_type)
+            public_variables = patterns.variables(exposure.alias.service_type)
+            if len(source_variables) != len(public_variables):
                 raise ContainerBuildError(
-                    "Structural templates cross Boundaries only through explicitly closed Expose/Use declarations",
-                    code="pattern-unsupported-exposure",
-                    path=(boundary.name, qualified_name(declaration.service_type)),
+                    "BoundaryAlias generic variables must map one-to-one between source and public services",
+                    code="boundary-alias-incompatible",
+                    path=(
+                        boundary.name,
+                        qualified_name(exposure.service_type),
+                        qualified_name(exposure.alias.service_type),
+                    ),
                 )
-
     blueprint = replace(
         blueprint,
         boundaries=tuple(sorted(blueprint.boundaries, key=lambda item: item.name)),
@@ -1106,13 +1253,7 @@ def _prepare_boundary_visibility(
     provisional_exposures: list[_BoundaryBlueprint] = []
     for boundary in blueprint.boundaries:
         targets = tuple(
-            _VisibilityTarget(
-                boundary.name,
-                exposure.service_type,
-                registration.id,
-                registration.name,
-                tuple(registration.tags),
-            )
+            _exposure_target(boundary.name, exposure, registration)
             for exposure in boundary.exposes
             for registration, _ in _boundary_registrations(blueprint, (boundary.layer,), exposure.service_type)
         )
@@ -1145,9 +1286,9 @@ def _prepare_boundary_visibility(
                 source = blueprint.boundary(use.source)
                 if source is not None:
                     targets.extend(
-                        replace(target, source=source.name, service_type=use.service_type)
+                        replace(target, source=source.name)
                         for target in source.resolved_exposes
-                        if _service_definition_matches(target.service_type, use.service_type)
+                        if _public_service_matches(target.service_type, use.service_type)
                     )
         provisional_uses.append(replace(boundary, resolved_uses=tuple(targets)))
     blueprint = replace(blueprint, boundaries=tuple(provisional_uses))
@@ -1156,7 +1297,7 @@ def _prepare_boundary_visibility(
     # Exposures are local-only, so all can be resolved before any Use.
     for boundary in blueprint.boundaries:
         targets: list[_VisibilityTarget] = []
-        selected_ids: set[str] = set()
+        public_identities: set[tuple[Any, str | None, tuple[legacy.Tag, ...]]] = set()
         for exposure in boundary.exposes:
             matches = _select_boundary_registrations(
                 blueprint,
@@ -1192,29 +1333,27 @@ def _prepare_boundary_visibility(
                     path=(boundary.name, qualified_name(exposure.service_type)),
                 )
             registration, _ = matches[0]
-            if registration.id in selected_ids:
-                raise ContainerBuildError(
-                    f"Boundary {boundary.name!r} exposes the same component more than once",
-                    code="boundary-expose-ambiguous",
-                    path=(boundary.name, qualified_name(exposure.service_type)),
-                )
-            selected_ids.add(registration.id)
-            targets.append(
-                _VisibilityTarget(
-                    boundary.name,
-                    exposure.service_type,
-                    registration.id,
-                    registration.name,
-                    tuple(registration.tags),
-                )
+            target = _exposure_target(boundary.name, exposure, registration)
+            public_identity = (
+                target.service_type,
+                target.name,
+                tuple(sorted(target.tags, key=_tag_sort_key)),
             )
+            if public_identity in public_identities:
+                raise ContainerBuildError(
+                    f"Boundary {boundary.name!r} declares the same public exposure identity more than once",
+                    code="boundary-expose-ambiguous",
+                    path=(boundary.name, qualified_name(target.service_type)),
+                )
+            public_identities.add(public_identity)
+            targets.append(target)
         resolved.append(replace(boundary, resolved_exposes=tuple(targets)))
     blueprint = replace(blueprint, boundaries=tuple(resolved))
 
     completed: list[_BoundaryBlueprint] = []
     for boundary in blueprint.boundaries:
         targets: list[_VisibilityTarget] = []
-        selected_keys: set[tuple[str | None, str | None, bool]] = set()
+        selected_keys: set[tuple[Any, ...]] = set()
         for use in boundary.uses:
             if use.source is None:
                 source_layers = blueprint._root_layers_for(boundary)
@@ -1281,7 +1420,7 @@ def _prepare_boundary_visibility(
                 exposure_targets = [
                     target
                     for target in source.resolved_exposes
-                    if _service_definition_matches(target.service_type, use.service_type)
+                    if _public_service_matches(target.service_type, use.service_type)
                 ]
                 selected: list[_VisibilityTarget] = []
                 for target in exposure_targets:
@@ -1290,12 +1429,16 @@ def _prepare_boundary_visibility(
                         continue
                     registration, layer = definition
                     try:
+                        source_request = _source_request_for_visibility(target, use.service_type)
                         component = _compiled_boundary_component(
                             blueprint,
                             registration,
                             layer,
-                            service_type=use.service_type,
+                            service_type=source_request,
                             build_args=build_args,
+                            name=target.name,
+                            tags=target.tags,
+                            public_service_type=use.service_type,
                         )
                     except ContainerBuildError:
                         component = _boundary_component(
@@ -1303,6 +1446,8 @@ def _prepare_boundary_visibility(
                             service_type=use.service_type,
                             build_args=build_args,
                             boundary=blueprint.registration_area(layer),
+                            name=target.name,
+                            tags=target.tags,
                         )
                     if use.filter(component):
                         selected.append(target)
@@ -1329,8 +1474,15 @@ def _prepare_boundary_visibility(
                         path=(boundary.name, source.name, qualified_name(use.service_type)),
                     )
                 selected_target = selected[0]
-                target = replace(selected_target, source=source.name, service_type=use.service_type)
-            key = (target.source, target.registration_id or target.name, target.slot)
+                target = replace(selected_target, source=source.name)
+            key = (
+                target.source,
+                target.registration_id or target.name,
+                target.service_type,
+                target.name,
+                target.tags,
+                target.slot,
+            )
             if key in selected_keys:
                 raise ContainerBuildError(
                     f"Boundary {boundary.name!r} uses the same component more than once",
@@ -2319,6 +2471,7 @@ class _CompiledDecorator:
 @dataclass(frozen=True, slots=True)
 class _RegistrationStep(_Step):
     registration: legacy._Registration
+    source_service_type: Any
     owner_token: str
     component: Component
     dependencies: tuple[_CompiledDependency, ...]
@@ -3406,7 +3559,7 @@ class _Compiler:
                         rejected=tuple(record.decision for record in records if not record.eligible),
                     ),
                 )
-            if self._patterns and area is None:
+            if area is None:
                 selected_service_types.extend(
                     request for request in self._pattern_requests if request not in selected_service_types
                 )
@@ -3895,23 +4048,42 @@ class _Compiler:
         provider_map_group: ProviderMapGroup[Any, Any] | None = None,
     ) -> list[_CompiledCandidate]:
         service_type = normalize_type_alias(service_type)
-        registrations = self.blueprint.registrations(service_type, self._area)
+        local_registrations = self.blueprint.local_registrations(self._area, service_type)
+        visible_registrations = self.blueprint.visible_registrations(service_type, self._area)
         candidates: list[_CompiledCandidate] = []
         if self._patterns:
-            registrations, candidates = self._pattern_candidates(service_type, registrations)
+            local_registrations, candidates = self._pattern_candidates(service_type, local_registrations)
+        registrations: list[tuple[legacy._Registration, _Layer, _VisibilityTarget | None]] = [
+            *((registration, layer, None) for registration, layer in local_registrations),
+            *visible_registrations,
+        ]
         if not registrations and get_origin(service_type) is not None:
-            registrations = self.blueprint.registrations(get_origin(service_type), self._area)
+            registrations = [
+                (registration, layer, None)
+                for registration, layer in self.blueprint.local_registrations(self._area, get_origin(service_type))
+            ]
         if provider_map_group is not None:
             registrations = [
-                (registration, layer)
-                for registration, layer in registrations
+                (registration, layer, visibility_target)
+                for registration, layer, visibility_target in registrations
                 if provider_map_group in layer.contributions.get(registration.id, {})
             ]
-        for registration_index, (source_registration, layer) in enumerate(registrations):
+        for registration_index, (source_registration, layer, visibility_target) in enumerate(registrations):
             origin = self.blueprint.registration_origin(source_registration.id, layer)
+            consumer_area = self._area
+            definition_area = self.blueprint.registration_area(layer)
+            source_service_type = (
+                service_type
+                if visibility_target is None
+                else _source_request_for_visibility(visibility_target, service_type)
+            )
+            if visibility_target is not None and (
+                source_registration.id in layer.pattern_ids or patterns.variables(visibility_target.service_type)
+            ):
+                self._pattern_requests[service_type] = None
             self._partial_candidate_labels[source_registration.id] = qualified_name(source_registration.implementation)
             try:
-                registration = self._specialize_factory(source_registration, layer, service_type)
+                registration = self._specialize_factory(source_registration, layer, source_service_type)
             except ContainerBuildError as error:
                 self._record_partial_candidate(
                     (
@@ -3921,7 +4093,7 @@ class _Compiler:
                         error.code or "generic-specialization",
                     )
                 )
-                for pending, _ in registrations[registration_index + 1 :]:
+                for pending, _, _ in registrations[registration_index + 1 :]:
                     self._partial_candidate_labels[pending.id] = qualified_name(pending.implementation)
                     self._record_partial_candidate(
                         (qualified_name(service_type), pending.id, PartialState.not_examined, None)
@@ -3947,8 +4119,6 @@ class _Compiler:
                     code=error.code or "generic-specialization",
                     path=error.path or self._current_path(service_type),
                 ) from error
-            consumer_area = self._area
-            definition_area = self.blueprint.registration_area(layer)
             candidate_parent = parent
             if deferred_mode is not None:
                 candidate_parent, _ = self._draft(
@@ -3980,7 +4150,7 @@ class _Compiler:
                     layer,
                     parent=candidate_parent,
                     argument=argument,
-                    requested_service_type=service_type,
+                    requested_service_type=source_service_type,
                     origin=origin,
                 )
             except ContainerBuildError as error:
@@ -3994,7 +4164,7 @@ class _Compiler:
                         error.code or _build_error_code(error),
                     )
                 )
-                for pending, _ in registrations[registration_index + 1 :]:
+                for pending, _, _ in registrations[registration_index + 1 :]:
                     self._partial_candidate_labels[pending.id] = qualified_name(pending.implementation)
                     self._record_partial_candidate(
                         (qualified_name(service_type), pending.id, PartialState.not_examined, None)
@@ -4027,6 +4197,12 @@ class _Compiler:
                     self._frames.pop()
             predicate = layer.registration_when.get(source_registration.id)
             component_record = cast(_ComponentDraft, self.graph.record(component.occurrence_id))
+            if visibility_target is not None:
+                # An anchored plan may already carry its parent's public view.
+                # Definition-side eligibility always observes the source view.
+                component_record.service_type = source_service_type
+                component_record.name = registration.name
+                component_record.tags = tuple(registration.tags)
             original_parent_id = component_record.parent_id
             if definition_area != consumer_area:
                 # The component keeps its real graph parent, but contextual
@@ -4092,6 +4268,10 @@ class _Compiler:
                         continue
             finally:
                 component_record.parent_id = original_parent_id
+                if visibility_target is not None:
+                    component_record.service_type = service_type
+                    component_record.name = visibility_target.name
+                    component_record.tags = visibility_target.tags
             boundary_code, boundary_reason = self.blueprint.visibility_reason(
                 consumer_area, source_registration.id, layer
             )
@@ -4101,14 +4281,14 @@ class _Compiler:
             if boundary_code:
                 codes.append(boundary_code)
             reasons = [boundary_reason, "the contextual filter matched"]
-            if source_registration.service_type != service_type and (
-                get_origin(service_type) is not None
+            if source_registration.service_type != source_service_type and (
+                get_origin(source_service_type) is not None
                 or bool(getattr(source_registration.service_type, "__parameters__", ()))
             ):
                 codes.append("specialized-generic")
                 reasons.append(
                     f"specialized {qualified_name(source_registration.service_type)} "
-                    f"for {qualified_name(service_type)}"
+                    f"for {qualified_name(source_service_type)}"
                 )
             if registration.lifespan == legacy.Lifespan.singleton and layer.owner_token in self._anchored_owner_tokens:
                 codes.append("anchored-parent-singleton")
@@ -4393,6 +4573,7 @@ class _Compiler:
             step_type = _REGISTRATION_STEP_TYPES[registration.lifespan] if map_definition is None else _ProviderMapStep
             step = step_type(
                 registration=registration,
+                source_service_type=requested_service_type,
                 owner_token=layer.owner_token,
                 component=component,
                 dependencies=dependencies,
@@ -5804,7 +5985,7 @@ def _anchored_singletons(
         for step in _iter_registration_steps(root.step):
             if step.registration.lifespan == legacy.Lifespan.singleton:
                 anchored.setdefault(
-                    (step.registration.id, _runtime_type_key(step.component.service_type)),
+                    (step.registration.id, _runtime_type_key(step.source_service_type)),
                     step,
                 )
     return anchored
@@ -6251,9 +6432,11 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
                 {
                     "service": qualified_name(target.service_type),
                     "name": target.name,
-                    "tags": [
-                        {"name": tag.name, "value": tag.value}
-                        for tag in sorted(target.tags, key=lambda item: (item.name, item.value or ""))
+                    "tags": [{"name": tag.name, "value": tag.value} for tag in sorted(target.tags, key=_tag_sort_key)],
+                    "source_service": qualified_name(target.source_service_type),
+                    "source_name": target.source_name,
+                    "source_tags": [
+                        {"name": tag.name, "value": tag.value} for tag in sorted(target.source_tags, key=_tag_sort_key)
                     ],
                 }
                 for target in sorted(
@@ -6266,10 +6449,7 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
                     "source": target.source or "root",
                     "service": qualified_name(target.service_type),
                     "name": target.name,
-                    "tags": [
-                        {"name": tag.name, "value": tag.value}
-                        for tag in sorted(target.tags, key=lambda item: (item.name, item.value or ""))
-                    ],
+                    "tags": [{"name": tag.name, "value": tag.value} for tag in sorted(target.tags, key=_tag_sort_key)],
                     "scope_slot": target.slot,
                 }
                 for target in sorted(
