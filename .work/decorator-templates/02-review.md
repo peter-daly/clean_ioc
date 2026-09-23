@@ -14,3 +14,7 @@ Identity declarations, membership propagation, discovery cache prevalidation, al
 
 Reviewed `799d528..541f611`; independent **321 tests passed** and both original findings resolved.
 One related P2 remains at `container.py:123`: `Service[T | int]` grouped under `Service[int | str]` must defer unresolved union constraints because `T=str` satisfies them. Positional comparison incorrectly treats the fixed int/str pair as a definite conflict. Add conservative unresolved-union deferral and regression, retaining concrete mismatch rejection. Original implementer assigned repair; acceptance pending.
+
+## Round 3: accepted at `156abd5`
+
+Reviewer independently inspected `541f611..156abd5`, reran **322 focused tests**, and checked nine additional union cases covering reordered members, nested variables, union collapse, and concrete incompatibilities. All findings resolved; no remaining blocking findings. Unknown constraints remain conservatively deferred to M03; known conflicts reject transactionally. No reviewer edits or commits.
