@@ -1,7 +1,7 @@
 """Explicit service membership before decorator-template selection is available."""
 
 import inspect
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import FrozenInstanceError
 from typing import Generic, TypeVar, cast
 
@@ -136,6 +136,34 @@ def test_generic_projection_rejects_closed_conflicts_and_keeps_open_constraints(
     open_id = builder.register(Child[T], factory=Child, groups=[int_group, bare_group])
     closed_id = builder.register(IntChild, groups=[int_group, bare_group])
     assert memberships(builder)[open_id] == memberships(builder)[closed_id] == frozenset({int_group, bare_group})
+
+
+def test_equivalent_unions_in_generic_arguments_are_compatible():
+    group = ServiceGroup("unions", service_type=list[str | int])
+    builder = ContainerBuilder()
+    component_id = builder.register(list[int | str], instance=[], groups=[group])
+    assert memberships(builder)[component_id] == frozenset({group})
+
+    incompatible = ServiceGroup("different", service_type=list[str | bytes])
+    with pytest.raises(TypeError, match="different"):
+        builder.register(list[int | str], instance=[], groups=[incompatible])
+    assert len(memberships(builder)) == 1
+
+
+def test_callable_parameter_typevars_defer_but_concrete_conflicts_reject():
+    class Service(Generic[T]):
+        pass
+
+    group = ServiceGroup("callable", service_type=Service[Callable[[str], int]])
+    builder = ContainerBuilder()
+    open_id = builder.register(Service[Callable[[T], int]], factory=Service, groups=[group])
+    assert memberships(builder)[open_id] == frozenset({group})
+
+    with pytest.raises(TypeError, match="callable"):
+        builder.register(Service[Callable[[bytes], int]], factory=Service, groups=[group])
+    with pytest.raises(TypeError, match="callable"):
+        builder.register(Service[Callable[[str], bytes]], factory=Service, groups=[group])
+    assert len(memberships(builder)) == 1
 
 
 def test_aliases_normalize_without_changing_membership_identity():

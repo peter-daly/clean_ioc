@@ -104,6 +104,12 @@ def _known_group_type_conflict(projected: Any, contract: Any) -> bool:
     """Reject concrete conflicts while leaving TypeVar constraints for M03."""
     if isinstance(projected, TypeVar) or isinstance(contract, TypeVar) or projected is Any or contract is Any:
         return False
+    if projected == contract:
+        return False
+    if isinstance(projected, (list, tuple)) or isinstance(contract, (list, tuple)):
+        if type(projected) is not type(contract) or len(projected) != len(contract):
+            return True
+        return any(_known_group_type_conflict(actual, required) for actual, required in zip(projected, contract))
     projected_origin, contract_origin = get_origin(projected), get_origin(contract)
     if contract_origin is None:
         return (projected_origin or projected) != contract
