@@ -100,6 +100,14 @@ def _composition_type(value: Any) -> Any:
         return value
 
 
+def _group_type_has_unresolved(annotation: Any) -> bool:
+    if isinstance(annotation, TypeVar) or annotation is Any:
+        return True
+    if isinstance(annotation, (list, tuple)):
+        return any(_group_type_has_unresolved(item) for item in annotation)
+    return any(_group_type_has_unresolved(item) for item in get_args(annotation))
+
+
 def _known_group_type_conflict(projected: Any, contract: Any) -> bool:
     """Reject concrete conflicts while leaving TypeVar constraints for M03."""
     if isinstance(projected, TypeVar) or isinstance(contract, TypeVar) or projected is Any or contract is Any:
@@ -111,6 +119,18 @@ def _known_group_type_conflict(projected: Any, contract: Any) -> bool:
             return True
         return any(_known_group_type_conflict(actual, required) for actual, required in zip(projected, contract))
     projected_origin, contract_origin = get_origin(projected), get_origin(contract)
+    union_origins = (typing.Union, types.UnionType)
+    if projected_origin in union_origins or contract_origin in union_origins:
+        if _group_type_has_unresolved(projected) or _group_type_has_unresolved(contract):
+            projected_members = get_args(projected) if projected_origin in union_origins else (projected,)
+            contract_members = get_args(contract) if contract_origin in union_origins else (contract,)
+            return any(
+                all(_known_group_type_conflict(member, candidate) for candidate in contract_members)
+                for member in projected_members
+            ) or any(
+                all(_known_group_type_conflict(candidate, member) for candidate in projected_members)
+                for member in contract_members
+            )
     if contract_origin is None:
         return (projected_origin or projected) != contract
     if projected_origin != contract_origin:

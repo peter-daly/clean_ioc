@@ -150,6 +150,22 @@ def test_equivalent_unions_in_generic_arguments_are_compatible():
     assert len(memberships(builder)) == 1
 
 
+def test_open_union_constraints_defer_without_hiding_fixed_conflicts():
+    class Service(Generic[T]):
+        pass
+
+    group = ServiceGroup("union", service_type=Service[int | str])
+    builder = ContainerBuilder()
+    open_id = builder.register(Service[T | int], factory=Service, groups=[group])
+    assert memberships(builder)[open_id] == frozenset({group})
+
+    with pytest.raises(TypeError, match="union"):
+        builder.register(Service[int | bytes], factory=Service, groups=[group])
+    with pytest.raises(TypeError, match="union"):
+        builder.register(Service[T | bytes], factory=Service, groups=[group])
+    assert len(memberships(builder)) == 1
+
+
 def test_callable_parameter_typevars_defer_but_concrete_conflicts_reject():
     class Service(Generic[T]):
         pass
