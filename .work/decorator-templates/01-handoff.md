@@ -1,6 +1,6 @@
 # M01 — implementation verification handoff
 
-Status: Implementation verification and independent technical review passed; final handoff checkpoint pending.
+Status: All M01 gates passed; this final handoff is ready for its local checkpoint. M02 may start after that commit.
 Feature delivery is incomplete. No public API or public explanatory documentation is introduced in M01.
 
 Implementation agent: `/root/m01_implementation`, `gpt-6-astra`, high reasoning, fresh explicit handoff.
@@ -14,7 +14,7 @@ Pre-existing unrelated untracked `.work` files remain untouched.
 
 ## API decisions for subsequent milestones
 
-These spellings are settled for implementation, subject to independent M01 review. They are not exported yet.
+These spellings are settled for implementation and accepted by independent M01 review. They are not exported yet.
 
 - `ServiceGroup(name, *, service_type=Contract)` is immutable and compares by object identity. Its declaration stores
   no members. `groups: Iterable[ServiceGroup] = ()` is accepted by direct class/factory/instance registration, structural
@@ -209,8 +209,18 @@ Executed with repository `.venv` Python 3.14.4; imports resolve to this working 
    — **passed**. Intentional same-name TypeVars and conflicting inheritance fixture carry narrow diagnostic ignores.
 
 No full `make ci`, full Python matrix, or bark-core integration claimed; those remain assigned to later milestones.
-Checkpoint pre-commit hooks are coordinator-run and must be recorded separately. Public documentation comprehension
-has not run because no public documentation changed. Independent review is required before M01 acceptance/M02.
+Checkpoint pre-commit hooks are coordinator-run and recorded in the execution log. Public documentation comprehension
+is not applicable because no public documentation changed. Independent review passed in round 2; see `01-review.md`.
+
+## Final gate and next milestone
+
+Search checkpoint: `da20679d89cf0779c8c30365196375901f62e8b5`.
+Initial verification: `ae33390c8e255a2a0c386cfc36bae42e2de0af6c`.
+Repair verification: `2179fa6fc5660cd4f960a7fc89258bde3de9136a`.
+Independent review acceptance: `0815f6d9afec9dd25d1606b72218d36e9122a63d`.
+All checkpoint hooks passed; no task-created bark-core changes or commits. Final checkpoint SHA is recorded after
+commit in the execution log rather than self-embedding. M02 consumes the membership/projection interfaces above;
+it must not start until this final handoff checkpoint exists. M05 must address applicable-target snapshot scale.
 
 ## Independent-review repairs (implementation verification reopened)
 

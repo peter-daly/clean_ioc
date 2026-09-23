@@ -61,7 +61,7 @@ bark-core policy; Clean IoC does not gain transaction-specific knowledge.
   decorators, and `Component.descendants()` traverses them. Generated-template applicability therefore needs M01's
   recursively undecorated snapshot view; extend these build-time stages without changing ordinary decorator semantics.
 
-## Chosen API direction (M01; independent review pending)
+## Chosen API direction (M01 accepted; public implementation pending)
 
 M01 settles the spellings below; they are not existing public APIs yet. Implement a registration-to-template factory so a
 source's metadata can configure normal decorator options without changing the `ComponentFilter` contract.

@@ -1,6 +1,6 @@
 # 01 — Contract and compiler feasibility
 
-Status: In progress; implementation verification passed, independent review pending. Dependency: none.
+Status: Accepted; all gates passed, final local handoff checkpoint ready. Dependency: none.
 Read the [workflow](README.md) and [feature contract](../decorator-templates.md).
 
 | Role | Model | Reasoning |
