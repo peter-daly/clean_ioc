@@ -23,6 +23,8 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 
 | 02 | Implementation verification, repair 2 | Passed | `156abd5` | Open-union constraints repaired; 322 focused tests, Ruff/ty/diff and full-unit/lint/type commit hooks passed |
 
-| 02 | Independent technical review | Passed round 3; checkpoint pending | Pending | Astra High `/root/m02_review`; [review](02-review.md); 322 tests plus nine union probes; all findings resolved |
+| 02 | Independent technical review | Passed round 3 | `64958b4` | Astra High `/root/m02_review`; [review](02-review.md); 322 tests plus nine union probes; all findings resolved |
 
-Implementation/review/documentation gates not listed here have not passed. M02 independent review is in progress; M03–M10 have not started.
+| 02 | Final handoff | Passed; checkpoint pending | Pending | All previous gates verified; no public docs gate; M03 next |
+
+Implementation/review/documentation gates not listed here have not passed. M02 final checkpoint pending; M03–M10 have not started.

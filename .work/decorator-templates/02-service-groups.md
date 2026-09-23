@@ -1,6 +1,6 @@
 # 02 — Explicit service-group membership
 
-Status: Independent review accepted round 3 at `156abd5`; final handoff pending. Search checkpoint `9cb82d7`. Dependency: 01 accepted (final checkpoint `485e27d`).
+Status: Accepted; all applicable gates passed, final handoff checkpoint ready. Search checkpoint `9cb82d7`. Dependency: 01 accepted (final checkpoint `485e27d`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 01 handoff.
 
 | Role | Model | Reasoning |

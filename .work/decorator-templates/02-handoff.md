@@ -1,6 +1,6 @@
 # M02 implementation verification handoff
 
-Status: implementation repair ready for its verification checkpoint and same-reviewer recheck. The first independent Astra High review requested two comparison fixes; this is not review acceptance or final M02 completion.
+Status: All applicable M02 gates passed; final local handoff checkpoint required before M03.
 
 Implementation agent: `/root/m02_implementation`, `gpt-6-sol`, high reasoning. Search evidence: `/root/m02_search`, `gpt-6-luna`, low reasoning, accepted at search checkpoint `9cb82d7`. Branch: `codex/decorator-templates`. Predecessor M01 final checkpoint: `485e27d`. The coordinator owns checkpoint commits, review, execution log, and final status; this agent made no commits.
 
@@ -30,3 +30,9 @@ Independent reviewer should inspect whether membership survives every definition
 First independent review requested two P2 repairs in `_known_group_type_conflict`: order-insensitive equivalent union arguments were rejected, and the parameter list in `Callable[[T], int]` was treated as one opaque value instead of deferring its TypeVar. The first repair accepts equal concrete types first and recursively compares list/tuple argument sequences. New regressions confirm different concrete union members and concrete `Callable` input/return conflicts still reject.
 
 The same reviewer then found that positional comparison still rejected `Service[T | int]` under `Service[int | str]`, although `T=str` can satisfy it. The second repair checks open union members for possible matches on either side and defers unresolved alternatives to M03; a fixed member with no possible counterpart still rejects. A regression covers the accepted open union and rejected concrete or fixed-member conflicts. The focused **322-test** suite, Ruff, ty, and `git diff --check` all pass after this repair. Same-reviewer recheck remains pending.
+
+## Final handoff
+
+Independent Astra High `/root/m02_review` accepted at `156abd5` in round 3. Review checkpoint `64958b4`. Search checkpoint `9cb82d7`; initial implementation `799d528`; verified repairs `541f611` and `156abd5`. All checkpoint full-unit/lint/type hooks passed. Public documentation gate inapplicable. Final handoff SHA recorded after commit in execution log.
+
+M03 consumes `_Layer.service_groups` and `_Compiler._service_groups_for(registration, layer)`; the latter accounts for compiler-local structural-pattern IDs. `_validate_service_groups` rejects known conflicts at declaration/normalization, while unresolved TypeVars, Callable parameter lists and satisfiable open union constraints remain deferred. M03 must enforce these constraints against actual closed target requests and supply a common explicit-group/DerivedServices projection interface. No template execution delivered yet. No bark-core changes or commits; unrelated graph plans preserved.
