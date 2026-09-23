@@ -24,4 +24,12 @@ consistency probes were supported. The implementation-verification gate is reope
 
 ## Round 2
 
-Pending implementation repairs and independent re-review. No acceptance claimed.
+**Accepted** at `2179fa6fc5660cd4f960a7fc89258bde3de9136a` by the same independent Astra High reviewer.
+
+Both findings are resolved. Canonical source root argument is cleared while descendant arguments and anchored
+ownership remain intact. `_undecorated_component_view` provides a separate recursive snapshot retaining occurrence
+and parent context; ordinary decorator behaviour is unchanged. The handoff and M05 contract describe the seam accurately.
+
+Independent verification: **14 feasibility tests passed**, including draft/frozen snapshots, nested decorator exclusion,
+non-root context, and anchored source metadata. No remaining blocking findings. Whole-graph snapshot cost is explicitly
+retained as an M05 implementation concern. Reviewer made no file edits or commits. Acceptance covers M01 only.

@@ -1,13 +1,14 @@
 # M01 — implementation verification handoff
 
-Status: Implementation verification passed; independent technical review and final handoff remain pending.
+Status: Implementation verification and independent technical review passed; final handoff checkpoint pending.
 Feature delivery is incomplete. No public API or public explanatory documentation is introduced in M01.
 
 Implementation agent: `/root/m01_implementation`, `gpt-6-astra`, high reasoning, fresh explicit handoff.
 Code-search agent: `/root/m01_search`, `gpt-6-luna`, low reasoning. Coordinator: `/root`.
 Branch: `codex/decorator-templates`. Baseline/search checkpoint: `da20679d89cf0779c8c30365196375901f62e8b5`.
 Implementation checkpoint: coordinator to record after committing this gate. No task commits made by implementation agent.
-Review identity, acceptance, and checkpoint: pending in `01-review.md`. Documentation comprehension: not applicable;
+Review identity and acceptance: `/root/m01_review` (Astra High) accepted repair checkpoint `2179fa6` in round 2;
+see `01-review.md`. Review checkpoint: coordinator to record. Documentation comprehension: not applicable;
 only internal work-item records changed. No bark-core files, dependencies, environments, or commits changed.
 Pre-existing unrelated untracked `.work` files remain untouched.
 
