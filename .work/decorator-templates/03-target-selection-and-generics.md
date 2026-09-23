@@ -1,6 +1,6 @@
 # 03 — Generic projection and DerivedServices
 
-Status: Not started. Dependency: 02 accepted.
+Status: Search accepted; implementation awaits checkpoint. Dependency: 02 accepted (`fa33b7f`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 02 handoff.
 
 | Role | Model | Reasoning |

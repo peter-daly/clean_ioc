@@ -25,6 +25,8 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 
 | 02 | Independent technical review | Passed round 3 | `64958b4` | Astra High `/root/m02_review`; [review](02-review.md); 322 tests plus nine union probes; all findings resolved |
 
-| 02 | Final handoff | Passed; checkpoint pending | Pending | All previous gates verified; no public docs gate; M03 next |
+| 02 | Final handoff | Passed | `fa33b7f` | All previous gates verified; no public docs gate; M03 next |
 
-Implementation/review/documentation gates not listed here have not passed. M02 final checkpoint pending; M03–M10 have not started.
+| 03 | Search | Passed; checkpoint pending | Pending | Luna Low `/root/m03_search`; [evidence](03-search.md) |
+
+Implementation/review/documentation gates not listed here have not passed. M03 search in progress; M04–M10 have not started.
