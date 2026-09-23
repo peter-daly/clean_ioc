@@ -170,6 +170,7 @@ def _project_service_type(service_type: Any, contract_type: Any) -> Any | None:
     results: list[Any] = []
 
     def visit(current: Any, path: frozenset[type]) -> None:
+        current = normalize_type_alias(current)
         origin = get_origin(current) or current
         if not isinstance(origin, type) or origin in path or contract_origin not in origin.__mro__:
             return
@@ -188,7 +189,7 @@ def _project_service_type(service_type: Any, contract_type: Any) -> Any | None:
         for base in vars(origin).get("__orig_bases__", origin.__bases__):
             if (get_origin(base) or base) in GenericDefinitionClasses:
                 continue
-            visit(_resolve_typevar_identities(base, bindings), path | {origin})
+            visit(_resolve_typevar_identities(normalize_type_alias(base), bindings), path | {origin})
 
     visit(service_type, frozenset())
     if len(results) > 1:
@@ -242,7 +243,10 @@ def _bind_typevar_identities(pattern: Any, concrete: Any) -> dict[TypeVar, Any] 
     if _typevar_identities(concrete):
         raise _TypeBindingError(f"Unresolved target type {concrete!r}")
 
-    unsupported_branches: list[str] = []
+    # Try the supported disjoint interpretation first. Only a complete match in
+    # the second pass proves that unsupported union collapse was necessary;
+    # abandoned alternatives must never leave shared diagnostic state behind.
+    allow_collapse = False
 
     def visit(left: Any, right: Any, bindings: dict[TypeVar, Any]) -> list[dict[TypeVar, Any]]:
         if isinstance(left, TypeVar):
@@ -266,14 +270,10 @@ def _bind_typevar_identities(pattern: Any, concrete: Any) -> dict[TypeVar, Any] 
             return sequence(tuple(left), tuple(right), [bindings])
         left_origin, right_origin = get_origin(left), get_origin(right)
         union_origins = (Union, types.UnionType)
-        if left_origin in union_origins and right_origin not in union_origins and _typevar_identities(left):
-            if any(not _typevar_identities(member) and member != right for member in get_args(left)):
-                return []
-            unsupported_branches.append(f"Cannot infer TypeVar bindings from collapsed union {left!r} to {right!r}")
-            return []
-        if left_origin in union_origins and right_origin in union_origins:
-            left_args, right_args = get_args(left), get_args(right)
-            if len(left_args) > len(right_args):
+        if left_origin in union_origins:
+            left_args = get_args(left)
+            right_args = get_args(right) if right_origin in union_origins else (right,)
+            if not allow_collapse and len(left_args) > len(right_args):
                 return []
 
             def union_members(remaining: tuple[Any, ...], available: tuple[Any, ...], state: dict[TypeVar, Any]):
@@ -284,12 +284,14 @@ def _bind_typevar_identities(pattern: Any, concrete: Any) -> dict[TypeVar, Any] 
                 # partitions, so fixed members are not redundantly re-inferred
                 # into a variable. Retain all assignments until later repeated
                 # variables have had a chance to disambiguate them.
-                maximum = len(available) - len(remaining) + 1 if isinstance(remaining[0], TypeVar) else 1
+                choices = right_args if allow_collapse else available
+                maximum = len(choices) if allow_collapse else len(available) - len(remaining) + 1
+                if not isinstance(remaining[0], TypeVar):
+                    maximum = min(maximum, 1)
                 for size in range(1, maximum + 1):
-                    for indices in combinations(range(len(available)), size):
-                        members = tuple(available[index] for index in indices)
+                    for members in combinations(choices, size):
                         candidate = members[0] if size == 1 else Union[members]
-                        rest = tuple(item for index, item in enumerate(available) if index not in indices)
+                        rest = tuple(item for item in available if item not in members)
                         for updated in visit(remaining[0], candidate, state):
                             results.extend(union_members(remaining[1:], rest, updated))
                 return results
@@ -310,8 +312,11 @@ def _bind_typevar_identities(pattern: Any, concrete: Any) -> dict[TypeVar, Any] 
     for result in visit(pattern, concrete, {}):
         if result not in results:
             results.append(result)
-    if unsupported_branches:
-        raise _TypeBindingError(unsupported_branches[0])
     if len(results) > 1:
         raise _TypeBindingError(f"Ambiguous TypeVar bindings from {pattern!r} to {concrete!r}")
-    return results[0] if results else None
+    if results:
+        return results[0]
+    allow_collapse = True
+    if visit(pattern, concrete, {}):
+        raise _TypeBindingError(f"Cannot infer TypeVar bindings from collapsed union {pattern!r} to {concrete!r}")
+    return None

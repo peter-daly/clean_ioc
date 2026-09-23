@@ -533,3 +533,75 @@ def test_closed_registration_contract_remains_authoritative_for_implementation_l
         assert target.projected_contract == declared
         assert target.requested_service_type is Implementation
     builder.build()
+
+
+def test_abandoned_collapsed_union_branch_does_not_poison_a_complete_match():
+    pattern = list[T | int] | list[int]
+    concrete = list[int] | list[bytes | int]
+    assert _bind_typevar_identities(pattern, concrete) == {T: bytes}
+    assert _bind_typevar_identities(Contract[pattern, T], Contract[concrete, bytes]) == {T: bytes}
+    # The same tentative collapse followed by a fixed mismatch has no complete
+    # candidate, so it must remain a mismatch rather than an unsupported error.
+    assert _bind_typevar_identities(Contract[T | int, str], Contract[int, bytes]) is None
+
+
+def test_inherited_aliases_normalize_before_diamond_projection_and_bindings():
+    alias = TypeAliasType("alias", list[int])
+
+    class Left(Contract[alias, str]):
+        pass
+
+    class Right(Contract[list[int], str]):
+        pass
+
+    class Diamond(Left, Right):  # ty:ignore[invalid-generic-class]
+        pass
+
+    group = ServiceGroup("aliased-diamond", service_type=Contract[list[int], str])
+    builder = ContainerBuilder()
+    registration_id = builder.register(Diamond, groups=[group])
+    compiler = compiler_for(builder)
+    for selector in (group, DerivedServices(Contract)):
+        target = selected(compiler, selector, registration_id, Diamond)
+        assert target is not None
+        assert target.projected_contract == Contract[list[int], str]
+        assert target.bindings == {T: list[int], U: str}
+    builder.build()
+
+
+def test_inherited_generic_alias_specializes_before_group_validation():
+    alias_variable = TypeVar("Value")  # ty:ignore[mismatched-type-name]
+    child_variable = TypeVar("Value")  # ty:ignore[mismatched-type-name]
+    alias = TypeAliasType("alias", list[alias_variable], type_params=(alias_variable,))
+
+    class Child(Contract[alias[child_variable], str], Generic[child_variable]):
+        pass
+
+    group = ServiceGroup("aliased-generic", service_type=Contract[list[int], str])
+    builder = ContainerBuilder()
+    registration_id = builder.register(Child[int], groups=[group])
+    compiler = compiler_for(builder)
+    for selector in (group, DerivedServices(Contract)):
+        target = selected(compiler, selector, registration_id, Child[int])
+        assert target is not None
+        assert target.projected_contract == Contract[list[int], str]
+        assert target.bindings == {T: list[int], U: str}
+    builder.build()
+
+
+def test_union_collapse_with_remaining_union_reports_unsupported_without_hiding_fixed_mismatch():
+    with pytest.raises(ValueError, match="collapsed union"):
+        _bind_typevar_identities(T | int | str, int | str)
+    assert _bind_typevar_identities(T | int | bytes, int | str) is None
+    assert _bind_typevar_identities(list[T] | int | str, int | str) is None
+
+    builder = ContainerBuilder()
+    registration_id = builder.register(Contract[int | str, bool], factory=Contract)
+    compiler = compiler_for(builder)
+    with pytest.raises(ContainerBuildError, match="collapsed union") as error:
+        selected(compiler, DerivedServices(Contract[T | int | str, bool]), registration_id, Contract[int | str, bool])
+    assert error.value.code == "service-target-projection"
+    assert (
+        selected(compiler, DerivedServices(Contract[T | int | bytes, bool]), registration_id, Contract[int | str, bool])
+        is None
+    )

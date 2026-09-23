@@ -1,6 +1,6 @@
 # 03 — Generic projection and DerivedServices
 
-Status: Implementation verified; independent review pending. Dependency: 02 accepted (`fa33b7f`).
+Status: Independent review requested three projection/binding repairs; verification reopened. Dependency: 02 accepted (`fa33b7f`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 02 handoff.
 
 | Role | Model | Reasoning |

@@ -2,118 +2,103 @@
 
 Status: Implementation verification passed; independent Astra review and coordinator checkpoint pending.
 
-Implementation agent: `/root/m03_implementation`, `gpt-6-astra`, high reasoning. Search agent: `/root/m03_search`,
-`gpt-6-luna`, low reasoning. Accepted predecessor M02: `fa33b7f`; accepted M03 search checkpoint and implementation
-baseline: `37a22f23a3c26824461ae1f55d0d56a99af21ad7`. Branch: `codex/decorator-templates`.
-The coordinator owns commits, review, execution log, and milestone status. This implementation agent made no commits.
+Implementation: `/root/m03_implementation`, `gpt-6-astra`, high reasoning. Search: `/root/m03_search`, `gpt-6-luna`, low.
+M02 accepted at `fa33b7f`; M03 search/implementation baseline `37a22f23a3c26824461ae1f55d0d56a99af21ad7`;
+branch `codex/decorator-templates`. Coordinator owns commits, review, execution log and milestone status.
 
-## Delivered files and behaviour
+## Delivered
 
-- `clean_ioc/service_groups.py`, `clean_ioc/__init__.py`: immutable public `DerivedServices(Contract)` alongside
-  identity-based `ServiceGroup`. Neither declaration holds builder state or a membership snapshot.
-- `clean_ioc/_service_targets.py`: shared pure selection/projection interface and frozen `_ServiceTarget` result.
-  Explicit membership is checked first by declaration identity. Automatic selection requires the registered service's
-  explicit nominal inheritance, including protocol bases; implementation compatibility or structural protocol matching
-  cannot grant participation. Closed contract mismatch means automatic nonselection, but invalid explicit membership
-  is an error. Closed registered service contracts remain authoritative even through implementation lookup keys.
-- `clean_ioc/generic_utils.py`: identity-based type-expression binding, nested substitution, correct rebuilding of
-  `typing.Callable` parameter lists, and nominal projection pruning. Fixed/reordered/multilevel generic bases, aliases,
-  repeated variables, generated concrete subclasses, consistent diamonds and same-named distinct TypeVars retain
-  their actual declaring identities. Conflicting inheritance paths, unresolved concrete requests and ambiguous
-  variable assignments fail instead of choosing an arbitrary mapping. Existing name-based generic factory/decorator
-  machinery is unchanged; using-typetoolbox skill was applied and its name-keyed limitation deliberately isolated.
-- `clean_ioc/container.py`: compiler adapters retain original registration identity through factory/pattern
-  specialization and validate deferred group constraints at `_compile_registration` for each concrete compiled
-  request. This covers constructors, factories, structural patterns, discoveries, fallback registrations and aliases.
-  The finite candidate adapter preserves input order and deduplicates original definition/canonical request/owner
-  tuples. It never enumerates hypothetical specializations, infers group membership, grants visibility, or registers
-  public base-service aliases. Ordinary `_decorator_service_matches` and normal decorator activation are unchanged.
-- `tests/test_service_targets.py`: 30 cases including projection equivalence, membership/nonmembership isolation,
-  immutable mappings, static factory/instance selection, unrelated-service exclusion even through implementation
-  lookup, protocols, generated/aliased classes, same-name variables within and across inheritance edges, repeated
-  variables, source-independent decorator-expression binding, conflicting diamonds, actual closed-request build
-  failures, pattern definition IDs, nested unions/Callables, deterministic candidate streams, post-declaration
-  discovery, fallback constraints, ordinary-decorator regression and version-conditional PEP 695 syntax.
+- `service_groups.py`/`__init__.py`: immutable public `DerivedServices(Contract)`.
+- New `_service_targets.py`: shared explicit-membership/automatic-derived selection, frozen projection results and
+  immutable identity-keyed bindings. Membership and nominal compatibility use registered service contracts, never
+  implementation compatibility or structural protocol matching. No public aliases or registration discovery added.
+- `generic_utils.py`: nested TypeVar-identity binding/substitution, correct `typing.Callable` rebuilding, nominal
+  inheritance projection and clear ambiguous/unresolved failures. Using-typetoolbox skill applied; the new interface
+  deliberately avoids its name-keyed mapping. Existing factory/decorator name-based machinery remains unchanged.
+- `container.py`: original definition IDs retained through factory/pattern specialization; deferred group validation
+  runs at `_compile_registration` against concrete requests. Finite candidate selection retains ordering and deduplicates
+  by definition/request/owner. Ordinary decorator matching and activation are unchanged.
+- New `tests/test_service_targets.py`: 30 cases covering equivalence of both selectors, nonmembers, immutable mappings,
+  factories/instances without activation, unrelated-service and structural-protocol exclusion, nominal protocols,
+  reordered/fixed/multilevel/repeated/same-name variables, generated classes, aliases, diamonds, closed-request builds,
+  patterns, discovery/fallback, union/Callable constraints, ordering/deduplication, ordinary decorators and PEP 695.
 
 ## M04/M05 interface
 
-Use `_Compiler._select_service_target(selector, registration, layer, requested_service_type)` at an already available
-candidate/occurrence. It returns `_ServiceTarget | None` and wraps failures as `ContainerBuildError` with registration,
-request and selector context: `service-group-incompatible` for explicit membership or `service-target-projection`
-for automatic selection/projection failures. Nonmembers are excluded before projection, so an unrelated/nonmember
-cannot cause a generic projection failure. `DerivedServices` closed-contract mismatches simply return `None`.
+`_Compiler._select_service_target(selector, registration, layer, requested_service_type)` consumes one already available
+candidate and returns `_ServiceTarget | None`. The caller retains visibility/area/occurrence policy. Explicit nonmembers
+are excluded before projection; automatic closed-contract mismatches return `None`. Errors include registration/request/
+selector context, with `service-group-incompatible` or `service-target-projection` codes.
 
-The result contains:
+The frozen result fields are:
 
-- `registration_id`: original definition ID, including when the passed registration has a specialized factory/pattern ID.
-- `requested_service_type`: the exact input request key, retaining an explicitly supplied alias; it is the wrapped key.
-- `registered_service_type`: normalized original registered service contract, never inferred implementation membership.
+- `registration_id`: original definition ID, including for specialized factory/pattern copies.
+- `requested_service_type`: untouched input request, including an explicitly supplied alias; the actual wrapped key.
+- `registered_service_type`: normalized original registered contract. Closed declarations remain authoritative even
+  through implementation lookup keys with different generic specializations.
 - `projected_contract`: concrete specialization of the selector's contract origin.
-- `bindings`: immutable map from the contract origin's actual TypeVar objects to concrete arguments.
-- `declaration_bindings`: separate immutable map for variables explicitly used in the selector expression. For example,
-  `Contract[V, V]` over `Contract[int, int]` has declaration binding `V -> int` and origin bindings `T -> int, U -> int`.
+- `bindings`: immutable origin-TypeVar-to-argument map.
+- `declaration_bindings`: separate immutable bindings for variables in the selector expression. For `Contract[V, V]`
+  over `Contract[int, int]`, this is `{V: int}`, while origin bindings retain `{T: int, U: int}`.
 
-For a finite already-visible stream, `_Compiler._select_service_targets(selector, candidates)` takes
-`(registration, layer, request)` tuples and returns selected results in first-seen order. It deduplicates only within
-that call; call it independently for independent templates. It does not discover requests or select registry winners.
-The caller must retain ordinary visibility, definition-area and occurrence context; do not use it to bypass boundary
-selection. Type aliases canonicalize only for duplicate keys, while the first result preserves its original request.
+`_Compiler._select_service_targets(selector, candidates)` accepts finite `(registration, layer, request)` tuples,
+keeps first-seen order and deduplicates original definition/canonical request/owner tuples. Call independently per
+independent template. It neither discovers requests nor picks registry winners or grants boundary visibility.
 
-`_bind_typevar_identities(pattern, concrete)` returns a TypeVar-keyed dictionary, `None` for concrete mismatch, or raises
-`_TypeBindingError` for ambiguity/unresolved/unsupported inference. M05 can bind a decorator's decorated-argument
-contract expression to `target.projected_contract` using the decorator's own variables. Then
-`_resolve_typevar_identities(annotation, bindings)` substitutes those exact identities in its annotations. Do not merge
-this with source maps or legacy string-keyed maps. M03 tests prove independent variables sharing a name remain distinct;
-M05 still owns decorator constructor/factory specialization, checking all remaining variables, and activation.
-
+`_bind_typevar_identities(pattern, concrete)` returns a TypeVar-keyed dictionary, `None` for mismatch, or raises
+`_TypeBindingError` for ambiguous/unresolved/unsupported inference. M05 can bind a decorator's decorated-argument
+expression to `target.projected_contract`, then use `_resolve_typevar_identities(annotation, bindings)`. Never merge
+source/target/decorator scopes by name. M05 still owns remaining-variable validation and decorator activation.
 For M04 source metadata, `_project_service_type(implementation, base)` remains the static projection seam, preserving
-unresolved variables. Pair a projected alias's arguments with that base origin's `__parameters__` to expose an immutable
-identity-keyed source map. Unknown factory implementation types must remain unknown; never activate them to infer types.
+unresolved variables; pair projected arguments with the base origin's actual `__parameters__`. Unknown factory
+implementation types remain unknown without activation.
 
-## Verification actually run
+## Actual verification
 
-Final checks on repository `.venv` Python **3.14.4**:
+Repository `.venv` Python **3.14.4**:
 
 1. `.venv/bin/python -m pytest tests/test_service_targets.py tests/test_service_groups.py tests/test_provider_maps.py tests/test_registration_patterns.py tests/test_closed_generic_constructors.py tests/test_container.py tests/test_type_alias_lookup_paths.py tests/test_type_aliases.py tests/test_decorator_template_feasibility.py tests/test_boundaries.py tests/test_bundles.py -q --disable-warnings --maxfail=3`
    — **352 passed in 2.14s**.
-2. `.venv/bin/ruff check clean_ioc/_service_targets.py clean_ioc/generic_utils.py clean_ioc/service_groups.py clean_ioc/container.py clean_ioc/__init__.py tests/test_service_targets.py`
-   — **passed**.
-3. `.venv/bin/ty check clean_ioc/_service_targets.py clean_ioc/generic_utils.py clean_ioc/service_groups.py clean_ioc/container.py clean_ioc/__init__.py tests/test_service_targets.py`
-   — **passed**, no diagnostics. Narrow fixture suppressions cover intentional same-name TypeVars, inconsistent generic
-   inheritance and runtime construction of unsupported variadic type expressions.
-4. `.venv/bin/ruff format --check clean_ioc/_service_targets.py clean_ioc/generic_utils.py clean_ioc/service_groups.py clean_ioc/container.py clean_ioc/__init__.py tests/test_service_targets.py`
-   — **6 files already formatted**.
+2. `.venv/bin/ruff check clean_ioc/_service_targets.py clean_ioc/generic_utils.py clean_ioc/service_groups.py clean_ioc/container.py clean_ioc/__init__.py tests/test_service_targets.py` — **passed**.
+3. `.venv/bin/ty check clean_ioc/_service_targets.py clean_ioc/generic_utils.py clean_ioc/service_groups.py clean_ioc/container.py clean_ioc/__init__.py tests/test_service_targets.py` — **passed, no diagnostics**.
+4. `.venv/bin/ruff format --check clean_ioc/_service_targets.py clean_ioc/generic_utils.py clean_ioc/service_groups.py clean_ioc/container.py clean_ioc/__init__.py tests/test_service_targets.py` — **6 files already formatted**.
 5. `git diff --check` — **passed**.
 
-Python **3.11.13** portability used the existing installed interpreter with an isolated temporary uv environment,
-without changing repository dependencies, lockfiles or `.venv`:
+Existing Python **3.11.13** interpreter, isolated temporary uv environment (no repository dependency/lockfile edits):
 
 `uv run --no-project --isolated --python 3.11 --with pytest==9.1.1 --with pytest-asyncio==1.4.0 --with funcie==0.2.0 --with typetoolbox==0.4.0 --with typing_extensions==4.16.0 python -m pytest tests/test_service_targets.py tests/test_service_groups.py tests/test_decorator_template_feasibility.py -q --disable-warnings --maxfail=3`
 
-— **57 passed, 1 skipped in 0.18s**. The sole skip is the explicitly version-conditional PEP 695 test, which passed on
-3.14. No unavailable or skipped check is counted as a pass. Full supported-version matrix and `make ci` remain M10.
+— **57 passed, 1 skipped in 0.18s**. The sole skip is version-conditional PEP 695 syntax; it passed on 3.14.
+Early fixture failures incorrectly reused successful builders or expected pattern entrypoint marking to create a request;
+fixtures were corrected without changing those existing behaviours. Full matrix/`make ci` remain M10.
 
-Early test-only failures used a builder after successful build or assumed pattern entrypoint marking creates a new
-request. Fixtures now use independent builders and concrete consumer dependencies respectively, preserving existing
-single-use-builder and pattern-entrypoint semantics. No production change was made to accommodate those fixture errors.
+## Limits and pending review
 
-## Explicit limits and remaining work
+- M03 delivers selection/projection and deferred membership checks, not template expansion/activation or public docs.
+  Existing lookup rules decide which registrations are available; no broadening of open-alias or pattern lookup.
+- ParamSpec/TypeVarTuple inference fails explicitly. TypeVar domains require nominally checkable class constraints;
+  uncheckable parameterized/protocol domains fail clearly. Complete decorator/default handling remains M05.
+- Union-variable matching uses unique disjoint partitions, including multiple members absorbed by one variable.
+  Multiple assignments fail as ambiguous; required union collapse (`T | int` inferred from `int`) fails explicitly.
+  Fully concrete equivalent unions remain order-insensitive. Legacy factory/decorator union behaviour is unchanged.
+- No public explanatory documentation changed; comprehension gate inapplicable. No bark-core files/environment changes
+  or commits. Unrelated graph plans and coordinator-owned work-item edits remain untouched.
+- No implementation-agent commits. Independent review requested the repairs below; coordinator records actual review findings,
+  repairs, acceptance and checkpoint SHAs. This handoff does not claim final milestone acceptance.
 
-- M03 adds selection/projection and membership validation, not decorator-template registration, expansion, activation,
-  source metadata views, provenance diagnostics or boundary/overlay policy changes. These remain M04 onward.
-- No infinite/open request enumeration. Existing registration lookup rules still decide which definition is available
-  for a concrete request; this interface does not broaden ordinary structural-pattern or open-alias lookup semantics.
-- ParamSpec and TypeVarTuple inference is unsupported and fails with an explicit parameter-kind message. Ordinary
-  TypeVar domains use nominal class bounds/constraints; uncheckable parameterized or protocol domains fail explicitly.
-- Union-variable matching supports unique disjoint partitions of concrete union members, including one variable
-  absorbing multiple remaining members. Multiple surviving assignments fail as ambiguous. Inference requiring union
-  collapse (for example `T | int` inferred from `int`) is unsupported and reported clearly, rather than guessed.
-  Equivalent fully concrete unions are order-insensitive. No change is made to legacy factory/decorator union matching.
-- Source/decorator variable defaults and complete decorator validation are not introduced here. Unresolved targets do
-  not pass this concrete-selection API merely because a later decorator might provide a default.
-- No public explanatory docs changed; the documentation comprehension gate is inapplicable. No bark-core files,
-  environments or commits changed. Pre-existing unrelated `.work` graph plans remain untouched. Coordinator-owned
-  README/execution-log edits were present at baseline and were not edited by this agent.
 
-Independent technical review has not run yet. Coordinator records its actual findings, repairs, acceptance and all
-checkpoint SHAs separately; no final acceptance or milestone-completion claim is made here.
+## First-review repairs
+
+All three P2 findings repaired; same-reviewer recheck pending:
+
+- Union binding uses complete supported assignments first, then a separate collapse-only diagnostic pass if none
+  succeeds. An abandoned nested collapse alternative no longer poisons the valid `T -> bytes` assignment.
+- Inherited expressions normalize aliases before substitution and path comparison. Equivalent aliased diamonds agree;
+  generic nested aliases specialize correctly while retaining distinct same-name variable identities.
+- A possible collapse to a smaller union (`T | int | str` against `int | str`) reports unsupported inference, including
+  through `DerivedServices`. Actual fixed-member mismatches still return nonselection. Collapse diagnosis requires a
+  complete otherwise-compatible assignment, so a later conflicting argument cannot leave a false diagnostic behind.
+
+Added four regression cases in `test_service_targets.py` (34 total). Repeated the exact focused/portability/check commands
+above: Python 3.14 **356 passed in 2.16s**; Python 3.11 **61 passed, 1 expected PEP 695 skip in 0.19s**; Ruff, ty,
+format (**6 files**) and diff checks passed. No commits, public documentation or bark-core changes from this repair turn.
