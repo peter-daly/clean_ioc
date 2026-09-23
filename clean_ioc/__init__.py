@@ -50,6 +50,7 @@ from .graph_analysis import (
 from .metadata import Tag
 from .provider_maps import ProviderMapGroup
 from .providers import AsyncProvider, Provider
+from .service_groups import ServiceGroup
 from .tooling import (
     BuildIssue,
     BuildReport,
@@ -142,6 +143,7 @@ __all__ = [
     "ScopeBuilder",
     "ScopeClosedError",
     "ScopeProvisionError",
+    "ServiceGroup",
     "SharedDependency",
     "SharingGroup",
     "SharingReport",

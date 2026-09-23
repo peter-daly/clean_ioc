@@ -1,14 +1,14 @@
 # M01 — implementation verification handoff
 
-Status: All M01 gates passed; this final handoff is ready for its local checkpoint. M02 may start after that commit.
+Status: All M01 gates passed; final local checkpoint `485e27d`. M02 is authorized to proceed.
 Feature delivery is incomplete. No public API or public explanatory documentation is introduced in M01.
 
 Implementation agent: `/root/m01_implementation`, `gpt-6-astra`, high reasoning, fresh explicit handoff.
 Code-search agent: `/root/m01_search`, `gpt-6-luna`, low reasoning. Coordinator: `/root`.
 Branch: `codex/decorator-templates`. Baseline/search checkpoint: `da20679d89cf0779c8c30365196375901f62e8b5`.
-Implementation checkpoint: coordinator to record after committing this gate. No task commits made by implementation agent.
+Implementation checkpoints: `ae33390c` and repair `2179fa6`. No task commits made by implementation agent.
 Review identity and acceptance: `/root/m01_review` (Astra High) accepted repair checkpoint `2179fa6` in round 2;
-see `01-review.md`. Review checkpoint: coordinator to record. Documentation comprehension: not applicable;
+see `01-review.md`. Review checkpoint: `0815f6d`. Documentation comprehension: not applicable;
 only internal work-item records changed. No bark-core files, dependencies, environments, or commits changed.
 Pre-existing unrelated untracked `.work` files remain untouched.
 
@@ -224,7 +224,7 @@ it must not start until this final handoff checkpoint exists. M05 must address a
 
 ## Independent-review repairs (implementation verification reopened)
 
-The reviewer requested two bounded corrections; both are implemented, pending independent recheck:
+The reviewer requested two bounded corrections; both were implemented and accepted in the independent round-2 recheck:
 
 1. Canonical anchored source root retained a dependency argument from the first selected parent step. Reset only
    its root argument to `None`. The strengthened overlay probe registers a Consumer before its singleton Source,

@@ -15,6 +15,8 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 | 01 | Implementation verification, repair | Passed | `2179fa6fc5660cd4f960a7fc89258bde3de9136a` | Both review findings repaired; 14 probes and 277 focused regressions plus Ruff/ty/format passed; coordinator repeated 14 probes; full-unit/lint/type commit hooks passed |
 | 01 | Final handoff | Passed | `485e27d` | All prior gates verified; no public docs gate applies; next assignment M02 |
 
-| 02 | Search | Passed; checkpoint pending | Pending | Luna Low `/root/m02_search`; [evidence](02-search.md) |
+| 02 | Search | Passed | `9cb82d7` | Luna Low `/root/m02_search`; [evidence](02-search.md) |
 
-Implementation/review/documentation gates not listed here have not passed. M02 search is in progress; M03–M10 have not started.
+| 02 | Implementation verification | Passed; checkpoint pending | Pending | Sol High `/root/m02_implementation`; [handoff](02-handoff.md); 319 focused tests, Ruff/ty/diff passed |
+
+Implementation/review/documentation gates not listed here have not passed. M02 implementation is in progress; M03–M10 have not started.

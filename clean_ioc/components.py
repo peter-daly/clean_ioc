@@ -28,6 +28,7 @@ from typing_extensions import TypeForm
 from .generic_utils import constructor_type
 from .metadata import Tag
 from .provider_maps import ProviderMapGroup
+from .service_groups import ServiceGroup
 from .type_aliases import normalize_type_alias
 
 if TYPE_CHECKING:
@@ -485,6 +486,7 @@ class ComponentBuilder(Protocol):
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
         contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
+        groups: Iterable[ServiceGroup] = (),
     ) -> str: ...
 
     def register_pattern(
@@ -497,6 +499,7 @@ class ComponentBuilder(Protocol):
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
+        groups: Iterable[ServiceGroup] = (),
     ) -> str: ...
 
     @overload
@@ -543,6 +546,7 @@ class ComponentBuilder(Protocol):
         name: str | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
+        groups: Iterable[ServiceGroup] = (),
     ) -> None: ...
 
     def register_generic_subclasses(
@@ -557,6 +561,7 @@ class ComponentBuilder(Protocol):
         name: str | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
+        groups: Iterable[ServiceGroup] = (),
     ) -> None: ...
 
     def register_decorator(

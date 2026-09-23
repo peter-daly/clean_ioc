@@ -21,7 +21,7 @@ from typing import Any, TypeVar, cast, get_args, get_origin, overload
 from uuid import UUID, uuid4, uuid5
 
 from typetoolbox.generics import GenericTypeMap, get_generic_mapping
-from typing_extensions import TypeForm
+from typing_extensions import TypeAliasType, TypeForm
 
 from . import _legacy as legacy
 from . import registration_patterns as patterns
@@ -51,10 +51,11 @@ from .components import (
     default_component_filter,
     normalize_implementation_type,
 )
-from .generic_utils import constructor_type
+from .generic_utils import _project_service_type, constructor_type
 from .generic_utils import resolve_typevar_bindings as _resolve_factory_typevars
 from .provider_maps import ProviderMapGroup
 from .providers import AsyncProvider, Provider
+from .service_groups import ServiceGroup
 from .tooling import (
     BuildIssue,
     BuildReport,
@@ -97,6 +98,54 @@ def _composition_type(value: Any) -> Any:
         return normalize_type_alias(value)
     except TypeAliasNormalizationError:
         return value
+
+
+def _known_group_type_conflict(projected: Any, contract: Any) -> bool:
+    """Reject concrete conflicts while leaving TypeVar constraints for M03."""
+    if isinstance(projected, TypeVar) or isinstance(contract, TypeVar) or projected is Any or contract is Any:
+        return False
+    projected_origin, contract_origin = get_origin(projected), get_origin(contract)
+    if contract_origin is None:
+        return (projected_origin or projected) != contract
+    if projected_origin != contract_origin:
+        return True
+    projected_args, contract_args = get_args(projected), get_args(contract)
+    if not contract_args:
+        return False if contract_origin is not None else projected != contract
+    if len(projected_args) != len(contract_args):
+        return True
+    return any(_known_group_type_conflict(actual, required) for actual, required in zip(projected_args, contract_args))
+
+
+def _validate_service_groups(service_type: Any, groups: Iterable[ServiceGroup]) -> None:
+    for group in groups:
+        contract = _composition_type(group.service_type)
+        if isinstance(contract, TypeAliasType):
+            # An unresolved forward alias is checked after build-time normalization.
+            continue
+        try:
+            projected = _project_service_type(service_type, contract)
+        except TypeAliasNormalizationError:
+            continue
+        except ValueError as error:
+            raise TypeError(
+                f"Registration service {qualified_name(service_type)} has conflicting projections for "
+                f"service group {group.name!r} targeting {qualified_name(contract)}"
+            ) from error
+        if projected is None or _known_group_type_conflict(projected, contract):
+            raise TypeError(
+                f"Registration service {qualified_name(service_type)} is incompatible with "
+                f"service group {group.name!r} targeting {qualified_name(contract)}"
+            )
+
+
+def _materialize_service_groups(groups: Iterable[ServiceGroup]) -> frozenset[ServiceGroup]:
+    unique: dict[ServiceGroup, None] = {}
+    for group in groups:
+        if not isinstance(group, ServiceGroup):
+            raise TypeError("groups must contain ServiceGroup instances")
+        unique[group] = None
+    return frozenset(unique)
 
 
 def _source_location() -> SourceLocation | None:
@@ -438,6 +487,7 @@ class _Layer:
     validation_rules: tuple[_ValidationRuleDefinition, ...]
     provider_maps: Mapping[str, _ProviderMapDefinition]
     contributions: Mapping[str, Mapping[ProviderMapGroup[Any, Any], Hashable]]
+    service_groups: Mapping[str, frozenset[ServiceGroup]]
     pattern_ids: tuple[str, ...]
     ensured_import_modules: tuple[str, ...]
 
@@ -783,6 +833,14 @@ def _normalize_layer_aliases(layer: _Layer) -> _Layer:
                 registration.service_type = canonical_service
                 registration._generic_mapping = None
                 _normalize_dependency_aliases(registration.dependencies)
+                try:
+                    _validate_service_groups(canonical_service, layer.service_groups.get(registration.id, ()))
+                except TypeError as error:
+                    raise ContainerBuildError(
+                        str(error),
+                        code="service-group-incompatible",
+                        path=(qualified_name(canonical_service),),
+                    ) from error
             normalized_registrations[canonical_key].append(registration)
     registry._registrations = defaultdict(deque, normalized_registrations)
     slots = frozenset((normalize_type_alias(service_type), name) for service_type, name in layer.slots)
@@ -856,6 +914,7 @@ def _blueprint_alias_errors(blueprint: _Blueprint) -> tuple[TypeAliasNormalizati
                 values.extend((registration.service_type, registration.implementation))
                 values.extend(dependency.service_type for dependency in registration.dependencies.values())
         values.extend(layer.factory_specializations.values())
+        values.extend(group.service_type for groups in layer.service_groups.values() for group in groups)
         for definition in layer.decorators:
             values.extend((definition.service_type, definition.decorator_type))
         for definition in layer.pre_configurations:
@@ -1883,6 +1942,7 @@ class _RegistrationDiscovery:
     name: str | None
     tags: tuple[legacy.Tag, ...]
     when: ComponentFilter
+    groups: frozenset[ServiceGroup]
     origin: DefinitionOrigin
     registrations: dict[int, tuple[type, legacy._Registration]] = field(default_factory=dict)
     fallback_registration: legacy._Registration | None = None
@@ -1911,16 +1971,24 @@ class _RegistrationDiscovery:
         registry: legacy._Registry,
         registration_when: dict[str, ComponentFilter],
         registration_origins: dict[str, DefinitionOrigin],
+        service_groups: dict[str, frozenset[ServiceGroup]],
     ) -> None:
+        candidates: list[tuple[type, Any]] = []
         for subclass in _unique_subclasses(self.base_type, self._filter):
             service_type: Any = self.base_type
             if self.generic:
                 service_type = legacy.Container._get_target_generic_base(self.base_type, subclass)
                 if service_type is None:
                     continue
+            _validate_service_groups(service_type, self.groups)
+            candidates.append((subclass, service_type))
+        if self.generic and self.fallback_type is not None:
+            _validate_service_groups(self.base_type, self.groups)
+        for subclass, service_type in candidates:
             registration = self._registration_for(subclass, service_type)
             _index_registration(registry, registration)
             registration_when[registration.id] = self.when
+            service_groups[registration.id] = self.groups
             registration_origins[registration.id] = replace(
                 self.origin,
                 definition_id=registration.id,
@@ -1937,6 +2005,7 @@ class _RegistrationDiscovery:
                 )
             _index_registration(registry, self.fallback_registration)
             registration_when[self.fallback_registration.id] = self.when
+            service_groups[self.fallback_registration.id] = self.groups
             registration_origins[self.fallback_registration.id] = replace(
                 self.origin,
                 definition_id=self.fallback_registration.id,
@@ -2886,6 +2955,7 @@ class _Compiler:
                 if candidate is not None:
                     self._patterns.setdefault(get_origin(candidate[0].service_type), []).append(candidate)
         self._pattern_sources: dict[str, str] = {}
+        self._specialized_service_groups: dict[str, frozenset[ServiceGroup]] = {}
         self._pattern_requests: dict[Any, None] = {}
         self._compiled_pre_configurations: dict[str, _CompiledPreConfiguration] = {}
         self._compiling_pre_configurations: set[str] = set()
@@ -3958,9 +4028,17 @@ class _Compiler:
                 rendered.append((rendered_name, qualified_name(value)))
             self._factory_pattern_bindings[specialized.id] = tuple(rendered)
         self._specialized_factories[key] = specialized
+        self._specialized_service_groups[specialized.id] = layer.service_groups.get(registration.id, frozenset())
         if is_pattern:
             self._pattern_sources[specialized.id] = registration.id
         return specialized
+
+    def _service_groups_for(self, registration: legacy._Registration, layer: _Layer) -> frozenset[ServiceGroup]:
+        """Resolve membership for either a definition or its specialized copy."""
+        return self._specialized_service_groups.get(
+            registration.id,
+            layer.service_groups.get(registration.id, frozenset()),
+        )
 
     def _pattern_candidates(
         self, service_type: Any, registrations: list[tuple[legacy._Registration, _Layer]]
@@ -7080,6 +7158,7 @@ class _BuilderBase:
         self._factory_specializations: dict[str, object] = {}
         self._provider_maps: dict[str, _ProviderMapDefinition] = {}
         self._contributions: dict[str, Mapping[ProviderMapGroup[Any, Any], Hashable]] = {}
+        self._service_groups: dict[str, frozenset[ServiceGroup]] = {}
         self._pattern_ids: list[str] = []
         self._decorators: list[_DecoratorDefinition] = []
         self._removed_decorator_ids: set[str] = set()
@@ -7129,6 +7208,7 @@ class _BuilderBase:
         registry = _clone_registry(self._composition._registry)
         registration_when = dict(self._registration_when)
         registration_origins = dict(self._registration_origins)
+        service_groups = dict(self._service_groups)
 
         # Imports from every rule happen before any rule takes its live subclass
         # snapshot. This keeps declaration order from changing discovery results.
@@ -7136,7 +7216,7 @@ class _BuilderBase:
 
         discovered = legacy._Registry()
         for rule in self._registration_discoveries:
-            rule.materialize(discovered, registration_when, registration_origins)
+            rule.materialize(discovered, registration_when, registration_origins, service_groups)
         for service_type, registrations in discovered._registrations.items():
             # Explicit composition always precedes convention-based discovery.
             registry._registrations[service_type].extend(registrations)
@@ -7159,6 +7239,7 @@ class _BuilderBase:
             validation_rules=tuple(self._validation_rules),
             provider_maps=types.MappingProxyType(dict(self._provider_maps)),
             contributions=types.MappingProxyType(dict(self._contributions)),
+            service_groups=types.MappingProxyType(service_groups),
             pattern_ids=tuple(self._pattern_ids),
             ensured_import_modules=ensured_import_modules,
         )
@@ -7238,6 +7319,7 @@ class _BuilderBase:
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
         contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
+        groups: Iterable[ServiceGroup] = (),
     ) -> str:
         self._assert_mutable()
         declared_service_type = service_type
@@ -7248,6 +7330,8 @@ class _BuilderBase:
             factory_specialization = _composition_type(factory_specialization)
         if factory_specialization is not None and factory is None:
             raise ValueError("factory_specialization requires factory=")
+        service_groups = _materialize_service_groups(groups)
+        _validate_service_groups(service_type, service_groups)
         normalized_contributions: dict[ProviderMapGroup[Any, Any], Hashable] | None = None
         if contributes is not None:
             if not isinstance(contributes, Mapping):
@@ -7289,6 +7373,7 @@ class _BuilderBase:
         self._registration_when[component_id] = when
         if normalized_contributions is not None:
             self._contributions[component_id] = types.MappingProxyType(normalized_contributions)
+        self._service_groups[component_id] = service_groups
         self._registration_origins[component_id] = self._definition_origin("registration", component_id)
         for registrations in self._composition._registry._registrations.values():
             for registration in registrations:
@@ -7310,12 +7395,20 @@ class _BuilderBase:
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
+        groups: Iterable[ServiceGroup] = (),
     ) -> str:
         """Declare a structural factory template specialized only during build."""
         if not callable(factory):
             raise TypeError("register_pattern requires a callable factory")
         component_id = self.register(
-            service_type, factory=factory, lifespan=lifespan, name=name, arguments=arguments, tags=tags, when=when
+            service_type,
+            factory=factory,
+            lifespan=lifespan,
+            name=name,
+            arguments=arguments,
+            tags=tags,
+            when=when,
+            groups=groups,
         )
         self._pattern_ids.append(component_id)
         self._registration_origins[component_id] = self._definition_origin("registration-pattern", component_id)
@@ -7667,6 +7760,7 @@ class _BuilderBase:
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
+        groups: Iterable[ServiceGroup] = (),
     ) -> None:
         """Queue concrete subclass discovery for the next successful build.
 
@@ -7678,6 +7772,8 @@ class _BuilderBase:
         self._assert_mutable()
         if not isinstance(include_children, bool):
             raise TypeError("include_children must be a bool")
+        service_groups = _materialize_service_groups(groups)
+        _validate_service_groups(base_type, service_groups)
         self._registration_discoveries.append(
             _RegistrationDiscovery(
                 base_type=base_type,
@@ -7690,6 +7786,7 @@ class _BuilderBase:
                 name=name,
                 tags=tuple(tags or ()),
                 when=when,
+                groups=service_groups,
                 origin=self._definition_origin("registration", None),
             )
         )
@@ -7706,6 +7803,7 @@ class _BuilderBase:
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
+        groups: Iterable[ServiceGroup] = (),
     ) -> None:
         """Queue closed-generic subclass discovery for the build snapshot.
 
@@ -7717,6 +7815,8 @@ class _BuilderBase:
         self._assert_mutable()
         if not isinstance(include_children, bool):
             raise TypeError("include_children must be a bool")
+        service_groups = _materialize_service_groups(groups)
+        _validate_service_groups(generic_service_type, service_groups)
         self._registration_discoveries.append(
             _RegistrationDiscovery(
                 base_type=generic_service_type,
@@ -7729,6 +7829,7 @@ class _BuilderBase:
                 name=name,
                 tags=tuple(tags or ()),
                 when=when,
+                groups=service_groups,
                 origin=self._definition_origin("registration", None),
             )
         )
