@@ -1,0 +1,43 @@
+# 05 — Decorator compilation and activation
+
+Status: Not started. Dependency: 04 accepted.
+Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 03/04 handoffs.
+
+| Role | Model | Reasoning |
+| --- | --- | --- |
+| Code search | gpt-6-luna | low |
+| Implementation | gpt-6-astra | high |
+| Independent review | gpt-6-astra | high |
+
+Astra High is recommended for integration of exact source binding, target generics, filter context, and activation.
+
+## Bounded outcome
+
+Deliver the first end-to-end template feature on the root builder, using the existing decorator pipeline.
+
+## Search assignment
+
+Locate decorator materialization/argument inference, selection filters, order calculation, lifespan/cleanup,
+sync/async activation, and cached plans. Identify the M03/M04 interfaces and current ordinary-decorator tests.
+
+## Implementation assignment
+
+- Wire generated definitions into group/derived target selection and generic specialization.
+- Evaluate normal `when` against the completed undecorated target tree; all decorators see the same core facts.
+- Compile source argument selection by exact registration identity. Preserve source conditions/configuration,
+  generic specialization, and declared lifespan without reconstructing the source implementation.
+- Retain existing decorated-argument validation, callable/class support, async behaviour, cleanup, and target lifespan.
+- Apply positions and tie-breaking relative to ordinary decorators and source declaration order.
+- Prevent duplicate layers from repeated membership, multiple inheritance paths, or multiple resource matches.
+  Distinct templates remain additive even when they use the same decorator class.
+- Publish/export the agreed usable surface and maintain ordinary decorator compatibility.
+
+## Verification and review gate
+
+Use independent portable fixtures with two source families and targets using either, both, or neither.
+Cover group nonmembers, opt-out filters, descendant-only resources, decorator-introduced resources, factory/instance
+targets, open/pattern-backed closed requests, same-name TypeVars, and source/target declaration permutations.
+Verify sync/async success and failure cleanup and that runtime resolution/inspection does not rerun composition callbacks.
+
+Reviewer must check actual runtime instances/wrapper order and dependency identity, not only compiled graph shape.
+Document that full overlay/boundary/edit acceptance follows in M06; no release claim yet.
