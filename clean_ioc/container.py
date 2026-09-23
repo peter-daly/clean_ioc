@@ -26,6 +26,7 @@ from typing_extensions import TypeAliasType, TypeForm
 from . import _legacy as legacy
 from . import registration_patterns as patterns
 from ._legacy_configuration import default_parameter_value_factory
+from ._service_targets import _select_service_target, _ServiceTarget
 from .arguments import (
     INJECT,
     REMOVE,
@@ -55,7 +56,7 @@ from .generic_utils import _project_service_type, constructor_type
 from .generic_utils import resolve_typevar_bindings as _resolve_factory_typevars
 from .provider_maps import ProviderMapGroup
 from .providers import AsyncProvider, Provider
-from .service_groups import ServiceGroup
+from .service_groups import DerivedServices, ServiceGroup
 from .tooling import (
     BuildIssue,
     BuildReport,
@@ -2982,6 +2983,7 @@ class _Compiler:
                     self._patterns.setdefault(get_origin(candidate[0].service_type), []).append(candidate)
         self._pattern_sources: dict[str, str] = {}
         self._specialized_service_groups: dict[str, frozenset[ServiceGroup]] = {}
+        self._specialized_registration_sources: dict[str, legacy._Registration] = {}
         self._pattern_requests: dict[Any, None] = {}
         self._compiled_pre_configurations: dict[str, _CompiledPreConfiguration] = {}
         self._compiling_pre_configurations: set[str] = set()
@@ -4053,6 +4055,7 @@ class _Compiler:
                 rendered_name = name if isinstance(binding_key, str) else f"{name}#{seen[name]}"
                 rendered.append((rendered_name, qualified_name(value)))
             self._factory_pattern_bindings[specialized.id] = tuple(rendered)
+        self._specialized_registration_sources[specialized.id] = registration
         self._specialized_factories[key] = specialized
         self._specialized_service_groups[specialized.id] = layer.service_groups.get(registration.id, frozenset())
         if is_pattern:
@@ -4065,6 +4068,60 @@ class _Compiler:
             registration.id,
             layer.service_groups.get(registration.id, frozenset()),
         )
+
+    def _select_service_target(
+        self,
+        selector: ServiceGroup | DerivedServices,
+        registration: legacy._Registration,
+        layer: _Layer,
+        requested_service_type: Any,
+    ) -> _ServiceTarget | None:
+        """Project an already visible concrete candidate, preserving definition identity."""
+        source = self._specialized_registration_sources.get(registration.id, registration)
+        try:
+            return _select_service_target(
+                selector,
+                registration_id=source.id,
+                registered_service_type=source.service_type,
+                requested_service_type=requested_service_type,
+                groups=self._service_groups_for(registration, layer),
+            )
+        except (TypeError, ValueError) as error:
+            label = (
+                f"service group {selector.name!r}"
+                if isinstance(selector, ServiceGroup)
+                else f"derived services {selector.service_type!r}"
+            )
+            raise ContainerBuildError(
+                f"Registration {source.id} for {qualified_name(requested_service_type)} "
+                f"cannot satisfy {label}: {error}",
+                code="service-group-incompatible"
+                if isinstance(selector, ServiceGroup)
+                else "service-target-projection",
+                path=self._current_path(requested_service_type),
+            ) from error
+
+    def _select_service_targets(
+        self,
+        selector: ServiceGroup | DerivedServices,
+        candidates: Iterable[tuple[legacy._Registration, _Layer, Any]],
+    ) -> tuple[_ServiceTarget, ...]:
+        """Select a finite, already visible candidate stream in its existing order.
+
+        Repeated views of one definition/request/owner produce one target. This
+        does not discover requests or collapse distinct registrations of a class.
+        """
+        selected: list[_ServiceTarget] = []
+        seen: set[tuple[str, tuple[Any, ...], str]] = set()
+        for registration, layer, request in candidates:
+            target = self._select_service_target(selector, registration, layer, request)
+            if target is None:
+                continue
+            key = (target.registration_id, _runtime_type_key(normalize_type_alias(request)), layer.owner_token)
+            if key not in seen:
+                seen.add(key)
+                selected.append(target)
+        return tuple(selected)
 
     def _pattern_candidates(
         self, service_type: Any, registrations: list[tuple[legacy._Registration, _Layer]]
@@ -4619,6 +4676,11 @@ class _Compiler:
         requested_service_type: Any,
         origin: DefinitionOrigin,
     ) -> tuple[Component, _RegistrationStep]:
+        # Deferred membership constraints become enforceable only for the actual
+        # concrete request (constructors, factories and patterns share this seam).
+        groups = self._service_groups_for(registration, layer)
+        for group in sorted(groups, key=lambda item: (item.name, qualified_name(item.service_type))):
+            self._select_service_target(group, registration, layer, requested_service_type)
         map_definition = layer.provider_maps.get(registration.id)
         _validate_dependency_names(registration.implementation, registration.dependencies)
         if registration.lifespan == legacy.Lifespan.singleton and layer.owner_token in self._anchored_owner_tokens:

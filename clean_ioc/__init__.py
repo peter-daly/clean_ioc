@@ -50,7 +50,7 @@ from .graph_analysis import (
 from .metadata import Tag
 from .provider_maps import ProviderMapGroup
 from .providers import AsyncProvider, Provider
-from .service_groups import ServiceGroup
+from .service_groups import DerivedServices, ServiceGroup
 from .tooling import (
     BuildIssue,
     BuildReport,
@@ -106,6 +106,7 @@ __all__ = [
     "CompilationAttempt",
     "CompiledGraph",
     "DecisionOutcome",
+    "DerivedServices",
     "ContextualCacheCertainty",
     "ContextualCacheFinding",
     "DependencyImpact",

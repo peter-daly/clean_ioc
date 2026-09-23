@@ -27,6 +27,8 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 
 | 02 | Final handoff | Passed | `fa33b7f` | All previous gates verified; no public docs gate; M03 next |
 
-| 03 | Search | Passed; checkpoint pending | Pending | Luna Low `/root/m03_search`; [evidence](03-search.md) |
+| 03 | Search | Passed | `37a22f2` | Luna Low `/root/m03_search`; [evidence](03-search.md) |
 
-Implementation/review/documentation gates not listed here have not passed. M03 search in progress; M04–M10 have not started.
+| 03 | Implementation verification | Passed; checkpoint pending | Pending | Astra High `/root/m03_implementation`; [handoff](03-handoff.md); 352 focused tests; Python3.11 57 passed/1 expected skip; Ruff/ty/format/diff passed |
+
+Implementation/review/documentation gates not listed here have not passed. M03 implementation in progress; M04–M10 have not started.

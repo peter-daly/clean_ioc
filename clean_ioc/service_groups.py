@@ -1,4 +1,4 @@
-"""Identity declarations for explicit service membership."""
+"""Immutable declarations for registration-based service selection."""
 
 from __future__ import annotations
 
@@ -17,3 +17,10 @@ class ServiceGroup:
 
     name: str
     service_type: TypeForm[Any] = field(kw_only=True)
+
+
+@dataclass(frozen=True, slots=True)
+class DerivedServices:
+    """Select registered service contracts explicitly derived from this contract."""
+
+    service_type: TypeForm[Any]
