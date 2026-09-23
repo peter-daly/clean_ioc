@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 
 Lifespan: TypeAlias = Literal["transient", "per_resolution", "scoped", "singleton"]
 ValidationRuleMode: TypeAlias = Literal["build", "validation"]
+BundleRunScope: TypeAlias = Literal["boundary", "scope", "container"]
 K = TypeVar("K")
 TProviderService = TypeVar("TProviderService")
 
@@ -448,6 +449,8 @@ class ComponentBuilder(Protocol):
     id: str
 
     def apply_bundle(self, bundle: Callable[[ComponentBuilder], None]) -> None: ...
+
+    def bundle_run_key(self, per: BundleRunScope) -> str: ...
 
     def add_validation_rule(self, rule: ValidationRule, *, mode: ValidationRuleMode = "build") -> None: ...
 

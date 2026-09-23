@@ -1,3 +1,11 @@
+2.0.0b15
+--------
+
+    Let run-once bundles select ``run_once_per="boundary"``, ``"scope"``, or
+    ``"container"``. The default keeps per-builder behavior; wider choices
+    share a run history across boundaries and scope overlays.
+
+
 2.0.0b14
 --------
 

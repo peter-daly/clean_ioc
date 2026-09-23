@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import ClassVar
 from uuid import uuid4
 
-from clean_ioc import ComponentBuilder
+from clean_ioc.components import BundleRunScope, ComponentBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,8 @@ class BaseBundle(ABC):
 
 
 class RunOnceBundle(BaseBundle):
-    BUNDLE_RUN_HISTORY: ClassVar[dict[str, list[str]]] = defaultdict(list)
+    BUNDLE_RUN_HISTORY: ClassVar[dict[str, set[tuple[BundleRunScope, str]]]] = defaultdict(set)
+    run_once_per: ClassVar[BundleRunScope] = "boundary"
 
     @abstractmethod
     def apply(self, builder: ComponentBuilder): ...
@@ -29,14 +30,23 @@ class RunOnceBundle(BaseBundle):
     def __call__(self, builder: ComponentBuilder):
         bundle_identifier = self.get_bundle_identifier()
         bundle_containers = self.__class__.BUNDLE_RUN_HISTORY[bundle_identifier]
-        builder_id = builder.id
+        builder_id = builder.id if self.run_once_per == "boundary" else builder.bundle_run_key(self.run_once_per)
+        run_key = (self.run_once_per, builder_id)
 
-        if builder_id in bundle_containers:
-            logger.debug("Bundle %s attempted to run more than once on builder %s", bundle_identifier, builder_id)
+        if run_key in bundle_containers:
+            logger.debug(
+                "Bundle %s attempted to run more than once in %s %s",
+                bundle_identifier,
+                self.run_once_per,
+                builder_id,
+            )
             return
 
         self.apply(builder)
-        bundle_containers.append(builder_id)
+        bundle_containers.add(run_key)
+        claims = getattr(builder, "_bundle_run_claims", None)
+        if claims is not None:
+            claims.append((bundle_containers, run_key))
 
 
 class OnlyRunOncePerInstanceBundle(RunOnceBundle):

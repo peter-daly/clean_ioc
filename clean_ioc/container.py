@@ -36,6 +36,7 @@ from .arguments import (
 )
 from .boundaries import Boundary, Expose, Use
 from .components import (
+    BundleRunScope,
     Component,
     ComponentActivation,
     ComponentBuilder,
@@ -6842,6 +6843,8 @@ class _BuilderBase:
             for registration in registrations
         )
         self._owner_token = owner_token or str(uuid4())
+        self._bundle_container_id = self._owner_token
+        self._bundle_scope_id = self.id
         self._boundary_name = boundary_name
         self._composition_layer = composition_layer
         self._registration_when: dict[str, ComponentFilter] = {}
@@ -6869,6 +6872,15 @@ class _BuilderBase:
     def _assert_mutable(self) -> None:
         if self._built:
             raise BuilderAlreadyBuiltError("Builders are single-use after a successful build")
+
+    def bundle_run_key(self, per: BundleRunScope) -> str:
+        if per == "boundary":
+            return self.id
+        if per == "scope":
+            return self._bundle_scope_id
+        if per == "container":
+            return self._bundle_container_id
+        raise ValueError("per must be 'boundary', 'scope', or 'container'")
 
     def _effective_build_args(self, build_args: Mapping[str, Any] | None) -> Mapping[str, Any]:
         parent = getattr(self, "_parent", None)
@@ -6937,15 +6949,20 @@ class _BuilderBase:
             boundary_name=boundary.name,
             composition_layer="overlay" if hasattr(self, "_parent") else "root",
         )
-        private.apply_bundle(boundary.root_bundle)
-        self._boundaries.append(
-            _BoundaryBlueprint(
+        private._bundle_container_id = self._bundle_container_id
+        private._bundle_scope_id = self._bundle_scope_id
+        try:
+            private.apply_bundle(boundary.root_bundle)
+            blueprint = _BoundaryBlueprint(
                 name=boundary.name,
                 layer=private._layer(),
                 uses=tuple(boundary.uses),
                 exposes=tuple(boundary.exposes),
             )
-        )
+        except BaseException:
+            private._rollback_bundle_runs()
+            raise
+        self._boundaries.append(blueprint)
 
     def add_validation_rule(self, rule: ValidationRule, *, mode: ValidationRuleMode = "build") -> None:
         """Add a synchronous graph rule to the build or validation phase."""
@@ -7581,6 +7598,7 @@ class ScopeBuilder(_BuilderBase):
     def __init__(self, parent: Scope):
         super().__init__()
         self._parent = parent
+        self._bundle_container_id = parent.container._owned_token
 
     def install_boundary(self, boundary: Boundary) -> None:
         """Install a new overlay-owned boundary without reopening a parent."""
@@ -7621,3 +7639,11 @@ class ScopeBuilder(_BuilderBase):
 
 class _BoundaryBuilder(_BuilderBase):
     """Private ComponentBuilder used while applying a Boundary root bundle."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._bundle_run_claims: list[tuple[set[tuple[BundleRunScope, str]], tuple[BundleRunScope, str]]] = []
+
+    def _rollback_bundle_runs(self) -> None:
+        for history, key in reversed(self._bundle_run_claims):
+            history.discard(key)

@@ -1,8 +1,9 @@
 from unittest.mock import Mock
 
+import pytest
 from assertive import was_called, was_called_once, was_called_once_with, was_not_called
 
-from clean_ioc import ComponentBuilder, ContainerBuilder
+from clean_ioc import Boundary, ComponentBuilder, ContainerBuilder
 from clean_ioc.bundles import (
     BaseBundle,
     OnlyRunOncePerClassBundle,
@@ -168,3 +169,91 @@ def test_custom_run_once_bundle():
     assert spy1 == was_called_once()
     assert spy2 == was_called_once()
     assert spy3 == was_not_called()
+
+
+@pytest.mark.parametrize(
+    ("per", "expected_calls"),
+    [
+        ("boundary", 5),
+        ("scope", 3),
+        ("container", 1),
+    ],
+)
+def test_run_once_bundle_uniqueness_across_boundaries_and_scope_overlays(per, expected_calls):
+    calls: list[str] = []
+
+    class Once(OnlyRunOncePerClassBundle):
+        run_once_per = per
+
+        def apply(self, builder: ComponentBuilder):
+            calls.append(builder.id)
+
+    root = ContainerBuilder()
+    root.apply_bundle(Once())
+    root.apply_bundle(Once())
+    root.install_boundary(Boundary("first", Once()))
+    container = root.build()
+
+    overlay = container.new_scope_builder()
+    overlay.apply_bundle(Once())
+    overlay.install_boundary(Boundary("second", Once()))
+    overlay.build()
+
+    another_overlay = container.new_scope_builder()
+    another_overlay.install_boundary(Boundary("third", Once()))
+    another_overlay.build()
+
+    assert len(calls) == expected_calls
+
+
+def test_container_run_once_bundle_can_run_in_separate_containers():
+    calls: list[str] = []
+
+    class Once(OnlyRunOncePerInstanceBundle):
+        run_once_per = "container"
+
+        def apply(self, builder: ComponentBuilder):
+            calls.append(builder.id)
+
+    bundle = Once()
+    for _ in range(2):
+        builder = ContainerBuilder()
+        builder.apply_bundle(bundle)
+        builder.build()
+
+    assert len(calls) == 2
+
+
+def test_failed_boundary_releases_wider_run_once_claims():
+    calls: list[str] = []
+
+    class Once(OnlyRunOncePerInstanceBundle):
+        run_once_per = "container"
+
+        def apply(self, builder: ComponentBuilder):
+            calls.append(builder.id)
+
+    bundle = Once()
+
+    def failing(private_builder):
+        private_builder.apply_bundle(bundle)
+        raise RuntimeError("failed")
+
+    builder = ContainerBuilder()
+    with pytest.raises(RuntimeError, match="failed"):
+        builder.install_boundary(Boundary("first", failing))
+
+    builder.install_boundary(Boundary("second", bundle))
+    builder.build()
+    assert len(calls) == 2
+
+
+def test_run_once_bundle_rejects_unknown_uniqueness_scope():
+    class Once(OnlyRunOncePerInstanceBundle):
+        run_once_per = "invalid"
+
+        def apply(self, builder: ComponentBuilder):
+            raise AssertionError("should not run")
+
+    with pytest.raises(ValueError, match="per must be"):
+        ContainerBuilder().apply_bundle(Once())

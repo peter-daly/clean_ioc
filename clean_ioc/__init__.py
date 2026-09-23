@@ -3,6 +3,7 @@
 from .arguments import INJECT, REMOVE, ParameterContext, build_arg, derive, generic_arg, inject, select
 from .boundaries import Boundary, Expose, Use
 from .components import (
+    BundleRunScope,
     Component,
     ComponentActivation,
     ComponentBuilder,

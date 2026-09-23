@@ -64,9 +64,27 @@ class InfrastructureBundle(OnlyRunOncePerInstanceBundle):
         builder.register(Repository)
 ```
 
-Use `OnlyRunOncePerClassBundle` when every instance of the bundle class shares one identifier per builder. Extend `RunOnceBundle` and implement `get_bundle_identifier()` for a custom policy.
+Use `OnlyRunOncePerClassBundle` when every instance of the bundle class shares one identifier. Extend `RunOnceBundle` and implement `get_bundle_identifier()` for a custom policy.
 
-Run history is keyed by the builder's ID, not by a runtime container.
+The identifier answers **which bundle** is unique. Set `run_once_per` on a subclass to choose **where** it is unique:
+
+```python
+class SharedInfrastructure(OnlyRunOncePerClassBundle):
+    run_once_per = "container"
+
+    def apply(self, builder: ComponentBuilder):
+        builder.register(Database)
+```
+
+| `run_once_per` | One application per identifier in... |
+| --- | --- |
+| `"boundary"` (default) | Each root or scope builder, or each isolated boundary. This preserves the earlier per-builder behavior. |
+| `"scope"` | A root composition or one scope overlay, including all boundaries installed there. |
+| `"container"` | A root container composition and all its scope overlays and boundaries. |
+
+The choice applies to `RunOnceBundle`, `OnlyRunOncePerInstanceBundle`, and `OnlyRunOncePerClassBundle`. A scope overlay gets a fresh `"scope"` identity; nested runtime scopes without an overlay do not apply bundles. The same bundle can still run in a separate container. These are composition identities, not component lifespans or runtime caches.
+Use `"boundary"` when each isolated boundary needs its own registrations: a wider policy skips the bundle in later boundaries covered by the same scope or container.
+Custom `ComponentBuilder` implementations can support the wider choices by implementing `bundle_run_key(per: BundleRunScope) -> str`.
 
 ## Bundle-owned component IDs
 
