@@ -1,6 +1,6 @@
 # 09 — Standalone documentation and comprehension
 
-Status: F1 documentation repair technically accepted; fresh-reader round2 pending. Dependency: 08 accepted (`2ba08f2`).
+Status: Technical and fresh-reader comprehension gates accepted; final handoff pending. Dependency: 08 accepted (`2ba08f2`).
 Read the [workflow](README.md) and [documentation review protocol](documentation-review.md).
 Implementation/review agents may read the feature contract; the fresh reader must not receive it.
 

@@ -103,4 +103,6 @@ M07 review round 1 found three P2s; see [review](07-review.md). Original impleme
 
 | 09 | Implementation verification, documentation repair | Passed | `0457789` | Reader round1 retained as failed (19/20 plus core F1); explicit overlay order/example repaired; exactdocs/strictdocs/2nested tests/static pass |
 
-| 09 | Independent technical review, repair | Passed | Pending checkpoint | Astra High F1 repair accepted; exactdocs/strictdocs/2nestedtests/diff pass; fresh round2 required |
+| 09 | Independent technical review, repair | Passed | `87529ef` | Astra High F1 repair accepted; exactdocs/strictdocs/2nestedtests/diff pass; fresh round2 required |
+
+| 09 | Documentation comprehension | Passed round2 20/20 | Pending checkpoint | Fresh Luna Low `/root/m09_reader_r2`, Astra High examiner; [grade](09-reader-round2-grade.md); Q1–7full/nozero; both transfer programs pass; no core gaps |
