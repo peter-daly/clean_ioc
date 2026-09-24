@@ -63,4 +63,8 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 
 | 06 | Implementation verification, repair | Passed | `caa2dd3` | Shared layer traversal order repaired; 589 focused tests; Python3.11 366 passed/4 expected skips; Ruff/ty/format/diff and full-unit/lint/type commit hooks passed |
 
-Implementation/review/documentation gates not listed here have not passed. M06 independent review in progress; M07–M10 have not started.
+| 06 | Independent technical review | Passed round 2 | Pending evidence checkpoint | Astra High `/root/m06_review`; [review](06-review.md); 589 independent tests and original reproduction; all findings resolved |
+
+Checkpoint `98666ca` recorded the repair SHA only because the evidence-writing command could not find Python; this subsequent checkpoint records the review evidence. All hooks passed.
+
+Implementation/review/documentation gates not listed here have not passed. M06 final handoff pending; M07–M10 have not started.
