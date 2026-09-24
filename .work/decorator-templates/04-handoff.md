@@ -135,3 +135,15 @@ formatted**; diff check passes. No commits, public docs or bark-core changes.
 ## Final handoff
 
 Independent Astra High `/root/m04_review` accepted repair `65792c2` in round2; review checkpoint `b6b7c41`. Search `f831e3a`, initial verification `3e7e3dc`, repair verification `65792c2`. All full-unit/lint/type commit hooks passed. Final SHA recorded after commit in execution log. Public docs gate inapplicable. No remaining M04 blockers; M05 must wire the full generated selector compiler and actual visibility consistency check before exposing the agreed API. No bark-core edits or commits; unrelated work preserved.
+
+## Verified checkpoint index
+
+Coordinator completion audit; gate hashes resolve to local commit objects. The final M10 hash is filled after its commit.
+
+| Gate | Outcome | Local commit |
+| --- | --- | --- |
+| Search | Passed | `f831e3a` |
+| Implementation verification | Passed | `3e7e3dc` |
+| Implementation verification, repair | Passed | `65792c2` |
+| Independent technical review | Passed round 2 | `b6b7c41` |
+| Final handoff | Passed | `596e12a` |

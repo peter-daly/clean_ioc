@@ -1,6 +1,6 @@
 # Decorator templates — sequential milestones
 
-Status: Executing sequentially. M01–M09 accepted and committed; M10 search is blocked by agent capacity.
+Status: Complete. M01–M10 accepted with local checkpoint commits after every passed gate. See [completion record](completion.md) for checks, limits, and the uncommitted bark-core ledger.
 
 [Feature contract](../decorator-templates.md) is the source of truth for behaviour and constraints.
 This directory replaces that work item's broad implementation sequence with independently reviewable milestones.

@@ -113,3 +113,15 @@ No public docs, bark-core changes, commits, or M06 implementation were included 
 ## Final handoff
 
 Independent Astra High `/root/m05_review` accepted repair `f9cbaee` in round2; review checkpoint `636205b`. Search `e6bd146`, initial verification `1c508ea`, repair `f9cbaee`; all full-unit/lint/type commit hooks passed. Final SHA recorded after commit in execution log. Public docs gate inapplicable. M06 must complete overlay preview/build parity, inherited template/source/target additions and edits, visibility aliases and anchored ownership acceptance. No remaining M05 blockers, no bark-core edits/commits, unrelated work preserved.
+
+## Verified checkpoint index
+
+Coordinator completion audit; gate hashes resolve to local commit objects. The final M10 hash is filled after its commit.
+
+| Gate | Outcome | Local commit |
+| --- | --- | --- |
+| Search | Passed | `e6bd146` |
+| Implementation verification | Passed | `1c508ea` |
+| Implementation verification, repair | Passed | `f9cbaee` |
+| Independent technical review | Passed round 2 | `636205b` |
+| Final handoff | Passed | `d62c87e` |

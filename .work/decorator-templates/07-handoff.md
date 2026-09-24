@@ -46,3 +46,16 @@ The shifted-ID regression now builds a grandchild overlay and checks template/so
 ## Final gate record
 
 Accepted round3 by `/root/m07_review` (Astra High). Search `4e9174a`; implementation `d1d7ff7`; repairs `71183b8`, `6f454aa`; review `906452e`. Every checkpoint hook passed. Independent601 tests and five-generation shifted-ID probe passed; no unresolved findings. Original implementation agent was restored after transient capacity blockage. No public explanatory docs changed, so reader gate does not apply. Bark-core untouched; M08 may begin after final checkpoint.
+
+## Verified checkpoint index
+
+Coordinator completion audit; gate hashes resolve to local commit objects. The final M10 hash is filled after its commit.
+
+| Gate | Outcome | Local commit |
+| --- | --- | --- |
+| Search | Passed | `4e9174a` |
+| Implementation verification | Passed | `d1d7ff7` |
+| Implementation verification, repair | Passed | `71183b8` |
+| Implementation verification, repair 2 | Passed | `6f454aa` |
+| Independent technical review | Passed round 3 | `906452e` |
+| Final handoff | Passed | `2780e0e` |

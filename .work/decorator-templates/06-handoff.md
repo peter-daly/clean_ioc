@@ -92,3 +92,15 @@ were rerun after repair with the updated results shown. Ruff, ty, format and dif
 ## Final gate record
 
 Accepted after independent review round 2. Search `8800f1d`; implementation `c8998b9`; repair `caa2dd3`; review evidence `a23a5ac` (preceded by log-only checkpoint `98666ca`). All checkpoint hooks passed. Reviewer independently passed 589 focused tests and the original ordering reproduction. No unresolved M06 findings. No public documentation changes, so reader gate does not apply. Bark-core remains untouched. M07 should capture diagnostics and immutable inspection facts while preserving the accepted runtime and ownership behavior.
+
+## Verified checkpoint index
+
+Coordinator completion audit; gate hashes resolve to local commit objects. The final M10 hash is filled after its commit.
+
+| Gate | Outcome | Local commit |
+| --- | --- | --- |
+| Search | Passed | `8800f1d` |
+| Implementation verification | Passed | `c8998b9` |
+| Implementation verification, repair | Passed | `caa2dd3` |
+| Independent technical review | Passed round 2 | `a23a5ac` |
+| Final handoff | Passed | `34f19e6` |

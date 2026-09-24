@@ -36,3 +36,16 @@ The same reviewer then found that positional comparison still rejected `Service[
 Independent Astra High `/root/m02_review` accepted at `156abd5` in round 3. Review checkpoint `64958b4`. Search checkpoint `9cb82d7`; initial implementation `799d528`; verified repairs `541f611` and `156abd5`. All checkpoint full-unit/lint/type hooks passed. Public documentation gate inapplicable. Final handoff SHA recorded after commit in execution log.
 
 M03 consumes `_Layer.service_groups` and `_Compiler._service_groups_for(registration, layer)`; the latter accounts for compiler-local structural-pattern IDs. `_validate_service_groups` rejects known conflicts at declaration/normalization, while unresolved TypeVars, Callable parameter lists and satisfiable open union constraints remain deferred. M03 must enforce these constraints against actual closed target requests and supply a common explicit-group/DerivedServices projection interface. No template execution delivered yet. No bark-core changes or commits; unrelated graph plans preserved.
+
+## Verified checkpoint index
+
+Coordinator completion audit; gate hashes resolve to local commit objects. The final M10 hash is filled after its commit.
+
+| Gate | Outcome | Local commit |
+| --- | --- | --- |
+| Search | Passed | `9cb82d7` |
+| Implementation verification | Passed | `799d528` |
+| Implementation verification, repair | Passed | `541f611` |
+| Implementation verification, repair 2 | Passed | `156abd5` |
+| Independent technical review | Passed round 3 | `64958b4` |
+| Final handoff | Passed | `fa33b7f` |

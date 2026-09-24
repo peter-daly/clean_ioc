@@ -1,6 +1,6 @@
 # 10 — Regression checks and completion
 
-Status: Independent review accepted; all required available checks passed; final handoff pending. Dependency: 09 accepted (`9734712`), fresh reader20/20.
+Status: Complete; independent review accepted and final handoff passed. Dependency: 09 accepted (`9734712`), fresh reader20/20.
 Read the [workflow](README.md), feature contract, all accepted handoffs, and M09 technical/quiz evidence.
 
 | Role | Model | Reasoning |

@@ -42,3 +42,19 @@ Fresh `/root/m10_review`, `gpt-6-astra` high, requested one P2 retained-coverage
 The new portable test covers both `ServiceGroup` and `DerivedServices`, each with both policy declaration orders. The policies use separate `FirstPolicy`/`SecondPolicy` decorator classes, positions −7/+19, different descendant-resource filters, and two same-name source instances selected by exact registration ID. It asserts first-only, second-only, mixed and neither target layers. The mixed target must nest `SecondPolicy(second) → FirstPolicy(first) → core` regardless of declaration order. Factory-call counts remain two after all runtime resolutions, proving no callback replay in this case.
 
 Focused test verification: Python 3.11.13 **52 passed, 3 version skips**; 3.12.11 **52 passed, 3 version skips**; 3.13.5 **55 passed**; 3.14.4 **55 passed** for `tests/test_decorator_template_compilation.py`. The four new parametrized cases passed on every version. Ruff check, Ruff format check, ty check for the changed test file, and `git diff --check` passed. The earlier full `make ci`, pre-commit, strict docs, and FastAPI outcomes remain valid for the unchanged production and docs, but those full gates have not been rerun on this repaired test revision. The coordinator will run full required hooks for the repair checkpoint. Same Astra reviewer recheck and actual checkpoint records remain pending.
+
+## Final acceptance and handoff
+
+Astra High `/root/m10_review` accepted at ca3ff02 after narrow row7coverage repair. No remaining findings. Search fb041a3, verification14a9bfe, repairca3ff02, review3eb7e22. Final exactcheckpoint `make ci` passed739 tests (1upstream warning) and all other gates; `make pre-commit` passed all4hooks. New4case regression passes all3.11–3.14; earlier fullmatrix/compatibility evidence remains applicable, productionunchanged. Certified docs0457789 unchanged (48hashes), reader20/20 valid. Final checkpoint recorded below after commit. All10milestones accepted; actual limits and barkledger remain as above.
+
+## Verified checkpoint index
+
+Coordinator completion audit; gate hashes resolve to local commit objects. The final M10 hash is filled after its commit.
+
+| Gate | Outcome | Local commit |
+| --- | --- | --- |
+| Search | Passed | `fb041a3` |
+| Implementation verification | Passed | `14a9bfe` |
+| Implementation verification, coverage repair | Passed | `ca3ff02` |
+| Independent technical review | Passed round2 | `3eb7e22` |
+| Final handoff | Passed | Pending final checkpoint |

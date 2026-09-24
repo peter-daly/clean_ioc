@@ -1,6 +1,6 @@
 # Work item — Registration-driven decorator templates
 
-Status: M01–M09 accepted and committed, including local integration and fresh-reader documentation20/20. M10 final verification remains pending; agent capacity currently blocks its required fresh search role. Feature not yet marked complete.
+Status: Complete. All ten sequential milestones accepted, local verification passed, and fresh-reader documentation scored20/20. Gate checkpoints and explicit validation limits are recorded in decorator-templates/completion.md.
 
 Created: 2026-09-23
 
@@ -482,19 +482,19 @@ Python versions covered by the existing CI matrix. No implementation checks are 
 
 ## Definition of done
 
-- [ ] Public API and the behaviour above have executable portable coverage.
-- [ ] All ten sequential milestones have actual implementation/check evidence and independent Astra High acceptance.
-- [ ] Every passed gate in each milestone has a local clean-ioc checkpoint commit recorded in its handoff; no task commits were made in bark-core.
-- [ ] Explicit `ServiceGroup` and automatic `DerivedServices` targets share generic/visibility semantics and keep distinct selection policies.
-- [ ] Independent SQLAlchemy and DynamoDB templates select their own sources and compose correctly on mixed-resource handlers.
-- [ ] bark-core demonstrates UoW-driven decoration across explicit group members from existing and new handler families,
+- [x] Public API and the behaviour above have executable portable coverage.
+- [x] All ten sequential milestones have actual implementation/check evidence and independent Astra High acceptance.
+- [x] Every passed gate in each milestone has a local clean-ioc checkpoint commit recorded in its handoff; no task commits were made in bark-core.
+- [x] Explicit `ServiceGroup` and automatic `DerivedServices` targets share generic/visibility semantics and keep distinct selection policies.
+- [x] Independent SQLAlchemy and DynamoDB templates select their own sources and compose correctly on mixed-resource handlers.
+- [x] bark-core demonstrates UoW-driven decoration across explicit group members from existing and new handler families,
   including deferred discovery, without its per-service decorator loop or per-UoW handler-policy registration.
-- [ ] Resource/opt-out validation and async transaction behaviour remain correct in the local experiment.
-- [ ] Existing decorator semantics, boundary visibility, source identity, and anchored ownership remain intact.
-- [ ] Documentation and required clean-ioc checks pass; actual verification results and limitations are recorded.
-- [ ] Public documentation uses independently authored standalone examples and does not reference or adapt bark-core code.
-- [ ] A fresh Luna Low documentation reader has reviewed the final docs and passed the subsequent uncoached comprehension quiz.
-- [ ] bark-core has no task-created commits; any remaining local test-bed changes are explicitly listed.
+- [x] Resource/opt-out validation and async transaction behaviour remain correct in the local experiment.
+- [x] Existing decorator semantics, boundary visibility, source identity, and anchored ownership remain intact.
+- [x] Documentation and required clean-ioc checks pass; actual verification results and limitations are recorded.
+- [x] Public documentation uses independently authored standalone examples and does not reference or adapt bark-core code.
+- [x] A fresh Luna Low documentation reader has reviewed the final docs and passed the subsequent uncoached comprehension quiz.
+- [x] bark-core has no task-created commits; any remaining local test-bed changes are explicitly listed.
 
 Out of scope: runtime hot registration, structural protocol discovery, infinite/open-generic source expansion, generic
 registration event hooks, automatic distributed transactions, and a committed bark-core migration.

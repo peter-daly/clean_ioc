@@ -242,3 +242,15 @@ and the feasibility tests. Format and diff checks pass. The focused repair regre
 tests/test_compiler_tooling.py tests/test_resource_ownership.py tests/test_boundaries.py -q --disable-warnings --maxfail=3`
 passed **277 tests in 2.41s**. No commits, M02
 implementation, public documentation, or bark-core changes were made by this repair turn.
+
+## Verified checkpoint index
+
+Coordinator completion audit; gate hashes resolve to local commit objects. The final M10 hash is filled after its commit.
+
+| Gate | Outcome | Local commit |
+| --- | --- | --- |
+| Search | Passed | `da20679d89cf0779c8c30365196375901f62e8b5` |
+| Implementation verification | Passed | `ae33390c8e255a2a0c386cfc36bae42e2de0af6c` |
+| Independent technical review | Passed round 2 | `0815f6d9afec9dd25d1606b72218d36e9122a63d` |
+| Implementation verification, repair | Passed | `2179fa6fc5660cd4f960a7fc89258bde3de9136a` |
+| Final handoff | Passed | `485e27d` |

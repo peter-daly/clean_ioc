@@ -34,3 +34,17 @@ The initial separate Astra High technical review passed before the first reader 
 ## Final gate record
 
 Accepted with original independent authorship intact. Search `487b304`; verification `1507ef2`; technical review `f56369a`; F1 repair `0457789`; technical recheck `87529ef`; comprehension `5b64ccd`. All commit hooks passed. Round1 retained failed gate19/20 due core overlay-order omission; repaired public revision0457789 then NEW fresh Luna Low `/root/m09_reader_r2` passed20/20 after neutral review and uncoached quiz, graded by `/root/m09_review` Astra High. Exact packet hashes/prompts/reviews/answers/grades retained internally; both transfer programs passed. No remaining core documentation gaps or technical findings. Optional clarity suggestions dispositioned in round2grade. No bark/production changes in M09. M10 must preserve this certified public revision or reopen reader gate for substantive changes.
+
+## Verified checkpoint index
+
+Coordinator completion audit; gate hashes resolve to local commit objects. The final M10 hash is filled after its commit.
+
+| Gate | Outcome | Local commit |
+| --- | --- | --- |
+| Search | Passed | `487b304` |
+| Implementation verification | Passed | `1507ef2` |
+| Independent technical review | Passed | `f56369a` |
+| Implementation verification, documentation repair | Passed | `0457789` |
+| Independent technical review, repair | Passed | `87529ef` |
+| Documentation comprehension | Passed round2 20/20 | `5b64ccd` |
+| Final handoff | Passed | `9734712` |

@@ -106,3 +106,15 @@ format (**6 files**) and diff checks passed. No commits, public documentation or
 ## Final handoff
 
 Independent Astra High `/root/m03_review` accepted repaired implementation `daa8871` in round2; review checkpoint `c652a5f`. Search checkpoint `37a22f2`, initial verification `60cf3a2`, repair verification `daa8871`; all full-unit/lint/type commit hooks passed. Final SHA recorded after commit in execution log. No public docs gate applies. M04 consumes the selector/projection and identity-binding interfaces above, plus accepted M01 source-core inspection and visibility consistency staging. No remaining M03 blockers; explicit supported-inference limits remain as documented. No bark-core edits or commits, unrelated graph plans preserved.
+
+## Verified checkpoint index
+
+Coordinator completion audit; gate hashes resolve to local commit objects. The final M10 hash is filled after its commit.
+
+| Gate | Outcome | Local commit |
+| --- | --- | --- |
+| Search | Passed | `37a22f2` |
+| Implementation verification | Passed | `60cf3a2` |
+| Implementation verification, repair | Passed | `daa8871` |
+| Independent technical review | Passed round 2 | `c652a5f` |
+| Final handoff | Passed | `530a725` |

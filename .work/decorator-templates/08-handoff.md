@@ -60,3 +60,14 @@ Review the complete bark diff and the new untracked test file, especially active
 ## Final gate record
 
 Accepted by `/root/m08_review` Astra High;409 independent tests plus closed-generic source probe, no findings. Search `1818392`; verification `0f63ace`; review `827964d`. All commit hooks passed. No public docs changed; no reader gate applies. All12 local bark ledger files remain uncommitted at original HEAD; no dependency/env edits. M09 author must not read or use this integration record or bark code; use standalone Clean IoC material.
+
+## Verified checkpoint index
+
+Coordinator completion audit; gate hashes resolve to local commit objects. The final M10 hash is filled after its commit.
+
+| Gate | Outcome | Local commit |
+| --- | --- | --- |
+| Search | Passed | `1818392` |
+| Implementation verification | Passed | `0f63ace` |
+| Independent technical review | Passed | `827964d` |
+| Final handoff | Passed | `2ba08f2` |
