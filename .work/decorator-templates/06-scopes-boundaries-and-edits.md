@@ -1,6 +1,6 @@
 # 06 — Composition edits, scopes, and boundaries
 
-Status: Implementation verified; independent review pending. Dependency: 05 accepted (`d62c87e`).
+Status: Independent review requested shared ordinary/template collision-order repair; verification reopened. Dependency: 05 accepted (`d62c87e`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 05 handoff.
 
 | Role | Model | Reasoning |

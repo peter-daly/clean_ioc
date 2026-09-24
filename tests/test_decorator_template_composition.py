@@ -723,3 +723,59 @@ def test_overlay_owned_generated_resources_close_with_overlay_after_nested_activ
         assert len([event for event in exits if event[0] == "exit-wrapper"]) == 2
     assert events[-1] == ("exit-source", "root")
     assert len([event for event in events if event[0] == "exit-wrapper"]) == 3
+
+
+@pytest.mark.parametrize("parent_kind", ["ordinary", "template"])
+@pytest.mark.parametrize("local_kind", ["ordinary", "template"])
+@pytest.mark.parametrize("patch_first", [False, True])
+@pytest.mark.parametrize("source_count", [1, 2])
+def test_shared_layer_tie_order_is_independent_of_decorator_kind_and_stable_on_repatch(
+    parent_kind, local_kind, patch_first, source_count
+):
+    sources = [Source() for _ in range(source_count)]
+
+    def register(builder, kind, label):
+        if kind == "template":
+            return builder.register_decorator_template(
+                for_each=Source, template=template_for(DerivedServices(Target), label)
+            )
+        return builder.register_decorator(Target, Wrapper, arguments={"source": sources[0], "label": label})
+
+    def patch(builder, kind, definition_id, label):
+        if kind == "template":
+            builder.patch_decorator_template(definition_id, template=template_for(DerivedServices(Target), label))
+        else:
+            builder.patch_decorator(Target, definition_id, arguments={"label": label})
+
+    def layers(kind, label):
+        return [(label, source) for source in (sources if kind == "template" else sources[:1])]
+
+    builder = ContainerBuilder()
+    for index, source in enumerate(sources):
+        builder.register(Source, instance=source, name=str(index))
+    builder.register(Target)
+    inherited = register(builder, parent_kind, "parent")
+    with builder.build() as root:
+        overlay = root.new_scope_builder()
+        if patch_first:
+            patch(overlay, parent_kind, inherited, "patched")
+        local = register(overlay, local_kind, "local")
+        if not patch_first:
+            patch(overlay, parent_kind, inherited, "patched")
+        # Updating either kind in place preserves the first insertion into the layer.
+        patch(overlay, parent_kind, inherited, "patched-again")
+        patch(overlay, local_kind, local, "local-again")
+        with overlay.build() as child:
+            expected_parent = layers(parent_kind, "patched-again")
+            expected_local = layers(local_kind, "local-again")
+            expected = expected_local + expected_parent if patch_first else expected_parent + expected_local
+            assert unwrap(child.resolve(Target))[0] == expected
+            layer = child._plan.blueprint.layers[0]
+            assert layer.decorator_declaration_ids == ((inherited, local) if patch_first else (local, inherited))
+            assert {
+                (definition.id, definition.order) for definition in (*layer.decorators, *layer.decorator_templates)
+            } == {(inherited, 0), (local, 0)}
+            nested = child.new_scope_builder()
+            with nested.build() as grandchild:
+                assert unwrap(grandchild.resolve(Target))[0] == expected
+        assert unwrap(root.resolve(Target))[0] == layers(parent_kind, "parent")

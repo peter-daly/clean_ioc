@@ -535,6 +535,7 @@ class _Layer:
     pattern_ids: tuple[str, ...]
     ensured_import_modules: tuple[str, ...]
     decorator_templates: tuple[_DecoratorTemplateDefinition, ...] = ()
+    decorator_declaration_ids: tuple[str, ...] = ()
     removed_template_ids: frozenset[str] = frozenset()
     instance_implementation_types: Mapping[str, Any] = field(default_factory=lambda: types.MappingProxyType({}))
 
@@ -6179,14 +6180,17 @@ class _Compiler:
             )
             definitions.append((definition, declaration_layer))
             generated[candidate.id] = candidate, target
-        # Patched inherited declarations keep their ordinal in the local layer,
-        # where it can equal a local declaration's ordinal. Preserve the stable
-        # declaration traversal tie-break before ordering sources within a template.
-        declaration_ranks: dict[str, int] = {}
+        # Patches keep their original ordinal, which can collide with a local
+        # declaration. Break these ties by insertion into the shared layer
+        # sequence, independently of whether the declaration is a template.
+        declaration_ranks = {
+            id(item): {declaration_id: rank for rank, declaration_id in enumerate(item.decorator_declaration_ids)}
+            for item in area_layers
+        }
         definition_ranks: dict[str, int] = {}
-        for definition, _ in definitions:
+        for definition, declaration_layer in definitions:
             declaration_id = generated[definition.id][0].declaration.id if definition.id in generated else definition.id
-            definition_ranks[definition.id] = declaration_ranks.setdefault(declaration_id, len(declaration_ranks))
+            definition_ranks[definition.id] = declaration_ranks[id(declaration_layer)].get(declaration_id, 0)
         definitions.sort(
             key=lambda item: (
                 item[0].position,
@@ -7830,6 +7834,7 @@ class _BuilderBase:
         self._pattern_ids: list[str] = []
         self._decorators: list[_DecoratorDefinition] = []
         self._decorator_templates: list[_DecoratorTemplateDefinition] = []
+        self._decorator_declaration_ids: list[str] = []
         self._removed_template_ids: set[str] = set()
         self._instance_implementation_types: dict[str, Any] = {}
         self._removed_decorator_ids: set[str] = set()
@@ -7944,6 +7949,7 @@ class _BuilderBase:
             pattern_ids=tuple(self._pattern_ids),
             ensured_import_modules=ensured_import_modules,
             decorator_templates=tuple(self._decorator_templates),
+            decorator_declaration_ids=tuple(self._decorator_declaration_ids),
             removed_template_ids=frozenset(self._removed_template_ids),
             instance_implementation_types=types.MappingProxyType(dict(self._instance_implementation_types)),
         )
@@ -8307,6 +8313,7 @@ class _BuilderBase:
                 origin=self._definition_origin("decorator-template", definition_id),
             )
         )
+        self._decorator_declaration_ids.append(definition_id)
         return definition_id
 
     def _find_decorator_template(self, template_id: str) -> _DecoratorTemplateDefinition | None:
@@ -8357,12 +8364,14 @@ class _BuilderBase:
                 break
         else:
             self._decorator_templates.append(patched)
+            self._decorator_declaration_ids.append(template_id)
 
     def remove_decorator_template(self, template_id: str) -> None:
         self._assert_mutable()
         if self._find_decorator_template(template_id) is None:
             raise KeyError(template_id)
         self._decorator_templates = [item for item in self._decorator_templates if item.id != template_id]
+        self._decorator_declaration_ids = [item for item in self._decorator_declaration_ids if item != template_id]
         self._removed_template_ids.add(template_id)
 
     _register_decorator_template = register_decorator_template
@@ -8408,6 +8417,7 @@ class _BuilderBase:
                 origin=self._definition_origin("decorator", decorator_id),
             )
         )
+        self._decorator_declaration_ids.append(decorator_id)
         return decorator_id
 
     def _find_decorator_definition(
@@ -8474,6 +8484,7 @@ class _BuilderBase:
                 break
         else:
             self._decorators.append(patched)
+            self._decorator_declaration_ids.append(decorator_id)
         self._removed_decorator_ids.discard(decorator_id)
 
     def remove_decorator(self, service_type: Any, decorator_id: str) -> None:
@@ -8482,6 +8493,7 @@ class _BuilderBase:
         if self._find_decorator_definition(service_type, decorator_id) is None:
             raise KeyError(f"No decorator found for {service_type} with ID {decorator_id}")
         self._decorators = [definition for definition in self._decorators if definition.id != decorator_id]
+        self._decorator_declaration_ids = [item for item in self._decorator_declaration_ids if item != decorator_id]
         self._removed_decorator_ids.add(decorator_id)
 
     def pre_configure(
