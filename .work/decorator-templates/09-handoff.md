@@ -30,3 +30,7 @@ Repair verification: exact two guide programs via `uv run python scripts/validat
 ## Remaining gate work
 
 The initial separate Astra High technical review passed before the first reader round. The first reader scored 19/20, but the examiner correctly held the gate because cross-layer ordering was not explicit. See `09-reader-round1-grade.md` for the preserved result. The coordinator should request Astra recheck of this narrow repair, then conduct an isolated NEW fresh Luna Low neutral review and later quiz per `documentation-review.md`. This handoff records no comprehension acceptance for round 1 or for the revised guide.
+
+## Final gate record
+
+Accepted with original independent authorship intact. Search `487b304`; verification `1507ef2`; technical review `f56369a`; F1 repair `0457789`; technical recheck `87529ef`; comprehension `5b64ccd`. All commit hooks passed. Round1 retained failed gate19/20 due core overlay-order omission; repaired public revision0457789 then NEW fresh Luna Low `/root/m09_reader_r2` passed20/20 after neutral review and uncoached quiz, graded by `/root/m09_review` Astra High. Exact packet hashes/prompts/reviews/answers/grades retained internally; both transfer programs passed. No remaining core documentation gaps or technical findings. Optional clarity suggestions dispositioned in round2grade. No bark/production changes in M09. M10 must preserve this certified public revision or reopen reader gate for substantive changes.
