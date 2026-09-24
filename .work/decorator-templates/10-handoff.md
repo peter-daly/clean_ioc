@@ -45,11 +45,11 @@ Focused test verification: Python 3.11.13 **52 passed, 3 version skips**; 3.12.1
 
 ## Final acceptance and handoff
 
-Astra High `/root/m10_review` accepted at ca3ff02 after narrow row7coverage repair. No remaining findings. Search fb041a3, verification14a9bfe, repairca3ff02, review3eb7e22. Final exactcheckpoint `make ci` passed739 tests (1upstream warning) and all other gates; `make pre-commit` passed all4hooks. New4case regression passes all3.11–3.14; earlier fullmatrix/compatibility evidence remains applicable, productionunchanged. Certified docs0457789 unchanged (48hashes), reader20/20 valid. Final checkpoint recorded below after commit. All10milestones accepted; actual limits and barkledger remain as above.
+Astra High `/root/m10_review` accepted at ca3ff02 after narrow row7coverage repair. No remaining findings. Search fb041a3, verification14a9bfe, repairca3ff02, review3eb7e22. Final exactcheckpoint `make ci` passed739 tests (1upstream warning) and all other gates; `make pre-commit` passed all4hooks. New4case regression passes all3.11–3.14; earlier fullmatrix/compatibility evidence remains applicable, productionunchanged. Certified docs0457789 unchanged (48hashes), reader20/20 valid. Final handoff checkpoint: `2e3e276`. All10milestones accepted; actual limits and barkledger remain as above.
 
 ## Verified checkpoint index
 
-Coordinator completion audit; gate hashes resolve to local commit objects. The final M10 hash is filled after its commit.
+Coordinator completion audit; gate hashes resolve to local commit objects. Hashes were recorded after each gate checkpoint.
 
 | Gate | Outcome | Local commit |
 | --- | --- | --- |
@@ -57,4 +57,4 @@ Coordinator completion audit; gate hashes resolve to local commit objects. The f
 | Implementation verification | Passed | `14a9bfe` |
 | Implementation verification, coverage repair | Passed | `ca3ff02` |
 | Independent technical review | Passed round2 | `3eb7e22` |
-| Final handoff | Passed | Pending final checkpoint |
+| Final handoff | Passed | `2e3e276` |

@@ -95,7 +95,7 @@ Accepted after independent review round 2. Search `8800f1d`; implementation `c89
 
 ## Verified checkpoint index
 
-Coordinator completion audit; gate hashes resolve to local commit objects. The final M10 hash is filled after its commit.
+Coordinator completion audit; gate hashes resolve to local commit objects. Hashes were recorded after each gate checkpoint.
 
 | Gate | Outcome | Local commit |
 | --- | --- | --- |

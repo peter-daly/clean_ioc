@@ -1,6 +1,6 @@
 # Decorator templates — completion record
 
-All ten sequential milestones are accepted on branch `codex/decorator-templates`. Every passed gate has a local checkpoint; see [execution log](execution-log.md) and verified indexes in each milestone handoff. Final M10 checkpoint will be recorded after commit. No push, release, or remote publication was performed.
+All ten sequential milestones are accepted on branch `codex/decorator-templates`. Every passed gate has a local checkpoint; see [execution log](execution-log.md) and verified indexes in each milestone handoff. Final M10 handoff checkpoint: `2e3e276`. No push, release, or remote publication was performed.
 
 ## Delivered
 
