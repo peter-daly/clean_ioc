@@ -101,4 +101,6 @@ M07 review round 1 found three P2s; see [review](07-review.md). Original impleme
 
 | 09 | Independent technical review | Passed | `f56369a` | Astra High `/root/m09_review`; [review](09-review.md); validator/strictdocs/190tests/static pass; reader gate pending |
 
-| 09 | Implementation verification, documentation repair | Passed | Pending checkpoint | Reader round1 retained as failed (19/20 plus core F1); explicit overlay order/example repaired; exactdocs/strictdocs/2nested tests/static pass |
+| 09 | Implementation verification, documentation repair | Passed | `0457789` | Reader round1 retained as failed (19/20 plus core F1); explicit overlay order/example repaired; exactdocs/strictdocs/2nested tests/static pass |
+
+| 09 | Independent technical review, repair | Passed | Pending checkpoint | Astra High F1 repair accepted; exactdocs/strictdocs/2nestedtests/diff pass; fresh round2 required |

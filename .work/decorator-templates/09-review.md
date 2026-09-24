@@ -7,3 +7,7 @@ Independent validator, strict MkDocs build, **190 template/group tests**, Ruff/f
 ## Fresh-reader round 1 reopened documentation gate
 
 Examiner graded19/20,Q1–7 full,nozero, but failed gate for core overlay source precedence omission. See verbatim review/answers, exact questions and [grade](09-reader-round1-grade.md). Required clarification nearest overlay before inherited layers, declaration order within layer, same-template/equal-position/overlay-owned scope and nested example. Q10 alternative missing import is reader error; other suggestions nonblocking. Original author assigned repair; no acceptance claimed.
+
+## Technical repair accepted
+
+Astra High rechecked public `1507ef2..0457789`: explicit nearest-overlay order/layer declaration order, scoped same-template/equal-position/overlay-owned case and position/anchoring caveats resolve F1. Independent exactdocs, strict MkDocs,2nested tests and diff check pass. New round2 quiz prepared separately; unchanged rubric, no answers/coaching. New fresh reader required.
