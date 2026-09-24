@@ -1,6 +1,6 @@
 # Work item — Registration-driven decorator templates
 
-Status: In progress; M01–M04 accepted, M05 decorator activation next. Feature implementation incomplete.
+Status: M01–M09 accepted and committed, including local integration and fresh-reader documentation20/20. M10 final verification remains pending; agent capacity currently blocks its required fresh search role. Feature not yet marked complete.
 
 Created: 2026-09-23
 

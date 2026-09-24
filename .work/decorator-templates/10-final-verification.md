@@ -1,6 +1,6 @@
 # 10 — Regression checks and completion
 
-Status: Not started. Dependency: 09 accepted.
+Status: Search blocked by collaboration `agent thread limit reached`; no M10 gate passed. Dependency: 09 accepted (`9734712`), fresh reader20/20.
 Read the [workflow](README.md), feature contract, all accepted handoffs, and M09 technical/quiz evidence.
 
 | Role | Model | Reasoning |
