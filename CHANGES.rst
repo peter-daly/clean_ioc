@@ -1,3 +1,26 @@
+Unreleased
+----------
+
+    Add ``scope="per_call"`` for method-only service contracts. Resolving a
+    service obtains a deferred handle; each synchronous or asynchronous method
+    invocation activates the decorated implementation in a fresh isolated
+    scope and closes that scope afterward. Registration ``lifespan="auto"``
+    remains ``per_resolution`` by default and normalizes to ``scoped`` for
+    per-call targets. Graph manifests now expose a deferred per-call handle
+    and its invocation target, changing manifest semantics for these new
+    registrations without versioning the beta tooling format.
+
+    Allow method-only ABC contracts whose public operations use private
+    abstract helpers. The handle implements those private members with
+    raising stubs while public calls dispatch to the scoped implementation.
+
+    Reject contract hooks and behavioral special methods that cannot safely
+    run on a deferred handle. Handle representation, equality, and hashing
+    use object identity. Reject statically declared fluent target results and
+    direct returns of invocation targets or their bound methods before the
+    invocation scope closes.
+
+
 2.0.0b17
 --------
 

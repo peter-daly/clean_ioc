@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import abc
+import ast
 import asyncio
 import concurrent.futures
 import copy
@@ -15,7 +17,16 @@ import threading
 import types
 import typing
 from collections import defaultdict, deque
-from collections.abc import Callable, Hashable, Iterable, Iterator, Mapping
+from collections.abc import (
+    AsyncGenerator,
+    AsyncIterator,
+    Callable,
+    Generator,
+    Hashable,
+    Iterable,
+    Iterator,
+    Mapping,
+)
 from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 from typing import Any, TypeVar, cast, get_args, get_origin, overload
@@ -23,6 +34,8 @@ from uuid import UUID, uuid4, uuid5
 
 from typetoolbox.generics import GenericTypeMap, get_generic_mapping
 from typing_extensions import NoDefault, TypeAliasType, TypeForm
+from typing_extensions import Protocol as ExtensionsProtocol
+from typing_extensions import Self as ExtensionsSelf
 
 from . import _legacy as legacy
 from . import registration_patterns as patterns
@@ -53,7 +66,9 @@ from .components import (
     ComponentFilter,
     ComponentKind,
     Lifespan,
+    LifespanPolicy,
     RuntimeOwnerKind,
+    ScopePolicy,
     ValidationRuleMode,
     _ComponentDraft,
     _ComponentGraph,
@@ -263,6 +278,17 @@ def _legacy_lifespan(lifespan: Lifespan) -> legacy.Lifespan:
 
 def _component_lifespan(lifespan: legacy.Lifespan) -> Lifespan:
     return lifespan.name
+
+
+def _component_policy(lifespan: LifespanPolicy, scope: ScopePolicy) -> legacy.Lifespan:
+    if scope not in ("current", "per_call"):
+        raise ValueError(f"scope must be 'current' or 'per_call'; got {scope!r}")
+    if lifespan == "auto":
+        return legacy.Lifespan.scoped if scope == "per_call" else legacy.Lifespan.per_resolution
+    concrete = _legacy_lifespan(lifespan)
+    if scope == "per_call" and concrete is not legacy.Lifespan.scoped:
+        raise ValueError("scope='per_call' requires lifespan='auto' or 'scoped'")
+    return concrete
 
 
 def _normalize_build_args(build_args: Mapping[str, Any] | None) -> Mapping[str, Any]:
@@ -519,6 +545,7 @@ class _DecoratorUnset:
 
 
 _DECORATOR_UNSET = _DecoratorUnset()
+_SCOPE_UNSET = object()
 
 
 @dataclass(frozen=True, slots=True)
@@ -527,6 +554,7 @@ class _Layer:
     internal_ids: frozenset[str]
     owner_token: str
     registration_when: dict[str, ComponentFilter]
+    registration_policies: Mapping[str, tuple[LifespanPolicy, ScopePolicy]]
     registration_origins: dict[str, DefinitionOrigin]
     factory_ids: frozenset[str]
     factory_specializations: dict[str, object]
@@ -2024,6 +2052,8 @@ class _RegistrationDiscovery:
     ensure_import_modules: tuple[str, ...]
     include_children: bool
     lifespan: legacy.Lifespan
+    lifespan_policy: LifespanPolicy
+    scope_policy: ScopePolicy
     subclass_type_filter: Callable[[type], bool]
     name: str | None
     tags: tuple[legacy.Tag, ...]
@@ -2056,6 +2086,7 @@ class _RegistrationDiscovery:
         self,
         registry: legacy._Registry,
         registration_when: dict[str, ComponentFilter],
+        registration_policies: dict[str, tuple[LifespanPolicy, ScopePolicy]],
         registration_origins: dict[str, DefinitionOrigin],
         service_groups: dict[str, frozenset[ServiceGroup]],
     ) -> None:
@@ -2074,6 +2105,7 @@ class _RegistrationDiscovery:
             registration = self._registration_for(subclass, service_type)
             _index_registration(registry, registration)
             registration_when[registration.id] = self.when
+            registration_policies.setdefault(registration.id, (self.lifespan_policy, self.scope_policy))
             service_groups[registration.id] = self.groups
             registration_origins[registration.id] = replace(
                 self.origin,
@@ -2091,6 +2123,7 @@ class _RegistrationDiscovery:
                 )
             _index_registration(registry, self.fallback_registration)
             registration_when[self.fallback_registration.id] = self.when
+            registration_policies.setdefault(self.fallback_registration.id, (self.lifespan_policy, self.scope_policy))
             service_groups[self.fallback_registration.id] = self.groups
             registration_origins[self.fallback_registration.id] = replace(
                 self.origin,
@@ -2277,6 +2310,513 @@ class _ProviderStep(_Step):
         if self.mode == "sync":
             return _FrozenProvider(scope, self.target)
         return _FrozenAsyncProvider(scope, self.target)
+
+    async def resolve_async(self, context: _RuntimeResolutionContext) -> Any:
+        return self.resolve(context)
+
+
+def _per_call_methods(service_type: Any) -> tuple[tuple[str, Callable[..., Any], bool], ...]:
+    contract = get_origin(service_type) or service_type
+    if not isinstance(contract, type):
+        raise ContainerBuildError(
+            f"Per-call service {qualified_name(service_type)} must be a class, Protocol, or ABC",
+            code="per-call-unsupported-contract",
+        )
+    if type(contract) not in (type, abc.ABCMeta, type(typing.Protocol), type(ExtensionsProtocol)):
+        raise ContainerBuildError(
+            f"Per-call service {qualified_name(service_type)} has a custom metaclass",
+            code="per-call-unsupported-contract",
+        )
+    for base in contract.__mro__:
+        if base in (object, typing.Protocol, ExtensionsProtocol, typing.Generic, abc.ABC):
+            continue
+        for name in ("__new__", "__init_subclass__"):
+            if name in base.__dict__:
+                raise ContainerBuildError(
+                    f"Per-call service {qualified_name(service_type)} has unsupported {name!r} hook",
+                    code="per-call-unsupported-contract",
+                )
+    members: dict[str, Any] = {}
+    annotations: dict[str, Any] = {}
+    for base in reversed(contract.__mro__):
+        if base in (object, typing.Protocol, ExtensionsProtocol, typing.Generic, abc.ABC):
+            continue
+        declared_annotations = getattr(base, "__annotations__", {})
+        for name in base.__dict__:
+            if name not in declared_annotations:
+                annotations.pop(name, None)
+        annotations.update(declared_annotations)
+        members.update(base.__dict__)
+    for name in ("_per_call_scope", "_per_call_target"):
+        if name in members or name in annotations:
+            raise ContainerBuildError(
+                f"Per-call service {qualified_name(service_type)} uses reserved handle member {name!r}",
+                code="per-call-unsupported-member",
+            )
+    for name, annotation in annotations.items():
+        if not name.startswith("_") and not _per_call_classvar_annotation(annotation):
+            raise ContainerBuildError(
+                f"Per-call service {qualified_name(service_type)} declares public instance data {name!r}",
+                code="per-call-unsupported-member",
+            )
+    supported_specials = frozenset(
+        (
+            "__init__",
+            "__call__",
+            "__repr__",
+            "__str__",
+            "__eq__",
+            "__hash__",
+            "__class_getitem__",
+            "__subclasshook__",
+            "__annotate_func__",
+            "__replace__",
+        )
+    )
+    class_metadata = frozenset(
+        (
+            "__module__",
+            "__doc__",
+            "__qualname__",
+            "__annotations__",
+            "__annotate__",
+            "__dict__",
+            "__weakref__",
+            "__slots__",
+            "__match_args__",
+            "__orig_bases__",
+            "__parameters__",
+            "__type_params__",
+            "__dataclass_fields__",
+            "__dataclass_params__",
+            "__abstractmethods__",
+            "__isabstractmethod__",
+            "__firstlineno__",
+            "__static_attributes__",
+            "__annotations_cache__",
+            "__protocol_attrs__",
+            "__non_callable_proto_members__",
+        )
+    )
+    for name in members:
+        if name.startswith("__") and name.endswith("__") and name not in supported_specials | class_metadata:
+            raise ContainerBuildError(
+                f"Per-call service {qualified_name(service_type)} has unsupported special method {name!r}",
+                code="per-call-unsupported-member",
+            )
+    methods: list[tuple[str, Callable[..., Any], bool]] = []
+    for name, member in members.items():
+        if name.startswith("_") and name != "__call__":
+            continue
+        if name in annotations and _per_call_classvar_annotation(annotations[name]):
+            continue
+        if isinstance(member, property):
+            raise ContainerBuildError(
+                f"Per-call service {qualified_name(service_type)} declares property {name!r}",
+                code="per-call-unsupported-member",
+            )
+        if isinstance(member, (staticmethod, classmethod)):
+            raise ContainerBuildError(
+                f"Per-call service {qualified_name(service_type)} declares static/class operation {name!r}",
+                code="per-call-unsupported-member",
+            )
+        if not inspect.isfunction(member):
+            if hasattr(member, "__get__"):
+                raise ContainerBuildError(
+                    f"Per-call service {qualified_name(service_type)} declares descriptor {name!r}",
+                    code="per-call-unsupported-member",
+                )
+            continue
+        if inspect.isgeneratorfunction(member) or inspect.isasyncgenfunction(member):
+            raise ContainerBuildError(
+                f"Per-call service {qualified_name(service_type)} declares generator operation {name!r}",
+                code="per-call-unsupported-member",
+            )
+        if _per_call_stream_annotation(inspect.signature(member).return_annotation):
+            raise ContainerBuildError(
+                f"Per-call service {qualified_name(service_type)} declares stream result for {name!r}",
+                code="per-call-unsupported-member",
+            )
+        if _per_call_fluent_annotation(inspect.signature(member).return_annotation, contract):
+            raise ContainerBuildError(
+                f"Per-call service {qualified_name(service_type)} declares a scoped target result for {name!r}",
+                code="per-call-unsupported-member",
+            )
+        methods.append((name, member, inspect.iscoroutinefunction(member)))
+    if not methods:
+        raise ContainerBuildError(
+            f"Per-call service {qualified_name(service_type)} has no public instance methods",
+            code="per-call-unsupported-contract",
+        )
+    return tuple(methods)
+
+
+def _per_call_classvar_annotation(annotation: Any) -> bool:
+    if annotation is typing.ClassVar or get_origin(annotation) is typing.ClassVar:
+        return True
+    if isinstance(annotation, typing.ForwardRef):
+        annotation = annotation.__forward_arg__
+    if not isinstance(annotation, str):
+        return False
+    node = _per_call_annotation_expression(annotation)
+    if node is None:
+        return False
+    if isinstance(node, ast.Subscript):
+        node = node.value
+    return isinstance(node, (ast.Name, ast.Attribute)) and (
+        (node.id if isinstance(node, ast.Name) else node.attr) == "ClassVar"
+    )
+
+
+def _per_call_annotation_expression(expression: str) -> ast.expr | None:
+    """Parse an annotation spelling, unwrapping only outer quoted forward refs."""
+
+    for _ in range(4):
+        try:
+            node = ast.parse(expression, mode="eval").body
+        except SyntaxError:
+            return None
+        if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+            return node
+        expression = node.value
+    return None
+
+
+def _per_call_fluent_expression(expression: str, contract_name: str) -> bool:
+    """Recognize direct Self/service returns, never nested Callable or Literal payloads."""
+
+    root = _per_call_annotation_expression(expression)
+    if root is None:
+        return False
+
+    def name_of(node: ast.expr) -> str | None:
+        if isinstance(node, ast.Name):
+            return node.id
+        if isinstance(node, ast.Attribute):
+            return node.attr
+        return None
+
+    def fluent(node: ast.expr) -> bool:
+        if isinstance(node, ast.Subscript):
+            name = name_of(node.value)
+            if name == "Annotated":
+                first = node.slice.elts[0] if isinstance(node.slice, ast.Tuple) else node.slice
+                return fluent(first)
+            if name in ("Union", "Optional"):
+                return fluent(node.slice)
+            return name == contract_name
+        if isinstance(node, (ast.Name, ast.Attribute)):
+            return name_of(node) in ("Self", contract_name)
+        if isinstance(node, (ast.Tuple, ast.List)):
+            return any(fluent(child) for child in node.elts)
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+            return fluent(node.left) or fluent(node.right)
+        return False
+
+    return fluent(root)
+
+
+def _per_call_fluent_annotation(annotation: Any, contract: type) -> bool:
+    if annotation is inspect.Signature.empty:
+        return False
+    if isinstance(annotation, TypeAliasType):
+        try:
+            annotation = normalize_type_alias(annotation)
+        except TypeAliasNormalizationError:
+            return False
+    if isinstance(annotation, typing.ForwardRef):
+        annotation = annotation.__forward_arg__
+    if isinstance(annotation, str):
+        return _per_call_fluent_expression(annotation, contract.__name__)
+    origin = get_origin(annotation) or annotation
+    if origin in (typing.Self, ExtensionsSelf, contract):
+        return True
+    if origin is typing.Annotated:
+        return _per_call_fluent_annotation(get_args(annotation)[0], contract)
+    if origin in (typing.Union, types.UnionType):
+        return any(_per_call_fluent_annotation(argument, contract) for argument in get_args(annotation))
+    return False
+
+
+_PER_CALL_STREAM_ORIGINS = frozenset((Iterator, Generator, AsyncIterator, AsyncGenerator))
+_PER_CALL_STREAM_NAMES = frozenset(("Iterator", "Generator", "AsyncIterator", "AsyncGenerator"))
+
+
+def _per_call_stream_expression(expression: str) -> bool:
+    """Inspect string annotations without treating Literal values or metadata as types."""
+
+    try:
+        root = ast.parse(expression, mode="eval").body
+    except SyntaxError:
+        return False
+
+    def name_of(node: ast.expr) -> str | None:
+        if isinstance(node, ast.Name):
+            return node.id
+        if isinstance(node, ast.Attribute):
+            return node.attr
+        return None
+
+    def contains_stream(node: ast.expr) -> bool:
+        if isinstance(node, ast.Subscript):
+            name = name_of(node.value)
+            if name == "Literal":
+                return False
+            if name == "Annotated":
+                first = node.slice.elts[0] if isinstance(node.slice, ast.Tuple) else node.slice
+                return contains_stream(first)
+            if name in ("Union", "Optional"):
+                return contains_stream(node.slice)
+            return name in _PER_CALL_STREAM_NAMES
+        if isinstance(node, (ast.Name, ast.Attribute)):
+            return name_of(node) in _PER_CALL_STREAM_NAMES
+        if isinstance(node, (ast.Tuple, ast.List)):
+            return any(contains_stream(child) for child in node.elts)
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+            return contains_stream(node.left) or contains_stream(node.right)
+        return False
+
+    return contains_stream(root)
+
+
+def _per_call_stream_annotation(annotation: Any) -> bool:
+    if annotation is inspect.Signature.empty:
+        return False
+    if isinstance(annotation, TypeAliasType):
+        try:
+            annotation = normalize_type_alias(annotation)
+        except TypeAliasNormalizationError:
+            return False
+    if isinstance(annotation, typing.ForwardRef):
+        annotation = annotation.__forward_arg__
+    if isinstance(annotation, str):
+        return _per_call_stream_expression(annotation)
+    origin = get_origin(annotation) or annotation
+    if origin is typing.Literal:
+        return False
+    if origin is typing.Annotated:
+        return _per_call_stream_annotation(get_args(annotation)[0])
+    if origin in (typing.Union, types.UnionType):
+        return any(_per_call_stream_annotation(argument) for argument in get_args(annotation))
+    if isinstance(origin, type) and origin in _PER_CALL_STREAM_ORIGINS:
+        return True
+    return False
+
+
+def _checked_per_call_result(result: Any, service_type: Any, name: str, targets: list[Any]) -> Any:
+    bound_receiver = (
+        result.__self__
+        if (inspect.ismethod(result) or inspect.isbuiltin(result) or inspect.ismethodwrapper(result))
+        else None
+    )
+    if any(result is target or bound_receiver is target for target in targets):
+        raise RuntimeError(
+            f"Per-call {qualified_name(service_type)}.{name} returned its scoped target or bound method "
+            "after the invocation scope"
+        )
+    if inspect.isawaitable(result):
+        if inspect.iscoroutine(result):
+            result.close()
+        raise RuntimeError(
+            f"Per-call {qualified_name(service_type)}.{name} returned an awaitable that would outlive its scope"
+        )
+    if isinstance(result, (Iterator, AsyncIterator)):
+        close = getattr(result, "close", None)
+        if callable(close):
+            close()
+        raise RuntimeError(
+            f"Per-call {qualified_name(service_type)}.{name} returned an iterator that would outlive its scope"
+        )
+    return result
+
+
+def _per_call_proxy_type(service_type: Any, methods: tuple[tuple[str, Callable[..., Any], bool], ...]) -> type:
+    contract = get_origin(service_type) or service_type
+
+    def init(self: Any, scope: Scope, target: _RegistrationStep) -> None:
+        self._per_call_scope = scope
+        self._per_call_target = target
+
+    def replace(self: Any, /, **_changes: Any) -> Any:
+        raise NotImplementedError("Per-call handles cannot replace scoped target state")
+
+    namespace: dict[str, Any] = {
+        "__slots__": ("_per_call_scope", "_per_call_target"),
+        "__init__": init,
+        "__repr__": object.__repr__,
+        "__str__": object.__str__,
+        "__eq__": object.__eq__,
+        "__hash__": object.__hash__,
+        "__replace__": replace,
+    }
+
+    def make_forward(name: str, source: Callable[..., Any], asynchronous: bool) -> Callable[..., Any]:
+        if asynchronous:
+
+            async def forward(self: Any, /, *args: Any, **kwargs: Any) -> Any:
+                owner = self._per_call_scope
+                owner._ensure_open()
+                invocation = Scope(
+                    owner._plan, container=owner.container, parent=owner, owners=owner._owners, inherit_scoped=False
+                )
+                async with invocation:
+                    invocation._resolution_started = True
+                    context = _PerCallResolutionContext(invocation)
+                    try:
+                        target = await self._per_call_target.resolve_async(context)
+                        result = await getattr(target, name)(*args, **kwargs)
+                        return _checked_per_call_result(result, service_type, name, context.captured_targets)
+                    finally:
+                        context.finish()
+
+        else:
+
+            def forward(self: Any, /, *args: Any, **kwargs: Any) -> Any:
+                owner = self._per_call_scope
+                owner._ensure_open()
+                invocation = Scope(
+                    owner._plan, container=owner.container, parent=owner, owners=owner._owners, inherit_scoped=False
+                )
+                with invocation:
+                    invocation._resolution_started = True
+                    context = _PerCallResolutionContext(invocation)
+                    try:
+                        target = self._per_call_target.resolve(context)
+                        result = getattr(target, name)(*args, **kwargs)
+                        return _checked_per_call_result(result, service_type, name, context.captured_targets)
+                    finally:
+                        context.finish()
+
+        forward.__name__ = name
+        forward.__qualname__ = f"PerCall{contract.__name__}.{name}"
+        setattr(forward, "__signature__", inspect.signature(source))
+        return forward
+
+    for name, source, asynchronous in methods:
+        namespace[name] = make_forward(name, source, asynchronous)
+
+    def private_stub(member_name: str, asynchronous: bool) -> Callable[..., Any]:
+        message = f"Per-call handle cannot invoke private abstract member {member_name!r}"
+        if asynchronous:
+
+            async def stub(*_args: Any, **_kwargs: Any) -> Any:
+                raise NotImplementedError(message)
+
+        else:
+
+            def stub(*_args: Any, **_kwargs: Any) -> Any:
+                raise NotImplementedError(message)
+
+        stub.__name__ = member_name
+        return stub
+
+    for name in getattr(contract, "__abstractmethods__", ()):
+        if name.startswith("__") and name.endswith("__") and name not in ("__init__", "__call__"):
+            raise ContainerBuildError(
+                f"Per-call service {qualified_name(service_type)} has unsupported abstract special method {name!r}",
+                code="per-call-unsupported-member",
+            )
+        if name in namespace:
+            continue
+        if not name.startswith("_"):
+            raise ContainerBuildError(
+                f"Per-call service {qualified_name(service_type)} has unsupported public abstract member {name!r}",
+                code="per-call-unsupported-member",
+            )
+        member = inspect.getattr_static(contract, name)
+        if isinstance(member, property):
+            namespace[name] = property(
+                private_stub(name, False) if member.fget is not None else None,
+                private_stub(name, False) if member.fset is not None else None,
+                private_stub(name, False) if member.fdel is not None else None,
+            )
+        elif isinstance(member, staticmethod):
+            namespace[name] = staticmethod(private_stub(name, inspect.iscoroutinefunction(member.__func__)))
+        elif isinstance(member, classmethod):
+            namespace[name] = classmethod(private_stub(name, inspect.iscoroutinefunction(member.__func__)))
+        elif inspect.isfunction(member):
+            namespace[name] = private_stub(name, inspect.iscoroutinefunction(member))
+        else:
+            raise ContainerBuildError(
+                f"Per-call service {qualified_name(service_type)} has unsupported private abstract descriptor {name!r}",
+                code="per-call-unsupported-member",
+            )
+    try:
+        return type(f"PerCall{contract.__name__}", (contract,), namespace)
+    except TypeError as error:
+        raise ContainerBuildError(
+            f"Per-call service {qualified_name(service_type)} cannot be forwarded: {error}",
+            code="per-call-unsupported-contract",
+        ) from error
+
+
+def _validate_per_call_implementation(
+    implementation: Any,
+    service_type: Any,
+    methods: tuple[tuple[str, Callable[..., Any], bool], ...],
+) -> None:
+    implementation_type = constructor_type(implementation)
+    if implementation_type is None:
+        try:
+            annotation = inspect.signature(implementation).return_annotation
+        except (TypeError, ValueError):
+            annotation = inspect.Signature.empty
+        candidate = None if annotation is inspect.Signature.empty else get_origin(annotation) or annotation
+        implementation_type = candidate if isinstance(candidate, type) else None
+    if implementation_type is None:
+        return
+    for name, _, asynchronous in methods:
+        try:
+            member = inspect.getattr_static(implementation_type, name)
+        except AttributeError:
+            try:
+                dynamic_lookup = inspect.getattr_static(implementation_type, "__getattr__")
+            except AttributeError:
+                dynamic_lookup = None
+            if inspect.isfunction(dynamic_lookup):
+                continue
+            raise ContainerBuildError(
+                f"Per-call implementation {qualified_name(implementation_type)} has no operation {name!r} "
+                f"required by {qualified_name(service_type)}",
+                code="per-call-unsupported-member",
+            ) from None
+        if (
+            isinstance(member, (staticmethod, classmethod))
+            or not inspect.isfunction(member)
+            or inspect.isgeneratorfunction(member)
+            or inspect.isasyncgenfunction(member)
+            or _per_call_stream_annotation(inspect.signature(member).return_annotation)
+        ):
+            raise ContainerBuildError(
+                f"Per-call implementation {qualified_name(implementation_type)} has unsupported operation {name!r}",
+                code="per-call-unsupported-member",
+            )
+        if inspect.iscoroutinefunction(member) != asynchronous:
+            raise ContainerBuildError(
+                f"Per-call implementation {qualified_name(implementation_type)}.{name} has a different "
+                f"async mode from {qualified_name(service_type)}",
+                code="per-call-method-mode",
+            )
+        if _per_call_fluent_annotation(inspect.signature(member).return_annotation, implementation_type):
+            raise ContainerBuildError(
+                f"Per-call implementation {qualified_name(implementation_type)} declares a scoped target result "
+                f"for {name!r}",
+                code="per-call-unsupported-member",
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class _PerCallStep(_Step):
+    proxy_type: type
+    target: _RegistrationStep
+    bound_owner_token: str | None = None
+
+    def resolve(self, context: _RuntimeResolutionContext) -> Any:
+        owner = context.scope if self.bound_owner_token is None else context.scope._owners[self.bound_owner_token]
+        if not isinstance(owner, Scope):
+            raise RuntimeError("A per-call owner must be a scope")
+        owner._ensure_open()
+        return self.proxy_type(owner, self.target)
 
     async def resolve_async(self, context: _RuntimeResolutionContext) -> Any:
         return self.resolve(context)
@@ -3022,6 +3562,54 @@ class _ScopedRegistrationStep(_RegistrationStep):
         return value
 
 
+class _PerCallTargetRegistrationStep(_ScopedRegistrationStep):
+    """Record only the target pipeline whose instances must not escape a call."""
+
+    __slots__ = ()
+
+    def _activate(self, context: _RuntimeResolutionContext) -> Any:
+        captured = cast(_PerCallResolutionContext, context).captured_targets
+        for configuration in self.pre_configurations:
+            configuration.run(context)
+        values = (
+            {dependency.name: dependency.step.resolve(context) for dependency in self.dependencies}
+            if self.dependencies
+            else _EMPTY_DEPENDENCIES
+        )
+        instance = self.registration.activator_class.activate(
+            self.registration.implementation,
+            values,
+            cast(Any, _ActivationContext(context, self.cleanup_owner)),
+            self.registration.lifespan,
+        )
+        captured.append(instance)
+        for decorator in self.decorators:
+            instance = decorator.decorate(instance, context, self.registration.lifespan)
+            captured.append(instance)
+        return instance
+
+    async def _activate_async(self, context: _RuntimeResolutionContext) -> Any:
+        captured = cast(_PerCallResolutionContext, context).captured_targets
+        for configuration in self.pre_configurations:
+            await configuration.run_async(context)
+        values = (
+            {dependency.name: await dependency.step.resolve_async(context) for dependency in self.dependencies}
+            if self.dependencies
+            else _EMPTY_DEPENDENCIES
+        )
+        instance = await self.registration.activator_class.activate_async(
+            self.registration.implementation,
+            values,
+            cast(Any, _ActivationContext(context, self.cleanup_owner)),
+            self.registration.lifespan,
+        )
+        captured.append(instance)
+        for decorator in self.decorators:
+            instance = await decorator.decorate_async(instance, context, self.registration.lifespan)
+            captured.append(instance)
+        return instance
+
+
 class _SingletonRegistrationStep(_RegistrationStep):
     __slots__ = ()
 
@@ -3720,7 +4308,7 @@ class _Compiler:
             (
                 index
                 for index in range(len(self._frames) - 1, -1, -1)
-                if self._frames[index].kind is ComponentKind.provider
+                if self._frames[index].kind in (ComponentKind.provider, ComponentKind.per_call_handle)
             ),
             -1,
         )
@@ -3816,6 +4404,13 @@ class _Compiler:
             return cache_owner, RuntimeOwnerKind.none, None, "The runtime supplies this context without cleanup"
         if kind is ComponentKind.collection:
             return RuntimeOwnerKind.none, RuntimeOwnerKind.none, None, "The collection is local to its activation edge"
+        if kind is ComponentKind.per_call_handle:
+            return (
+                RuntimeOwnerKind.none,
+                RuntimeOwnerKind.none,
+                None,
+                "The handle defers activation to a fresh scope for each invocation",
+            )
         if kind is ComponentKind.provider:
             return (
                 RuntimeOwnerKind.none,
@@ -5030,7 +5625,8 @@ class _Compiler:
         argument: str | None,
         requested_service_type: Any,
         origin: DefinitionOrigin,
-    ) -> tuple[Component, _RegistrationStep]:
+        per_call_target: bool = False,
+    ) -> tuple[Component, _Step]:
         # Deferred membership constraints become enforceable only for the actual
         # concrete request (constructors, factories and patterns share this seam).
         groups = self._service_groups_for(registration, layer)
@@ -5059,6 +5655,72 @@ class _Compiler:
                 f"Circular component dependency: {path}",
                 code="circular-dependency",
                 path=self._current_path(registration.service_type),
+            )
+        source_registration = self._specialized_registration_sources.get(registration.id, registration)
+        _, scope_policy = layer.registration_policies.get(source_registration.id, ("per_resolution", "current"))
+        if scope_policy == "per_call" and not per_call_target and not self._source_inspection:
+            contract_type = (
+                registration.service_type
+                if requested_service_type == registration.implementation
+                else requested_service_type
+            )
+            methods = _per_call_methods(contract_type)
+            _validate_per_call_implementation(registration.implementation, contract_type, methods)
+            component, draft = self._draft(
+                component_id=registration.id,
+                service_type=requested_service_type,
+                implementation=registration.implementation,
+                lifespan="scoped",
+                name=registration.name,
+                tags=registration.tags,
+                kind=ComponentKind.per_call_handle,
+                activation=ComponentActivation.deferred,
+                parent=parent,
+                argument=argument,
+                origin=origin,
+                declared_service_type=registration.declared_service_type,
+            )
+            singleton = next(
+                (frame for frame in reversed(self._retention_frames()) if frame.lifespan == legacy.Lifespan.singleton),
+                None,
+            )
+            self._frames.append(
+                _CompilerFrame(
+                    label=requested_service_type,
+                    lifespan=legacy.Lifespan.scoped,
+                    owner_token=layer.owner_token,
+                    kind=ComponentKind.per_call_handle,
+                    component=component,
+                )
+            )
+            try:
+                target_component, target_step = self._compile_registration(
+                    registration,
+                    layer,
+                    parent=component,
+                    argument="per_call_target",
+                    requested_service_type=requested_service_type,
+                    origin=origin,
+                    per_call_target=True,
+                )
+            finally:
+                self._frames.pop()
+            draft.dependency_ids = (target_component.occurrence_id,)
+            if not isinstance(target_step, _RegistrationStep):
+                raise RuntimeError("Per-call target did not compile to a registration step")
+            for decorator in target_step.decorators:
+                _validate_per_call_implementation(decorator.source.implementation, contract_type, methods)
+            if any(not asynchronous for _, _, asynchronous in methods) and not target_step.sync_supported:
+                raise ContainerBuildError(
+                    f"Per-call service {qualified_name(requested_service_type)} has synchronous methods "
+                    "but its target requires asynchronous activation or cleanup",
+                    code="per-call-sync-activation",
+                    path=self._current_path(requested_service_type),
+                )
+            return component, _PerCallStep(
+                _per_call_proxy_type(contract_type, methods),
+                target_step,
+                singleton.owner_token if singleton is not None else None,
             )
         self._validate_captive_lifespan(
             registration.service_type,
@@ -5133,7 +5795,12 @@ class _Compiler:
             # Component inspection presents the final pipeline outside-to-inside,
             # while runtime activation retains the core-to-outside order.
             draft.decorator_ids = tuple(item.component.occurrence_id for item in reversed(decorators))
-            step_type = _REGISTRATION_STEP_TYPES[registration.lifespan] if map_definition is None else _ProviderMapStep
+            if map_definition is not None:
+                step_type = _ProviderMapStep
+            elif per_call_target:
+                step_type = _PerCallTargetRegistrationStep
+            else:
+                step_type = _REGISTRATION_STEP_TYPES[registration.lifespan]
             step = step_type(
                 registration=registration,
                 source_service_type=requested_service_type,
@@ -5635,6 +6302,8 @@ class _Compiler:
         }
 
         def visit(current: Component, path: tuple[Component, ...]) -> tuple[Component, ...] | None:
+            if current.kind is ComponentKind.per_call_handle:
+                return None
             current_path = (*path, current)
             if (
                 current.lifespan == "scoped"
@@ -6737,6 +7406,9 @@ def _provider_selection_component(component: Component) -> Component:
 
 
 def _iter_registration_steps(step: _Step) -> Iterable[_RegistrationStep]:
+    if isinstance(step, _PerCallStep):
+        yield from _iter_registration_steps(step.target)
+        return
     if isinstance(step, _RegistrationStep):
         yield step
         for dependency in step.dependencies:
@@ -7806,6 +8478,14 @@ class _RuntimeResolutionContext:
         raise RuntimeError("unsafe-cleanup-owner: compiled activation has no cleanup owner")
 
 
+class _PerCallResolutionContext(_RuntimeResolutionContext):
+    __slots__ = ("captured_targets",)
+
+    def __init__(self, scope: Scope):
+        super().__init__(scope)
+        self.captured_targets: list[Any] = []
+
+
 class Scope(_RuntimeOwner):
     """An immutable runtime scope backed by a compiled component plan."""
 
@@ -8160,6 +8840,7 @@ class _BuilderBase:
         self._boundary_name = boundary_name
         self._composition_layer = composition_layer
         self._registration_when: dict[str, ComponentFilter] = {}
+        self._registration_policies: dict[str, tuple[LifespanPolicy, ScopePolicy]] = {}
         self._registration_origins: dict[str, DefinitionOrigin] = {}
         self._factory_ids: set[str] = set()
         self._factory_specializations: dict[str, object] = {}
@@ -8249,6 +8930,7 @@ class _BuilderBase:
     def _layer(self) -> _Layer:
         registry = _clone_registry(self._composition._registry)
         registration_when = dict(self._registration_when)
+        registration_policies = dict(self._registration_policies)
         registration_origins = dict(self._registration_origins)
         service_groups = dict(self._service_groups)
 
@@ -8258,7 +8940,7 @@ class _BuilderBase:
 
         discovered = legacy._Registry()
         for rule in self._registration_discoveries:
-            rule.materialize(discovered, registration_when, registration_origins, service_groups)
+            rule.materialize(discovered, registration_when, registration_policies, registration_origins, service_groups)
         for service_type, registrations in discovered._registrations.items():
             # Explicit composition always precedes convention-based discovery.
             registry._registrations[service_type].extend(registrations)
@@ -8268,6 +8950,7 @@ class _BuilderBase:
             internal_ids=self._internal_ids,
             owner_token=self._owner_token,
             registration_when=registration_when,
+            registration_policies=types.MappingProxyType(registration_policies),
             registration_origins=registration_origins,
             factory_ids=frozenset(self._factory_ids),
             factory_specializations=dict(self._factory_specializations),
@@ -8359,7 +9042,8 @@ class _BuilderBase:
         factory: Callable[..., Any] | None = None,
         factory_specialization: object | None = None,
         instance: TService | None = None,
-        lifespan: Lifespan = "per_resolution",
+        lifespan: LifespanPolicy = "auto",
+        scope: ScopePolicy = "current",
         name: str | None = None,
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[legacy.Tag] | None = None,
@@ -8368,6 +9052,9 @@ class _BuilderBase:
         groups: Iterable[ServiceGroup] = (),
     ) -> str:
         self._assert_mutable()
+        effective_lifespan = _component_policy(lifespan, scope)
+        if scope == "per_call" and instance is not None:
+            raise ValueError("scope='per_call' cannot be used with instance=")
         declared_service_type = service_type
         service_type = _composition_type(service_type)
         if implementation_type is not None:
@@ -8411,13 +9098,14 @@ class _BuilderBase:
             implementation_type,
             factory=activation_factory,
             instance=instance,
-            lifespan=_legacy_lifespan(lifespan),
+            lifespan=effective_lifespan,
             name=name,
             dependency_config=_arguments_to_dependency_config(arguments),
             tags=tags,
             parent_node_filter=legacy.default_parent_node_filter,
         )
         self._registration_when[component_id] = when
+        self._registration_policies[component_id] = (lifespan, scope)
         if instance is not None:
             self._instance_implementation_types[component_id] = instance_implementation_type
         if normalized_contributions is not None:
@@ -8439,7 +9127,8 @@ class _BuilderBase:
         service_type: TypeForm[Any],
         *,
         factory: Callable[..., Any],
-        lifespan: Lifespan = "per_resolution",
+        lifespan: LifespanPolicy = "auto",
+        scope: ScopePolicy = "current",
         name: str | None = None,
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[legacy.Tag] | None = None,
@@ -8453,6 +9142,7 @@ class _BuilderBase:
             service_type,
             factory=factory,
             lifespan=lifespan,
+            scope=scope,
             name=name,
             arguments=arguments,
             tags=tags,
@@ -8527,21 +9217,40 @@ class _BuilderBase:
         component_id: str,
         *,
         arguments: Mapping[str, Any] | None = None,
-        lifespan: Lifespan | None = None,
+        lifespan: LifespanPolicy | None = None,
+        scope: ScopePolicy | object = _SCOPE_UNSET,
         tags: Iterable[legacy.Tag] | None = None,
     ) -> None:
         self._assert_mutable()
         service_type = _composition_type(service_type)
+        old_policy = self._registration_policies.get(component_id)
+        if old_policy is None:
+            old_policy = next(
+                (
+                    (rule.lifespan_policy, rule.scope_policy)
+                    for rule in self._registration_discoveries
+                    if rule.find_registration(service_type, component_id) is not None
+                ),
+                ("per_resolution", "current"),
+            )
+        old_lifespan, old_scope = old_policy
+        new_lifespan = old_lifespan if lifespan is None else lifespan
+        new_scope = old_scope if scope is _SCOPE_UNSET else cast(ScopePolicy, scope)
+        effective_lifespan = _component_policy(new_lifespan, new_scope)
+        if new_scope == "per_call" and component_id in self._instance_implementation_types:
+            raise ValueError("scope='per_call' cannot be used with instance=")
+        if new_scope == "per_call" and component_id in self._provider_maps:
+            raise ValueError("Provider-map registrations cannot use scope='per_call'")
+        dependency_config = None if arguments is None else _arguments_to_dependency_config(arguments, allow_remove=True)
         try:
             self._composition.patch_registration(
                 cast(type, service_type),
                 component_id,
-                dependency_config=(
-                    None if arguments is None else _arguments_to_dependency_config(arguments, allow_remove=True)
-                ),
-                lifespan=None if lifespan is None else _legacy_lifespan(lifespan),
+                dependency_config=dependency_config,
+                lifespan=effective_lifespan,
                 tags=tags,
             )
+            self._registration_policies[component_id] = (new_lifespan, new_scope)
             return
         except KeyError:
             pass
@@ -8558,12 +9267,11 @@ class _BuilderBase:
             self._composition.patch_registration(
                 declared_service_type,
                 component_id,
-                dependency_config=(
-                    None if arguments is None else _arguments_to_dependency_config(arguments, allow_remove=True)
-                ),
-                lifespan=None if lifespan is None else _legacy_lifespan(lifespan),
+                dependency_config=dependency_config,
+                lifespan=effective_lifespan,
                 tags=tags,
             )
+            self._registration_policies[component_id] = (new_lifespan, new_scope)
             return
 
         registration = next(
@@ -8619,12 +9327,11 @@ class _BuilderBase:
                     )
             raise KeyError(f"No component found for {service_type} with ID {component_id}")
         registration.patch(
-            dependency_config=(
-                None if arguments is None else _arguments_to_dependency_config(arguments, allow_remove=True)
-            ),
-            lifespan=None if lifespan is None else _legacy_lifespan(lifespan),
+            dependency_config=dependency_config,
+            lifespan=effective_lifespan,
             tags=tags,
         )
+        self._registration_policies[component_id] = (new_lifespan, new_scope)
 
     def register_decorator_template(
         self,
@@ -8903,7 +9610,8 @@ class _BuilderBase:
         *,
         ensure_import_modules: str | Iterable[str] = (),
         include_children: bool = False,
-        lifespan: Lifespan = "per_resolution",
+        lifespan: LifespanPolicy = "auto",
+        scope: ScopePolicy = "current",
         subclass_type_filter: Callable[[type], bool] = legacy.always_true,
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,
@@ -8918,6 +9626,7 @@ class _BuilderBase:
         """
 
         self._assert_mutable()
+        effective_lifespan = _component_policy(lifespan, scope)
         if not isinstance(include_children, bool):
             raise TypeError("include_children must be a bool")
         service_groups = _materialize_service_groups(groups)
@@ -8929,7 +9638,9 @@ class _BuilderBase:
                 fallback_type=None,
                 ensure_import_modules=_module_imports(ensure_import_modules),
                 include_children=include_children,
-                lifespan=_legacy_lifespan(lifespan),
+                lifespan=effective_lifespan,
+                lifespan_policy=lifespan,
+                scope_policy=scope,
                 subclass_type_filter=subclass_type_filter,
                 name=name,
                 tags=tuple(tags or ()),
@@ -8946,7 +9657,8 @@ class _BuilderBase:
         fallback_type: type | None = None,
         ensure_import_modules: str | Iterable[str] = (),
         include_children: bool = False,
-        lifespan: Lifespan = "per_resolution",
+        lifespan: LifespanPolicy = "auto",
+        scope: ScopePolicy = "current",
         subclass_type_filter: Callable[[type], bool] = legacy.always_true,
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,
@@ -8961,6 +9673,7 @@ class _BuilderBase:
         """
 
         self._assert_mutable()
+        effective_lifespan = _component_policy(lifespan, scope)
         if not isinstance(include_children, bool):
             raise TypeError("include_children must be a bool")
         service_groups = _materialize_service_groups(groups)
@@ -8972,7 +9685,9 @@ class _BuilderBase:
                 fallback_type=fallback_type,
                 ensure_import_modules=_module_imports(ensure_import_modules),
                 include_children=include_children,
-                lifespan=_legacy_lifespan(lifespan),
+                lifespan=effective_lifespan,
+                lifespan_policy=lifespan,
+                scope_policy=scope,
                 subclass_type_filter=subclass_type_filter,
                 name=name,
                 tags=tuple(tags or ()),

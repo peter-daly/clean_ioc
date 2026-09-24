@@ -601,7 +601,14 @@ def graph_index(graph: CompiledGraph) -> GraphIndex:
     ) -> None:
         current = reference(component, path, root_path, phase)
         if parent_ref is not None and edge_kind is not None:
-            provider_target = parent_ref.component.kind is ComponentKind.provider and edge_kind == "dependency"
+            provider_target = (
+                parent_ref.component.kind
+                in (
+                    ComponentKind.provider,
+                    ComponentKind.per_call_handle,
+                )
+                and edge_kind == "dependency"
+            )
             relationship_phase = "deferred" if provider_target else phase
             relationship = GraphRelationship(
                 parent_ref,
@@ -614,7 +621,7 @@ def graph_index(graph: CompiledGraph) -> GraphIndex:
             incoming[component.occurrence_id].append(relationship)
             outgoing[parent_ref.component.occurrence_id].append(relationship)
         for index, child in enumerate(component.dependencies):
-            provider_target = component.kind is ComponentKind.provider
+            provider_target = component.kind in (ComponentKind.provider, ComponentKind.per_call_handle)
             declared_resolution = child.argument is not None and child.argument.startswith("resolution")
             child_phase = "deferred" if provider_target or declared_resolution else phase
             child_kind: RelationshipKind = "declared_resolution" if declared_resolution else "dependency"
@@ -783,10 +790,14 @@ def shared_dependencies(
 def sharing_report(graph: CompiledGraph, target: Any | None = None) -> SharingReport:
     index = graph_index(graph)
     target_ids = None if target is None else set(_select_occurrences(graph, index, target, match="registration"))
-    grouped: dict[tuple[str, RuntimeOwnerKind, str], list[GraphReference]] = defaultdict(list)
+    grouped: dict[tuple[str, RuntimeOwnerKind, str, str], list[GraphReference]] = defaultdict(list)
     for occurrence_id, references in index.references_by_occurrence.items():
         component = references[0].component
-        if component.kind not in (ComponentKind.registration, ComponentKind.provider_map):
+        if component.kind not in (
+            ComponentKind.registration,
+            ComponentKind.provider_map,
+            ComponentKind.per_call_handle,
+        ):
             continue
         if (
             target_ids is not None
@@ -795,8 +806,15 @@ def sharing_report(graph: CompiledGraph, target: Any | None = None) -> SharingRe
         ):
             continue
         layer = graph._occurrence_layers.get(component.occurrence_id, "root")
-        key = (component.id, component.cache_owner, layer)
-        grouped[key].extend(references)
+        for item in references:
+            per_call_boundary = (
+                item.path.split("/dependency:per_call_target:0", 1)[0]
+                if "/dependency:per_call_target:0" in item.path
+                and component.cache_owner not in (RuntimeOwnerKind.singleton, RuntimeOwnerKind.supplied)
+                else ""
+            )
+            key = (component.id, component.cache_owner, layer, per_call_boundary)
+            grouped[key].append(item)
 
     groups: list[SharingGroup] = []
     findings: list[ContextualCacheFinding] = []
@@ -806,7 +824,7 @@ def sharing_report(graph: CompiledGraph, target: Any | None = None) -> SharingRe
     ):
         unique_paths = tuple(sorted({reference.path for reference in references}))
         sample = references[0].component
-        _, cache_owner, layer = key
+        _, cache_owner, layer, per_call_boundary = key
         reference = f"sharing:{cache_owner.value}:{index_number}"
         groups.append(
             SharingGroup(
@@ -816,7 +834,7 @@ def sharing_report(graph: CompiledGraph, target: Any | None = None) -> SharingRe
                 cache_category=_cache_category(sample),
                 lifespan=sample.lifespan,
                 occurrence_paths=unique_paths,
-                conditions=_sharing_conditions(sample),
+                conditions=_sharing_conditions(sample, per_call_target=bool(per_call_boundary)),
                 boundary=sample.boundary,
                 declaring_owner=_sharing_owner_label(cache_owner, layer, sample.boundary),
                 activation=sample.activation.value,
@@ -883,14 +901,33 @@ def activation_report(
             cleanup_owner=component.cleanup_owner.value,
         )
 
-    def visit(component: Component, path: str, phase: RelationshipPhase) -> None:
+    def visit(component: Component, path: str, phase: RelationshipPhase, *, per_call_target: bool = False) -> None:
         phase_obligations = immediate if phase == "eager" else deferred
-        if component.kind is ComponentKind.provider:
-            immediate.append(
+        if component.kind is ComponentKind.per_call_handle:
+            phase_obligations.append(
                 obligation(
                     component,
                     path,
-                    "eager",
+                    phase,
+                    "per_call_handle",
+                    "Acquire a handle; each method invocation activates its target in a fresh scope",
+                )
+            )
+            for order, child in enumerate(component.dependencies):
+                child_path = f"{path}/dependency:{child.argument or order}:{order}"
+                relationships.append(
+                    ExecutionRelationship(
+                        path, child_path, "deferred_target", "deferred", order, "on method invocation"
+                    )
+                )
+                visit(child, child_path, "deferred", per_call_target=True)
+            return
+        if component.kind is ComponentKind.provider:
+            phase_obligations.append(
+                obligation(
+                    component,
+                    path,
+                    phase,
                     "provider",
                     "Acquire a provider handle; invoking its target is deferred",
                 )
@@ -900,7 +937,7 @@ def activation_report(
                 relationships.append(
                     ExecutionRelationship(path, child_path, "deferred_target", "deferred", order, "on demand")
                 )
-                visit(child, child_path, "deferred")
+                visit(child, child_path, "deferred", per_call_target=per_call_target)
             return
 
         if component.kind is ComponentKind.scope_slot:
@@ -949,7 +986,11 @@ def activation_report(
                 )
             )
 
-        skipped = _scenario_skips(component, selected_scenario)
+        skipped = _scenario_skips(component, selected_scenario) and not (
+            per_call_target
+            and selected_scenario is ActivationScenario.warm_scope
+            and component.cache_owner is RuntimeOwnerKind.scope
+        )
         if component.activation in (ComponentActivation.constructor, ComponentActivation.factory) and not skipped:
             acquisitions.append(
                 obligation(
@@ -988,7 +1029,7 @@ def activation_report(
                     "before core activation",
                 )
             )
-            visit(configuration, child_path, phase)
+            visit(configuration, child_path, phase, per_call_target=per_call_target)
 
         for order, child in enumerate(component.dependencies):
             child_path = f"{path}/dependency:{child.argument or order}:{order}"
@@ -1003,14 +1044,14 @@ def activation_report(
                 else "before core activation"
             )
             relationships.append(ExecutionRelationship(path, child_path, kind, child_phase, order, ordering))
-            visit(child, child_path, child_phase)
+            visit(child, child_path, child_phase, per_call_target=per_call_target)
 
         for order, decorator in enumerate(component.decorators):
             child_path = f"{path}/decorator:{order}"
             relationships.append(
                 ExecutionRelationship(path, child_path, "decorator", phase, order, "after core activation")
             )
-            visit(decorator, child_path, phase)
+            visit(decorator, child_path, phase, per_call_target=per_call_target)
 
     visit(root_ref.component, root_ref.path, "eager")
 
@@ -1233,6 +1274,8 @@ def _public_group_reference(index: int, paths: tuple[str, ...]) -> str:
 
 
 def _cache_category(component: Component) -> str:
+    if component.kind is ComponentKind.per_call_handle:
+        return "deferred per-call handle"
     if component.cache_owner is RuntimeOwnerKind.none:
         return "uncached activation"
     if component.cache_owner is RuntimeOwnerKind.resolution:
@@ -1259,7 +1302,11 @@ def _sharing_owner_label(cache_owner: RuntimeOwnerKind, layer: str, boundary: st
     return "no container cache"
 
 
-def _sharing_conditions(component: Component) -> tuple[str, ...]:
+def _sharing_conditions(component: Component, *, per_call_target: bool = False) -> tuple[str, ...]:
+    if component.kind is ComponentKind.per_call_handle:
+        return ("Acquiring the handle does not activate the target; each method call starts a fresh scope.",)
+    if per_call_target and component.cache_owner is RuntimeOwnerKind.scope:
+        return ("Shares within one method invocation only; each call starts a fresh scoped cache.",)
     if component.activation is ComponentActivation.instance:
         return (
             "This registration supplies an application-owned identity; cache eligibility does not prove that "

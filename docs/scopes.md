@@ -22,6 +22,69 @@ with container.new_scope() as scope:
 
 `new_scope()` never recompiles. Nested scopes inherit parent scoped and singleton values.
 
+## One scope per method call
+
+Set `scope="per_call"` on a service registration when each operation needs its own scoped dependencies. Callers keep the
+same service interface:
+
+```python
+from typing import Protocol
+
+from clean_ioc import ContainerBuilder
+
+
+class MessageProcessor(Protocol):
+    def process(self, message: str) -> str: ...
+
+
+class RequestState:
+    pass
+
+
+class ActualMessageProcessor:
+    def __init__(self, state: RequestState):
+        self.state = state
+
+    def process(self, message: str) -> str:
+        return message.upper()
+
+
+builder = ContainerBuilder()
+builder.register(RequestState, lifespan="scoped")
+builder.register(MessageProcessor, ActualMessageProcessor, scope="per_call")
+with builder.build() as container:
+    processor = container.resolve(MessageProcessor)
+    assert processor.process("first") == "FIRST"
+    assert processor.process("second") == "SECOND"
+```
+
+Resolving `MessageProcessor` obtains a lightweight handle without creating `ActualMessageProcessor`. Each method call
+creates a fresh scope, constructs the implementation and its dependencies, runs the method, and closes that scope. An
+`async def` method performs activation, invocation, and cleanup asynchronously in the caller's task. Its scope also
+closes on exceptions and cancellation. A synchronous method requires a fully synchronous activation and cleanup plan.
+
+The declared contract must expose public instance methods on a class, ABC, or Protocol; inherited methods and
+`__call__` are supported. An ABC may use private abstract helpers behind a public operation: the handle forwards the
+public call to the real implementation. Private abstract members have raising stubs on the handle; they are not scope
+entry points. Other abstract special methods, such as `__str__`, are unsupported. Public properties and other
+descriptors, required public instance data, static and class operations, generator operations, and declared iterator or
+generator results are rejected at build time. An effective subclass `ClassVar` declaration can replace inherited public
+instance data; callable class variables are not forwarded. Contract attribute hooks, finalizers, and behavioral special
+methods such as `__iter__` are unsupported. The handle uses object identity for `repr`, `str`, equality, and hashing even
+when the contract defines stateful versions; a dataclass `__replace__` on the handle raises `NotImplementedError`.
+Implementation-only hooks still run on the real instance. Known implementation and
+decorator methods must match the contract's sync or async mode. Common iterator and awaitable results that escape an
+unknown factory's static checks are rejected during invocation. Direct returns of the scoped implementation, any
+decorator instance, or a method bound to one are also rejected before cleanup; statically identifiable `Self` and
+service-fluent return contracts fail at build. Other resource-backed or lazy results must not outlive an invocation
+scope; Python cannot determine the lifetime of arbitrary closures, nested objects, or returned values. Contracts with custom allocation
+(`__new__`), metaclasses, or subclass hooks are also rejected because a forwarding handle cannot safely construct them.
+
+An ordinary child scope still inherits already-created parent scoped values. Per-call scopes always start with an empty
+scoped cache, while inheriting declared scope provisions and singleton owners. A handle obtained directly from a child
+or overlay follows that scope and fails after it closes. A root singleton that retains a handle keeps the root's frozen
+plan and owner even if the singleton was first resolved through a child or overlay.
+
 ## Async scopes and cleanup
 
 ```python
@@ -121,6 +184,7 @@ unchanged. Build a new root when a key must be absent because overlays do not ha
 | Need | API |
 | --- | --- |
 | Same composition, new cache boundary | `new_scope()` |
+| Fresh scoped dependencies for each service method call | `register(..., scope="per_call")` |
 | Supply a request/framework value | `declare_scope_slot()` + `scope.provide()` |
 | Change child registrations/decorators | `new_scope_builder()` + `build()` |
 | Change the application root | Create a new `ContainerBuilder` |

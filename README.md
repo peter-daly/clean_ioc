@@ -294,7 +294,11 @@ new scoped cache boundary and is finalized when that scope exits. The root conta
 | `scoped` | One explicit scope | Request state, units of work, DB sessions |
 | `singleton` | Owning container or compiled overlay scope | Settings, pools, long-lived clients |
 
-Pass these as plain strings to `lifespan=`. The exported `Lifespan` name is a `Literal` type alias for annotations, not an enum.
+Pass these as plain strings to `lifespan=`. The declaration default `"auto"` means `"per_resolution"` for ordinary
+registrations. `scope="per_call"` instead gives every service method invocation a fresh scoped implementation and
+dependency graph while callers keep the same service interface. With that scope policy, `"auto"` becomes `"scoped"`;
+other concrete lifespans are invalid. See [Scopes](docs/scopes.md#one-scope-per-method-call). The exported `Lifespan`
+name is a `Literal` type alias for concrete lifespans, not an enum.
 
 Generator factories, context managers, and their async equivalents are finalized by their cache owner.
 

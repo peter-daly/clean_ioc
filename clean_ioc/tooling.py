@@ -835,6 +835,8 @@ def _dependency_relationship(component: Component) -> str:
     if parent is not None and parent.boundary != component.boundary:
         source = component.boundary or "root"
         boundary = f" via boundary:{source}"
+    if component.parent is not None and component.parent.kind is ComponentKind.per_call_handle:
+        return f"activates on each method call{boundary}"
     if component.parent is not None and component.parent.kind is ComponentKind.provider:
         return f"provides on demand{boundary}"
     if component.argument is None:
@@ -885,6 +887,11 @@ def _node_dict(
     }
     if component.kind is ComponentKind.provider:
         metadata["provider_mode"] = component.provider_mode
+        metadata["deferred_target"] = (
+            qualified_name(component.dependencies[0].service_type) if component.dependencies else None
+        )
+    if component.kind is ComponentKind.per_call_handle:
+        metadata["scope_policy"] = "per_call"
         metadata["deferred_target"] = (
             qualified_name(component.dependencies[0].service_type) if component.dependencies else None
         )
