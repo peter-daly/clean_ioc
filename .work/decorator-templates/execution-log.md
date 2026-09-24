@@ -53,6 +53,8 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 
 | 05 | Implementation verification, repair | Passed | `f9cbaee` | Three P2s repaired; 546 focused tests; Python3.11 145 passed/4 expected skips; Ruff/ty/format/diff and full-unit/lint/type commit hooks passed |
 
-| 05 | Independent technical review | Passed round 2; checkpoint pending | Pending | Astra High `/root/m05_review`; [review](05-review.md); 546 independent tests/probes and Ruff/ty; all findings resolved |
+| 05 | Independent technical review | Passed round 2 | `636205b` | Astra High `/root/m05_review`; [review](05-review.md); 546 independent tests/probes and Ruff/ty; all findings resolved |
 
-Implementation/review/documentation gates not listed here have not passed. M05 independent review in progress; M06–M10 have not started.
+| 05 | Final handoff | Passed; checkpoint pending | Pending | All prior gates verified; full scope/boundary/edit acceptance handed to M06 |
+
+Implementation/review/documentation gates not listed here have not passed. M05 final checkpoint pending; M06–M10 have not started.

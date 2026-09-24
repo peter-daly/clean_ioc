@@ -1,6 +1,6 @@
 # M05 implementation verification handoff
 
-Status: Implementation verification delivered; independent review pending.
+Status: All applicable M05 gates passed; final checkpoint required before M06.
 Implementation: `/root/m05_implementation`, `gpt-6-astra`, high reasoning.
 Baseline: accepted M04 `596e12a`, search checkpoint `e6bd146`, branch `codex/decorator-templates`.
 Coordinator owns checkpoint commits, review, status and execution-log changes. No commits made by this agent.
@@ -109,3 +109,7 @@ Re-ran the exact focused and Python 3.11 commands above after repairs: Python 3.
 explicitly version-gated stdlib TypeVar-default tests (all pass on 3.14). The extensions NoDefault portability test
 passes on both interpreters. Ruff check, ty check, format check (**6 files already formatted**) and diff check pass.
 No public docs, bark-core changes, commits, or M06 implementation were included in these repairs.
+
+## Final handoff
+
+Independent Astra High `/root/m05_review` accepted repair `f9cbaee` in round2; review checkpoint `636205b`. Search `e6bd146`, initial verification `1c508ea`, repair `f9cbaee`; all full-unit/lint/type commit hooks passed. Final SHA recorded after commit in execution log. Public docs gate inapplicable. M06 must complete overlay preview/build parity, inherited template/source/target additions and edits, visibility aliases and anchored ownership acceptance. No remaining M05 blockers, no bark-core edits/commits, unrelated work preserved.

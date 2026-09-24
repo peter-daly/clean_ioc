@@ -1,6 +1,6 @@
 # 05 — Decorator compilation and activation
 
-Status: Independent review accepted round 2 at `f9cbaee`; final handoff pending. Dependency: 04 accepted (`596e12a`).
+Status: Accepted; all applicable gates passed, final checkpoint ready. Dependency: 04 accepted (`596e12a`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 03/04 handoffs.
 
 | Role | Model | Reasoning |
