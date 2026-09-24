@@ -131,6 +131,75 @@ def test_two_families_exact_instances_resource_filters_membership_and_order(reve
     assert len(container._plan.blueprint.template_selections) == 4
 
 
+@pytest.mark.parametrize("reverse_policies", [False, True])
+@pytest.mark.parametrize("derived", [False, True])
+def test_family_templates_keep_distinct_decorators_positions_and_resource_filters(reverse_policies, derived):
+    class FirstPolicy(Wrapper):
+        pass
+
+    class SecondPolicy(Wrapper):
+        pass
+
+    builder = ContainerBuilder()
+    group = ServiceGroup("targets", service_type=Target)
+    selector = DerivedServices(Target) if derived else group
+    first, second = FirstSource(), SecondSource()
+    first_id = builder.register(Source, instance=first, name="shared")
+    second_id = builder.register(Source, instance=second, name="shared")
+    builder.register(FirstResource)
+    builder.register(SecondResource)
+    for name, implementation in (
+        ("first", FirstTarget),
+        ("second", SecondTarget),
+        ("both", BothTarget),
+        ("neither", Target),
+    ):
+        builder.register(Target, implementation, name=name, groups=[group])
+
+    calls = []
+    policies = (
+        (FirstSource, FirstResource, FirstPolicy, -7, first_id),
+        (SecondSource, SecondResource, SecondPolicy, 19, second_id),
+    )
+    if reverse_policies:
+        policies = tuple(reversed(policies))
+    for family, resource, decorator, position, expected_id in policies:
+
+        def template(source, *, resource=resource, decorator=decorator, position=position, expected_id=expected_id):
+            calls.append(source.id)
+            assert source.id == expected_id
+            return DecoratorTemplate(
+                selector,
+                decorator,
+                arguments={"source": select(cf.with_id(source.id))},
+                when=cf.has_descendant(cf.service_type_is(resource)),
+                position=position,
+            )
+
+        builder.register_decorator_template(
+            for_each=Source,
+            source_filter=cf.implementation_type_is(family),
+            template=template,
+        )
+
+    container = builder.build()
+    assert calls == ([second_id, first_id] if reverse_policies else [first_id, second_id])
+    for name, expected in (
+        ("first", [(FirstPolicy, first)]),
+        ("second", [(SecondPolicy, second)]),
+        ("both", [(SecondPolicy, second), (FirstPolicy, first)]),
+        ("neither", []),
+    ):
+        result = container.resolve(Target, filter=cf.with_name(name))
+        actual = []
+        while isinstance(result, Wrapper):
+            actual.append((type(result), result.source))
+            result = result.inner
+        assert actual == expected
+        assert isinstance(result, Target)
+    assert len(calls) == 2
+
+
 def test_same_class_sources_shared_order_additive_templates_and_public_edits():
     builder = ContainerBuilder()
     first, second = Source(), Source()

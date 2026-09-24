@@ -14,7 +14,7 @@ Rows follow the parent contract's39-row acceptance table. Prefixes below refer t
 |4|Same specialization, named databases|bark proof::test_independent_backend_templates_bind_named_generic_sources_and_complete_transactions|
 |5|Independent same-name TypeVars|compilation::test_projected_generics_partial_source_alias_distinct_same_name_variables; diagnostics::test_generic_source_and_target_projections_remain_separate|
 |6|Backend family filtering|compilation::test_two_families_exact_instances_resource_filters_membership_and_order; bark mixed proof|
-|7|Separate options/mixed resources|same compilation/bark proof as6|
+|7|Separate options/mixed resources|compilation::test_family_templates_keep_distinct_decorators_positions_and_resource_filters (two decorator classes, positions −7/+19, distinct descendant-resource filters, exact mixed nesting, both selectors and policy orders); bark mixed proof|
 |8|Additive overlapping policies|diagnostics::test_independent_overlapping_policies_keep_both_identities|
 |9|Type/name/tag source filters|expansion::test_real_recursive_source_filters_conditions_build_args_and_no_activation; compilation::test_two_families_exact_instances_resource_filters_membership_and_order|
 |10|Undecorated source/parent context|feasibility::test_completed_source_core_excludes_all_decorator_branches_without_activation; test_canonical_source_does_not_apply_root_condition_but_exact_injection_does|
