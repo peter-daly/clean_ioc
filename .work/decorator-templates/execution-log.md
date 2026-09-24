@@ -45,6 +45,8 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 
 | 04 | Independent technical review | Passed round 2 | `b6b7c41` | Astra High `/root/m04_review`; [review](04-review.md); 147 independent tests and targeted probes; all findings resolved |
 
-| 04 | Final handoff | Passed; checkpoint pending | Pending | All prior gates verified; actual generated activation/recheck handed to M05 |
+| 04 | Final handoff | Passed | `596e12a` | All prior gates verified; actual generated activation/recheck handed to M05 |
 
-Implementation/review/documentation gates not listed here have not passed. M04 final checkpoint pending; M05–M10 have not started.
+| 05 | Search | Passed; checkpoint pending | Pending | Luna Low `/root/m05_search`; [evidence](05-search.md); activation/lifecycle/boundary and snapshot scale seams mapped |
+
+Implementation/review/documentation gates not listed here have not passed. M05 search in progress; M06–M10 have not started.
