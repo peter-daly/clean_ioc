@@ -57,6 +57,8 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 
 | 05 | Final handoff | Passed | `d62c87e` | All prior gates verified; full scope/boundary/edit acceptance handed to M06 |
 
-| 06 | Search | Passed; checkpoint pending | Pending | Luna Low `/root/m06_search`; [evidence](06-search.md); preview gap and runtime ownership/visibility cases mapped |
+| 06 | Search | Passed | `8800f1d` | Luna Low `/root/m06_search`; [evidence](06-search.md); preview gap and runtime ownership/visibility cases mapped |
 
-Implementation/review/documentation gates not listed here have not passed. M06 search in progress; M07–M10 have not started.
+| 06 | Implementation verification | Passed; checkpoint pending | Pending | Astra High `/root/m06_implementation`; [handoff](06-handoff.md); 573 focused tests; Python3.11 350 passed/4 expected skips; Ruff/ty/format/diff passed |
+
+Implementation/review/documentation gates not listed here have not passed. M06 implementation in progress; M07–M10 have not started.

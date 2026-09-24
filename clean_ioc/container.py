@@ -1130,13 +1130,23 @@ def _compiled_boundary_component(
     *,
     service_type: Any,
     build_args: Mapping[str, Any],
+    compilation_inputs: _CompilationInputs | None = None,
     name: str | None | object = _UNCHANGED_COMPONENT_NAME,
     tags: tuple[legacy.Tag, ...] | None = None,
     public_service_type: Any | None = None,
 ) -> Component:
     """Compile one metadata occurrence so structural filters see its subtree."""
 
-    compiler = _Compiler(blueprint, build_args=build_args)
+    inputs = compilation_inputs or {}
+    compiler = _Compiler(
+        blueprint,
+        build_args=build_args,
+        anchored_singletons=inputs.get("anchored_singleton_steps"),
+        anchored_pre_configurations=inputs.get("anchored_pre_configuration_steps"),
+        anchored_owner_tokens=inputs.get("anchored_owner_tokens", frozenset()),
+        inherited_parameter_explanations=inputs.get("inherited_parameter_explanations", types.MappingProxyType({})),
+        inherited_generic_explanations=inputs.get("inherited_generic_explanations", types.MappingProxyType({})),
+    )
     compiler._area = blueprint.registration_area(layer)
     if registration.id in layer.pattern_ids:
         registration = compiler._specialize_factory(registration, layer, service_type)
@@ -1148,6 +1158,13 @@ def _compiled_boundary_component(
         requested_service_type=service_type,
         origin=blueprint.registration_origin(registration.id, layer),
     )
+    # A parent anchor may have first been published through a boundary alias.
+    # Selection inspects the original definition before applying this contract's
+    # public identity, without changing the anchor or its selected dependencies.
+    record = cast(_ComponentDraft, compiler.graph.record(component.occurrence_id))
+    record.service_type = service_type
+    record.name = registration.name
+    record.tags = tuple(registration.tags)
     if name is not _UNCHANGED_COMPONENT_NAME:
         cast(_ComponentDraft, compiler.graph.record(component.occurrence_id)).name = cast(str | None, name)
     if tags is not None:
@@ -1215,6 +1232,7 @@ def _select_boundary_registrations(
     build_args: Mapping[str, Any],
     boundary: str | None,
     code: str,
+    compilation_inputs: _CompilationInputs | None = None,
 ) -> list[tuple[legacy._Registration, _Layer]]:
     selected: list[tuple[legacy._Registration, _Layer]] = []
     for registration, layer in _boundary_registrations(blueprint, layers, service_type):
@@ -1225,6 +1243,7 @@ def _select_boundary_registrations(
                 layer,
                 service_type=service_type,
                 build_args=build_args,
+                compilation_inputs=compilation_inputs,
             )
         except ContainerBuildError:
             # Whole-container compilation reports invalid candidate subtrees with
@@ -1282,6 +1301,7 @@ def _prepare_boundary_visibility(
     blueprint: _Blueprint,
     *,
     build_args: Mapping[str, Any],
+    compilation_inputs: _CompilationInputs | None = None,
 ) -> _Blueprint:
     """Validate and resolve every visibility declaration before plan compilation."""
 
@@ -1420,6 +1440,7 @@ def _prepare_boundary_visibility(
                 build_args=build_args,
                 boundary=boundary.name,
                 code="boundary-expose-not-found",
+                compilation_inputs=compilation_inputs,
             )
             if not matches:
                 # A matching import is a prohibited re-export rather than an absent local definition.
@@ -1478,6 +1499,7 @@ def _prepare_boundary_visibility(
                     build_args=build_args,
                     boundary=boundary.name,
                     code="boundary-use-not-found",
+                    compilation_inputs=compilation_inputs,
                 )
                 slot_matches: list[tuple[Any, str | None]] = []
                 for layer in source_layers:
@@ -1552,6 +1574,7 @@ def _prepare_boundary_visibility(
                             name=target.name,
                             tags=target.tags,
                             public_service_type=use.service_type,
+                            compilation_inputs=compilation_inputs,
                         )
                     except ContainerBuildError:
                         component = _boundary_component(
@@ -6156,11 +6179,20 @@ class _Compiler:
             )
             definitions.append((definition, declaration_layer))
             generated[candidate.id] = candidate, target
+        # Patched inherited declarations keep their ordinal in the local layer,
+        # where it can equal a local declaration's ordinal. Preserve the stable
+        # declaration traversal tie-break before ordering sources within a template.
+        declaration_ranks: dict[str, int] = {}
+        definition_ranks: dict[str, int] = {}
+        for definition, _ in definitions:
+            declaration_id = generated[definition.id][0].declaration.id if definition.id in generated else definition.id
+            definition_ranks[definition.id] = declaration_ranks.setdefault(declaration_id, len(declaration_ranks))
         definitions.sort(
             key=lambda item: (
                 item[0].position,
                 next(index for index, value in enumerate(area_layers) if value is item[1]),
                 -item[0].order,
+                definition_ranks[item[0].id],
                 -generated[item[0].id][0].source_order if item[0].id in generated else 0,
             )
         )
@@ -7178,6 +7210,7 @@ def _check_template_boundary_visibility(
     *,
     build_args: Mapping[str, Any] = _EMPTY_BUILD_ARGS,
     candidates: tuple[_GeneratedDecoratorDefinition, ...] = (),
+    compilation_inputs: _CompilationInputs | None = None,
 ) -> _Blueprint:
     """One consistency check; the caller must supply complete generated semantics.
 
@@ -7186,7 +7219,9 @@ def _check_template_boundary_visibility(
     """
     provenance = tuple(f"{item.declaration.id}:{item.source.id}" for item in candidates)
     try:
-        checked = _prepare_boundary_visibility(expanded_normalized, build_args=build_args)
+        checked = _prepare_boundary_visibility(
+            expanded_normalized, build_args=build_args, compilation_inputs=compilation_inputs
+        )
     except Exception as error:
         path = error.path if isinstance(error, ContainerBuildError) else ()
         raise ContainerBuildError(
@@ -7235,6 +7270,16 @@ def _compile_with_report(
     inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = types.MappingProxyType({}),
     inherited_generic_explanations: Mapping[int, GenericBindingExplanation] = types.MappingProxyType({}),
 ) -> _PlanSet:
+    compilation_inputs: _CompilationInputs = {
+        "build_args": build_args,
+        "anchored_owner_tokens": anchored_owner_tokens,
+        "inherited_parameter_explanations": inherited_parameter_explanations,
+        "inherited_generic_explanations": inherited_generic_explanations,
+    }
+    if anchored_singleton_steps is not None:
+        compilation_inputs["anchored_singleton_steps"] = anchored_singleton_steps
+    if anchored_pre_configuration_steps is not None:
+        compilation_inputs["anchored_pre_configuration_steps"] = anchored_pre_configuration_steps
     alias_errors = _blueprint_alias_errors(blueprint)
     if alias_errors:
         report = _alias_error_report(alias_errors)
@@ -7246,7 +7291,9 @@ def _compile_with_report(
         )
     try:
         blueprint = _normalize_blueprint_aliases(blueprint)
-        blueprint = _prepare_boundary_visibility(blueprint, build_args=build_args)
+        blueprint = _prepare_boundary_visibility(
+            blueprint, build_args=build_args, compilation_inputs=compilation_inputs
+        )
         expansion = _expand_decorator_templates(
             blueprint,
             build_args=build_args,
@@ -7265,6 +7312,7 @@ def _compile_with_report(
                 _normalize_blueprint_aliases(expanded),
                 build_args=build_args,
                 candidates=expansion.candidates,
+                compilation_inputs=compilation_inputs,
             )
             if expansion.candidates
             else expanded
@@ -7743,6 +7791,15 @@ class Container(Scope):
         )
 
 
+class _CompilationInputs(typing.TypedDict, total=False):
+    build_args: Mapping[str, Any]
+    anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep]
+    anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration]
+    anchored_owner_tokens: frozenset[str]
+    inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]]
+    inherited_generic_explanations: Mapping[int, GenericBindingExplanation]
+
+
 class _BuilderBase:
     def __init__(
         self,
@@ -7812,6 +7869,31 @@ class _BuilderBase:
         if parent is None:
             return _normalize_build_args(build_args)
         return _merge_build_args(parent.build_args, build_args)
+
+    def _compilation_snapshot(self, build_args: Mapping[str, Any] | None) -> tuple[_Blueprint, _CompilationInputs]:
+        """Use the same original declarations and parent anchors for every build-time view."""
+        self._assert_mutable()
+        parent = getattr(self, "_parent", None)
+        inputs: _CompilationInputs = {"build_args": self._effective_build_args(build_args)}
+        if parent is None:
+            return _Blueprint((self._layer(),), tuple(self._boundaries)), inputs
+        parent._ensure_open()
+        inherited_boundaries = tuple(
+            replace(boundary, root_layer_offset=boundary.root_layer_offset + 1)
+            for boundary in parent._plan.blueprint.boundaries
+        )
+        blueprint = _Blueprint(
+            (self._layer(), *parent._plan.blueprint.layers),
+            (*self._boundaries, *inherited_boundaries),
+        )
+        inputs.update(
+            anchored_singleton_steps=_anchored_singletons(parent._plan),
+            anchored_pre_configuration_steps=_anchored_pre_configurations(parent._plan),
+            anchored_owner_tokens=frozenset(parent._owners),
+            inherited_parameter_explanations=parent._plan.parameter_explanations,
+            inherited_generic_explanations=parent._plan.generic_explanations,
+        )
+        return blueprint, inputs
 
     def _definition_origin(self, kind: str, definition_id: str | None) -> DefinitionOrigin:
         return DefinitionOrigin(
@@ -8269,8 +8351,12 @@ class _BuilderBase:
             template=factory,
             source_filter=predicate,
         )
-        self._decorator_templates = [item for item in self._decorator_templates if item.id != template_id]
-        self._decorator_templates.append(patched)
+        for index, candidate in enumerate(self._decorator_templates):
+            if candidate.id == template_id:
+                self._decorator_templates[index] = patched
+                break
+        else:
+            self._decorator_templates.append(patched)
 
     def remove_decorator_template(self, template_id: str) -> None:
         self._assert_mutable()
@@ -8285,35 +8371,11 @@ class _BuilderBase:
 
     def _expand_decorator_templates(self, *, build_args: Mapping[str, Any] | None = None) -> _TemplateExpansion:
         """Inspect source expansion independently of generated target compilation."""
-        self._assert_mutable()
-        parent = getattr(self, "_parent", None)
-        inherited = (
-            ()
-            if parent is None
-            else tuple(
-                replace(boundary, root_layer_offset=boundary.root_layer_offset + 1)
-                for boundary in parent._plan.blueprint.boundaries
-            )
+        blueprint, inputs = self._compilation_snapshot(build_args)
+        prepared = _prepare_boundary_visibility(
+            _normalize_blueprint_aliases(blueprint), build_args=inputs["build_args"], compilation_inputs=inputs
         )
-        blueprint = _Blueprint(
-            (self._layer(), *(() if parent is None else parent._plan.blueprint.layers)),
-            (*self._boundaries, *inherited),
-        )
-        arguments = self._effective_build_args(build_args)
-        prepared = _prepare_boundary_visibility(_normalize_blueprint_aliases(blueprint), build_args=arguments)
-        return _expand_decorator_templates(
-            prepared,
-            build_args=arguments,
-            anchored_singleton_steps=None if parent is None else _anchored_singletons(parent._plan),
-            anchored_pre_configuration_steps=None if parent is None else _anchored_pre_configurations(parent._plan),
-            anchored_owner_tokens=frozenset() if parent is None else frozenset(parent._owners),
-            inherited_parameter_explanations=types.MappingProxyType({})
-            if parent is None
-            else parent._plan.parameter_explanations,
-            inherited_generic_explanations=types.MappingProxyType({})
-            if parent is None
-            else parent._plan.generic_explanations,
-        )
+        return _expand_decorator_templates(prepared, **inputs)
 
     def register_decorator(
         self,
@@ -8585,8 +8647,7 @@ class _BuilderBase:
         service_type: Any,
         build_args: Mapping[str, Any] | None = None,
     ) -> tuple[Component, ...]:
-        self._assert_mutable()
-        blueprint = _Blueprint((self._layer(),), tuple(self._boundaries))
+        blueprint, inputs = self._compilation_snapshot(build_args)
         alias_errors = _blueprint_alias_errors(blueprint)
         if alias_errors:
             raise ContainerBuildError(report=_alias_error_report(alias_errors))
@@ -8595,7 +8656,7 @@ class _BuilderBase:
             blueprint = _normalize_blueprint_aliases(blueprint)
         except TypeAliasNormalizationError as error:
             raise ContainerBuildError(report=_alias_error_report((error,))) from error
-        plan = _compile_with_report(blueprint, build_args=self._effective_build_args(build_args), preview=True)
+        plan = _compile_with_report(blueprint, **inputs, preview=True)
         roots = plan.roots.get(service_type, plan.provider_roots.get(service_type, ()))
         return tuple(item.component for item in roots)
 
@@ -8642,11 +8703,8 @@ class ContainerBuilder(_BuilderBase):
         self._install_boundary(boundary)
 
     def build(self, *, build_args: Mapping[str, Any] | None = None) -> Container:
-        self._assert_mutable()
-        plan = _compile_with_report(
-            _Blueprint((self._layer(),), tuple(self._boundaries)),
-            build_args=self._effective_build_args(build_args),
-        )
+        blueprint, inputs = self._compilation_snapshot(build_args)
+        plan = _compile_with_report(blueprint, **inputs)
         container = Container(plan, self._owner_token)
         self._built = True
         return container
@@ -8666,25 +8724,8 @@ class ScopeBuilder(_BuilderBase):
         self._install_boundary(boundary)
 
     def build(self, *, build_args: Mapping[str, Any] | None = None) -> Scope:
-        self._assert_mutable()
-        self._parent._ensure_open()
-        inherited_boundaries = tuple(
-            replace(boundary, root_layer_offset=boundary.root_layer_offset + 1)
-            for boundary in self._parent._plan.blueprint.boundaries
-        )
-        blueprint = _Blueprint(
-            (self._layer(), *self._parent._plan.blueprint.layers),
-            (*self._boundaries, *inherited_boundaries),
-        )
-        plan = _compile_with_report(
-            blueprint,
-            build_args=self._effective_build_args(build_args),
-            anchored_singleton_steps=_anchored_singletons(self._parent._plan),
-            anchored_pre_configuration_steps=_anchored_pre_configurations(self._parent._plan),
-            anchored_owner_tokens=frozenset(self._parent._owners),
-            inherited_parameter_explanations=self._parent._plan.parameter_explanations,
-            inherited_generic_explanations=self._parent._plan.generic_explanations,
-        )
+        blueprint, inputs = self._compilation_snapshot(build_args)
+        plan = _compile_with_report(blueprint, **inputs)
         scope = Scope(
             plan,
             container=self._parent.container,

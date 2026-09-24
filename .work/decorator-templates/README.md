@@ -1,6 +1,6 @@
 # Decorator templates — sequential milestones
 
-Status: Executing sequentially. M01–M05 accepted; M06 begins after M05 final checkpoint. M06–M10 remain pending.
+Status: Executing sequentially. M01–M05 accepted and committed; M06 implementation in progress. M07–M10 remain pending.
 
 [Feature contract](../decorator-templates.md) is the source of truth for behaviour and constraints.
 This directory replaces that work item's broad implementation sequence with independently reviewable milestones.
