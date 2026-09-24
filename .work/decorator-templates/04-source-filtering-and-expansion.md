@@ -1,6 +1,6 @@
 # 04 — Source filtering and template expansion
 
-Status: Independent review requested two static-metadata repairs; verification reopened. Dependency: 03 accepted (`530a725`).
+Status: Independent review accepted round 2 at `65792c2`; final handoff pending. Dependency: 03 accepted (`530a725`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 01/03 handoffs.
 
 | Role | Model | Reasoning |

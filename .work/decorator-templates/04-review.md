@@ -10,3 +10,7 @@ Independent **145 focused tests passed** (expansion,feasibility,targets,boundari
 2. `container.py:3634`: source-root enrichment handles instances only. Typed factory()->Backend[int] under Source gives RegistrationInfo Backend[int] but filter Component Source, incorrectly rejecting cf.implementation_type_is(Backend). Enrich canonical source inspection from known factory evidence, preserving normal runtime views. Test closed/postponed annotations,broad returns and nonexecuted sentinel factories.
 
 Original implementation agent assigned repairs. The internal M04/M05 split is appropriate; actual generated selector boundary recheck remains mandatory M05 work. Acceptance pending.
+
+## Round 2: accepted at `65792c2`
+
+Both P2s resolved. Independent **147 tests passed** plus original instance regression, postponed closed factory and PEP695 generic-instance probes. Static capture occurs before mutation without dynamic lookup/descriptors; source filter metadata agrees with RegistrationInfo while ordinary views stay unchanged. No remaining M04 blockers. Actual generated semantics/boundary recheck remain required M05 before public API exposure. No reviewer edits/commits.
