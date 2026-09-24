@@ -1,6 +1,6 @@
 # M07 implementation verification handoff
 
-Status: round-1 Astra findings repaired and verified; coordinator repair checkpoint and same-reviewer recheck pending.
+Status: round-2 Astra nested-overlay finding repaired and verified; coordinator repair checkpoint and same-reviewer recheck pending.
 Agent: `/root/m07_implementation`, `gpt-6-sol`, high reasoning. Baseline: accepted M06/search checkpoint `4e9174a` on `codex/decorator-templates`. This agent made no commits. Coordinator owns status, log, checkpoint, and review.
 
 ## Delivered behavior
@@ -36,3 +36,9 @@ Reviewer `/root/m07_review` requested three P2 fixes in `07-review.md`. This imp
 3. Source-filter and template-factory callback phases now force compiler-owned `template-expansion` code and template/source path even if a callback raises `ContainerBuildError` with private code/path. A fixed internal reentry-guard exception preserves the existing `template-expansion-reentry` contract while never copying callback code/path. Both callback phases have redaction regressions.
 
 Repair verification: 458 relevant Python 3.14 tests passed in 4.52s; isolated Python 3.11 had 364 passed and four existing version skips in 2.74s. Ruff check and ty check pass for the changed `container.py` and diagnostics test; Ruff format check passes after formatting; `git diff --check` passes. The repair changes only `clean_ioc/container.py`, `tests/test_decorator_template_diagnostics.py`, and this handoff. No reviewer acceptance is claimed until the same Astra reviewer rechecks the checkpoint.
+
+## Round-2 nested-overlay repair
+
+The reviewer accepted both privacy repairs but found that a grandchild overlay may clone an anchor whose `Component` still belongs to the root graph. Its immediate parent's occurrence-indexed sidecars can describe a different component at the same integer ID. Build-time inputs now collect each ancestor plan's frozen explanation sidecars keyed by its actual `_ComponentGraph` object. `_clone_component_tree` selects the exact owning graph for occurrence explanations, decorator decisions, origins, parameter records, and generic records; it never falls back to a sidecar from another graph. The five immediate-parent sidecar arguments were removed. The graph-keyed mapping exists only in transient compilation inputs and compiler instances, while the final plan keeps its own frozen records.
+
+The shifted-ID regression now builds a grandchild overlay and checks template/source identity, remapped target occurrence IDs, and registration/decorator-template origins for both core and wrapper. Round-2 verification: **458 passed** in the affected Python 3.14 suites; isolated Python 3.11 **364 passed, 4 version skips**. Ruff check, ty check, format check, and `git diff --check` pass after formatting. No commits, public documentation, or bark-core changes by this agent. Reviewer acceptance remains pending.

@@ -242,7 +242,19 @@ def test_anchored_overlay_relabels_target_occurrence_without_replaying_factory()
     assert decorator_fact.template_id == parent_fact.template_id
     assert overlay.graph.explain(child).selected[0].origin.kind == "registration"
     assert overlay.graph.explain(child.decorators[0]).selected[0].origin.kind == "decorator-template"
-    assert calls.count(source) == 2
+    grandchild = overlay.new_scope_builder().build()
+    grandchild_target = _roots(grandchild.graph, Target)[0]
+    grandchild_decision = grandchild.graph.explain_decorators(grandchild_target).selected[0]
+    grandchild_wrapper_decision = grandchild.graph.explain(grandchild_target.decorators[0]).selected[0]
+    assert grandchild_decision.template is not None
+    assert grandchild_wrapper_decision.template is not None
+    assert grandchild_decision.template.template_id == parent_fact.template_id
+    assert grandchild_wrapper_decision.template.template_id == parent_fact.template_id
+    assert grandchild_decision.template.target_occurrence_id == grandchild_target.occurrence_id
+    assert grandchild_wrapper_decision.template.target_occurrence_id == grandchild_target.occurrence_id
+    assert grandchild_decision.origin.kind == grandchild_wrapper_decision.origin.kind == "decorator-template"
+    assert grandchild.graph.explain(grandchild_target).selected[0].origin.kind == "registration"
+    assert calls.count(source) == 3
 
 
 def test_failure_keeps_context_without_exception_or_argument_secrets():

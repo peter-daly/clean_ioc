@@ -67,7 +67,7 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 
 Checkpoint `98666ca` recorded the repair SHA only because the evidence-writing command could not find Python; this subsequent checkpoint records the review evidence. All hooks passed.
 
-Implementation/review/documentation gates not listed here have not passed. M06 final handoff passed; M07 review repairs in progress after original implementation agent restored on user continuation; M08–M10 have not started.
+Implementation/review/documentation gates not listed here have not passed. M06 final handoff passed; M07 independent repair recheck in progress after original implementation agent restored; M08–M10 have not started.
 
 | 06 | Final handoff | Passed | `34f19e6` | All prior gates verified; no public documentation changes; diagnostics handed to M07 |
 
@@ -79,4 +79,6 @@ M07 review round 1 found three P2s; see [review](07-review.md). Original impleme
 
 2026-09-24 continuation: original Sol High `/root/m07_implementation` restored successfully; capacity blocker cleared. Three review findings assigned for repair and subsequent independent recheck.
 
-| 07 | Implementation verification, repair | Passed | Pending checkpoint | Original Sol High agent restored; all three P2s repaired; 458 relevant tests; Python3.11 364 passed/4 expected skips; Ruff/ty/format/diff passed; [handoff](07-handoff.md) |
+| 07 | Implementation verification, repair | Passed | `71183b8` | Original Sol High agent restored; all three P2s repaired; 458 relevant tests; Python3.11 364 passed/4 expected skips; Ruff/ty/format/diff passed; [handoff](07-handoff.md) |
+
+| 07 | Implementation verification, repair 2 | Passed | Pending checkpoint | Ancestor graph-keyed frozen sidecars; nested regression; 458 affected tests; Python3.11 364 passed/4 expected skips; Ruff/ty/format/diff passed |

@@ -1154,8 +1154,7 @@ def _compiled_boundary_component(
         anchored_singletons=inputs.get("anchored_singleton_steps"),
         anchored_pre_configurations=inputs.get("anchored_pre_configuration_steps"),
         anchored_owner_tokens=inputs.get("anchored_owner_tokens", frozenset()),
-        inherited_parameter_explanations=inputs.get("inherited_parameter_explanations", types.MappingProxyType({})),
-        inherited_generic_explanations=inputs.get("inherited_generic_explanations", types.MappingProxyType({})),
+        inherited_graph_sidecars=inputs.get("inherited_graph_sidecars", types.MappingProxyType({})),
     )
     compiler._area = blueprint.registration_area(layer)
     if registration.id in layer.pattern_ids:
@@ -3124,6 +3123,27 @@ class _PlanSet:
     area_root_candidates: Mapping[str, Mapping[Any, tuple[_CandidateRecord, ...]]] = field(default_factory=dict)
 
 
+@dataclass(frozen=True, slots=True)
+class _GraphExplanationSidecars:
+    """Frozen explanation records indexed by their owning component graph."""
+
+    occurrence: Mapping[int, CompilationExplanation]
+    decorators: Mapping[int, CompilationExplanation]
+    origins: Mapping[int, DefinitionOrigin]
+    parameters: Mapping[int, Mapping[str, ParameterExplanation]]
+    generics: Mapping[int, GenericBindingExplanation]
+
+
+def _graph_explanation_sidecars(plan: _PlanSet) -> _GraphExplanationSidecars:
+    return _GraphExplanationSidecars(
+        plan.occurrence_explanations,
+        plan.decorator_explanations,
+        plan.occurrence_origins,
+        plan.parameter_explanations,
+        plan.generic_explanations,
+    )
+
+
 def _requires_async(activator_class: type, implementation: Any) -> bool:
     if activator_class in (legacy.AsyncFactoryActivator, legacy.AsyncGeneratorActivator):
         return True
@@ -3214,11 +3234,7 @@ class _Compiler:
         anchored_singletons: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
         anchored_pre_configurations: dict[str, _CompiledPreConfiguration] | None = None,
         anchored_owner_tokens: frozenset[str] = frozenset(),
-        inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = types.MappingProxyType({}),
-        inherited_generic_explanations: Mapping[int, GenericBindingExplanation] = types.MappingProxyType({}),
-        inherited_occurrence_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
-        inherited_occurrence_origins: Mapping[int, DefinitionOrigin] = types.MappingProxyType({}),
-        inherited_decorator_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
+        inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
     ):
         self.blueprint = blueprint
         self.build_args = build_args
@@ -3243,11 +3259,7 @@ class _Compiler:
         self._anchored_singletons = anchored_singletons or {}
         self._anchored_pre_configurations = anchored_pre_configurations or {}
         self._anchored_owner_tokens = anchored_owner_tokens
-        self._inherited_parameter_explanations = inherited_parameter_explanations
-        self._inherited_generic_explanations = inherited_generic_explanations
-        self._inherited_occurrence_explanations = inherited_occurrence_explanations
-        self._inherited_occurrence_origins = inherited_occurrence_origins
-        self._inherited_decorator_explanations = inherited_decorator_explanations
+        self._inherited_graph_sidecars = inherited_graph_sidecars
         self._area: str | None = None
         self.issues: list[BuildIssue] = []
         self.root_candidates: dict[Any, tuple[_CandidateRecord, ...]] = {}
@@ -5223,6 +5235,7 @@ class _Compiler:
         # Occurrence integers are local to their graph. Consult only the
         # sidecar associated with the graph that owns this source component.
         local_source = source._graph is self.graph
+        inherited_sidecars = None if local_source else self._inherited_graph_sidecars.get(source._graph)
         component, draft = self._draft(
             component_id=source.id,
             service_type=source.service_type,
@@ -5239,7 +5252,13 @@ class _Compiler:
             position=source.position,
             provider_mode=source.provider_mode,
             build_args=source.build_args,
-            origin=(self.origins if local_source else self._inherited_occurrence_origins).get(source.occurrence_id),
+            origin=(
+                self.origins.get(source.occurrence_id)
+                if local_source
+                else None
+                if inherited_sidecars is None
+                else inherited_sidecars.origins.get(source.occurrence_id)
+            ),
             declared_service_type=source.declared_service_type,
         )
         draft.implementation_type = source.implementation_type
@@ -5258,8 +5277,12 @@ class _Compiler:
             draft.owner_id = cloned_owner.occurrence_id
         mapping[source.occurrence_id] = component
 
-        def captured(current: Mapping[int, Any], inherited: Mapping[int, Any]) -> Any | None:
-            return (current if local_source else inherited).get(source.occurrence_id)
+        def captured(current: Mapping[int, Any], field: str) -> Any | None:
+            if local_source:
+                return current.get(source.occurrence_id)
+            if inherited_sidecars is None:
+                return None
+            return cast(Mapping[int, Any], getattr(inherited_sidecars, field)).get(source.occurrence_id)
 
         def remap_explanation(explanation: CompilationExplanation) -> CompilationExplanation:
             def remap_decision(decision: CandidateDecision) -> CandidateDecision:
@@ -5275,16 +5298,16 @@ class _Compiler:
                 rejected=tuple(map(remap_decision, explanation.rejected)),
             )
 
-        explanation = captured(self.occurrence_explanations, self._inherited_occurrence_explanations)
+        explanation = captured(self.occurrence_explanations, "occurrence")
         if explanation is not None:
             self.occurrence_explanations[component.occurrence_id] = remap_explanation(explanation)
-        decorator_explanation = captured(self.decorator_explanations, self._inherited_decorator_explanations)
+        decorator_explanation = captured(self.decorator_explanations, "decorators")
         if decorator_explanation is not None:
             self.decorator_explanations[component.occurrence_id] = remap_explanation(decorator_explanation)
-        parameters = captured(self.parameter_explanations, self._inherited_parameter_explanations)
+        parameters = captured(self.parameter_explanations, "parameters")
         if parameters is not None:
             self.parameter_explanations[component.occurrence_id] = dict(parameters)
-        generic = captured(self.generic_explanations, self._inherited_generic_explanations)
+        generic = captured(self.generic_explanations, "generics")
         if generic is not None:
             self.generic_explanations[component.occurrence_id] = generic
 
@@ -6785,6 +6808,7 @@ def _error_report(
     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
     anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
     anchored_owner_tokens: frozenset[str] = frozenset(),
+    inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
 ) -> tuple[BuildReport, tuple[CompilationAttempt, ...], tuple[int, int]]:
     issues: list[BuildIssue] = []
     attempts: list[CompilationAttempt] = []
@@ -6808,6 +6832,7 @@ def _error_report(
                 anchored_singletons=anchored_singleton_steps,
                 anchored_pre_configurations=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
+                inherited_graph_sidecars=inherited_graph_sidecars,
             )
             try:
                 compiler.compile((service_type,), area=area, include_boundaries=False)
@@ -7314,11 +7339,7 @@ def _expand_decorator_templates(
     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
     anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
     anchored_owner_tokens: frozenset[str] = frozenset(),
-    inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = types.MappingProxyType({}),
-    inherited_generic_explanations: Mapping[int, GenericBindingExplanation] = types.MappingProxyType({}),
-    inherited_occurrence_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
-    inherited_occurrence_origins: Mapping[int, DefinitionOrigin] = types.MappingProxyType({}),
-    inherited_decorator_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
+    inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
 ) -> _TemplateExpansion:
     """Expand a normalized, visibility-prepared snapshot once, without target activation.
 
@@ -7362,11 +7383,7 @@ def _expand_decorator_templates(
                         anchored_singletons=anchored_singleton_steps,
                         anchored_pre_configurations=anchored_pre_configuration_steps,
                         anchored_owner_tokens=anchored_owner_tokens,
-                        inherited_parameter_explanations=inherited_parameter_explanations,
-                        inherited_generic_explanations=inherited_generic_explanations,
-                        inherited_occurrence_explanations=inherited_occurrence_explanations,
-                        inherited_occurrence_origins=inherited_occurrence_origins,
-                        inherited_decorator_explanations=inherited_decorator_explanations,
+                        inherited_graph_sidecars=inherited_graph_sidecars,
                     )._compile_source_core(registration.id, registration.service_type)
                     phase = "source filter"
                     selected = bool(definition.source_filter(core))
@@ -7504,20 +7521,12 @@ def _compile_with_report(
     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
     anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
     anchored_owner_tokens: frozenset[str] = frozenset(),
-    inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = types.MappingProxyType({}),
-    inherited_generic_explanations: Mapping[int, GenericBindingExplanation] = types.MappingProxyType({}),
-    inherited_occurrence_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
-    inherited_occurrence_origins: Mapping[int, DefinitionOrigin] = types.MappingProxyType({}),
-    inherited_decorator_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
+    inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
 ) -> _PlanSet:
     compilation_inputs: _CompilationInputs = {
         "build_args": build_args,
         "anchored_owner_tokens": anchored_owner_tokens,
-        "inherited_parameter_explanations": inherited_parameter_explanations,
-        "inherited_generic_explanations": inherited_generic_explanations,
-        "inherited_occurrence_explanations": inherited_occurrence_explanations,
-        "inherited_occurrence_origins": inherited_occurrence_origins,
-        "inherited_decorator_explanations": inherited_decorator_explanations,
+        "inherited_graph_sidecars": inherited_graph_sidecars,
     }
     if anchored_singleton_steps is not None:
         compilation_inputs["anchored_singleton_steps"] = anchored_singleton_steps
@@ -7543,11 +7552,7 @@ def _compile_with_report(
             anchored_singleton_steps=anchored_singleton_steps,
             anchored_pre_configuration_steps=anchored_pre_configuration_steps,
             anchored_owner_tokens=anchored_owner_tokens,
-            inherited_parameter_explanations=inherited_parameter_explanations,
-            inherited_generic_explanations=inherited_generic_explanations,
-            inherited_occurrence_explanations=inherited_occurrence_explanations,
-            inherited_occurrence_origins=inherited_occurrence_origins,
-            inherited_decorator_explanations=inherited_decorator_explanations,
+            inherited_graph_sidecars=inherited_graph_sidecars,
         )
         expanded = replace(
             blueprint, generated_decorators=expansion.candidates, template_selections=expansion.selections
@@ -7590,11 +7595,7 @@ def _compile_with_report(
         anchored_singletons=anchored_singleton_steps,
         anchored_pre_configurations=anchored_pre_configuration_steps,
         anchored_owner_tokens=anchored_owner_tokens,
-        inherited_parameter_explanations=inherited_parameter_explanations,
-        inherited_generic_explanations=inherited_generic_explanations,
-        inherited_occurrence_explanations=inherited_occurrence_explanations,
-        inherited_occurrence_origins=inherited_occurrence_origins,
-        inherited_decorator_explanations=inherited_decorator_explanations,
+        inherited_graph_sidecars=inherited_graph_sidecars,
     )
     try:
         plan = compiler.compile()
@@ -7613,6 +7614,7 @@ def _compile_with_report(
             anchored_singleton_steps=anchored_singleton_steps,
             anchored_pre_configuration_steps=anchored_pre_configuration_steps,
             anchored_owner_tokens=anchored_owner_tokens,
+            inherited_graph_sidecars=inherited_graph_sidecars,
         )
         raise ContainerBuildError(
             report=report,
@@ -7637,6 +7639,7 @@ def _compile_with_report(
             anchored_singleton_steps=anchored_singleton_steps,
             anchored_pre_configuration_steps=anchored_pre_configuration_steps,
             anchored_owner_tokens=anchored_owner_tokens,
+            inherited_graph_sidecars=inherited_graph_sidecars,
         )
         raise ContainerBuildError(
             report=report,
@@ -8045,11 +8048,7 @@ class _CompilationInputs(typing.TypedDict, total=False):
     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep]
     anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration]
     anchored_owner_tokens: frozenset[str]
-    inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]]
-    inherited_generic_explanations: Mapping[int, GenericBindingExplanation]
-    inherited_occurrence_explanations: Mapping[int, CompilationExplanation]
-    inherited_occurrence_origins: Mapping[int, DefinitionOrigin]
-    inherited_decorator_explanations: Mapping[int, CompilationExplanation]
+    inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars]
 
 
 class _BuilderBase:
@@ -8136,15 +8135,16 @@ class _BuilderBase:
             (self._layer(), *parent._plan.blueprint.layers),
             (*self._boundaries, *inherited_boundaries),
         )
+        sidecars: dict[_ComponentGraph, _GraphExplanationSidecars] = {}
+        ancestor: Scope | None = parent
+        while ancestor is not None:
+            sidecars.setdefault(ancestor._plan.graph, _graph_explanation_sidecars(ancestor._plan))
+            ancestor = ancestor.parent
         inputs.update(
             anchored_singleton_steps=_anchored_singletons(parent._plan),
             anchored_pre_configuration_steps=_anchored_pre_configurations(parent._plan),
             anchored_owner_tokens=frozenset(parent._owners),
-            inherited_parameter_explanations=parent._plan.parameter_explanations,
-            inherited_generic_explanations=parent._plan.generic_explanations,
-            inherited_occurrence_explanations=parent._plan.occurrence_explanations,
-            inherited_occurrence_origins=parent._plan.occurrence_origins,
-            inherited_decorator_explanations=parent._plan.decorator_explanations,
+            inherited_graph_sidecars=types.MappingProxyType(sidecars),
         )
         return blueprint, inputs
 
