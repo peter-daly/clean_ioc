@@ -55,6 +55,8 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 
 | 05 | Independent technical review | Passed round 2 | `636205b` | Astra High `/root/m05_review`; [review](05-review.md); 546 independent tests/probes and Ruff/ty; all findings resolved |
 
-| 05 | Final handoff | Passed; checkpoint pending | Pending | All prior gates verified; full scope/boundary/edit acceptance handed to M06 |
+| 05 | Final handoff | Passed | `d62c87e` | All prior gates verified; full scope/boundary/edit acceptance handed to M06 |
 
-Implementation/review/documentation gates not listed here have not passed. M05 final checkpoint pending; M06–M10 have not started.
+| 06 | Search | Passed; checkpoint pending | Pending | Luna Low `/root/m06_search`; [evidence](06-search.md); preview gap and runtime ownership/visibility cases mapped |
+
+Implementation/review/documentation gates not listed here have not passed. M06 search in progress; M07–M10 have not started.

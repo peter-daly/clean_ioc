@@ -1,6 +1,6 @@
 # 06 — Composition edits, scopes, and boundaries
 
-Status: Not started. Dependency: 05 accepted.
+Status: Search accepted; implementation awaits checkpoint. Dependency: 05 accepted (`d62c87e`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 05 handoff.
 
 | Role | Model | Reasoning |
