@@ -91,6 +91,8 @@ from .tooling import (
     PartialNode,
     PartialState,
     SourceLocation,
+    TemplateDecision,
+    TemplateSourceDecision,
     ValidationContext,
     ValidationRule,
     _CandidateRecord,
@@ -3083,6 +3085,7 @@ class _PlanSet:
     compiler_issues: tuple[BuildIssue, ...] = ()
     root_candidates: Mapping[Any, tuple[_CandidateRecord, ...]] = field(default_factory=dict)
     occurrence_explanations: Mapping[int, CompilationExplanation] = field(default_factory=dict)
+    decorator_explanations: Mapping[int, CompilationExplanation] = field(default_factory=dict)
     parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = field(default_factory=dict)
     generic_explanations: Mapping[int, GenericBindingExplanation] = field(default_factory=dict)
     occurrence_layers: Mapping[int, str] = field(default_factory=dict)
@@ -3183,6 +3186,8 @@ class _Compiler:
         anchored_owner_tokens: frozenset[str] = frozenset(),
         inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = types.MappingProxyType({}),
         inherited_generic_explanations: Mapping[int, GenericBindingExplanation] = types.MappingProxyType({}),
+        inherited_occurrence_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
+        inherited_decorator_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
     ):
         self.blueprint = blueprint
         self.build_args = build_args
@@ -3209,10 +3214,13 @@ class _Compiler:
         self._anchored_owner_tokens = anchored_owner_tokens
         self._inherited_parameter_explanations = inherited_parameter_explanations
         self._inherited_generic_explanations = inherited_generic_explanations
+        self._inherited_occurrence_explanations = inherited_occurrence_explanations
+        self._inherited_decorator_explanations = inherited_decorator_explanations
         self._area: str | None = None
         self.issues: list[BuildIssue] = []
         self.root_candidates: dict[Any, tuple[_CandidateRecord, ...]] = {}
         self.occurrence_explanations: dict[int, CompilationExplanation] = {}
+        self.decorator_explanations: dict[int, CompilationExplanation] = {}
         self.parameter_explanations: dict[int, dict[str, ParameterExplanation]] = {}
         self.generic_explanations: dict[int, GenericBindingExplanation] = {}
         self._factory_pattern_bindings: dict[str, tuple[tuple[str, str], ...]] = {}
@@ -4003,6 +4011,7 @@ class _Compiler:
             compiler_issues=tuple(self.issues),
             root_candidates=types.MappingProxyType(dict(self.root_candidates)),
             occurrence_explanations=types.MappingProxyType(dict(self.occurrence_explanations)),
+            decorator_explanations=types.MappingProxyType(dict(self.decorator_explanations)),
             parameter_explanations=types.MappingProxyType(
                 {
                     occurrence: types.MappingProxyType(dict(records))
@@ -5212,9 +5221,31 @@ class _Compiler:
                 )
             draft.owner_id = cloned_owner.occurrence_id
         mapping[source.occurrence_id] = component
-        explanation = self.occurrence_explanations.get(source.occurrence_id)
+
+        def remap_explanation(explanation: CompilationExplanation) -> CompilationExplanation:
+            def remap_decision(decision: CandidateDecision) -> CandidateDecision:
+                fact = decision.template
+                target = None if fact is None else mapping.get(fact.target_occurrence_id)
+                if fact is None or target is None:
+                    return decision
+                return replace(decision, template=replace(fact, target_occurrence_id=target.occurrence_id))
+
+            return replace(
+                explanation,
+                selected=tuple(map(remap_decision, explanation.selected)),
+                rejected=tuple(map(remap_decision, explanation.rejected)),
+            )
+
+        explanation = self.occurrence_explanations.get(source.occurrence_id) or (
+            self._inherited_occurrence_explanations.get(source.occurrence_id)
+        )
         if explanation is not None:
-            self.occurrence_explanations[component.occurrence_id] = explanation
+            self.occurrence_explanations[component.occurrence_id] = remap_explanation(explanation)
+        decorator_explanation = self.decorator_explanations.get(source.occurrence_id) or (
+            self._inherited_decorator_explanations.get(source.occurrence_id)
+        )
+        if decorator_explanation is not None:
+            self.decorator_explanations[component.occurrence_id] = remap_explanation(decorator_explanation)
         parameters = self.parameter_explanations.get(source.occurrence_id) or (
             self._inherited_parameter_explanations.get(source.occurrence_id)
         )
@@ -6151,13 +6182,68 @@ class _Compiler:
         definitions = self.blueprint.decorators(core.service_type, self._area)
         generated: dict[str, tuple[_GeneratedDecoratorDefinition, _ServiceTarget]] = {}
         area_layers = self.blueprint.layers if self._area is None else (layer,)
+        target_registration = self._specialized_registration_sources.get(registration.id, registration)
+
+        def template_fact(candidate: _GeneratedDecoratorDefinition, target: _ServiceTarget | None) -> TemplateDecision:
+            selector = candidate.specification.services
+            return TemplateDecision(
+                template_id=candidate.declaration.id,
+                source_registration_id=candidate.source.id,
+                generated_definition_id=candidate.id,
+                target_registration_id=target_registration.id,
+                target_occurrence_id=core.occurrence_id,
+                selector_kind="service-group" if isinstance(selector, ServiceGroup) else "derived-services",
+                selector_contract=qualified_name(selector.service_type),
+                source_service=qualified_name(candidate.source.service_type),
+                source_implementation=(
+                    None
+                    if candidate.source.implementation_type is None
+                    else qualified_name(candidate.source.implementation_type)
+                ),
+                source_bindings=candidate.source_bindings,
+                target_service=qualified_name(core.service_type),
+                projected_contract=None if target is None else qualified_name(target.projected_contract),
+                target_bindings=(
+                    ()
+                    if target is None
+                    else tuple(
+                        (_generic_binding_label(selector.service_type, var), qualified_name(value))
+                        for var, value in target.bindings.items()
+                    )
+                ),
+                boundary=self._area,
+            )
+
         for candidate in self.blueprint.generated_decorators:
             if candidate.declaration_area != self._area:
                 continue
-            target = self._select_service_target(
-                candidate.specification.services, registration, layer, core.service_type
-            )
+            try:
+                target = self._select_service_target(
+                    candidate.specification.services, registration, layer, core.service_type
+                )
+            except ContainerBuildError as error:
+                raise ContainerBuildError(
+                    f"Template {candidate.declaration.id} source {candidate.source.id} target "
+                    f"{target_registration.id} ({qualified_name(core.service_type)}): {_safe_error_message(error)}",
+                    code=error.code,
+                    path=(
+                        *self._current_path(core.service_type),
+                        candidate.declaration.id,
+                        candidate.source.id,
+                        target_registration.id,
+                    ),
+                ) from error
             if target is None:
+                decisions.append(
+                    CandidateDecision(
+                        candidate.id,
+                        DecisionOutcome.rejected,
+                        ("template-target-not-selected",),
+                        "The target registration did not satisfy the template's service selector",
+                        candidate.declaration.origin,
+                        template_fact(candidate, None),
+                    )
+                )
                 continue
             declaration_layer = next(
                 (item for item in area_layers if item.owner_token == candidate.declaration_owner_token), None
@@ -6218,6 +6304,7 @@ class _Compiler:
                         ("decorator-filter-rejected",),
                         f"Decorator filter {_filter_description(decorator.when)} raised {type(error).__name__}",
                         decorator.origin,
+                        template_fact(*generated[decorator.id]) if decorator.id in generated else None,
                     )
                 )
                 self.decision_history.append(
@@ -6236,7 +6323,8 @@ class _Compiler:
                     candidate, target = generated[decorator.id]
                     raise ContainerBuildError(
                         f"Template {candidate.declaration.id} source {candidate.source.id} "
-                        f"target {target.registration_id} predicate raised {type(error).__name__}",
+                        f"target {target.registration_id} ({qualified_name(core.service_type)}) "
+                        f"predicate raised {type(error).__name__}",
                         code="decorator-filter-failed",
                         path=(
                             *self._current_path(core.service_type),
@@ -6256,10 +6344,30 @@ class _Compiler:
                         f"{'true' if matched else 'false'}"
                     ),
                     decorator.origin,
+                    template_fact(*generated[decorator.id]) if decorator.id in generated else None,
                 )
             )
             if matched:
                 selected.append(decorator)
+
+        # Independent policies remain additive. Mark overlap as an observed
+        # selection fact so inspection can explain multiple generated layers.
+        selected_templates: dict[tuple[str, str], set[str]] = defaultdict(set)
+        for decision in decisions:
+            fact = decision.template
+            if fact is not None and decision.outcome is DecisionOutcome.selected:
+                selected_templates[(fact.source_registration_id, fact.target_registration_id)].add(fact.template_id)
+        decisions = [
+            replace(decision, reason_codes=(*decision.reason_codes, "template-policy-overlap"))
+            if decision.template is not None
+            and decision.outcome is DecisionOutcome.selected
+            and len(
+                selected_templates[(decision.template.source_registration_id, decision.template.target_registration_id)]
+            )
+            > 1
+            else decision
+            for decision in decisions
+        ]
 
         items: list[_CompiledDecorator] = []
         decorated: Component = core
@@ -6281,7 +6389,12 @@ class _Compiler:
                     )
                 )
                 raise ContainerBuildError(
-                    str(error),
+                    f"Template {generated[definition.id][0].declaration.id} source "
+                    f"{generated[definition.id][0].source.id} target "
+                    f"{generated[definition.id][1].registration_id} ({qualified_name(core.service_type)}): "
+                    f"{error}"
+                    if definition.id in generated
+                    else str(error),
                     code="invalid-decorator",
                     path=(
                         *self._current_path(core.service_type),
@@ -6330,7 +6443,8 @@ class _Compiler:
                     raise
                 candidate, target = generated[definition.id]
                 raise ContainerBuildError(
-                    f"Template {candidate.declaration.id} source {candidate.source.id}: {error}",
+                    f"Template {candidate.declaration.id} source {candidate.source.id} target "
+                    f"{target.registration_id} ({qualified_name(core.service_type)}): {error}",
                     code=error.code,
                     path=(*error.path, candidate.declaration.id, candidate.source.id, target.registration_id),
                 ) from error
@@ -6358,6 +6472,7 @@ class _Compiler:
         )
         if decisions:
             self.decision_history.append(explanation)
+            self.decorator_explanations[core.occurrence_id] = explanation
         for item in items:
             self.occurrence_explanations[item.component.occurrence_id] = explanation
         return tuple(items)
@@ -6989,9 +7104,28 @@ def _finalize_plan(plan: _PlanSet) -> _PlanSet:
         _root_candidates=types.MappingProxyType(dict(plan.root_candidates)),
         _known_root_selections=types.MappingProxyType(known_root_selections),
         _occurrence_explanations=types.MappingProxyType(dict(plan.occurrence_explanations)),
+        _decorator_explanations=types.MappingProxyType(dict(plan.decorator_explanations)),
         _parameter_explanations=types.MappingProxyType(dict(plan.parameter_explanations)),
         _generic_explanations=types.MappingProxyType(dict(plan.generic_explanations)),
         _occurrence_layers=types.MappingProxyType(dict(plan.occurrence_layers)),
+        _template_source_decisions=tuple(
+            TemplateSourceDecision(
+                template_id=item.template_id,
+                source_registration_id=item.source.id,
+                source_service=qualified_name(item.source.service_type),
+                source_implementation=(
+                    None if item.source.implementation_type is None else qualified_name(item.source.implementation_type)
+                ),
+                source_bindings=item.source_bindings,
+                filter_description=item.source_filter_description,
+                selected=item.selected,
+                generated_definition_id=item.generated_id,
+                declaration_boundary=item.declaration_area,
+                source_boundary=item.source_area,
+                origin=item.origin,
+            )
+            for item in plan.blueprint.template_selections
+        ),
     )
     occurrence_paths = {
         str(component.occurrence_id): path
@@ -7070,6 +7204,41 @@ def _source_registration_info(registration: legacy._Registration, layer: _Layer)
     )
 
 
+def _source_binding_labels(source: RegistrationInfo) -> tuple[tuple[str, str], ...]:
+    """Capture inherited static source substitutions without retaining user values."""
+    implementation = source.implementation_type
+    constructor = get_origin(implementation) or implementation
+    if not isinstance(constructor, type):
+        return ()
+    labels: dict[str, str] = {}
+    for member in constructor.__mro__:
+        for base in (member, *getattr(member, "__orig_bases__", ())):
+            origin = get_origin(base) or base
+            parameters = getattr(origin, "__parameters__", ())
+            if not parameters:
+                continue
+            try:
+                bindings = source.implementation_bindings(origin)
+            except (TypeError, ValueError):
+                continue
+            if bindings is None:
+                continue
+            for variable, value in bindings.items():
+                labels[_generic_binding_label(origin, variable)] = qualified_name(value)
+    return tuple(sorted(labels.items()))
+
+
+def _generic_binding_label(base: Any, variable: TypeVar) -> str:
+    """Use declaring generic identity and position if names are repeated."""
+    origin = get_origin(base) or base
+    parameters = getattr(origin, "__parameters__", ())
+    name = variable.__name__
+    if sum(parameter.__name__ == name for parameter in parameters) > 1:
+        index = next(index for index, parameter in enumerate(parameters, 1) if parameter is variable)
+        name = f"{name}#{index}"
+    return f"{qualified_name(origin)}.{name}"
+
+
 def _static_instance_implementation_type(instance: Any) -> Any:
     """Read only genuine stored generic aliases, without invoking user attributes."""
     implementation_type = type(instance)
@@ -7112,6 +7281,8 @@ def _expand_decorator_templates(
     anchored_owner_tokens: frozenset[str] = frozenset(),
     inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = types.MappingProxyType({}),
     inherited_generic_explanations: Mapping[int, GenericBindingExplanation] = types.MappingProxyType({}),
+    inherited_occurrence_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
+    inherited_decorator_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
 ) -> _TemplateExpansion:
     """Expand a normalized, visibility-prepared snapshot once, without target activation.
 
@@ -7149,6 +7320,7 @@ def _expand_decorator_templates(
                     continue
                 seen.add(registration.id)
                 source_area = blueprint.registration_area(layer)
+                phase = "source compilation"
                 try:
                     core = _Compiler(
                         blueprint,
@@ -7158,11 +7330,17 @@ def _expand_decorator_templates(
                         anchored_owner_tokens=anchored_owner_tokens,
                         inherited_parameter_explanations=inherited_parameter_explanations,
                         inherited_generic_explanations=inherited_generic_explanations,
+                        inherited_occurrence_explanations=inherited_occurrence_explanations,
+                        inherited_decorator_explanations=inherited_decorator_explanations,
                     )._compile_source_core(registration.id, registration.service_type)
+                    phase = "source filter"
                     selected = bool(definition.source_filter(core))
+                    phase = "source metadata"
                     source = _source_registration_info(registration, layer)
+                    source_bindings = _source_binding_labels(source)
                     generated_id = None
                     if selected:
+                        phase = "template factory"
                         specification = definition.template(source)
                         if not isinstance(specification, DecoratorTemplate):
                             if inspect.iscoroutine(specification):
@@ -7180,6 +7358,7 @@ def _expand_decorator_templates(
                                 declaration_owner_token=declaration_layer.owner_token,
                                 source_area=source_area,
                                 source_owner_token=layer.owner_token,
+                                source_bindings=source_bindings,
                             )
                         )
                     selections.append(
@@ -7192,13 +7371,23 @@ def _expand_decorator_templates(
                             declaration_area=area,
                             source_area=source_area,
                             generated_id=generated_id,
+                            source_filter_description=_filter_description(definition.source_filter),
+                            source_bindings=source_bindings,
+                            origin=definition.origin,
                         )
                     )
                 except Exception as error:
                     code = error.code if isinstance(error, ContainerBuildError) and error.code else "template-expansion"
                     path = error.path if isinstance(error, ContainerBuildError) else ()
+                    detail = (
+                        f"Source filter {_filter_description(definition.source_filter)} raised {type(error).__name__}"
+                        if phase == "source filter"
+                        else f"Template factory raised {type(error).__name__}"
+                        if phase == "template factory"
+                        else _safe_error_message(error)
+                    )
                     raise ContainerBuildError(
-                        f"Template {definition.id} source {registration.id}: {_safe_error_message(error)}",
+                        f"Template {definition.id} source {registration.id}: {detail}",
                         code=code,
                         path=(definition.id, registration.id, *path),
                     ) from error
@@ -7273,12 +7462,16 @@ def _compile_with_report(
     anchored_owner_tokens: frozenset[str] = frozenset(),
     inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = types.MappingProxyType({}),
     inherited_generic_explanations: Mapping[int, GenericBindingExplanation] = types.MappingProxyType({}),
+    inherited_occurrence_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
+    inherited_decorator_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
 ) -> _PlanSet:
     compilation_inputs: _CompilationInputs = {
         "build_args": build_args,
         "anchored_owner_tokens": anchored_owner_tokens,
         "inherited_parameter_explanations": inherited_parameter_explanations,
         "inherited_generic_explanations": inherited_generic_explanations,
+        "inherited_occurrence_explanations": inherited_occurrence_explanations,
+        "inherited_decorator_explanations": inherited_decorator_explanations,
     }
     if anchored_singleton_steps is not None:
         compilation_inputs["anchored_singleton_steps"] = anchored_singleton_steps
@@ -7306,6 +7499,8 @@ def _compile_with_report(
             anchored_owner_tokens=anchored_owner_tokens,
             inherited_parameter_explanations=inherited_parameter_explanations,
             inherited_generic_explanations=inherited_generic_explanations,
+            inherited_occurrence_explanations=inherited_occurrence_explanations,
+            inherited_decorator_explanations=inherited_decorator_explanations,
         )
         expanded = replace(
             blueprint, generated_decorators=expansion.candidates, template_selections=expansion.selections
@@ -7350,6 +7545,8 @@ def _compile_with_report(
         anchored_owner_tokens=anchored_owner_tokens,
         inherited_parameter_explanations=inherited_parameter_explanations,
         inherited_generic_explanations=inherited_generic_explanations,
+        inherited_occurrence_explanations=inherited_occurrence_explanations,
+        inherited_decorator_explanations=inherited_decorator_explanations,
     )
     try:
         plan = compiler.compile()
@@ -7802,6 +7999,8 @@ class _CompilationInputs(typing.TypedDict, total=False):
     anchored_owner_tokens: frozenset[str]
     inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]]
     inherited_generic_explanations: Mapping[int, GenericBindingExplanation]
+    inherited_occurrence_explanations: Mapping[int, CompilationExplanation]
+    inherited_decorator_explanations: Mapping[int, CompilationExplanation]
 
 
 class _BuilderBase:
@@ -7897,6 +8096,8 @@ class _BuilderBase:
             anchored_owner_tokens=frozenset(parent._owners),
             inherited_parameter_explanations=parent._plan.parameter_explanations,
             inherited_generic_explanations=parent._plan.generic_explanations,
+            inherited_occurrence_explanations=parent._plan.occurrence_explanations,
+            inherited_decorator_explanations=parent._plan.decorator_explanations,
         )
         return blueprint, inputs
 

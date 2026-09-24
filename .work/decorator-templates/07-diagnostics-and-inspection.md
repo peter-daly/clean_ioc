@@ -1,6 +1,6 @@
 # 07 — Diagnostics and inspection
 
-Status: Search accepted; implementation pending. Dependency: 06 accepted (`34f19e6`).
+Status: Implementation verified; independent review pending. Dependency: 06 accepted (`34f19e6`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 06 handoff.
 
 | Role | Model | Reasoning |

@@ -84,6 +84,7 @@ class _GeneratedDecoratorDefinition:
     declaration_owner_token: str
     source_area: str | None
     source_owner_token: str
+    source_bindings: tuple[tuple[str, str], ...] = ()
 
     @property
     def order(self) -> int:
@@ -100,6 +101,9 @@ class _TemplateSourceSelection:
     declaration_area: str | None
     source_area: str | None
     generated_id: str | None
+    source_filter_description: str
+    source_bindings: tuple[tuple[str, str], ...]
+    origin: DefinitionOrigin
 
 
 @dataclass(frozen=True, slots=True)
