@@ -40,7 +40,7 @@ machinery from `_legacy.py`. It does not run the V1 resolver that constructs run
 
 Compilation does not eagerly construct application objects. Constructors, factories, generators, and context managers
 run during activation. Explicit composition callbacks do run during build: filters, `derive(...)` functions,
-provider-map key functions, and build-mode validation rules.
+provider-map key functions, decorator-template source filters and factories, and build-mode validation rules.
 
 ## The build pipeline
 
@@ -55,7 +55,10 @@ ContainerBuilder.build()
   └─ _compile_with_report(blueprint, build_args)
        ├─ normalize type aliases
        ├─ prepare boundary visibility
+       ├─ expand decorator templates from closed, visible source registrations
+       │    └─ compile undecorated sources, filter them, and call selected factories
        ├─ _Compiler(...).compile()
+       │    ├─ match generated templates to eligible target occurrences
        │    ├─ recursively compile root candidates
        │    ├─ compile provider roots and boundary-local roots
        │    ├─ freeze component records

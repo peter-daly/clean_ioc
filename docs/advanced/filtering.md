@@ -94,7 +94,7 @@ builder.register_decorator(
 
 All decorator predicates are evaluated against the completed undecorated component subtree. Dependencies introduced by one decorator cannot accidentally cause another decorator to become eligible.
 
-The same `when=` argument is available on `pre_configure(...)`.
+The same `when=` argument is available on `pre_configure(...)`. [Decorator templates](../decorator-templates.md) also use `source_filter=` on a canonical, parentless, recursively undecorated source and `when=` on each recursively undecorated target occurrence in its actual parent context.
 
 ## Composing filters
 

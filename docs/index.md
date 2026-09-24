@@ -126,7 +126,7 @@ See [Custom graph validation](custom-validation.md) for a complete rule cookbook
 - [Filtering](advanced/filtering.md) — the unified `Component` model
 - [Factories](factories.md) — sync, async, generators, and context managers
 - [Special dependency types](advanced/special-dependency-types.md) — typed providers and runtime contexts
-- [Decorators](decorators.md) and [generics](generics.md) — compiled handler pipelines
+- [Decorators](decorators.md), [decorator templates](decorator-templates.md), and [generics](generics.md) — compiled handler pipelines
 - [Boundaries](boundaries.md) — private registrations, explicit exposures, and declared cross-boundary uses
 - [Custom graph validation](custom-validation.md) — executable architecture and policy recipes
 - [ASGI](extensions/asgi.md) — dependency-free lifespan and operation scopes

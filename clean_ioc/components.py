@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Hashable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from types import UnionType
 from typing import (
@@ -28,9 +28,11 @@ from typing_extensions import TypeForm
 from .generic_utils import constructor_type
 from .metadata import Tag
 from .provider_maps import ProviderMapGroup
+from .service_groups import ServiceGroup
 from .type_aliases import normalize_type_alias
 
 if TYPE_CHECKING:
+    from ._decorator_templates import DecoratorTemplate, RegistrationInfo
     from .tooling import ValidationRule
 
 Lifespan: TypeAlias = Literal["transient", "per_resolution", "scoped", "singleton"]
@@ -428,6 +430,35 @@ class Component:
         return f"Component({self.service_type!r} -> {self.implementation!r}, occurrence={self.occurrence_id})"
 
 
+def _undecorated_component_view(component: Component) -> Component:
+    """Snapshot an occurrence for generated-template applicability predicates.
+
+    Hide attached decorator pipelines throughout the graph without recompiling
+    selected dependencies or changing occurrence, parent, or ownership metadata.
+    Ancestors retain the context available at this compilation point. This is
+    an inspection graph only; ordinary decorator predicates keep their old view.
+    """
+    source = component._graph
+    # Follow only this occurrence's connected context. Unrelated compiled roots
+    # must not increase the cost of a predicate snapshot. Parent/dependency and
+    # owner links preserve everything a contextual component predicate can read.
+    records: dict[int, _ComponentRecord] = {}
+    pending = [component.occurrence_id]
+    while pending:
+        key = pending.pop()
+        if key in records:
+            continue
+        value = source.record(key)
+        record = value.freeze() if isinstance(value, _ComponentDraft) else value
+        records[key] = replace(record, decorator_ids=())
+        pending.extend(record.dependency_ids)
+        pending.extend(record.pre_configuration_ids)
+        pending.extend(item for item in (record.parent_id, record.decorated_id, record.owner_id) if item is not None)
+    graph = _ComponentGraph()
+    graph._records = records
+    return Component(graph, component.occurrence_id)
+
+
 ComponentFilter: TypeAlias = Callable[[Component], bool]
 
 
@@ -468,6 +499,7 @@ class ComponentBuilder(Protocol):
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
         contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
+        groups: Iterable[ServiceGroup] = (),
     ) -> str: ...
 
     def register_pattern(
@@ -480,6 +512,7 @@ class ComponentBuilder(Protocol):
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
+        groups: Iterable[ServiceGroup] = (),
     ) -> str: ...
 
     @overload
@@ -526,6 +559,7 @@ class ComponentBuilder(Protocol):
         name: str | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
+        groups: Iterable[ServiceGroup] = (),
     ) -> None: ...
 
     def register_generic_subclasses(
@@ -540,7 +574,27 @@ class ComponentBuilder(Protocol):
         name: str | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
+        groups: Iterable[ServiceGroup] = (),
     ) -> None: ...
+
+    def register_decorator_template(
+        self,
+        *,
+        for_each: Any,
+        template: Callable[[RegistrationInfo], DecoratorTemplate],
+        source_filter: ComponentFilter = all_components,
+    ) -> str: ...
+
+    def patch_decorator_template(
+        self,
+        template_id: str,
+        *,
+        for_each: Any = ...,
+        template: Callable[[RegistrationInfo], DecoratorTemplate] | object = ...,
+        source_filter: ComponentFilter | object = ...,
+    ) -> None: ...
+
+    def remove_decorator_template(self, template_id: str) -> None: ...
 
     def register_decorator(
         self,

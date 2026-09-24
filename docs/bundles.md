@@ -20,6 +20,8 @@ builder.apply_bundle(ClientBundle())
 container = builder.build()
 ```
 
+A bundle may also register a [decorator template](decorator-templates.md) and share one `ServiceGroup` declaration with contributing registrations. Same-named group objects have different identities.
+
 Bundles are composition-only. They are never injectable at runtime and cannot mutate a built container or scope.
 An existing bundle can also be used unchanged as a boundary's `root_bundle`; see
 [Boundaries and visibility](boundaries.md). The boundary applies that bundle to an isolated private builder, while

@@ -32,6 +32,8 @@ container = builder.build()
 
 The returned ID identifies the decorator definition across every compiled occurrence. The decorated argument is inferred from its service annotation. Missing, ambiguous, and invalid explicit arguments are reported during `build()`; set `decorated_arg="child"` to select one explicitly. Typed callable return annotations are also checked against the decorated service when compatibility can be determined.
 
+For policies generated from registered source components, see [decorator templates](decorator-templates.md).
+
 ## Ordering
 
 Treat `position` as a decorator z-index: higher values are further outside and lower values are closer to the core component.

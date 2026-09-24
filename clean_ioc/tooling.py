@@ -102,15 +102,118 @@ class CandidateDecision:
     reason_codes: tuple[str, ...]
     reason: str
     origin: DefinitionOrigin
+    template: TemplateDecision | None = None
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        result: dict[str, object] = {
             "component_id": self.component_id,
             "outcome": self.outcome.value,
             "reason_codes": list(self.reason_codes),
             "reason": self.reason,
             "origin": self.origin.to_dict(),
         }
+        if self.template is not None:
+            result["template"] = self.template.to_dict()
+        return result
+
+
+@dataclass(frozen=True, slots=True)
+class TemplateDecision:
+    """Value-free identities and projections captured while considering a template."""
+
+    template_id: str
+    source_registration_id: str
+    generated_definition_id: str
+    target_registration_id: str
+    target_occurrence_id: int
+    selector_kind: str
+    selector_contract: str
+    source_service: str
+    source_implementation: str | None
+    source_bindings: tuple[tuple[str, str], ...] = ()
+    target_service: str | None = None
+    projected_contract: str | None = None
+    target_bindings: tuple[tuple[str, str], ...] = ()
+    boundary: str | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "template_id": self.template_id,
+            "source_registration_id": self.source_registration_id,
+            "generated_definition_id": self.generated_definition_id,
+            "target_registration_id": self.target_registration_id,
+            "target_occurrence_id": self.target_occurrence_id,
+            "selector_kind": self.selector_kind,
+            "selector_contract": self.selector_contract,
+            "source_service": self.source_service,
+            "source_implementation": self.source_implementation,
+            "source_bindings": dict(self.source_bindings),
+            "target_service": self.target_service,
+            "projected_contract": self.projected_contract,
+            "target_bindings": dict(self.target_bindings),
+            "boundary": self.boundary,
+        }
+
+    def to_text(self) -> str:
+        projection = f" -> {self.projected_contract}" if self.projected_contract is not None else ""
+        lines = [
+            f"template {self.template_id}, source {self.source_registration_id}, "
+            f"target registration {self.target_registration_id}, occurrence {self.target_occurrence_id}; "
+            f"{self.selector_kind} {self.selector_contract}{projection}"
+        ]
+        if self.source_bindings:
+            lines.append("source bindings: " + ", ".join(f"{key}={value}" for key, value in self.source_bindings))
+        if self.target_bindings:
+            lines.append("target bindings: " + ", ".join(f"{key}={value}" for key, value in self.target_bindings))
+        return "; ".join(lines)
+
+
+@dataclass(frozen=True, slots=True)
+class TemplateSourceDecision:
+    """One canonical source-filter result captured before the factory ran."""
+
+    template_id: str
+    source_registration_id: str
+    source_service: str
+    source_implementation: str | None
+    source_bindings: tuple[tuple[str, str], ...]
+    filter_description: str
+    selected: bool
+    generated_definition_id: str | None
+    declaration_boundary: str | None
+    source_boundary: str | None
+    origin: DefinitionOrigin
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "template_id": self.template_id,
+            "source_registration_id": self.source_registration_id,
+            "source_service": self.source_service,
+            "source_implementation": self.source_implementation,
+            "source_bindings": dict(self.source_bindings),
+            "filter": self.filter_description,
+            "selected": self.selected,
+            "generated_definition_id": self.generated_definition_id,
+            "declaration_boundary": self.declaration_boundary,
+            "source_boundary": self.source_boundary,
+            "origin": self.origin.to_dict(),
+        }
+
+    def to_json(self, *, indent: int | None = 2) -> str:
+        return json.dumps(self.to_dict(), indent=indent, sort_keys=True)
+
+    def to_text(self) -> str:
+        result = "selected" if self.selected else "rejected"
+        detail = f"; generated {self.generated_definition_id}" if self.generated_definition_id else ""
+        bindings = (
+            "; bindings " + ", ".join(f"{key}={value}" for key, value in self.source_bindings)
+            if self.source_bindings
+            else ""
+        )
+        return (
+            f"Template {self.template_id} source {self.source_registration_id} "
+            f"[{result} by {self.filter_description}{detail}{bindings}]"
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,6 +262,8 @@ class CompilationExplanation:
                     f"- {decision.component_id} [{decision.outcome.value}; {codes}]: "
                     f"{decision.reason} ({declared}, {origin.layer})"
                 )
+                if decision.template is not None:
+                    lines.append(f"  {decision.template.to_text()}")
 
         add_group("Selected", self.selected)
         add_group("Rejected", self.rejected)
@@ -1079,6 +1184,10 @@ class CompiledGraph:
     _generic_explanations: Mapping[int, GenericBindingExplanation] = field(
         default_factory=lambda: MappingProxyType({}), compare=False, repr=False
     )
+    _template_source_decisions: tuple[TemplateSourceDecision, ...] = field(default=(), compare=False, repr=False)
+    _decorator_explanations: Mapping[int, CompilationExplanation] = field(
+        default_factory=lambda: MappingProxyType({}), compare=False, repr=False
+    )
     _manifest_cache: dict[bool, GraphManifest] = field(default_factory=dict, compare=False, repr=False)
     _ownership_report_cache: list[OwnershipReport] = field(default_factory=list, compare=False, repr=False)
     _analysis_index_cache: Any | None = field(default=None, compare=False, repr=False)
@@ -1412,6 +1521,20 @@ class CompiledGraph:
         if explanation is None:
             raise ValueError("explain-specialization-not-recorded: this occurrence has no generic specialization")
         return explanation
+
+    def explain_template_sources(self, template_id: str | None = None) -> tuple[TemplateSourceDecision, ...]:
+        """Return captured source-filter decisions; no filter or factory is invoked."""
+        if template_id is None:
+            return self._template_source_decisions
+        return tuple(item for item in self._template_source_decisions if item.template_id == template_id)
+
+    def explain_decorators(self, component: Component) -> CompilationExplanation:
+        """Explain captured decorator choices for a target registration occurrence."""
+        path = self._path_for_component(component)
+        explanation = self._decorator_explanations.get(component.occurrence_id)
+        if explanation is None:
+            raise ValueError("explain-decorators-not-recorded: no decorator decision exists for this occurrence")
+        return replace(explanation, path=path)
 
     def walk(self) -> Iterator[GraphVisit]:
         """Walk every compiled occurrence in deterministic depth-first order."""

@@ -1,3 +1,17 @@
+2.0.0b17
+--------
+
+    Add registration-driven decorator templates with explicit ``ServiceGroup``
+    membership or ``DerivedServices`` target selection, exact source binding,
+    compile-time filters, generic projection, overlay edits, and captured
+    source/target diagnostics.
+
+    Reduce build-time diagnostic copying and repeated decorator-template
+    projection work with compiler-local caches and shared immutable
+    explanations. Preserve source identity, contextual filters, boundary
+    visibility, overlay ownership, and frozen diagnostic information.
+
+
 2.0.0b16
 --------
 

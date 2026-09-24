@@ -117,6 +117,8 @@ register_provider_map(
 
 ### Explicit provider-map groups
 
+`ProviderMapGroup` creates an injectable provider-map contract with keyed `contributes=` entries. It is separate from [`ServiceGroup`](../decorator-templates.md#explicit-membership-or-registered-contract-matching), which only selects registered decorator targets and has no map keys.
+
 When a map must include only opt-in registrations, declare a `ProviderMapGroup` and add a contribution when
 registering each target. This selection happens before target graphs are compiled, which is useful when another
 implementation of the same service consumes the map itself:

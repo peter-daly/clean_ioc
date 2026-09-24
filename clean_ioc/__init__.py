@@ -1,5 +1,6 @@
 """Clean IoC's public API."""
 
+from ._decorator_templates import DecoratorTemplate, RegistrationInfo
 from .arguments import INJECT, REMOVE, ParameterContext, build_arg, derive, generic_arg, inject, select
 from .boundaries import Boundary, BoundaryAlias, Expose, Use
 from .components import (
@@ -50,6 +51,7 @@ from .graph_analysis import (
 from .metadata import Tag
 from .provider_maps import ProviderMapGroup
 from .providers import AsyncProvider, Provider
+from .service_groups import DerivedServices, ServiceGroup
 from .tooling import (
     BuildIssue,
     BuildReport,
@@ -74,6 +76,8 @@ from .tooling import (
     PartialNode,
     PartialState,
     SourceLocation,
+    TemplateDecision,
+    TemplateSourceDecision,
     TypeAst,
     ValidationContext,
     ValidationRule,
@@ -105,6 +109,9 @@ __all__ = [
     "CompilationAttempt",
     "CompiledGraph",
     "DecisionOutcome",
+    "DecoratorTemplate",
+    "RegistrationInfo",
+    "DerivedServices",
     "ContextualCacheCertainty",
     "ContextualCacheFinding",
     "DependencyImpact",
@@ -142,10 +149,13 @@ __all__ = [
     "ScopeBuilder",
     "ScopeClosedError",
     "ScopeProvisionError",
+    "ServiceGroup",
     "SharedDependency",
     "SharingGroup",
     "SharingReport",
     "SourceLocation",
+    "TemplateDecision",
+    "TemplateSourceDecision",
     "Tag",
     "TypeAst",
     "UndeclaredScopeSlotError",
