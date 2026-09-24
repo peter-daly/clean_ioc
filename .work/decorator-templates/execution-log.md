@@ -67,7 +67,7 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 
 Checkpoint `98666ca` recorded the repair SHA only because the evidence-writing command could not find Python; this subsequent checkpoint records the review evidence. All hooks passed.
 
-Implementation/review/documentation gates not listed here have not passed. M06 final handoff passed; M07 independent repair recheck in progress after original implementation agent restored; M08–M10 have not started.
+Implementation/review/documentation gates not listed here have not passed. M06 final handoff passed; M07 accepted; final handoff passed; M08–M10 have not started.
 
 | 06 | Final handoff | Passed | `34f19e6` | All prior gates verified; no public documentation changes; diagnostics handed to M07 |
 
@@ -83,4 +83,6 @@ M07 review round 1 found three P2s; see [review](07-review.md). Original impleme
 
 | 07 | Implementation verification, repair 2 | Passed | `6f454aa` | Ancestor graph-keyed frozen sidecars; nested regression; 458 affected tests; Python3.11 364 passed/4 expected skips; Ruff/ty/format/diff passed |
 
-| 07 | Independent technical review | Passed round 3 | Pending checkpoint | Astra High `/root/m07_review`; 601 independent tests plus five-generation probe; [review](07-review.md); no remaining findings |
+| 07 | Independent technical review | Passed round 3 | `906452e` | Astra High `/root/m07_review`; 601 independent tests plus five-generation probe; [review](07-review.md); no remaining findings |
+
+| 07 | Final handoff | Passed | Pending checkpoint | All prior gates verified; no public docs gate applies; M08 integration next |
