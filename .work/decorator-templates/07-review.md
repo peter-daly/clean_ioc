@@ -15,3 +15,7 @@ No reviewer edits/commits. Verification reopened. Restoring original implementat
 ## Round 2: request changes
 
 At `71183b8`, independent **601 focused tests passed** (5.09s). Both privacy repairs accepted; original signature and both callback-phase probes passed, trusted unresolved-TypeVar detail remains actionable. One P2 remains: binary local/inherited graph choice fails nested overlays, because anchored activation steps retain original ancestor component while supplied sidecars belong to immediate parent. Extend shifted-numbering regression with grandchild overlay: target/wrapper explanations again use unrelated facts; origins and other inherited sidecars share the issue. Associate records with actual owning graph across ancestry or matching cloned anchor metadata; test nested target/wrapper facts, remapped IDs and origins. Original implementation agent assigned repair; no reviewer edits.
+
+## Round 3: accepted
+
+Accepted at `6f454aa`; no unresolved findings. Independent **601 focused tests passed** (5.09s). Additional probe across five compiled generations with shifting IDs and intervening plain scopes verifies target/wrapper identities, remapped occurrences and actual origins. All graph-keyed sidecars (including parameters/generics) correct; privacy repairs remain intact. Diff check passed. No reviewer edits/commits.

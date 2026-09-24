@@ -81,4 +81,6 @@ M07 review round 1 found three P2s; see [review](07-review.md). Original impleme
 
 | 07 | Implementation verification, repair | Passed | `71183b8` | Original Sol High agent restored; all three P2s repaired; 458 relevant tests; Python3.11 364 passed/4 expected skips; Ruff/ty/format/diff passed; [handoff](07-handoff.md) |
 
-| 07 | Implementation verification, repair 2 | Passed | Pending checkpoint | Ancestor graph-keyed frozen sidecars; nested regression; 458 affected tests; Python3.11 364 passed/4 expected skips; Ruff/ty/format/diff passed |
+| 07 | Implementation verification, repair 2 | Passed | `6f454aa` | Ancestor graph-keyed frozen sidecars; nested regression; 458 affected tests; Python3.11 364 passed/4 expected skips; Ruff/ty/format/diff passed |
+
+| 07 | Independent technical review | Passed round 3 | Pending checkpoint | Astra High `/root/m07_review`; 601 independent tests plus five-generation probe; [review](07-review.md); no remaining findings |

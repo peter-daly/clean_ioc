@@ -1,6 +1,6 @@
 # 07 — Diagnostics and inspection
 
-Status: Review requested three P2 repairs; verification reopened. Dependency: 06 accepted (`34f19e6`).
+Status: Technical review accepted round 3; final handoff pending. Dependency: 06 accepted (`34f19e6`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 06 handoff.
 
 | Role | Model | Reasoning |
