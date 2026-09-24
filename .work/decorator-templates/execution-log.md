@@ -87,4 +87,6 @@ M07 review round 1 found three P2s; see [review](07-review.md). Original impleme
 
 | 07 | Final handoff | Passed | `2780e0e` | All prior gates verified; no public docs gate applies; M08 integration next |
 
-| 08 | Search | Passed | Pending checkpoint | Luna Low `/root/m08_search`; [evidence](08-search.md); bark clean baseline110 passed; verified checkout import |
+| 08 | Search | Passed | `1818392` | Luna Low `/root/m08_search`; [evidence](08-search.md); bark clean baseline110 passed; verified checkout import |
+
+| 08 | Implementation verification | Passed | Pending checkpoint | Astra High `/root/m08_implementation`; [handoff](08-handoff.md); bark409 passed incl14 new cases and changed-file static checks; clean make ci735 tests/precommit passed; bark ledger12 files, no commits/env changes |
