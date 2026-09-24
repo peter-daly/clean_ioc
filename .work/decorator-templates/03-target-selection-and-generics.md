@@ -1,6 +1,6 @@
 # 03 — Generic projection and DerivedServices
 
-Status: Independent review accepted round 2 at `daa8871`; final handoff pending. Dependency: 02 accepted (`fa33b7f`).
+Status: Accepted; all applicable gates passed, final checkpoint ready. Dependency: 02 accepted (`fa33b7f`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 02 handoff.
 
 | Role | Model | Reasoning |

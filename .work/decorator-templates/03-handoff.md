@@ -1,6 +1,6 @@
 # M03 implementation verification handoff
 
-Status: Implementation verification passed; independent Astra review and coordinator checkpoint pending.
+Status: All applicable M03 gates passed; final local checkpoint required before M04.
 
 Implementation: `/root/m03_implementation`, `gpt-6-astra`, high reasoning. Search: `/root/m03_search`, `gpt-6-luna`, low.
 M02 accepted at `fa33b7f`; M03 search/implementation baseline `37a22f23a3c26824461ae1f55d0d56a99af21ad7`;
@@ -102,3 +102,7 @@ All three P2 findings repaired; same-reviewer recheck pending:
 Added four regression cases in `test_service_targets.py` (34 total). Repeated the exact focused/portability/check commands
 above: Python 3.14 **356 passed in 2.16s**; Python 3.11 **61 passed, 1 expected PEP 695 skip in 0.19s**; Ruff, ty,
 format (**6 files**) and diff checks passed. No commits, public documentation or bark-core changes from this repair turn.
+
+## Final handoff
+
+Independent Astra High `/root/m03_review` accepted repaired implementation `daa8871` in round2; review checkpoint `c652a5f`. Search checkpoint `37a22f2`, initial verification `60cf3a2`, repair verification `daa8871`; all full-unit/lint/type commit hooks passed. Final SHA recorded after commit in execution log. No public docs gate applies. M04 consumes the selector/projection and identity-binding interfaces above, plus accepted M01 source-core inspection and visibility consistency staging. No remaining M03 blockers; explicit supported-inference limits remain as documented. No bark-core edits or commits, unrelated graph plans preserved.

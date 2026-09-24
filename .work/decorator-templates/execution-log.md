@@ -33,6 +33,8 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 
 | 03 | Implementation verification, repair | Passed | `daa8871` | Three P2s repaired; 356 focused tests; Python3.11 61 passed/1 expected skip; Ruff/ty/format/diff and full-unit/lint/type commit hooks passed |
 
-| 03 | Independent technical review | Passed round 2; checkpoint pending | Pending | Astra High `/root/m03_review`; [review](03-review.md); 356 independent tests and targeted probes; all findings resolved |
+| 03 | Independent technical review | Passed round 2 | `c652a5f` | Astra High `/root/m03_review`; [review](03-review.md); 356 independent tests and targeted probes; all findings resolved |
 
-Implementation/review/documentation gates not listed here have not passed. M03 independent review in progress; M04–M10 have not started.
+| 03 | Final handoff | Passed; checkpoint pending | Pending | All prior gates verified; no public docs gate; M04 next |
+
+Implementation/review/documentation gates not listed here have not passed. M03 final checkpoint pending; M04–M10 have not started.
