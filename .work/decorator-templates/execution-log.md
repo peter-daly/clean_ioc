@@ -85,4 +85,6 @@ M07 review round 1 found three P2s; see [review](07-review.md). Original impleme
 
 | 07 | Independent technical review | Passed round 3 | `906452e` | Astra High `/root/m07_review`; 601 independent tests plus five-generation probe; [review](07-review.md); no remaining findings |
 
-| 07 | Final handoff | Passed | Pending checkpoint | All prior gates verified; no public docs gate applies; M08 integration next |
+| 07 | Final handoff | Passed | `2780e0e` | All prior gates verified; no public docs gate applies; M08 integration next |
+
+| 08 | Search | Passed | Pending checkpoint | Luna Low `/root/m08_search`; [evidence](08-search.md); bark clean baseline110 passed; verified checkout import |

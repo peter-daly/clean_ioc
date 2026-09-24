@@ -1,0 +1,13 @@
+# M08 search gate
+
+Accepted fresh Luna Low `/root/m08_search` read-only evidence; Clean IoC `2780e0e`, bark-core clean `b0cd55693889785a14be128d1f78f815f2a6e5fe` branch v1_rc. No applicable AGENTS.md. Preserve unrelated clean-ioc `.work` files. Never commit bark-core.
+
+- `bark_core/unit_of_work/bundles.py`: eight-origin `_OPERATION_HANDLER_SERVICE_TYPES`; RegisterUnitOfWorkOperationHandlersBundle repeats per-service resource-filtered decorators and policy markers. Coverage validator consumes policy tags. Other validators independently enforce lifespans, coordinator order, resource ownership, orphan associations and SQLAlchemy transaction ownership/misuse. Adapt coverage evidence deliberately; preserve safety checks.
+- `bark_core/db/bundles.py:SqlAlchemyDatabaseBundle.apply`: creates concrete inherited SqlAlchemyUnitOfWork[session] subclass, registers UnitOfWork with infrastructure name and applies policy bundle. Preserve exact source ID and inherited generic/session specialization.
+- `bark_core/unit_of_work/dynamodb.py`: DynamoDbUnitOfWork and StructuredUnitOfWork lifecycle. Use mocks for local transaction proof.
+- `bark_core/application/bundles.py`: _RegisterOperationHandlersBundle ordinary family registration and deferred generic data-protection discovery; retained ordinary decorator IDs. `application/sagas/bundles.py: RegisterSagaBundle`, saga wrappers in sagas/core.py. Policy handles are DecoratorRegistration; preserve meaningful customization in application/decorator_composition.py.
+- Tests: unit/bundles/test_{application,unit_of_work,sqlalchemy,sagas}.py cover policies/ownership/families and real local SQLite behavior. Add application/data_protection/test_clean_ioc.py; inspect integration/outbox/test_sqlalchemy_{writer,store,delivery}.py fixtures before using (some require MySQL/LocalStack).
+
+Coordinator verified actual imported `/Users/peter.daly/WS/pete/clean_ioc/clean_ioc/__init__.py`, via process-local `PYTHONPATH=/Users/peter.daly/WS/pete/clean_ioc` with bark .venv Python3.14. Existing four-file baseline **110 passed in8.49s**. No dependency/environment edits: declared b14 pin remains, override selects current checkout. Use same command from feature contract plus new scenarios. Capture external-service omissions explicitly.
+
+Implementation must prove group contributions for ordinary/saga/deferred handlers and new family, separate backend source-filtered templates, exact IDs, independent safety checks, automatic DerivedServices alternative, SQLite success/failure and DynamoDB mocks. Keep a task-owned bark file ledger and no task commits; public docs must not reference or adapt this internal integration material.
