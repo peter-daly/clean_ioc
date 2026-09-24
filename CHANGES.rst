@@ -1,5 +1,5 @@
-Unreleased
-----------
+2.0.0b18
+--------
 
     Add ``scope="per_call"`` for method-only service contracts. Resolving a
     service obtains a deferred handle; each synchronous or asynchronous method
