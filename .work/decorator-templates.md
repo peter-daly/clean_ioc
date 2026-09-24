@@ -1,6 +1,6 @@
 # Work item — Registration-driven decorator templates
 
-Status: In progress; M01–M02 accepted and committed, M03 generic target selection underway. Feature implementation incomplete.
+Status: In progress; M01–M04 accepted, M05 decorator activation next. Feature implementation incomplete.
 
 Created: 2026-09-23
 

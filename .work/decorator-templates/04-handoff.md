@@ -1,6 +1,6 @@
 # M04 implementation verification handoff
 
-Status: Implementation and checks complete; independent review and coordinator checkpoint pending.
+Status: All applicable M04 gates passed; final checkpoint required before M05.
 Implementation agent: `/root/m04_implementation`, `gpt-6-astra`, high reasoning.
 Search: `/root/m04_search`, `gpt-6-luna`, low. Coordinator: `/root`.
 Baseline: M03 final `530a725`; M04 search `f831e3a`; branch `codex/decorator-templates`.
@@ -131,3 +131,7 @@ Both P2 findings from `/root/m04_review` are repaired; coordinator repair checkp
 Final repaired checks, using the exact commands above: Python 3.14 **483 passed in 3.84s** (including **36 expansion
 tests**); Python 3.11 **97 passed, 1 expected PEP 695 skip in 0.29s**. Ruff and ty pass; format reports **3 files already
 formatted**; diff check passes. No commits, public docs or bark-core changes.
+
+## Final handoff
+
+Independent Astra High `/root/m04_review` accepted repair `65792c2` in round2; review checkpoint `b6b7c41`. Search `f831e3a`, initial verification `3e7e3dc`, repair verification `65792c2`. All full-unit/lint/type commit hooks passed. Final SHA recorded after commit in execution log. Public docs gate inapplicable. No remaining M04 blockers; M05 must wire the full generated selector compiler and actual visibility consistency check before exposing the agreed API. No bark-core edits or commits; unrelated work preserved.

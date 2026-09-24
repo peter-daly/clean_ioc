@@ -1,6 +1,6 @@
 # 04 — Source filtering and template expansion
 
-Status: Independent review accepted round 2 at `65792c2`; final handoff pending. Dependency: 03 accepted (`530a725`).
+Status: Accepted; all applicable gates passed, final checkpoint ready. Dependency: 03 accepted (`530a725`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 01/03 handoffs.
 
 | Role | Model | Reasoning |

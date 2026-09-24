@@ -43,6 +43,8 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 
 | 04 | Implementation verification, repair | Passed | `65792c2` | Safe instance capture and typed-factory source metadata repaired; 483 focused tests; Python3.11 97 passed/1 expected skip; Ruff/ty/format/diff and full-unit/lint/type commit hooks passed |
 
-| 04 | Independent technical review | Passed round 2; checkpoint pending | Pending | Astra High `/root/m04_review`; [review](04-review.md); 147 independent tests and targeted probes; all findings resolved |
+| 04 | Independent technical review | Passed round 2 | `b6b7c41` | Astra High `/root/m04_review`; [review](04-review.md); 147 independent tests and targeted probes; all findings resolved |
 
-Implementation/review/documentation gates not listed here have not passed. M04 independent review in progress; M05–M10 have not started.
+| 04 | Final handoff | Passed; checkpoint pending | Pending | All prior gates verified; actual generated activation/recheck handed to M05 |
+
+Implementation/review/documentation gates not listed here have not passed. M04 final checkpoint pending; M05–M10 have not started.
