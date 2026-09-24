@@ -113,4 +113,6 @@ Current status: M01–M09 accepted and all applicable gates committed. M10 searc
 
 Continuation: fresh `/root/m10_search` Luna Low started successfully after user requested continuation. Coordinator verified unchanged clean task state and exact12-file bark ledger at original HEAD.
 
-| 10 | Search | Passed | Pending checkpoint | Fresh Luna Low `/root/m10_search`; [39-row evidence map](10-search.md); actual CI/version/FastAPI requirements and ledgers checked |
+| 10 | Search | Passed | `fb041a3` | Fresh Luna Low `/root/m10_search`; [39-row evidence map](10-search.md); actual CI/version/FastAPI requirements and ledgers checked |
+
+| 10 | Implementation verification | Passed | Pending checkpoint | Sol High `/root/m10_implementation`; [handoff](10-handoff.md); makeci Python3.11 727/8skip,3.12 732/3skip,3.13/3.14 735each; FastAPI min/latest14each; precommit/strictdocs pass; no implementation changes |
