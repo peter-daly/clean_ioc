@@ -95,4 +95,6 @@ M07 review round 1 found three P2s; see [review](07-review.md). Original impleme
 
 | 08 | Final handoff | Passed | `2ba08f2` | Prior gates verified;12-file uncommitted bark ledger retained; no public docs reader gate; M09 docs next |
 
-| 09 | Search | Passed | Pending checkpoint | Luna Low `/root/m09_search`; [evidence](09-search.md); public docs/API/validator gaps mapped; no integration material used |
+| 09 | Search | Passed | `487b304` | Luna Low `/root/m09_search`; [evidence](09-search.md); public docs/API/validator gaps mapped; no integration material used |
+
+| 09 | Implementation verification | Passed | Pending checkpoint | Sol High `/root/m09_implementation`; [handoff](09-handoff.md); exact Markdown examples, strict MkDocs build, Ruff/ty/format/diff passed; independent examples, no integration references |

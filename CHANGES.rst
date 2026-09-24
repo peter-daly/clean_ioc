@@ -1,6 +1,11 @@
 2.0.0b16
 --------
 
+    Add registration-driven decorator templates with explicit ``ServiceGroup``
+    membership or ``DerivedServices`` target selection, exact source binding,
+    compile-time filters, generic projection, overlay edits, and captured
+    source/target diagnostics.
+
     Add ``BoundaryAlias`` so ``Expose(..., alias=...)`` can publish a
     boundary-local component under a complete public service type, name, and
     tag contract without adding a proxy or registration. Root and consuming

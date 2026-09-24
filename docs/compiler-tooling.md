@@ -208,6 +208,14 @@ was evaluated for a marked entry point during compilation. Collection explanatio
 Configured values, build arguments, filter closure state, callable representations, memory addresses, and runtime IDs
 are never included. Provenance is deliberately absent from graph manifests, so it does not affect fingerprints.
 
+### Explain decorator templates
+
+For a successful build, `graph.explain_template_sources(template_id)` returns the captured selection for each visible source registration considered by that template. Each `TemplateSourceDecision` has a `source_registration_id`, `selected`, source service/implementation labels, generic source bindings, and `generated_definition_id` when selected. Omitting `template_id` returns decisions for all templates.
+
+Pass a target `Component` to `graph.explain_decorators(component)` to inspect selected and rejected decorators for **that occurrence**. A selected template decision includes the template ID, source registration ID, target registration ID, and target occurrence ID. Registration IDs identify declarations; occurrence IDs distinguish the same declaration under different parent contexts. `graph.explain(component)` explains candidate selection for the component itself. For a generated wrapper, pass its decorator component to `graph.explain(wrapper)` to see its template declaration origin; the core component retains its ordinary registration origin. See [decorator templates](decorator-templates.md#inspection-and-errors).
+
+These explanations are frozen, value-free decisions; reading them does not rerun `source_filter`, `when`, or the factory. They require a successfully built graph. If a source filter or factory fails before graph construction, inspect `ContainerBuildError.report` for its template/source path and `error.partial_graph` for the bounded attempt/witness instead. Such an early failure cannot provide a completed target-decision list.
+
 ### Explain parameter policies and generic substitutions
 
 For an exact occurrence, `explain_arguments()` reports the policy that was compiled for every parameter. It records the

@@ -17,6 +17,7 @@ nav:
   - Lifespans: lifespans.md
   - Generics: generics.md
   - Decorators: decorators.md
+  - Decorator templates: decorator-templates.md
   - Scopes: scopes.md
   - Pre-Configurations: pre-configurations.md
   - Bundles: bundles.md

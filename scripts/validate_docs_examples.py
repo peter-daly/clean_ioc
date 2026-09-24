@@ -1,9 +1,11 @@
 """Validate the documented Clean IoC 2 composition and runtime boundaries."""
 
 import asyncio
+import re
 from collections.abc import Mapping
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Generic, TypeVar, assert_type
 
 import clean_ioc.component_filters as cf
@@ -495,6 +497,15 @@ def validate_registration_patterns() -> None:
         assert batches.serializer.serialize([[Order("A")], [Order("B")]]) == "[[A], [B]]"  # noqa: S101
 
 
+def validate_decorator_template_guide() -> None:
+    """Execute the complete, standalone programs printed in the template guide."""
+    guide = Path(__file__).resolve().parents[1] / "docs" / "decorator-templates.md"
+    snippets = re.findall(r"```python\n(.*?)\n```", guide.read_text(), flags=re.DOTALL)
+    assert len(snippets) >= 2  # noqa: S101
+    for index, snippet in enumerate(snippets[:2], start=1):
+        exec(compile(snippet, f"{guide} example {index}", "exec"), {"__name__": "__main__"})  # noqa: S102
+
+
 def main() -> None:
     validate_build_and_resolution()
     validate_failed_builder_is_reusable()
@@ -510,6 +521,7 @@ def main() -> None:
     validate_boundaries()
     validate_provider_maps()
     validate_registration_patterns()
+    validate_decorator_template_guide()
     asyncio.run(validate_async_factory())
     print("documentation examples validated")
 

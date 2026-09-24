@@ -99,3 +99,6 @@ assert calls == 0
 container.resolve(str)
 assert calls == 1
 ```
+
+
+A registration can join an explicit [`ServiceGroup`](decorator-templates.md#explicit-membership-or-registered-contract-matching) with `groups=[group]`. Membership is stored on that registration; the group does not create a new injectable collection or provider map.

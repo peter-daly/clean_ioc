@@ -78,6 +78,8 @@ Use `types.new_class()` for a dynamic parameterized base. A direct `type(..., (C
 
 Classes created after a successful build do not alter the immutable container. A failed build leaves the builder reusable and the next build rescans its own discovery rules.
 
+[Decorator templates](decorator-templates.md#generic-identities-and-projection) use an exact closed source key and project eligible target requests independently. Discovery rules can pass `groups=` to make their materialized registrations members of an explicit `ServiceGroup`.
+
 ## Closed generic constructors
 
 Register closed classes directly, or provide a closed service and implementation pair:
