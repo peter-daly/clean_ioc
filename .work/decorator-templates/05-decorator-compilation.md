@@ -22,7 +22,8 @@ sync/async activation, and cached plans. Identify the M03/M04 interfaces and cur
 
 ## Implementation assignment
 
-- Wire generated definitions into group/derived target selection and generic specialization.
+- Wire M04 source expansion before runtime compilation, then generated definitions into group/derived target selection and generic specialization.
+- Before exposing the public API, connect M04's one-shot boundary consistency primitive to the actual generated decorator compiler. Recheck from the normalized expanded snapshot and compare initial ordered uses/exposes; test selector-based generated effects rather than relying on M04's synthetic ordinary-decorator probes. Preserve source/template provenance and original boundary causes; do not rerun expansion callbacks to seek a fixed point. Full boundary/overlay scenarios remain M06.
 - Evaluate generated-template `when` against one `_undecorated_component_view(core)` snapshot per target occurrence
   (M01 helper in `components.py`). It excludes attached decorator branches recursively while retaining original
   parent/argument context and selected dependency/owner facts. Reuse that snapshot for every generated predicate

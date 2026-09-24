@@ -1,6 +1,6 @@
 # 04 — Source filtering and template expansion
 
-Status: Search accepted; implementation awaits checkpoint. Dependency: 03 accepted (`530a725`).
+Status: Implementation verified; independent review pending. Dependency: 03 accepted (`530a725`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 01/03 handoffs.
 
 | Role | Model | Reasoning |

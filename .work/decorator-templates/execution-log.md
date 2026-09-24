@@ -37,6 +37,8 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 
 | 03 | Final handoff | Passed | `530a725` | All prior gates verified; no public docs gate; M04 next |
 
-| 04 | Search | Passed; checkpoint pending | Pending | Luna Low `/root/m04_search`; [evidence](04-search.md); internal expansion/recheck seam identified |
+| 04 | Search | Passed | `f831e3a` | Luna Low `/root/m04_search`; [evidence](04-search.md); internal expansion/recheck seam identified |
 
-Implementation/review/documentation gates not listed here have not passed. M04 search in progress; M05–M10 have not started.
+| 04 | Implementation verification | Passed; checkpoint pending | Pending | Astra High `/root/m04_implementation`; [handoff](04-handoff.md); 481 focused tests; Python3.11 95 passed/1 expected skip; Ruff/ty/format/diff passed |
+
+Implementation/review/documentation gates not listed here have not passed. M04 implementation in progress; M05–M10 have not started.
