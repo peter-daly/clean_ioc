@@ -1,6 +1,6 @@
 # 05 — Decorator compilation and activation
 
-Status: Search accepted; implementation awaits checkpoint. Dependency: 04 accepted (`596e12a`).
+Status: Implementation verified; independent review pending. Dependency: 04 accepted (`596e12a`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 03/04 handoffs.
 
 | Role | Model | Reasoning |

@@ -57,11 +57,18 @@ from .components import (
     ValidationRuleMode,
     _ComponentDraft,
     _ComponentGraph,
+    _undecorated_component_view,
     all_components,
     default_component_filter,
     normalize_implementation_type,
 )
-from .generic_utils import _project_service_type, constructor_type
+from .generic_utils import (
+    _bind_typevar_identities,
+    _project_service_type,
+    _resolve_typevar_identities,
+    _typevar_identities,
+    constructor_type,
+)
 from .generic_utils import resolve_typevar_bindings as _resolve_factory_typevars
 from .provider_maps import ProviderMapGroup
 from .providers import AsyncProvider, Provider
@@ -560,6 +567,8 @@ class _BoundaryBlueprint:
 class _Blueprint:
     layers: tuple[_Layer, ...]
     boundaries: tuple[_BoundaryBlueprint, ...] = ()
+    generated_decorators: tuple[_GeneratedDecoratorDefinition, ...] = ()
+    template_selections: tuple[_TemplateSourceSelection, ...] = ()
 
     @property
     def slots(self) -> frozenset[tuple[Any, str | None]]:
@@ -2544,6 +2553,130 @@ def _materialize_decorator(
         decorated_arg=decorated_arg,
         dependencies=specialized_dependencies,
     )
+
+
+def _materialize_generated_decorator(definition: _DecoratorDefinition) -> _DecoratorActivation:
+    """Bind the decorated contract independently of source specialization.
+
+    Read original signature annotations before legacy Dependency's name-based
+    generic inference. Only this generated path uses identity-keyed substitution;
+    ordinary decorators retain their established materialization behavior.
+    """
+    source = definition.decorator_type
+    origin = constructor_type(source)
+    signature_source = origin or source
+    label = qualified_name(source)
+    try:
+        infos = legacy._get_arg_info(signature_source)
+        settings = _arguments_to_dependency_config(definition.arguments)
+        # Dependency performs legacy inference for a class parent. A neutral
+        # callable retains the exact annotation until our identity binding below.
+        dependencies = {
+            name: legacy.Dependency(
+                name,
+                _materialize_generated_decorator,
+                info.arg_type,
+                settings.get(name, legacy.DependencySettings()),
+                info.default_value,
+            )
+            for name, info in infos.items()
+        }
+        for name in settings.keys() - dependencies.keys():
+            dependencies[name] = legacy.Dependency(
+                name,
+                _materialize_generated_decorator,
+                Any,
+                settings[name],
+                legacy.EMPTY,
+            )
+        _validate_dependency_names(signature_source, dependencies)
+        source_bindings: dict[TypeVar, Any] = {}
+        if origin is not None:
+            for base in origin.__mro__:
+                parameters = getattr(base, "__parameters__", ())
+                if not parameters:
+                    continue
+                projection = _project_service_type(source, base)
+                if projection is not None:
+                    source_bindings.update(zip(parameters, get_args(projection)))
+        annotations = {
+            name: _resolve_typevar_identities(dependency.service_type, source_bindings)
+            for name, dependency in dependencies.items()
+        }
+        decorated_arg = definition.decorated_arg
+        if decorated_arg is None:
+            candidates = [
+                name
+                for name, annotation in annotations.items()
+                if _bind_typevar_identities(annotation, definition.service_type) is not None
+            ]
+            if len(candidates) != 1:
+                raise ValueError("Expected one decorated argument; set decorated_arg= explicitly")
+            decorated_arg = candidates[0]
+        if decorated_arg not in dependencies:
+            raise ValueError(f"No argument named {decorated_arg!r}")
+        bindings = _bind_typevar_identities(annotations[decorated_arg], definition.service_type)
+        if bindings is None:
+            raise ValueError("Decorated argument conflicts with the projected target contract")
+        no_default = getattr(typing, "NoDefault", _NO_TYPEVAR_DEFAULT)
+        for annotation in annotations.values():
+            for variable in _typevar_identities(annotation):
+                if variable in bindings:
+                    continue
+                default = getattr(variable, "__default__", _NO_TYPEVAR_DEFAULT)
+                if default is not _NO_TYPEVAR_DEFAULT and default is not no_default:
+                    bindings[variable] = _resolve_typevar_identities(default, bindings)
+        resolved = {name: _resolve_typevar_identities(annotation, bindings) for name, annotation in annotations.items()}
+        unresolved = {variable for annotation in resolved.values() for variable in _typevar_identities(annotation)}
+        if unresolved:
+            raise ValueError(f"Unresolved decorator TypeVar(s): {', '.join(sorted(v.__name__ for v in unresolved))}")
+        implementation = signature_source
+        if origin is not None:
+            parameters = getattr(origin, "__parameters__", ())
+            if parameters:
+                arguments = tuple(
+                    _resolve_typevar_identities(_resolve_typevar_identities(parameter, source_bindings), bindings)
+                    for parameter in parameters
+                )
+                if any(_typevar_identities(argument) for argument in arguments):
+                    raise ValueError("Unresolved decorator implementation parameters")
+                alias = cast(Any, origin)[arguments[0] if len(arguments) == 1 else arguments]
+                implementation = legacy.create_generic_decorator_type(alias)
+        else:
+            result_type = _resolve_typevar_identities(_factory_result_annotation(source), bindings)
+            if result_type not in (Any, inspect.Signature.empty):
+                result_projection = _project_service_type(result_type, definition.service_type)
+                if (
+                    result_projection is None
+                    or _typevar_identities(result_projection)
+                    or _bind_typevar_identities(result_projection, definition.service_type) is None
+                ):
+                    raise ValueError("Decorator result is incompatible with the projected target contract")
+        dependencies.pop(decorated_arg)
+        specialized = {}
+        for name, dependency in dependencies.items():
+            item = legacy.Dependency(
+                name,
+                _materialize_generated_decorator,
+                resolved[name],
+                dependency.settings,
+                dependency.default_value,
+            )
+            item.parent_implementation = implementation
+            item.declared_service_type = dependency.declared_service_type
+            specialized[name] = item
+        return _DecoratorActivation(
+            definition,
+            implementation,
+            legacy._Registry._get_activator_class(implementation),
+            decorated_arg,
+            specialized,
+        )
+    except Exception as error:
+        raise ContainerBuildError(
+            f"Decorator {label} cannot satisfy {qualified_name(definition.service_type)}: {error}",
+            code="invalid-decorator",
+        ) from error
 
 
 @dataclass(frozen=True, slots=True)
@@ -4797,7 +4930,7 @@ class _Compiler:
             )
             configurations = self._compile_pre_configurations(component)
             draft.pre_configuration_ids = tuple(item.component.occurrence_id for item in configurations)
-            decorators = self._compile_decorators(registration, component)
+            decorators = self._compile_decorators(registration, layer, component)
             # Component inspection presents the final pipeline outside-to-inside,
             # while runtime activation retains the core-to-outside order.
             draft.decorator_ids = tuple(item.component.occurrence_id for item in reversed(decorators))
@@ -5940,6 +6073,7 @@ class _Compiler:
     def _compile_decorators(
         self,
         registration: legacy._Registration,
+        layer: _Layer,
         core: Component,
     ) -> tuple[_CompiledDecorator, ...]:
         if self._source_inspection:
@@ -5949,9 +6083,49 @@ class _Compiler:
         selected: list[_DecoratorDefinition] = []
         decisions: list[CandidateDecision] = []
         definitions = self.blueprint.decorators(core.service_type, self._area)
+        generated: dict[str, tuple[_GeneratedDecoratorDefinition, _ServiceTarget]] = {}
+        area_layers = self.blueprint.layers if self._area is None else (layer,)
+        for candidate in self.blueprint.generated_decorators:
+            if candidate.declaration_area != self._area:
+                continue
+            target = self._select_service_target(
+                candidate.specification.services, registration, layer, core.service_type
+            )
+            if target is None:
+                continue
+            declaration_layer = next(
+                (item for item in area_layers if item.owner_token == candidate.declaration_owner_token), None
+            )
+            if declaration_layer is None:
+                continue
+            specification = candidate.specification
+            definition = _DecoratorDefinition(
+                candidate.id,
+                target.projected_contract,
+                specification.decorator_type,
+                specification.decorated_arg,
+                specification.arguments or {},
+                specification.position,
+                candidate.order,
+                specification.when,
+                specification.name,
+                tuple(specification.tags),
+                candidate.declaration.origin,
+            )
+            definitions.append((definition, declaration_layer))
+            generated[candidate.id] = candidate, target
+        definitions.sort(
+            key=lambda item: (
+                item[0].position,
+                next(index for index, value in enumerate(area_layers) if value is item[1]),
+                -item[0].order,
+                -generated[item[0].id][0].source_order if item[0].id in generated else 0,
+            )
+        )
+        target_view = _undecorated_component_view(core) if generated else None
         for decorator_index, (decorator, _) in enumerate(definitions):
             try:
-                matched = decorator.when(core)
+                matched = decorator.when(cast(Component, target_view) if decorator.id in generated else core)
             except Exception as error:
                 subject = f"Decorators for {qualified_name(core.service_type)}"
                 self._partial_candidate_labels[decorator.id] = qualified_name(decorator.decorator_type)
@@ -6000,7 +6174,11 @@ class _Compiler:
         decorated: Component = core
         for definition in selected:
             try:
-                decorator = _materialize_decorator(definition, core.service_type, core.implementation_type)
+                decorator = (
+                    _materialize_generated_decorator(definition)
+                    if definition.id in generated
+                    else _materialize_decorator(definition, core.service_type, core.implementation_type)
+                )
             except ContainerBuildError as error:
                 self._record_partial_declaration_edge(
                     (
@@ -6014,7 +6192,14 @@ class _Compiler:
                 raise ContainerBuildError(
                     str(error),
                     code="invalid-decorator",
-                    path=self._current_path(core.service_type),
+                    path=(
+                        *self._current_path(core.service_type),
+                        *(
+                            (generated[definition.id][0].declaration.id, generated[definition.id][0].source.id)
+                            if definition.id in generated
+                            else ()
+                        ),
+                    ),
                 ) from error
             component, draft = self._draft(
                 component_id=definition.id,
@@ -6049,6 +6234,15 @@ class _Compiler:
             try:
                 dependencies = self._compile_dependencies(decorator.dependencies, component)
                 self._record_generic_explanation(component, decorator.dependencies)
+            except ContainerBuildError as error:
+                if definition.id not in generated:
+                    raise
+                candidate, target = generated[definition.id]
+                raise ContainerBuildError(
+                    f"Template {candidate.declaration.id} source {candidate.source.id}: {error}",
+                    code=error.code,
+                    path=(*error.path, candidate.declaration.id, candidate.source.id, target.registration_id),
+                ) from error
             finally:
                 self._frames.pop()
             items.append(
@@ -6932,8 +7126,8 @@ def _check_template_boundary_visibility(
 ) -> _Blueprint:
     """One consistency check; the caller must supply complete generated semantics.
 
-    M04 tests use ordinary generated-equivalent definitions. M05 must include
-    actual group/derived candidates in boundary compilation before public wiring.
+    The expanded snapshot includes actual group/derived candidates so structural
+    boundary filters see the same generated semantics as runtime compilation.
     """
     provenance = tuple(f"{item.declaration.id}:{item.source.id}" for item in candidates)
     try:
@@ -6979,6 +7173,7 @@ def _compile_with_report(
     blueprint: _Blueprint,
     *,
     build_args: Mapping[str, Any] = _EMPTY_BUILD_ARGS,
+    preview: bool = False,
     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
     anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
     anchored_owner_tokens: frozenset[str] = frozenset(),
@@ -6997,6 +7192,28 @@ def _compile_with_report(
     try:
         blueprint = _normalize_blueprint_aliases(blueprint)
         blueprint = _prepare_boundary_visibility(blueprint, build_args=build_args)
+        expansion = _expand_decorator_templates(
+            blueprint,
+            build_args=build_args,
+            anchored_singleton_steps=anchored_singleton_steps,
+            anchored_pre_configuration_steps=anchored_pre_configuration_steps,
+            anchored_owner_tokens=anchored_owner_tokens,
+            inherited_parameter_explanations=inherited_parameter_explanations,
+            inherited_generic_explanations=inherited_generic_explanations,
+        )
+        expanded = replace(
+            blueprint, generated_decorators=expansion.candidates, template_selections=expansion.selections
+        )
+        blueprint = (
+            _check_template_boundary_visibility(
+                blueprint,
+                _normalize_blueprint_aliases(expanded),
+                build_args=build_args,
+                candidates=expansion.candidates,
+            )
+            if expansion.candidates
+            else expanded
+        )
     except TypeAliasNormalizationError as error:
         report = _alias_error_report((error,))
         raise ContainerBuildError(
@@ -7029,7 +7246,7 @@ def _compile_with_report(
     )
     try:
         plan = compiler.compile()
-        return _finalize_plan(plan)
+        return plan if preview else _finalize_plan(plan)
     except ContainerBuildError as error:
         if error.report is not None:
             raise ContainerBuildError(
@@ -7930,7 +8147,7 @@ class _BuilderBase:
             tags=tags,
         )
 
-    def _register_decorator_template(
+    def register_decorator_template(
         self,
         *,
         for_each: Any,
@@ -7973,7 +8190,7 @@ class _BuilderBase:
             None,
         )
 
-    def _patch_decorator_template(
+    def patch_decorator_template(
         self,
         template_id: str,
         *,
@@ -8000,15 +8217,19 @@ class _BuilderBase:
         self._decorator_templates = [item for item in self._decorator_templates if item.id != template_id]
         self._decorator_templates.append(patched)
 
-    def _remove_decorator_template(self, template_id: str) -> None:
+    def remove_decorator_template(self, template_id: str) -> None:
         self._assert_mutable()
         if self._find_decorator_template(template_id) is None:
             raise KeyError(template_id)
         self._decorator_templates = [item for item in self._decorator_templates if item.id != template_id]
         self._removed_template_ids.add(template_id)
 
+    _register_decorator_template = register_decorator_template
+    _patch_decorator_template = patch_decorator_template
+    _remove_decorator_template = remove_decorator_template
+
     def _expand_decorator_templates(self, *, build_args: Mapping[str, Any] | None = None) -> _TemplateExpansion:
-        """Internal expansion probe; runtime/public template wiring belongs to M05."""
+        """Inspect source expansion independently of generated target compilation."""
         self._assert_mutable()
         parent = getattr(self, "_parent", None)
         inherited = (
@@ -8319,13 +8540,7 @@ class _BuilderBase:
             blueprint = _normalize_blueprint_aliases(blueprint)
         except TypeAliasNormalizationError as error:
             raise ContainerBuildError(report=_alias_error_report((error,))) from error
-        plan = _Compiler(
-            _prepare_boundary_visibility(
-                blueprint,
-                build_args=self._effective_build_args(build_args),
-            ),
-            build_args=self._effective_build_args(build_args),
-        ).compile()
+        plan = _compile_with_report(blueprint, build_args=self._effective_build_args(build_args), preview=True)
         roots = plan.roots.get(service_type, plan.provider_roots.get(service_type, ()))
         return tuple(item.component for item in roots)
 

@@ -1,4 +1,4 @@
-"""Immutable template declarations and expansion records (internal until activation)."""
+"""Immutable decorator templates, definition metadata, and expansion records."""
 
 from __future__ import annotations
 
@@ -105,7 +105,7 @@ class _TemplateSourceSelection:
 @dataclass(frozen=True, slots=True)
 class _TemplateExpansion:
     # Original declarations remain in this prepared snapshot. Candidates are
-    # deliberately separate: M05 must compile their selectors before publication.
+    # deliberately separate from user declarations and consumed by the compiler.
     blueprint: _Blueprint
     candidates: tuple[_GeneratedDecoratorDefinition, ...] = ()
     selections: tuple[_TemplateSourceSelection, ...] = ()

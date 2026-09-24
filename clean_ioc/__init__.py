@@ -1,5 +1,6 @@
 """Clean IoC's public API."""
 
+from ._decorator_templates import DecoratorTemplate, RegistrationInfo
 from .arguments import INJECT, REMOVE, ParameterContext, build_arg, derive, generic_arg, inject, select
 from .boundaries import Boundary, BoundaryAlias, Expose, Use
 from .components import (
@@ -106,6 +107,8 @@ __all__ = [
     "CompilationAttempt",
     "CompiledGraph",
     "DecisionOutcome",
+    "DecoratorTemplate",
+    "RegistrationInfo",
     "DerivedServices",
     "ContextualCacheCertainty",
     "ContextualCacheFinding",

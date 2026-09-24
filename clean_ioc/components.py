@@ -32,6 +32,7 @@ from .service_groups import ServiceGroup
 from .type_aliases import normalize_type_alias
 
 if TYPE_CHECKING:
+    from ._decorator_templates import DecoratorTemplate, RegistrationInfo
     from .tooling import ValidationRule
 
 Lifespan: TypeAlias = Literal["transient", "per_resolution", "scoped", "singleton"]
@@ -438,11 +439,23 @@ def _undecorated_component_view(component: Component) -> Component:
     an inspection graph only; ordinary decorator predicates keep their old view.
     """
     source = component._graph
-    records = source._records
-    if records is None:
-        records = {key: draft.freeze() for key, draft in source._drafts.items()}
+    # Follow only this occurrence's connected context. Unrelated compiled roots
+    # must not increase the cost of a predicate snapshot. Parent/dependency and
+    # owner links preserve everything a contextual component predicate can read.
+    records: dict[int, _ComponentRecord] = {}
+    pending = [component.occurrence_id]
+    while pending:
+        key = pending.pop()
+        if key in records:
+            continue
+        value = source.record(key)
+        record = value.freeze() if isinstance(value, _ComponentDraft) else value
+        records[key] = replace(record, decorator_ids=())
+        pending.extend(record.dependency_ids)
+        pending.extend(record.pre_configuration_ids)
+        pending.extend(item for item in (record.parent_id, record.decorated_id, record.owner_id) if item is not None)
     graph = _ComponentGraph()
-    graph._records = {key: replace(record, decorator_ids=()) for key, record in records.items()}
+    graph._records = records
     return Component(graph, component.occurrence_id)
 
 
@@ -563,6 +576,25 @@ class ComponentBuilder(Protocol):
         when: ComponentFilter = all_components,
         groups: Iterable[ServiceGroup] = (),
     ) -> None: ...
+
+    def register_decorator_template(
+        self,
+        *,
+        for_each: Any,
+        template: Callable[[RegistrationInfo], DecoratorTemplate],
+        source_filter: ComponentFilter = all_components,
+    ) -> str: ...
+
+    def patch_decorator_template(
+        self,
+        template_id: str,
+        *,
+        for_each: Any = ...,
+        template: Callable[[RegistrationInfo], DecoratorTemplate] | object = ...,
+        source_filter: ComponentFilter | object = ...,
+    ) -> None: ...
+
+    def remove_decorator_template(self, template_id: str) -> None: ...
 
     def register_decorator(
         self,

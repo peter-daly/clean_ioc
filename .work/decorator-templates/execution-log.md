@@ -47,6 +47,8 @@ checkpoint; commits are not amended to include their own hashes. Commit messages
 
 | 04 | Final handoff | Passed | `596e12a` | All prior gates verified; actual generated activation/recheck handed to M05 |
 
-| 05 | Search | Passed; checkpoint pending | Pending | Luna Low `/root/m05_search`; [evidence](05-search.md); activation/lifecycle/boundary and snapshot scale seams mapped |
+| 05 | Search | Passed | `e6bd146` | Luna Low `/root/m05_search`; [evidence](05-search.md); activation/lifecycle/boundary and snapshot scale seams mapped |
 
-Implementation/review/documentation gates not listed here have not passed. M05 search in progress; M06–M10 have not started.
+| 05 | Implementation verification | Passed; checkpoint pending | Pending | Astra High `/root/m05_implementation`; [handoff](05-handoff.md); 537 focused tests; Python3.11 139 passed/1 expected skip; Ruff/ty/format/diff passed |
+
+Implementation/review/documentation gates not listed here have not passed. M05 implementation in progress; M06–M10 have not started.

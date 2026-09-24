@@ -45,15 +45,15 @@ def snapshot(builder):
     return _normalize_blueprint_aliases(_Blueprint((builder._layer(),), tuple(builder._boundaries)))
 
 
-def test_zero_sources_and_no_public_unusable_entrypoints():
+def test_zero_sources_and_public_entrypoints():
     builder = ContainerBuilder()
     template_id = builder._register_decorator_template(for_each=Target, template=specification)
     result = builder._expand_decorator_templates()
     assert result.candidates == result.selections == ()
     assert result.blueprint.layers[0].decorator_templates[0].id == template_id
-    assert not hasattr(builder, "register_decorator_template")
-    assert not hasattr(builder, "patch_decorator_template")
-    assert not hasattr(builder, "remove_decorator_template")
+    assert hasattr(builder, "register_decorator_template")
+    assert hasattr(builder, "patch_decorator_template")
+    assert hasattr(builder, "remove_decorator_template")
 
 
 def test_distinct_same_class_sources_deterministic_ids_shared_order_and_immutable_evidence():
@@ -697,8 +697,12 @@ def test_failed_source_dependency_does_not_call_filter_or_factory_or_leave_guard
 def test_internal_overlay_edit_shadows_declaration_and_reexpands_new_sources():
     builder = ContainerBuilder()
     parent_source = builder.register(Target)
-    inherited_id = builder._register_decorator_template(for_each=Target, template=specification)
-    retained_id = builder._register_decorator_template(for_each=Target, template=specification)
+    inherited_id = builder._register_decorator_template(
+        for_each=Target, template=lambda source: replace(specification(source), when=lambda _: False)
+    )
+    retained_id = builder._register_decorator_template(
+        for_each=Target, template=lambda source: replace(specification(source), when=lambda _: False)
+    )
     # M04 stores original declarations in plans; this is not an activation test.
     parent = builder.build()
     overlay = parent.new_scope_builder()
