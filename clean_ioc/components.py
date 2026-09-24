@@ -36,6 +36,8 @@ if TYPE_CHECKING:
     from .tooling import ValidationRule
 
 Lifespan: TypeAlias = Literal["transient", "per_resolution", "scoped", "singleton"]
+LifespanPolicy: TypeAlias = Lifespan | Literal["auto"]
+ScopePolicy: TypeAlias = Literal["current", "per_call"]
 ValidationRuleMode: TypeAlias = Literal["build", "validation"]
 BundleRunScope: TypeAlias = Literal["boundary", "scope", "container"]
 K = TypeVar("K")
@@ -64,6 +66,7 @@ class ComponentKind(str, Enum):
     runtime_context = "runtime_context"
     provider = "provider"
     provider_map = "provider_map"
+    per_call_handle = "per_call_handle"
 
 
 class ComponentActivation(str, Enum):
@@ -493,7 +496,8 @@ class ComponentBuilder(Protocol):
         factory: Callable[..., Any] | None = None,
         factory_specialization: object | None = None,
         instance: Any | None = None,
-        lifespan: Lifespan = "per_resolution",
+        lifespan: LifespanPolicy = "auto",
+        scope: ScopePolicy = "current",
         name: str | None = None,
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[Tag] | None = None,
@@ -507,7 +511,8 @@ class ComponentBuilder(Protocol):
         service_type: TypeForm[Any],
         *,
         factory: Callable[..., Any],
-        lifespan: Lifespan = "per_resolution",
+        lifespan: LifespanPolicy = "auto",
+        scope: ScopePolicy = "current",
         name: str | None = None,
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[Tag] | None = None,
@@ -554,7 +559,8 @@ class ComponentBuilder(Protocol):
         *,
         ensure_import_modules: str | Iterable[str] = (),
         include_children: bool = False,
-        lifespan: Lifespan = "per_resolution",
+        lifespan: LifespanPolicy = "auto",
+        scope: ScopePolicy = "current",
         subclass_type_filter: Callable[[type], bool] = ...,
         name: str | None = None,
         tags: Iterable[Tag] | None = None,
@@ -569,7 +575,8 @@ class ComponentBuilder(Protocol):
         fallback_type: type | None = None,
         ensure_import_modules: str | Iterable[str] = (),
         include_children: bool = False,
-        lifespan: Lifespan = "per_resolution",
+        lifespan: LifespanPolicy = "auto",
+        scope: ScopePolicy = "current",
         subclass_type_filter: Callable[[type], bool] = ...,
         name: str | None = None,
         tags: Iterable[Tag] | None = None,
@@ -615,7 +622,8 @@ class ComponentBuilder(Protocol):
         component_id: str,
         *,
         arguments: Mapping[str, Any] | None = None,
-        lifespan: Lifespan | None = None,
+        lifespan: LifespanPolicy | None = None,
+        scope: ScopePolicy | object = ...,
         tags: Iterable[Tag] | None = None,
     ) -> None: ...
 

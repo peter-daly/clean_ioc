@@ -4,7 +4,10 @@
 from clean_ioc import ContainerBuilder
 ```
 
-The `lifespan=` argument takes the string literals `"transient"`, `"per_resolution"`, `"scoped"`, or `"singleton"`. The exported `Lifespan` name is a typing alias for annotating reusable composition helpers, not an enum.
+The `lifespan=` argument accepts `"auto"`, `"transient"`, `"per_resolution"`, `"scoped"`, or `"singleton"`. `"auto"`
+is the declaration default: it means `"per_resolution"` with `scope="current"` and `"scoped"` with
+`scope="per_call"`. Compiled components always show a concrete lifespan. The exported `Lifespan` alias names the four
+concrete lifespans; `LifespanPolicy` and `ScopePolicy` name the registration choices.
 
 ## `transient`
 
@@ -53,6 +56,14 @@ with container.new_scope() as scope:
 ```
 
 Nested scopes inherit already-created parent scoped values.
+
+For a separate scoped cache around every method invocation, register the service with `scope="per_call"`. Its
+implementation is effectively scoped inside each invocation. Only `lifespan="auto"` or `lifespan="scoped"` is valid
+with this scope policy. See [one scope per method call](scopes.md#one-scope-per-method-call) for a complete example.
+
+`patch_component(..., scope="per_call")` can change the policy on an existing component. A patch that omits `scope`
+keeps its prior setting; a patch that omits `lifespan` or passes `None` keeps its prior declaration. Invalid combined
+policies fail before any part of the patch is applied.
 
 ## `singleton`
 
