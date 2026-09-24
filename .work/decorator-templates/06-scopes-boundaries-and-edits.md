@@ -1,6 +1,6 @@
 # 06 — Composition edits, scopes, and boundaries
 
-Status: Independent review accepted round 2; final handoff pending. Dependency: 05 accepted (`d62c87e`).
+Status: Accepted; all applicable gates passed. Dependency: 05 accepted (`d62c87e`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 05 handoff.
 
 | Role | Model | Reasoning |

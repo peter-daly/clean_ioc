@@ -88,3 +88,7 @@ local declaration, one/two sources, repatching both IDs, and nested overlay rete
 reference behavior and prove each template's source layers remain adjacent. The exact regression/3.11 commands above
 were rerun after repair with the updated results shown. Ruff, ty, format and diff checks pass. Only `container.py`,
 `test_decorator_template_composition.py` and this handoff were edited during repair; no commits or public/bark edits.
+
+## Final gate record
+
+Accepted after independent review round 2. Search `8800f1d`; implementation `c8998b9`; repair `caa2dd3`; review evidence `a23a5ac` (preceded by log-only checkpoint `98666ca`). All checkpoint hooks passed. Reviewer independently passed 589 focused tests and the original ordering reproduction. No unresolved M06 findings. No public documentation changes, so reader gate does not apply. Bark-core remains untouched. M07 should capture diagnostics and immutable inspection facts while preserving the accepted runtime and ownership behavior.
