@@ -1,6 +1,6 @@
 # 08 — Local bark-core integration proof
 
-Status: Implementation verified; independent review pending. Dependency: 07 accepted (`2780e0e`).
+Status: Independent review accepted; final handoff pending. Dependency: 07 accepted (`2780e0e`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 07 handoff.
 
 | Role | Model | Reasoning |
