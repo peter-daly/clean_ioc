@@ -1,6 +1,6 @@
 # 10 — Regression checks and completion
 
-Status: Final review requested one retained-regression coverage repair; verification reopened. Dependency: 09 accepted (`9734712`), fresh reader20/20.
+Status: Independent review accepted; all required available checks passed; final handoff pending. Dependency: 09 accepted (`9734712`), fresh reader20/20.
 Read the [workflow](README.md), feature contract, all accepted handoffs, and M09 technical/quiz evidence.
 
 | Role | Model | Reasoning |
