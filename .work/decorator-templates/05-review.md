@@ -11,3 +11,7 @@ Independent **537 focused tests passed**. Three executable P2 probes:
 3. `container.py:6157`: generated when RuntimeError is rethrown raw, producing compile-error with target-only path. Preserve safe target/template/source provenance and original cause through diagnostic retries; ordinary predicate handling unchanged.
 
 Runtime order, exact sources, boundary feedback, snapshot and cleanup coverage otherwise sound. Original implementation agent assigned repairs; acceptance pending. Full overlay acceptance remains M06; no public docs gate.
+
+## Round 2: accepted at `f9cbaee`
+
+All three P2s resolved. Independent **546 focused tests passed**; original probes now pass, including runtime class specialization for inherited/overridden constructors and open/closed aliases, dependent defaults, and safe predicate provenance/original cause. Independent Ruff/ty passed. No remaining M05 blockers; full overlay acceptance remains M06. No reviewer edits/commits.
