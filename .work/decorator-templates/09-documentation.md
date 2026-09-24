@@ -1,6 +1,6 @@
 # 09 — Standalone documentation and comprehension
 
-Status: Documentation verified; technical review and reader gates pending. Dependency: 08 accepted (`2ba08f2`).
+Status: Technical review accepted; fresh-reader review/quiz pending. Dependency: 08 accepted (`2ba08f2`).
 Read the [workflow](README.md) and [documentation review protocol](documentation-review.md).
 Implementation/review agents may read the feature contract; the fresh reader must not receive it.
 
