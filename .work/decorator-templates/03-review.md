@@ -11,3 +11,7 @@ Independent focused suite: **352 passed**. Additional probes reproduce three P2s
 3. `generic_utils.py:276`: `_bind_typevar_identities(T | int | str, int | str)` returns None, silently excluding DerivedServices rather than reporting unsupported union collapse. Diagnose possible collapse; keep provable fixed mismatch nonselection.
 
 Registration identity, factory/pattern membership retention, nominal selection and ordinary decorator behavior showed no further findings. Original implementation agent assigned repairs; acceptance pending.
+
+## Round 2: accepted at `daa8871`
+
+All three P2 findings resolved. Independent **356 focused tests passed**. Additional probes confirm valid union matches survive abandoned alternatives, required collapse raises explicitly, genuine mismatches remain nonselection, and inherited aliases produce canonical projections/bindings. No remaining actionable findings in scope. No reviewer edits/commits.
