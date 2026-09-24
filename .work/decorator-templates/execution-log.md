@@ -99,4 +99,6 @@ M07 review round 1 found three P2s; see [review](07-review.md). Original impleme
 
 | 09 | Implementation verification | Passed | `1507ef2` | Sol High `/root/m09_implementation`; [handoff](09-handoff.md); exact Markdown examples, strict MkDocs build, Ruff/ty/format/diff passed; independent examples, no integration references |
 
-| 09 | Independent technical review | Passed | Pending checkpoint | Astra High `/root/m09_review`; [review](09-review.md); validator/strictdocs/190tests/static pass; reader gate pending |
+| 09 | Independent technical review | Passed | `f56369a` | Astra High `/root/m09_review`; [review](09-review.md); validator/strictdocs/190tests/static pass; reader gate pending |
+
+| 09 | Implementation verification, documentation repair | Passed | Pending checkpoint | Reader round1 retained as failed (19/20 plus core F1); explicit overlay order/example repaired; exactdocs/strictdocs/2nested tests/static pass |

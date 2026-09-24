@@ -1,6 +1,6 @@
 # M09 documentation-author handoff (implementation verification)
 
-Status: authored and locally verified on baseline `487b304`; independent technical review and fresh-reader comprehension remain for coordinator gates. Agent: `/root/m09_implementation`, gpt-6-sol high. No commit made by this agent.
+Status: authored on baseline `487b304`; initial implementation and technical-review checkpoints were committed by the coordinator, but the first fresh-reader gate failed on an overlay source-order documentation gap. This author repaired that gap; technical recheck and a new reader run remain. Agent: `/root/m09_implementation`, gpt-6-sol high. No commit made by this agent.
 
 ## Change boundary and independent authorship
 
@@ -21,6 +21,12 @@ Unrelated `.work` notes were preserved. The coordinator's concurrent `execution-
 
 First validator run exposed an incorrect expected two-source order. Corrected the documented assertion to first-declared source outside/first event; reran successfully. No production code changed. No known implementation defect found.
 
+## Reader-round-1 repair
+
+The original ordering paragraph mentioned overlay precedence but omitted its direction. Revised `docs/decorator-templates.md` to state: for one template at equal positions on an overlay-owned target, nearest overlay sources are outside inherited sources, while declaration order is retained within each layer. A compact nested sink → parent-overlay sink → root sink → stage core illustration demonstrates the rule. Higher-position ordering and anchored inherited parent singleton behavior are stated alongside it. No new Python block or production code was added.
+
+Repair verification: exact two guide programs via `uv run python scripts/validate_docs_examples.py` passed; `uv run mkdocs build --strict` passed; focused nested-overlay composition test passed (`2 passed`); Ruff check, Ruff format check, ty check, and `git diff --check` passed. No new limitations found.
+
 ## Remaining gate work
 
-Coordinator should run separate Astra High technical review of this public-doc change, resolve any findings with this author, then conduct the isolated fresh Luna Low neutral review and later quiz per `documentation-review.md`. This handoff records no acceptance, quiz result, or commit SHA.
+The initial separate Astra High technical review passed before the first reader round. The first reader scored 19/20, but the examiner correctly held the gate because cross-layer ordering was not explicit. See `09-reader-round1-grade.md` for the preserved result. The coordinator should request Astra recheck of this narrow repair, then conduct an isolated NEW fresh Luna Low neutral review and later quiz per `documentation-review.md`. This handoff records no comprehension acceptance for round 1 or for the revised guide.
