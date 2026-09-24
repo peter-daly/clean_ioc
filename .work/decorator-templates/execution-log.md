@@ -93,4 +93,6 @@ M07 review round 1 found three P2s; see [review](07-review.md). Original impleme
 
 | 08 | Independent technical review | Passed | `827964d` | Astra High `/root/m08_review`; [review](08-review.md);409 independent tests plus closed-generic source probe; ledger/no-commit verified |
 
-| 08 | Final handoff | Passed | Pending checkpoint | Prior gates verified;12-file uncommitted bark ledger retained; no public docs reader gate; M09 docs next |
+| 08 | Final handoff | Passed | `2ba08f2` | Prior gates verified;12-file uncommitted bark ledger retained; no public docs reader gate; M09 docs next |
+
+| 09 | Search | Passed | Pending checkpoint | Luna Low `/root/m09_search`; [evidence](09-search.md); public docs/API/validator gaps mapped; no integration material used |

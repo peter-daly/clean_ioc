@@ -1,6 +1,6 @@
 # 09 — Standalone documentation and comprehension
 
-Status: Not started. Dependency: 08 accepted.
+Status: Search accepted; documentation author pending. Dependency: 08 accepted (`2ba08f2`).
 Read the [workflow](README.md) and [documentation review protocol](documentation-review.md).
 Implementation/review agents may read the feature contract; the fresh reader must not receive it.
 
