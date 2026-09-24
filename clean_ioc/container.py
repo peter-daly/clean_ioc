@@ -3631,11 +3631,11 @@ class _Compiler:
         draft.name = registration.name
         draft.tags = tuple(registration.tags)
         draft.argument = None
-        instance_type = layer.instance_implementation_types.get(registration.id)
-        if instance_type is not None:
-            # Only the inspection root gains this static instance evidence.
+        implementation_type = _source_registration_info(source, layer).implementation_type
+        if implementation_type is not None:
+            # Only the inspection root gains known instance/factory type evidence.
             # Ordinary component normalization and anchored activation stay intact.
-            draft.implementation_type = constructor_type(instance_type) or draft.implementation_type
+            draft.implementation_type = constructor_type(implementation_type) or draft.implementation_type
         self.graph.freeze()
         return component
 
@@ -6785,6 +6785,19 @@ def _source_registration_info(registration: legacy._Registration, layer: _Layer)
     )
 
 
+def _static_instance_implementation_type(instance: Any) -> Any:
+    """Read only genuine stored generic aliases, without invoking user attributes."""
+    implementation_type = type(instance)
+    alias = inspect.getattr_static(instance, "__orig_class__", None)
+    # Inspect arbitrary metadata only after checking its concrete runtime type:
+    # even isinstance/get_origin can consult an object's custom __class__.
+    alias_type = type(alias)
+    if alias_type is types.GenericAlias or alias_type is type(typing.List[int]):
+        if get_origin(alias) is implementation_type:
+            return alias
+    return implementation_type
+
+
 def _template_sources(blueprint: _Blueprint, key: Any, area: str | None) -> list[tuple[legacy._Registration, _Layer]]:
     visible = blueprint.registrations(key, area)
     # Lookup order is newest-first; decorator source order is declaration order.
@@ -7696,6 +7709,7 @@ class _BuilderBase:
         # Both legacy paths use the same constructor activator for classes, but
         # the factory path registers only the requested key, not the implementation.
         activation_factory = implementation_type if is_union and factory is None else factory
+        instance_implementation_type = None if instance is None else _static_instance_implementation_type(instance)
         component_id = self._composition.register(
             cast(type[TService], service_type),
             implementation_type,
@@ -7709,7 +7723,7 @@ class _BuilderBase:
         )
         self._registration_when[component_id] = when
         if instance is not None:
-            self._instance_implementation_types[component_id] = getattr(instance, "__orig_class__", type(instance))
+            self._instance_implementation_types[component_id] = instance_implementation_type
         if normalized_contributions is not None:
             self._contributions[component_id] = types.MappingProxyType(normalized_contributions)
         self._service_groups[component_id] = service_groups

@@ -713,3 +713,83 @@ def test_internal_overlay_edit_shadows_declaration_and_reexpands_new_sources():
     assert parent._plan.blueprint.layers[0].decorator_templates[0].source_filter is cf.all_components
     overlay._remove_decorator_template(inherited_id)
     assert {item.declaration.id for item in overlay._expand_decorator_templates().candidates} == {retained_id}
+
+
+def test_instance_static_metadata_does_not_execute_dynamic_attributes_or_descriptors():
+    class Source:
+        pass
+
+    accesses = []
+
+    class Dynamic(Source):
+        def __getattr__(self, name):
+            if name == "__orig_class__":
+                accesses.append("dynamic")
+                raise RuntimeError("Dynamic generic metadata must not be accessed")
+            raise AttributeError(name)
+
+    class Described(Source):
+        @property
+        def __orig_class__(self):
+            accesses.append("descriptor")
+            raise RuntimeError("Generic metadata descriptors must not be invoked")
+
+    class InvalidMetadata:
+        @property
+        def __class__(self):
+            accesses.append("metadata-class")
+            raise RuntimeError("Arbitrary metadata must not be inspected dynamically")
+
+    invalid = Source()
+    setattr(invalid, "__orig_class__", InvalidMetadata())
+    unrelated = Source()
+    setattr(unrelated, "__orig_class__", list[int])
+    for instance in (Dynamic(), Described(), invalid, unrelated):
+        builder = ContainerBuilder()
+        # Ordinary instance registrations must remain supported without templates.
+        registration_id = builder.register(Source, instance=instance)
+        assert builder._instance_implementation_types[registration_id] is type(instance)
+        assert registration_id in builder._registration_origins
+        assert len(builder._composition._registry.get_registrations(Source)) == 1
+        assert builder.build().resolve(Source) is instance
+    assert accesses == []
+
+
+def test_factory_source_family_filters_use_declared_alias_without_activation_or_runtime_changes():
+    T = TypeVar("T")
+
+    class Source:
+        pass
+
+    class Backend(Source, Generic[T]):
+        pass
+
+    def concrete() -> Backend[int]:
+        raise AssertionError("Typed factory must not activate during inspection")
+
+    def broad() -> Source:
+        raise AssertionError("Broad factory must not activate during inspection")
+
+    def unknown():
+        raise AssertionError("Untyped factory must not activate during inspection")
+
+    builder = ContainerBuilder()
+    concrete_id = builder.register(Source, factory=concrete)
+    broad_id = builder.register(Source, factory=broad)
+    unknown_id = builder.register(Source, factory=unknown)
+    template_id = builder._register_decorator_template(
+        for_each=Source,
+        source_filter=cf.implementation_type_is(Backend),
+        template=specification,
+    )
+    expansion = builder._expand_decorator_templates()
+    assert [item.source.id for item in expansion.candidates] == [concrete_id]
+    assert expansion.candidates[0].source.implementation_type == Backend[int]
+    assert expansion.candidates[0].source.implementation_bindings(Backend) == {T: int}
+    views = {item.source.id: item.component for item in expansion.selections}
+    assert views[concrete_id].implementation_type is Backend
+    assert views[broad_id].implementation_type is Source
+    assert views[unknown_id].implementation_type is Source
+    builder._remove_decorator_template(template_id)
+    runtime = builder.build()
+    assert all(root.component.implementation_type is Source for root in runtime.graph.roots)

@@ -54,9 +54,11 @@ subclasses, distinct same-name TypeVars, unresolved implementations, broad/close
 instances with `__orig_class__`. Factory annotations provide only the stated type; an absent/broad annotation never
 implies a concrete family and factories are never activated.
 
-Instance metadata is captured at registration without invoking the constant factory. Canonical source inspection
-alone uses that known class for `Component.implementation_type`, allowing ordinary family filters to inspect known
-instance types. Ordinary runtime Component normalization, dependency graphs, anchored steps and activation are
+Instance metadata is captured before registry mutation using safe static lookup without invoking user attributes,
+descriptors or the constant factory. Only a standard stored generic alias whose origin is the actual instance class
+is retained; descriptor, malformed and unrelated values fall back to the class. Canonical source inspection alone
+uses the known instance class or declared factory return class for `Component.implementation_type`, allowing ordinary
+family filters to inspect the same static type evidence supplied to the template. Ordinary runtime Component normalization, dependency graphs, anchored steps and activation are
 unchanged; the test explicitly verifies this difference. The metadata record preserves a known closed instance alias.
 
 ## Actual verification
@@ -109,3 +111,23 @@ No public explanatory docs changed, so the documentation comprehension gate is i
 environment or commits changed. Unrelated work files and coordinator-owned milestone/log edits were preserved.
 No full `make ci` or full supported Python matrix is claimed; these remain M10. Independent review and all checkpoint
 SHAs are to be recorded by the coordinator before milestone acceptance.
+
+## Independent-review repairs
+
+Both P2 findings from `/root/m04_review` are repaired; coordinator repair checkpoint and same-reviewer recheck pending.
+
+1. Original instance metadata capture used dynamic `getattr` after registry insertion. It could invoke arbitrary
+   `__getattr__`/descriptors and leave partial registration state when they raised. `_static_instance_implementation_type`
+   now uses `inspect.getattr_static` before any registry mutation, validates standard alias runtime types by identity,
+   and requires the alias origin to be the actual instance class. Invalid metadata is ignored without even invoking
+   its custom `__class__`. Added ordinary-registration regressions with raising dynamic lookup/property descriptors,
+   arbitrary metadata and an unrelated alias; the existing closed-instance-alias test continues to pass.
+2. Canonical source inspection enriched instance metadata but left a typed factory returning `Backend[int]` with the
+   ordinary broad registered-service class. Source `implementation_type_is(Backend)` incorrectly rejected it while
+   RegistrationInfo knew the alias. Inspection now uses the same static evidence helper as RegistrationInfo for both
+   instances and factories. A new sentinel test selects exactly the typed factory, rejects broad/untyped factories,
+   preserves closed TypeVar bindings, proves no factory activation, and verifies unchanged ordinary runtime views.
+
+Final repaired checks, using the exact commands above: Python 3.14 **483 passed in 3.84s** (including **36 expansion
+tests**); Python 3.11 **97 passed, 1 expected PEP 695 skip in 0.29s**. Ruff and ty pass; format reports **3 files already
+formatted**; diff check passes. No commits, public docs or bark-core changes.
