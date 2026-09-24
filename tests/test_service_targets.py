@@ -605,3 +605,75 @@ def test_union_collapse_with_remaining_union_reports_unsupported_without_hiding_
         selected(compiler, DerivedServices(Contract[T | int | bytes, bool]), registration_id, Contract[int | str, bool])
         is None
     )
+
+
+def test_cached_projection_keeps_group_layer_request_and_compiler_identity(monkeypatch):
+    from dataclasses import replace
+
+    import clean_ioc.container as implementation
+
+    group = ServiceGroup("same-name", service_type=Contract)
+    other_group = ServiceGroup("same-name", service_type=Contract)
+    builder = ContainerBuilder()
+    registration_id = builder.register(Contract, factory=Contract, groups=[group])
+    compiler = compiler_for(builder)
+    registration, layer = compiler.blueprint.registration_definition(registration_id)
+    other_layer = replace(layer, service_groups={registration_id: frozenset({other_group})})
+    calls = []
+    original = implementation._select_service_target
+
+    def project(*args, **kwargs):
+        calls.append(kwargs)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(implementation, "_select_service_target", project)
+    first = compiler._select_service_target(group, registration, layer, Contract[int, str])
+    assert first is not None and first.bindings == {T: int, U: str}
+    assert compiler._select_service_target(group, registration, layer, Contract[int, str]) is first
+    assert len(calls) == 1
+    assert compiler._select_service_target(other_group, registration, layer, Contract[int, str]) is None
+    assert compiler._select_service_target(other_group, registration, layer, Contract[int, str]) is None
+    assert len(calls) == 2  # Negative results are reusable too.
+    assert compiler._select_service_target(group, registration, other_layer, Contract[int, str]) is None
+    assert compiler._select_service_target(other_group, registration, other_layer, Contract[int, str]) is not None
+    second = compiler._select_service_target(group, registration, layer, Contract[bytes, bool])
+    assert second is not None and second.bindings == {T: bytes, U: bool}
+    compiler._area = "another-visible-area"
+    assert compiler._select_service_target(group, registration, layer, Contract[int, str]) == first
+    assert len(calls) == 6
+    assert selected(compiler_for(builder), group, registration_id, Contract[int, str]) == first
+    assert len(calls) == 7
+
+
+def test_cached_projection_does_not_merge_same_named_selector_typevars():
+    first = TypeVar("Same")  # ty: ignore[mismatched-type-name]
+    second = TypeVar("Same")  # ty: ignore[mismatched-type-name]
+    builder = ContainerBuilder()
+    registration_id = builder.register(Contract[int, str], factory=Contract)
+    compiler = compiler_for(builder)
+    for variable in (first, second, first):
+        target = selected(compiler, DerivedServices(Contract[variable, str]), registration_id, Contract[int, str])
+        assert target is not None
+        assert target.declaration_bindings == {variable: int}
+
+
+def test_template_labels_do_not_hash_user_metadata_and_are_compiler_local(monkeypatch):
+    import clean_ioc.container as implementation
+
+    class Unhashable:
+        __hash__ = None
+
+    value = Unhashable()
+    calls = []
+
+    def label(item):
+        calls.append(item)
+        return "captured label"
+
+    monkeypatch.setattr(implementation, "qualified_name", label)
+    compiler = compiler_for(ContainerBuilder())
+    assert compiler._template_label(value) == "captured label"
+    assert compiler._template_label(value) == "captured label"
+    assert calls == [value]
+    assert compiler_for(ContainerBuilder())._template_label(value) == "captured label"
+    assert calls == [value, value]

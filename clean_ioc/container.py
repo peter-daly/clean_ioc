@@ -3134,6 +3134,56 @@ class _GraphExplanationSidecars:
     generics: Mapping[int, GenericBindingExplanation]
 
 
+class _ExplanationCloneContext:
+    """Share immutable diagnostics only for the same actual occurrence remapping."""
+
+    def __init__(self) -> None:
+        self.targets: dict[int, tuple[CompilationExplanation, tuple[int, ...]]] = {}
+        self.remapped: dict[tuple[int, tuple[int, ...]], CompilationExplanation] = {}
+
+    def remap(self, explanation: CompilationExplanation, mapping: Mapping[int, Component]) -> CompilationExplanation:
+        identity = id(explanation)
+        captured = self.targets.get(identity)
+        if captured is None:
+            targets = tuple(
+                sorted(
+                    {
+                        decision.template.target_occurrence_id
+                        for decision in (*explanation.selected, *explanation.rejected)
+                        if decision.template is not None
+                    }
+                )
+            )
+            # Retain the source object so its identity cannot be recycled.
+            self.targets[identity] = explanation, targets
+        else:
+            _, targets = captured
+        if not targets:
+            return explanation
+        remapping = tuple(mapping[target].occurrence_id if target in mapping else target for target in targets)
+        if remapping == targets:
+            return explanation
+        key = identity, remapping
+        cached = self.remapped.get(key)
+        if cached is not None:
+            return cached
+
+        def remap_decision(decision: CandidateDecision) -> CandidateDecision:
+            fact = decision.template
+            target = None if fact is None else mapping.get(fact.target_occurrence_id)
+            if fact is None or target is None or target.occurrence_id == fact.target_occurrence_id:
+                return decision
+            return replace(decision, template=replace(fact, target_occurrence_id=target.occurrence_id))
+
+        result = replace(
+            explanation,
+            selected=tuple(map(remap_decision, explanation.selected)),
+            rejected=tuple(map(remap_decision, explanation.rejected)),
+        )
+        self.remapped[key] = result
+        return result
+
+
 def _graph_explanation_sidecars(plan: _PlanSet) -> _GraphExplanationSidecars:
     return _GraphExplanationSidecars(
         plan.occurrence_explanations,
@@ -3260,6 +3310,10 @@ class _Compiler:
         self._anchored_pre_configurations = anchored_pre_configurations or {}
         self._anchored_owner_tokens = anchored_owner_tokens
         self._inherited_graph_sidecars = inherited_graph_sidecars
+        # These caches live only for this compilation, never in the frozen plan.
+        # Identity keys avoid invoking user-defined hashing/equality on contracts.
+        self._template_labels: dict[int, tuple[Any, str]] = {}
+        self._service_target_cache: dict[tuple[Any, ...], tuple[tuple[Any, ...], _ServiceTarget | None]] = {}
         self._area: str | None = None
         self.issues: list[BuildIssue] = []
         self.root_candidates: dict[Any, tuple[_CandidateRecord, ...]] = {}
@@ -4345,6 +4399,14 @@ class _Compiler:
             layer.service_groups.get(registration.id, frozenset()),
         )
 
+    def _template_label(self, value: Any) -> str:
+        cached = self._template_labels.get(id(value))
+        if cached is not None:
+            return cached[1]
+        label = qualified_name(value)
+        self._template_labels[id(value)] = value, label
+        return label
+
     def _select_service_target(
         self,
         selector: ServiceGroup | DerivedServices,
@@ -4354,14 +4416,31 @@ class _Compiler:
     ) -> _ServiceTarget | None:
         """Project an already visible concrete candidate, preserving definition identity."""
         source = self._specialized_registration_sources.get(registration.id, registration)
+        groups = self._service_groups_for(registration, layer)
+        selector_identity = selector if isinstance(selector, ServiceGroup) else selector.service_type
+        inputs = (selector_identity, registration, source, source.service_type, layer, requested_service_type)
+        key = (
+            isinstance(selector, ServiceGroup),
+            *(id(value) for value in inputs),
+            tuple(sorted(id(group) for group in groups)),
+            self._area,
+        )
+        cached = self._service_target_cache.get(key)
+        if cached is not None:
+            return cached[1]
         try:
-            return _select_service_target(
+            result = _select_service_target(
                 selector,
                 registration_id=source.id,
                 registered_service_type=source.service_type,
                 requested_service_type=requested_service_type,
-                groups=self._service_groups_for(registration, layer),
+                groups=groups,
             )
+            # Keep all identity-keyed inputs alive, including negative requests.
+            # Only pure membership/projection is cached; predicates still run for
+            # each occurrence, after the ordinary visibility/candidate pipeline.
+            self._service_target_cache[key] = (*inputs, groups), result
+            return result
         except (TypeError, ValueError) as error:
             label = (
                 f"service group {selector.name!r}"
@@ -5228,10 +5307,12 @@ class _Compiler:
         parent: Component | None,
         argument: str | None = None,
         mapped: dict[int, Component] | None = None,
+        explanations: _ExplanationCloneContext | None = None,
     ) -> Component:
         """Copy frozen metadata while retaining the parent's activation step."""
 
         mapping = mapped if mapped is not None else {}
+        explanations = _ExplanationCloneContext() if explanations is None else explanations
         # Occurrence integers are local to their graph. Consult only the
         # sidecar associated with the graph that owns this source component.
         local_source = source._graph is self.graph
@@ -5277,50 +5358,55 @@ class _Compiler:
             draft.owner_id = cloned_owner.occurrence_id
         mapping[source.occurrence_id] = component
 
-        def captured(current: Mapping[int, Any], field: str) -> Any | None:
-            if local_source:
-                return current.get(source.occurrence_id)
-            if inherited_sidecars is None:
-                return None
-            return cast(Mapping[int, Any], getattr(inherited_sidecars, field)).get(source.occurrence_id)
-
-        def remap_explanation(explanation: CompilationExplanation) -> CompilationExplanation:
-            def remap_decision(decision: CandidateDecision) -> CandidateDecision:
-                fact = decision.template
-                target = None if fact is None else mapping.get(fact.target_occurrence_id)
-                if fact is None or target is None:
-                    return decision
-                return replace(decision, template=replace(fact, target_occurrence_id=target.occurrence_id))
-
-            return replace(
-                explanation,
-                selected=tuple(map(remap_decision, explanation.selected)),
-                rejected=tuple(map(remap_decision, explanation.rejected)),
-            )
-
-        explanation = captured(self.occurrence_explanations, "occurrence")
+        explanation = (
+            self.occurrence_explanations.get(source.occurrence_id)
+            if local_source
+            else None
+            if inherited_sidecars is None
+            else inherited_sidecars.occurrence.get(source.occurrence_id)
+        )
         if explanation is not None:
-            self.occurrence_explanations[component.occurrence_id] = remap_explanation(explanation)
-        decorator_explanation = captured(self.decorator_explanations, "decorators")
+            self.occurrence_explanations[component.occurrence_id] = explanations.remap(explanation, mapping)
+        decorator_explanation = (
+            self.decorator_explanations.get(source.occurrence_id)
+            if local_source
+            else None
+            if inherited_sidecars is None
+            else inherited_sidecars.decorators.get(source.occurrence_id)
+        )
         if decorator_explanation is not None:
-            self.decorator_explanations[component.occurrence_id] = remap_explanation(decorator_explanation)
-        parameters = captured(self.parameter_explanations, "parameters")
+            self.decorator_explanations[component.occurrence_id] = explanations.remap(decorator_explanation, mapping)
+        parameters = (
+            self.parameter_explanations.get(source.occurrence_id)
+            if local_source
+            else None
+            if inherited_sidecars is None
+            else inherited_sidecars.parameters.get(source.occurrence_id)
+        )
         if parameters is not None:
             self.parameter_explanations[component.occurrence_id] = dict(parameters)
-        generic = captured(self.generic_explanations, "generics")
+        generic = (
+            self.generic_explanations.get(source.occurrence_id)
+            if local_source
+            else None
+            if inherited_sidecars is None
+            else inherited_sidecars.generics.get(source.occurrence_id)
+        )
         if generic is not None:
             self.generic_explanations[component.occurrence_id] = generic
 
         dependencies = tuple(
-            self._clone_component_tree(child, parent=component, mapped=mapping) for child in source.dependencies
+            self._clone_component_tree(child, parent=component, mapped=mapping, explanations=explanations)
+            for child in source.dependencies
         )
         draft.dependency_ids = tuple(child.occurrence_id for child in dependencies)
         configurations = tuple(
-            self._clone_component_tree(child, parent=component, mapped=mapping) for child in source.pre_configurations
+            self._clone_component_tree(child, parent=component, mapped=mapping, explanations=explanations)
+            for child in source.pre_configurations
         )
         draft.pre_configuration_ids = tuple(child.occurrence_id for child in configurations)
         decorators = tuple(
-            self._clone_component_tree(child, parent=parent, mapped=mapping)
+            self._clone_component_tree(child, parent=parent, mapped=mapping, explanations=explanations)
             for child in (() if self._source_inspection else source.decorators)
         )
         draft.decorator_ids = tuple(child.occurrence_id for child in decorators)
@@ -6234,6 +6320,8 @@ class _Compiler:
         selected: list[_DecoratorDefinition] = []
         decisions: list[CandidateDecision] = []
         definitions = self.blueprint.decorators(core.service_type, self._area)
+        if not definitions and not self.blueprint.generated_decorators:
+            return ()
         generated: dict[str, tuple[_GeneratedDecoratorDefinition, _ServiceTarget]] = {}
         area_layers = self.blueprint.layers if self._area is None else (layer,)
         target_registration = self._specialized_registration_sources.get(registration.id, registration)
@@ -6247,21 +6335,21 @@ class _Compiler:
                 target_registration_id=target_registration.id,
                 target_occurrence_id=core.occurrence_id,
                 selector_kind="service-group" if isinstance(selector, ServiceGroup) else "derived-services",
-                selector_contract=qualified_name(selector.service_type),
-                source_service=qualified_name(candidate.source.service_type),
+                selector_contract=self._template_label(selector.service_type),
+                source_service=self._template_label(candidate.source.service_type),
                 source_implementation=(
                     None
                     if candidate.source.implementation_type is None
-                    else qualified_name(candidate.source.implementation_type)
+                    else self._template_label(candidate.source.implementation_type)
                 ),
                 source_bindings=candidate.source_bindings,
-                target_service=qualified_name(core.service_type),
-                projected_contract=None if target is None else qualified_name(target.projected_contract),
+                target_service=self._template_label(core.service_type),
+                projected_contract=None if target is None else self._template_label(target.projected_contract),
                 target_bindings=(
                     ()
                     if target is None
                     else tuple(
-                        (_generic_binding_label(selector.service_type, var), qualified_name(value))
+                        (_generic_binding_label(selector.service_type, var), self._template_label(value))
                         for var, value in target.bindings.items()
                     )
                 ),

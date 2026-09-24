@@ -373,3 +373,50 @@ def test_callback_container_build_error_cannot_supply_report_code_or_path(phase)
     assert issue.path == (template, source)
     output = caught.value.report.to_json() + caught.value.partial_graph.to_json()
     assert "private-" not in output
+
+
+def test_clone_explanations_follow_growing_and_sibling_occurrence_mappings():
+    from dataclasses import replace
+
+    from clean_ioc.container import _ExplanationCloneContext
+
+    builder = ContainerBuilder()
+    builder.register(Source)
+    builder.register(Target)
+    builder.register_decorator_template(
+        for_each=Source,
+        template=lambda info: DecoratorTemplate(
+            DerivedServices(Target), Wrapper, arguments={"source": select(cf.with_id(info.id))}
+        ),
+    )
+    with builder.build() as container:
+        graph = container.graph
+        target = _roots(graph, Target)[0]
+        source = _roots(graph, Source)[0]
+        explanation = graph.explain_decorators(target)
+        # Include both selected and rejected facts so every target participates
+        # in the key, including a target not yet encountered during traversal.
+        rejected = graph.explain_decorators(source).rejected
+        explanation = replace(explanation, rejected=rejected)
+        context = _ExplanationCloneContext()
+        mapping = {}
+        assert context.remap(explanation, mapping) is explanation
+        mapping[target.occurrence_id] = source
+        first = context.remap(explanation, mapping)
+        assert first.selected[0].template is not None
+        assert first.rejected[0].template is not None
+        assert first.selected[0].template.target_occurrence_id == source.occurrence_id
+        assert first.rejected[0].template.target_occurrence_id == source.occurrence_id
+        assert context.remap(explanation, dict(mapping)) is first
+        mapping[source.occurrence_id] = target
+        second = context.remap(explanation, mapping)
+        assert second is not first
+        assert second.rejected[0].template is not None
+        assert second.rejected[0].template.target_occurrence_id == target.occurrence_id
+        assert first.rejected[0].template.target_occurrence_id == source.occurrence_id
+        # A sibling clone has a separate mapping even when the source facts match.
+        assert context.remap(explanation, {}) is explanation
+        other_explanation = replace(explanation, subject="other graph")
+        assert context.remap(other_explanation, mapping).subject == "other graph"
+        ordinary = graph.explain(target)
+        assert context.remap(ordinary, mapping) is ordinary
