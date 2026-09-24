@@ -1,6 +1,6 @@
 # 05 — Decorator compilation and activation
 
-Status: Implementation verified; independent review pending. Dependency: 04 accepted (`596e12a`).
+Status: Independent review requested generic-scope/default and predicate-provenance repairs; verification reopened. Dependency: 04 accepted (`596e12a`).
 Read the [workflow](README.md), [feature contract](../decorator-templates.md), and 03/04 handoffs.
 
 | Role | Model | Reasoning |

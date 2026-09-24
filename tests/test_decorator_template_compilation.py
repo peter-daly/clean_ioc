@@ -1,7 +1,9 @@
+import sys
 from collections.abc import AsyncIterator, Iterator
 from typing import Any, Generic, TypeVar, cast
 
 import pytest
+from typing_extensions import TypeVar as ExtensionTypeVar
 
 from clean_ioc import (
     Boundary,
@@ -672,3 +674,163 @@ def test_nested_resource_matching_produces_one_layer_and_preserves_position():
     sources, core = unwrap(builder.build().resolve(Target))
     assert sources == [after, source, before]
     assert isinstance(core, NestedTarget)
+
+
+@pytest.mark.parametrize("overridden", [False, True])
+@pytest.mark.parametrize("closed_alias", [False, True])
+def test_constructor_annotation_scope_is_separate_from_implementation_scope(overridden, closed_alias):
+    from clean_ioc.generic_utils import _project_service_type
+
+    class Extra(Generic[T]):
+        pass
+
+    class Base(Generic[T]):
+        def __init__(self, inner: Operation[T, str], extra: Extra[T]):
+            self.inner, self.extra = inner, extra
+
+    class Inherited(Base[list[T]], Generic[T]):
+        pass
+
+    class Overridden(Base[list[T]], Generic[T]):
+        def __init__(self, inner: Operation[T, str], extra: Extra[T]):
+            self.inner, self.extra = inner, extra
+
+    wrapper = Overridden if overridden else Inherited
+    decorator_type = wrapper[int] if closed_alias else wrapper
+    target_type = Operation[int, str] if overridden else Operation[list[int], str]
+    extra_type = Extra[int] if overridden else Extra[list[int]]
+    core, extra = target_type(), extra_type()
+    builder = ContainerBuilder()
+    builder.register(Source)
+    builder.register(target_type, instance=core)
+    builder.register(extra_type, instance=extra)
+    builder.register_decorator_template(
+        for_each=Source,
+        template=lambda _: DecoratorTemplate(DerivedServices(Operation), decorator_type),
+    )
+    result = builder.build().resolve(target_type)
+    assert isinstance(result, wrapper)
+    assert result.inner is core and result.extra is extra
+    assert _project_service_type(type(result), wrapper) == wrapper[int]
+    assert _project_service_type(type(result), Base) == Base[list[int]]
+
+
+@pytest.mark.skipif(sys.version_info < (3, 13), reason="TypeVar defaults require Python 3.13+")
+@pytest.mark.parametrize("intermediate_argument", [False, True])
+def test_dependent_defaults_are_transitive_and_independent_of_argument_order(intermediate_argument):
+    DefaultT = TypeVar("DefaultT")
+    DefaultU = TypeVar("DefaultU", default=DefaultT)  # ty: ignore[invalid-legacy-type-variable]
+    DefaultV = TypeVar("DefaultV", default=DefaultU)  # ty: ignore[invalid-legacy-type-variable]
+    calls = []
+
+    def wrapper(
+        inner: Operation[DefaultT, str],
+        later: DefaultV,  # ty: ignore[invalid-type-variable-default]
+        earlier: DefaultU,
+    ) -> Operation[DefaultT, str]:
+        calls.append((later, earlier))
+        return inner
+
+    def only_later(
+        inner: Operation[DefaultT, str],
+        later: DefaultV,  # ty: ignore[invalid-type-variable-default]
+    ) -> Operation[DefaultT, str]:
+        calls.append((later,))
+        return inner
+
+    builder = ContainerBuilder()
+    builder.register(Source)
+    core = Operation[int, str]()
+    builder.register(Operation[int, str], instance=core)
+    builder.register(int, instance=42)
+    builder.register_decorator_template(
+        for_each=Source,
+        template=lambda _: DecoratorTemplate(
+            DerivedServices(Operation), wrapper if intermediate_argument else only_later
+        ),
+    )
+    assert builder.build().resolve(Operation[int, str]) is core
+    assert calls == [(42, 42) if intermediate_argument else (42,)]
+
+
+@pytest.mark.skipif(sys.version_info < (3, 13), reason="TypeVar defaults require Python 3.13+")
+def test_cyclic_default_fails_clearly_before_activation():
+    # The runtime permits arbitrary default objects. A mutable parameter-list
+    # default lets us exercise cycle rejection without an endlessly recursive
+    # inheritance substitution or a mutable fake TypeVar implementation.
+    default: list[Any] = []
+    Cyclic = TypeVar("Cyclic", default=default)  # ty: ignore[invalid-type-form, invalid-legacy-type-variable]
+    default.append(Cyclic)
+
+    def wrapper(inner: Target, value: Cyclic) -> Target:
+        raise AssertionError("Cycle must fail before activation")
+
+    builder = ContainerBuilder()
+    builder.register(Source)
+    builder.register(Target)
+    builder.register_decorator_template(
+        for_each=Source, template=lambda _: DecoratorTemplate(DerivedServices(Target), wrapper)
+    )
+    with pytest.raises(ContainerBuildError) as caught:
+        builder.build()
+    assert caught.value.report is not None
+    assert caught.value.report.errors[0].code == "invalid-decorator"
+    assert "Cyclic decorator TypeVar default" in str(caught.value)
+
+
+def test_generated_predicate_failure_preserves_safe_provenance_and_original_cause():
+    builder = ContainerBuilder()
+    source_id = builder.register(Source)
+    target_id = builder.register(Target)
+    source_calls, factory_calls = [], []
+    original = RuntimeError("private failure details")
+
+    def predicate(_):
+        raise original
+
+    def source_filter(component):
+        source_calls.append(component.id)
+        return True
+
+    def template(source):
+        factory_calls.append(source.id)
+        return DecoratorTemplate(DerivedServices(Target), Wrapper, when=predicate)
+
+    template_id = builder.register_decorator_template(for_each=Source, source_filter=source_filter, template=template)
+    with pytest.raises(ContainerBuildError) as caught:
+        builder.build()
+    assert caught.value.report is not None
+    assert source_calls == factory_calls == [source_id]
+    issues = caught.value.report.errors
+    assert all(issue.code == "decorator-filter-failed" for issue in issues)
+    assert all(template_id in issue.path and source_id in issue.path and target_id in issue.path for issue in issues)
+    assert "private failure details" not in str(caught.value)
+    cause = caught.value.__cause__
+    while cause is not None and cause is not original:
+        cause = cause.__cause__
+    assert cause is original
+    assert caught.value.partial_graph is not None
+    assert all(
+        template_id in attempt.witness_path and source_id in attempt.witness_path and target_id in attempt.witness_path
+        for attempt in caught.value.partial_graph.attempts
+        if not attempt.succeeded
+    )
+
+
+def test_extensions_typevar_without_default_remains_unresolved():
+    ExternalT = ExtensionTypeVar("ExternalT")
+
+    def wrapper(inner: Target, missing: ExternalT) -> Target:
+        raise AssertionError("Missing binding must fail before activation")
+
+    builder = ContainerBuilder()
+    builder.register(Source)
+    builder.register(Target)
+    builder.register_decorator_template(
+        for_each=Source, template=lambda _: DecoratorTemplate(DerivedServices(Target), wrapper)
+    )
+    with pytest.raises(ContainerBuildError) as caught:
+        builder.build()
+    assert caught.value.report is not None
+    assert caught.value.report.errors[0].code == "invalid-decorator"
+    assert "Unresolved decorator TypeVar(s): ExternalT" in str(caught.value)

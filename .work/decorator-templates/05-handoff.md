@@ -81,3 +81,31 @@ inspection/diagnostics are M07, local integration is M08, public explanatory doc
 completion is M10. No release-readiness claim or public documentation comprehension gate applies to this milestone.
 Original declarations are retained so M06 can re-expand against each overlay's current sources; generated candidates are
 never appended as declarations. Independent review findings/acceptance and checkpoint SHAs remain coordinator-owned.
+
+## Independent-review repairs
+
+Round 1 requested three P2 repairs; all are implemented, with same-reviewer recheck pending. Repair files are
+`container.py`, `test_decorator_template_compilation.py`, and this handoff. No commits made by the implementation agent.
+
+1. Removed the flattened MRO projection map. Constructor annotations now use only the projection onto the class
+   defining `__init__`; runtime implementation arguments come independently from the source's own class projection.
+   Four regressions cover overridden/inherited constructors and open/closed decorator aliases reusing the same TypeVar
+   through `Base[list[T]]`. They assert selected auxiliary instances and actual runtime `Wrapper[int]`/`Base[list[int]]`
+   projections, detecting the previously wrong double specialization.
+2. Added `_resolve_decorator_defaults`, a local identity-keyed default graph resolver. Defaults are transitive,
+   independent of argument order, discover referenced variables absent from direct annotations, and reject cycles.
+   Only default edges recurse; the M01 single-edge inheritance substitution helper remains unchanged. Automatic
+   decorated-argument inference now uses the existing ordinary shape predicate before identity unification, so a bare
+   defaulted TypeVar dependency is not mistaken for the wrapped contract. New tests cover both default-chain shapes,
+   cycle rejection, and portable `typing_extensions.TypeVar` without a default. Both typing/typing_extensions NoDefault
+   sentinels are respected, including their difference on Python 3.11.
+3. Generated `when` failures now raise `decorator-filter-failed` with target/template/source path and exception type,
+   retaining the original exception as cause without including its potentially private message. The probe verifies
+   provenance in BuildReport and failed PartialGraph attempts, original cause identity, and no source/factory replay
+   through diagnostic retries. Ordinary predicate exception handling remains unchanged.
+
+Re-ran the exact focused and Python 3.11 commands above after repairs: Python 3.14 **546 passed in 4.35s**, including
+**51 generated compilation cases**. Python 3.11 **145 passed, 4 skipped in 0.54s**: the existing PEP695 skip plus three
+explicitly version-gated stdlib TypeVar-default tests (all pass on 3.14). The extensions NoDefault portability test
+passes on both interpreters. Ruff check, ty check, format check (**6 files already formatted**) and diff check pass.
+No public docs, bark-core changes, commits, or M06 implementation were included in these repairs.

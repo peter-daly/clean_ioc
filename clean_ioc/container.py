@@ -22,7 +22,7 @@ from typing import Any, TypeVar, cast, get_args, get_origin, overload
 from uuid import UUID, uuid4, uuid5
 
 from typetoolbox.generics import GenericTypeMap, get_generic_mapping
-from typing_extensions import TypeAliasType, TypeForm
+from typing_extensions import NoDefault, TypeAliasType, TypeForm
 
 from . import _legacy as legacy
 from . import registration_patterns as patterns
@@ -2555,6 +2555,40 @@ def _materialize_decorator(
     )
 
 
+def _resolve_decorator_defaults(
+    variables: Iterable[TypeVar],
+    bindings: dict[TypeVar, Any],
+) -> dict[TypeVar, Any]:
+    """Resolve dependent defaults in their identity graph, independently of order.
+
+    Only default edges recurse. Inheritance substitutions intentionally remain
+    single-edge operations, because T -> list[T] crosses two declaration scopes.
+    """
+    resolved = dict(bindings)
+    visiting: set[TypeVar] = set()
+    no_default = getattr(typing, "NoDefault", _NO_TYPEVAR_DEFAULT)
+
+    def resolve(variable: TypeVar) -> Any:
+        if variable in resolved:
+            return resolved[variable]
+        if variable in visiting:
+            raise ValueError(f"Cyclic decorator TypeVar default for {variable.__name__}")
+        default = getattr(variable, "__default__", _NO_TYPEVAR_DEFAULT)
+        if default is _NO_TYPEVAR_DEFAULT or default is no_default or default is NoDefault:
+            return variable
+        visiting.add(variable)
+        try:
+            dependencies = {item: resolve(item) for item in _typevar_identities(default)}
+            resolved[variable] = _resolve_typevar_identities(default, dependencies)
+            return resolved[variable]
+        finally:
+            visiting.remove(variable)
+
+    for variable in variables:
+        resolve(variable)
+    return resolved
+
+
 def _materialize_generated_decorator(definition: _DecoratorDefinition) -> _DecoratorActivation:
     """Bind the decorated contract independently of source specialization.
 
@@ -2590,17 +2624,25 @@ def _materialize_generated_decorator(definition: _DecoratorDefinition) -> _Decor
                 legacy.EMPTY,
             )
         _validate_dependency_names(signature_source, dependencies)
-        source_bindings: dict[TypeVar, Any] = {}
+        annotation_bindings: dict[TypeVar, Any] = {}
+        implementation_arguments: tuple[Any, ...] = ()
         if origin is not None:
-            for base in origin.__mro__:
-                parameters = getattr(base, "__parameters__", ())
-                if not parameters:
-                    continue
-                projection = _project_service_type(source, base)
-                if projection is not None:
-                    source_bindings.update(zip(parameters, get_args(projection)))
+            # Constructor annotations belong to the class defining __init__, not
+            # every class in the MRO. A reused TypeVar can mean T in this class
+            # and list[T] in its base; those scopes must never be flattened.
+            annotation_owner = next(base for base in origin.__mro__ if "__init__" in vars(base))
+            projection = _project_service_type(source, annotation_owner)
+            if projection is not None:
+                annotation_bindings = dict(
+                    zip(
+                        getattr(annotation_owner, "__parameters__", ()),
+                        get_args(projection),
+                    )
+                )
+            own_projection = _project_service_type(source, origin)
+            implementation_arguments = get_args(own_projection)
         annotations = {
-            name: _resolve_typevar_identities(dependency.service_type, source_bindings)
+            name: _resolve_typevar_identities(dependency.service_type, annotation_bindings)
             for name, dependency in dependencies.items()
         }
         decorated_arg = definition.decorated_arg
@@ -2608,7 +2650,8 @@ def _materialize_generated_decorator(definition: _DecoratorDefinition) -> _Decor
             candidates = [
                 name
                 for name, annotation in annotations.items()
-                if _bind_typevar_identities(annotation, definition.service_type) is not None
+                if _decorated_dependency_matches(annotation, definition.service_type)
+                and _bind_typevar_identities(annotation, definition.service_type) is not None
             ]
             if len(candidates) != 1:
                 raise ValueError("Expected one decorated argument; set decorated_arg= explicitly")
@@ -2618,14 +2661,14 @@ def _materialize_generated_decorator(definition: _DecoratorDefinition) -> _Decor
         bindings = _bind_typevar_identities(annotations[decorated_arg], definition.service_type)
         if bindings is None:
             raise ValueError("Decorated argument conflicts with the projected target contract")
-        no_default = getattr(typing, "NoDefault", _NO_TYPEVAR_DEFAULT)
-        for annotation in annotations.values():
-            for variable in _typevar_identities(annotation):
-                if variable in bindings:
-                    continue
-                default = getattr(variable, "__default__", _NO_TYPEVAR_DEFAULT)
-                if default is not _NO_TYPEVAR_DEFAULT and default is not no_default:
-                    bindings[variable] = _resolve_typevar_identities(default, bindings)
+        bindings = _resolve_decorator_defaults(
+            (
+                variable
+                for annotation in (*annotations.values(), *implementation_arguments)
+                for variable in _typevar_identities(annotation)
+            ),
+            bindings,
+        )
         resolved = {name: _resolve_typevar_identities(annotation, bindings) for name, annotation in annotations.items()}
         unresolved = {variable for annotation in resolved.values() for variable in _typevar_identities(annotation)}
         if unresolved:
@@ -2635,8 +2678,7 @@ def _materialize_generated_decorator(definition: _DecoratorDefinition) -> _Decor
             parameters = getattr(origin, "__parameters__", ())
             if parameters:
                 arguments = tuple(
-                    _resolve_typevar_identities(_resolve_typevar_identities(parameter, source_bindings), bindings)
-                    for parameter in parameters
+                    _resolve_typevar_identities(argument, bindings) for argument in implementation_arguments
                 )
                 if any(_typevar_identities(argument) for argument in arguments):
                     raise ValueError("Unresolved decorator implementation parameters")
@@ -6154,6 +6196,19 @@ class _Compiler:
                         ),
                     )
                 )
+                if decorator.id in generated:
+                    candidate, target = generated[decorator.id]
+                    raise ContainerBuildError(
+                        f"Template {candidate.declaration.id} source {candidate.source.id} "
+                        f"target {target.registration_id} predicate raised {type(error).__name__}",
+                        code="decorator-filter-failed",
+                        path=(
+                            *self._current_path(core.service_type),
+                            candidate.declaration.id,
+                            candidate.source.id,
+                            target.registration_id,
+                        ),
+                    ) from error
                 raise
             decisions.append(
                 CandidateDecision(
