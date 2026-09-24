@@ -110,3 +110,7 @@ M07 review round 1 found three P2s; see [review](07-review.md). Original impleme
 | 09 | Final handoff | Passed | `9734712` | All technical/docs gates committed; round2 20/20; public revision0457789 frozen; M10 final checks next |
 
 Current status: M01–M09 accepted and all applicable gates committed. M10 search cannot start: two fresh Luna Low spawn attempts from coordinator and one from independent reviewer all returned `agent thread limit reached`. No M10 gate is claimed passed. Final acceptance mapping and supported Python matrix remain required. Baseline recheck: Clean task files committed (unrelated .work notes preserved); bark has exactly12 ledger files uncommitted at original b0cd556 HEAD. Actual CI config .github/workflows/ci.yml: requiredPython3.11/3.12/3.13/3.14 onUbuntu, experimental3.15-dev; FastAPI minimum/latest compatibility also defined. Local platform checks must not be called remote CI coverage.
+
+Continuation: fresh `/root/m10_search` Luna Low started successfully after user requested continuation. Coordinator verified unchanged clean task state and exact12-file bark ledger at original HEAD.
+
+| 10 | Search | Passed | Pending checkpoint | Fresh Luna Low `/root/m10_search`; [39-row evidence map](10-search.md); actual CI/version/FastAPI requirements and ledgers checked |

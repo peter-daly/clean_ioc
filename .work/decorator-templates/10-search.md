@@ -1,0 +1,57 @@
+# M10 search gate
+
+Accepted fresh `/root/m10_search`, gpt-6-luna low, read-only evidence at `dfcd9bd`. No tests or edits by search agent. Coordinator rechecked exact12-file bark ledger at original `b0cd55693889785a14be128d1f78f815f2a6e5fe`; all48 public-doc packet hashes still match certified revision0457789. Local Python3.11.13/3.12.11/3.13.5/3.14.4 available; no3.15 installed. Unrelated `.work` files preserved.
+
+## Acceptance map
+
+Rows follow the parent contract's39-row acceptance table. Prefixes below refer to `tests/test_decorator_template_{expansion,feasibility,compilation,composition,diagnostics}.py`, `tests/test_service_groups.py` (groups), and `tests/test_service_targets.py` (targets). Bark proof is `tests/unit/bundles/test_decorator_templates.py`; application/sagas are corresponding files under `tests/unit/bundles/` in bark. M08 accepted handoff supplies cross-repository execution evidence.
+
+| Row | Scenario | Concrete evidence |
+|---|---|---|
+|1|Distinct same-class sources|expansion::test_distinct_same_class_sources_deterministic_ids_shared_order_and_immutable_evidence; compilation::test_same_class_sources_shared_order_additive_templates_and_public_edits|
+|2|Specialized sources|feasibility::test_generic_projection_preserves_independent_same_named_variables_and_generated_subclasses; expansion::test_generic_implementation_aliases_generated_classes_and_same_name_variable_identity|
+|3|Generated generic subclass|feasibility::test_source_compilation_keeps_closed_aliases_and_generated_implementation_bindings; bark proof inherited source|
+|4|Same specialization, named databases|bark proof::test_independent_backend_templates_bind_named_generic_sources_and_complete_transactions|
+|5|Independent same-name TypeVars|compilation::test_projected_generics_partial_source_alias_distinct_same_name_variables; diagnostics::test_generic_source_and_target_projections_remain_separate|
+|6|Backend family filtering|compilation::test_two_families_exact_instances_resource_filters_membership_and_order; bark mixed proof|
+|7|Separate options/mixed resources|same compilation/bark proof as6|
+|8|Additive overlapping policies|diagnostics::test_independent_overlapping_policies_keep_both_identities|
+|9|Type/name/tag source filters|expansion::test_real_recursive_source_filters_conditions_build_args_and_no_activation; compilation::test_two_families_exact_instances_resource_filters_membership_and_order|
+|10|Undecorated source/parent context|feasibility::test_completed_source_core_excludes_all_decorator_branches_without_activation; test_canonical_source_does_not_apply_root_condition_but_exact_injection_does|
+|11|Broad factory static metadata|expansion::test_factories_and_instances_preserve_only_static_evidence; test_factory_source_family_filters_use_declared_alias_without_activation_or_runtime_changes; test_instance_family_filter_uses_static_class_without_changing_ordinary_components|
+|12|Visibility feedback/cycles|compilation::test_actual_generated_boundary_effect_rejected_once_with_cause; test_generated_activation_cycle_retains_code_and_provenance|
+|13|Remove/replace one family|composition::test_overlay_patch_remove_and_repatch_preserve_ids_ordinals_and_other_family|
+|14|A/B/both resources|bark mixed proof; application::test_custom_tagged_resource_enables_named_unit_of_work_through_repository_dependency; test_handlers_without_unit_of_work|
+|15|Multiple paths deduplicated|compilation::test_nested_resource_matching_produces_one_layer_and_preserves_position; bark mixed proof|
+|16|No resource/opt-out|application::test_sessionless_handlers_are_not_decorated_when_unit_of_work_is_enabled; test_explicit_policy_condition_can_intentionally_exclude_a_matching_handler; sagas::test_saga_handlers_skip_unit_of_work_when_the_session_has_no_association|
+|17|Decorator-only resource excluded|application::test_resource_added_by_another_decorator_does_not_enable_unit_of_work; feasibility::test_completed_source_core_excludes_all_decorator_branches_without_activation|
+|18|Handler families|application::test_generator_query_result_handlers_are_discovered; test_data_protection_handlers_with_explicit_handlers_passed_in; sagas::test_data_protection_dispatchers_are_an_explicit_addition_to_sagas; M08 full409-case bundle/data-protection run|
+|19|New compatible family|bark proof::test_custom_family_explicit_membership_is_distinct_from_derived_selection|
+|20|Compatible nonmember|bark custom-family proof; groups::test_identity_immutability_and_per_registration_membership_across_builders|
+|21|Same class one member|groups::test_identity_immutability_and_per_registration_membership_across_builders|
+|22|Group identities/repeats/multiple|same group test as21|
+|23|Shared declarations independent builders|same group test; targets::test_reusable_immutable_automatic_selector_and_explicit_registration_identity|
+|24|Transactional incompatible membership|groups::test_known_contract_failures_are_transactional_and_use_registered_service; test_discovery_rejects_incompatible_groups_before_queue_mutation|
+|25|Empty/order-independent groups|compilation::test_source_target_declaration_permutations_and_preview; groups identity test; expansion::test_zero_sources_and_public_entrypoints|
+|26|Deferred group discovery|groups::test_subclass_and_generic_discovery_include_fallback_membership; bark proof::test_deferred_data_protection_discovery_contributes_after_policy_declaration|
+|27|Automatic generic/discovered targets|targets::test_deferred_discovery_and_fallback_are_selected_using_current_snapshot; test_open_registration_constraints_validate_actual_closed_requests; test_generated_subclass_and_alias_preserve_original_request_key|
+|28|Registered contract vs implementation|targets::test_unrelated_registered_contract_is_excluded_even_for_implementation_lookup_key; test_nominal_protocol_derivation_only|
+|29|Both selectors additive|compilation::test_same_class_sources_shared_order_additive_templates_and_public_edits; diagnostics overlap test|
+|30|Selector reuse/no membership mutation|targets::test_reusable_immutable_automatic_selector_and_explicit_registration_identity; groups identity test|
+|31|Factories/instances/open/patterns|targets::test_factory_and_instance_targets_never_activate_during_selection; test_open_registration_constraints_validate_actual_closed_requests; test_pattern_request_retains_original_registration_id_and_enforces_fixed_contract; groups::test_pattern_specialization_retains_membership_by_new_definition_id|
+|32|Ambiguous/unresolved generics|targets::test_conflicting_paths_fail_and_consistent_diamond_projects_once; test_open_targets_fail_clearly_and_closed_repeated_registration_constraints_are_enforced; compilation::test_callable_decorator_rejects_conflicting_generic_result|
+|33|Shared ordinary/generated ordering|composition::test_shared_layer_tie_order_is_independent_of_decorator_kind_and_stable_on_repatch; compilation nested-resource order test|
+|34|Failed-build retries|expansion::test_failure_discards_partial_expansion_and_patch_remove_are_transactional; test_discovery_is_complete_and_source_identity_stable_across_expansion_attempts; composition::test_failed_build_diagnostic_retries_and_repair_do_not_accumulate_generated_candidates|
+|35|Overlay plans/parent anchors|composition::test_inherited_templates_expand_new_sources_targets_and_nested_plans_with_preview; test_parent_singleton_wrappers_sources_resources_and_cleanup_stay_anchored|
+|36|Private/explicit visibility|composition::test_exposed_and_used_sources_bind_exact_original_identity_and_deduplicate_aliases; test_shared_group_grants_neither_private_source_visibility_nor_cross_area_decoration_or_edits; test_private_sources_are_not_enumerated_without_complete_visibility_contract|
+|37|Template edits/suppression|composition::test_overlay_patch_remove_and_repatch_preserve_ids_ordinals_and_other_family; test_overlay_patch_can_replace_source_service_and_filter_without_changing_sibling_policy|
+|38|Async success/failure/cleanup|compilation::test_sync_cleanup_and_failure_cleanup; test_async_cleanup_and_failure_cleanup; bark mixed proof realSQLite success/rollback and mockedDynamoDB|
+|39|Frozen inspection/runtime|diagnostics::test_source_and_target_decisions_are_frozen_and_do_not_replay_callbacks; test_anchored_overlay_relabels_target_occurrence_without_replaying_factory; expansion::test_callbacks_cannot_mutate_build_preview_or_reenter_and_guard_recovers|
+
+No uncovered contract row identified. Implementation agent must verify map accuracy/coverage rather than assuming filenames imply assertions.
+
+## Required final checks and limits
+
+`make ci`: Ruff, format,ty,fullpytest,docsexamples,BenchBro discovery. `make pre-commit`: actionlint,Ruff,ty,fullpytest. Current M08 code passed735 tests/fullchecks; M09 changed docs/validator only, strictdocs and reader20/20 accepted. Rerun required checks on final state. `.github/workflows/ci.yml`: Ubuntu3.11–3.14 required;3.15-dev experimental continue-on-error. Separate Python3.12 FastAPI0.121.0/latest<1 job; not covered solely by makeci. Run locally available versions/compatibility in isolated environments, preserve project/bark dependencies. Clearly distinguish local macOS coverage from unexecuted remoteUbuntu CI; experimental3.15 unverified unless actually available. Strictdocs remains required by docs workflow.
+
+No external MySQL/LocalStack tests ran in M08; localSQLite and mockedDynamoDB prove bounded runtime behavior, not distributed atomicity. No production changes since M08, so do not rerun unrelated broad bark checks solely for activity. Any new production repair must recheck affected integration/earlier gates. Do not alter certified public docs without reopening comprehension. Read relevant skill if invoking BenchBro. No pushes/releases or bark commits.
