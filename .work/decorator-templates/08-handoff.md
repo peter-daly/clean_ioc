@@ -56,3 +56,7 @@ Every bark test process used `PYTHONPATH=/Users/peter.daly/WS/pete/clean_ioc` an
 No MySQL/LocalStack or other external-service integration tests ran. The outbox integration fixture was inspected: it creates/drops a random database through an admin URI and configures LocalStack, so it was excluded. SQLite evidence is genuine local transaction integration; DynamoDB evidence proves lifecycle calls through mocks, not AWS transactions or distributed atomicity. Bark's full integration suite, API snapshot/compatibility release guards and all-repository static jobs are not claimed passed for this intentionally uncommitted experiment.
 
 Review the complete bark diff and the new untracked test file, especially active-marker/source evidence, explicit nonmember semantics, static source-specific condition metadata, exact source identity, nominal safety coverage and unchanged ownership validation. The compiler has not been modified in M08. Fresh independent Astra review and coordinator implementation checkpoint are still required; this handoff claims neither review acceptance nor milestone completion.
+
+## Final gate record
+
+Accepted by `/root/m08_review` Astra High;409 independent tests plus closed-generic source probe, no findings. Search `1818392`; verification `0f63ace`; review `827964d`. All commit hooks passed. No public docs changed; no reader gate applies. All12 local bark ledger files remain uncommitted at original HEAD; no dependency/env edits. M09 author must not read or use this integration record or bark code; use standalone Clean IoC material.
