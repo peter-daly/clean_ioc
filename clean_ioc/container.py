@@ -363,6 +363,13 @@ class ContainerBuildError(RuntimeError):
         super().__init__(message or (report.to_text() if report is not None else "Container build failed"))
 
 
+class _TemplateExpansionReentryError(ContainerBuildError):
+    """Compiler-owned callback reentry guard with fixed diagnostic content."""
+
+    def __init__(self) -> None:
+        super().__init__("Template expansion cannot reenter its composition", code="template-expansion-reentry")
+
+
 class CannotResolveError(LookupError):
     """Raised when no compiled root matches a resolution request."""
 
@@ -2581,6 +2588,10 @@ def _materialize_decorator(
     )
 
 
+class _GeneratedDecoratorValidationError(ValueError):
+    """A fixed compiler-authored decorator validation message."""
+
+
 def _resolve_decorator_defaults(
     variables: Iterable[TypeVar],
     bindings: dict[TypeVar, Any],
@@ -2598,7 +2609,7 @@ def _resolve_decorator_defaults(
         if variable in resolved:
             return resolved[variable]
         if variable in visiting:
-            raise ValueError(f"Cyclic decorator TypeVar default for {variable.__name__}")
+            raise _GeneratedDecoratorValidationError(f"Cyclic decorator TypeVar default for {variable.__name__}")
         default = getattr(variable, "__default__", _NO_TYPEVAR_DEFAULT)
         if default is _NO_TYPEVAR_DEFAULT or default is no_default or default is NoDefault:
             return variable
@@ -2649,7 +2660,18 @@ def _materialize_generated_decorator(definition: _DecoratorDefinition) -> _Decor
                 settings[name],
                 legacy.EMPTY,
             )
-        _validate_dependency_names(signature_source, dependencies)
+        try:
+            signature_parameters = inspect.signature(signature_source).parameters
+        except (TypeError, ValueError):
+            signature_parameters = None
+        if signature_parameters is not None and not any(
+            parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in signature_parameters.values()
+        ):
+            unknown_names = sorted(set(dependencies) - set(signature_parameters))
+            if unknown_names:
+                raise _GeneratedDecoratorValidationError(
+                    f"Decorator {label} has no argument named {', '.join(repr(name) for name in unknown_names)}"
+                )
         annotation_bindings: dict[TypeVar, Any] = {}
         implementation_arguments: tuple[Any, ...] = ()
         if origin is not None:
@@ -2680,13 +2702,15 @@ def _materialize_generated_decorator(definition: _DecoratorDefinition) -> _Decor
                 and _bind_typevar_identities(annotation, definition.service_type) is not None
             ]
             if len(candidates) != 1:
-                raise ValueError("Expected one decorated argument; set decorated_arg= explicitly")
+                raise _GeneratedDecoratorValidationError(
+                    "Expected one decorated argument; set decorated_arg= explicitly"
+                )
             decorated_arg = candidates[0]
         if decorated_arg not in dependencies:
-            raise ValueError(f"No argument named {decorated_arg!r}")
+            raise _GeneratedDecoratorValidationError(f"No argument named {decorated_arg!r}")
         bindings = _bind_typevar_identities(annotations[decorated_arg], definition.service_type)
         if bindings is None:
-            raise ValueError("Decorated argument conflicts with the projected target contract")
+            raise _GeneratedDecoratorValidationError("Decorated argument conflicts with the projected target contract")
         bindings = _resolve_decorator_defaults(
             (
                 variable
@@ -2698,7 +2722,9 @@ def _materialize_generated_decorator(definition: _DecoratorDefinition) -> _Decor
         resolved = {name: _resolve_typevar_identities(annotation, bindings) for name, annotation in annotations.items()}
         unresolved = {variable for annotation in resolved.values() for variable in _typevar_identities(annotation)}
         if unresolved:
-            raise ValueError(f"Unresolved decorator TypeVar(s): {', '.join(sorted(v.__name__ for v in unresolved))}")
+            raise _GeneratedDecoratorValidationError(
+                f"Unresolved decorator TypeVar(s): {', '.join(sorted(v.__name__ for v in unresolved))}"
+            )
         implementation = signature_source
         if origin is not None:
             parameters = getattr(origin, "__parameters__", ())
@@ -2707,7 +2733,7 @@ def _materialize_generated_decorator(definition: _DecoratorDefinition) -> _Decor
                     _resolve_typevar_identities(argument, bindings) for argument in implementation_arguments
                 )
                 if any(_typevar_identities(argument) for argument in arguments):
-                    raise ValueError("Unresolved decorator implementation parameters")
+                    raise _GeneratedDecoratorValidationError("Unresolved decorator implementation parameters")
                 alias = cast(Any, origin)[arguments[0] if len(arguments) == 1 else arguments]
                 implementation = legacy.create_generic_decorator_type(alias)
         else:
@@ -2719,7 +2745,9 @@ def _materialize_generated_decorator(definition: _DecoratorDefinition) -> _Decor
                     or _typevar_identities(result_projection)
                     or _bind_typevar_identities(result_projection, definition.service_type) is None
                 ):
-                    raise ValueError("Decorator result is incompatible with the projected target contract")
+                    raise _GeneratedDecoratorValidationError(
+                        "Decorator result is incompatible with the projected target contract"
+                    )
         dependencies.pop(decorated_arg)
         specialized = {}
         for name, dependency in dependencies.items():
@@ -2741,8 +2769,9 @@ def _materialize_generated_decorator(definition: _DecoratorDefinition) -> _Decor
             specialized,
         )
     except Exception as error:
+        detail = error.args[0] if type(error) is _GeneratedDecoratorValidationError else type(error).__name__
         raise ContainerBuildError(
-            f"Decorator {label} cannot satisfy {qualified_name(definition.service_type)}: {error}",
+            f"Decorator {label} cannot satisfy {qualified_name(definition.service_type)}: {detail}",
             code="invalid-decorator",
         ) from error
 
@@ -3085,6 +3114,7 @@ class _PlanSet:
     compiler_issues: tuple[BuildIssue, ...] = ()
     root_candidates: Mapping[Any, tuple[_CandidateRecord, ...]] = field(default_factory=dict)
     occurrence_explanations: Mapping[int, CompilationExplanation] = field(default_factory=dict)
+    occurrence_origins: Mapping[int, DefinitionOrigin] = field(default_factory=dict)
     decorator_explanations: Mapping[int, CompilationExplanation] = field(default_factory=dict)
     parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = field(default_factory=dict)
     generic_explanations: Mapping[int, GenericBindingExplanation] = field(default_factory=dict)
@@ -3187,6 +3217,7 @@ class _Compiler:
         inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = types.MappingProxyType({}),
         inherited_generic_explanations: Mapping[int, GenericBindingExplanation] = types.MappingProxyType({}),
         inherited_occurrence_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
+        inherited_occurrence_origins: Mapping[int, DefinitionOrigin] = types.MappingProxyType({}),
         inherited_decorator_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
     ):
         self.blueprint = blueprint
@@ -3215,6 +3246,7 @@ class _Compiler:
         self._inherited_parameter_explanations = inherited_parameter_explanations
         self._inherited_generic_explanations = inherited_generic_explanations
         self._inherited_occurrence_explanations = inherited_occurrence_explanations
+        self._inherited_occurrence_origins = inherited_occurrence_origins
         self._inherited_decorator_explanations = inherited_decorator_explanations
         self._area: str | None = None
         self.issues: list[BuildIssue] = []
@@ -4011,6 +4043,7 @@ class _Compiler:
             compiler_issues=tuple(self.issues),
             root_candidates=types.MappingProxyType(dict(self.root_candidates)),
             occurrence_explanations=types.MappingProxyType(dict(self.occurrence_explanations)),
+            occurrence_origins=types.MappingProxyType(dict(self.origins)),
             decorator_explanations=types.MappingProxyType(dict(self.decorator_explanations)),
             parameter_explanations=types.MappingProxyType(
                 {
@@ -5187,6 +5220,9 @@ class _Compiler:
         """Copy frozen metadata while retaining the parent's activation step."""
 
         mapping = mapped if mapped is not None else {}
+        # Occurrence integers are local to their graph. Consult only the
+        # sidecar associated with the graph that owns this source component.
+        local_source = source._graph is self.graph
         component, draft = self._draft(
             component_id=source.id,
             service_type=source.service_type,
@@ -5203,7 +5239,7 @@ class _Compiler:
             position=source.position,
             provider_mode=source.provider_mode,
             build_args=source.build_args,
-            origin=self.origins.get(source.occurrence_id),
+            origin=(self.origins if local_source else self._inherited_occurrence_origins).get(source.occurrence_id),
             declared_service_type=source.declared_service_type,
         )
         draft.implementation_type = source.implementation_type
@@ -5222,6 +5258,9 @@ class _Compiler:
             draft.owner_id = cloned_owner.occurrence_id
         mapping[source.occurrence_id] = component
 
+        def captured(current: Mapping[int, Any], inherited: Mapping[int, Any]) -> Any | None:
+            return (current if local_source else inherited).get(source.occurrence_id)
+
         def remap_explanation(explanation: CompilationExplanation) -> CompilationExplanation:
             def remap_decision(decision: CandidateDecision) -> CandidateDecision:
                 fact = decision.template
@@ -5236,24 +5275,16 @@ class _Compiler:
                 rejected=tuple(map(remap_decision, explanation.rejected)),
             )
 
-        explanation = self.occurrence_explanations.get(source.occurrence_id) or (
-            self._inherited_occurrence_explanations.get(source.occurrence_id)
-        )
+        explanation = captured(self.occurrence_explanations, self._inherited_occurrence_explanations)
         if explanation is not None:
             self.occurrence_explanations[component.occurrence_id] = remap_explanation(explanation)
-        decorator_explanation = self.decorator_explanations.get(source.occurrence_id) or (
-            self._inherited_decorator_explanations.get(source.occurrence_id)
-        )
+        decorator_explanation = captured(self.decorator_explanations, self._inherited_decorator_explanations)
         if decorator_explanation is not None:
             self.decorator_explanations[component.occurrence_id] = remap_explanation(decorator_explanation)
-        parameters = self.parameter_explanations.get(source.occurrence_id) or (
-            self._inherited_parameter_explanations.get(source.occurrence_id)
-        )
+        parameters = captured(self.parameter_explanations, self._inherited_parameter_explanations)
         if parameters is not None:
             self.parameter_explanations[component.occurrence_id] = dict(parameters)
-        generic = self.generic_explanations.get(source.occurrence_id) or self._inherited_generic_explanations.get(
-            source.occurrence_id
-        )
+        generic = captured(self.generic_explanations, self._inherited_generic_explanations)
         if generic is not None:
             self.generic_explanations[component.occurrence_id] = generic
 
@@ -6399,7 +6430,11 @@ class _Compiler:
                     path=(
                         *self._current_path(core.service_type),
                         *(
-                            (generated[definition.id][0].declaration.id, generated[definition.id][0].source.id)
+                            (
+                                generated[definition.id][0].declaration.id,
+                                generated[definition.id][0].source.id,
+                                generated[definition.id][1].registration_id,
+                            )
                             if definition.id in generated
                             else ()
                         ),
@@ -7282,6 +7317,7 @@ def _expand_decorator_templates(
     inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = types.MappingProxyType({}),
     inherited_generic_explanations: Mapping[int, GenericBindingExplanation] = types.MappingProxyType({}),
     inherited_occurrence_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
+    inherited_occurrence_origins: Mapping[int, DefinitionOrigin] = types.MappingProxyType({}),
     inherited_decorator_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
 ) -> _TemplateExpansion:
     """Expand a normalized, visibility-prepared snapshot once, without target activation.
@@ -7292,9 +7328,7 @@ def _expand_decorator_templates(
     owners = frozenset(layer.owner_token for layer in (*blueprint.layers, *(b.layer for b in blueprint.boundaries)))
     active = _EXPANDING_TEMPLATE_OWNERS.get()
     if owners & active:
-        raise ContainerBuildError(
-            "Template expansion cannot reenter its composition", code="template-expansion-reentry"
-        )
+        raise _TemplateExpansionReentryError()
     token = _EXPANDING_TEMPLATE_OWNERS.set(active | owners)
     candidates: list[_GeneratedDecoratorDefinition] = []
     selections: list[_TemplateSourceSelection] = []
@@ -7331,6 +7365,7 @@ def _expand_decorator_templates(
                         inherited_parameter_explanations=inherited_parameter_explanations,
                         inherited_generic_explanations=inherited_generic_explanations,
                         inherited_occurrence_explanations=inherited_occurrence_explanations,
+                        inherited_occurrence_origins=inherited_occurrence_origins,
                         inherited_decorator_explanations=inherited_decorator_explanations,
                     )._compile_source_core(registration.id, registration.service_type)
                     phase = "source filter"
@@ -7377,8 +7412,17 @@ def _expand_decorator_templates(
                         )
                     )
                 except Exception as error:
-                    code = error.code if isinstance(error, ContainerBuildError) and error.code else "template-expansion"
-                    path = error.path if isinstance(error, ContainerBuildError) else ()
+                    callback_failure = phase in ("source filter", "template factory")
+                    code = (
+                        "template-expansion-reentry"
+                        if callback_failure and type(error) is _TemplateExpansionReentryError
+                        else "template-expansion"
+                        if callback_failure
+                        else error.code
+                        if isinstance(error, ContainerBuildError) and error.code
+                        else "template-expansion"
+                    )
+                    path = () if callback_failure else error.path if isinstance(error, ContainerBuildError) else ()
                     detail = (
                         f"Source filter {_filter_description(definition.source_filter)} raised {type(error).__name__}"
                         if phase == "source filter"
@@ -7463,6 +7507,7 @@ def _compile_with_report(
     inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = types.MappingProxyType({}),
     inherited_generic_explanations: Mapping[int, GenericBindingExplanation] = types.MappingProxyType({}),
     inherited_occurrence_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
+    inherited_occurrence_origins: Mapping[int, DefinitionOrigin] = types.MappingProxyType({}),
     inherited_decorator_explanations: Mapping[int, CompilationExplanation] = types.MappingProxyType({}),
 ) -> _PlanSet:
     compilation_inputs: _CompilationInputs = {
@@ -7471,6 +7516,7 @@ def _compile_with_report(
         "inherited_parameter_explanations": inherited_parameter_explanations,
         "inherited_generic_explanations": inherited_generic_explanations,
         "inherited_occurrence_explanations": inherited_occurrence_explanations,
+        "inherited_occurrence_origins": inherited_occurrence_origins,
         "inherited_decorator_explanations": inherited_decorator_explanations,
     }
     if anchored_singleton_steps is not None:
@@ -7500,6 +7546,7 @@ def _compile_with_report(
             inherited_parameter_explanations=inherited_parameter_explanations,
             inherited_generic_explanations=inherited_generic_explanations,
             inherited_occurrence_explanations=inherited_occurrence_explanations,
+            inherited_occurrence_origins=inherited_occurrence_origins,
             inherited_decorator_explanations=inherited_decorator_explanations,
         )
         expanded = replace(
@@ -7546,6 +7593,7 @@ def _compile_with_report(
         inherited_parameter_explanations=inherited_parameter_explanations,
         inherited_generic_explanations=inherited_generic_explanations,
         inherited_occurrence_explanations=inherited_occurrence_explanations,
+        inherited_occurrence_origins=inherited_occurrence_origins,
         inherited_decorator_explanations=inherited_decorator_explanations,
     )
     try:
@@ -8000,6 +8048,7 @@ class _CompilationInputs(typing.TypedDict, total=False):
     inherited_parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]]
     inherited_generic_explanations: Mapping[int, GenericBindingExplanation]
     inherited_occurrence_explanations: Mapping[int, CompilationExplanation]
+    inherited_occurrence_origins: Mapping[int, DefinitionOrigin]
     inherited_decorator_explanations: Mapping[int, CompilationExplanation]
 
 
@@ -8052,10 +8101,7 @@ class _BuilderBase:
 
     def _assert_mutable(self) -> None:
         if self._owner_token in _EXPANDING_TEMPLATE_OWNERS.get():
-            raise ContainerBuildError(
-                "Template expansion cannot mutate, build, or preview its composition",
-                code="template-expansion-reentry",
-            )
+            raise _TemplateExpansionReentryError()
         if self._built:
             raise BuilderAlreadyBuiltError("Builders are single-use after a successful build")
 
@@ -8097,6 +8143,7 @@ class _BuilderBase:
             inherited_parameter_explanations=parent._plan.parameter_explanations,
             inherited_generic_explanations=parent._plan.generic_explanations,
             inherited_occurrence_explanations=parent._plan.occurrence_explanations,
+            inherited_occurrence_origins=parent._plan.occurrence_origins,
             inherited_decorator_explanations=parent._plan.decorator_explanations,
         )
         return blueprint, inputs

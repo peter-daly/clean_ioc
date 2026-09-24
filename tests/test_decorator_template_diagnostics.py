@@ -227,7 +227,9 @@ def test_anchored_overlay_relabels_target_occurrence_without_replaying_factory()
     container = builder.build()
     parent = _roots(container.graph, Target)[0]
     parent_fact = container.graph.explain_decorators(parent).selected[0].template
-    overlay = container.new_scope_builder().build()
+    overlay_builder = container.new_scope_builder()
+    overlay_builder.register(Source, name="new-overlay-source", lifespan="singleton")
+    overlay = overlay_builder.build()
     child = _roots(overlay.graph, Target)[0]
     child_fact = overlay.graph.explain_decorators(child).selected[0].template
     assert parent_fact is not None and child_fact is not None
@@ -237,7 +239,10 @@ def test_anchored_overlay_relabels_target_occurrence_without_replaying_factory()
     decorator_fact = overlay.graph.explain(child.decorators[0]).selected[0].template
     assert decorator_fact is not None
     assert decorator_fact.target_occurrence_id == child.occurrence_id
-    assert calls == [source, source]
+    assert decorator_fact.template_id == parent_fact.template_id
+    assert overlay.graph.explain(child).selected[0].origin.kind == "registration"
+    assert overlay.graph.explain(child.decorators[0]).selected[0].origin.kind == "decorator-template"
+    assert calls.count(source) == 2
 
 
 def test_failure_keeps_context_without_exception_or_argument_secrets():
@@ -297,3 +302,62 @@ def test_pregraph_expansion_failure_identifies_phase_and_source(phase):
     assert ("Source filter" if phase == "filter" else "Template factory") in issue.message
     assert caught.value.partial_graph.attempts[0].witness_path[:2] == (template, source)
     assert "private-" not in caught.value.report.to_json()
+
+
+def test_hostile_decorator_signature_error_never_formats_exception_text():
+    class HostileError(RuntimeError):
+        def __str__(self):
+            raise AssertionError("hostile __str__ was called")
+
+    class HostileMeta(type):
+        @property
+        def __signature__(cls):
+            raise HostileError("private-signature-secret")
+
+    class HostileWrapper(Target, metaclass=HostileMeta):
+        def __init__(self, inner: Target):
+            self.inner = inner
+
+    builder = ContainerBuilder()
+    source = builder.register(Source)
+    target = builder.register(Target)
+    template = builder.register_decorator_template(
+        for_each=Source,
+        template=lambda _: DecoratorTemplate(DerivedServices(Target), HostileWrapper),
+    )
+    with pytest.raises(ContainerBuildError) as caught:
+        builder.build()
+    assert caught.value.report is not None
+    assert caught.value.partial_graph is not None
+    issue = caught.value.report.errors[0]
+    assert issue.code == "invalid-decorator"
+    assert template in issue.path and source in issue.path and target in issue.path
+    output = caught.value.report.to_json() + caught.value.partial_graph.to_json()
+    assert "private-signature-secret" not in output
+    assert "hostile __str__" not in output
+    assert "HostileError" in issue.message
+
+
+@pytest.mark.parametrize("phase", ["filter", "factory"])
+def test_callback_container_build_error_cannot_supply_report_code_or_path(phase):
+    builder = ContainerBuilder()
+    source = builder.register(Source)
+
+    def source_filter(_):
+        if phase == "filter":
+            raise ContainerBuildError("private-message", code="private-code", path=("private-path",))
+        return True
+
+    def factory(_):
+        raise ContainerBuildError("private-message", code="private-code", path=("private-path",))
+
+    template = builder.register_decorator_template(for_each=Source, source_filter=source_filter, template=factory)
+    with pytest.raises(ContainerBuildError) as caught:
+        builder.build()
+    assert caught.value.report is not None
+    assert caught.value.partial_graph is not None
+    issue = caught.value.report.errors[0]
+    assert issue.code == "template-expansion"
+    assert issue.path == (template, source)
+    output = caught.value.report.to_json() + caught.value.partial_graph.to_json()
+    assert "private-" not in output

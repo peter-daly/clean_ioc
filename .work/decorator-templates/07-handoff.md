@@ -1,6 +1,6 @@
 # M07 implementation verification handoff
 
-Status: implementation delivered and verified; independent Astra review and coordinator checkpoint pending.
+Status: round-1 Astra findings repaired and verified; coordinator repair checkpoint and same-reviewer recheck pending.
 Agent: `/root/m07_implementation`, `gpt-6-sol`, high reasoning. Baseline: accepted M06/search checkpoint `4e9174a` on `codex/decorator-templates`. This agent made no commits. Coordinator owns status, log, checkpoint, and review.
 
 ## Delivered behavior
@@ -26,3 +26,13 @@ Tests: new `tests/test_decorator_template_diagnostics.py` (9 tests). This handof
 ## Review focus and limits
 
 Trace `TemplateDecision` construction in `_compile_decorators`, source capture in `_expand_decorator_templates`, graph freeze in `_finalize_plan`, and anchored remapping in `_clone_component_tree`. Check whether all error contexts remain privacy-safe and whether the extra inherited explanation maps retain only frozen records. The source-inspection component remains internal, and the public source decision exposes labels and IDs only. No bark-core changes, public explanatory docs/examples, or commits were made. M08 integration, M09 docs, and M10 full CI/matrix remain pending.
+
+## Round-1 independent-review repairs
+
+Reviewer `/root/m07_review` requested three P2 fixes in `07-review.md`. This implementation agent repaired them without committing:
+
+1. Anchored cloning now chooses occurrence explanations, decorator explanations, parameter/generic facts, and definition origins by the source component's graph identity. Parent occurrence integers can collide with overlay integers; the parent sidecar now remains authoritative for parent components. The regression adds an overlay singleton source that shifts occurrence numbering, then checks core/decorator provenance and remapped target occurrence IDs.
+2. Generated decorator materialization separates fixed compiler-authored validation errors from arbitrary exceptions raised during user-controlled introspection. It renders only the arbitrary exception's type, without invoking `__str__`; the original cause remains chained. The invalid-decorator report path also includes the target registration ID. A hostile `__signature__`/`__str__` regression proves that neither secret text nor formatting side effects reach the report.
+3. Source-filter and template-factory callback phases now force compiler-owned `template-expansion` code and template/source path even if a callback raises `ContainerBuildError` with private code/path. A fixed internal reentry-guard exception preserves the existing `template-expansion-reentry` contract while never copying callback code/path. Both callback phases have redaction regressions.
+
+Repair verification: 458 relevant Python 3.14 tests passed in 4.52s; isolated Python 3.11 had 364 passed and four existing version skips in 2.74s. Ruff check and ty check pass for the changed `container.py` and diagnostics test; Ruff format check passes after formatting; `git diff --check` passes. The repair changes only `clean_ioc/container.py`, `tests/test_decorator_template_diagnostics.py`, and this handoff. No reviewer acceptance is claimed until the same Astra reviewer rechecks the checkpoint.
