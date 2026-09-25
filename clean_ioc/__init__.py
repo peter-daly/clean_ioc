@@ -10,6 +10,7 @@ from .compilation_profile import (
     CompilationProfiler,
     CompilationSpan,
 )
+from .component_filters import ComponentSelector
 from .components import (
     BundleRunScope,
     Component,
@@ -123,6 +124,7 @@ __all__ = [
     "ComponentBuilder",
     "ComponentFilter",
     "ComponentKind",
+    "ComponentSelector",
     "Container",
     "ContainerBuildError",
     "ContainerBuilder",

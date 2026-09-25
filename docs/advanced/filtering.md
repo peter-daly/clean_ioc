@@ -117,6 +117,36 @@ Useful helpers include:
 
 Use `create_filter(callable)` for a custom composable predicate.
 
+### Selector configuration
+
+`ComponentSelector` is a small dataclass for storing filter inputs, for example
+as configuration passed to a bundle:
+
+```python
+from clean_ioc import ComponentSelector, Tag
+
+selector = ComponentSelector(
+    service_type=str,
+    implementation_type=str,
+    name="primary",
+    lifespan="singleton",
+    tags=[Tag("env", "prod"), Tag("enabled")],
+)
+component_filter = selector.to_filter()
+```
+
+Pass the resulting filter anywhere a component filter is accepted, including
+`select(...)`, `when=`, or a builder query. All supplied fields and all tags
+must match. Service and implementation types use the same normalized comparisons as
+`service_type_is` and `implementation_type_is`, respectively. A tag without a value matches any value for that tag
+name, and extra component tags are allowed.
+
+All fields are nullable and default to `None`, including `tags`. Fields set to
+`None` impose no restriction, and an empty selector matches all
+components, including named ones. To select only unnamed components, compose
+`selector.to_filter() & cf.is_not_named`. The selector is immutable and copies
+supplied tags into a tuple, so it can safely be reused by bundles.
+
 `implementation_is(T)` compares `T` with the component's raw implementation. For a factory registration, that is the
 factory callable. `implementation_type_is(T)` compares the normalized implementation type, including a factory's
 annotated return type:
