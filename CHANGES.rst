@@ -1,3 +1,17 @@
+2.0.0b19
+--------
+
+    Add build-error triage, registration selection censuses, and compilation
+    profiling to make container builds easier to inspect and diagnose.
+
+    Add opt-in runtime resolution profiling for identifying expensive resolves,
+    frequently invoked factories, cache behavior, and activation hot spots.
+    Profiling remains disabled unless configured on the container builder.
+
+    Add reusable ``ComponentSelector`` configuration for composing component
+    filters from service type, implementation type, name, lifespan, and tags.
+
+
 2.0.0b18
 --------
 
