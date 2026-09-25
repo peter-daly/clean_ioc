@@ -3,6 +3,13 @@
 from ._decorator_templates import DecoratorTemplate, RegistrationInfo
 from .arguments import INJECT, REMOVE, ParameterContext, build_arg, derive, generic_arg, inject, select
 from .boundaries import Boundary, BoundaryAlias, Expose, Use
+from .compilation_profile import (
+    CompilationCounters,
+    CompilationHotspot,
+    CompilationProfile,
+    CompilationProfiler,
+    CompilationSpan,
+)
 from .components import (
     BundleRunScope,
     Component,
@@ -50,19 +57,23 @@ from .graph_analysis import (
     SharingGroup,
     SharingReport,
 )
+from .instrumentation import DurationSummary, Instrumentation, ProfileRecord, ResolutionProfile, ResolutionProfiler
 from .metadata import Tag
 from .provider_maps import ProviderMapGroup
 from .providers import AsyncProvider, Provider
+from .selection_census import DefinitionCensus, DefinitionReference, SelectionCensus, SelectionUse
 from .service_groups import DerivedServices, ServiceGroup
 from .tooling import (
     BuildIssue,
     BuildReport,
+    BuildTriage,
     CandidateDecision,
     CompilationAttempt,
     CompilationExplanation,
     CompiledGraph,
     DecisionOutcome,
     DefinitionOrigin,
+    FailureEvidence,
     GenericBindingExplanation,
     GraphChange,
     GraphDiff,
@@ -80,12 +91,27 @@ from .tooling import (
     SourceLocation,
     TemplateDecision,
     TemplateSourceDecision,
+    TriageGroup,
     TypeAst,
     ValidationContext,
     ValidationRule,
 )
 
 __all__ = [
+    "CompilationCounters",
+    "CompilationHotspot",
+    "CompilationProfile",
+    "CompilationProfiler",
+    "CompilationSpan",
+    "DurationSummary",
+    "Instrumentation",
+    "ProfileRecord",
+    "ResolutionProfile",
+    "ResolutionProfiler",
+    "DefinitionCensus",
+    "DefinitionReference",
+    "SelectionCensus",
+    "SelectionUse",
     "INJECT",
     "REMOVE",
     "BuilderAlreadyBuiltError",
@@ -102,6 +128,9 @@ __all__ = [
     "ContainerBuilder",
     "BuildIssue",
     "BuildReport",
+    "BuildTriage",
+    "FailureEvidence",
+    "TriageGroup",
     "AsyncProvider",
     "ActivationObligation",
     "ActivationReport",
