@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from typing import Any, Callable, TypeVar
 
 from funcie import predicate
 from typing_extensions import TypeForm
 
 from .components import ComponentFilter, Lifespan, all_components
+from .metadata import Tag
 from .tooling import qualified_name
 from .type_aliases import normalize_type_alias
 
 __all__ = [
+    "ComponentSelector",
     "all_components",
     "build_arg_is",
     "create_filter",
@@ -36,6 +39,41 @@ __all__ = [
 ]
 
 _MISSING_BUILD_ARG = object()
+
+
+@dataclass(frozen=True, slots=True)
+class ComponentSelector:
+    """Reusable inputs for a component filter, suitable for bundle configuration.
+
+    ``None`` fields impose no restriction. All supplied fields and tags must
+    match; a tag without a value matches any value for that tag name.
+    """
+
+    implementation_type: TypeForm[Any] | None = None
+    name: str | None = None
+    lifespan: Lifespan | None = None
+    tags: Iterable[Tag] | None = None
+    service_type: TypeForm[Any] | None = None
+
+    def __post_init__(self) -> None:
+        if self.tags is not None:
+            object.__setattr__(self, "tags", tuple(self.tags))
+
+    def to_filter(self) -> predicate:
+        """Create a composable filter; an empty selector matches all components."""
+        result = create_filter(all_components)
+        if self.service_type is not None:
+            result &= service_type_is(self.service_type)
+        if self.implementation_type is not None:
+            result &= implementation_type_is(self.implementation_type)
+        if self.name is not None:
+            result &= with_name(self.name)
+        if self.lifespan is not None:
+            result &= has_lifespan(self.lifespan)
+        if self.tags is not None:
+            for tag in self.tags:
+                result &= has_tag(tag.name, tag.value)
+        return result
 
 
 def _described(filter, description: str, *, selector: tuple[str, Any] | None = None):

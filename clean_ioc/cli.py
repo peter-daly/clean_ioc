@@ -10,8 +10,9 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from . import component_filters as cf
+from .compilation_profile import CompilationProfiler
 from .container import ContainerBuilder, ContainerBuildError, Scope, ScopeBuilder
-from .tooling import BuildReport, GraphManifest, IssueSeverity
+from .tooling import BuildReport, BuildTriage, GraphManifest, IssueSeverity
 
 
 def _load_object(locator: str) -> Any:
@@ -52,15 +53,47 @@ def _filtered_report(report: BuildReport, ignored: set[str]) -> BuildReport:
 
 
 def _check(args: argparse.Namespace) -> int:
-    scope = _load_scope(args.target)
+    try:
+        scope = _load_scope(args.target)
+    except ContainerBuildError as error:
+        if not args.triage:
+            raise
+        triage = error.triage_report()
+        _write(triage.to_json() if args.format == "json" else triage.to_text(), args.output)
+        return 1
     report = _filtered_report(
         scope.validation_report(),
         set(args.ignore),
     )
-    _write(report.to_json() if args.format == "json" else report.to_text(), None)
+    if args.triage:
+        triage = BuildTriage.from_report(report)
+        value = triage.to_json() if args.format == "json" else triage.to_text()
+    else:
+        value = report.to_json() if args.format == "json" else report.to_text()
+    _write(value, args.output)
     if not report.is_valid or (args.strict and report.warnings):
         return 1
     return 0
+
+
+def _profile(args: argparse.Namespace) -> int:
+    target = _load_object(args.target)
+    if not isinstance(target, (ContainerBuilder, ScopeBuilder)) and callable(target):
+        target = target()
+    if not isinstance(target, (ContainerBuilder, ScopeBuilder)):
+        raise TypeError("Profile target must be an unbuilt builder or a zero-argument factory returning one")
+    if target._built:
+        raise TypeError("Profile target must be an unbuilt builder")
+    collector = CompilationProfiler(max_records=args.max_records)
+    try:
+        target.build(profile=collector)
+    except Exception:
+        result = 1
+    else:
+        result = 0
+    report = collector.report()
+    _write(report.to_json() if args.format == "json" else report.to_text(), args.output)
+    return result
 
 
 def _graph(args: argparse.Namespace) -> int:
@@ -91,6 +124,19 @@ def _ownership(args: argparse.Namespace) -> int:
     report = _load_scope(args.target).graph.ownership_report()
     _write(report.to_json() if args.format == "json" else report.to_text(), args.output)
     return 0 if report.is_valid else 1
+
+
+def _census(args: argparse.Namespace) -> int:
+    try:
+        report = _load_scope(args.target).graph.selection_census(
+            all_roots=args.all, include_deferred=not args.exclude_deferred
+        )
+    except ContainerBuildError as error:
+        report = error.selection_census()
+        _write(report.to_json() if args.format == "json" else report.to_text(), args.output)
+        return 1
+    _write(report.to_json() if args.format == "json" else report.to_text(), args.output)
+    return 0
 
 
 def _diff(args: argparse.Namespace) -> int:
@@ -231,6 +277,8 @@ def _parser() -> argparse.ArgumentParser:
     check = commands.add_parser("check", help="Build a target and report compiler findings")
     check.add_argument("target", help="module:object composition target")
     check.add_argument("--format", choices=("text", "json"), default="text")
+    check.add_argument("--triage", action="store_true", help="Group captured failed-build evidence")
+    check.add_argument("-o", "--output", help="Write output to a file instead of stdout")
     check.add_argument(
         "--strict",
         action=argparse.BooleanOptionalAction,
@@ -239,6 +287,13 @@ def _parser() -> argparse.ArgumentParser:
     )
     check.add_argument("--ignore", action="append", default=[], metavar="CODE", help="Ignore a warning code")
     check.set_defaults(handler=_check)
+
+    profile = commands.add_parser("profile", help="Measure one actual builder compilation")
+    profile.add_argument("target", help="module:object unbuilt builder or zero-argument builder factory")
+    profile.add_argument("--format", choices=("text", "json"), default="text")
+    profile.add_argument("--max-records", type=int, default=10_000, help="Maximum detailed spans (default: 10000)")
+    profile.add_argument("-o", "--output", help="Write output to a file instead of stdout")
+    profile.set_defaults(handler=_profile)
 
     graph = commands.add_parser("graph", help="Render or snapshot a compiled graph")
     graph.add_argument("target", help="module:object composition target")
@@ -258,6 +313,16 @@ def _parser() -> argparse.ArgumentParser:
     ownership.add_argument("--format", choices=("text", "json"), default="text")
     ownership.add_argument("-o", "--output", help="Write output to a file instead of stdout")
     ownership.set_defaults(handler=_ownership)
+
+    census = commands.add_parser("census", help="Summarize recorded registration selections")
+    census.add_argument("target", help="module:object composition target")
+    census.add_argument("--all", action="store_true", help="Analyze every public compiled root")
+    census.add_argument(
+        "--exclude-deferred", action="store_true", help="Exclude deferred provider and per-call targets"
+    )
+    census.add_argument("--format", choices=("text", "json"), default="text")
+    census.add_argument("-o", "--output", help="Write output to a file instead of stdout")
+    census.set_defaults(handler=_census)
 
     difference = commands.add_parser("diff", help="Compare a compiled graph with a JSON manifest")
     difference.add_argument("target", help="module:object composition target")

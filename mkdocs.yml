@@ -12,6 +12,7 @@ nav:
   - Compilation Process: compilation-process.md
   - Custom Graph Validation: custom-validation.md
   - Compiler Tooling: compiler-tooling.md
+  - Runtime Profiling: runtime-profiling.md
   - Registration: simple-uses.md
   - Factories: factories.md
   - Lifespans: lifespans.md

@@ -1,9 +1,14 @@
 # Graph-correlated activation tracing
 
-Status: Proposal
+Status: Proposal; core runtime profiler implemented and independently reviewed in work item 12
 Priority: P2
 Dependencies: Compilation provenance; resource ownership proof
 Optional integration: OpenTelemetry
+
+Implementation is split into a focused [runtime resolution profiler](../.work/12-runtime-resolution-profiler.md)
+followed by the broader recording and integration work in
+[runtime observations](../.work/08-runtime-observations-and-graph-overlays.md). The profiler refines sampling so
+activation/cache counts cover every observed operation while timing and detailed events may be sampled.
 
 ## Summary
 

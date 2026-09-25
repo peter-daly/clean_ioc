@@ -74,6 +74,48 @@ Independent root failures are aggregated so one build can report several composi
 When compilation reached candidate selection before failing, `ContainerBuildError.explanations` contains the safe partial
 decision records captured up to that point; retrying the repaired builder creates a fresh index.
 
+### Triage repeated failures
+
+`ContainerBuildError.triage_report()` summarizes supported structural failures using facts captured at the failure
+site. Its `BuildTriage` groups include the original `issue:1`, `issue:2`, etc. references, distinct affected roots,
+marked entry points when known, separate `attempt:1`, `attempt:2`, etc. references, bounded witness paths, and a fixed
+investigation hint. The original `BuildReport` and its JSON format are unchanged.
+
+```python
+from clean_ioc import ContainerBuildError
+
+try:
+    builder.build()
+except ContainerBuildError as error:
+    triage = error.triage_report()
+    print(triage.to_text())
+    saved_json = triage.to_json()
+```
+
+```console
+clean-ioc check my_app.composition:application_builder --triage --format json
+```
+
+For example, `PlaceOrder` and `CancelOrder` can both fail because their dependency paths request the same missing
+`Clock` in the `orders` boundary. Triage reports one group with two member findings and two separate retry attempts.
+A missing `Clock` at the root, a named `Clock` request, or an `orders` request rejected by a filter stays separate
+unless its captured selection context proves equivalence. Captive dependencies retain the actual retaining ancestor;
+cycles retain their directed registration sequence; generic failures retain the requested specialization and template.
+Arbitrary custom findings, callback failures, and early errors without this evidence remain individual findings.
+
+The `BuildTriage.from_report(report, evidence=...)` factory also accepts validation-only reports. Without captured
+compiler evidence, each finding remains ungrouped. `to_text(detailed=True)` shows every member and attempt reference;
+`to_json()` always includes the full original findings. `evidence_incomplete`, `inconsistent_retries`, and attempt
+counts mark uncertainty and truncated capture. Group counts describe recorded evidence. Fixing one group may expose
+further failures in the next build; a group is an investigation lead, not a repair guarantee. Rendering a captured
+triage report does not invoke application constructors, derivations, filters, or validation rules.
+For manually supplied entry-point context, pass `(boundary_name, root_label)` pairs; use `None` for the root area.
+Failed-build triage also retains each finding's compilation boundary even when a callback error has no grouping
+evidence. A standalone `BuildTriage.from_report(report)` cannot recover that area, so its affected-root count is
+labelled a lower bound when issue locations are unknown.
+JSON count-status fields label exact issue/attempt totals, retained detail counts, lower-bound witness counts when
+partial capture was truncated, and unknown entry-point membership when no declaration context was supplied.
+
 Current issue codes include:
 
 - `missing-component`, `missing-entrypoint`, and `ambiguous-selection`;
@@ -272,6 +314,67 @@ runtime identities. `graph.paths_between(root, dependency, max_paths=100)` retur
 `graph.shared_dependencies(first_root, second_root)` to find registrations reachable from both roots without treating
 repeated occurrences as separate registrations.
 
+## Count recorded registration selections
+
+`graph.selection_census()` inventories declarations and counts selections in the marked entry-point view. When no entry
+points are marked, it uses all public compiled roots. `graph.selection_census(all_roots=True)` uses every public
+compiled root, including named roots. Public and boundary-local roots have separate `analyzed_roots` labels and each
+root example carries its composition area. `include_deferred=False` omits provider and per-call targets. The inventory
+still includes definitions with no recorded request in the selected view. Definitions inside a boundary remain private unless
+exposed through that boundary; an alias links back to its source declaration and does not imply another instance.
+
+```python
+from clean_ioc import ContainerBuilder
+
+
+class Gateway:
+    pass
+
+
+class DefaultGateway(Gateway):
+    pass
+
+
+class NamedGateway(Gateway):
+    pass
+
+
+class Checkout:
+    def __init__(self, gateway: Gateway, gateways: list[Gateway]):
+        pass
+
+
+builder = ContainerBuilder()
+builder.register(Gateway, DefaultGateway)
+builder.register(Gateway, NamedGateway, name="named")
+builder.register(Checkout)
+builder.mark_entrypoint(Checkout)
+report = builder.build().graph.selection_census()
+print(report.to_text())
+print(report.to_json())
+```
+
+Here the default is selected by one single-service dependency and included by one collection request. The named-only
+registration is rejected by the default-name filter in those two requests. An `all_roots=True` report separately counts
+root lookups for both registrations; it does not turn a root lookup into a dependency use. A marked collection root has
+its own `root_collection_inclusions` count. Deferred provider and per-call targets have their own use count and phase.
+Generated decorators link to both their source registration and template;
+template source-filter outcomes are declaration-wide composition evidence, independent of the root view. An open
+generic or structural pattern appears as one declaration even without a closed request. Closed selections report
+specializations under that source declaration; an unrequested pattern says “No recorded request.”
+
+Each summary has exact counts for the recorded successful view and at most eight example outcomes; `omitted_examples`
+states how many more examples were captured. `recorded_requests` counts observed decisions, not hypothetical requests.
+The compiler never reruns a predicate, derivation, key function, or template callback for this report. A failed build
+offers `error.selection_census()` with `complete=False`: selected, rejected, failed, and not-examined evidence from its
+primary attempt are shown in separate attempt counts, and selection totals are lower bounds. A missing selection
+record is unknown, not proof of rejection.
+
+The census answers where declarations participated in recorded compiler requests. Entry-point reachability warnings
+answer whether compiled nodes are reachable from marked roots. Runtime observation coverage answers what actually
+activated during observed executions. None of these reports proves that a registration is unused by the application
+or safe to remove. The census is informational and does not alter graph manifests or fingerprints.
+
 ## Use it from the command line
 
 Expose a builder, built scope, or zero-argument composition factory from an importable module:
@@ -302,6 +405,8 @@ clean-ioc check my_app.composition:application_container
 clean-ioc graph my_app.composition:application_builder --format mermaid
 clean-ioc graph my_app.composition:application_builder --format json -o dependency-graph.json
 clean-ioc ownership my_app.composition:application_builder --format json
+clean-ioc census my_app.composition:application_builder --format json
+clean-ioc census my_app.composition:application_builder --all --exclude-deferred
 clean-ioc diff my_app.composition:application_builder dependency-graph.json
 clean-ioc impact my_app.composition:application_builder my_app.ports:PaymentGateway
 clean-ioc impact my_app.composition:application_builder --path 'root:my_app.Checkout:default:0/dependency:gateway:0'
@@ -324,6 +429,8 @@ when a CI command should state the warning policy directly.
 
 `diff` exits `0` when the graph is unchanged and `1` when it changed. Add `--all` to `graph` or `diff` when the baseline should include every root rather than the entry-point view. Baselines are never updated implicitly.
 `ownership` emits the frozen all-roots ownership proof as text or JSON and does not activate components.
+`census` emits text or JSON and exits `0` even with zero selections. If the build fails, it emits the partial census and
+exits `1`; invalid input or output exits `2`.
 `impact`, `sharing`, and `activation` emit text, JSON, or Mermaid and exit `2` for invalid targets, paths, or ambiguous
 selectors. Impact analysis is informational; high fan-in does not fail a build.
 `explain` exits `0` for an explanation, `1` when the target does not build, and `2` for an invalid target, service,
@@ -342,3 +449,60 @@ Example CI policy:
 ```
 
 Update the checked-in manifest only after reviewing the corresponding composition change.
+
+## Profile one compilation
+
+Pass a fresh `CompilationProfiler` to either builder's `build()` method:
+
+```python
+from clean_ioc import CompilationProfiler
+
+profiler = CompilationProfiler(max_records=10_000)
+try:
+    container = application_builder().build(profile=profiler)
+finally:
+    print(profiler.report().to_text())
+```
+
+The report remains available when the build fails. It records one build, including blueprint preparation, alias and
+boundary preparation, decorator-template expansion, primary compilation, build-mode validation, and any diagnostic
+root retries. A used collector cannot be attached to another build. The builder can still be repaired after a failed
+build with a fresh collector. `to_json()` returns an unversioned, deterministic serialization of the captured report;
+durations vary between runs and never enter graph manifests or fingerprints.
+
+The CLI takes an unbuilt builder or a zero-argument factory returning one:
+
+```bash
+clean-ioc profile my_app.composition:application_builder --format text
+clean-ioc profile my_app.composition:application_builder --format json -o compilation-profile.json
+```
+
+It runs exactly one public build. A successful build exits `0`, a failed build emits its partial profile and exits `1`,
+and invalid targets, limits, or output paths exit `2`. Built containers and scopes cannot be profiled retroactively.
+The measured interval begins at `build()`; module import, builder-factory execution, prior registration work, and
+parent builds reused by an overlay are excluded. Registered activation factories, constructors, resolution, and
+validation-only rules are excluded too. Explicit argument derivations and decorator-template factories are composition
+callbacks and are included. For all rules, run `check` separately.
+
+Phase durations do not overlap. Nested span `inclusive_ns` includes child work; `self_ns` excludes it. The `other build
+work` phase includes finalization and runtime wrapper construction that has no separate top-level phase. Counters name
+their measured units: specialization requests are distinct from materializations, graph occurrences from returned
+candidate plan steps, and anchored parent plan reuse from fresh compilation. Factory specialization counts cover
+factory registrations specifically; other generic work appears in candidate timing and graph occurrences. A detailed-span limit does not stop phase
+timing or work counts. When records are omitted, the displayed hotspots describe retained samples only; omitted child
+time remains excluded from a retained parent's self time. Reports contain semantic class/function labels and no
+configured values, build-input names, arbitrary representations, or runtime IDs.
+Each retained declaration span has a recording-local `definition_ref`, so two declarations using the same implementation
+remain distinct in the costly-definition summary. These references are sequential and have no meaning across builds.
+
+A slow registration predicate appears as a `selection callback` span under its candidate's build phase. Its self time
+helps locate callback cost; the selection callback count shows how many times it ran, without rerunning it. A pattern
+that expands across many dependencies may show modest time per candidate but high `candidate compilation attempts`
+and `graph occurrences`. Inspect those counts alongside `factory specialization requests` and `materializations` to
+distinguish repeated lookups from new closed plans. Durations include profiler overhead and are diagnostic observations,
+not performance thresholds. Use repeated external measurements before deciding whether a change is faster.
+
+In a local smoke measurement on Python 3.14 (25 paired builds per shape), the median enabled/disabled build ratios were
+1.05× for 25 independent roots, 1.04× for a 20-level dependency chain, 1.01× for 25 closed generic registrations, and
+1.01× for 25 roots with selection predicates. These short runs are noisy and are not a production overhead guarantee;
+the disabled path was the current codebase, without a historical baseline comparison.

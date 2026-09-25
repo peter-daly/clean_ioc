@@ -411,6 +411,398 @@ class BuildReport:
         return self.to_text()
 
 
+@dataclass(frozen=True, slots=True)
+class FailureEvidence:
+    """Value-free facts captured at a compiler failure site.
+
+    ``identity`` is only used within the current build. It is deliberately
+    excluded from serialization: display labels are not safe grouping keys.
+    """
+
+    kind: str
+    requested_service: str
+    reason: str
+    boundary: str | None = None
+    layer: str | None = None
+    parameter: str | None = None
+    retaining_ancestor: str | None = None
+    offending_dependency: str | None = None
+    template: str | None = None
+    source_location: SourceLocation | None = None
+    cycle: tuple[str, ...] = ()
+    attempt_ref: str | None = None
+    witness: tuple[str, ...] = ()
+    witness_total: int = 0
+    witness_omitted: int = 0
+    identity: tuple[object, ...] = field(default=(), repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        total = self.witness_total or len(self.witness)
+        if len(self.witness) > 32:
+            omitted = len(self.witness) - 32
+            object.__setattr__(self, "witness", (*self.witness[:16], *self.witness[-16:]))
+            object.__setattr__(self, "witness_omitted", omitted)
+        object.__setattr__(self, "witness_total", total)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "kind": self.kind,
+            "requested_service": self.requested_service,
+            "reason": self.reason,
+            "boundary": self.boundary,
+            "layer": self.layer,
+            "parameter": self.parameter,
+            "retaining_ancestor": self.retaining_ancestor,
+            "offending_dependency": self.offending_dependency,
+            "template": self.template,
+            "source_location": None if self.source_location is None else self.source_location.to_dict(),
+            "cycle": list(self.cycle),
+            "attempt_ref": self.attempt_ref,
+            "witness": list(self.witness),
+            "witness_total": self.witness_total,
+            "witness_omitted": self.witness_omitted,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class TriageGroup:
+    """A conservative group of findings with the same captured mechanism."""
+
+    ref: str
+    reason: str
+    boundary: str | None
+    issue_refs: tuple[str, ...]
+    affected_roots: tuple[str, ...]
+    affected_root_count: int
+    affected_roots_omitted: int
+    affected_root_count_status: str
+    entry_points: tuple[str, ...]
+    entry_point_count: int
+    entry_points_omitted: int
+    entry_points_known: bool
+    entry_point_count_status: str
+    witnesses: tuple[tuple[str, ...], ...]
+    observed_witness_count: int
+    witness_paths_omitted: int
+    witness_segments_omitted: int
+    witness_count_status: str
+    attempt_refs: tuple[str, ...]
+    attempt_count: int
+    attempt_refs_omitted: int
+    provenance: tuple[SourceLocation, ...]
+    hint: str
+    severity: IssueSeverity
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "ref": self.ref,
+            "reason": self.reason,
+            "boundary": self.boundary,
+            "issue_refs": list(self.issue_refs),
+            "affected_roots": list(self.affected_roots),
+            "affected_root_count": self.affected_root_count,
+            "affected_roots_omitted": self.affected_roots_omitted,
+            "affected_root_count_status": self.affected_root_count_status,
+            "entry_points": list(self.entry_points),
+            "entry_point_count": self.entry_point_count,
+            "entry_points_omitted": self.entry_points_omitted,
+            "entry_points_known": self.entry_points_known,
+            "entry_point_count_status": self.entry_point_count_status,
+            "witnesses": [list(path) for path in self.witnesses],
+            "observed_witness_count": self.observed_witness_count,
+            "retained_witness_count": len(self.witnesses),
+            "witness_paths_omitted": self.witness_paths_omitted,
+            "witness_segments_omitted": self.witness_segments_omitted,
+            "witness_count_status": self.witness_count_status,
+            "attempt_refs": list(self.attempt_refs),
+            "attempt_count": self.attempt_count,
+            "attempt_refs_omitted": self.attempt_refs_omitted,
+            "provenance": [location.to_dict() for location in self.provenance],
+            "hint": self.hint,
+            "severity": self.severity.value,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class BuildTriage:
+    """Frozen summary of a build report; every finding remains addressable."""
+
+    report: BuildReport
+    groups: tuple[TriageGroup, ...]
+    ungrouped_issue_refs: tuple[str, ...]
+    evidence: tuple[FailureEvidence | None, ...]
+    attempt_count: int = 0
+    retained_attempt_count: int = 0
+    omitted_attempt_count: int = 0
+    incomplete: bool = False
+    inconsistent_retries: bool = False
+    partial_graph_truncated: bool = False
+    issue_boundaries: tuple[str | None, ...] | None = None
+
+    def _issue_boundary(self, index: int) -> tuple[str | None, bool]:
+        if self.issue_boundaries is not None:
+            return self.issue_boundaries[index], True
+        fact = self.evidence[index]
+        return (None, False) if fact is None else (fact.boundary, True)
+
+    def _affected_root_count(self) -> int:
+        return len(
+            {
+                (self._issue_boundary(index)[0], issue.root)
+                for index, issue in enumerate(self.report.issues)
+                if issue.root is not None
+            }
+        )
+
+    def _affected_root_count_status(self) -> str:
+        return (
+            "lower_bound"
+            if any(
+                issue.root is None or not self._issue_boundary(index)[1]
+                for index, issue in enumerate(self.report.issues)
+            )
+            else "exact_for_reported_issues"
+        )
+
+    @classmethod
+    def from_report(
+        cls,
+        report: BuildReport,
+        *,
+        evidence: Iterable[FailureEvidence | None] = (),
+        partial_graph: PartialGraph | None = None,
+        entry_points: Iterable[str | tuple[str | None, str]] | None = None,
+        issue_boundaries: Iterable[str | None] | None = None,
+    ) -> BuildTriage:
+        """Group supplied evidence without compiling or evaluating application code."""
+
+        captured = tuple(evidence)
+        if len(captured) > len(report.issues):
+            raise ValueError("More evidence records than report issues")
+        captured += (None,) * (len(report.issues) - len(captured))
+        captured_boundaries = None if issue_boundaries is None else tuple(issue_boundaries)
+        if captured_boundaries is not None and len(captured_boundaries) != len(report.issues):
+            raise ValueError("Issue boundary count does not match report issues")
+        known_entries = (
+            None
+            if entry_points is None
+            else frozenset((None, entry) if isinstance(entry, str) else entry for entry in entry_points)
+        )
+        buckets: dict[tuple[object, ...], list[int]] = {}
+        ungrouped: list[str] = []
+        for index, (issue, fact) in enumerate(zip(report.issues, captured)):
+            issue_ref = f"issue:{index + 1}"
+            if fact is None or not fact.identity or issue.severity is not IssueSeverity.error:
+                ungrouped.append(issue_ref)
+                continue
+            key = (issue.code, fact.kind, fact.boundary, fact.layer, fact.identity)
+            buckets.setdefault(key, []).append(index)
+        prepared: list[tuple[tuple[object, ...], TriageGroup]] = []
+        for key, indexes in buckets.items():
+            first = captured[indexes[0]]
+            if first is None:
+                raise ValueError("Group is missing its evidence")
+            roots = tuple(
+                dict.fromkeys(
+                    sorted(issue.root for index in indexes if (issue := report.issues[index]).root is not None)
+                )
+            )
+            witnesses_all = tuple(
+                dict.fromkeys(
+                    fact.witness or report.issues[index].path
+                    for index in indexes
+                    if (fact := captured[index]) is not None and (fact.witness or report.issues[index].path)
+                )
+            )
+            witnesses = witnesses_all[:8]
+            attempts = tuple(
+                dict.fromkeys(
+                    fact.attempt_ref
+                    for index in indexes
+                    if (fact := captured[index]) is not None and fact.attempt_ref is not None
+                )
+            )
+            provenance = tuple(
+                dict.fromkeys(
+                    fact.source_location
+                    for index in indexes
+                    if (fact := captured[index]) is not None and fact.source_location is not None
+                )
+            )[:8]
+            entries = (
+                ()
+                if known_entries is None
+                else tuple(root for root in roots if (first.boundary, root) in known_entries)
+            )
+            segments_omitted = sum(fact.witness_omitted for index in indexes if (fact := captured[index]) is not None)
+            reason = _triage_reason(first)
+            group = TriageGroup(
+                "",
+                reason,
+                first.boundary,
+                tuple(f"issue:{index + 1}" for index in indexes),
+                roots[:32],
+                len(roots),
+                max(0, len(roots) - 32),
+                "lower_bound"
+                if any(report.issues[index].root is None for index in indexes)
+                else "exact_for_grouped_issues",
+                entries[:32],
+                len(entries),
+                max(0, len(entries) - 32),
+                known_entries is not None,
+                "unknown" if known_entries is None else "exact_for_grouped_roots",
+                witnesses,
+                len(witnesses_all),
+                len(witnesses_all) - len(witnesses),
+                segments_omitted,
+                "lower_bound"
+                if segments_omitted or (partial_graph and partial_graph.truncated)
+                else "exact_for_captured_issues",
+                attempts[:16],
+                len(attempts),
+                max(0, len(attempts) - 16),
+                provenance,
+                _triage_hint(first),
+                report.issues[indexes[0]].severity,
+            )
+            prepared.append((key, group))
+        # The sort key contains only serialized, semantic labels; the private
+        # identity key never appears in an artifact or its report-local refs.
+        prepared.sort(
+            key=lambda item: (
+                0 if item[1].severity is IssueSeverity.error else 1,
+                -item[1].affected_root_count,
+                item[1].reason,
+                item[1].issue_refs[0],
+            )
+        )
+        groups = tuple(replace(group, ref=f"group:{index}") for index, (_, group) in enumerate(prepared, 1))
+        graph = partial_graph
+        return cls(
+            report,
+            groups,
+            tuple(ungrouped),
+            captured,
+            0 if graph is None else (graph.total_attempts or len(graph.attempts)),
+            0 if graph is None else (graph.retained_attempts or len(graph.attempts)),
+            0 if graph is None else graph.omitted_attempts,
+            any(item is None or item.witness_omitted for item in captured) or bool(graph and graph.truncated),
+            bool(graph and graph.inconsistent_retries),
+            bool(graph and graph.truncated),
+            captured_boundaries,
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "report": self.report.to_dict(),
+            "findings": [
+                {
+                    "ref": f"issue:{index + 1}",
+                    "issue": issue.to_dict(),
+                    "evidence": None if fact is None else fact.to_dict(),
+                    "boundary": self._issue_boundary(index)[0],
+                    "boundary_known": self._issue_boundary(index)[1],
+                }
+                for index, (issue, fact) in enumerate(zip(self.report.issues, self.evidence))
+            ],
+            "groups": [group.to_dict() for group in self.groups],
+            "ungrouped_issue_refs": list(self.ungrouped_issue_refs),
+            "issue_count": len(self.report.issues),
+            "issue_count_status": "exact",
+            "affected_root_count": self._affected_root_count(),
+            "affected_root_count_status": self._affected_root_count_status(),
+            "attempt_count": self.attempt_count,
+            "attempt_count_status": (
+                "unknown"
+                if self.attempt_count == 0 and self.retained_attempt_count == 0
+                else "lower_bound"
+                if self.omitted_attempt_count and self.attempt_count == self.retained_attempt_count
+                else "exact"
+            ),
+            "retained_attempt_count": self.retained_attempt_count,
+            "omitted_attempt_count": self.omitted_attempt_count,
+            "partial_graph_truncated": self.partial_graph_truncated,
+            "evidence_incomplete": self.incomplete,
+            "inconsistent_retries": self.inconsistent_retries,
+        }
+
+    def to_json(self, *, indent: int | None = 2) -> str:
+        return json.dumps(self.to_dict(), indent=indent, sort_keys=True)
+
+    def to_text(self, *, detailed: bool = False) -> str:
+        roots = self._affected_root_count()
+        root_prefix = "at least " if self._affected_root_count_status() == "lower_bound" else ""
+        lines = [
+            f"Build {'failed' if not self.report.is_valid else 'checked'}: "
+            f"{root_prefix}{roots} root failure{'s' if roots != 1 else ''}, {len(self.groups)} triage groups, "
+            f"{len(self.ungrouped_issue_refs)} ungrouped findings"
+        ]
+        if self.inconsistent_retries:
+            lines.append("Retry outcomes differed; attempts remain separate.")
+        if self.incomplete:
+            lines.append("Evidence is incomplete or truncated; witness counts can be lower bounds.")
+        for group in self.groups:
+            lines.append(f"\n{group.ref} {group.reason}")
+            lines.append(
+                f"  Observed in {group.affected_root_count} distinct roots "
+                f"({len(group.issue_refs)} findings, {group.attempt_count} attempts)"
+            )
+            if group.entry_points_known:
+                lines.append(f"  {group.entry_point_count} marked entry points affected")
+            if group.witnesses:
+                lines.append(f"  Example: {' -> '.join(group.witnesses[0])}")
+            if group.witness_count_status == "lower_bound":
+                lines.append(f"  At least {group.observed_witness_count} witness paths observed")
+            if group.provenance:
+                source = group.provenance[0]
+                lines.append(
+                    f"  Declared: {source.path or source.module or 'unknown'}"
+                    + (f":{source.line}" if source.line is not None else "")
+                )
+            lines.append(f"  Inspect: {group.hint}")
+            if detailed:
+                lines.append(f"  Members: {', '.join(group.issue_refs)}")
+                lines.append(
+                    f"  Attempts: {', '.join(group.attempt_refs) or 'unknown'}"
+                    + (f" (+{group.attempt_refs_omitted} omitted)" if group.attempt_refs_omitted else "")
+                )
+        for ref in self.ungrouped_issue_refs:
+            issue = self.report.issues[int(ref.split(":")[1]) - 1]
+            lines.append(f"\n{ref} {issue}")
+        return "\n".join(lines)
+
+
+def _triage_reason(fact: FailureEvidence) -> str:
+    if fact.kind == "missing":
+        return f"{fact.reason}: {fact.requested_service}" + (
+            f" in boundary {fact.boundary}" if fact.boundary else " at root"
+        )
+    if fact.kind == "captive":
+        return f"{fact.retaining_ancestor} retains {fact.offending_dependency}"
+    if fact.kind == "cycle":
+        return "Cycle: " + " -> ".join(fact.cycle)
+    if fact.kind == "generic":
+        return f"{fact.reason}: {fact.requested_service} from {fact.template}"
+    return f"{fact.reason}: {fact.requested_service}"
+
+
+def _triage_hint(fact: FailureEvidence) -> str:
+    if fact.kind == "missing":
+        if fact.reason == "invisible definition":
+            return "Expose and Use declarations for this boundary"
+        if fact.reason == "rejected candidates":
+            return "the named request, filter, and candidate declarations"
+        if fact.reason == "rejected scope slot":
+            return "the scope-slot declaration and request filter"
+        return "the service registration and its visibility"
+    if fact.kind == "captive":
+        return "lifespans along this retaining path"
+    if fact.kind == "cycle":
+        return "the directed dependency sequence"
+    return "this declaration and requested specialization"
+
+
 class PartialState(str, Enum):
     """What compilation established about a diagnostic graph item."""
 
@@ -481,6 +873,8 @@ class CompilationAttempt:
     succeeded: bool = False
     witness_total: int = 0
     witness_omitted: int = 0
+    # Diagnostic correlation only; existing partial-graph serialization stays stable.
+    boundary: str | None = field(default=None, repr=False)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -1176,8 +1570,11 @@ class CompiledGraph:
     _root_candidates: Mapping[Any, tuple[_CandidateRecord, ...]] = field(
         default_factory=lambda: MappingProxyType({}), compare=False, repr=False
     )
-    _known_root_selections: Mapping[tuple[Any, int], CompilationExplanation] = field(
+    _known_root_selections: Mapping[tuple[str | None, Any, int], CompilationExplanation] = field(
         default_factory=lambda: MappingProxyType({}), compare=False, repr=False
+    )
+    _census_root_selections: tuple[tuple[str | None, CompilationExplanation], ...] = field(
+        default=(), compare=False, repr=False
     )
     _occurrence_explanations: Mapping[int, CompilationExplanation] = field(
         default_factory=lambda: MappingProxyType({}), compare=False, repr=False
@@ -1195,9 +1592,19 @@ class CompiledGraph:
     _decorator_explanations: Mapping[int, CompilationExplanation] = field(
         default_factory=lambda: MappingProxyType({}), compare=False, repr=False
     )
+    _census_definitions: tuple[Any, ...] = field(default=(), compare=False, repr=False)
+    _census_sources: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}), compare=False, repr=False)
+    _census_ids: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}), compare=False, repr=False)
     _manifest_cache: dict[bool, GraphManifest] = field(default_factory=dict, compare=False, repr=False)
     _ownership_report_cache: list[OwnershipReport] = field(default_factory=list, compare=False, repr=False)
     _analysis_index_cache: Any | None = field(default=None, compare=False, repr=False)
+
+    def selection_census(self, *, all_roots: bool = False, include_deferred: bool = True):
+        """Summarize recorded declaration selections in the chosen compiled view."""
+
+        from .selection_census import selection_census
+
+        return selection_census(self, all_roots=all_roots, include_deferred=include_deferred)
 
     def ownership_report(self) -> OwnershipReport:
         """Return the immutable ownership proof compiled for every graph occurrence."""
@@ -1399,7 +1806,7 @@ class CompiledGraph:
                         )
                     )
         else:
-            known = self._known_root_selections.get((candidate_type, id(filter)))
+            known = self._known_root_selections.get((None, candidate_type, id(filter)))
             if known is None:
                 selector = getattr(filter, "__clean_ioc_selector__", None)
                 if isinstance(selector, tuple) and len(selector) == 2 and selector[0] == "name":
