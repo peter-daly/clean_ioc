@@ -121,8 +121,7 @@ class CompilationProfile:
         return tuple(
             sorted(
                 (
-                    CompilationHotspot(operation, definition, reference,
-                                       *totals[(operation, definition, reference)])
+                    CompilationHotspot(operation, definition, reference, *totals[(operation, definition, reference)])
                     for operation, definition, reference in totals
                 ),
                 key=lambda item: (-item.self_ns, item.operation, item.definition, item.definition_ref or ""),
@@ -189,8 +188,18 @@ class CompilationProfile:
 
 
 class _Frame:
-    __slots__ = ("sequence", "parent", "phase", "operation", "attempt", "definition",
-                 "definition_ref", "start", "child_ns", "retained")
+    __slots__ = (
+        "sequence",
+        "parent",
+        "phase",
+        "operation",
+        "attempt",
+        "definition",
+        "definition_ref",
+        "start",
+        "child_ns",
+        "retained",
+    )
 
     def __init__(
         self,
@@ -297,8 +306,7 @@ class CompilationProfiler:
                 if reference is None:
                     reference = f"definition:{len(self._definition_refs) + 1}"
                     self._definition_refs[definition_key] = reference
-            frame = _Frame(self._sequence, parent, phase, operation, attempt, definition,
-                           reference, start, retained)
+            frame = _Frame(self._sequence, parent, phase, operation, attempt, definition, reference, start, retained)
             self._stack.append(frame)
         except Exception:
             self._problem()

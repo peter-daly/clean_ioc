@@ -147,8 +147,11 @@ class ResolutionProfile:
             lines.append("Most frequent activations (exact counts):")
             lines.extend(f"  {record.path}: {record.attempts} attempts" for record in activations)
         requests = sorted(
-            (record for record in self.records if record.kind == "request" and
-             dict(record.durations)["request"].samples),
+            (
+                record
+                for record in self.records
+                if record.kind == "request" and dict(record.durations)["request"].samples
+            ),
             key=lambda record: (-dict(record.durations)["request"].maximum_ns, record.path),
         )[:5]
         if requests:
@@ -260,12 +263,17 @@ class ResolutionProfiler:
             if bound is not None and bound != binding_token:
                 raise ValueError("resolution profiler is already bound to a different runtime with this graph")
             if bound is not None:
-                existing_catalog = {path: detail for (graph, path), detail in self._catalog.items()
-                                    if graph == fingerprint}
-                existing_sharing = {path: reference for (graph, path), reference in self._sharing.items()
-                                    if graph == fingerprint}
-                if (existing_catalog != catalog or existing_sharing != sharing
-                        or self._ambiguous[fingerprint] != ambiguous):
+                existing_catalog = {
+                    path: detail for (graph, path), detail in self._catalog.items() if graph == fingerprint
+                }
+                existing_sharing = {
+                    path: reference for (graph, path), reference in self._sharing.items() if graph == fingerprint
+                }
+                if (
+                    existing_catalog != catalog
+                    or existing_sharing != sharing
+                    or self._ambiguous[fingerprint] != ambiguous
+                ):
                     raise ValueError("resolution profiler has conflicting catalogs for the same graph")
             for path, detail in catalog.items():
                 key = (fingerprint, path)

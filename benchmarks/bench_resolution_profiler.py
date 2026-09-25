@@ -70,15 +70,17 @@ def run() -> None:
     plain_provider = plain.resolve(Provider[Service])
     observed_provider = observed.resolve(Provider[Service])
     cases.append(("build", 100, lambda: build(False), lambda: build(True)))
-    cases.append(("cold transient resolve", 10_000, lambda: plain.resolve(Transient),
-                  lambda: observed.resolve(Transient)))
+    cases.append(
+        ("cold transient resolve", 10_000, lambda: plain.resolve(Transient), lambda: observed.resolve(Transient))
+    )
     cases.append(("cached singleton hit", 10_000, lambda: plain.resolve(Service), lambda: observed.resolve(Service)))
     plain_scope = plain.new_scope()
     observed_scope = observed.new_scope()
     plain_scope.resolve(Resource)
     observed_scope.resolve(Resource)
-    cases.append(("cached scoped hit", 10_000, lambda: plain_scope.resolve(Resource),
-                  lambda: observed_scope.resolve(Resource)))
+    cases.append(
+        ("cached scoped hit", 10_000, lambda: plain_scope.resolve(Resource), lambda: observed_scope.resolve(Resource))
+    )
     cases.append(("provider call", 10_000, plain_provider, observed_provider))
     cases.append(("new scope", 10_000, plain.new_scope, observed.new_scope))
 

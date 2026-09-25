@@ -160,8 +160,7 @@ def test_distinct_declarations_of_one_implementation_have_distinct_hotspots():
     builder.register(Service, name="PRIVATE-SECOND")
     profile = CompilationProfiler()
     builder.build(profile=profile)
-    hotspots = [item for item in profile.report().costly_definitions
-                if item.operation == "candidate compilation"]
+    hotspots = [item for item in profile.report().costly_definitions if item.operation == "candidate compilation"]
     assert len(hotspots) == 2
     assert len({item.definition_ref for item in hotspots}) == 2
     assert {item.definition for item in hotspots} == {hotspots[0].definition}
@@ -188,8 +187,11 @@ def test_alias_failure_and_post_template_check_are_alias_phase_work():
     )
     profile = CompilationProfiler()
     builder.build(profile=profile)
-    alias_spans = [span for span in profile.report().spans
-                   if span.phase == "alias and boundary preparation" and span.operation == "phase"]
+    alias_spans = [
+        span
+        for span in profile.report().spans
+        if span.phase == "alias and boundary preparation" and span.operation == "phase"
+    ]
     assert len(alias_spans) >= 4
 
 

@@ -125,11 +125,14 @@ def test_declared_resolution_context_request_has_graph_activation_owner_and_call
     container = builder.build(instrumentation=Instrumentation(profiler))
     assert isinstance(container.resolve(Root).shared, Shared)
     records = profiler.report().records
-    edge = next(record for record in records
-                if record.kind == "registration" and "dependency:resolution" in record.path)
+    edge = next(
+        record for record in records if record.kind == "registration" and "dependency:resolution" in record.path
+    )
     assert (edge.attempts, edge.cache_misses) == (1, 1)
-    assert not any(record.path == "<unresolved request>" and record.kind == "registration" and record.attempts
-                   for record in records)
+    assert not any(
+        record.path == "<unresolved request>" and record.kind == "registration" and record.attempts
+        for record in records
+    )
 
 
 def test_nested_factory_time_excludes_dependency_and_provider_calls():
@@ -238,12 +241,16 @@ def test_concurrent_parents_keep_cache_wait_on_actual_call_edge():
         return profiler.report()
 
     report = asyncio.run(exercise())
-    first_edge = next(record for record in report.records
-                      if record.kind == "registration" and "First:default" in record.path
-                      and "dependency:shared" in record.path)
-    second_edge = next(record for record in report.records
-                       if record.kind == "registration" and "Second:default" in record.path
-                       and "dependency:shared" in record.path)
+    first_edge = next(
+        record
+        for record in report.records
+        if record.kind == "registration" and "First:default" in record.path and "dependency:shared" in record.path
+    )
+    second_edge = next(
+        record
+        for record in report.records
+        if record.kind == "registration" and "Second:default" in record.path and "dependency:shared" in record.path
+    )
     assert (first_edge.cache_misses, first_edge.cache_waits) == (1, 0)
     assert (second_edge.cache_misses, second_edge.cache_waits) == (1, 1)
     assert sum(record.attempts for record in (first_edge, second_edge)) == 1
@@ -404,16 +411,31 @@ def test_overlay_first_activation_keeps_parent_owner_and_overlay_cache_edge():
     parent_graph = container.graph.manifest(all_roots=True).fingerprint
     overlay_graph = overlay.graph.manifest(all_roots=True).fingerprint
     records = profiler.report().records
-    assert any(record.graph_fingerprint == parent_graph and record.kind == "registration"
-               and "Service:default" in record.path and record.attempts == 1 for record in records)
-    assert any(record.graph_fingerprint == parent_graph and record.kind == "pre_configuration"
-               and record.attempts == 1 for record in records)
-    assert any(record.graph_fingerprint == overlay_graph and record.kind == "registration"
-               and "Service:default" in record.path and record.cache_misses == 1 for record in records)
-    assert any(record.graph_fingerprint == overlay_graph and record.kind == "pre_configuration"
-               and record.cache_misses == 1 for record in records)
-    assert not any(record.kind == "registration" and "Extra:default" in record.path and record.attempts
-                   for record in records)
+    assert any(
+        record.graph_fingerprint == parent_graph
+        and record.kind == "registration"
+        and "Service:default" in record.path
+        and record.attempts == 1
+        for record in records
+    )
+    assert any(
+        record.graph_fingerprint == parent_graph and record.kind == "pre_configuration" and record.attempts == 1
+        for record in records
+    )
+    assert any(
+        record.graph_fingerprint == overlay_graph
+        and record.kind == "registration"
+        and "Service:default" in record.path
+        and record.cache_misses == 1
+        for record in records
+    )
+    assert any(
+        record.graph_fingerprint == overlay_graph and record.kind == "pre_configuration" and record.cache_misses == 1
+        for record in records
+    )
+    assert not any(
+        record.kind == "registration" and "Extra:default" in record.path and record.attempts for record in records
+    )
 
 
 def test_named_registrations_and_closed_generic_have_separate_paths():
@@ -467,14 +489,17 @@ def test_shared_nested_cache_consumer_uses_exact_parent_occurrence():
     first = container.resolve(First)
     assert container.resolve(Second).shared is first.shared
     report = profiler.report()
-    assert not any(record.path.endswith("[cache caller unresolved]") and record.cache_hits
-                   for record in report.records)
-    first_edge = next(record for record in report.records
-                      if record.kind == "registration" and "First:default" in record.path
-                      and "dependency:shared" in record.path)
-    second_edge = next(record for record in report.records
-                       if record.kind == "registration" and "Second:default" in record.path
-                       and "dependency:shared" in record.path)
+    assert not any(record.path.endswith("[cache caller unresolved]") and record.cache_hits for record in report.records)
+    first_edge = next(
+        record
+        for record in report.records
+        if record.kind == "registration" and "First:default" in record.path and "dependency:shared" in record.path
+    )
+    second_edge = next(
+        record
+        for record in report.records
+        if record.kind == "registration" and "Second:default" in record.path and "dependency:shared" in record.path
+    )
     assert (first_edge.cache_misses, first_edge.cache_hits) == (1, 0)
     assert (second_edge.cache_misses, second_edge.cache_hits) == (0, 1)
     assert (
@@ -506,13 +531,19 @@ def test_collection_and_deferred_provider_cache_edges_keep_compiled_paths():
     assert len(holder.items) == 1
     assert holder.deferred() is holder.deferred()
     records = profiler.report().records
-    collection_edge = next(record for record in records
-                           if record.kind == "registration" and "dependency:items" in record.path
-                           and record.cache_misses)
-    provider_edge = next(record for record in records
-                         if record.kind == "registration" and "Holder:default" in record.path
-                         and "dependency:deferred" in record.path
-                         and record.cache_hits)
+    collection_edge = next(
+        record
+        for record in records
+        if record.kind == "registration" and "dependency:items" in record.path and record.cache_misses
+    )
+    provider_edge = next(
+        record
+        for record in records
+        if record.kind == "registration"
+        and "Holder:default" in record.path
+        and "dependency:deferred" in record.path
+        and record.cache_hits
+    )
     assert collection_edge.cache_misses == 1
     assert provider_edge.cache_hits == 2
     assert not any(record.path.endswith("[cache caller unresolved]") and record.cache_hits for record in records)
@@ -659,10 +690,13 @@ def test_per_call_profiles_di_work_but_excludes_service_method():
         for record in report.records
     )
     assert any(record.kind == "registration" and record.attempts == 2 for record in report.records)
-    assert any(record.kind == "registration" and "dependency:per_call_target" in record.path
-               and record.attempts == 2 for record in report.records)
-    assert not any(record.path.endswith("[cache caller unresolved]") and record.cache_misses
-                   for record in report.records)
+    assert any(
+        record.kind == "registration" and "dependency:per_call_target" in record.path and record.attempts == 2
+        for record in report.records
+    )
+    assert not any(
+        record.path.endswith("[cache caller unresolved]") and record.cache_misses for record in report.records
+    )
     assert "business result" not in report.to_json()
 
 
@@ -732,8 +766,9 @@ def test_sync_close_of_async_resource_balances_failed_cleanup_record():
     with pytest.raises(RuntimeError, match="Async finalizer requires async context management"):
         scope._close()
     cleanup = [record for record in profiler.report().records if record.kind == "cleanup" and record.attempts]
-    assert any((record.attempts, record.completed, record.failed, record.cancelled) == (1, 0, 1, 0)
-               for record in cleanup)
+    assert any(
+        (record.attempts, record.completed, record.failed, record.cancelled) == (1, 0, 1, 0) for record in cleanup
+    )
 
 
 def test_cancelled_async_activation_is_counted_and_can_retry():

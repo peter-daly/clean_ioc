@@ -177,8 +177,9 @@ def test_census_keeps_unspecialized_pattern_and_closed_selection_distinct():
     census = builder.build().graph.selection_census()
     pattern = next(item for item in census.definitions if item.definition.kind == "registration-pattern")
     assert pattern.dependency_requests == 1
-    assert pattern.closed_specializations == (f"{Repository.__module__}.{Repository.__qualname__}["
-                                               f"{Order.__module__}.{Order.__qualname__}]",)
+    assert pattern.closed_specializations == (
+        f"{Repository.__module__}.{Repository.__qualname__}[" f"{Order.__module__}.{Order.__qualname__}]",
+    )
 
     unused_builder = ContainerBuilder()
     unused_builder.register_pattern(Repository[item], factory=Repository)
@@ -276,6 +277,7 @@ def test_census_bounds_examples_without_truncating_counts():
     builder = ContainerBuilder()
     builder.register(Service)
     for index in range(12):
+
         def init(self, service: Service):
             pass
 

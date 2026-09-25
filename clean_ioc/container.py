@@ -949,37 +949,58 @@ def _census_inventory(blueprint: _Blueprint) -> tuple[tuple[DefinitionReference,
                     else registration.implementation
                 )
                 kind = (
-                    "registration-pattern" if registration.id in layer.pattern_ids else
-                    "provider-map" if registration.id in layer.provider_maps else
-                    "registration"
+                    "registration-pattern"
+                    if registration.id in layer.pattern_ids
+                    else "provider-map"
+                    if registration.id in layer.provider_maps
+                    else "registration"
                 )
                 add(
-                    registration.id, kind, registration.service_type, implementation, registration.name,
+                    registration.id,
+                    kind,
+                    registration.service_type,
+                    implementation,
+                    registration.name,
                     blueprint.registration_origin(registration.id, layer),
                     boundary=blueprint.registration_area(layer),
                 )
         for decorator in layer.decorators:
             add(
-                decorator.id, "decorator", decorator.service_type, decorator.decorator_type,
-                decorator.name, decorator.origin,
+                decorator.id,
+                "decorator",
+                decorator.service_type,
+                decorator.decorator_type,
+                decorator.name,
+                decorator.origin,
                 boundary=blueprint.registration_area(layer),
             )
         for configuration in layer.pre_configurations:
             add(
-                configuration.id, "pre-configuration",
+                configuration.id,
+                "pre-configuration",
                 configuration.service_types[0] if configuration.service_types else None,
-                configuration.configuration_fn, None, configuration.origin,
+                configuration.configuration_fn,
+                None,
+                configuration.origin,
                 boundary=blueprint.registration_area(layer),
             )
         for template in layer.decorator_templates:
             add(
-                template.id, "decorator-template", template.for_each, None, None, template.origin,
+                template.id,
+                "decorator-template",
+                template.for_each,
+                None,
+                None,
+                template.origin,
                 boundary=blueprint.registration_area(layer),
             )
     for generated in blueprint.generated_decorators:
         add(
-            generated.id, "generated-decorator", generated.specification.services,
-            generated.specification.decorator_type, generated.specification.name,
+            generated.id,
+            "generated-decorator",
+            generated.specification.services,
+            generated.specification.decorator_type,
+            generated.specification.name,
             generated.declaration.origin,
             source=references.get(generated.source.id),
             template=references.get(generated.declaration.id),
@@ -997,8 +1018,13 @@ def _census_inventory(blueprint: _Blueprint) -> tuple[tuple[DefinitionReference,
                 continue
             source_origin = blueprint.registration_origin(target.registration_id, origin[1])
             add(
-                f"boundary-alias:{boundary.name}:{index}", "boundary-alias", target.service_type,
-                None, target.name, source_origin, source=source,
+                f"boundary-alias:{boundary.name}:{index}",
+                "boundary-alias",
+                target.service_type,
+                None,
+                target.name,
+                source_origin,
+                source=source,
                 boundary=boundary.name,
             )
     return tuple(definitions), types.MappingProxyType(dict(references))
@@ -2839,14 +2865,18 @@ def _per_call_proxy_type(service_type: Any, methods: tuple[tuple[str, Callable[.
                     )
                 async with invocation:
                     invocation._resolution_started = True
-                    context = (_ObservedPerCallResolutionContext(invocation) if observed
-                               else _PerCallResolutionContext(invocation))
+                    context = (
+                        _ObservedPerCallResolutionContext(invocation)
+                        if observed
+                        else _PerCallResolutionContext(invocation)
+                    )
                     try:
                         if observed:
                             target_key = _profile_key(self._per_call_target)
                             request_key = (target_key[0], "per-call request " + target_key[1])
                             target = await _observed_call_async(
-                                owner._profiler, request_key,
+                                owner._profiler,
+                                request_key,
                                 lambda: self._per_call_target.resolve_async(context),
                             )
                         else:
@@ -2872,14 +2902,18 @@ def _per_call_proxy_type(service_type: Any, methods: tuple[tuple[str, Callable[.
                     )
                 with invocation:
                     invocation._resolution_started = True
-                    context = (_ObservedPerCallResolutionContext(invocation) if observed
-                               else _PerCallResolutionContext(invocation))
+                    context = (
+                        _ObservedPerCallResolutionContext(invocation)
+                        if observed
+                        else _PerCallResolutionContext(invocation)
+                    )
                     try:
                         if observed:
                             target_key = _profile_key(self._per_call_target)
                             request_key = (target_key[0], "per-call request " + target_key[1])
-                            target = _observed_call(owner._profiler, request_key,
-                                                    lambda: self._per_call_target.resolve(context))
+                            target = _observed_call(
+                                owner._profiler, request_key, lambda: self._per_call_target.resolve(context)
+                            )
                         else:
                             target = self._per_call_target.resolve(context)
                         result = getattr(target, name)(*args, **kwargs)
@@ -3891,9 +3925,7 @@ def _cache_profile_key(step: _RegistrationStep, context: _RuntimeResolutionConte
     if caller is not None and caller[0] == id(step):
         return caller[1]
     owner_key = _profile_key(step)
-    if step.registration.id in context.scope._profiler._ambiguous.get(
-        context.scope._profile_fingerprint, frozenset()
-    ):
+    if step.registration.id in context.scope._profiler._ambiguous.get(context.scope._profile_fingerprint, frozenset()):
         return owner_key[0], owner_key[1] + " [cache caller unresolved]"
     return owner_key
 
@@ -3913,15 +3945,18 @@ class _ObservedRegistrationMixin:
             start = profiler._safe_clock()
             values = (
                 {dependency.name: dependency.step.resolve(context) for dependency in step.dependencies}
-                if step.dependencies else _EMPTY_DEPENDENCIES
+                if step.dependencies
+                else _EMPTY_DEPENDENCIES
             )
             profiler._safe_duration(key, "dependencies", start)
             start = profiler._safe_clock()
             token = _FINALIZER_PROFILE_KEY.set(key)
             try:
                 instance = step.registration.activator_class.activate(
-                    step.registration.implementation, values,
-                    cast(Any, _ActivationContext(context, step.cleanup_owner)), step.registration.lifespan,
+                    step.registration.implementation,
+                    values,
+                    cast(Any, _ActivationContext(context, step.cleanup_owner)),
+                    step.registration.lifespan,
                 )
             finally:
                 _FINALIZER_PROFILE_KEY.reset(token)
@@ -3952,15 +3987,18 @@ class _ObservedRegistrationMixin:
             start = profiler._safe_clock()
             values = (
                 {dependency.name: await dependency.step.resolve_async(context) for dependency in step.dependencies}
-                if step.dependencies else _EMPTY_DEPENDENCIES
+                if step.dependencies
+                else _EMPTY_DEPENDENCIES
             )
             profiler._safe_duration(key, "dependencies", start)
             start = profiler._safe_clock()
             token = _FINALIZER_PROFILE_KEY.set(key)
             try:
                 instance = await step.registration.activator_class.activate_async(
-                    step.registration.implementation, values,
-                    cast(Any, _ActivationContext(context, step.cleanup_owner)), step.registration.lifespan,
+                    step.registration.implementation,
+                    values,
+                    cast(Any, _ActivationContext(context, step.cleanup_owner)),
+                    step.registration.lifespan,
                 )
             finally:
                 _FINALIZER_PROFILE_KEY.reset(token)
@@ -5131,8 +5169,13 @@ class _Compiler:
             registration = self._specialize_factory(source, layer, requested_service_type)
         else:
             registration = self._profile.call(
-                self._profile_phase, "factory specialization", self._specialize_factory,
-                source, layer, requested_service_type, attempt=self._profile_attempt,
+                self._profile_phase,
+                "factory specialization",
+                self._specialize_factory,
+                source,
+                layer,
+                requested_service_type,
+                attempt=self._profile_attempt,
                 definition=safe_definition(source.implementation),
             )
         component, _ = self._compile_registration(
@@ -5158,8 +5201,7 @@ class _Compiler:
         if self._profile is None:
             self.graph.freeze()
         else:
-            self._profile.call(self._profile_phase, "graph freezing", self.graph.freeze,
-                               attempt=self._profile_attempt)
+            self._profile.call(self._profile_phase, "graph freezing", self.graph.freeze, attempt=self._profile_attempt)
         return component
 
     def compile(
@@ -5315,8 +5357,7 @@ class _Compiler:
         if self._profile is None:
             self.graph.freeze()
         else:
-            self._profile.call(self._profile_phase, "graph freezing", self.graph.freeze,
-                               attempt=self._profile_attempt)
+            self._profile.call(self._profile_phase, "graph freezing", self.graph.freeze, attempt=self._profile_attempt)
         default_root_groups = {
             service_type: tuple(plan for plan in plans if plan.component.name is None)
             for service_type, plans in roots.items()
@@ -5348,10 +5389,12 @@ class _Compiler:
             area_root_candidates=types.MappingProxyType(
                 {name: types.MappingProxyType(records) for name, records in area_records.items()}
             ),
-            census_sources=types.MappingProxyType({
-                **{key: value.id for key, value in self._specialized_registration_sources.items()},
-                **self._pattern_sources,
-            }),
+            census_sources=types.MappingProxyType(
+                {
+                    **{key: value.id for key, value in self._specialized_registration_sources.items()},
+                    **self._pattern_sources,
+                }
+            ),
         )
 
     def _provider_root_component(
@@ -5877,8 +5920,12 @@ class _Compiler:
                     registration = self._specialize_factory(source_registration, layer, source_service_type)
                 else:
                     registration = self._profile.call(
-                        self._profile_phase, "factory specialization", self._specialize_factory,
-                        source_registration, layer, source_service_type,
+                        self._profile_phase,
+                        "factory specialization",
+                        self._specialize_factory,
+                        source_registration,
+                        layer,
+                        source_service_type,
                         attempt=self._profile_attempt,
                         definition=safe_definition(source_registration.implementation),
                     )
@@ -5964,16 +6011,27 @@ class _Compiler:
                 self._area = definition_area
                 if self._profile is None:
                     component, step = self._compile_registration(
-                        registration, layer, parent=candidate_parent, argument=argument,
-                        requested_service_type=source_service_type, origin=origin,
+                        registration,
+                        layer,
+                        parent=candidate_parent,
+                        argument=argument,
+                        requested_service_type=source_service_type,
+                        origin=origin,
                     )
                 else:
                     self._profile.count("candidate compilation attempts")
                     component, step = self._profile.call(
-                        self._profile_phase, "candidate compilation", self._compile_registration,
-                        registration, layer, parent=candidate_parent, argument=argument,
-                        requested_service_type=source_service_type, origin=origin,
-                        attempt=self._profile_attempt, definition=safe_definition(registration.implementation),
+                        self._profile_phase,
+                        "candidate compilation",
+                        self._compile_registration,
+                        registration,
+                        layer,
+                        parent=candidate_parent,
+                        argument=argument,
+                        requested_service_type=source_service_type,
+                        origin=origin,
+                        attempt=self._profile_attempt,
+                        definition=safe_definition(registration.implementation),
                         definition_key=source_registration.id,
                     )
                     self._profile.count("candidate plan steps returned")
@@ -6042,8 +6100,12 @@ class _Compiler:
                 else:
                     self._profile.count("registration selection callback calls")
                     registration_matches = self._profile.call(
-                        self._profile_phase, "selection callback", predicate, component,
-                        attempt=self._profile_attempt, definition=safe_definition(predicate),
+                        self._profile_phase,
+                        "selection callback",
+                        predicate,
+                        component,
+                        attempt=self._profile_attempt,
+                        definition=safe_definition(predicate),
                     )
             except Exception as error:
                 self._record_partial_candidate(
@@ -6177,8 +6239,12 @@ class _Compiler:
                 else:
                     self._profile.count("registration selection callback calls")
                     matched = self._profile.call(
-                        self._profile_phase, "selection callback", filter, candidate.component,
-                        attempt=self._profile_attempt, definition=safe_definition(filter),
+                        self._profile_phase,
+                        "selection callback",
+                        filter,
+                        candidate.component,
+                        attempt=self._profile_attempt,
+                        definition=safe_definition(filter),
                     )
             except Exception as error:
                 self._partial_candidate_labels[candidate.component.id] = qualified_name(
@@ -6828,8 +6894,12 @@ class _Compiler:
             else:
                 self._profile.count("parameter processing attempts")
                 step, child = self._profile.call(
-                    self._profile_phase, "parameter processing", self._compile_dependency,
-                    dependency, parent, attempt=self._profile_attempt,
+                    self._profile_phase,
+                    "parameter processing",
+                    self._compile_dependency,
+                    dependency,
+                    parent,
+                    attempt=self._profile_attempt,
                     definition=safe_definition(parent.implementation),
                 )
             if edge_index is not None:
@@ -7273,8 +7343,12 @@ class _Compiler:
                 else:
                     self._profile.count("derivation callback calls")
                     value = self._profile.call(
-                        self._profile_phase, "derivation callback", policy.function, context,
-                        attempt=self._profile_attempt, definition=safe_definition(policy.function),
+                        self._profile_phase,
+                        "derivation callback",
+                        policy.function,
+                        context,
+                        attempt=self._profile_attempt,
+                        definition=safe_definition(policy.function),
                     )
             except Exception as error:
                 detail = type(error).__name__
@@ -8303,9 +8377,13 @@ def _run_validation_rules(
             issues.extend(_validation_rule_issues(definition.rule, context))
         else:
             profile.count("build validation rule calls")
-            profile.call("final validation", "validation rule", issues.extend,
-                         _validation_rule_issues(definition.rule, context),
-                         definition=safe_definition(definition.rule))
+            profile.call(
+                "final validation",
+                "validation rule",
+                issues.extend,
+                _validation_rule_issues(definition.rule, context),
+                definition=safe_definition(definition.rule),
+            )
     return tuple(issues)
 
 
@@ -8376,9 +8454,16 @@ def _error_report(
                     compiler.compile((service_type,), area=area, include_boundaries=False)
                 else:
                     profile.count("diagnostic root attempts")
-                    profile.call("diagnostic root retries", "diagnostic root", compiler.compile,
-                                 (service_type,), area=area, include_boundaries=False,
-                                 attempt=f"retry:{total_attempts}", definition=safe_definition(service_type))
+                    profile.call(
+                        "diagnostic root retries",
+                        "diagnostic root",
+                        compiler.compile,
+                        (service_type,),
+                        area=area,
+                        include_boundaries=False,
+                        attempt=f"retry:{total_attempts}",
+                        definition=safe_definition(service_type),
+                    )
                 if len(attempts) < attempt_limit:
                     attempts.append(compiler.partial_success_attempt(root=qualified_name(service_type)))
             except Exception as error:
@@ -8779,8 +8864,12 @@ def _finalize_plan(plan: _PlanSet, profile: CompilationProfiler | None = None) -
         )
     else:
         build_rule_issues = profile.call(
-            "final validation", "phase", _run_validation_rules, compiled_graph,
-            (definition for definition in plan.blueprint.validation_rules if definition.mode == "build"), profile,
+            "final validation",
+            "phase",
+            _run_validation_rules,
+            compiled_graph,
+            (definition for definition in plan.blueprint.validation_rules if definition.mode == "build"),
+            profile,
         )
 
     deduplicated = tuple(dict.fromkeys((*built_in_issues, *build_rule_issues)))
@@ -8961,20 +9050,30 @@ def _expand_decorator_templates(
                         core = source_compiler._compile_source_core(registration.id, registration.service_type)
                     else:
                         profile.count("template source inspections")
-                        core = profile.call("decorator-template expansion", "template source inspection",
-                                            source_compiler._compile_source_core,
-                                            registration.id, registration.service_type,
-                                            attempt="template source inspection",
-                                            definition=safe_definition(registration.implementation))
+                        core = profile.call(
+                            "decorator-template expansion",
+                            "template source inspection",
+                            source_compiler._compile_source_core,
+                            registration.id,
+                            registration.service_type,
+                            attempt="template source inspection",
+                            definition=safe_definition(registration.implementation),
+                        )
                     phase = "source filter"
                     if profile is None:
                         selected = bool(definition.source_filter(core))
                     else:
                         profile.count("template source filter calls")
-                        selected = bool(profile.call("decorator-template expansion", "template source filter",
-                                                     definition.source_filter, core,
-                                                     attempt="template source inspection",
-                                                     definition=safe_definition(definition.source_filter)))
+                        selected = bool(
+                            profile.call(
+                                "decorator-template expansion",
+                                "template source filter",
+                                definition.source_filter,
+                                core,
+                                attempt="template source inspection",
+                                definition=safe_definition(definition.source_filter),
+                            )
+                        )
                     phase = "source metadata"
                     source = _source_registration_info(registration, layer)
                     source_bindings = _source_binding_labels(source)
@@ -8985,10 +9084,14 @@ def _expand_decorator_templates(
                             specification = definition.template(source)
                         else:
                             profile.count("template factory calls")
-                            specification = profile.call("decorator-template expansion", "template factory",
-                                                         definition.template, source,
-                                                         attempt="template source inspection",
-                                                         definition=safe_definition(definition.template))
+                            specification = profile.call(
+                                "decorator-template expansion",
+                                "template factory",
+                                definition.template,
+                                source,
+                                attempt="template source inspection",
+                                definition=safe_definition(definition.template),
+                            )
                         if not isinstance(specification, DecoratorTemplate):
                             if inspect.iscoroutine(specification):
                                 specification.close()
@@ -9156,8 +9259,11 @@ def _compile_with_report(
         compilation_inputs["anchored_singleton_steps"] = anchored_singleton_steps
     if anchored_pre_configuration_steps is not None:
         compilation_inputs["anchored_pre_configuration_steps"] = anchored_pre_configuration_steps
-    alias_errors = (_blueprint_alias_errors(blueprint) if profile is None else
-                    profile.call("alias and boundary preparation", "phase", _blueprint_alias_errors, blueprint))
+    alias_errors = (
+        _blueprint_alias_errors(blueprint)
+        if profile is None
+        else profile.call("alias and boundary preparation", "phase", _blueprint_alias_errors, blueprint)
+    )
     entry_points = _declared_entry_point_labels(blueprint)
     if alias_errors:
         report = _alias_error_report(alias_errors)
@@ -9178,36 +9284,56 @@ def _compile_with_report(
                 blueprint, build_args=build_args, compilation_inputs=compilation_inputs
             )
         else:
-            blueprint = profile.call("alias and boundary preparation", "phase", _normalize_blueprint_aliases,
-                                     blueprint)
-            blueprint = profile.call("alias and boundary preparation", "phase", _prepare_boundary_visibility,
-                                     blueprint, build_args=build_args, compilation_inputs=compilation_inputs)
+            blueprint = profile.call("alias and boundary preparation", "phase", _normalize_blueprint_aliases, blueprint)
+            blueprint = profile.call(
+                "alias and boundary preparation",
+                "phase",
+                _prepare_boundary_visibility,
+                blueprint,
+                build_args=build_args,
+                compilation_inputs=compilation_inputs,
+            )
         if profile is None:
             expansion = _expand_decorator_templates(
-                blueprint, build_args=build_args, anchored_singleton_steps=anchored_singleton_steps,
+                blueprint,
+                build_args=build_args,
+                anchored_singleton_steps=anchored_singleton_steps,
                 anchored_pre_configuration_steps=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
             )
         else:
-            expansion = profile.call("decorator-template expansion", "phase", _expand_decorator_templates,
-                                     blueprint, build_args=build_args,
-                                     anchored_singleton_steps=anchored_singleton_steps,
-                                     anchored_pre_configuration_steps=anchored_pre_configuration_steps,
-                                     anchored_owner_tokens=anchored_owner_tokens,
-                                     inherited_graph_sidecars=inherited_graph_sidecars, profile=profile)
+            expansion = profile.call(
+                "decorator-template expansion",
+                "phase",
+                _expand_decorator_templates,
+                blueprint,
+                build_args=build_args,
+                anchored_singleton_steps=anchored_singleton_steps,
+                anchored_pre_configuration_steps=anchored_pre_configuration_steps,
+                anchored_owner_tokens=anchored_owner_tokens,
+                inherited_graph_sidecars=inherited_graph_sidecars,
+                profile=profile,
+            )
         expanded = replace(
             blueprint, generated_decorators=expansion.candidates, template_selections=expansion.selections
         )
         if expansion.candidates:
+
             def check_expanded() -> _Blueprint:
                 return _check_template_boundary_visibility(
-                    blueprint, _normalize_blueprint_aliases(expanded), build_args=build_args,
-                    candidates=expansion.candidates, compilation_inputs=compilation_inputs,
+                    blueprint,
+                    _normalize_blueprint_aliases(expanded),
+                    build_args=build_args,
+                    candidates=expansion.candidates,
+                    compilation_inputs=compilation_inputs,
                 )
 
-            blueprint = (check_expanded() if profile is None else
-                         profile.call("alias and boundary preparation", "phase", check_expanded))
+            blueprint = (
+                check_expanded()
+                if profile is None
+                else profile.call("alias and boundary preparation", "phase", check_expanded)
+            )
         else:
             blueprint = expanded
     except TypeAliasNormalizationError as error:
@@ -9251,8 +9377,11 @@ def _compile_with_report(
     )
     census_definitions, census_ids = _census_inventory(blueprint)
     try:
-        compiled = (compiler.compile() if profile is None else
-                    profile.call("primary compilation", "phase", compiler.compile, attempt="primary"))
+        compiled = (
+            compiler.compile()
+            if profile is None
+            else profile.call("primary compilation", "phase", compiler.compile, attempt="primary")
+        )
         plan = replace(compiled, census_definitions=census_definitions, census_ids=census_ids)
         return plan if preview else _finalize_plan(plan, profile)
     except ContainerBuildError as error:
@@ -9265,25 +9394,33 @@ def _compile_with_report(
                 evidence=error.evidence,
                 census_definitions=census_definitions,
                 census_ids=census_ids,
-                census_sources=types.MappingProxyType({
-                    **{key: value.id for key, value in compiler._specialized_registration_sources.items()},
-                    **compiler._pattern_sources,
-                }),
+                census_sources=types.MappingProxyType(
+                    {
+                        **{key: value.id for key, value in compiler._specialized_registration_sources.items()},
+                        **compiler._pattern_sources,
+                    }
+                ),
                 census_attempts=tuple(compiler._partial_candidates),
             ) from error
+
         def retry(original: BaseException = error):
             return _error_report(
-                blueprint, original, build_args=build_args,
+                blueprint,
+                original,
+                build_args=build_args,
                 anchored_singleton_steps=anchored_singleton_steps,
                 anchored_pre_configuration_steps=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
-                inherited_graph_sidecars=inherited_graph_sidecars, profile=profile,
+                inherited_graph_sidecars=inherited_graph_sidecars,
+                profile=profile,
             )
+
         if profile is None:
             report, retries, retry_counts, evidence, issue_boundaries = retry()
         else:
             report, retries, retry_counts, evidence, issue_boundaries = profile.call(
-                "diagnostic root retries", "phase", retry)
+                "diagnostic root retries", "phase", retry
+            )
         primary_attempt = compiler.partial_attempt(error)
         raise ContainerBuildError(
             report=report,
@@ -9304,26 +9441,34 @@ def _compile_with_report(
             ),
             census_definitions=census_definitions,
             census_ids=census_ids,
-            census_sources=types.MappingProxyType({
-                **{key: value.id for key, value in compiler._specialized_registration_sources.items()},
-                **compiler._pattern_sources,
-            }),
+            census_sources=types.MappingProxyType(
+                {
+                    **{key: value.id for key, value in compiler._specialized_registration_sources.items()},
+                    **compiler._pattern_sources,
+                }
+            ),
             census_attempts=tuple(compiler._partial_candidates),
         ) from error
     except Exception as error:
+
         def retry(original: BaseException = error):
             return _error_report(
-                blueprint, original, build_args=build_args,
+                blueprint,
+                original,
+                build_args=build_args,
                 anchored_singleton_steps=anchored_singleton_steps,
                 anchored_pre_configuration_steps=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
-                inherited_graph_sidecars=inherited_graph_sidecars, profile=profile,
+                inherited_graph_sidecars=inherited_graph_sidecars,
+                profile=profile,
             )
+
         if profile is None:
             report, retries, retry_counts, evidence, issue_boundaries = retry()
         else:
             report, retries, retry_counts, evidence, issue_boundaries = profile.call(
-                "diagnostic root retries", "phase", retry)
+                "diagnostic root retries", "phase", retry
+            )
         primary_attempt = compiler.partial_attempt(error)
         raise ContainerBuildError(
             report=report,
@@ -9344,10 +9489,12 @@ def _compile_with_report(
             ),
             census_definitions=census_definitions,
             census_ids=census_ids,
-            census_sources=types.MappingProxyType({
-                **{key: value.id for key, value in compiler._specialized_registration_sources.items()},
-                **compiler._pattern_sources,
-            }),
+            census_sources=types.MappingProxyType(
+                {
+                    **{key: value.id for key, value in compiler._specialized_registration_sources.items()},
+                    **compiler._pattern_sources,
+                }
+            ),
             census_attempts=tuple(compiler._partial_candidates),
         ) from error
 
@@ -9510,8 +9657,11 @@ class _ObservedResolutionContext(_RuntimeResolutionContext):
         profiler = self.scope._profiler
         key = _FINALIZER_PROFILE_KEY.get()
         if key is None:
-            key = (_profile_key(self.registration_stack[-1]) if self.registration_stack else
-                   (self.scope._profile_fingerprint, "<owner cleanup>"))
+            key = (
+                _profile_key(self.registration_stack[-1])
+                if self.registration_stack
+                else (self.scope._profile_fingerprint, "<owner cleanup>")
+            )
         cleanup_key = (key[0], key[1] + " [cleanup]")
 
         def wrapped() -> Any:
@@ -9973,8 +10123,9 @@ class _ObservedScopeMixin:
     _request_labels: dict[Any, str]
     _profile_paths: dict[int, str]
 
-    def _install_observation(self, profiler: ResolutionProfiler, fingerprint: str, labels: dict[Any, str],
-                             paths: dict[int, str]) -> None:
+    def _install_observation(
+        self, profiler: ResolutionProfiler, fingerprint: str, labels: dict[Any, str], paths: dict[int, str]
+    ) -> None:
         self._profiler = profiler
         self._profile_fingerprint = fingerprint
         self._request_labels = labels
@@ -9989,9 +10140,7 @@ class _ObservedScopeMixin:
         if label is None:
             collection = _collection_request(service_type)
             if collection is not None:
-                label = self._request_labels.get(
-                    (get_origin(service_type), normalize_type_alias(collection[1]))
-                )
+                label = self._request_labels.get((get_origin(service_type), normalize_type_alias(collection[1])))
         return self._profile_fingerprint, label or "<unresolved request>"
 
     def resolve(self, service_type: TypeForm[TService], filter: ComponentFilter = default_component_filter) -> TService:
@@ -10007,8 +10156,9 @@ class _ObservedScopeMixin:
 
         return cast(TService, _observed_call(self._profiler, key, call))
 
-    async def resolve_async(self, service_type: TypeForm[TService],
-                            filter: ComponentFilter = default_component_filter) -> TService:
+    async def resolve_async(
+        self, service_type: TypeForm[TService], filter: ComponentFilter = default_component_filter
+    ) -> TService:
         scope = cast(Scope, self)
         key = self._request_key(service_type)
 
@@ -10024,10 +10174,8 @@ class _ObservedScopeMixin:
     def new_scope(self) -> Scope:
         scope = cast(Scope, self)
         scope._ensure_open()
-        child = _ObservedScope(scope._plan, container=scope.container, parent=scope,
-                               owners=scope._owners)
-        child._install_observation(self._profiler, self._profile_fingerprint, self._request_labels,
-                                   self._profile_paths)
+        child = _ObservedScope(scope._plan, container=scope.container, parent=scope, owners=scope._owners)
+        child._install_observation(self._profiler, self._profile_fingerprint, self._request_labels, self._profile_paths)
         return child
 
     def _close(self) -> None:
@@ -10091,8 +10239,10 @@ class _ObservedDecorator(_CompiledDecorator):
             token = _FINALIZER_PROFILE_KEY.set(key)
             try:
                 result = self.source.activator_class.activate(
-                    self.source.implementation, dependencies,
-                    cast(Any, _ActivationContext(context, self.cleanup_owner)), lifespan,
+                    self.source.implementation,
+                    dependencies,
+                    cast(Any, _ActivationContext(context, self.cleanup_owner)),
+                    lifespan,
                 )
             finally:
                 _FINALIZER_PROFILE_KEY.reset(token)
@@ -10103,8 +10253,7 @@ class _ObservedDecorator(_CompiledDecorator):
             profiler._safe_record(key, "cancelled" if isinstance(error, asyncio.CancelledError) else "failed")
             raise
 
-    async def decorate_async(self, value: Any, context: _RuntimeResolutionContext,
-                             lifespan: legacy.Lifespan) -> Any:
+    async def decorate_async(self, value: Any, context: _RuntimeResolutionContext, lifespan: legacy.Lifespan) -> Any:
         profiler = context.scope._profiler
         key = _profile_key(self)
         profiler._safe_record(key, "attempts")
@@ -10117,8 +10266,10 @@ class _ObservedDecorator(_CompiledDecorator):
             token = _FINALIZER_PROFILE_KEY.set(key)
             try:
                 result = await self.source.activator_class.activate_async(
-                    self.source.implementation, dependencies,
-                    cast(Any, _ActivationContext(context, self.cleanup_owner)), lifespan,
+                    self.source.implementation,
+                    dependencies,
+                    cast(Any, _ActivationContext(context, self.cleanup_owner)),
+                    lifespan,
                 )
             finally:
                 _FINALIZER_PROFILE_KEY.reset(token)
@@ -10165,8 +10316,11 @@ class _ObservedPreConfiguration(_CompiledPreConfiguration):
         profiler._safe_record(key, "attempts")
         try:
             start = profiler._safe_clock()
-            values = ({dependency.name: dependency.step.resolve(context) for dependency in self.dependencies}
-                      if self.dependencies else _EMPTY_DEPENDENCIES)
+            values = (
+                {dependency.name: dependency.step.resolve(context) for dependency in self.dependencies}
+                if self.dependencies
+                else _EMPTY_DEPENDENCIES
+            )
             profiler._safe_duration(key, "dependencies", start)
         except BaseException as error:
             self.state.finish(future, error=error)
@@ -10176,8 +10330,10 @@ class _ObservedPreConfiguration(_CompiledPreConfiguration):
         token = _FINALIZER_PROFILE_KEY.set(key)
         try:
             self.activator_class.activate(
-                self.definition.configuration_fn, values,
-                cast(Any, _ActivationContext(context, self.cleanup_owner)), legacy.Lifespan.singleton,
+                self.definition.configuration_fn,
+                values,
+                cast(Any, _ActivationContext(context, self.cleanup_owner)),
+                legacy.Lifespan.singleton,
             )
         except Exception as error:
             profiler._safe_record(key, "failed")
@@ -10219,8 +10375,11 @@ class _ObservedPreConfiguration(_CompiledPreConfiguration):
         profiler._safe_record(key, "attempts")
         try:
             start = profiler._safe_clock()
-            values = ({dependency.name: await dependency.step.resolve_async(context)
-                       for dependency in self.dependencies} if self.dependencies else _EMPTY_DEPENDENCIES)
+            values = (
+                {dependency.name: await dependency.step.resolve_async(context) for dependency in self.dependencies}
+                if self.dependencies
+                else _EMPTY_DEPENDENCIES
+            )
             profiler._safe_duration(key, "dependencies", start)
         except BaseException as error:
             self.state.finish(future, error=error)
@@ -10230,8 +10389,10 @@ class _ObservedPreConfiguration(_CompiledPreConfiguration):
         token = _FINALIZER_PROFILE_KEY.set(key)
         try:
             await self.activator_class.activate_async(
-                self.definition.configuration_fn, values,
-                cast(Any, _ActivationContext(context, self.cleanup_owner)), legacy.Lifespan.singleton,
+                self.definition.configuration_fn,
+                values,
+                cast(Any, _ActivationContext(context, self.cleanup_owner)),
+                legacy.Lifespan.singleton,
             )
         except Exception as error:
             profiler._safe_record(key, "failed")
@@ -10253,7 +10414,9 @@ class _ObservedPreConfiguration(_CompiledPreConfiguration):
 
 
 def _observe_plan(
-    plan: _PlanSet, instrumentation: Instrumentation, binding_token: str,
+    plan: _PlanSet,
+    instrumentation: Instrumentation,
+    binding_token: str,
     parent_scope: Scope | None = None,
 ) -> tuple[_PlanSet, str, dict[Any, str], dict[int, str]]:
     from .graph_analysis import graph_index
@@ -10265,14 +10428,16 @@ def _observe_plan(
     index = graph_index(graph)
     path_by_occurrence = {
         occurrence: references[0].path
-        for occurrence, references in index.references_by_occurrence.items() if references
+        for occurrence, references in index.references_by_occurrence.items()
+        if references
     }
     parent_graphs: dict[int, tuple[str, dict[int, str]]] = {}
     current_parent = parent_scope
     while current_parent is not None:
         if isinstance(current_parent, _ObservedScopeMixin):
             parent_graphs[id(current_parent._plan.graph)] = (
-                current_parent._profile_fingerprint, current_parent._profile_paths
+                current_parent._profile_fingerprint,
+                current_parent._profile_paths,
             )
         current_parent = current_parent.parent
 
@@ -10292,10 +10457,9 @@ def _observe_plan(
                 return parent[0], path
         path = current_path(fallback)
         return fingerprint, path or "<unresolved request>"
+
     sharing_by_path = {
-        path: group.reference
-        for group in graph.sharing_report().groups
-        for path in group.occurrence_paths
+        path: group.reference for group in graph.sharing_report().groups for path in group.occurrence_paths
     }
     registration_paths: dict[str, set[str]] = defaultdict(set)
     for references in index.references_by_occurrence.values():
@@ -10304,9 +10468,11 @@ def _observe_plan(
     ambiguous_registrations = frozenset(
         registration for registration, paths in registration_paths.items() if len(paths) > 1
     )
-    catalog: dict[str, tuple[str | None, str]] = {"<unresolved request>": (None, "request"),
-                                                   "<owner cleanup>": (None, "cleanup"),
-                                                   "<owner cleanup> [cleanup]": (None, "cleanup")}
+    catalog: dict[str, tuple[str | None, str]] = {
+        "<unresolved request>": (None, "request"),
+        "<owner cleanup>": (None, "cleanup"),
+        "<owner cleanup> [cleanup]": (None, "cleanup"),
+    }
     for references in index.references_by_occurrence.values():
         if not references:
             continue
@@ -10387,29 +10553,39 @@ def _observe_plan(
                 occurrence if occurrence is not None and current_path(occurrence) is not None else step.component
             )
             object.__setattr__(result, "dependencies", observed_dependencies(step.dependencies, current_component))
-            object.__setattr__(result, "pre_configurations", tuple(
-                observe_pre_configuration(
-                    item, result,
-                    matching_child(current_component.pre_configurations, item.component),
-                )
-                for item in step.pre_configurations
-            ))
-            object.__setattr__(result, "decorators", tuple(
-                observe_decorator(
-                    item, matching_child(current_component.decorators, item.component)
-                ) for item in step.decorators
-            ))
+            object.__setattr__(
+                result,
+                "pre_configurations",
+                tuple(
+                    observe_pre_configuration(
+                        item,
+                        result,
+                        matching_child(current_component.pre_configurations, item.component),
+                    )
+                    for item in step.pre_configurations
+                ),
+            )
+            object.__setattr__(
+                result,
+                "decorators",
+                tuple(
+                    observe_decorator(item, matching_child(current_component.decorators, item.component))
+                    for item in step.decorators
+                ),
+            )
             object.__setattr__(result, "_profile_key", owner_key(step.component, occurrence))
         elif isinstance(step, _ProviderStep):
-            result = _ObservedProviderStep(step.mode, step.target, step.bound_owner_token,
-                                           step.sync_supported)
+            result = _ObservedProviderStep(step.mode, step.target, step.bound_owner_token, step.sync_supported)
             memo[id(step)] = result
             target_component = (
                 occurrence.dependencies[0] if occurrence is not None and occurrence.dependencies else None
             )
             object.__setattr__(result, "target", observe_edge(step.target, target_component))
-            path = (path_by_occurrence.get(target_component.occurrence_id, "<unresolved request>")
-                    if target_component is not None else "<unresolved request>")
+            path = (
+                path_by_occurrence.get(target_component.occurrence_id, "<unresolved request>")
+                if target_component is not None
+                else "<unresolved request>"
+            )
             request_path = "provider request " + path
             catalog.setdefault(request_path, (None, "request"))
             object.__setattr__(result, "_profile_key", (fingerprint, request_path))
@@ -10417,10 +10593,14 @@ def _observe_plan(
             result = replace(step)
             memo[id(step)] = result
             members = occurrence.dependencies if occurrence is not None else ()
-            object.__setattr__(result, "members", tuple(
-                observe_edge(member, members[index] if index < len(members) else None)
-                for index, member in enumerate(step.members)
-            ))
+            object.__setattr__(
+                result,
+                "members",
+                tuple(
+                    observe_edge(member, members[index] if index < len(members) else None)
+                    for index, member in enumerate(step.members)
+                ),
+            )
         elif isinstance(step, _PerCallStep):
             result = replace(step)
             memo[id(step)] = result
@@ -10431,18 +10611,20 @@ def _observe_plan(
         elif isinstance(step, _ScopeStep):
             result = replace(step)
             memo[id(step)] = result
-            object.__setattr__(result, "resolution_requests", tuple(
-                replace(request, step=observe_edge(request.step, request.component))
-                for request in step.resolution_requests
-            ))
+            object.__setattr__(
+                result,
+                "resolution_requests",
+                tuple(
+                    replace(request, step=observe_edge(request.step, request.component))
+                    for request in step.resolution_requests
+                ),
+            )
         else:
             result = step
         memo[id(step)] = result
         return result
 
-    def observe_decorator(
-        decorator: _CompiledDecorator, occurrence: Component | None
-    ) -> _CompiledDecorator:
+    def observe_decorator(decorator: _CompiledDecorator, occurrence: Component | None) -> _CompiledDecorator:
         values = {item.name: getattr(decorator, item.name) for item in fields(decorator)}
         current_component = (
             occurrence if occurrence is not None and current_path(occurrence) is not None else decorator.component
@@ -10453,7 +10635,8 @@ def _observe_plan(
         return result
 
     def observe_pre_configuration(
-        configuration: _CompiledPreConfiguration, parent_step: _Step,
+        configuration: _CompiledPreConfiguration,
+        parent_step: _Step,
         occurrence: Component | None,
     ) -> _CompiledPreConfiguration:
         values = {item.name: getattr(configuration, item.name) for item in fields(configuration)}
@@ -10464,11 +10647,15 @@ def _observe_plan(
         result = _ObservedPreConfiguration(**values)
         activation_key = owner_key(configuration.component, occurrence)
         current_occurrence_path = current_path(current_component)
-        caller_paths = {
-            reference.path.rsplit("/pre_configuration:", 1)[0]: (fingerprint, reference.path)
-            for reference in index.references_by_occurrence.get(current_component.occurrence_id, ())
-            if "/pre_configuration:" in reference.path
-        } if current_occurrence_path is not None else {}
+        caller_paths = (
+            {
+                reference.path.rsplit("/pre_configuration:", 1)[0]: (fingerprint, reference.path)
+                for reference in index.references_by_occurrence.get(current_component.occurrence_id, ())
+                if "/pre_configuration:" in reference.path
+            }
+            if current_occurrence_path is not None
+            else {}
+        )
         caller_key = (fingerprint, current_occurrence_path) if current_occurrence_path is not None else activation_key
         object.__setattr__(result, "_profile_key", activation_key)
         object.__setattr__(result, "_caller_key", caller_key)
@@ -10477,24 +10664,36 @@ def _observe_plan(
         return result
 
     def roots(values: Mapping[Any, tuple[_RootPlan, ...]]) -> dict[Any, tuple[_RootPlan, ...]]:
-        return {key: tuple(replace(root, step=observe(root.step, root.component)) for root in plans)
-                for key, plans in values.items()}
+        return {
+            key: tuple(replace(root, step=observe(root.step, root.component)) for root in plans)
+            for key, plans in values.items()
+        }
 
     observed_roots = roots(plan.roots)
     observed_provider_roots = roots(plan.provider_roots)
     observed = replace(
-        plan, roots=observed_roots, provider_roots=observed_provider_roots,
-        default_roots={key: next(item for item in observed_roots.get(key, observed_provider_roots.get(key, ()))
-                                 if item.component.occurrence_id == value.component.occurrence_id)
-                       for key, value in plan.default_roots.items()},
-        default_root_groups={key: tuple(next(item for item in observed_roots[key]
-                                              if item.component.occurrence_id == root.component.occurrence_id)
-                                         for root in values)
-                             for key, values in plan.default_root_groups.items()},
+        plan,
+        roots=observed_roots,
+        provider_roots=observed_provider_roots,
+        default_roots={
+            key: next(
+                item
+                for item in observed_roots.get(key, observed_provider_roots.get(key, ()))
+                if item.component.occurrence_id == value.component.occurrence_id
+            )
+            for key, value in plan.default_roots.items()
+        },
+        default_root_groups={
+            key: tuple(
+                next(
+                    item for item in observed_roots[key] if item.component.occurrence_id == root.component.occurrence_id
+                )
+                for root in values
+            )
+            for key, values in plan.default_root_groups.items()
+        },
     )
-    instrumentation.profiler._bind(
-        fingerprint, catalog, sharing_by_path, ambiguous_registrations, binding_token
-    )
+    instrumentation.profiler._bind(fingerprint, catalog, sharing_by_path, ambiguous_registrations, binding_token)
     return observed, fingerprint, request_labels, path_by_occurrence
 
 
@@ -11452,9 +11651,13 @@ class ContainerBuilder(_BuilderBase):
 
         self._install_boundary(boundary)
 
-    def build(self, *, build_args: Mapping[str, Any] | None = None,
-              profile: CompilationProfiler | None = None,
-              instrumentation: Instrumentation | None = None) -> Container:
+    def build(
+        self,
+        *,
+        build_args: Mapping[str, Any] | None = None,
+        profile: CompilationProfiler | None = None,
+        instrumentation: Instrumentation | None = None,
+    ) -> Container:
         if instrumentation is not None and not isinstance(instrumentation, Instrumentation):
             raise TypeError("instrumentation must be an Instrumentation instance or None")
         if profile is None:
@@ -11471,8 +11674,9 @@ class ContainerBuilder(_BuilderBase):
         profile._begin()
         state = "interrupted"
         try:
-            blueprint, inputs = profile.call("discovery and blueprint preparation", "phase",
-                                             self._compilation_snapshot, build_args)
+            blueprint, inputs = profile.call(
+                "discovery and blueprint preparation", "phase", self._compilation_snapshot, build_args
+            )
             plan = _compile_with_report(blueprint, profile=profile, **inputs)
             if instrumentation is None:
                 container = Container(plan, self._owner_token)
@@ -11503,9 +11707,13 @@ class ScopeBuilder(_BuilderBase):
 
         self._install_boundary(boundary)
 
-    def build(self, *, build_args: Mapping[str, Any] | None = None,
-              profile: CompilationProfiler | None = None,
-              instrumentation: Instrumentation | None = None) -> Scope:
+    def build(
+        self,
+        *,
+        build_args: Mapping[str, Any] | None = None,
+        profile: CompilationProfiler | None = None,
+        instrumentation: Instrumentation | None = None,
+    ) -> Scope:
         parent_profiler = getattr(self._parent, "_profiler", None)
         if instrumentation is None and parent_profiler is not None:
             instrumentation = Instrumentation(parent_profiler)
@@ -11522,8 +11730,12 @@ class ScopeBuilder(_BuilderBase):
                 )
             scope_class = _ObservedScope if instrumentation is not None else Scope
             scope = scope_class(
-                plan, container=self._parent.container, parent=self._parent,
-                owners=self._parent._owners, owned_token=self._owner_token, inherit_scoped=False,
+                plan,
+                container=self._parent.container,
+                parent=self._parent,
+                owners=self._parent._owners,
+                owned_token=self._owner_token,
+                inherit_scoped=False,
             )
             if instrumentation is not None:
                 cast(_ObservedScope, scope)._install_observation(instrumentation.profiler, fingerprint, labels, paths)
@@ -11532,8 +11744,9 @@ class ScopeBuilder(_BuilderBase):
         profile._begin()
         state = "interrupted"
         try:
-            blueprint, inputs = profile.call("discovery and blueprint preparation", "phase",
-                                             self._compilation_snapshot, build_args)
+            blueprint, inputs = profile.call(
+                "discovery and blueprint preparation", "phase", self._compilation_snapshot, build_args
+            )
             plan = _compile_with_report(blueprint, profile=profile, **inputs)
             if instrumentation is not None:
                 plan, fingerprint, labels, paths = _observe_plan(
@@ -11541,8 +11754,12 @@ class ScopeBuilder(_BuilderBase):
                 )
             scope_class = _ObservedScope if instrumentation is not None else Scope
             scope = scope_class(
-                plan, container=self._parent.container, parent=self._parent,
-                owners=self._parent._owners, owned_token=self._owner_token, inherit_scoped=False,
+                plan,
+                container=self._parent.container,
+                parent=self._parent,
+                owners=self._parent._owners,
+                owned_token=self._owner_token,
+                inherit_scoped=False,
             )
             if instrumentation is not None:
                 cast(_ObservedScope, scope)._install_observation(instrumentation.profiler, fingerprint, labels, paths)

@@ -173,7 +173,8 @@ class SelectionCensus:
             definition = item.definition
             label = (
                 f"{definition.service} → {definition.implementation}"
-                if definition.implementation else definition.service
+                if definition.implementation
+                else definition.service
             )
             area = f"; boundary={definition.boundary}" if definition.boundary is not None else ""
             lines.append(f"\n{definition.reference} {label} [{definition.kind}; {definition.layer}{area}]")
@@ -198,9 +199,13 @@ class SelectionCensus:
                         f"{item.attempt_rejected} recorded rejected outcomes (lower bounds)"
                     )
                 if self.complete and not (
-                    item.dependency_requests or item.deferred_target_uses or item.root_collection_inclusions
-                    or item.collection_inclusions or item.root_requests
-                    or item.applicable_decorators or item.applicable_pre_configurations
+                    item.dependency_requests
+                    or item.deferred_target_uses
+                    or item.root_collection_inclusions
+                    or item.collection_inclusions
+                    or item.root_requests
+                    or item.applicable_decorators
+                    or item.applicable_pre_configurations
                     or item.template_source_matches
                 ):
                     lines.append("  Not selected in this view")
@@ -266,14 +271,29 @@ def _aggregate(
     summaries: list[DefinitionCensus] = []
     for definition in definitions:
         records = buckets[definition.reference]
-        counts = {kind: sum(use.outcome == kind for use, _ in records) for kind in (
-            "root-selected", "root-collection-included", "dependency-selected", "deferred-target",
-            "collection-included", "decorator-applicable",
-            "pre-configuration-applicable", "template-source-matched", "template-source-rejected",
-            "eligible-not-selected", "rejected", "excluded-by-precedence", "excluded-by-visibility",
-            "not-applicable",
-            "attempt-failed", "attempt-not-examined", "attempt-selected", "attempt-rejected",
-        )}
+        counts = {
+            kind: sum(use.outcome == kind for use, _ in records)
+            for kind in (
+                "root-selected",
+                "root-collection-included",
+                "dependency-selected",
+                "deferred-target",
+                "collection-included",
+                "decorator-applicable",
+                "pre-configuration-applicable",
+                "template-source-matched",
+                "template-source-rejected",
+                "eligible-not-selected",
+                "rejected",
+                "excluded-by-precedence",
+                "excluded-by-visibility",
+                "not-applicable",
+                "attempt-failed",
+                "attempt-not-examined",
+                "attempt-selected",
+                "attempt-rejected",
+            )
+        }
         reasons: dict[str, int] = {}
         for use, _ in records:
             if use.outcome == "rejected":
@@ -281,39 +301,42 @@ def _aggregate(
                     reasons[code] = reasons.get(code, 0) + 1
         specializations = (
             tuple(sorted({value for _, value in records if value and value != definition.service}))
-            if definition.kind == "registration-pattern" or "TypeVar(" in definition.service else ()
+            if definition.kind == "registration-pattern" or "TypeVar(" in definition.service
+            else ()
         )
-        summaries.append(DefinitionCensus(
-            definition,
-            counts["root-selected"],
-            counts["root-collection-included"],
-            counts["dependency-selected"],
-            counts["deferred-target"],
-            counts["collection-included"],
-            counts["decorator-applicable"],
-            counts["pre-configuration-applicable"],
-            counts["template-source-matched"],
-            counts["template-source-rejected"],
-            counts["eligible-not-selected"],
-            counts["rejected"],
-            counts["excluded-by-precedence"],
-            counts["excluded-by-visibility"],
-            counts["not-applicable"],
-            counts["attempt-failed"],
-            counts["attempt-not-examined"],
-            counts["attempt-selected"],
-            counts["attempt-rejected"],
-            tuple(sorted(reasons.items())),
-            specializations,
-            len(records),
-            tuple(use for use, _ in records[:_EXAMPLE_LIMIT]),
-            max(0, len(records) - _EXAMPLE_LIMIT),
-        ))
+        summaries.append(
+            DefinitionCensus(
+                definition,
+                counts["root-selected"],
+                counts["root-collection-included"],
+                counts["dependency-selected"],
+                counts["deferred-target"],
+                counts["collection-included"],
+                counts["decorator-applicable"],
+                counts["pre-configuration-applicable"],
+                counts["template-source-matched"],
+                counts["template-source-rejected"],
+                counts["eligible-not-selected"],
+                counts["rejected"],
+                counts["excluded-by-precedence"],
+                counts["excluded-by-visibility"],
+                counts["not-applicable"],
+                counts["attempt-failed"],
+                counts["attempt-not-examined"],
+                counts["attempt-selected"],
+                counts["attempt-rejected"],
+                tuple(sorted(reasons.items())),
+                specializations,
+                len(records),
+                tuple(use for use, _ in records[:_EXAMPLE_LIMIT]),
+                max(0, len(records) - _EXAMPLE_LIMIT),
+            )
+        )
     limitation = (
         "Primary failed attempt only; selection totals are lower bounds and unexamined outcomes are unknown. "
         "Diagnostic retries are not merged."
-        if not complete else
-        "Recorded compiler decisions in this view only; runtime requests and other build inputs are unknown."
+        if not complete
+        else "Recorded compiler decisions in this view only; runtime requests and other build inputs are unknown."
     )
     return SelectionCensus(tuple(summaries), view, roots, include_deferred, complete, limitation=limitation)
 
@@ -332,15 +355,9 @@ def selection_census(
     root_paths = (path for path in selected_paths if "/" not in path)
     area_by_root_path = {path: root.area for root, path in zip(roots, root_paths, strict=True)}
     index = graph.analysis_index()
-    phase_by_path = {
-        ref.path: ref.phase
-        for refs in index.references_by_occurrence.values()
-        for ref in refs
-    }
+    phase_by_path = {ref.path: ref.phase for refs in index.references_by_occurrence.values() for ref in refs}
     relationship_by_path = {
-        item.child.path: item.kind
-        for relationships in index.incoming.values()
-        for item in relationships
+        item.child.path: item.kind for relationships in index.incoming.values() for item in relationships
     }
     sources = dict(graph._census_sources)
     observations: list[tuple[str, SelectionUse, str | None]] = []
@@ -357,27 +374,47 @@ def selection_census(
         explanation = graph._occurrence_explanations.get(component.occurrence_id)
         if explanation is None:
             if relationship_by_path.get(path) == "deferred_target":
-                observations.append((component.id, SelectionUse(
-                    path, "deferred_target", phase, "deferred-target", ("frozen-deferred-target",),
-                    qualified_name(component.service_type), area=area,
-                ), qualified_name(component.service_type)))
+                observations.append(
+                    (
+                        component.id,
+                        SelectionUse(
+                            path,
+                            "deferred_target",
+                            phase,
+                            "deferred-target",
+                            ("frozen-deferred-target",),
+                            qualified_name(component.service_type),
+                            area=area,
+                        ),
+                        qualified_name(component.service_type),
+                    )
+                )
             continue
         if id(explanation) in seen:
             continue
         seen.add(id(explanation))
         relationship = (
-            "collection" if component.kind is ComponentKind.collection else
-            "decorator" if component.kind is ComponentKind.decorator else
-            "pre-configuration" if component.kind is ComponentKind.pre_configuration else
-            relationship_by_path.get(path, "dependency")
+            "collection"
+            if component.kind is ComponentKind.collection
+            else "decorator"
+            if component.kind is ComponentKind.decorator
+            else "pre-configuration"
+            if component.kind is ComponentKind.pre_configuration
+            else relationship_by_path.get(path, "dependency")
         )
         _record_explanation(
-            observations, explanation, path, relationship, phase, sources,
+            observations,
+            explanation,
+            path,
+            relationship,
+            phase,
+            sources,
             selected_service=(
                 None if component.kind is ComponentKind.collection else qualified_name(component.service_type)
             ),
             selected_tier=(
-                None if component.occurrence_id not in graph._generic_explanations
+                None
+                if component.occurrence_id not in graph._generic_explanations
                 else graph._generic_explanations[component.occurrence_id].selected_tier
             ),
             area=area,
@@ -392,14 +429,20 @@ def selection_census(
         if id(explanation) not in seen:
             seen.add(id(explanation))
             _record_explanation(
-                observations, explanation, path, "decorator", phase, sources,
+                observations,
+                explanation,
+                path,
+                "decorator",
+                phase,
+                sources,
                 area=area_by_root_path.get(path.split("/", 1)[0]),
             )
     for root in roots:
         component = root.component
         root_path = next(
             (
-                path for path, item in selected_paths.items()
+                path
+                for path, item in selected_paths.items()
                 if item.occurrence_id == component.occurrence_id and "/" not in path
             ),
             None,
@@ -408,15 +451,28 @@ def selection_census(
             continue
         source_component = (
             component.dependencies[0]
-            if component.kind is ComponentKind.provider and component.dependencies
+            if component.kind is ComponentKind.provider
+            and component.dependencies
             and component.dependencies[0].kind is not ComponentKind.collection
             else component
         )
         source = _source_id(source_component.id, sources)
         outcome = "root-collection-included" if _collection_request(root.requested_type) else "root-selected"
-        observations.append((source, SelectionUse(
-            root_path, "root", "eager", outcome, (outcome,), qualified_name(root.requested_type), area=root.area,
-        ), qualified_name(source_component.service_type)))
+        observations.append(
+            (
+                source,
+                SelectionUse(
+                    root_path,
+                    "root",
+                    "eager",
+                    outcome,
+                    (outcome,),
+                    qualified_name(root.requested_type),
+                    area=root.area,
+                ),
+                qualified_name(source_component.service_type),
+            )
+        )
     if graph.entrypoints and not all_roots:
         for boundary, explanation in graph._census_root_selections:
             request_path = "/".join(explanation.path)
@@ -425,44 +481,88 @@ def selection_census(
             for decision in explanation.selected[1:]:
                 if decision.outcome is DecisionOutcome.included:
                     continue
-                observations.append((decision.component_id, SelectionUse(
-                    request_path, "root", "eager", "eligible-not-selected",
-                    (*decision.reason_codes, "first-eligible-wins"), explanation.subject, area=boundary,
-                ), None))
+                observations.append(
+                    (
+                        decision.component_id,
+                        SelectionUse(
+                            request_path,
+                            "root",
+                            "eager",
+                            "eligible-not-selected",
+                            (*decision.reason_codes, "first-eligible-wins"),
+                            explanation.subject,
+                            area=boundary,
+                        ),
+                        None,
+                    )
+                )
             for decision in explanation.rejected:
-                observations.append((decision.component_id, SelectionUse(
-                    request_path, "root", "eager", _rejection_outcome(decision.reason_codes),
-                    decision.reason_codes, explanation.subject, area=boundary,
-                ), None))
+                observations.append(
+                    (
+                        decision.component_id,
+                        SelectionUse(
+                            request_path,
+                            "root",
+                            "eager",
+                            _rejection_outcome(decision.reason_codes),
+                            decision.reason_codes,
+                            explanation.subject,
+                            area=boundary,
+                        ),
+                        None,
+                    )
+                )
     else:
         for service_type, records in graph._root_candidates.items():
             for record in records:
                 if record.eligible or record.component.kind is ComponentKind.provider:
                     continue
-                observations.append((record.component.id, SelectionUse(
-                    f"root:{qualified_name(service_type)}", "root", "eager",
-                    _rejection_outcome(record.decision.reason_codes),
-                    record.decision.reason_codes, qualified_name(service_type),
-                ), None))
+                observations.append(
+                    (
+                        record.component.id,
+                        SelectionUse(
+                            f"root:{qualified_name(service_type)}",
+                            "root",
+                            "eager",
+                            _rejection_outcome(record.decision.reason_codes),
+                            record.decision.reason_codes,
+                            qualified_name(service_type),
+                        ),
+                        None,
+                    )
+                )
     for decision in graph._template_source_decisions:
-        observations.append((
-            decision.template_id,
-            SelectionUse(
-                f"template-source:{decision.source_service}", "template-source", "composition",
-                "template-source-matched" if decision.selected else "template-source-rejected",
-                ("template-source-filter-matched" if decision.selected else "template-source-filter-rejected",),
-                decision.source_service,
-            ),
-            None,
-        ))
-    labels = tuple(dict.fromkeys(
-        qualified_name(root.requested_type) if root.area is None
-        else f"boundary:{root.area}:{qualified_name(root.requested_type)}"
-        for root in roots
-    ))
+        observations.append(
+            (
+                decision.template_id,
+                SelectionUse(
+                    f"template-source:{decision.source_service}",
+                    "template-source",
+                    "composition",
+                    "template-source-matched" if decision.selected else "template-source-rejected",
+                    ("template-source-filter-matched" if decision.selected else "template-source-filter-rejected",),
+                    decision.source_service,
+                ),
+                None,
+            )
+        )
+    labels = tuple(
+        dict.fromkeys(
+            qualified_name(root.requested_type)
+            if root.area is None
+            else f"boundary:{root.area}:{qualified_name(root.requested_type)}"
+            for root in roots
+        )
+    )
     return _aggregate(
-        graph._census_definitions, observations, sources, graph._census_ids, view=view, roots=labels,
-        include_deferred=include_deferred, complete=True,
+        graph._census_definitions,
+        observations,
+        sources,
+        graph._census_ids,
+        view=view,
+        roots=labels,
+        include_deferred=include_deferred,
+        complete=True,
     )
 
 
@@ -494,18 +594,28 @@ def _record_explanation(
             outcome = "eligible-not-selected"
         else:
             outcome = "dependency-selected"
-        observations.append((raw_id, SelectionUse(
-            path, relationship, phase, outcome,
+        observations.append(
             (
-                (*decision.reason_codes, "first-eligible-wins")
-                if outcome == "eligible-not-selected" else decision.reason_codes
-            ),
-            explanation.subject,
-            selected_tier if index == 0 else None,
-            area,
-        ), selected_service if index == 0 and outcome in (
-            "dependency-selected", "deferred-target", "collection-included"
-        ) else None))
+                raw_id,
+                SelectionUse(
+                    path,
+                    relationship,
+                    phase,
+                    outcome,
+                    (
+                        (*decision.reason_codes, "first-eligible-wins")
+                        if outcome == "eligible-not-selected"
+                        else decision.reason_codes
+                    ),
+                    explanation.subject,
+                    selected_tier if index == 0 else None,
+                    area,
+                ),
+                selected_service
+                if index == 0 and outcome in ("dependency-selected", "deferred-target", "collection-included")
+                else None,
+            )
+        )
 
 
 def _rejection_outcome(codes: tuple[str, ...]) -> str:
@@ -532,26 +642,41 @@ def failed_selection_census(error: Any) -> SelectionCensus:
         path = safe_path(explanation.path)
         for decision in (*explanation.selected, *explanation.rejected):
             outcome = "attempt-selected" if decision.outcome is not DecisionOutcome.rejected else "attempt-rejected"
-            observations.append((
-                decision.component_id,
-                SelectionUse(path, "failed-attempt", "unknown", outcome, decision.reason_codes, explanation.subject),
-                None,
-            ))
+            observations.append(
+                (
+                    decision.component_id,
+                    SelectionUse(
+                        path, "failed-attempt", "unknown", outcome, decision.reason_codes, explanation.subject
+                    ),
+                    None,
+                )
+            )
     for subject, raw_id, state, code in error._census_attempts:
         if state.value not in ("failed", "not-examined"):
             continue
-        observations.append((
-            raw_id,
-            SelectionUse(
-                subject, "failed-attempt", "unknown", f"attempt-{state.value}",
-                () if code is None else (code,), subject,
-            ),
-            None,
-        ))
+        observations.append(
+            (
+                raw_id,
+                SelectionUse(
+                    subject,
+                    "failed-attempt",
+                    "unknown",
+                    f"attempt-{state.value}",
+                    () if code is None else (code,),
+                    subject,
+                ),
+                None,
+            )
+        )
     report = _aggregate(
-        error._census_definitions, observations, sources, references,
-        view="failed_primary_attempt", roots=tuple(label for _, label in error.entry_points or ()),
-        include_deferred=True, complete=False,
+        error._census_definitions,
+        observations,
+        sources,
+        references,
+        view="failed_primary_attempt",
+        roots=tuple(label for _, label in error.entry_points or ()),
+        include_deferred=True,
+        complete=False,
     )
     from dataclasses import replace
 

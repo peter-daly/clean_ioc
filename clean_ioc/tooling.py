@@ -1593,12 +1593,8 @@ class CompiledGraph:
         default_factory=lambda: MappingProxyType({}), compare=False, repr=False
     )
     _census_definitions: tuple[Any, ...] = field(default=(), compare=False, repr=False)
-    _census_sources: Mapping[str, str] = field(
-        default_factory=lambda: MappingProxyType({}), compare=False, repr=False
-    )
-    _census_ids: Mapping[str, str] = field(
-        default_factory=lambda: MappingProxyType({}), compare=False, repr=False
-    )
+    _census_sources: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}), compare=False, repr=False)
+    _census_ids: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}), compare=False, repr=False)
     _manifest_cache: dict[bool, GraphManifest] = field(default_factory=dict, compare=False, repr=False)
     _ownership_report_cache: list[OwnershipReport] = field(default_factory=list, compare=False, repr=False)
     _analysis_index_cache: Any | None = field(default=None, compare=False, repr=False)
