@@ -1,5 +1,6 @@
 import copy
 import pickle
+from typing import assert_type
 
 import pytest
 
@@ -22,7 +23,7 @@ def pickle_roundtrip(value):
 
 @pytest.mark.parametrize("clone", [copy.copy, copy.deepcopy, pickle_roundtrip])
 def test_selector_preserves_undefined_defaults_when_copied(clone):
-    selector = clone(ComponentSelector.default())
+    selector = clone(ComponentSelector[str].default())
 
     assert selector.implementation_type is Undefined
     assert selector.name is Undefined
@@ -32,11 +33,26 @@ def test_selector_preserves_undefined_defaults_when_copied(clone):
     assert selector.to_filter() is default_component_filter
 
 
+def test_generic_selector_preserves_type_and_default_filter():
+    selector = ComponentSelector[str]()
+    default = ComponentSelector[str].default()
+
+    assert_type(selector, ComponentSelector[str])
+    assert_type(default, ComponentSelector[str])
+    assert_type(ComponentSelector(service_type=str), ComponentSelector[str])
+    assert_type(ComponentSelector(implementation_type=str), ComponentSelector[str])
+    assert_type(ComponentSelector(service_type=list[str]), ComponentSelector[list[str]])
+    assert selector == default
+    assert selector.to_filter() is default_component_filter
+
+
 @pytest.mark.parametrize(
     ("selector", "expected"),
     [
         (ComponentSelector(), {None}),
         (ComponentSelector.default(), {None}),
+        (ComponentSelector[str](), {None}),
+        (ComponentSelector[str](service_type=str), {"primary", "", None}),
         (
             ComponentSelector(
                 implementation_type=Undefined,
@@ -103,7 +119,8 @@ def test_selector_distinguishes_service_type_from_implementation_type():
     builder.register(Service, Implementation)
     builder.register(Implementation)
     components = [root.component for root in builder.build().graph.roots]
-    filter = ComponentSelector(service_type=Service, implementation_type=Implementation).to_filter()
+    selector = ComponentSelector[Service](service_type=Service, implementation_type=Implementation)
+    filter = selector.to_filter()
 
     assert [component.service_type for component in components if filter(component)] == [Service]
 
@@ -141,7 +158,7 @@ def test_bundle_can_use_selector_for_dependency_selection_with_a_factory(endpoin
             self.endpoint = endpoint
 
     class ServiceBundle(BaseBundle):
-        def __init__(self, endpoint: ComponentSelector):
+        def __init__(self, endpoint: ComponentSelector[str] = ComponentSelector[str].default()):
             self.endpoint = endpoint
 
         def apply(self, builder):

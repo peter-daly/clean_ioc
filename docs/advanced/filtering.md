@@ -125,7 +125,7 @@ as configuration passed to a bundle:
 ```python
 from clean_ioc import ComponentSelector, Tag
 
-selector = ComponentSelector(
+selector = ComponentSelector[str](
     service_type=str,
     implementation_type=str,
     name="primary",
@@ -134,6 +134,12 @@ selector = ComponentSelector(
 )
 component_filter = selector.to_filter()
 ```
+
+`ComponentSelector[T]` constrains both `service_type` and `implementation_type`
+to types compatible with `T` during static type checking. Implementations may be
+subclasses of the selected service contract. The generic argument itself adds no
+runtime filtering; supply `service_type` or `implementation_type` when needed.
+Existing unparameterized selectors remain supported.
 
 Pass the resulting filter anywhere a component filter is accepted, including
 `select(...)`, `when=`, or a builder query. All supplied fields and all tags
@@ -144,7 +150,7 @@ name, and extra component tags are allowed.
 All fields default to `Undefined`, available as `from clean_ioc import Undefined`.
 `ComponentSelector.default()` creates a selector with every field undefined,
 equivalent to `ComponentSelector()`. Use it for parameter defaults such as
-`endpoint: ComponentSelector = ComponentSelector.default()`.
+`endpoint: ComponentSelector[str] = ComponentSelector[str].default()`.
 When every field is `Undefined`, `to_filter()` returns `default_component_filter`,
 which selects only unnamed components. Otherwise, undefined fields impose no
 restriction and the supplied fields determine the matches. For example,

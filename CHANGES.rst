@@ -1,3 +1,12 @@
+2.0.0b21
+--------
+
+    Make ``ComponentSelector[TService]`` generic so type checkers validate
+    service and implementation types against the selected service contract,
+    including structural protocol compatibility. Runtime filtering is
+    unchanged, and typed ``default()`` selectors keep every field undefined.
+
+
 2.0.0b20
 --------
 

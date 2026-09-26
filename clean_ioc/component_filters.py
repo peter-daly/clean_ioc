@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Callable, Self, TypeVar
+from typing import Any, Callable, Generic, Self, TypeVar
 
 from funcie import predicate
 from typing_extensions import TypeForm
@@ -40,23 +40,27 @@ __all__ = [
 ]
 
 _MISSING_BUILD_ARG = object()
+TService = TypeVar("TService")
 
 
 @dataclass(frozen=True, slots=True)
-class ComponentSelector:
+class ComponentSelector(Generic[TService]):
     """Reusable inputs for a component filter, suitable for bundle configuration.
 
     ``Undefined`` fields impose no restriction. All supplied fields and tags
     must match; ``name=None`` selects unnamed components, and a tag without a
     value matches any value for that tag name. When every field is undefined,
     use the default filter for unnamed components.
+
+    The type parameter constrains service and implementation types for static
+    checking; it does not add a runtime filter.
     """
 
-    implementation_type: TypeForm[Any] | None | _Undefined = Undefined
+    implementation_type: TypeForm[TService] | None | _Undefined = Undefined
     name: str | None | _Undefined = Undefined
     lifespan: Lifespan | _Undefined = Undefined
     tags: Iterable[Tag] | _Undefined = Undefined
-    service_type: TypeForm[Any] | None | _Undefined = Undefined
+    service_type: TypeForm[TService] | None | _Undefined = Undefined
 
     def __post_init__(self) -> None:
         if self.tags is not Undefined:
