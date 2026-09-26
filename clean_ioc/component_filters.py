@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, Self, TypeVar
 
 from funcie import predicate
 from typing_extensions import TypeForm
 
-from .components import ComponentFilter, Lifespan, all_components
+from .components import ComponentFilter, Lifespan, all_components, default_component_filter
 from .metadata import Tag
+from .sentinels import Undefined, _Undefined
 from .tooling import qualified_name
 from .type_aliases import normalize_type_alias
 
@@ -45,32 +46,44 @@ _MISSING_BUILD_ARG = object()
 class ComponentSelector:
     """Reusable inputs for a component filter, suitable for bundle configuration.
 
-    ``None`` fields impose no restriction. All supplied fields and tags must
-    match; a tag without a value matches any value for that tag name.
+    ``Undefined`` fields impose no restriction. All supplied fields and tags
+    must match; ``name=None`` selects unnamed components, and a tag without a
+    value matches any value for that tag name. When every field is undefined,
+    use the default filter for unnamed components.
     """
 
-    implementation_type: TypeForm[Any] | None = None
-    name: str | None = None
-    lifespan: Lifespan | None = None
-    tags: Iterable[Tag] | None = None
-    service_type: TypeForm[Any] | None = None
+    implementation_type: TypeForm[Any] | None | _Undefined = Undefined
+    name: str | None | _Undefined = Undefined
+    lifespan: Lifespan | _Undefined = Undefined
+    tags: Iterable[Tag] | _Undefined = Undefined
+    service_type: TypeForm[Any] | None | _Undefined = Undefined
 
     def __post_init__(self) -> None:
-        if self.tags is not None:
+        if self.tags is not Undefined:
             object.__setattr__(self, "tags", tuple(self.tags))
 
-    def to_filter(self) -> predicate:
-        """Create a composable filter; an empty selector matches all components."""
+    @classmethod
+    def default(cls) -> Self:
+        """Create a selector with every field undefined, suitable as a default value."""
+        return cls()
+
+    def to_filter(self) -> ComponentFilter:
+        """Return the default filter if empty, otherwise a composable filter."""
+        if all(
+            value is Undefined
+            for value in (self.service_type, self.implementation_type, self.name, self.lifespan, self.tags)
+        ):
+            return default_component_filter
         result = create_filter(all_components)
-        if self.service_type is not None:
+        if self.service_type is not Undefined:
             result &= service_type_is(self.service_type)
-        if self.implementation_type is not None:
+        if self.implementation_type is not Undefined:
             result &= implementation_type_is(self.implementation_type)
-        if self.name is not None:
+        if self.name is not Undefined:
             result &= with_name(self.name)
-        if self.lifespan is not None:
+        if self.lifespan is not Undefined:
             result &= has_lifespan(self.lifespan)
-        if self.tags is not None:
+        if self.tags is not Undefined:
             for tag in self.tags:
                 result &= has_tag(tag.name, tag.value)
         return result
@@ -139,7 +152,7 @@ def implementation_is(implementation: Any):
     return _described(predicate(lambda component: component.implementation == implementation), "implementation_is")
 
 
-def implementation_type_is(implementation_type: TypeForm[Any]):
+def implementation_type_is(implementation_type: TypeForm[Any] | None):
     implementation_type = normalize_type_alias(implementation_type)
     return _described(
         predicate(lambda component: component.implementation_type == implementation_type),
@@ -154,7 +167,7 @@ def implementation_matches_type_filter(type_filter: Callable[[type], bool]):
     )
 
 
-def service_type_is(service_type: TypeForm[Any]):
+def service_type_is(service_type: TypeForm[Any] | None):
     service_type = normalize_type_alias(service_type)
     return _described(
         predicate(lambda component: component.service_type == service_type),

@@ -1,3 +1,15 @@
+2.0.0b20
+--------
+
+    Default all ``ComponentSelector`` fields to the public ``Undefined``
+    sentinel. Explicit ``name=None`` selects unnamed components; callers
+    previously using ``None`` to omit a field should use ``Undefined`` instead.
+
+    Return the default unnamed-component filter when every selector field is
+    undefined. Add ``ComponentSelector.default()`` for declaring default values
+    with every field undefined.
+
+
 2.0.0b19
 --------
 

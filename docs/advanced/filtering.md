@@ -141,11 +141,23 @@ must match. Service and implementation types use the same normalized comparisons
 `service_type_is` and `implementation_type_is`, respectively. A tag without a value matches any value for that tag
 name, and extra component tags are allowed.
 
-All fields are nullable and default to `None`, including `tags`. Fields set to
-`None` impose no restriction, and an empty selector matches all
-components, including named ones. To select only unnamed components, compose
-`selector.to_filter() & cf.is_not_named`. The selector is immutable and copies
-supplied tags into a tuple, so it can safely be reused by bundles.
+All fields default to `Undefined`, available as `from clean_ioc import Undefined`.
+`ComponentSelector.default()` creates a selector with every field undefined,
+equivalent to `ComponentSelector()`. Use it for parameter defaults such as
+`endpoint: ComponentSelector = ComponentSelector.default()`.
+When every field is `Undefined`, `to_filter()` returns `default_component_filter`,
+which selects only unnamed components. Otherwise, undefined fields impose no
+restriction and the supplied fields determine the matches. For example,
+`ComponentSelector(service_type=str)` includes named string components, while
+`ComponentSelector(service_type=str, name=None)` selects only unnamed ones.
+An explicitly supplied empty tag iterable counts as a supplied field, so
+`ComponentSelector(tags=[])` matches all components. Explicit
+`None` values for service or implementation types are compared by the corresponding
+type filter; they do not disable filtering. Supplied lifespans must be valid
+lifespans, and supplied tags must be an iterable (use `[]` for no tag restrictions).
+The selector is immutable and copies supplied tags into a tuple, so it can safely
+be reused by bundles. Existing callers using `None` to omit a field should omit
+that argument or pass `Undefined` instead.
 
 `implementation_is(T)` compares `T` with the component's raw implementation. For a factory registration, that is the
 factory callable. `implementation_type_is(T)` compares the normalized implementation type, including a factory's

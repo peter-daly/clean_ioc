@@ -1,6 +1,9 @@
+import copy
+import pickle
+
 import pytest
 
-from clean_ioc import ComponentSelector, ContainerBuilder, Tag, select
+from clean_ioc import ComponentSelector, ContainerBuilder, Tag, Undefined, default_component_filter, select
 from clean_ioc import component_filters as cf
 from clean_ioc.bundles import BaseBundle
 
@@ -13,15 +16,41 @@ def make_int() -> int:
     return 1
 
 
+def pickle_roundtrip(value):
+    return pickle.loads(pickle.dumps(value))  # noqa: S301 - round-trip locally generated test data
+
+
+@pytest.mark.parametrize("clone", [copy.copy, copy.deepcopy, pickle_roundtrip])
+def test_selector_preserves_undefined_defaults_when_copied(clone):
+    selector = clone(ComponentSelector.default())
+
+    assert selector.implementation_type is Undefined
+    assert selector.name is Undefined
+    assert selector.lifespan is Undefined
+    assert selector.tags is Undefined
+    assert selector.service_type is Undefined
+    assert selector.to_filter() is default_component_filter
+
+
 @pytest.mark.parametrize(
     ("selector", "expected"),
     [
-        (ComponentSelector(), {"primary", "other", "", None}),
+        (ComponentSelector(), {None}),
+        (ComponentSelector.default(), {None}),
         (
-            ComponentSelector(implementation_type=None, name=None, lifespan=None, tags=None, service_type=None),
-            {"primary", "other", "", None},
+            ComponentSelector(
+                implementation_type=Undefined,
+                name=Undefined,
+                lifespan=Undefined,
+                tags=Undefined,
+                service_type=Undefined,
+            ),
+            {None},
         ),
         (ComponentSelector(tags=[]), {"primary", "other", "", None}),
+        (ComponentSelector(name=None), {None}),
+        (ComponentSelector(service_type=None), set()),
+        (ComponentSelector(implementation_type=None), set()),
         (ComponentSelector(implementation_type=str), {"primary", "", None}),
         (ComponentSelector(service_type=str), {"primary", "", None}),
         (ComponentSelector(service_type=int, implementation_type=str), set()),
@@ -96,7 +125,17 @@ def test_selector_snapshots_tags_and_returns_composable_filters():
             assert [component.service_type for component in components if filter(component)] == [str]
 
 
-def test_bundle_can_use_selector_for_dependency_selection_with_a_factory():
+@pytest.mark.parametrize(
+    ("endpoint", "expected"),
+    [
+        (ComponentSelector(implementation_type=str, tags=[Tag("env", "prod")]), "production"),
+        (ComponentSelector.default(), "development"),
+        (ComponentSelector(name=None), "development"),
+        (ComponentSelector(name=Undefined), "development"),
+        (ComponentSelector(tags=[]), "production"),
+    ],
+)
+def test_bundle_can_use_selector_for_dependency_selection_with_a_factory(endpoint, expected):
     class Service:
         def __init__(self, endpoint: str):
             self.endpoint = endpoint
@@ -114,6 +153,6 @@ def test_bundle_can_use_selector_for_dependency_selection_with_a_factory():
     builder = ContainerBuilder()
     builder.register(str, instance="development")
     builder.register(str, factory=endpoint_factory, name="api", tags=[Tag("env", "prod")])
-    builder.apply_bundle(ServiceBundle(ComponentSelector(implementation_type=str, tags=[Tag("env", "prod")])))
+    builder.apply_bundle(ServiceBundle(endpoint))
 
-    assert builder.build().resolve(Service).endpoint == "production"
+    assert builder.build().resolve(Service).endpoint == expected

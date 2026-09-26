@@ -63,6 +63,7 @@ from .metadata import Tag
 from .provider_maps import ProviderMapGroup
 from .providers import AsyncProvider, Provider
 from .selection_census import DefinitionCensus, DefinitionReference, SelectionCensus, SelectionUse
+from .sentinels import Undefined
 from .service_groups import DerivedServices, ServiceGroup
 from .tooling import (
     BuildIssue,
@@ -125,6 +126,7 @@ __all__ = [
     "ComponentFilter",
     "ComponentKind",
     "ComponentSelector",
+    "Undefined",
     "Container",
     "ContainerBuildError",
     "ContainerBuilder",
