@@ -1,102 +1,111 @@
 # Bundles
 
-Bundles group related registrations.
-
-A bundle is any callable with signature `Callable[[Container], None]`.
-
-```python
-from dataclasses import dataclass
-
-from clean_ioc import Container
-from clean_ioc.bundles import OnlyRunOncePerClassBundle
-```
-
-## Function bundle
+A bundle groups registrations; a boundary controls access to them. A bundle packages repeatable composition against
+the shared `ComponentBuilder` protocol. The same bundle can target a root `ContainerBuilder` or an experimental
+`ScopeBuilder`, or a retained `BoundaryBuilder`.
 
 ```python
-class ClientDependency:
-    def get_int(self) -> int:
-        return 10
+from clean_ioc import ComponentBuilder, ContainerBuilder
+from clean_ioc.bundles import BaseBundle
 
 
-class Client:
-    def __init__(self, dep: ClientDependency):
-        self.dep = dep
-
-    def get_number(self) -> int:
-        return self.dep.get_int()
+class ClientBundle(BaseBundle):
+    def apply(self, builder: ComponentBuilder):
+        builder.register(ClientConfig, instance=ClientConfig())
+        builder.register(ApiClient)
 
 
-def client_bundle(c: Container):
-    c.register(ClientDependency)
-    c.register(Client)
-
-
-container = Container()
-container.apply_bundle(client_bundle)
-
-client = container.resolve(Client)
-print(client.get_number())
+builder = ContainerBuilder()
+builder.apply_bundle(ClientBundle())
+container = builder.build()
 ```
 
-## Class-based bundle
+A bundle may also register a [decorator template](decorator-templates.md) and share one `ServiceGroup` declaration with contributing registrations. Same-named group objects have different identities.
+
+Bundles are composition-only. They are never injectable at runtime and cannot mutate a built container or scope.
+An existing bundle can also be applied unchanged to a retained boundary handle; see
+[Boundaries and visibility](boundaries.md). Every bundle applied to that handle contributes to the same private
+composition until its parent builds. Nested bundle applications retain their provenance path.
 
 ```python
-@dataclass
-class ClientConfig:
-    base_url: str
+from clean_ioc import Expose
 
-
-class ApiClient:
-    def __init__(self, config: ClientConfig):
-        self.base_url = config.base_url
-
-
-class ApiBundle(OnlyRunOncePerClassBundle):
-    def __init__(self, config: ClientConfig):
-        self.config = config
-
-    def apply(self, c: Container):
-        c.register(ClientConfig, instance=self.config)
-        c.register(ApiClient)
-
-
-container = Container()
-cfg = ClientConfig(base_url="https://example.com")
-
-container.apply_bundle(ApiBundle(cfg))
-container.apply_bundle(ApiBundle(cfg))  # ignored by OnlyRunOncePerClassBundle
-
-client = container.resolve(ApiClient)
-print(client.base_url)
+builder = ContainerBuilder()
+client = builder.create_boundary("client", exposes=(Expose(ApiClient),))
+client.apply_bundle(ClientBundle())
+container = builder.build()
+container.resolve(ApiClient)  # exposed; ClientConfig remains private
 ```
 
-## Customizing a bundle registration
+Boundary-owning bundles can call `builder.create_boundary(...)` through `ComponentBuilder` and expose the returned
+handle for application extensions. The boundary handle supports ordinary registration and bundle operations but
+cannot create nested boundaries or build independently.
 
-A configurable bundle can retain a registration ID so application setup can patch selected registration details before anything is resolved:
+The shared protocol also supports custom validation rules, so a bundle can install organization or framework policy
+along with its registrations:
 
 ```python
-class ConfigurableApiBundle:
-    def __init__(self):
-        self.api_client_registration_id: str | None = None
-
-    def __call__(self, c: Container):
-        self.api_client_registration_id = c.register(ApiClient)
-
-
-configurable_bundle = ConfigurableApiBundle()
-container = Container()
-container.apply_bundle(configurable_bundle)
-
-assert configurable_bundle.api_client_registration_id is not None
-container.patch_registration(
-    ApiClient,
-    configurable_bundle.api_client_registration_id,
-    dependency_config={"config": cfg},
-)
-
-client = container.resolve(ApiClient)
-print(client.base_url)
+class ArchitecturePolicyBundle(BaseBundle):
+    def apply(self, builder: ComponentBuilder):
+        builder.add_validation_rule(enforce_architecture)
+        builder.add_validation_rule(inspect_all_source, mode="validation")
 ```
 
-Apply every patch before resolving the registration. Once a registration has created an instance, Clean IoC rejects further patches so cached lifespans and teardown ownership cannot become stale.
+Rules installed on a root builder are inherited by scope overlays and validate each overlay's complete compiled graph.
+The `mode="validation"` form lets a bundle install an expensive CI policy without adding it to application startup.
+See [Custom graph validation](custom-validation.md#package-rules-in-bundles) for a complete policy-bundle example.
+
+## Run-once policies
+
+Use `OnlyRunOncePerInstanceBundle` when one bundle object may be applied repeatedly but should compose each builder once:
+
+```python
+from clean_ioc.bundles import OnlyRunOncePerInstanceBundle
+
+
+class InfrastructureBundle(OnlyRunOncePerInstanceBundle):
+    def apply(self, builder: ComponentBuilder):
+        builder.register(Database)
+        builder.register(Repository)
+```
+
+Use `OnlyRunOncePerClassBundle` when every instance of the bundle class shares one identifier. Extend `RunOnceBundle` and implement `get_bundle_identifier()` for a custom policy.
+
+The identifier answers **which bundle** is unique. Set `run_once_per` on a subclass to choose **where** it is unique:
+
+```python
+class SharedInfrastructure(OnlyRunOncePerClassBundle):
+    run_once_per = "container"
+
+    def apply(self, builder: ComponentBuilder):
+        builder.register(Database)
+```
+
+| `run_once_per` | One application per identifier in... |
+| --- | --- |
+| `"boundary"` (default) | Each root or scope builder, or each isolated boundary. This preserves the earlier per-builder behavior. |
+| `"scope"` | A root composition or one scope overlay, including all boundaries installed there. |
+| `"container"` | A root container composition and all its scope overlays and boundaries. |
+
+The choice applies to `RunOnceBundle`, `OnlyRunOncePerInstanceBundle`, and `OnlyRunOncePerClassBundle`. A scope overlay gets a fresh `"scope"` identity; nested runtime scopes without an overlay do not apply bundles. The same bundle can still run in a separate container. These are composition identities, not component lifespans or runtime caches.
+Use `"boundary"` when each isolated boundary needs its own registrations: a wider policy skips the bundle in later boundaries covered by the same scope or container.
+Custom `ComponentBuilder` implementations can support the wider choices by implementing `bundle_run_key(per: BundleRunScope) -> str`.
+
+## Bundle-owned component IDs
+
+`register(...)` returns a component ID. A bundle may retain it for a later pre-build patch:
+
+```python
+class ServiceBundle(BaseBundle):
+    component_id: str
+
+    def apply(self, builder: ComponentBuilder):
+        self.component_id = builder.register(Service)
+
+
+bundle = ServiceBundle()
+builder = ContainerBuilder()
+builder.apply_bundle(bundle)
+builder.patch_component(Service, bundle.component_id, lifespan="singleton")
+container = builder.build()
+```

@@ -1,369 +1,143 @@
-# Factories
+# Factories and resources
 
-Factories are callables that construct dependency instances for a registration.
+Use a factory when construction is not a direct class call, needs injected dependencies, or owns setup and cleanup.
 
 ```python
-from clean_ioc import Container
+from clean_ioc import ContainerBuilder
+
+
+def client_factory(config: Config) -> Client:
+    return Client(config.endpoint)
+
+
+builder = ContainerBuilder()
+builder.register(Config)
+builder.register(Client, factory=client_factory)
+container = builder.build()
 ```
 
-## Why use factories
+Factory parameters become compiled dependency edges. The factory itself does not run during `build()`.
 
-Use a factory when:
+## Union service types
 
-- construction needs conditional/runtime logic
-- setup and teardown should live together
-- creation depends on graph-aware services like `Resolver` or `CurrentGraph`
-- you want to expose one concrete object through multiple service types
-
-Factory parameters are dependency-injected using normal type-hint resolution.
-
-## Function factory with injected dependencies
+Register a union as one service key when a factory can return either of two types. For example, a Redis client factory
+can choose between standalone and cluster clients using configuration:
 
 ```python
-from clean_ioc import Container, DependencySettings
-from clean_ioc.registration_filters import with_name
+from redis import Redis
+from redis.cluster import RedisCluster
+
+from clean_ioc import ContainerBuilder
+
+RedisClient = Redis | RedisCluster
 
 
-class Settings:
-    def __init__(self, dsn: str):
-        self.dsn = dsn
+class RedisConfig:
+    def __init__(self, url: str, cluster_mode: bool):
+        self.url = url
+        self.cluster_mode = cluster_mode
 
 
-def settings_factory(dsn: str) -> Settings:
-    return Settings(dsn=dsn)
+def get_redis_client(config: RedisConfig) -> RedisClient:
+    if config.cluster_mode:
+        return RedisCluster.from_url(config.url)
+    return Redis.from_url(config.url)
 
 
-container = Container()
-container.register(str, instance="postgresql://prod-db", name="prod_dsn")
+class Cache:
+    def __init__(self, client: RedisClient):
+        self.client = client
 
-# dependency_config works for factory parameters too
-container.register(
-    Settings,
-    factory=settings_factory,
-    dependency_config={"dsn": DependencySettings(filter=with_name("prod_dsn"))},
+
+builder = ContainerBuilder()
+builder.register(
+    RedisConfig,
+    instance=RedisConfig("redis://localhost:6379", cluster_mode=False),
+    lifespan="singleton",
 )
-
-settings = container.resolve(Settings)
-print(settings.dsn)  # postgresql://prod-db
+builder.register(RedisClient, factory=get_redis_client, lifespan="singleton")
+builder.register(Cache)
+container = builder.build()
+client = container.resolve(RedisClient)  # Inferred as Redis | RedisCluster
+cache = container.resolve(Cache)
 ```
 
-## Factory with `Resolver`
+`A | B`, `Union[A, B]`, and assignment aliases such as `Client = A | B` are supported. Equivalent unions, including
+reversed member order, select the same key. You can also supply `instance=` or a concrete implementation class.
+Registering a union without any of these construction choices raises `TypeError`.
+
+The union is an explicit key: registering it does not register either member, and registrations under `A` or `B` do
+not satisfy a dependency on `A | B`. Named selection, async resolution, providers, caching and resource cleanup use
+the normal container rules. `A | None` does not make injection optional: a Python parameter default is used when
+present; otherwise the complete union requires a registration or scope slot. Use `inject()` to override a default.
+
+Public service-key annotations use `typing_extensions.TypeForm`, so type checkers supporting it retain the requested
+union as the result type. Native `type Client = A | B` declarations and `typing_extensions.TypeAliasType` aliases are
+transparent spellings of the same complete union key; the individual union members remain separate keys.
+
+## Async factories
 
 ```python
-from clean_ioc import Container, Resolver
+async def token_factory(config: Config) -> Token:
+    return await fetch_token(config)
 
 
-class Config:
-    pass
-
-
-class Client:
-    def __init__(self, config: Config):
-        self.config = config
-
-
-def client_factory(resolver: Resolver) -> Client:
-    # manual composition inside the factory
-    return Client(config=resolver.resolve(Config))
-
-
-container = Container()
-container.register(Config)
-container.register(Client, factory=client_factory)
-
-client = container.resolve(Client)
-print(type(client).__name__)  # Client
+builder.register(Token, factory=token_factory)
+container = builder.build()
+token = await container.resolve_async(Token)
 ```
 
-## Async function factory
+A plan containing async activation must use `resolve_async()`.
 
-Use `resolve_async` with async factories.
+## Generator factories
 
-```python
-import asyncio
-
-from clean_ioc import Container
-
-
-class Connection:
-    pass
-
-
-async def connection_factory() -> Connection:
-    return Connection()
-
-
-async def main():
-    container = Container()
-    container.register(Connection, factory=connection_factory)
-
-    conn = await container.resolve_async(Connection)
-    print(type(conn).__name__)  # Connection
-
-
-asyncio.run(main())
-```
-
-## Generator factory (setup and teardown)
-
-Generator factories colocate resource acquisition and release.
+Yield one value and put cleanup after the yield:
 
 ```python
-from clean_ioc import Container, Lifespan
-
-
-class Connection:
-    def close(self):
-        print("closed")
-
-
 def connection_factory():
-    conn = Connection()
-    yield conn
-    conn.close()
+    connection = Connection.open()
+    try:
+        yield connection
+    finally:
+        connection.close()
 
 
-container = Container()
-container.register(Connection, factory=connection_factory, lifespan=Lifespan.scoped)
+builder = ContainerBuilder()
+builder.register(Connection, factory=connection_factory, lifespan="scoped")
+container = builder.build()
 
 with container.new_scope() as scope:
-    scope.resolve(Connection)
-# prints: closed
+    connection = scope.resolve(Connection)
 ```
 
-Cleanup timing is tied to the owning context:
+The generator finalizer belongs to the same owner as the cached component.
 
-- `Lifespan.scoped`: cleanup runs when the scope exits
-- `Lifespan.singleton`: cleanup runs when the container exits (`with Container() as c`)
-- if you resolve outside a scope/container context, cleanup callbacks are not flushed automatically
+## Context managers
 
-## Async generator factory
+Functions decorated with `@contextmanager` and `@asynccontextmanager` are supported as factories. Clean IoC enters them on activation and exits them when the owning scope or container closes.
+
+Keep resource acquisition and release together in the generator or context-manager factory. This makes cleanup ownership explicit and works for both synchronous and asynchronous resources. A `ScopeBuilder` singleton is finalized by its built scope; a root singleton is finalized by the container.
+
+## Reusing another compiled component
+
+Factory helpers such as `use_component(...)` resolve through the current `ResolutionContext`, preserving `per_resolution` identity:
 
 ```python
-import asyncio
+from clean_ioc.factories import use_component
 
-from clean_ioc import Container, Lifespan
-
-
-class Connection:
-    async def close(self):
-        print("closed")
-
-
-async def connection_factory():
-    conn = Connection()
-    yield conn
-    await conn.close()
-
-
-async def main():
-    container = Container()
-    container.register(Connection, factory=connection_factory, lifespan=Lifespan.scoped)
-
-    async with container.new_scope() as scope:
-        await scope.resolve_async(Connection)
-
-
-asyncio.run(main())
+builder.register(SenderImpl)
+builder.register(Sender, factory=use_component(SenderImpl))
+builder.register(BatchSender, factory=use_component(SenderImpl))
 ```
 
-## `@contextmanager` and `@asynccontextmanager`
+`use_component()` and `use_component_async()` attach their target and filter as compiler metadata. The referenced root therefore appears as a dependency edge in the compiled graph and participates in missing-component, circular-dependency, captive-lifespan, and sync/async validation. Runtime use still resolves through the current context to preserve `per_resolution` identity; it does not trigger registration discovery or graph compilation.
 
-```python
-import asyncio
-from contextlib import asynccontextmanager, contextmanager
+Direct calls made through an injected `ResolutionContext` remain dynamic because the compiler cannot inspect arbitrary
+function bodies. Use the helpers when the target is known during composition and should appear in the compiled graph.
 
-from clean_ioc import Container, Lifespan
+## Argument values and selection
 
-
-class Connection:
-    def close(self):
-        print("sync close")
-
-
-class AsyncConnection:
-    async def close(self):
-        print("async close")
-
-
-@contextmanager
-def sync_connection_factory():
-    conn = Connection()
-    try:
-        yield conn
-    finally:
-        conn.close()
-
-
-@asynccontextmanager
-async def async_connection_factory():
-    conn = AsyncConnection()
-    try:
-        yield conn
-    finally:
-        await conn.close()
-
-
-async def main():
-    container = Container()
-    container.register(Connection, factory=sync_connection_factory, lifespan=Lifespan.scoped)
-    container.register(AsyncConnection, factory=async_connection_factory, lifespan=Lifespan.scoped)
-
-    with container.new_scope() as scope:
-        scope.resolve(Connection)
-
-    async with container.new_scope() as scope:
-        await scope.resolve_async(AsyncConnection)
-
-
-asyncio.run(main())
-```
-
-## Factory helpers (`clean_ioc.factories`)
-
-The `clean_ioc.factories` module contains reusable factory builders.
-
-```python
-from clean_ioc.factories import create_type_mapping, use_from_current_graph, use_registered
-```
-
-### `use_registered(...)`
-
-Resolve a different registered service within a factory.
-
-```python
-from clean_ioc import Container
-from clean_ioc.factories import use_registered
-
-
-class Sender:
-    pass
-
-
-class BatchSender:
-    pass
-
-
-class SenderImpl(Sender, BatchSender):
-    pass
-
-
-class Client:
-    def __init__(self, sender: Sender, batch_sender: BatchSender):
-        self.sender = sender
-        self.batch_sender = batch_sender
-
-
-container = Container()
-container.register(SenderImpl)
-container.register(Sender, factory=use_registered(SenderImpl))
-container.register(BatchSender, factory=use_registered(SenderImpl))
-container.register(Client)
-
-client = container.resolve(Client)
-print(client.sender is client.batch_sender)  # True
-```
-
-`use_registered(...)` can also receive a registration filter:
-
-```python
-from clean_ioc.registration_filters import with_name
-
-
-class A:
-    pass
-
-
-class C(A):
-    pass
-
-
-c1 = C()
-c2 = C()
-
-container = Container()
-container.register(C, instance=c1, name="C1")
-container.register(C, instance=c2, name="C2")
-container.register(A, factory=use_registered(C, with_name("C2")))
-
-print(container.resolve(A) is c2)  # True
-```
-
-### `use_from_current_graph(...)`
-
-Resolve from the current active graph.
-
-This is useful when multiple service interfaces must share one in-graph object instance.
-
-```python
-from clean_ioc import Container
-from clean_ioc.factories import use_from_current_graph
-
-
-class A:
-    pass
-
-
-class B:
-    pass
-
-
-class AB(A, B):
-    pass
-
-
-container = Container()
-container.register(A, AB)
-container.register(B, factory=use_from_current_graph(AB))
-```
-
-### `create_type_mapping(...)`
-
-Build a dictionary from all resolved registrations of one service type.
-
-```python
-from clean_ioc import Container
-from clean_ioc.factories import create_type_mapping
-
-
-class Handler:
-    key = ""
-
-
-class UserHandler(Handler):
-    key = "user"
-
-
-class AuditHandler(Handler):
-    key = "audit"
-
-
-def get_key(handler: Handler) -> str:
-    return type(handler).key
-
-
-container = Container()
-container.register_subclasses(Handler)
-container.register(dict[str, Handler], factory=create_type_mapping(Handler, key_getter=get_key))
-
-handler_map = container.resolve(dict[str, Handler])
-print(sorted(handler_map.keys()))  # ['audit', 'user']
-```
-
-Async variants are also available:
-
-- `use_registered_async(...)`
-- `use_from_current_graph_async(...)`
-- `create_type_mapping_async(...)`
-
-## Common pitfalls
-
-- registering an async factory but calling `resolve(...)` instead of `resolve_async(...)`
-- expecting generator/contextmanager cleanup without scope or container lifecycle boundaries
-- missing type hints on factory parameters
-- mixing factory logic and parameter value overriding (use `DependencySettings(value_factory=...)` for value override behavior)
-
-## See also
-
-- [Advanced: Special Dependency Types](./advanced/special-dependency-types.md)
-- [Advanced: Value Factories](./advanced/value-factories.md)
+Use `arguments=` for fixed constructor/factory values, `select(...)` for a filtered component edge, and `derive(...)`
+for a pure build-time composition rule. `build_arg(...)` and `generic_arg(...)` project common metadata as frozen
+values, while `inject()` forces ordinary unnamed injection over a Python default. Runtime-changing values belong in an
+ordinary component factory or a declared scope slot. See [argument policies](advanced/arguments.md).

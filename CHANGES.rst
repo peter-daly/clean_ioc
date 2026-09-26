@@ -1,3 +1,340 @@
+2.0.0b23
+--------
+
+    Replace ``Boundary(root_bundle=...)`` and ``install_boundary()`` with
+    ``create_boundary()`` returning a retained ``BoundaryBuilder``. Compose
+    ordinary bundles and registrations incrementally inside a boundary until
+    its container or scope builder successfully builds.
+
+    Snapshot boundary composition at compilation time, freeze retained handles
+    after successful build, and keep failed builds repairable. Boundary queries
+    use local and explicitly imported components; visibility contracts remain
+    editable through ``uses`` and ``exposes`` before build. Bundle failures keep
+    partial composition and successful run-once claims, as on root builders.
+
+
+2.0.0b22
+--------
+
+    Allow ``ComponentSelector`` to carry a custom ``predicate`` alongside its
+    metadata constraints. Predicates are combined with supplied fields using
+    AND and can inspect descendants or compose existing component filters.
+
+    Add ``ComponentSelector.all()`` for selecting named and unnamed components.
+    An entirely undefined selector still selects only unnamed components.
+
+    Document automatic applicability overrides and predicate identity in
+    run-once bundles, including the need to account for every policy input.
+
+
+2.0.0b21
+--------
+
+    Make ``ComponentSelector[TService]`` generic so type checkers validate
+    service and implementation types against the selected service contract,
+    including structural protocol compatibility. Runtime filtering is
+    unchanged, and typed ``default()`` selectors keep every field undefined.
+
+
+2.0.0b20
+--------
+
+    Default all ``ComponentSelector`` fields to the public ``Undefined``
+    sentinel. Explicit ``name=None`` selects unnamed components; callers
+    previously using ``None`` to omit a field should use ``Undefined`` instead.
+
+    Return the default unnamed-component filter when every selector field is
+    undefined. Add ``ComponentSelector.default()`` for declaring default values
+    with every field undefined.
+
+
+2.0.0b19
+--------
+
+    Add build-error triage, registration selection censuses, and compilation
+    profiling to make container builds easier to inspect and diagnose.
+
+    Add opt-in runtime resolution profiling for identifying expensive resolves,
+    frequently invoked factories, cache behavior, and activation hot spots.
+    Profiling remains disabled unless configured on the container builder.
+
+    Add reusable ``ComponentSelector`` configuration for composing component
+    filters from service type, implementation type, name, lifespan, and tags.
+
+
+2.0.0b18
+--------
+
+    Add ``scope="per_call"`` for method-only service contracts. Resolving a
+    service obtains a deferred handle; each synchronous or asynchronous method
+    invocation activates the decorated implementation in a fresh isolated
+    scope and closes that scope afterward. Registration ``lifespan="auto"``
+    remains ``per_resolution`` by default and normalizes to ``scoped`` for
+    per-call targets. Graph manifests now expose a deferred per-call handle
+    and its invocation target, changing manifest semantics for these new
+    registrations without versioning the beta tooling format.
+
+    Allow method-only ABC contracts whose public operations use private
+    abstract helpers. The handle implements those private members with
+    raising stubs while public calls dispatch to the scoped implementation.
+
+    Reject contract hooks and behavioral special methods that cannot safely
+    run on a deferred handle. Handle representation, equality, and hashing
+    use object identity. Reject statically declared fluent target results and
+    direct returns of invocation targets or their bound methods before the
+    invocation scope closes.
+
+
+2.0.0b17
+--------
+
+    Add registration-driven decorator templates with explicit ``ServiceGroup``
+    membership or ``DerivedServices`` target selection, exact source binding,
+    compile-time filters, generic projection, overlay edits, and captured
+    source/target diagnostics.
+
+    Reduce build-time diagnostic copying and repeated decorator-template
+    projection work with compiler-local caches and shared immutable
+    explanations. Preserve source identity, contextual filters, boundary
+    visibility, overlay ownership, and frozen diagnostic information.
+
+
+2.0.0b16
+--------
+
+    Add ``BoundaryAlias`` so ``Expose(..., alias=...)`` can publish a
+    boundary-local component under a complete public service type, name, and
+    tag contract without adding a proxy or registration. Root and consuming
+    boundaries select the public identity while manifests retain the source
+    mapping and registration identity, caching, lifespan, and cleanup ownership
+    remain unchanged.
+
+
+2.0.0b15
+--------
+
+    Let run-once bundles select ``run_once_per="boundary"``, ``"scope"``, or
+    ``"container"``. The default keeps per-builder behavior; wider choices
+    share a run history across boundaries and scope overlays.
+
+
+2.0.0b14
+--------
+
+    Add ``ProviderMapGroup`` and registration ``contributes=`` metadata for
+    explicitly curated provider maps. Group membership is selected before map
+    target compilation and does not alter ordinary service resolution.
+
+
+2.0.0b13
+--------
+
+    Add frozen partial diagnostic graphs for failed builds, including bounded
+    compilation attempts, witness paths, candidate outcomes, cycle back
+    references, and CLI rendering through ``graph --on-error partial``.
+
+    Record parameter-policy outcomes and generic substitutions in compiled
+    graph metadata. Expose argument and specialization explanations through the
+    Python API and ``clean-ioc explain`` CLI without re-running user callbacks.
+
+    Allow subclass discovery rules to declare module names with
+    ``ensure_import_modules=``. Build imports every declared module before taking any
+    live subclass snapshot, making discovery independent of rule order. Package
+    children remain opt-in through ``include_children=True``. Built containers and
+    scopes expose the concrete imported names through ``ensured_import_modules``.
+
+2.0.0b12
+--------
+
+    Support native and backported Python type aliases across composition,
+    generic specialization, graph tooling, and resolution while preserving
+    nominal NewType identity. Keep canonical class, generic, union, and provider
+    lookups on the existing fast paths without repeated alias normalization.
+
+    Add lazy provider maps with pure callable keys evaluated during compilation.
+    Inject read-only mappings of individually invocable sync or async providers
+    with frozen target selection, ordinary scope and cleanup ownership, and
+    redacted graph metadata.
+
+    Add structural generic factory registration with ``register_pattern()``.
+    Compile nested and repeated TypeVar bindings, class bounds/constraints,
+    deterministic specificity and ambiguity diagnostics, and closed Boundary
+    exposure using the existing frozen activation and ownership plans.
+    Exact registrations precede structural patterns and open fallbacks.
+    Matching remains build-time only; unseen runtime requests stay unavailable.
+
+    Rename ``Assembly`` to ``Boundary`` and ``clean_ioc.assemblies`` to
+    ``clean_ioc.boundaries``. Builders now use ``install_boundary()``;
+    component, graph, provenance, and validation metadata use ``boundary``
+    or ``boundaries``. Diagnostics and graph diffs use Boundary terminology.
+    The old API names are removed without compatibility aliases.
+    Bundles, ``root_bundle``, ``Expose``, and ``Use`` keep their behavior.
+    Graph manifests use ``boundaries``, ``boundary``, and ``source_boundary``
+    fields. Graph manifests, build reports, and ownership reports are unversioned
+    during beta. Remove schema version fields, version checks, and legacy
+    comparison branches. Regenerate saved graphs and baselines when their
+    format changes; schema versioning will begin after beta.
+
+
+2.0.0b11
+--------
+    Support constructor injection for directly registered closed generic classes
+    and closed service/implementation pairs, preserving the original class.
+    Specialise nested and inherited constructor dependencies from implementation
+    bindings, validate argument names against the real constructor, and report
+    missing closed dependencies during build. Correct constructor activation and
+    implementation type metadata. Public generic argument mappings continue to
+    follow the registered service for compatibility.
+
+
+2.0.0b10
+--------
+    Support explicit union service keys with ``TypeForm`` annotations that
+    preserve union result types across registration, resolution and FastAPI.
+    Add a direct ``typing_extensions>=4.13.0`` dependency. Union registrations
+    require a factory, instance or implementation and do not register members.
+    Fix union service filters and canonicalize union identities in tooling;
+    existing union-containing graph fingerprints may change.
+
+
+2.0.0b9
+-------
+    Rename the default ``once_per_graph`` lifespan to ``per_resolution`` across
+    the public API, compiled metadata, diagnostics, and runtime internals so its
+    top-level resolution reuse boundary is explicit.
+
+
+2.0.0b8
+-------
+    Separate custom-rule execution from warning strictness. Replace
+    ``strict_only`` with the ``mode="build" | "validation"`` selector (defaulting
+    to build). Build and validate-only rules execute in disjoint phases, while
+    ``validation_report()`` retains stored build findings while adding fresh
+    validate-only findings. ``clean-ioc check`` exercises both phases in strict
+    and non-strict modes without rerunning build rules.
+
+
+2.0.0b7
+-------
+    Add a dependency-free ASGI extension for application lifespan ownership,
+    per-operation scopes, raw connection values, and framework-light headers,
+    with a separate minimal health-check server example.
+
+
+2.0.0b6
+-------
+    Add immutable compilation explanations with selected and rejected candidates,
+    stable reason codes, declaration provenance, and ``clean-ioc explain``.
+    Add compiled cache and cleanup ownership proofs, owner-correct resource
+    finalization, closed-scope safety, and ``clean-ioc ownership``.
+    Add typed ``Provider[T]`` and ``AsyncProvider[T]`` handles that execute frozen
+    deferred plans without adding service lookup to the runtime hot path.
+    Add compile-time assemblies with private-by-default bundle registrations,
+    unchanged exposures, explicit root and cross-assembly uses, overlay support,
+    structured visibility diagnostics, provenance, and manifest-schema-3 tooling.
+    Expand BenchBro coverage for compiler features, strict validation, ownership,
+    runtime scaling, allocations, and FastAPI request integration.
+2.0.0b5
+-------
+    Add strict-only custom graph rules that defer expensive validation and AST
+    inspection until an explicit validation report or CLI check.
+    Make ``clean-ioc check`` strict by default, retaining ``--no-strict`` for
+    lightweight checks, and document factory functions returning built containers.
+
+
+2.0.0b4
+-------
+    Pass one ephemeral ``ValidationContext`` to custom graph rules and add lazy,
+    per-build AST inspection for Python implementation types.
+
+
+2.0.0b3
+-------
+    Add reusable custom build-time graph validation rules with structured findings,
+    overlay inheritance, and path-aware traversal of compiled occurrences.
+
+
+2.0.0b2
+-------
+    Require Python 3.11 or newer.
+    Package optional FastAPI boundary declarations as a run-once-per-builder
+    ``FastAPIBundle`` and complete the shared builder protocol for nested bundles.
+
+
+2.0.0b1
+-------
+    Split mutable composition into ``ContainerBuilder`` and ``ScopeBuilder`` and
+    make ``Container`` and ``Scope`` immutable runtime types.
+    Compile occurrence-specific component plans at ``build()`` without invoking
+    constructors, factories, generators, or context managers.
+    Replace ``dependency_config`` and mutable ``DependencySettings`` with one
+    ``arguments`` API for fixed values, explicit component selection, and pure
+    build-time derivation; remove runtime value providers and list reducers.
+    Add immutable user-defined ``build_args`` to root and overlay compilation,
+    exposing them to derivation and component filters, with
+    ``build_arg(name, default=...)`` for explicit frozen-value projection,
+    without implicit runtime injection or disclosure through graph diagnostics.
+    Add ``inject()`` for forcing unnamed injection over a Python default and
+    ``generic_arg(...)`` for freezing an owning component's generic binding.
+    Execute frozen activation instructions without allocating legacy dependency
+    graph nodes during normal resolution.
+    Specialize compiled runtime steps by lifespan, freeze sync capability and
+    default root selection at build, and defer runtime UUID creation until an ID
+    is inspected, reducing resolution and ordinary scope-creation overhead.
+    Make the compiled builder/runtime design the only public API: retire the V1
+    container and its registration/node filters, remove compatibility aliases,
+    and expose the implementation through ``clean_ioc.container`` rather than a
+    versioned module.
+    Replace public registration/node filtering with the immutable ``Component``
+    model and shared ``clean_ioc.component_filters`` predicates.
+    Add declared scope slots and locked ``Scope.provide()`` values for FastAPI and
+    other late framework inputs.
+    Add experimental scope overlays whose singletons belong to the built scope and
+    descendants.
+    Defer subclass, closed-generic, and generic-decorator discovery until
+    ``build()``, making the successful build snapshot complete and immutable.
+    Specialize closed and open generic factory dependencies at build time, with
+    explicit ``factory_specialization`` support for otherwise hidden TypeVars.
+    Replace the sealed-container prototype with BenchBro build, runtime, scope,
+    request-slot, and Python-allocation experiments.
+    Add entry-point markers, aggregated structured build reports, complete compiled
+    graph inspection, deterministic redacted manifests, semantic graph diffs, and
+    the ``clean-ioc check|graph|diff`` command-line interface.
+    Anchor inherited root singletons to their frozen root activation plans and
+    make a built scope overlay a fresh scoped-cache boundary.
+    Reject direct and transitive ``once_per_graph`` dependencies beneath scoped
+    or singleton components as captive dependencies during ``build()``.
+    Modernize the FastAPI extension for FastAPI 0.121+, with one-call ASGI
+    installation, HTTP and WebSocket scopes, automatic request/header values,
+    full-response cleanup, and startup validation of every ``Resolve`` route.
+    Remove the ``scoped_teardown`` registration option; generator and context-manager
+    factories now provide the single resource-cleanup model.
+    Make decorators stable builder definitions with IDs, owned metadata, patch/remove
+    operations, one ``when=`` filter, build-time validation, z-index graph rendering,
+    and open-generic specialization from actual compiled plans.
+    Replace the public V2 ``Lifespan`` enum values with ``Literal`` string arguments
+    and expose those same strings through components, filters, and graph manifests.
+    Compile pre-configurations as stable, shared singleton initializers with one
+    ``when=`` filter, declaration ordering, generic matching, captive-dependency
+    validation, concurrent single-flight execution, owner-correct cleanup, and
+    deterministic failure/retry behavior.
+
+
+1.25.0
+------
+    Add static ``Container.validate()`` checks for missing registrations, circular
+    dependencies, captive scoped dependencies, and async-only graphs.
+    Add ``Container.explain()`` with readable text and Mermaid dependency plans.
+    Raise dedicated ``CircularDependencyError`` and ``CaptiveDependencyError``
+    exceptions during runtime resolution.
+    Coordinate first-time scoped and singleton activation across concurrent threads
+    and async tasks, including safe failure and retry behavior.
+    Expand FastAPI support from 0.101.x to all compatible 0.x releases and test both
+    the minimum and latest supported versions in CI.
+    Add a runnable FastAPI Clean Architecture example, reproducible microbenchmarks,
+    and a documentation and project-positioning overhaul.
+
+
 0.0.1
 -----
     Registration and resolving works.

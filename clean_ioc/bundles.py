@@ -4,39 +4,46 @@ from collections import defaultdict
 from typing import ClassVar
 from uuid import uuid4
 
-from clean_ioc import Container
+from clean_ioc.components import BundleRunScope, ComponentBuilder
 
 logger = logging.getLogger(__name__)
 
 
 class BaseBundle(ABC):
     @abstractmethod
-    def apply(self, container: Container): ...
+    def apply(self, builder: ComponentBuilder): ...
 
-    def __call__(self, container: Container):
-        self.apply(container=container)
+    def __call__(self, builder: ComponentBuilder):
+        self.apply(builder)
 
 
 class RunOnceBundle(BaseBundle):
-    BUNDLE_RUN_HISTORY: ClassVar[dict[str, list[str]]] = defaultdict(list)
+    BUNDLE_RUN_HISTORY: ClassVar[dict[str, set[tuple[BundleRunScope, str]]]] = defaultdict(set)
+    run_once_per: ClassVar[BundleRunScope] = "boundary"
 
     @abstractmethod
-    def apply(self, container: Container): ...
+    def apply(self, builder: ComponentBuilder): ...
 
     @abstractmethod
     def get_bundle_identifier(self) -> str: ...
 
-    def __call__(self, container: Container):
+    def __call__(self, builder: ComponentBuilder):
         bundle_identifier = self.get_bundle_identifier()
         bundle_containers = self.__class__.BUNDLE_RUN_HISTORY[bundle_identifier]
-        container_id = container.id
+        builder_id = builder.id if self.run_once_per == "boundary" else builder.bundle_run_key(self.run_once_per)
+        run_key = (self.run_once_per, builder_id)
 
-        if container_id in bundle_containers:
-            logger.debug("Bundle %s attempted to run more than once on container %s", bundle_identifier, container_id)
+        if run_key in bundle_containers:
+            logger.debug(
+                "Bundle %s attempted to run more than once in %s %s",
+                bundle_identifier,
+                self.run_once_per,
+                builder_id,
+            )
             return
 
-        self.apply(container=container)
-        bundle_containers.append(container_id)
+        self.apply(builder)
+        bundle_containers.add(run_key)
 
 
 class OnlyRunOncePerInstanceBundle(RunOnceBundle):
