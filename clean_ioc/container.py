@@ -57,7 +57,7 @@ from .arguments import (
     _FixedArgument,
     _SelectArgument,
 )
-from .boundaries import Boundary, BoundaryAlias, Expose, Use
+from .boundaries import BoundaryAlias, Expose, Use
 from .compilation_profile import CompilationProfiler, safe_definition
 from .components import (
     BundleRunScope,
@@ -9244,6 +9244,7 @@ def _compile_with_report(
     *,
     build_args: Mapping[str, Any] = _EMPTY_BUILD_ARGS,
     preview: bool = False,
+    preview_request: tuple[str, Any] | None = None,
     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
     anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
     anchored_owner_tokens: frozenset[str] = frozenset(),
@@ -9377,11 +9378,15 @@ def _compile_with_report(
     )
     census_definitions, census_ids = _census_inventory(blueprint)
     try:
-        compiled = (
-            compiler.compile()
-            if profile is None
-            else profile.call("primary compilation", "phase", compiler.compile, attempt="primary")
-        )
+        if preview_request is not None:
+            area, service_type = preview_request
+            compiled = compiler.compile((service_type,), area=area, include_boundaries=False)
+        else:
+            compiled = (
+                compiler.compile()
+                if profile is None
+                else profile.call("primary compilation", "phase", compiler.compile, attempt="primary")
+            )
         plan = replace(compiled, census_definitions=census_definitions, census_ids=census_ids)
         return plan if preview else _finalize_plan(plan, profile)
     except ContainerBuildError as error:
@@ -10750,7 +10755,7 @@ class _BuilderBase:
         self._entrypoints: list[_EntryPoint] = []
         self._validation_rules: list[_ValidationRuleDefinition] = []
         self._bundle_stack: list[str] = []
-        self._boundaries: list[_BoundaryBlueprint] = []
+        self._boundaries: list[BoundaryBuilder] = []
         self._built = False
 
     def _assert_mutable(self) -> None:
@@ -10778,17 +10783,26 @@ class _BuilderBase:
         """Use the same original declarations and parent anchors for every build-time view."""
         self._assert_mutable()
         parent = getattr(self, "_parent", None)
+        if parent is not None:
+            parent._ensure_open()
         inputs: _CompilationInputs = {"build_args": self._effective_build_args(build_args)}
+        # Boundary discovery is deferred alongside root discovery. Import every
+        # declared module before any layer captures the live subclass graph.
+        if self._boundaries:
+            _ensure_discovery_imports(
+                rule for builder in (self, *self._boundaries) for rule in builder._registration_discoveries
+            )
+        layer = self._layer()
+        boundaries = tuple(boundary._snapshot() for boundary in self._boundaries)
         if parent is None:
-            return _Blueprint((self._layer(),), tuple(self._boundaries)), inputs
-        parent._ensure_open()
+            return _Blueprint((layer,), boundaries), inputs
         inherited_boundaries = tuple(
             replace(boundary, root_layer_offset=boundary.root_layer_offset + 1)
             for boundary in parent._plan.blueprint.boundaries
         )
         blueprint = _Blueprint(
-            (self._layer(), *parent._plan.blueprint.layers),
-            (*self._boundaries, *inherited_boundaries),
+            (layer, *parent._plan.blueprint.layers),
+            (*boundaries, *inherited_boundaries),
         )
         sidecars: dict[_ComponentGraph, _GraphExplanationSidecars] = {}
         ancestor: Scope | None = parent
@@ -10859,33 +10873,34 @@ class _BuilderBase:
             instance_implementation_types=types.MappingProxyType(dict(self._instance_implementation_types)),
         )
 
-    def _install_boundary(self, boundary: Boundary) -> None:
+    def create_boundary(
+        self,
+        name: str,
+        *,
+        uses: Iterable[Use] = (),
+        exposes: Iterable[Expose] = (),
+    ) -> BoundaryBuilder:
+        """Create an isolated composition target, mutable until this builder builds."""
         self._assert_mutable()
-        if not isinstance(boundary, Boundary):
-            raise TypeError("install_boundary() requires a Boundary")
-        if not callable(boundary.root_bundle):
-            raise TypeError("Boundary root_bundle must be callable")
-        # Composition is transactional: only retain the private layer after the
-        # entire ordinary bundle has applied successfully.
-        private = _BoundaryBuilder(
-            owner_token=self._owner_token,
-            boundary_name=boundary.name,
-            composition_layer="overlay" if hasattr(self, "_parent") else "root",
-        )
-        private._bundle_container_id = self._bundle_container_id
-        private._bundle_scope_id = self._bundle_scope_id
-        try:
-            private.apply_bundle(boundary.root_bundle)
-            blueprint = _BoundaryBlueprint(
-                name=boundary.name,
-                layer=private._layer(),
-                uses=tuple(boundary.uses),
-                exposes=tuple(boundary.exposes),
+        if self._boundary_name is not None:
+            raise ValueError("Nested boundaries are not supported; use a container or scope builder")
+        if not isinstance(name, str) or name == "root" or not _BOUNDARY_NAME.fullmatch(name):
+            raise ContainerBuildError(
+                f"Invalid boundary name {name!r}; use ^[a-z][a-z0-9_-]*$ and do not use 'root'",
+                code="boundary-invalid-name",
+                path=(str(name),),
             )
-        except BaseException:
-            private._rollback_bundle_runs()
-            raise
-        self._boundaries.append(blueprint)
+        parent = getattr(self, "_parent", None)
+        inherited = parent is not None and parent._plan.blueprint.boundary(name) is not None
+        if inherited or any(boundary.name == name for boundary in self._boundaries):
+            raise ContainerBuildError(
+                f"Boundary {name!r} already exists; retain its composition handle to configure it",
+                code="overlay-boundary-reopened" if inherited else "boundary-duplicate-name",
+                path=(name,),
+            )
+        boundary = BoundaryBuilder(self, name=name, uses=uses, exposes=exposes)
+        self._boundaries.append(boundary)
+        return boundary
 
     def add_validation_rule(self, rule: ValidationRule, *, mode: ValidationRuleMode = "build") -> None:
         """Add a synchronous graph rule to the build or validation phase."""
@@ -11169,15 +11184,14 @@ class _BuilderBase:
             None,
         )
         if registration is None:
+            boundaries = tuple(boundary._snapshot() for boundary in self._boundaries)
             installed_private = next(
                 (
                     boundary.name
-                    for boundary in self._boundaries
+                    for boundary in boundaries
                     if any(
                         candidate.id == component_id
-                        for candidate, _ in _Blueprint((), tuple(self._boundaries)).local_registrations(
-                            boundary.name, service_type
-                        )
+                        for candidate, _ in _Blueprint((), boundaries).local_registrations(boundary.name, service_type)
                     )
                 ),
                 None,
@@ -11605,7 +11619,12 @@ class _BuilderBase:
             blueprint = _normalize_blueprint_aliases(blueprint)
         except TypeAliasNormalizationError as error:
             raise ContainerBuildError(report=_alias_error_report((error,))) from error
-        plan = _compile_with_report(blueprint, **inputs, preview=True)
+        plan = _compile_with_report(
+            blueprint,
+            **inputs,
+            preview=True,
+            preview_request=(self._boundary_name, service_type) if self._boundary_name is not None else None,
+        )
         roots = plan.roots.get(service_type, plan.provider_roots.get(service_type, ()))
         return tuple(item.component for item in roots)
 
@@ -11645,11 +11664,6 @@ class _BuilderBase:
 
 class ContainerBuilder(_BuilderBase):
     """Mutable root composition API. Call :meth:`build` exactly once."""
-
-    def install_boundary(self, boundary: Boundary) -> None:
-        """Install an isolated boundary blueprint for the next build."""
-
-        self._install_boundary(boundary)
 
     def build(
         self,
@@ -11701,11 +11715,6 @@ class ScopeBuilder(_BuilderBase):
         super().__init__()
         self._parent = parent
         self._bundle_container_id = parent.container._owned_token
-
-    def install_boundary(self, boundary: Boundary) -> None:
-        """Install a new overlay-owned boundary without reopening a parent."""
-
-        self._install_boundary(boundary)
 
     def build(
         self,
@@ -11773,13 +11782,63 @@ class ScopeBuilder(_BuilderBase):
             profile._finish(state)
 
 
-class _BoundaryBuilder(_BuilderBase):
-    """Private ComponentBuilder used while applying a Boundary root bundle."""
+class BoundaryBuilder(_BuilderBase):
+    """An explicit composition target owned and compiled by its creating builder.
 
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self._bundle_run_claims: list[tuple[set[tuple[BundleRunScope, str]], tuple[BundleRunScope, str]]] = []
+    Obtain handles through ``create_boundary()``. Registrations and visibility
+    declarations remain editable until the owner successfully builds. There is
+    no independent build or runtime resolution API on a boundary handle.
+    """
 
-    def _rollback_bundle_runs(self) -> None:
-        for history, key in reversed(self._bundle_run_claims):
-            history.discard(key)
+    def __init__(
+        self,
+        owner: _BuilderBase,
+        *,
+        name: str,
+        uses: Iterable[Use] = (),
+        exposes: Iterable[Expose] = (),
+    ) -> None:
+        super().__init__(
+            owner_token=owner._owner_token,
+            boundary_name=name,
+            composition_layer="overlay" if hasattr(owner, "_parent") else "root",
+        )
+        self._boundary_owner = owner
+        self._bundle_container_id = owner._bundle_container_id
+        self._bundle_scope_id = owner._bundle_scope_id
+        self._uses = tuple(uses)
+        self._exposes = tuple(exposes)
+
+    @property
+    def name(self) -> str:
+        return cast(str, self._boundary_name)
+
+    @property
+    def uses(self) -> tuple[Use, ...]:
+        return self._uses
+
+    @uses.setter
+    def uses(self, values: Iterable[Use]) -> None:
+        self._assert_mutable()
+        self._uses = tuple(values)
+
+    @property
+    def exposes(self) -> tuple[Expose, ...]:
+        return self._exposes
+
+    @exposes.setter
+    def exposes(self, values: Iterable[Expose]) -> None:
+        self._assert_mutable()
+        self._exposes = tuple(values)
+
+    def _assert_mutable(self) -> None:
+        self._boundary_owner._assert_mutable()
+        super()._assert_mutable()
+
+    def _snapshot(self) -> _BoundaryBlueprint:
+        self._assert_mutable()
+        return _BoundaryBlueprint(name=self.name, layer=self._layer(), uses=self.uses, exposes=self.exposes)
+
+    def _compilation_snapshot(self, build_args: Mapping[str, Any] | None) -> tuple[_Blueprint, _CompilationInputs]:
+        self._assert_mutable()
+        return self._boundary_owner._compilation_snapshot(build_args)

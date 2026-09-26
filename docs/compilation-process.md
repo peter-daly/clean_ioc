@@ -106,7 +106,9 @@ Explicit registrations precede convention-discovered registrations. This snapsho
 application values.
 
 `_Blueprint` combines layers with boundary declarations. A normal root build usually has one ordinary layer. An overlay
-has its own layer before inherited layers. Boundary-local definitions have separate visibility rules.
+has its own layer before inherited layers. Live boundary builders are snapshotted at this point, including all bundles
+applied since their creation. Boundary-local definitions have separate visibility rules. Successful build freezes the
+parent and its boundary handles together; failed compilation leaves them editable.
 
 The blueprint answers: **which definitions are visible for this requested type, from this composition area, and in
 what precedence order?** The compiler then determines the concrete plan those definitions produce at each occurrence.

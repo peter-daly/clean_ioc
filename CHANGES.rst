@@ -1,3 +1,18 @@
+2.0.0b23
+--------
+
+    Replace ``Boundary(root_bundle=...)`` and ``install_boundary()`` with
+    ``create_boundary()`` returning a retained ``BoundaryBuilder``. Compose
+    ordinary bundles and registrations incrementally inside a boundary until
+    its container or scope builder successfully builds.
+
+    Snapshot boundary composition at compilation time, freeze retained handles
+    after successful build, and keep failed builds repairable. Boundary queries
+    use local and explicitly imported components; visibility contracts remain
+    editable through ``uses`` and ``exposes`` before build. Bundle failures keep
+    partial composition and successful run-once claims, as on root builders.
+
+
 2.0.0b22
 --------
 

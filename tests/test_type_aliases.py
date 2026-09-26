@@ -11,7 +11,7 @@ from typing import Any, Callable, Generic, NewType, ParamSpec, cast
 import pytest
 from typing_extensions import TypeAliasType, TypeVar
 
-from clean_ioc import Boundary, ContainerBuilder, ContainerBuildError, Expose, Provider, Use
+from clean_ioc import ContainerBuilder, ContainerBuildError, Expose, Provider, Use
 from clean_ioc import component_filters as cf
 
 T = TypeVar("T")
@@ -222,15 +222,14 @@ def test_aliases_work_for_scope_slots_and_boundary_contracts():
     def feature(builder):
         builder.register(HandlerAlias)
 
-    boundary = Boundary(
+    builder = ContainerBuilder()
+    builder.declare_scope_slot(Request)
+    boundary = builder.create_boundary(
         "feature",
-        feature,
         uses=(Use.root(RequestAlias),),
         exposes=(Expose(HandlerAlias),),
     )
-    builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
-    builder.install_boundary(boundary)
+    boundary.apply_bundle(feature)
     with builder.build() as container, container.new_scope() as scope:
         request = Request()
         scope.provide(RequestAlias, request)

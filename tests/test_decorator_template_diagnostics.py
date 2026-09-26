@@ -7,7 +7,6 @@ import pytest
 from typing_extensions import TypeAliasType
 
 from clean_ioc import (
-    Boundary,
     ContainerBuilder,
     ContainerBuildError,
     DecoratorTemplate,
@@ -198,7 +197,7 @@ def test_private_boundary_facts_keep_declaration_and_target_context():
         )
 
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("private", private, exposes=(Expose(Target),)))
+    builder.create_boundary("private", exposes=(Expose(Target),)).apply_bundle(private)
     graph = builder.build().graph
     sources = graph.explain_template_sources(ids["template"])
     assert len(sources) == 1

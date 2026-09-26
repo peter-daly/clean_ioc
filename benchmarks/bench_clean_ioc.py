@@ -7,7 +7,6 @@ from typing import Any, Generic, TypeVar
 from benchbro import Case, system
 
 from clean_ioc import (
-    Boundary,
     BuildIssue,
     BuildReport,
     CompiledGraph,
@@ -156,21 +155,10 @@ def build_feature_graph(scenario: str) -> Container:
 
     if scenario == "boundary-visibility":
         builder = ContainerBuilder()
-        builder.install_boundary(
-            Boundary(
-                "foundation",
-                foundation_bundle,
-                exposes=(Expose(LevelThree),),
-            )
-        )
-        builder.install_boundary(
-            Boundary(
-                "application",
-                application_bundle,
-                uses=(Use("foundation", LevelThree),),
-                exposes=(Expose(LevelOne),),
-            )
-        )
+        builder.create_boundary("foundation", exposes=(Expose(LevelThree),)).apply_bundle(foundation_bundle)
+        builder.create_boundary(
+            "application", uses=(Use("foundation", LevelThree),), exposes=(Expose(LevelOne),)
+        ).apply_bundle(application_bundle)
         return builder.build()
 
     raise ValueError(f"Unknown compiler feature scenario: {scenario}")

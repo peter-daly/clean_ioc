@@ -7,7 +7,6 @@ from typing import Generic, TypeVar
 import pytest
 
 from clean_ioc import (
-    Boundary,
     BuildIssue,
     BuildReport,
     BuildTriage,
@@ -100,7 +99,7 @@ def test_boundary_and_named_selection_contexts_do_not_merge():
 
     builder = ContainerBuilder()
     builder.register(Root)
-    builder.install_boundary(Boundary("feature", install_feature))
+    builder.create_boundary("feature").apply_bundle(install_feature)
     with pytest.raises(ContainerBuildError) as raised:
         builder.build()
     groups = raised.value.triage_report().groups
@@ -144,8 +143,8 @@ def test_same_root_failure_in_two_boundaries_keeps_both_issues_and_entrypoint_co
         builder.register(Root)
 
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("a", install_a))
-    builder.install_boundary(Boundary("b", install_b))
+    builder.create_boundary("a").apply_bundle(install_a)
+    builder.create_boundary("b").apply_bundle(install_b)
     with pytest.raises(ContainerBuildError) as raised:
         builder.build()
     error = raised.value
@@ -179,8 +178,8 @@ def test_successful_same_named_root_in_other_boundary_does_not_clear_failed_evid
         builder.register(Root)
 
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("a", install_valid))
-    builder.install_boundary(Boundary("b", install_invalid))
+    builder.create_boundary("a").apply_bundle(install_valid)
+    builder.create_boundary("b").apply_bundle(install_invalid)
     with pytest.raises(ContainerBuildError) as raised:
         builder.build()
     triage = raised.value.triage_report()
@@ -228,8 +227,8 @@ def test_unsupported_callback_failures_keep_distinct_boundary_root_counts():
         builder.register(Root, arguments={"service": select(failing_filter)})
 
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("a", install))
-    builder.install_boundary(Boundary("b", install))
+    builder.create_boundary("a").apply_bundle(install)
+    builder.create_boundary("b").apply_bundle(install)
     with pytest.raises(ContainerBuildError) as raised:
         builder.build()
     error = raised.value

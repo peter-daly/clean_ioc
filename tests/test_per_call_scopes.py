@@ -12,7 +12,6 @@ from typing_extensions import Protocol as ExtensionsProtocol
 from typing_extensions import Self
 
 from clean_ioc import (
-    Boundary,
     ComponentKind,
     ContainerBuilder,
     ContainerBuildError,
@@ -479,12 +478,8 @@ def test_provider_map_and_boundary_expose_one_public_per_call_registration() -> 
         builder.register_provider_map(group)
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "private",
-            bundle,
-            exposes=(Expose(Service), Expose(Mapping[str, Provider[Service]])),
-        )
+    builder.create_boundary("private", exposes=(Expose(Service), Expose(Mapping[str, Provider[Service]]))).apply_bundle(
+        bundle
     )
     with builder.build() as container:
         assert container.resolve(Service).run() == "inside"

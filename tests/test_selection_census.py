@@ -59,7 +59,7 @@ def test_census_separates_root_dependency_collection_and_named_rejection():
 
 
 def test_census_keeps_global_and_boundary_marked_root_decisions_separate():
-    from clean_ioc import Boundary, Expose
+    from clean_ioc import Expose
 
     class Service:
         pass
@@ -85,7 +85,7 @@ def test_census_keeps_global_and_boundary_marked_root_decisions_separate():
     builder.register(Service, Global)
     builder.register(Service, GlobalNamed, name="named")
     builder.mark_entrypoint(Service)
-    builder.install_boundary(Boundary("local", install, exposes=(Expose(Service),)))
+    builder.create_boundary("local", exposes=(Expose(Service),)).apply_bundle(install)
     graph = builder.build().graph
     report = graph.selection_census()
     global_named = _summary(report, ".GlobalNamed")
@@ -99,7 +99,7 @@ def test_census_keeps_global_and_boundary_marked_root_decisions_separate():
 
 
 def test_all_roots_identifies_public_and_boundary_local_contexts():
-    from clean_ioc import Boundary, Expose
+    from clean_ioc import Expose
 
     class Service:
         pass
@@ -109,7 +109,7 @@ def test_all_roots_identifies_public_and_boundary_local_contexts():
         builder.mark_entrypoint(Service)
 
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("inner", install, exposes=(Expose(Service),)))
+    builder.create_boundary("inner", exposes=(Expose(Service),)).apply_bundle(install)
     report = builder.build().graph.selection_census(all_roots=True)
     summary = _summary(report, ".Service")
     assert summary.root_requests == 2
@@ -248,7 +248,7 @@ def test_census_separates_known_pattern_precedence_from_filter_rejection():
 
 
 def test_census_boundary_alias_links_to_one_source_registration():
-    from clean_ioc import Boundary, BoundaryAlias, Expose
+    from clean_ioc import BoundaryAlias, Expose
 
     class Private:
         pass
@@ -260,7 +260,7 @@ def test_census_boundary_alias_links_to_one_source_registration():
         builder.register(Private)
 
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("source", install, exposes=(Expose(Private, alias=BoundaryAlias(Public)),)))
+    builder.create_boundary("source", exposes=(Expose(Private, alias=BoundaryAlias(Public)),)).apply_bundle(install)
     census = builder.build().graph.selection_census(all_roots=True)
     source = next(item for item in census.definitions if item.definition.service.endswith(".Private"))
     alias = next(item for item in census.definitions if item.definition.kind == "boundary-alias")

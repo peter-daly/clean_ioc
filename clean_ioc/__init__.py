@@ -2,7 +2,7 @@
 
 from ._decorator_templates import DecoratorTemplate, RegistrationInfo
 from .arguments import INJECT, REMOVE, ParameterContext, build_arg, derive, generic_arg, inject, select
-from .boundaries import Boundary, BoundaryAlias, Expose, Use
+from .boundaries import BoundaryAlias, Expose, Use
 from .compilation_profile import (
     CompilationCounters,
     CompilationHotspot,
@@ -27,6 +27,7 @@ from .components import (
     default_component_filter,
 )
 from .container import (
+    BoundaryBuilder,
     BuilderAlreadyBuiltError,
     CannotResolveError,
     Container,
@@ -117,7 +118,7 @@ __all__ = [
     "INJECT",
     "REMOVE",
     "BuilderAlreadyBuiltError",
-    "Boundary",
+    "BoundaryBuilder",
     "BoundaryAlias",
     "CannotResolveError",
     "Component",

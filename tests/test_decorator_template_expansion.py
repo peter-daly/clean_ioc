@@ -7,21 +7,10 @@ from uuid import UUID, uuid5
 import pytest
 from typing_extensions import TypeAliasType
 
-from clean_ioc import (
-    Boundary,
-    ContainerBuilder,
-    ContainerBuildError,
-    DerivedServices,
-    Expose,
-    ServiceGroup,
-    Tag,
-    Use,
-    select,
-)
+from clean_ioc import ContainerBuilder, ContainerBuildError, DerivedServices, Expose, ServiceGroup, Tag, Use, select
 from clean_ioc import component_filters as cf
 from clean_ioc._decorator_templates import DecoratorTemplate, RegistrationInfo
 from clean_ioc.container import (
-    _Blueprint,
     _check_template_boundary_visibility,
     _Compiler,
     _normalize_blueprint_aliases,
@@ -42,7 +31,8 @@ def specification(source):
 
 
 def snapshot(builder):
-    return _normalize_blueprint_aliases(_Blueprint((builder._layer(),), tuple(builder._boundaries)))
+    blueprint, _ = builder._compilation_snapshot(None)
+    return _normalize_blueprint_aliases(blueprint)
 
 
 def test_zero_sources_and_public_entrypoints():
@@ -385,9 +375,9 @@ def test_visible_sources_from_root_and_boundary_declaration_areas():
     def consumer(private):
         ids["consumer-template"] = private._register_decorator_template(for_each=Source, template=specification)
 
-    builder.install_boundary(Boundary("provider", provider, exposes=(Expose(Source, filter=cf.with_name("public")),)))
-    builder.install_boundary(
-        Boundary("consumer", consumer, uses=(Use("provider", Source, filter=cf.with_name("public")),))
+    builder.create_boundary("provider", exposes=(Expose(Source, filter=cf.with_name("public")),)).apply_bundle(provider)
+    builder.create_boundary("consumer", uses=(Use("provider", Source, filter=cf.with_name("public")),)).apply_bundle(
+        consumer
     )
     root_template = builder._register_decorator_template(for_each=Source, template=specification)
     expansion = builder._expand_decorator_templates()
@@ -412,7 +402,7 @@ def test_retained_boundary_builder_also_obeys_expansion_guard():
         private.register(Target)
         private._register_decorator_template(for_each=Target, template=lambda _: private.register(Target))
 
-    builder.install_boundary(Boundary("private", bundle))
+    builder.create_boundary("private").apply_bundle(bundle)
     with pytest.raises(ContainerBuildError) as caught:
         builder._expand_decorator_templates()
     assert caught.value.code == "template-expansion-reentry"
@@ -497,7 +487,7 @@ def test_visibility_consistency_primitive_stable_changed_and_newly_invalid():
             return (component.name == "one" or has_marker) if ambiguous else ((component.name == "one") != has_marker)
 
         builder = ContainerBuilder()
-        builder.install_boundary(Boundary("provider", private, exposes=(Expose(Source, filter=selection),)))
+        builder.create_boundary("provider", exposes=(Expose(Source, filter=selection),)).apply_bundle(private)
         builder._register_decorator_template(for_each=Source, template=specification)
         initial = builder._expand_decorator_templates()
         normalized = snapshot(builder)
@@ -650,7 +640,7 @@ def test_use_visibility_recheck_is_one_shot_and_never_replays_template_callbacks
     builder.register(Source, name="one")
     builder.register(Source, name="two")
     builder.register(Marker)
-    builder.install_boundary(Boundary("consumer", lambda _: None, uses=(Use(None, Source, filter=selection),)))
+    builder.create_boundary("consumer", uses=(Use(None, Source, filter=selection),)).apply_bundle(lambda _: None)
     builder._register_decorator_template(
         for_each=Source, template=lambda source: (calls.append(source.id), specification(source))[1]
     )

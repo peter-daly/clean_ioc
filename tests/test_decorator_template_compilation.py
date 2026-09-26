@@ -6,7 +6,6 @@ import pytest
 from typing_extensions import TypeVar as ExtensionTypeVar
 
 from clean_ioc import (
-    Boundary,
     ContainerBuilder,
     ContainerBuildError,
     DecoratorTemplate,
@@ -363,9 +362,9 @@ def test_actual_generated_boundary_effect_rejected_once_with_cause(declaration, 
 
     if declaration == "use":
         compose(builder)
-        builder.install_boundary(Boundary("consumer", lambda _: None, uses=(Use(None, Target, filter=selection),)))
+        builder.create_boundary("consumer", uses=(Use(None, Target, filter=selection),)).apply_bundle(lambda _: None)
     else:
-        builder.install_boundary(Boundary("provider", compose, exposes=(Expose(Target, filter=selection),)))
+        builder.create_boundary("provider", exposes=(Expose(Target, filter=selection),)).apply_bundle(compose)
     with pytest.raises(ContainerBuildError) as caught:
         builder.build()
     error = caught.value

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from .components import ComponentBuilder, ComponentFilter, default_component_filter
+from .components import ComponentFilter, default_component_filter
 from .metadata import Tag
 
 
@@ -44,13 +43,3 @@ class Use:
         filter: ComponentFilter = default_component_filter,
     ) -> Use:
         return cls(None, service_type, filter)
-
-
-@dataclass(frozen=True, slots=True)
-class Boundary:
-    """An opt-in compile-time visibility boundary around an ordinary bundle."""
-
-    name: str
-    root_bundle: Callable[[ComponentBuilder], None]
-    uses: tuple[Use, ...] = ()
-    exposes: tuple[Expose, ...] = ()

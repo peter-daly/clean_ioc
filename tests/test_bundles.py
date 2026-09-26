@@ -3,7 +3,7 @@ from unittest.mock import Mock
 import pytest
 from assertive import was_called, was_called_once, was_called_once_with, was_not_called
 
-from clean_ioc import Boundary, ComponentBuilder, ContainerBuilder
+from clean_ioc import ComponentBuilder, ContainerBuilder
 from clean_ioc.bundles import (
     BaseBundle,
     OnlyRunOncePerClassBundle,
@@ -191,16 +191,16 @@ def test_run_once_bundle_uniqueness_across_boundaries_and_scope_overlays(per, ex
     root = ContainerBuilder()
     root.apply_bundle(Once())
     root.apply_bundle(Once())
-    root.install_boundary(Boundary("first", Once()))
+    root.create_boundary("first").apply_bundle(Once())
     container = root.build()
 
     overlay = container.new_scope_builder()
     overlay.apply_bundle(Once())
-    overlay.install_boundary(Boundary("second", Once()))
+    overlay.create_boundary("second").apply_bundle(Once())
     overlay.build()
 
     another_overlay = container.new_scope_builder()
-    another_overlay.install_boundary(Boundary("third", Once()))
+    another_overlay.create_boundary("third").apply_bundle(Once())
     another_overlay.build()
 
     assert len(calls) == expected_calls
@@ -224,7 +224,7 @@ def test_container_run_once_bundle_can_run_in_separate_containers():
     assert len(calls) == 2
 
 
-def test_failed_boundary_releases_wider_run_once_claims():
+def test_failed_bundle_keeps_wider_run_once_claims_for_retained_boundary_composition():
     calls: list[str] = []
 
     class Once(OnlyRunOncePerInstanceBundle):
@@ -241,11 +241,11 @@ def test_failed_boundary_releases_wider_run_once_claims():
 
     builder = ContainerBuilder()
     with pytest.raises(RuntimeError, match="failed"):
-        builder.install_boundary(Boundary("first", failing))
+        builder.create_boundary("first").apply_bundle(failing)
 
-    builder.install_boundary(Boundary("second", bundle))
+    builder.create_boundary("second").apply_bundle(bundle)
     builder.build()
-    assert len(calls) == 2
+    assert len(calls) == 1
 
 
 def test_run_once_bundle_rejects_unknown_uniqueness_scope():

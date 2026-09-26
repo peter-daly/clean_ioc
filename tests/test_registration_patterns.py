@@ -11,7 +11,6 @@ from typing_extensions import TypeAliasType
 
 from clean_ioc import (
     AsyncProvider,
-    Boundary,
     BoundaryAlias,
     CannotResolveError,
     ContainerBuilder,
@@ -408,7 +407,7 @@ def test_closed_and_open_aliased_boundary_pattern_exposures_compile_source_speci
         builder.register_pattern(Serializer[list[T]], factory=make_list_serializer)
 
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("serialization", bundle, exposes=(Expose(Serializer[list[int]]),)))
+    builder.create_boundary("serialization", exposes=(Expose(Serializer[list[int]]),)).apply_bundle(bundle)
     root = request(builder, Serializer[list[int]])
     container = builder.build()
     assert container.resolve(root).value.child.label == "private"
@@ -425,26 +424,18 @@ def test_closed_and_open_aliased_boundary_pattern_exposures_compile_source_speci
         private.register(Consumer)
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "serialization",
-            bundle,
-            exposes=(
-                Expose(
-                    Serializer[list[T]],
-                    alias=BoundaryAlias(PublicSerializer[list[T]]),
-                ),
+    builder.create_boundary(
+        "serialization",
+        exposes=(
+            Expose(
+                Serializer[list[T]],
+                alias=BoundaryAlias(PublicSerializer[list[T]]),
             ),
-        )
-    )
-    builder.install_boundary(
-        Boundary(
-            "consumer",
-            consumer_bundle,
-            uses=(Use("serialization", PublicSerializer[list[T]]),),
-            exposes=(Expose(Consumer),),
-        )
-    )
+        ),
+    ).apply_bundle(bundle)
+    builder.create_boundary(
+        "consumer", uses=(Use("serialization", PublicSerializer[list[T]]),), exposes=(Expose(Consumer),)
+    ).apply_bundle(consumer_bundle)
     container = builder.build()
     assert cast(Any, container.resolve(Consumer).value).child.label == "private"
     assert cast(Any, container.resolve(PublicSerializer[list[int]])).child.label == "private"
@@ -473,41 +464,35 @@ def test_public_alias_patterns_with_one_origin_route_by_complete_structure():
         builder.register(Consumer)
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "serialization",
-            source,
-            exposes=(
-                Expose(
-                    Serializer[list[T]],
-                    alias=BoundaryAlias(PublicSerializer[list[T]]),
-                ),
-                Expose(
-                    Serializer[dict[str, T]],
-                    alias=BoundaryAlias(PublicSerializer[dict[str, T]]),
-                ),
+    builder.create_boundary(
+        "serialization",
+        exposes=(
+            Expose(
+                Serializer[list[T]],
+                alias=BoundaryAlias(PublicSerializer[list[T]]),
             ),
-        )
-    )
-    builder.install_boundary(
-        Boundary(
-            "consumer",
-            consumer,
-            uses=(
-                Use(
-                    "serialization",
-                    PublicSerializer[list[int]],
-                    filter=cf.service_type_is(PublicSerializer[list[int]]),
-                ),
-                Use(
-                    "serialization",
-                    PublicSerializer[dict[str, int]],
-                    filter=cf.service_type_is(PublicSerializer[dict[str, int]]),
-                ),
+            Expose(
+                Serializer[dict[str, T]],
+                alias=BoundaryAlias(PublicSerializer[dict[str, T]]),
             ),
-            exposes=(Expose(Consumer),),
-        )
-    )
+        ),
+    ).apply_bundle(source)
+    builder.create_boundary(
+        "consumer",
+        uses=(
+            Use(
+                "serialization",
+                PublicSerializer[list[int]],
+                filter=cf.service_type_is(PublicSerializer[list[int]]),
+            ),
+            Use(
+                "serialization",
+                PublicSerializer[dict[str, int]],
+                filter=cf.service_type_is(PublicSerializer[dict[str, int]]),
+            ),
+        ),
+        exposes=(Expose(Consumer),),
+    ).apply_bundle(consumer)
     container = builder.build()
     resolved = container.resolve(Consumer)
     assert cast(Any, resolved.list_value).label == "list"
@@ -529,15 +514,10 @@ def test_boundary_closed_use_and_private_patterns():
 
     for declare_use in (True, False):
         builder = ContainerBuilder()
-        builder.install_boundary(Boundary("source", source, exposes=(Expose(Serializer[int]),)))
-        builder.install_boundary(
-            Boundary(
-                "consumer",
-                consumer_bundle,
-                exposes=(Expose(Consumer),),
-                uses=(Use("source", Serializer[int]),) if declare_use else (),
-            )
-        )
+        builder.create_boundary("source", exposes=(Expose(Serializer[int]),)).apply_bundle(source)
+        builder.create_boundary(
+            "consumer", exposes=(Expose(Consumer),), uses=(Use("source", Serializer[int]),) if declare_use else ()
+        ).apply_bundle(consumer_bundle)
         if declare_use:
             assert isinstance(builder.build().resolve(Consumer).value, Serializer)
         else:
@@ -626,7 +606,7 @@ def test_unexported_private_template_is_diagnosed():
         builder.register_pattern(Serializer[T], factory=Serializer)
 
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("source", source))
+    builder.create_boundary("source").apply_bundle(source)
     request(builder, Serializer[int])
     with pytest.raises(ContainerBuildError) as error:
         builder.build()

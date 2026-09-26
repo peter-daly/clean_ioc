@@ -12,7 +12,6 @@ import clean_ioc.component_filters as cf
 from clean_ioc import (
     INJECT,
     AsyncProvider,
-    Boundary,
     BuildIssue,
     Component,
     ContainerBuilder,
@@ -361,13 +360,8 @@ def validate_boundaries() -> None:
 
     builder = ContainerBuilder()
     builder.register(RootSettings, lifespan="singleton")
-    builder.install_boundary(
-        Boundary(
-            "feature",
-            feature_bundle,
-            uses=(Use.root(RootSettings),),
-            exposes=(Expose(PublicService),),
-        )
+    builder.create_boundary("feature", uses=(Use.root(RootSettings),), exposes=(Expose(PublicService),)).apply_bundle(
+        feature_bundle
     )
     container = builder.build()
     assert isinstance(container.resolve(PublicService).client, PrivateClient)  # noqa: S101

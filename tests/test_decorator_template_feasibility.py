@@ -5,7 +5,7 @@ from typing import Generic, TypeVar, cast, get_args
 
 import pytest
 
-from clean_ioc import Boundary, ContainerBuilder, ContainerBuildError, Expose, Tag, Use, select
+from clean_ioc import ContainerBuilder, ContainerBuildError, Expose, Tag, Use, select
 from clean_ioc import component_filters as cf
 from clean_ioc.components import _undecorated_component_view
 from clean_ioc.container import (
@@ -20,7 +20,8 @@ from clean_ioc.generic_utils import _project_service_type
 
 
 def _snapshot(builder):
-    return _normalize_blueprint_aliases(_Blueprint((builder._layer(),), tuple(builder._boundaries)))
+    blueprint, _ = builder._compilation_snapshot(None)
+    return _normalize_blueprint_aliases(blueprint)
 
 
 def _prepared(builder):
@@ -218,7 +219,7 @@ def test_source_core_respects_boundary_local_dependencies_and_visibility():
 
     builder = ContainerBuilder()
     builder.register(Resource, tags=[Tag("area", "root")])
-    builder.install_boundary(Boundary("private", private))
+    builder.create_boundary("private").apply_bundle(private)
     blueprint = _prepared(builder)
     assert blueprint.registrations(Source) == []
     visible = blueprint.registrations(Source, "private")
@@ -229,8 +230,8 @@ def test_source_core_respects_boundary_local_dependencies_and_visibility():
     assert not cf.has_descendant(cf.has_tag("area", "root"))(source)
 
     exported = ContainerBuilder()
-    exported.install_boundary(Boundary("provider", private, exposes=(Expose(Source),)))
-    exported.install_boundary(Boundary("consumer", lambda _: None, uses=(Use("provider", Source),)))
+    exported.create_boundary("provider", exposes=(Expose(Source),)).apply_bundle(private)
+    exported.create_boundary("consumer", uses=(Use("provider", Source),)).apply_bundle(lambda _: None)
     blueprint = _prepared(exported)
     assert [registration.id for registration, _ in blueprint.registrations(Source, "consumer")] == [ids["source"]]
     source = _core(blueprint, ids["source"], Source)
@@ -402,15 +403,10 @@ def test_visibility_feedback_is_detectable_without_fixed_point_iteration():
     # A boundary predicate can observe decorator dependencies. Adding generated
     # decorators after selection can therefore invalidate the visibility seed.
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "provider",
-            boundary,
-            exposes=(
-                Expose(Source, filter=cf.with_name("first") | cf.has_descendant(cf.implementation_type_is(Marker))),
-            ),
-        )
-    )
+    builder.create_boundary(
+        "provider",
+        exposes=(Expose(Source, filter=cf.with_name("first") | cf.has_descendant(cf.implementation_type_is(Marker))),),
+    ).apply_bundle(boundary)
     seed = _snapshot(builder)
     prepared = _prepare_boundary_visibility(seed, build_args={})
     assert len(prepared.registrations(Source)) == 1

@@ -5,7 +5,6 @@ from typing import Generic, TypeVar
 import pytest
 
 from clean_ioc import (
-    Boundary,
     BoundaryAlias,
     ContainerBuilder,
     ContainerBuildError,
@@ -327,14 +326,14 @@ def test_exposed_and_used_sources_bind_exact_original_identity_and_deduplicate_a
         )
         public_name = "public"
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("provider", provider, exposes=exposures))
+    builder.create_boundary("provider", exposes=exposures).apply_bundle(provider)
     if consumer_area == "root":
         consumer(builder)
     else:
         uses = [Use("provider", source_type, filter=cf.with_name(public_name))]
         if alias:
             uses.append(Use("provider", source_type, filter=cf.with_name("alternate")))
-        builder.install_boundary(Boundary("consumer", consumer, uses=tuple(uses), exposes=(Expose(Target),)))
+        builder.create_boundary("consumer", uses=tuple(uses), exposes=(Expose(Target),)).apply_bundle(consumer)
     assert builder.has_component(Target, filter=lambda c: len(c.decorators) == 1)
     with builder.build() as root:
         value = root.resolve(Target)
@@ -376,7 +375,7 @@ def test_shared_group_grants_neither_private_source_visibility_nor_cross_area_de
     root_policy = builder.register_decorator_template(
         for_each=Source, template=template_for(group, "root", source_calls)
     )
-    builder.install_boundary(Boundary("private", private, exposes=(Expose(Target),)))
+    builder.create_boundary("private", exposes=(Expose(Target),)).apply_bundle(private)
     for edit in (builder.patch_decorator_template, builder.remove_decorator_template):
         with pytest.raises(KeyError):
             edit(private_ids[0])
@@ -403,8 +402,8 @@ def test_private_sources_are_not_enumerated_without_complete_visibility_contract
     def provider(private):
         private.register(Source)
 
-    builder.install_boundary(
-        Boundary("provider", provider, exposes=(Expose(Source),) if missing_contract == "use" else ())
+    builder.create_boundary("provider", exposes=(Expose(Source),) if missing_contract == "use" else ()).apply_bundle(
+        provider
     )
 
     def consumer(private):
@@ -414,7 +413,7 @@ def test_private_sources_are_not_enumerated_without_complete_visibility_contract
     if missing_contract == "expose":
         consumer(builder)
     else:
-        builder.install_boundary(Boundary("consumer", consumer, exposes=(Expose(Target),)))
+        builder.create_boundary("consumer", exposes=(Expose(Target),)).apply_bundle(consumer)
     with builder.build() as container:
         assert unwrap(container.resolve(Target))[0] == []
         assert calls == []
@@ -431,7 +430,7 @@ def test_exact_source_selection_cannot_fall_back_to_an_eligible_visible_source(i
         def private(local):
             selected_ids.append(local.register(Source, name="same"))
 
-        builder.install_boundary(Boundary("private", private))
+        builder.create_boundary("private").apply_bundle(private)
     else:
         selected_ids.append(builder.register(Source, name="same", when=lambda component: component.parent is None))
     visible_id = builder.register(Source, name="same")
@@ -564,13 +563,9 @@ def test_boundary_metadata_recheck_uses_parent_singleton_anchor(contract):
     if contract == "use":
         builder.register(Target, lifespan="singleton")
     else:
-        builder.install_boundary(
-            Boundary(
-                "provider",
-                compose,
-                exposes=(Expose(Target, filter=lambda c: not c.decorators, alias=BoundaryAlias(PublicTarget)),),
-            )
-        )
+        builder.create_boundary(
+            "provider", exposes=(Expose(Target, filter=lambda c: not c.decorators, alias=BoundaryAlias(PublicTarget)),)
+        ).apply_bundle(compose)
     service = Target if contract == "use" else PublicTarget
     with builder.build() as root:
         original = root.resolve(service)
@@ -578,15 +573,13 @@ def test_boundary_metadata_recheck_uses_parent_singleton_anchor(contract):
         if contract == "use":
             overlay.register(Source, lifespan="singleton")
             overlay.register_decorator_template(for_each=Source, template=template_for(DerivedServices(Target)))
-            overlay.install_boundary(
-                Boundary("consumer", lambda _: None, uses=(Use.root(Target, filter=lambda c: not c.decorators),))
-            )
+            overlay.create_boundary(
+                "consumer", uses=(Use.root(Target, filter=lambda c: not c.decorators),)
+            ).apply_bundle(lambda _: None)
         elif contract == "alias-use":
-            overlay.install_boundary(
-                Boundary(
-                    "consumer", lambda _: None, uses=(Use("provider", PublicTarget, filter=lambda c: not c.decorators),)
-                )
-            )
+            overlay.create_boundary(
+                "consumer", uses=(Use("provider", PublicTarget, filter=lambda c: not c.decorators),)
+            ).apply_bundle(lambda _: None)
         # New policy applies to newly compiled plans, not to the parent singleton.
         assert overlay.has_component(service, filter=lambda c: not c.decorators, build_args={"decorate": True})
         with overlay.build(build_args={"decorate": True}) as child:

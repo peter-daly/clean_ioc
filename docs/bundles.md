@@ -2,7 +2,7 @@
 
 A bundle groups registrations; a boundary controls access to them. A bundle packages repeatable composition against
 the shared `ComponentBuilder` protocol. The same bundle can target a root `ContainerBuilder` or an experimental
-`ScopeBuilder`.
+`ScopeBuilder`, or a retained `BoundaryBuilder`.
 
 ```python
 from clean_ioc import ComponentBuilder, ContainerBuilder
@@ -23,20 +23,23 @@ container = builder.build()
 A bundle may also register a [decorator template](decorator-templates.md) and share one `ServiceGroup` declaration with contributing registrations. Same-named group objects have different identities.
 
 Bundles are composition-only. They are never injectable at runtime and cannot mutate a built container or scope.
-An existing bundle can also be used unchanged as a boundary's `root_bundle`; see
-[Boundaries and visibility](boundaries.md). The boundary applies that bundle to an isolated private builder, while
-nested bundles remain in the same boundary and retain their provenance path.
+An existing bundle can also be applied unchanged to a retained boundary handle; see
+[Boundaries and visibility](boundaries.md). Every bundle applied to that handle contributes to the same private
+composition until its parent builds. Nested bundle applications retain their provenance path.
 
 ```python
-from clean_ioc import Boundary, Expose
+from clean_ioc import Expose
 
 builder = ContainerBuilder()
-builder.install_boundary(
-    Boundary("client", root_bundle=ClientBundle(), exposes=(Expose(ApiClient),))
-)
+client = builder.create_boundary("client", exposes=(Expose(ApiClient),))
+client.apply_bundle(ClientBundle())
 container = builder.build()
 container.resolve(ApiClient)  # exposed; ClientConfig remains private
 ```
+
+Boundary-owning bundles can call `builder.create_boundary(...)` through `ComponentBuilder` and expose the returned
+handle for application extensions. The boundary handle supports ordinary registration and bundle operations but
+cannot create nested boundaries or build independently.
 
 The shared protocol also supports custom validation rules, so a bundle can install organization or framework policy
 along with its registrations:

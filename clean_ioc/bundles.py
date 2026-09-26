@@ -44,9 +44,6 @@ class RunOnceBundle(BaseBundle):
 
         self.apply(builder)
         bundle_containers.add(run_key)
-        claims = getattr(builder, "_bundle_run_claims", None)
-        if claims is not None:
-            claims.append((bundle_containers, run_key))
 
 
 class OnlyRunOncePerInstanceBundle(RunOnceBundle):

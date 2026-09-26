@@ -8,7 +8,6 @@ import pytest
 
 from clean_ioc import (
     AsyncProvider,
-    Boundary,
     BoundaryAlias,
     ContainerBuilder,
     ContainerBuildError,
@@ -126,21 +125,11 @@ def orders_bundle(builder):
 def application_builder() -> ContainerBuilder:
     builder = ContainerBuilder()
     builder.register(Settings, instance=Settings("secret"))
-    builder.install_boundary(
-        Boundary(
-            "payments",
-            payments_bundle,
-            uses=(Use.root(Settings),),
-            exposes=(Expose(Gateway),),
-        )
+    builder.create_boundary("payments", uses=(Use.root(Settings),), exposes=(Expose(Gateway),)).apply_bundle(
+        payments_bundle
     )
-    builder.install_boundary(
-        Boundary(
-            "orders",
-            orders_bundle,
-            uses=(Use("payments", Gateway),),
-            exposes=(Expose(PlaceOrder),),
-        )
+    builder.create_boundary("orders", uses=(Use("payments", Gateway),), exposes=(Expose(PlaceOrder),)).apply_bundle(
+        orders_bundle
     )
     return builder
 
@@ -187,21 +176,12 @@ def test_exposure_and_use_preserve_named_tagged_singleton_identity():
         builder.register(Checkout, arguments={"gateway": select(cf.with_name("stripe"))})
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "payments",
-            payments,
-            exposes=(Expose(Gateway, filter=cf.with_name("stripe")),),
-        )
+    builder.create_boundary("payments", exposes=(Expose(Gateway, filter=cf.with_name("stripe")),)).apply_bundle(
+        payments
     )
-    builder.install_boundary(
-        Boundary(
-            "checkout",
-            checkout,
-            uses=(Use("payments", Gateway, filter=cf.with_name("stripe")),),
-            exposes=(Expose(Checkout),),
-        )
-    )
+    builder.create_boundary(
+        "checkout", uses=(Use("payments", Gateway, filter=cf.with_name("stripe")),), exposes=(Expose(Checkout),)
+    ).apply_bundle(checkout)
     container = builder.build()
 
     named = container.resolve(Gateway, filter=cf.with_name("stripe"))
@@ -236,36 +216,28 @@ def test_exposure_alias_can_publish_a_complete_public_identity():
         builder.register(Checkout, arguments={"gateway": select(cf.has_tag("audience", "public"))})
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "payments",
-            payments,
-            exposes=(
-                Expose(
-                    Gateway,
-                    filter=cf.with_name("stripe"),
-                    alias=BoundaryAlias(
-                        PublicGateway,
-                        name="primary",
-                        tags=(Tag("audience", "public"),),
-                    ),
-                ),
-                Expose(
-                    Gateway,
-                    filter=cf.with_name("stripe"),
-                    alias=BoundaryAlias(AlternateGateway, name="backup"),
+    builder.create_boundary(
+        "payments",
+        exposes=(
+            Expose(
+                Gateway,
+                filter=cf.with_name("stripe"),
+                alias=BoundaryAlias(
+                    PublicGateway,
+                    name="primary",
+                    tags=(Tag("audience", "public"),),
                 ),
             ),
-        )
-    )
-    builder.install_boundary(
-        Boundary(
-            "checkout",
-            checkout,
-            uses=(Use("payments", PublicGateway, filter=cf.with_name("primary")),),
-            exposes=(Expose(Checkout),),
-        )
-    )
+            Expose(
+                Gateway,
+                filter=cf.with_name("stripe"),
+                alias=BoundaryAlias(AlternateGateway, name="backup"),
+            ),
+        ),
+    ).apply_bundle(payments)
+    builder.create_boundary(
+        "checkout", uses=(Use("payments", PublicGateway, filter=cf.with_name("primary")),), exposes=(Expose(Checkout),)
+    ).apply_bundle(checkout)
     container = builder.build()
 
     exposed = container.resolve(PublicGateway, filter=cf.with_name("primary"))
@@ -311,19 +283,16 @@ def test_boundary_alias_can_publish_a_named_source_as_the_unnamed_default():
         builder.register(Internal, name="private", tags=(Tag("side", "source"),))
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "source",
-            source,
-            exposes=(
-                Expose(
-                    Internal,
-                    filter=cf.with_name("private"),
-                    alias=BoundaryAlias(Public),
-                ),
+    builder.create_boundary(
+        "source",
+        exposes=(
+            Expose(
+                Internal,
+                filter=cf.with_name("private"),
+                alias=BoundaryAlias(Public),
             ),
-        )
-    )
+        ),
+    ).apply_bundle(source)
     container = builder.build()
 
     assert isinstance(container.resolve(Public), Internal)
@@ -345,16 +314,13 @@ def test_duplicate_public_exposure_identity_is_rejected():
 
     alias = BoundaryAlias(PublicGateway, name="primary")
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "payments",
-            payments,
-            exposes=(
-                Expose(Gateway, filter=cf.with_name("stripe"), alias=alias),
-                Expose(Gateway, filter=cf.with_name("stripe"), alias=alias),
-            ),
-        )
-    )
+    builder.create_boundary(
+        "payments",
+        exposes=(
+            Expose(Gateway, filter=cf.with_name("stripe"), alias=alias),
+            Expose(Gateway, filter=cf.with_name("stripe"), alias=alias),
+        ),
+    ).apply_bundle(payments)
     assert issue_code(builder) == "boundary-expose-ambiguous"
 
 
@@ -378,7 +344,7 @@ def test_boundary_alias_declaration_shapes_are_validated(alias, message):
         builder.register(Gateway, instance=StripeGateway(Sdk(Settings("x"))))
 
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("source", source, exposes=(Expose(Gateway, alias=alias),)))
+    builder.create_boundary("source", exposes=(Expose(Gateway, alias=alias),)).apply_bundle(source)
     with pytest.raises(TypeError, match=message):
         builder.build()
 
@@ -428,23 +394,20 @@ def test_alias_projects_only_after_the_complete_source_plan_is_compiled():
         builder.pre_configure(InternalService, configure, when=source_policy)
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "source",
-            source,
-            exposes=(
-                Expose(
-                    InternalService,
-                    filter=cf.with_name("internal"),
-                    alias=BoundaryAlias(
-                        PublicService,
-                        name="public",
-                        tags=(Tag("side", "public"),),
-                    ),
+    builder.create_boundary(
+        "source",
+        exposes=(
+            Expose(
+                InternalService,
+                filter=cf.with_name("internal"),
+                alias=BoundaryAlias(
+                    PublicService,
+                    name="public",
+                    tags=(Tag("side", "public"),),
                 ),
             ),
-        )
-    )
+        ),
+    ).apply_bundle(source)
     container = builder.build()
 
     resolved = container.resolve(PublicService, filter=cf.with_name("public"))
@@ -480,13 +443,9 @@ async def test_boundary_alias_preserves_async_resource_acquisition_and_cleanup()
         builder.register(InternalResource, factory=create_resource, lifespan="scoped")
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "resources",
-            source,
-            exposes=(Expose(InternalResource, alias=BoundaryAlias(PublicResource)),),
-        )
-    )
+    builder.create_boundary(
+        "resources", exposes=(Expose(InternalResource, alias=BoundaryAlias(PublicResource)),)
+    ).apply_bundle(source)
     container = builder.build()
 
     async with container.new_scope() as scope:
@@ -533,24 +492,16 @@ async def test_boundary_alias_supports_sync_and_async_typed_providers_at_root_an
         builder.register(Consumer)
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "source",
-            source,
-            exposes=(
-                Expose(InternalSync, alias=BoundaryAlias(PublicSync)),
-                Expose(InternalAsync, alias=BoundaryAlias(PublicAsync)),
-            ),
-        )
-    )
-    builder.install_boundary(
-        Boundary(
-            "consumer",
-            consumer,
-            uses=(Use("source", PublicSync), Use("source", PublicAsync)),
-            exposes=(Expose(Consumer),),
-        )
-    )
+    builder.create_boundary(
+        "source",
+        exposes=(
+            Expose(InternalSync, alias=BoundaryAlias(PublicSync)),
+            Expose(InternalAsync, alias=BoundaryAlias(PublicAsync)),
+        ),
+    ).apply_bundle(source)
+    builder.create_boundary(
+        "consumer", uses=(Use("source", PublicSync), Use("source", PublicAsync)), exposes=(Expose(Consumer),)
+    ).apply_bundle(consumer)
     container = builder.build()
 
     resolved = container.resolve(Consumer)
@@ -574,18 +525,15 @@ def test_boundary_alias_duplicate_identity_canonicalizes_tag_order():
         builder.register(Internal)
 
     manifest_builder = ContainerBuilder()
-    manifest_builder.install_boundary(
-        Boundary(
-            "source",
-            source,
-            exposes=(
-                Expose(
-                    Internal,
-                    alias=BoundaryAlias(Public, tags=(Tag("same", ""), Tag("same"))),
-                ),
+    manifest_builder.create_boundary(
+        "source",
+        exposes=(
+            Expose(
+                Internal,
+                alias=BoundaryAlias(Public, tags=(Tag("same", ""), Tag("same"))),
             ),
-        )
-    )
+        ),
+    ).apply_bundle(source)
     exposure = manifest_builder.build().graph.manifest().data["boundaries"][0]["exposures"][0]
     assert exposure["tags"] == [
         {"name": "same", "value": None},
@@ -593,22 +541,19 @@ def test_boundary_alias_duplicate_identity_canonicalizes_tag_order():
     ]
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "source",
-            source,
-            exposes=(
-                Expose(
-                    Internal,
-                    alias=BoundaryAlias(Public, tags=(Tag("same"), Tag("same", ""))),
-                ),
-                Expose(
-                    Internal,
-                    alias=BoundaryAlias(Public, tags=(Tag("same", ""), Tag("same"))),
-                ),
+    builder.create_boundary(
+        "source",
+        exposes=(
+            Expose(
+                Internal,
+                alias=BoundaryAlias(Public, tags=(Tag("same"), Tag("same", ""))),
             ),
-        )
-    )
+            Expose(
+                Internal,
+                alias=BoundaryAlias(Public, tags=(Tag("same", ""), Tag("same"))),
+            ),
+        ),
+    ).apply_bundle(source)
     assert issue_code(builder) == "boundary-expose-ambiguous"
 
 
@@ -616,21 +561,11 @@ def test_boundary_install_order_does_not_change_resolution_or_manifest():
     first = application_builder().build()
     second_builder = ContainerBuilder()
     second_builder.register(Settings, instance=Settings("secret"))
-    second_builder.install_boundary(
-        Boundary(
-            "orders",
-            orders_bundle,
-            uses=(Use("payments", Gateway),),
-            exposes=(Expose(PlaceOrder),),
-        )
-    )
-    second_builder.install_boundary(
-        Boundary(
-            "payments",
-            payments_bundle,
-            uses=(Use.root(Settings),),
-            exposes=(Expose(Gateway),),
-        )
+    second_builder.create_boundary(
+        "orders", uses=(Use("payments", Gateway),), exposes=(Expose(PlaceOrder),)
+    ).apply_bundle(orders_bundle)
+    second_builder.create_boundary("payments", uses=(Use.root(Settings),), exposes=(Expose(Gateway),)).apply_bundle(
+        payments_bundle
     )
     second = second_builder.build()
 
@@ -646,21 +581,17 @@ def test_exposure_filters_inspect_the_original_compiled_component_subtree():
         builder.register(Gateway, SecondStructuralGateway)
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "feature",
-            bundle,
-            exposes=(Expose(Gateway, filter=cf.has_descendant(cf.service_type_is(FirstMarker))),),
-        )
-    )
+    builder.create_boundary(
+        "feature", exposes=(Expose(Gateway, filter=cf.has_descendant(cf.service_type_is(FirstMarker))),)
+    ).apply_bundle(bundle)
     assert isinstance(builder.build().resolve(Gateway), FirstStructuralGateway)
 
 
 def test_missing_visibility_reports_private_source_and_boundary_decisions():
     builder = ContainerBuilder()
     builder.register(Settings, instance=Settings("x"))
-    builder.install_boundary(Boundary("payments", payments_bundle, uses=(Use.root(Settings),)))
-    builder.install_boundary(Boundary("orders", orders_bundle, exposes=(Expose(PlaceOrder),)))
+    builder.create_boundary("payments", uses=(Use.root(Settings),)).apply_bundle(payments_bundle)
+    builder.create_boundary("orders", exposes=(Expose(PlaceOrder),)).apply_bundle(orders_bundle)
 
     with pytest.raises(ContainerBuildError) as captured:
         builder.build()
@@ -675,31 +606,34 @@ def test_missing_visibility_reports_private_source_and_boundary_decisions():
 
 
 @pytest.mark.parametrize(
-    ("boundary", "expected"),
+    ("name", "expected"),
     [
-        (Boundary("root", lambda builder: None), "boundary-invalid-name"),
-        (Boundary("Bad.Name", lambda builder: None), "boundary-invalid-name"),
+        ("root", "boundary-invalid-name"),
+        ("Bad.Name", "boundary-invalid-name"),
     ],
 )
-def test_invalid_names_are_structured(boundary, expected):
+def test_invalid_names_are_structured(name, expected):
     builder = ContainerBuilder()
-    builder.install_boundary(boundary)
-    assert issue_code(builder) == expected
+    with pytest.raises(ContainerBuildError) as captured:
+        builder.create_boundary(name)
+    assert captured.value.code == expected
+    assert builder.build().graph.boundaries == ()
 
 
 def test_duplicate_names_missing_sources_and_cycles_are_structured():
     duplicate = ContainerBuilder()
-    duplicate.install_boundary(Boundary("same", lambda builder: None))
-    duplicate.install_boundary(Boundary("same", lambda builder: None))
-    assert issue_code(duplicate) == "boundary-duplicate-name"
+    duplicate.create_boundary("same").apply_bundle(lambda builder: None)
+    with pytest.raises(ContainerBuildError) as captured:
+        duplicate.create_boundary("same")
+    assert captured.value.code == "boundary-duplicate-name"
 
     missing = ContainerBuilder()
-    missing.install_boundary(Boundary("consumer", lambda builder: None, uses=(Use("missing", Gateway),)))
+    missing.create_boundary("consumer", uses=(Use("missing", Gateway),)).apply_bundle(lambda builder: None)
     assert issue_code(missing) == "boundary-use-source-not-found"
 
     cycle = ContainerBuilder()
-    cycle.install_boundary(Boundary("first", lambda builder: None, uses=(Use("second", Gateway),)))
-    cycle.install_boundary(Boundary("second", lambda builder: None, uses=(Use("first", Gateway),)))
+    cycle.create_boundary("first", uses=(Use("second", Gateway),)).apply_bundle(lambda builder: None)
+    cycle.create_boundary("second", uses=(Use("first", Gateway),)).apply_bundle(lambda builder: None)
     with pytest.raises(ContainerBuildError) as captured:
         cycle.build()
     assert captured.value.report is not None
@@ -709,7 +643,7 @@ def test_duplicate_names_missing_sources_and_cycles_are_structured():
 
 def test_expose_and_use_cardinality_and_reexport_are_validated():
     missing_exposure = ContainerBuilder()
-    missing_exposure.install_boundary(Boundary("empty", lambda builder: None, exposes=(Expose(Gateway),)))
+    missing_exposure.create_boundary("empty", exposes=(Expose(Gateway),)).apply_bundle(lambda builder: None)
     assert issue_code(missing_exposure) == "boundary-expose-not-found"
 
     ambiguous_exposure = ContainerBuilder()
@@ -718,24 +652,13 @@ def test_expose_and_use_cardinality_and_reexport_are_validated():
         builder.register(Gateway)
         builder.register(Gateway)
 
-    ambiguous_exposure.install_boundary(
-        Boundary(
-            "payments",
-            duplicate_gateways,
-            exposes=(Expose(Gateway),),
-        )
-    )
+    ambiguous_exposure.create_boundary("payments", exposes=(Expose(Gateway),)).apply_bundle(duplicate_gateways)
     assert issue_code(ambiguous_exposure) == "boundary-expose-ambiguous"
 
     reexport = ContainerBuilder()
     reexport.register(Gateway)
-    reexport.install_boundary(
-        Boundary(
-            "adapter",
-            lambda builder: None,
-            uses=(Use.root(Gateway),),
-            exposes=(Expose(Gateway),),
-        )
+    reexport.create_boundary("adapter", uses=(Use.root(Gateway),), exposes=(Expose(Gateway),)).apply_bundle(
+        lambda builder: None
     )
     assert issue_code(reexport) == "boundary-reexport-unsupported"
 
@@ -747,7 +670,7 @@ def test_local_entrypoint_requires_local_exposure_and_cannot_mark_a_use():
         builder.register(Repository)
         builder.mark_entrypoint(Repository)
 
-    private.install_boundary(Boundary("orders", private_bundle))
+    private.create_boundary("orders").apply_bundle(private_bundle)
     assert issue_code(private) == "boundary-entrypoint-not-exposed"
 
     imported = ContainerBuilder()
@@ -756,7 +679,7 @@ def test_local_entrypoint_requires_local_exposure_and_cannot_mark_a_use():
     def imported_bundle(builder):
         builder.mark_entrypoint(Settings)
 
-    imported.install_boundary(Boundary("orders", imported_bundle, uses=(Use.root(Settings),)))
+    imported.create_boundary("orders", uses=(Use.root(Settings),)).apply_bundle(imported_bundle)
     assert issue_code(imported) == "boundary-entrypoint-not-local"
 
 
@@ -771,19 +694,16 @@ def test_root_entrypoint_can_select_a_boundary_alias_by_its_public_identity():
         builder.register(Internal, name="internal", tags=(Tag("side", "source"),))
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "source",
-            source,
-            exposes=(
-                Expose(
-                    Internal,
-                    filter=cf.with_name("internal"),
-                    alias=BoundaryAlias(Public, name="public", tags=(Tag("side", "public"),)),
-                ),
+    builder.create_boundary(
+        "source",
+        exposes=(
+            Expose(
+                Internal,
+                filter=cf.with_name("internal"),
+                alias=BoundaryAlias(Public, name="public", tags=(Tag("side", "public"),)),
             ),
-        )
-    )
+        ),
+    ).apply_bundle(source)
     builder.mark_entrypoint(Public, filter=cf.has_tag("side", "public"))
     container = builder.build()
 
@@ -808,7 +728,7 @@ def test_decorators_do_not_cross_boundaries_and_explicit_cross_attempt_is_reject
         builder.register_decorator(Gateway, DecoratedGateway)
 
     local = ContainerBuilder()
-    local.install_boundary(Boundary("payments", bundle, exposes=(Expose(Gateway),)))
+    local.create_boundary("payments", exposes=(Expose(Gateway),)).apply_bundle(bundle)
     assert isinstance(local.build().resolve(Gateway), DecoratedGateway)
 
     cross = ContainerBuilder()
@@ -816,7 +736,7 @@ def test_decorators_do_not_cross_boundaries_and_explicit_cross_attempt_is_reject
     def gateway_bundle(builder):
         builder.register(Gateway)
 
-    cross.install_boundary(Boundary("payments", gateway_bundle, exposes=(Expose(Gateway),)))
+    cross.create_boundary("payments", exposes=(Expose(Gateway),)).apply_bundle(gateway_bundle)
     cross.register_decorator(Gateway, DecoratedGateway)
     assert issue_code(cross) == "boundary-cross-boundary-decoration"
 
@@ -831,7 +751,7 @@ def test_typed_provider_uses_the_defining_boundary_visibility():
         builder.register(Deferred)
 
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("feature", bundle, exposes=(Expose(Deferred),)))
+    builder.create_boundary("feature", exposes=(Expose(Deferred),)).apply_bundle(bundle)
     container = builder.build()
     assert container.resolve(Deferred).gateway() is container.resolve(Deferred).gateway()
     assert not container.has_component(Gateway)
@@ -852,13 +772,15 @@ def test_root_scope_slot_can_be_used_but_private_slots_are_rejected():
 
     builder = ContainerBuilder()
     builder.declare_scope_slot(Request)
-    builder.install_boundary(Boundary("feature", bundle, uses=(Use.root(Request),), exposes=(Expose(Handler),)))
+    builder.create_boundary("feature", uses=(Use.root(Request),), exposes=(Expose(Handler),)).apply_bundle(bundle)
     container = builder.build()
     request = Request()
     assert container.new_scope().provide(Request, request).resolve(Handler).request is request
 
     private = ContainerBuilder()
-    private.install_boundary(Boundary("feature", lambda boundary_builder: boundary_builder.declare_scope_slot(Request)))
+    private.create_boundary("feature").apply_bundle(
+        lambda boundary_builder: boundary_builder.declare_scope_slot(Request)
+    )
     assert issue_code(private) == "boundary-scope-slot-unsupported"
 
 
@@ -874,20 +796,16 @@ def test_overlay_can_add_a_boundary_use_parent_exposure_but_cannot_reopen_it():
     def refund_bundle(builder):
         builder.register(Refund)
 
-    overlay_builder.install_boundary(
-        Boundary(
-            "refunds",
-            refund_bundle,
-            uses=(Use("payments", Gateway),),
-            exposes=(Expose(Refund),),
-        )
-    )
+    overlay_builder.create_boundary(
+        "refunds", uses=(Use("payments", Gateway),), exposes=(Expose(Refund),)
+    ).apply_bundle(refund_bundle)
     overlay = overlay_builder.build()
     assert overlay.resolve(Refund).gateway is parent.resolve(Gateway)
 
     reopened = parent.new_scope_builder()
-    reopened.install_boundary(Boundary("payments", lambda builder: None))
-    assert issue_code(reopened) == "overlay-boundary-reopened"
+    with pytest.raises(ContainerBuildError) as captured:
+        reopened.create_boundary("payments")
+    assert captured.value.code == "overlay-boundary-reopened"
 
 
 def test_manifest_provenance_rendering_and_semantic_diff_include_boundaries():
@@ -978,13 +896,9 @@ def test_semantic_diff_reports_boundary_alias_contract_changes(changed_alias):
             )
 
         builder = ContainerBuilder()
-        builder.install_boundary(
-            Boundary(
-                "source",
-                source,
-                exposes=(Expose(Gateway, filter=cf.with_name("stripe"), alias=alias),),
-            )
-        )
+        builder.create_boundary(
+            "source", exposes=(Expose(Gateway, filter=cf.with_name("stripe"), alias=alias),)
+        ).apply_bundle(source)
         return builder.build().graph.manifest(all_roots=True)
 
     baseline = manifest(baseline_alias)
@@ -1006,7 +920,7 @@ def test_semantic_diff_reports_a_component_moving_between_boundaries():
 
     def manifest(name):
         builder = ContainerBuilder()
-        builder.install_boundary(Boundary(name, bundle, exposes=(Expose(Repository),)))
+        builder.create_boundary(name, exposes=(Expose(Repository),)).apply_bundle(bundle)
         builder.mark_entrypoint(Repository)
         return builder.build().graph.manifest()
 
@@ -1032,7 +946,7 @@ def test_root_and_local_validation_rules_receive_the_promised_graph_views():
         boundary_builder.register(Repository)
         boundary_builder.add_validation_rule(validate)
 
-    builder.install_boundary(Boundary("reporting", local_bundle))
+    builder.create_boundary("reporting").apply_bundle(local_bundle)
     builder.build()
 
     root_view = next(areas for boundary, areas in seen if boundary is None)
@@ -1041,7 +955,7 @@ def test_root_and_local_validation_rules_receive_the_promised_graph_views():
     assert local_view == {"reporting"}
 
 
-def test_bundle_failure_is_transactional_and_bundle_cannot_install_nested_boundary():
+def test_bundle_failure_keeps_partial_composition_and_nested_boundaries_are_rejected():
     calls = 0
 
     def broken(builder):
@@ -1051,16 +965,20 @@ def test_bundle_failure_is_transactional_and_bundle_cannot_install_nested_bounda
         raise RuntimeError("stop")
 
     builder = ContainerBuilder()
+    boundary = builder.create_boundary("broken")
     with pytest.raises(RuntimeError, match="stop"):
-        builder.install_boundary(Boundary("broken", broken))
+        boundary.apply_bundle(broken)
     assert calls == 1
-    assert builder.build().graph.boundaries == ()
+    boundary.exposes = (Expose(Repository),)
+    assert isinstance(builder.build().resolve(Repository), Repository)
 
     def nested(private_builder):
-        assert not hasattr(private_builder, "install_boundary")
+        with pytest.raises(ValueError, match="Nested boundaries"):
+            private_builder.create_boundary("nested")
+        assert not hasattr(private_builder, "build")
 
     nested_builder = ContainerBuilder()
-    nested_builder.install_boundary(Boundary("outer", nested))
+    nested_builder.create_boundary("outer").apply_bundle(nested)
     nested_builder.build()
 
 
@@ -1086,7 +1004,7 @@ def test_base_nested_and_run_once_bundles_keep_their_normal_behavior():
         builder.apply_bundle(once)
 
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("feature", outer, exposes=(Expose(Repository), Expose(PlaceOrder))))
+    builder.create_boundary("feature", exposes=(Expose(Repository), Expose(PlaceOrder))).apply_bundle(outer)
     container = builder.build()
     assert isinstance(container.resolve(Repository), Repository)
     assert isinstance(container.resolve(PlaceOrder), PlaceOrder)
@@ -1134,18 +1052,15 @@ async def test_sync_async_and_cleanup_factories_compile_inside_a_boundary():
         builder.register(AsyncContextResource, factory=async_context_factory, lifespan="scoped")
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "resources",
-            bundle,
-            exposes=(
-                Expose(SyncResource),
-                Expose(AsyncResource),
-                Expose(ContextResource),
-                Expose(AsyncContextResource),
-            ),
-        )
-    )
+    builder.create_boundary(
+        "resources",
+        exposes=(
+            Expose(SyncResource),
+            Expose(AsyncResource),
+            Expose(ContextResource),
+            Expose(AsyncContextResource),
+        ),
+    ).apply_bundle(bundle)
     container = builder.build()
     async with container.new_scope() as scope:
         assert isinstance(scope.resolve(SyncResource), SyncResource)
@@ -1172,13 +1087,9 @@ def test_generics_discovery_and_preconfigurations_stay_local_to_a_boundary():
         builder.pre_configure(GenericConsumer, configure)
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "generic_feature",
-            bundle,
-            exposes=(Expose(GenericConsumer), Expose(DiscoveredService)),
-        )
-    )
+    builder.create_boundary(
+        "generic_feature", exposes=(Expose(GenericConsumer), Expose(DiscoveredService))
+    ).apply_bundle(bundle)
     container = builder.build()
     assert isinstance(container.resolve(GenericConsumer).product.dependency, IntGenericDependency)
     assert isinstance(container.resolve(DiscoveredService), DiscoveredImplementation)
@@ -1204,32 +1115,26 @@ def test_open_generic_factory_alias_specializes_the_source_service():
         builder.register(Consumer)
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "generic_source",
-            source,
-            exposes=(
-                Expose(
-                    GenericProduct[TItem],
-                    alias=BoundaryAlias(PublicGenericProduct[TItem]),
-                ),
+    builder.create_boundary(
+        "generic_source",
+        exposes=(
+            Expose(
+                GenericProduct[TItem],
+                alias=BoundaryAlias(PublicGenericProduct[TItem]),
             ),
-        )
-    )
-    builder.install_boundary(
-        Boundary(
-            "generic_consumer",
-            consumer,
-            uses=(
-                Use(
-                    "generic_source",
-                    PublicGenericProduct[int],
-                    filter=cf.service_type_is(PublicGenericProduct[int]),
-                ),
+        ),
+    ).apply_bundle(source)
+    builder.create_boundary(
+        "generic_consumer",
+        uses=(
+            Use(
+                "generic_source",
+                PublicGenericProduct[int],
+                filter=cf.service_type_is(PublicGenericProduct[int]),
             ),
-            exposes=(Expose(Consumer),),
-        )
-    )
+        ),
+        exposes=(Expose(Consumer),),
+    ).apply_bundle(consumer)
     container = builder.build()
 
     product = container.resolve(PublicGenericProduct[int])
@@ -1263,26 +1168,18 @@ def test_open_generic_alias_singleton_anchors_by_source_specialization_in_overla
         private.register(ParentConsumer)
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "generic_source",
-            source,
-            exposes=(
-                Expose(
-                    GenericProduct[TItem],
-                    alias=BoundaryAlias(PublicGenericProduct[TItem]),
-                ),
+    builder.create_boundary(
+        "generic_source",
+        exposes=(
+            Expose(
+                GenericProduct[TItem],
+                alias=BoundaryAlias(PublicGenericProduct[TItem]),
             ),
-        )
-    )
-    builder.install_boundary(
-        Boundary(
-            "parent_consumer",
-            parent_bundle,
-            uses=(Use("generic_source", PublicGenericProduct[int]),),
-            exposes=(Expose(ParentConsumer),),
-        )
-    )
+        ),
+    ).apply_bundle(source)
+    builder.create_boundary(
+        "parent_consumer", uses=(Use("generic_source", PublicGenericProduct[int]),), exposes=(Expose(ParentConsumer),)
+    ).apply_bundle(parent_bundle)
     parent = builder.build()
     parent_product = parent.resolve(ParentConsumer).product
 
@@ -1291,14 +1188,9 @@ def test_open_generic_alias_singleton_anchors_by_source_specialization_in_overla
     def overlay_bundle(private):
         private.register(OverlayConsumer)
 
-    overlay_builder.install_boundary(
-        Boundary(
-            "overlay_consumer",
-            overlay_bundle,
-            uses=(Use("generic_source", PublicGenericProduct[int]),),
-            exposes=(Expose(OverlayConsumer),),
-        )
-    )
+    overlay_builder.create_boundary(
+        "overlay_consumer", uses=(Use("generic_source", PublicGenericProduct[int]),), exposes=(Expose(OverlayConsumer),)
+    ).apply_bundle(overlay_bundle)
     overlay = overlay_builder.build()
     assert overlay.resolve(OverlayConsumer).product is parent_product
     assert overlay.resolve(PublicGenericProduct[int]) is parent_product
@@ -1309,16 +1201,13 @@ def test_boundary_alias_rejects_unconstrained_public_generic_variable():
         builder.register(GenericProduct[int], instance=GenericProduct(IntGenericDependency()))
 
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "generic_source",
-            source,
-            exposes=(
-                Expose(
-                    GenericProduct[int],
-                    alias=BoundaryAlias(PublicGenericProduct[TItem]),
-                ),
+    builder.create_boundary(
+        "generic_source",
+        exposes=(
+            Expose(
+                GenericProduct[int],
+                alias=BoundaryAlias(PublicGenericProduct[TItem]),
             ),
-        )
-    )
+        ),
+    ).apply_bundle(source)
     assert issue_code(builder) == "boundary-alias-incompatible"

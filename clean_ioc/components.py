@@ -33,6 +33,8 @@ from .type_aliases import normalize_type_alias
 
 if TYPE_CHECKING:
     from ._decorator_templates import DecoratorTemplate, RegistrationInfo
+    from .boundaries import Expose, Use
+    from .container import BoundaryBuilder
     from .tooling import ValidationRule
 
 Lifespan: TypeAlias = Literal["transient", "per_resolution", "scoped", "singleton"]
@@ -483,6 +485,14 @@ class ComponentBuilder(Protocol):
     id: str
 
     def apply_bundle(self, bundle: Callable[[ComponentBuilder], None]) -> None: ...
+
+    def create_boundary(
+        self,
+        name: str,
+        *,
+        uses: Iterable[Use] = (),
+        exposes: Iterable[Expose] = (),
+    ) -> BoundaryBuilder: ...
 
     def bundle_run_key(self, per: BundleRunScope) -> str: ...
 

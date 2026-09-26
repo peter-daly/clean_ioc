@@ -69,9 +69,9 @@ def test_package_root_has_one_compiled_container_surface():
     assert "build_args" in inspect.signature(ContainerBuilder.get_component_id).parameters
     assert "build_args" in inspect.signature(ContainerBuilder.get_component_ids).parameters
     assert "add_validation_rule" in builder_methods
-    assert "install_boundary" in builder_methods
-    assert "install_boundary" in set(dir(ScopeBuilder))
-    assert "install_boundary" not in set(dir(clean_ioc.ComponentBuilder))
+    assert "create_boundary" in builder_methods
+    assert "create_boundary" in set(dir(ScopeBuilder))
+    assert "create_boundary" in set(dir(clean_ioc.ComponentBuilder))
     assert inspect.signature(ContainerBuilder.add_validation_rule).parameters["mode"].kind is (
         inspect.Parameter.KEYWORD_ONLY
     )
@@ -80,7 +80,7 @@ def test_package_root_has_one_compiled_container_surface():
     assert tuple(inspect.signature(clean_ioc.Scope.validation_report).parameters) == ("self",)
     assert {
         "AsyncProvider",
-        "Boundary",
+        "BoundaryBuilder",
         "INJECT",
         "REMOVE",
         "GraphVisit",
@@ -101,11 +101,13 @@ def test_package_root_has_one_compiled_container_surface():
     }.issubset(clean_ioc.__all__)
 
 
-def test_boundary_api_replaces_assembly_without_legacy_api_aliases():
-    assert clean_ioc.Boundary is boundaries.Boundary
+def test_boundary_api_exposes_live_composition_without_legacy_installation_aliases():
+    assert clean_ioc.BoundaryBuilder is clean_ioc.container.BoundaryBuilder
     assert clean_ioc.Expose is boundaries.Expose
     assert clean_ioc.Use is boundaries.Use
-    assert tuple(inspect.signature(clean_ioc.Boundary).parameters) == ("name", "root_bundle", "uses", "exposes")
+    assert tuple(inspect.signature(ContainerBuilder.create_boundary).parameters) == ("self", "name", "uses", "exposes")
+    assert not hasattr(clean_ioc, "Boundary")
+    assert not hasattr(boundaries, "Boundary")
     assert tuple(inspect.signature(clean_ioc.BoundaryAlias).parameters) == ("service_type", "name", "tags")
     assert tuple(inspect.signature(clean_ioc.Expose).parameters) == ("service_type", "filter", "alias")
     assert "Assembly" not in clean_ioc.__all__
@@ -114,6 +116,7 @@ def test_boundary_api_replaces_assembly_without_legacy_api_aliases():
     assert importlib.util.find_spec("clean_ioc.assemblies") is None
     for builder_type in (ContainerBuilder, ScopeBuilder):
         assert not hasattr(builder_type, "install_assembly")
+        assert not hasattr(builder_type, "install_boundary")
     for metadata_type in (
         clean_ioc.Component,
         clean_ioc.GraphRoot,

@@ -12,7 +12,6 @@ from typing_extensions import TypeAliasType
 import clean_ioc.component_filters as cf
 from clean_ioc import (
     AsyncProvider,
-    Boundary,
     BoundaryAlias,
     ComponentKind,
     ContainerBuilder,
@@ -579,8 +578,8 @@ def test_boundary_map_visibility_exports_and_bundle_protocol():
 
     map_type = Mapping[str, Provider[Service]]
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("a", area_a, exposes=(Expose(map_type),)))
-    builder.install_boundary(Boundary("b", area_b))
+    builder.create_boundary("a", exposes=(Expose(map_type),)).apply_bundle(area_a)
+    builder.create_boundary("b").apply_bundle(area_b)
     container = builder.build()
     assert list(container.resolve(map_type)) == ["a"]
     assert isinstance(container.resolve(map_type)["a"](), Service)
@@ -600,12 +599,8 @@ def test_boundary_alias_projects_provider_map_only_after_source_plan_compilation
 
     source_map = Mapping[str, Provider[Service]]
     builder = ContainerBuilder()
-    builder.install_boundary(
-        Boundary(
-            "source",
-            source,
-            exposes=(Expose(source_map, alias=BoundaryAlias(PublicProviders)),),
-        )
+    builder.create_boundary("source", exposes=(Expose(source_map, alias=BoundaryAlias(PublicProviders)),)).apply_bundle(
+        source
     )
     container = builder.build()
 
@@ -780,9 +775,9 @@ def test_scope_builder_declarations_and_boundary_use_of_an_exposed_map():
         builder.register(Consumer)
 
     builder = ContainerBuilder()
-    builder.install_boundary(Boundary("source", source, exposes=(Expose(map_type),)))
-    builder.install_boundary(
-        Boundary("destination", destination, uses=(Use("source", map_type),), exposes=(Expose(Consumer),))
+    builder.create_boundary("source", exposes=(Expose(map_type),)).apply_bundle(source)
+    builder.create_boundary("destination", uses=(Use("source", map_type),), exposes=(Expose(Consumer),)).apply_bundle(
+        destination
     )
     with builder.build() as container:
         assert list(container.resolve(Consumer).values) == ["private"]
