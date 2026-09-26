@@ -47,10 +47,10 @@ TService = TypeVar("TService")
 class ComponentSelector(Generic[TService]):
     """Reusable inputs for a component filter, suitable for bundle configuration.
 
-    ``Undefined`` fields impose no restriction. All supplied fields and tags
-    must match; ``name=None`` selects unnamed components, and a tag without a
-    value matches any value for that tag name. When every field is undefined,
-    use the default filter for unnamed components.
+    ``Undefined`` fields impose no restriction. All supplied fields, tags, and
+    the optional predicate must match; ``name=None`` selects unnamed components,
+    and a tag without a value matches any value for that tag name. When every
+    field is undefined, use the default filter for unnamed components.
 
     The type parameter constrains service and implementation types for static
     checking; it does not add a runtime filter.
@@ -61,8 +61,11 @@ class ComponentSelector(Generic[TService]):
     lifespan: Lifespan | _Undefined = Undefined
     tags: Iterable[Tag] | _Undefined = Undefined
     service_type: TypeForm[TService] | None | _Undefined = Undefined
+    predicate: ComponentFilter | _Undefined = Undefined
 
     def __post_init__(self) -> None:
+        if self.predicate is not Undefined and not callable(self.predicate):
+            raise TypeError("ComponentSelector.predicate must be a component filter")
         if self.tags is not Undefined:
             object.__setattr__(self, "tags", tuple(self.tags))
 
@@ -71,11 +74,23 @@ class ComponentSelector(Generic[TService]):
         """Create a selector with every field undefined, suitable as a default value."""
         return cls()
 
+    @classmethod
+    def all(cls) -> Self:
+        """Create a selector matching named and unnamed components."""
+        return cls(predicate=all_components)
+
     def to_filter(self) -> ComponentFilter:
         """Return the default filter if empty, otherwise a composable filter."""
         if all(
             value is Undefined
-            for value in (self.service_type, self.implementation_type, self.name, self.lifespan, self.tags)
+            for value in (
+                self.service_type,
+                self.implementation_type,
+                self.name,
+                self.lifespan,
+                self.tags,
+                self.predicate,
+            )
         ):
             return default_component_filter
         result = create_filter(all_components)
@@ -90,6 +105,8 @@ class ComponentSelector(Generic[TService]):
         if self.tags is not Undefined:
             for tag in self.tags:
                 result &= has_tag(tag.name, tag.value)
+        if self.predicate is not Undefined:
+            result &= create_filter(self.predicate)
         return result
 
 

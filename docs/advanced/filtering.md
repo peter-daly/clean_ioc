@@ -156,14 +156,70 @@ which selects only unnamed components. Otherwise, undefined fields impose no
 restriction and the supplied fields determine the matches. For example,
 `ComponentSelector(service_type=str)` includes named string components, while
 `ComponentSelector(service_type=str, name=None)` selects only unnamed ones.
-An explicitly supplied empty tag iterable counts as a supplied field, so
-`ComponentSelector(tags=[])` matches all components. Explicit
+Use `ComponentSelector.all()` to match both named and unnamed components, for
+example when selecting every hosted service. It supplies `all_components` as its
+predicate. An explicitly supplied empty tag iterable also counts as a supplied
+field, so `ComponentSelector(tags=[])` continues to match all components. Explicit
 `None` values for service or implementation types are compared by the corresponding
 type filter; they do not disable filtering. Supplied lifespans must be valid
 lifespans, and supplied tags must be an iterable (use `[]` for no tag restrictions).
 The selector is immutable and copies supplied tags into a tuple, so it can safely
 be reused by bundles. Existing callers using `None` to omit a field should omit
 that argument or pass `Undefined` instead.
+
+### Custom selector predicates
+
+Use `predicate=` to carry an existing `ComponentFilter`, including descendant
+conditions and composed filters, through a selector-based bundle API:
+
+```python
+from clean_ioc import ComponentSelector, Tag
+from clean_ioc import component_filters as cf
+
+selector = ComponentSelector(
+    tags=[Tag("hosted")],
+    predicate=cf.has_descendant(cf.has_tag("transaction", "main")),
+)
+component_filter = selector.to_filter()
+```
+
+The candidate must have its own `hosted` tag and a descendant tagged with
+`transaction=main`. The supplied predicate is ANDed with all supplied metadata
+constraints, after those constraints match. A predicate alone does not impose an
+unnamed-component restriction; use `name=None` to add that restriction explicitly.
+Predicates may be plain callables or existing filters composed with `&`, `|`, and
+`~`. Omit the predicate or pass `Undefined` for no custom condition; `None` is not
+a valid predicate.
+
+The callback receives a `Component` and runs when the resulting filter is
+evaluated, with the same graph view as a raw filter at that call site. Creating a
+selector or calling `to_filter()` does not evaluate it. The generic argument does
+not statically validate callback logic. The selector retains the callable; it does
+not freeze any state captured by that callable.
+
+Bundles with automatic applicability rules should keep those rules separate from
+selector defaults. For example, an omitted UoW applicability override can retain
+its automatic descendant rule, while an explicit selector replaces that rule.
+Mandatory opt-out checks can still be combined with the resulting filter. Neither
+`.default()` (unnamed) nor `.all()` (unrestricted) means automatic applicability.
+
+### Selector identity in bundles
+
+Selector equality includes the predicate field, using the callable's own equality
+semantics. Ordinary functions compare by identity; separately created closures
+are not treated as equivalent policies. Arbitrary callables may be unhashable or
+unserializable, and Clean IoC does not derive a stable semantic fingerprint for
+them.
+
+Bundle identifiers must account for all policy inputs, including predicates and
+applicability overrides. Do not fingerprint only the metadata fields or use a
+callback's name, source text, or `repr()` as a stable identity. Use explicit policy
+identifiers when stable identity matters, or object identity when only in-process
+identity is needed. Bundles should explicitly decide whether different policies
+may coexist or constitute conflicting configuration; merely assigning different
+keys may install overlapping decorators.
+
+### Implementation filters
 
 `implementation_is(T)` compares `T` with the component's raw implementation. For a factory registration, that is the
 factory callable. `implementation_type_is(T)` compares the normalized implementation type, including a factory's

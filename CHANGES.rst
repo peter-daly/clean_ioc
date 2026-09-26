@@ -1,3 +1,17 @@
+2.0.0b22
+--------
+
+    Allow ``ComponentSelector`` to carry a custom ``predicate`` alongside its
+    metadata constraints. Predicates are combined with supplied fields using
+    AND and can inspect descendants or compose existing component filters.
+
+    Add ``ComponentSelector.all()`` for selecting named and unnamed components.
+    An entirely undefined selector still selects only unnamed components.
+
+    Document automatic applicability overrides and predicate identity in
+    run-once bundles, including the need to account for every policy input.
+
+
 2.0.0b21
 --------
 
