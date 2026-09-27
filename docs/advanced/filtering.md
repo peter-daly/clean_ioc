@@ -201,6 +201,36 @@ The selector is immutable and copies supplied tags into a tuple, so it can safel
 be reused by bundles. Existing callers using `None` to omit a field should omit
 that argument or pass `Undefined` instead.
 
+### Reading the service type
+
+`selector.resolved_service_type` returns the explicitly configured `service_type` when supplied. Otherwise, it uses
+typetoolbox to recover the selector's generic argument. This property does not change the filter produced by `to_filter()`:
+
+```python
+from clean_ioc import ComponentSelector, Undefined, default_component_filter
+
+selector = ComponentSelector[str]()
+assert selector.resolved_service_type is str
+assert selector.service_type is Undefined
+assert selector.to_filter() is default_component_filter
+
+assert ComponentSelector[object](service_type=str).resolved_service_type is str
+assert ComponentSelector[str].default().resolved_service_type is str
+assert ComponentSelector[str].all().resolved_service_type is str
+assert ComponentSelector[list[str]]().resolved_service_type == list[str]
+assert ComponentSelector[str](service_type=None).resolved_service_type is None
+assert ComponentSelector().resolved_service_type is Undefined
+```
+
+An explicit `None` is a supplied value and takes precedence over the generic argument. An unparameterized selector,
+or one whose service binding is still a bare unresolved type variable, returns `Undefined`. `implementation_type` is
+not used as a fallback. A variable annotation alone cannot supply runtime metadata: instantiate `ComponentSelector[str]()`
+to retain `str`, rather than assigning `ComponentSelector()` to a variable annotated `ComponentSelector[str]`.
+
+Bindings are retained through `.default()`, `.all()`, specialized subclasses, shallow/deep copies and pickle round trips.
+The selector stays immutable, and equality/hash still compare its filter fields. A bundle that uses the resolved type
+to choose a service should include that type in its own configuration identity.
+
 ### Custom selector predicates
 
 Use `predicate=` to carry an existing `ComponentFilter`, including descendant

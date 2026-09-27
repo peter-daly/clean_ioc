@@ -1,8 +1,11 @@
 import copy
 import pickle
-from typing import assert_type
+from dataclasses import FrozenInstanceError
+from typing import Generic, TypeVar, assert_type
 
 import pytest
+from typetoolbox.generics import get_generic_mapping
+from typing_extensions import TypeForm
 
 from clean_ioc import (
     ComponentSelector,
@@ -16,6 +19,17 @@ from clean_ioc import (
 )
 from clean_ioc import component_filters as cf
 from clean_ioc.bundles import BaseBundle
+from clean_ioc.sentinels import _Undefined
+
+TItem = TypeVar("TItem")
+
+
+class StringSelector(ComponentSelector[str]):
+    pass
+
+
+class ListSelector(ComponentSelector[list[TItem]], Generic[TItem]):
+    pass
 
 
 def make_str() -> str:
@@ -48,6 +62,7 @@ def test_generic_selector_preserves_type_and_default_filter():
     default = ComponentSelector[str].default()
 
     assert_type(selector, ComponentSelector[str])
+    assert_type(selector.resolved_service_type, TypeForm[str] | None | _Undefined)
     assert_type(default, ComponentSelector[str])
     assert_type(ComponentSelector[str].all(), ComponentSelector[str])
     assert_type(ComponentSelector[str](predicate=cf.is_named), ComponentSelector[str])
@@ -56,6 +71,80 @@ def test_generic_selector_preserves_type_and_default_filter():
     assert_type(ComponentSelector(service_type=list[str]), ComponentSelector[list[str]])
     assert selector == default
     assert selector.to_filter() is default_component_filter
+
+
+@pytest.mark.parametrize(
+    ("selector", "expected"),
+    [
+        (ComponentSelector(service_type=str), str),
+        (ComponentSelector[object](service_type=str), str),
+        (ComponentSelector[str](service_type=None), None),
+        (ComponentSelector[str](), str),
+        (ComponentSelector[str].default(), str),
+        (ComponentSelector[str].all(), str),
+        (ComponentSelector[list[str]](), list[str]),
+        (ComponentSelector[int | str](), int | str),
+        (StringSelector(), str),
+        (StringSelector.default(), str),
+        (ListSelector[int](), list[int]),
+        (ListSelector[int].default(), list[int]),
+        (ListSelector[int].all(), list[int]),
+        (ComponentSelector[object](implementation_type=str), object),
+        (ComponentSelector(), Undefined),
+        (ComponentSelector.default(), Undefined),
+        (ComponentSelector.all(), Undefined),
+        (ComponentSelector(implementation_type=str), Undefined),
+        (ComponentSelector[TItem](), Undefined),
+    ],
+)
+def test_selector_resolves_explicit_or_generic_service_type(selector, expected):
+    assert selector.resolved_service_type == expected
+
+
+@pytest.mark.parametrize("clone", [copy.copy, copy.deepcopy, pickle_roundtrip])
+@pytest.mark.parametrize(
+    ("factory", "expected"),
+    [
+        (ComponentSelector[str], str),
+        (ComponentSelector[str].default, str),
+        (ComponentSelector[str].all, str),
+        (StringSelector, str),
+        (ListSelector[int], list[int]),
+    ],
+)
+def test_selector_generic_service_type_survives_copying(factory, expected, clone):
+    selector = factory()
+    copied = clone(selector)
+
+    assert copied.resolved_service_type == expected
+    assert copied.service_type is Undefined
+    assert copied == selector
+    assert repr(copied) == repr(selector)
+
+
+def test_selector_generic_metadata_preserves_filtering_equality_and_immutability():
+    selector = ComponentSelector[str]()
+
+    assert selector.resolved_service_type is str
+    assert selector.to_filter() is default_component_filter
+    assert selector == ComponentSelector()
+    assert hash(selector) == hash(ComponentSelector())
+    assert "__orig_class__" not in repr(selector)
+    with pytest.raises(FrozenInstanceError):
+        setattr(selector, "__orig_class__", ComponentSelector[int])
+    with pytest.raises(FrozenInstanceError):
+        setattr(selector, "service_type", int)
+
+
+def test_selector_alias_preserves_typetoolbox_mapping_and_partial_specialization():
+    partial = ComponentSelector[list[TItem]]
+    specialized = partial[int]
+
+    assert specialized().resolved_service_type == list[int]
+    assert specialized.default().resolved_service_type == list[int]
+    assert pickle_roundtrip(specialized)().resolved_service_type == list[int]
+    assert get_generic_mapping(ComponentSelector[str])["TService"] is str
+    assert get_generic_mapping(ListSelector[int])["TService"] == list[int]
 
 
 @pytest.mark.parametrize(

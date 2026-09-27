@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
-from typing import Any, Callable, Generic, Self, TypeVar
+from dataclasses import dataclass, field
+from functools import wraps
+from types import GenericAlias
+from typing import Any, Callable, Generic, Self, TypeVar, cast
 
 from funcie import predicate
+from typetoolbox.generics import get_generic_mapping
 from typing_extensions import TypeForm
 
 from .components import ComponentFilter, Lifespan, all_components, default_component_filter
@@ -43,6 +46,45 @@ _MISSING_BUILD_ARG = object()
 TService = TypeVar("TService")
 
 
+class _SelectorAlias(GenericAlias):
+    """Preserve standard typing metadata on frozen instances and factory results."""
+
+    _alias: Any
+
+    def __new__(cls, alias: Any) -> Self:
+        result = super().__new__(cls, alias.__origin__, alias.__args__)
+        object.__setattr__(result, "_alias", alias)
+        return result
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        result = cast(type, self.__origin__)(*args, **kwargs)
+        object.__setattr__(result, "__orig_class__", self._alias)
+        return result
+
+    def __getitem__(self, parameters: Any) -> _SelectorAlias:
+        return type(self)(self._alias[parameters])
+
+    def __reduce__(self):
+        return type(self), (self._alias,)
+
+    def __getattribute__(self, name: str) -> Any:
+        if name == "_alias":
+            return object.__getattribute__(self, name)
+        if name == "__orig_bases__":
+            return (self._alias,)
+        attribute = super().__getattribute__(name)
+        if name in ("default", "all"):
+
+            @wraps(attribute)
+            def factory(*args: Any, **kwargs: Any) -> Any:
+                result = attribute(*args, **kwargs)
+                object.__setattr__(result, "__orig_class__", self._alias)
+                return result
+
+            return factory
+        return attribute
+
+
 @dataclass(frozen=True, slots=True)
 class ComponentSelector(Generic[TService]):
     """Reusable inputs for a component filter, suitable for bundle configuration.
@@ -62,12 +104,32 @@ class ComponentSelector(Generic[TService]):
     tags: Iterable[Tag] | _Undefined = Undefined
     service_type: TypeForm[TService] | None | _Undefined = Undefined
     predicate: ComponentFilter | _Undefined = Undefined
+    __orig_class__: Any = field(default=None, init=False, repr=False, compare=False)
+
+    @classmethod
+    def __class_getitem__(cls, parameters: Any) -> _SelectorAlias:
+        # Use Generic's validation and retain its canonical alias for typetoolbox.
+        return _SelectorAlias(super(ComponentSelector, cls).__class_getitem__(parameters))
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        # Keep inherited bindings in the standard form understood by type inspection.
+        if bases := cls.__dict__.get("__orig_bases__"):
+            cls.__orig_bases__ = tuple(base._alias if isinstance(base, _SelectorAlias) else base for base in bases)
+        super(ComponentSelector, cls).__init_subclass__(**kwargs)
 
     def __post_init__(self) -> None:
         if self.predicate is not Undefined and not callable(self.predicate):
             raise TypeError("ComponentSelector.predicate must be a component filter")
         if self.tags is not Undefined:
             object.__setattr__(self, "tags", tuple(self.tags))
+
+    @property
+    def resolved_service_type(self) -> TypeForm[TService] | None | _Undefined:
+        """Return the explicit service type, otherwise its retained generic binding."""
+        if self.service_type is not Undefined:
+            return self.service_type
+        service_type = get_generic_mapping(self).get(TService, Undefined)
+        return Undefined if isinstance(service_type, TypeVar) else service_type
 
     @classmethod
     def default(cls) -> Self:
