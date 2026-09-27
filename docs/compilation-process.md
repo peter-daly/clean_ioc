@@ -229,15 +229,33 @@ else:
     raise AssertionError("The invalid candidate should fail before its predicate runs")
 ```
 
-For an ordinary single dependency, several selected candidates produce an `ambiguous-selection` warning and the first
-is used. Typed-provider ambiguity and incomparable structural patterns have stricter error rules. Filters rejecting
+For an injected single dependency, the compiler compares the declared `parent_precedence` of candidates that passed
+both registration and consumer filters. A stable maximum pass preserves candidate order. Higher integers win; the
+default is zero, and conditional predicates grant no automatic bonus. Remaining ties pass through the consumer's
+`select(..., prefer=chain)` stages, then each candidate's registration `prefer=chain` stages. Each stage evaluates all
+survivors once and retains its matches only if at least one matches; stages stop when the tie resolves. Only a final
+tie produces an `ambiguous-selection` warning and selects the first candidate. Typed providers require one unique
+final survivor and report ambiguity if the chains leave a tie. Collections, maps, parentless roots and factory
+resolution requests do not use these comparisons or invoke preference callbacks. Incomparable
+structural patterns retain their stricter error rules. Filters rejecting
 the selected definition tier do not cause a search through lower-precedence tiers.
 
 Boundary-crossing predicates are evaluated from the defining side. The actual graph retains the consumer relationship,
-but an external consumer cannot make a source registration eligible simply by becoming its contextual parent.
+but an external consumer cannot make a source registration eligible simply by becoming its contextual parent. Parent
+precedence is likewise neutral when that parent is hidden: use `0` for comparison with local candidates, regardless of
+the source's declared value. This ties a local `0`, beats `-1` and loses to `1`. Registration preference chains are skipped entirely.
+Consumer preferences use the public candidate view. Explanations capture numeric precedence and boolean stage results,
+neutral reasons, elimination stages and compact ranges of unreached stages. Lower-precedence candidates, preference
+losers and final tied alternatives count as eligible but not selected in the census. Reached callback failures record
+the phase/stage and partial work without a fabricated winner. Reports never replay predicates, and equivalent
+preference behavior does not alter structural fingerprints when graph wiring is unchanged.
 
 Composition filters are not repeated during runtime dependency activation. A filter supplied directly to `resolve()`
 still executes to choose among already-compiled root plans.
+
+Exceptionally large `parent_precedence` values remain Python integers in `CandidateDecision`. For JSON safety, values
+with more than 2,000 binary digits serialize as `{"integer_hex": "0x..."}` (or `"-0x..."`), preserving their exact value
+without changing Python's process-wide decimal conversion limit. Smaller values serialize as ordinary JSON integers.
 
 ## Compiling arguments into operations
 

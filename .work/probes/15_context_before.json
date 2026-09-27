@@ -1,0 +1,75 @@
+{
+  "phase": "before",
+  "rows": [
+    {
+      "id": "G4-provider-map",
+      "result": {
+        "members": [
+          "B",
+          "A"
+        ],
+        "values": [
+          "B",
+          "A"
+        ]
+      },
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G4-duplicate-key",
+      "errors": [
+        "provider-map-duplicate-key"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G4-boundary-cardinality",
+      "errors": [
+        "boundary-expose-ambiguous"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G5-boundary-mask",
+      "result": "B",
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G5-alias-public-view",
+      "result": "B",
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G5-provider-immediate",
+      "errors": [
+        "provider-ambiguous-component"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G5-provider-nested",
+      "errors": [
+        "provider-ambiguous-component"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G5-overlay",
+      "result": {
+        "original": "B",
+        "anchored_same": true,
+        "new": "B",
+        "runtime_callback_count": 0
+      },
+      "observations": [],
+      "callback_count": 0
+    }
+  ]
+}

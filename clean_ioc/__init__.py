@@ -61,6 +61,7 @@ from .graph_analysis import (
 )
 from .instrumentation import DurationSummary, Instrumentation, ProfileRecord, ResolutionProfile, ResolutionProfiler
 from .metadata import Tag
+from .preferences import ComponentPreference, prefer
 from .provider_maps import ProviderMapGroup
 from .providers import AsyncProvider, Provider
 from .selection_census import DefinitionCensus, DefinitionReference, SelectionCensus, SelectionUse
@@ -101,6 +102,8 @@ from .tooling import (
 )
 
 __all__ = [
+    "ComponentPreference",
+    "prefer",
     "CompilationCounters",
     "CompilationHotspot",
     "CompilationProfile",

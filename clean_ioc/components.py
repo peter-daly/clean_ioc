@@ -28,6 +28,7 @@ from typing_extensions import TypeForm
 from .generic_utils import constructor_type
 from .metadata import Tag
 from .provider_maps import ProviderMapGroup
+from .sentinels import Undefined, _Undefined
 from .service_groups import ServiceGroup
 from .type_aliases import normalize_type_alias
 
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
     from ._decorator_templates import DecoratorTemplate, RegistrationInfo
     from .boundaries import Expose, Use
     from .container import BoundaryBuilder
+    from .preferences import ComponentPreference
     from .tooling import ValidationRule
 
 Lifespan: TypeAlias = Literal["transient", "per_resolution", "scoped", "singleton"]
@@ -512,6 +514,8 @@ class ComponentBuilder(Protocol):
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
+        parent_precedence: int = 0,
+        prefer: ComponentPreference | None = None,
         contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
         groups: Iterable[ServiceGroup] = (),
     ) -> str: ...
@@ -527,6 +531,8 @@ class ComponentBuilder(Protocol):
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
+        parent_precedence: int = 0,
+        prefer: ComponentPreference | None = None,
         groups: Iterable[ServiceGroup] = (),
     ) -> str: ...
 
@@ -575,6 +581,8 @@ class ComponentBuilder(Protocol):
         name: str | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
+        parent_precedence: int = 0,
+        prefer: ComponentPreference | None = None,
         groups: Iterable[ServiceGroup] = (),
     ) -> None: ...
 
@@ -591,6 +599,8 @@ class ComponentBuilder(Protocol):
         name: str | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
+        parent_precedence: int = 0,
+        prefer: ComponentPreference | None = None,
         groups: Iterable[ServiceGroup] = (),
     ) -> None: ...
 
@@ -635,6 +645,8 @@ class ComponentBuilder(Protocol):
         lifespan: LifespanPolicy | None = None,
         scope: ScopePolicy | object = ...,
         tags: Iterable[Tag] | None = None,
+        parent_precedence: int | None = None,
+        prefer: ComponentPreference | None | _Undefined = Undefined,
     ) -> None: ...
 
     def patch_decorator(

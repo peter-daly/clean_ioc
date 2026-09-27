@@ -10,6 +10,14 @@ criteria. API names below are proposed until implemented; examples must not be p
 
 Items 09–11 were added on 2026-09-24 against Clean IoC 2.0.0b18 and are implemented and independently reviewed.
 Item 12 was added on 2026-09-25 as the first runtime-profiling slice of item 08 and is implemented and independently reviewed.
+Item 13's ordinary-filter scoring experiment was retired on 2026-09-27. Item 14 restarts the design around
+parent-context registration selection. Astra medium implemented explicit scalar precedence;
+Astra high independently reviewed it and recommended KEEP. Before/after probes,
+supported-Python checks and performance evidence are recorded with the item.
+Item 15 implements explicit chained preferences for remaining single-dependency ties,
+with consumer and registration-context chains built using `prefer(...).then(...)`.
+Implementation is complete; Python 3.14 CI and supported-Python checks pass.
+Repeated benchmarks document compilation cost; separate Astra high review recommends KEEP.
 
 ## Work items
 
@@ -27,6 +35,9 @@ Item 12 was added on 2026-09-25 as the first runtime-profiling slice of item 08 
 | 10 | [Registration selection census](10-registration-selection-census.md) — implemented and independently reviewed | P1 | Existing selection explanations; 01 semantic references |
 | 11 | [Compilation profiler](11-compilation-profiler.md) — implemented and independently reviewed | P1 | Existing build pipeline; independent of runtime tracing |
 | 12 | [Runtime resolution profiler](12-runtime-resolution-profiler.md) — implemented and independently reviewed | P1 | 01–03 graph analysis; V2 resource ownership proof |
+| 13 | [Component-filter match strength](13-component-filter-match-strength.md) — retired; implementation archived locally | P1 | Superseded by 14 |
+| 14 | [Parent-context registration selection](14-parent-context-registration-selection.md) — implemented by Astra medium and independently reviewed by Astra high; KEEP | P1 | Existing contextual registration compilation and selection explanations |
+| 15 | [Chained component preferences](15-chained-component-preferences.md) — implemented by Astra medium and independently reviewed by Astra high; KEEP | P1 | 14; existing argument policies and captured selection explanations |
 
 ## Recommended implementation sequence
 
@@ -50,6 +61,10 @@ It measures actual resolution and activation; item 11 measures compilation and s
 `profile=` keyword. A composition-root configuration variable may choose item 12's independent `instrumentation=`
 option.
 
+Item 15 builds on item 14's explicit parent precedence, with its completed baseline
+captured before implementation. Preferences narrow remaining ties without
+changing ordinary predicate composition, root selection or collection membership.
+
 ## Agent assignments and review
 
 Assign each work item to a Terra agent (`gpt-5.6-terra`) with **medium** reasoning for implementation.
@@ -61,6 +76,8 @@ For items 09–11, the maintainer requested sequential implementation by a Sol a
 different Sol agent at high reasoning reviewing each item. This instruction supersedes the assignment above for those
 items. Complete implementation and review of 09 before starting 10, and likewise complete 10 before starting 11.
 For item 12, the maintainer requested Sol High implementation and separate Sol Extra High review.
+For items 14 and 15, the maintainer requested Astra Medium implementation and separate Astra High review.
+This overrides the default agent assignment above for those items.
 
 ## Shared design rules
 

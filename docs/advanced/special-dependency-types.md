@@ -216,3 +216,16 @@ Injecting `Scope` returns the current runtime scope. This is useful at framework
 ## `Container`
 
 Injecting `Container` returns the immutable root container, even while resolving inside a child scope. It has resolution and scope-creation APIs but no composition APIs.
+
+## Parent precedence for deferred targets
+
+An injected `Provider[T]` or `AsyncProvider[T]` first retains the maximum `parent_precedence` among eligible targets,
+then applies the consumer's `select(..., prefer=chain)` and registration preference chains to remaining ties.
+Two or more final survivors produce `provider-ambiguous-component`, even when lower-valued candidates also exist.
+The selected target is frozen at build time. Provider acquisition and invocation do not compare values or replay
+filters or preferences.
+
+The provider is the target's immediate parent: a condition on its consumer must navigate through that node explicitly.
+`Provider[list[T]]` and provider maps retain every eligible member in their existing order, and duplicate map keys still
+fail. Marked provider root entrypoints and parentless requests through `ResolutionContext`, `use_component`, or its async
+helper keep their existing selection rules. See [parent precedence](filtering.md#parent-precedence-for-overlapping-registrations).

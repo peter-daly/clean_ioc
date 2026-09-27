@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping, TypeVar
 
 from .components import Component, ComponentFilter, default_component_filter
+from .preferences import ComponentPreference, _validate_preference
 
 __all__ = [
     "INJECT",
@@ -44,6 +45,7 @@ class ParameterContext:
 class _SelectArgument:
     filter: ComponentFilter
     policy_kind: str = "select"
+    prefer: ComponentPreference | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,12 +81,15 @@ REMOVE = _Remove()
 """Use in ``patch_component(arguments=...)`` to remove an inherited override."""
 
 
-def select(filter: ComponentFilter = default_component_filter) -> _SelectArgument:
+def select(
+    filter: ComponentFilter = default_component_filter, *, prefer: ComponentPreference | None = None
+) -> _SelectArgument:
     """Select a component for an argument, ignoring any Python default."""
 
     if not callable(filter):
         raise TypeError("select() requires a component filter")
-    return _SelectArgument(filter)
+    _validate_preference(prefer)
+    return _SelectArgument(filter, prefer=prefer)
 
 
 def build_arg(name: str, *, default: Any = _MISSING_BUILD_ARG) -> _DerivedArgument:

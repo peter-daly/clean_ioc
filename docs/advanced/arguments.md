@@ -8,6 +8,7 @@ clear meaning:
 | no entry | The Python default, or an unnamed component when there is no default |
 | a plain value | That exact value |
 | `select(filter)` | A component selected by the filter, even when the parameter has a Python default |
+| `select(filter, prefer=chain)` | An eligible single dependency, using ordered soft preferences to break ties |
 | `inject()` | The ordinary unnamed component, even when the parameter has a Python default |
 | `derive(function)` | A value computed from static component metadata during `build()` |
 | `build_arg(name)` | One named build input, compiled as a frozen value |
@@ -236,3 +237,23 @@ builder.patch_component(
 ```
 
 Unknown argument names fail during build unless the target callable accepts `**kwargs`.
+
+## Choosing between eligible services
+
+For a single injected service, the compiler first applies service-type, generic-definition and visibility rules,
+compiles candidate graphs, and applies registration `when` and the argument's boolean filter. It then keeps candidates
+with the highest `parent_precedence` (default `0`), applies the consumer's preference chain, and finally applies the
+surviving registrations' own preference chains. Only a final tie uses normal candidate order: within the same layer and
+definition tier, the latest registration wins and produces an ambiguity warning. Injected `Provider[T]` and
+`AsyncProvider[T]` require a unique final winner instead.
+
+This sequence covers constructor, injected factory, decorator and pre-configuration arguments. A high precedence or a
+preference match cannot bypass the hard filter. See the [complete selection order](filtering.md#single-dependency-selection-order).
+
+`select(prefer=prefer(predicate).then(other))` keeps the default unnamed eligibility filter.
+An explicit filter replaces that default; use `cf.all_components` to admit every named and unnamed candidate.
+On collection arguments, neither numeric precedence nor preference chains affect membership or order, and no preference
+callbacks run for membership. The hard filter selects all matching candidates. Within one layer/tier, registering A
+then B yields `[B, A]` in an ordered collection when both match. Each member's own single dependencies can still use
+preferences. Provider-map keys, fixed values and scope-slot fallback keep their existing rules. See
+[ordered soft preferences](filtering.md#ordered-soft-preferences) for fallback behavior, parent context and callback timing.
