@@ -94,6 +94,28 @@ class DecisionOutcome(str, Enum):
 
 
 @dataclass(frozen=True, slots=True)
+class PreferenceStageDecision:
+    """A captured boolean stage or explicit reason that no callback was run."""
+
+    phase: str
+    stage: int
+    outcome: bool | None
+    reason: str
+    eliminated: bool = False
+    through_stage: int | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "phase": self.phase,
+            "stage": self.stage,
+            "outcome": self.outcome,
+            "reason": self.reason,
+            "eliminated": self.eliminated,
+            "through_stage": self.through_stage,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class CandidateDecision:
     """One recorded compiler decision, with no configured or runtime values."""
 
@@ -103,6 +125,8 @@ class CandidateDecision:
     reason: str
     origin: DefinitionOrigin
     template: TemplateDecision | None = None
+    parent_precedence: int | None = None
+    preferences: tuple[PreferenceStageDecision, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         result: dict[str, object] = {
@@ -112,6 +136,16 @@ class CandidateDecision:
             "reason": self.reason,
             "origin": self.origin.to_dict(),
         }
+        if self.preferences:
+            result["preferences"] = [stage.to_dict() for stage in self.preferences]
+        if self.parent_precedence is not None:
+            # Avoid Python's decimal conversion guard without changing process settings.
+            # Large public policy values remain exact in a portable hexadecimal form.
+            result["parent_precedence"] = (
+                self.parent_precedence
+                if self.parent_precedence.bit_length() <= 2000
+                else {"integer_hex": hex(self.parent_precedence)}
+            )
         if self.template is not None:
             result["template"] = self.template.to_dict()
         return result

@@ -3,6 +3,15 @@
 Status: Proposal index
 Audience: Clean IoC maintainers and design partners
 
+The ordinary component-filter scoring experiment was retired on 2026-09-27.
+Its replacement, [work item 14: parent-context registration selection](../.work/14-parent-context-registration-selection.md),
+is implemented with explicit scalar precedence and independently reviewed (KEEP), with measured
+before/after use cases, supported-Python checks and performance evidence.
+[Work item 15: chained component preferences](../.work/15-chained-component-preferences.md)
+implements explicit `prefer(...).then(...)` tie-breaking for consumer and registration
+context choices, with soft fallback and unchanged collection membership. Implementation, CI,
+supported-Python checks and benchmarks are complete; independent Astra high review recommends KEEP.
+
 ## Strategy
 
 Clean IoC should compete as a dependency-plan compiler and architecture-policy engine, not as the Python container with

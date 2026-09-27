@@ -87,9 +87,11 @@ from .generic_utils import (
 )
 from .generic_utils import resolve_typevar_bindings as _resolve_factory_typevars
 from .instrumentation import _TIMED, Instrumentation, ResolutionProfiler
+from .preferences import ComponentPreference, _validate_preference
 from .provider_maps import ProviderMapGroup
 from .providers import AsyncProvider, Provider
 from .selection_census import DefinitionReference
+from .sentinels import Undefined, _Undefined
 from .service_groups import DerivedServices, ServiceGroup
 from .tooling import (
     BuildIssue,
@@ -110,6 +112,7 @@ from .tooling import (
     PartialGraph,
     PartialNode,
     PartialState,
+    PreferenceStageDecision,
     SourceLocation,
     TemplateDecision,
     TemplateSourceDecision,
@@ -600,6 +603,11 @@ def _provider_map_factory() -> None:
     raise RuntimeError("Provider maps require a compiled activation step")
 
 
+def _validate_parent_precedence(value: int) -> None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError("parent_precedence must be an integer, excluding bool")
+
+
 class _DecoratorUnset:
     __slots__ = ()
 
@@ -617,6 +625,8 @@ class _Layer:
     internal_ids: frozenset[str]
     owner_token: str
     registration_when: dict[str, ComponentFilter]
+    registration_preferences: Mapping[str, ComponentPreference | None]
+    registration_parent_precedence: Mapping[str, int]
     registration_policies: Mapping[str, tuple[LifespanPolicy, ScopePolicy]]
     registration_origins: dict[str, DefinitionOrigin]
     factory_ids: frozenset[str]
@@ -2252,6 +2262,8 @@ class _RegistrationDiscovery:
     name: str | None
     tags: tuple[legacy.Tag, ...]
     when: ComponentFilter
+    parent_precedence: int
+    prefer: ComponentPreference | None
     groups: frozenset[ServiceGroup]
     origin: DefinitionOrigin
     registrations: dict[int, tuple[type, legacy._Registration]] = field(default_factory=dict)
@@ -2280,6 +2292,8 @@ class _RegistrationDiscovery:
         self,
         registry: legacy._Registry,
         registration_when: dict[str, ComponentFilter],
+        registration_preferences: dict[str, ComponentPreference | None],
+        registration_parent_precedence: dict[str, int],
         registration_policies: dict[str, tuple[LifespanPolicy, ScopePolicy]],
         registration_origins: dict[str, DefinitionOrigin],
         service_groups: dict[str, frozenset[ServiceGroup]],
@@ -2298,6 +2312,8 @@ class _RegistrationDiscovery:
         for subclass, service_type in candidates:
             registration = self._registration_for(subclass, service_type)
             _index_registration(registry, registration)
+            registration_preferences.setdefault(registration.id, self.prefer)
+            registration_parent_precedence.setdefault(registration.id, self.parent_precedence)
             registration_when[registration.id] = self.when
             registration_policies.setdefault(registration.id, (self.lifespan_policy, self.scope_policy))
             service_groups[registration.id] = self.groups
@@ -2316,6 +2332,8 @@ class _RegistrationDiscovery:
                     tags=self.tags,
                 )
             _index_registration(registry, self.fallback_registration)
+            registration_preferences.setdefault(self.fallback_registration.id, self.prefer)
+            registration_parent_precedence.setdefault(self.fallback_registration.id, self.parent_precedence)
             registration_when[self.fallback_registration.id] = self.when
             registration_policies.setdefault(self.fallback_registration.id, (self.lifespan_policy, self.scope_policy))
             service_groups[self.fallback_registration.id] = self.groups
@@ -4421,6 +4439,9 @@ class _CompiledCandidate:
     reason: str
     source_registration_id: str | None = None
     source_layer: _Layer | None = None
+    parent_precedence: int | None = None
+    preference: ComponentPreference | None = None
+    preference_view: tuple[Any, str | None, tuple[legacy.Tag, ...]] | None = None
 
 
 def _frame_description(frame: _CompilerFrame) -> str:
@@ -6085,6 +6106,11 @@ class _Compiler:
                 component_record.service_type = source_service_type
                 component_record.name = registration.name
                 component_record.tags = tuple(registration.tags)
+            effective_parent_precedence = (
+                layer.registration_parent_precedence.get(source_registration.id, 0)
+                if definition_area == consumer_area and component_record.parent_id is not None
+                else None
+            )
             original_parent_id = component_record.parent_id
             if definition_area != consumer_area:
                 # The component keeps its real graph parent, but contextual
@@ -6199,6 +6225,13 @@ class _Compiler:
                     "; ".join(reasons),
                     source_registration.id,
                     layer,
+                    effective_parent_precedence,
+                    layer.registration_preferences.get(source_registration.id),
+                    (source_service_type, registration.name, tuple(registration.tags))
+                    if layer.registration_preferences.get(source_registration.id) is not None
+                    and definition_area == consumer_area
+                    and original_parent_id is not None
+                    else None,
                 )
             )
         return candidates
@@ -6211,6 +6244,9 @@ class _Compiler:
         service_type: Any,
         subject: str,
         collection: bool = False,
+        parent_precedence: bool = False,
+        preference: ComponentPreference | None = None,
+        provider_target: bool = False,
         explanation_component: Component | None = None,
     ) -> list[_CompiledCandidate]:
         """Apply a selection filter once and retain its safe outcome."""
@@ -6308,6 +6344,82 @@ class _Compiler:
                         candidate.origin,
                     )
                 )
+        precedence_applied = parent_precedence and any(candidate.parent_precedence for candidate in selected_candidates)
+        if precedence_applied:
+            maximum = max(candidate.parent_precedence or 0 for candidate in selected_candidates)
+            best = []
+            decisions = []
+            for candidate, decision in zip(selected_candidates, selected, strict=True):
+                decision = replace(decision, parent_precedence=candidate.parent_precedence)
+                if (candidate.parent_precedence or 0) < maximum:
+                    rejected.append(
+                        replace(
+                            decision,
+                            outcome=DecisionOutcome.rejected,
+                            reason_codes=("lower-parent-precedence",),
+                            reason="Eligible but lower parent precedence than the maximum",
+                        )
+                    )
+                else:
+                    best.append(candidate)
+                    decisions.append(decision)
+            selected_candidates, selected = best, decisions
+        preferences_applied = parent_precedence and (
+            preference is not None or any(candidate.preference is not None for candidate in selected_candidates)
+        )
+        if preferences_applied:
+            selected_candidates, selected = self._apply_preferences(
+                selected_candidates,
+                selected,
+                rejected,
+                preference,
+                service_type=service_type,
+                subject=subject,
+            )
+        # Only the final surviving set can justify LIFO or provider ambiguity.
+        if precedence_applied or preferences_applied:
+            decisions = []
+            for candidate, decision in zip(selected_candidates, selected, strict=True):
+                if provider_target and len(selected_candidates) > 1:
+                    code = "equal-parent-precedence-ambiguous" if precedence_applied else "preference-final-ambiguous"
+                    rejected.append(
+                        replace(
+                            decision,
+                            outcome=DecisionOutcome.rejected,
+                            reason_codes=(code,),
+                            reason="Final eligible tie; provider target is ambiguous"
+                            if preferences_applied
+                            else "Equal maximum parent precedence; provider target is ambiguous",
+                        )
+                    )
+                elif not provider_target and decisions:
+                    code = "equal-parent-precedence-order" if precedence_applied else "preference-final-order"
+                    rejected.append(
+                        replace(
+                            decision,
+                            outcome=DecisionOutcome.rejected,
+                            reason_codes=(code,),
+                            reason="Final eligible tie; an earlier candidate wins"
+                            if preferences_applied
+                            else "Equal maximum parent precedence; an earlier candidate wins",
+                        )
+                    )
+                else:
+                    narrowed = any("preference-eliminated" in item.reason_codes for item in rejected)
+                    if narrowed:
+                        decision = replace(
+                            decision,
+                            reason_codes=(*decision.reason_codes, "selected-preference"),
+                            reason="Selected after ordered preferences",
+                        )
+                    elif precedence_applied:
+                        decision = replace(
+                            decision,
+                            reason_codes=(*decision.reason_codes, "selected-parent-precedence"),
+                            reason="Selected at maximum parent precedence",
+                        )
+                    decisions.append(decision)
+            selected = decisions
         explanation = CompilationExplanation(
             subject=subject,
             path=self._current_path(service_type),
@@ -6320,6 +6432,181 @@ class _Compiler:
         if explanation_component is not None:
             self.occurrence_explanations[explanation_component.occurrence_id] = explanation
         return selected_candidates
+
+    def _apply_preferences(
+        self,
+        candidates: list[_CompiledCandidate],
+        decisions: list[CandidateDecision],
+        rejected: list[CandidateDecision],
+        consumer: ComponentPreference | None,
+        *,
+        service_type: Any,
+        subject: str,
+    ) -> tuple[list[_CompiledCandidate], list[CandidateDecision]]:
+        """Stable narrowing, with source views scoped only around reached callbacks."""
+        original = tuple(candidates)
+        evidence: dict[int, list[PreferenceStageDecision]] = {c.component.occurrence_id: [] for c in original}
+        eliminated: dict[int, tuple[str, int]] = {}
+        for phase in ("consumer", "registration"):
+            count = (
+                len(consumer.predicates)
+                if phase == "consumer" and consumer is not None
+                else (
+                    max((len(c.preference.predicates) if c.preference is not None else 0 for c in original), default=0)
+                    if phase == "registration"
+                    else 0
+                )
+            )
+            for stage in range(count):
+                if len(candidates) < 2 or (
+                    phase == "registration"
+                    and not any(
+                        c.preference is not None
+                        and c.preference_view is not None
+                        and len(c.preference.predicates) > stage
+                        for c in candidates
+                    )
+                ):
+                    for candidate in original:
+                        reason = "not-reached"
+                        if (
+                            len(candidates) > 1
+                            and phase == "registration"
+                            and candidate.component.occurrence_id not in eliminated
+                        ):
+                            if candidate.preference is not None and candidate.preference_view is None:
+                                reason = "masked-context"
+                            elif candidate.preference is None or stage >= len(candidate.preference.predicates):
+                                reason = "missing-rule"
+                        evidence[candidate.component.occurrence_id].append(
+                            PreferenceStageDecision(phase, stage, None, reason, through_stage=count - 1)
+                        )
+                    break
+                matched: list[_CompiledCandidate] = []
+                active = {c.component.occurrence_id for c in candidates}
+                for candidate in original:
+                    occurrence = candidate.component.occurrence_id
+                    chain = consumer if phase == "consumer" else candidate.preference
+                    if occurrence not in active or len(candidates) < 2:
+                        reason = "not-reached"
+                    elif chain is None or stage >= len(chain.predicates):
+                        reason = "missing-rule"
+                    elif phase == "registration" and candidate.preference_view is None:
+                        reason = "masked-context"
+                    else:
+                        reason = "evaluated"
+                    if reason != "evaluated":
+                        evidence[occurrence].append(PreferenceStageDecision(phase, stage, None, reason))
+                        continue
+                    predicate = cast(ComponentPreference, chain).predicates[stage]
+                    record = cast(_ComponentDraft, self.graph.record(occurrence))
+                    previous = (record.service_type, record.name, record.tags, record.parent_id)
+                    try:
+                        if phase == "registration":
+                            record.service_type, record.name, record.tags = cast(
+                                tuple[Any, str | None, tuple[legacy.Tag, ...]], candidate.preference_view
+                            )
+                        if self._profile is None:
+                            result = predicate(candidate.component)
+                        else:
+                            self._profile.count("preference callback calls")
+                            self._profile.count(f"{phase} preference callback calls")
+                            result = self._profile.call(
+                                self._profile_phase,
+                                "preference callback",
+                                predicate,
+                                candidate.component,
+                                attempt=self._profile_attempt,
+                                definition=safe_definition(predicate),
+                            )
+                        if inspect.isawaitable(result) or inspect.isgenerator(result) or inspect.isasyncgen(result):
+                            if inspect.iscoroutine(result) or inspect.isgenerator(result):
+                                result.close()
+                            raise TypeError("Preference predicates must return synchronous truth values")
+                        outcome = bool(result)
+                    except Exception as error:
+                        evidence[occurrence].append(PreferenceStageDecision(phase, stage, None, "failed"))
+                        self._record_partial_candidate(
+                            (subject, candidate.component.id, PartialState.failed, "preference-evaluation-failed")
+                        )
+                        self._partial_candidate_labels[candidate.component.id] = qualified_name(
+                            candidate.component.implementation
+                        )
+                        partial = []
+                        for pending, decision in zip(original, decisions, strict=True):
+                            pending_id = pending.component.occurrence_id
+                            stages = evidence[pending_id]
+                            if pending_id in eliminated:
+                                code = "preference-eliminated"
+                                reason = "Eligible but eliminated by an earlier preference stage"
+                            elif pending_id == occurrence:
+                                code = "preference-evaluation-failed"
+                                reason = f"The {phase} preference stage {stage} failed"
+                            elif not stages or stages[-1].phase != phase or stages[-1].stage != stage:
+                                code = "preference-not-examined"
+                                reason = "Preference evaluation stopped before this candidate's stage"
+                                stages.append(PreferenceStageDecision(phase, stage, None, "not-examined"))
+                                self._partial_candidate_labels[pending.component.id] = qualified_name(
+                                    pending.component.implementation
+                                )
+                                self._record_partial_candidate(
+                                    (subject, pending.component.id, PartialState.not_examined, code)
+                                )
+                            else:
+                                code = "preference-selection-incomplete"
+                                reason = "Evaluated this stage; selection did not complete"
+                            partial.append(
+                                replace(
+                                    decision,
+                                    outcome=DecisionOutcome.rejected,
+                                    reason_codes=(code,),
+                                    reason=reason,
+                                    preferences=tuple(stages),
+                                )
+                            )
+                        self.decision_history.append(
+                            CompilationExplanation(
+                                subject=subject,
+                                path=self._current_path(service_type),
+                                selected=(),
+                                rejected=(*rejected, *partial),
+                            )
+                        )
+                        raise ContainerBuildError(
+                            f"The {phase} preference stage {stage} failed ({type(error).__name__})",
+                            code="preference-evaluation-failed",
+                            path=self._current_path(service_type),
+                        ) from None
+                    finally:
+                        record.service_type, record.name, record.tags, record.parent_id = previous
+                    evidence[occurrence].append(PreferenceStageDecision(phase, stage, outcome, "evaluated"))
+                    if outcome:
+                        matched.append(candidate)
+                if matched:
+                    keep = {c.component.occurrence_id for c in matched}
+                    for candidate in candidates:
+                        occurrence = candidate.component.occurrence_id
+                        if occurrence not in keep:
+                            eliminated[occurrence] = (phase, stage)
+                            evidence[occurrence][-1] = replace(evidence[occurrence][-1], eliminated=True)
+                    candidates = matched
+        selected = []
+        for candidate, decision in zip(original, decisions, strict=True):
+            occurrence = candidate.component.occurrence_id
+            decision = replace(decision, preferences=tuple(evidence[occurrence]))
+            if occurrence in eliminated:
+                phase, stage = eliminated[occurrence]
+                rejected.append(
+                    replace(
+                        decision,
+                        outcome=DecisionOutcome.rejected,
+                        reason_codes=("preference-eliminated",),
+                        reason=f"Eligible but not selected at {phase} preference stage {stage}",
+                    )
+                )
+            else:
+                selected.append(decision)
+        return candidates, selected
 
     def _record_component_decision(
         self,
@@ -7238,6 +7525,13 @@ class _Compiler:
                     service_type=element_type,
                     subject=(f"Deferred argument {dependency.name!r} of " f"{qualified_name(parent.implementation)}"),
                     explanation_component=provider,
+                    parent_precedence=True,
+                    preference=(
+                        dependency.settings.value_factory.prefer
+                        if isinstance(dependency.settings.value_factory, _SelectArgument)
+                        else None
+                    ),
+                    provider_target=True,
                 )
                 if not candidates:
                     slot = self._matching_slot(
@@ -7512,6 +7806,8 @@ class _Compiler:
             dependency.settings.filter,
             service_type=dependency.service_type,
             subject=f"Argument {dependency.name!r} of {qualified_name(parent.implementation)}",
+            parent_precedence=True,
+            preference=policy.prefer if isinstance(policy, _SelectArgument) else None,
         )
         if candidates:
             if len(candidates) > 1:
@@ -10731,6 +11027,8 @@ class _BuilderBase:
         self._boundary_name = boundary_name
         self._composition_layer = composition_layer
         self._registration_when: dict[str, ComponentFilter] = {}
+        self._registration_preferences: dict[str, ComponentPreference | None] = {}
+        self._registration_parent_precedence: dict[str, int] = {}
         self._registration_policies: dict[str, tuple[LifespanPolicy, ScopePolicy]] = {}
         self._registration_origins: dict[str, DefinitionOrigin] = {}
         self._factory_ids: set[str] = set()
@@ -10830,6 +11128,8 @@ class _BuilderBase:
     def _layer(self) -> _Layer:
         registry = _clone_registry(self._composition._registry)
         registration_when = dict(self._registration_when)
+        registration_preferences = dict(self._registration_preferences)
+        registration_parent_precedence = dict(self._registration_parent_precedence)
         registration_policies = dict(self._registration_policies)
         registration_origins = dict(self._registration_origins)
         service_groups = dict(self._service_groups)
@@ -10840,7 +11140,15 @@ class _BuilderBase:
 
         discovered = legacy._Registry()
         for rule in self._registration_discoveries:
-            rule.materialize(discovered, registration_when, registration_policies, registration_origins, service_groups)
+            rule.materialize(
+                discovered,
+                registration_when,
+                registration_preferences,
+                registration_parent_precedence,
+                registration_policies,
+                registration_origins,
+                service_groups,
+            )
         for service_type, registrations in discovered._registrations.items():
             # Explicit composition always precedes convention-based discovery.
             registry._registrations[service_type].extend(registrations)
@@ -10850,6 +11158,8 @@ class _BuilderBase:
             internal_ids=self._internal_ids,
             owner_token=self._owner_token,
             registration_when=registration_when,
+            registration_preferences=types.MappingProxyType(registration_preferences),
+            registration_parent_precedence=types.MappingProxyType(registration_parent_precedence),
             registration_policies=types.MappingProxyType(registration_policies),
             registration_origins=registration_origins,
             factory_ids=frozenset(self._factory_ids),
@@ -10949,10 +11259,14 @@ class _BuilderBase:
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
+        parent_precedence: int = 0,
+        prefer: ComponentPreference | None = None,
         contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
         groups: Iterable[ServiceGroup] = (),
     ) -> str:
         self._assert_mutable()
+        _validate_parent_precedence(parent_precedence)
+        _validate_preference(prefer)
         effective_lifespan = _component_policy(lifespan, scope)
         if scope == "per_call" and instance is not None:
             raise ValueError("scope='per_call' cannot be used with instance=")
@@ -11006,6 +11320,8 @@ class _BuilderBase:
             parent_node_filter=legacy.default_parent_node_filter,
         )
         self._registration_when[component_id] = when
+        self._registration_parent_precedence[component_id] = parent_precedence
+        self._registration_preferences[component_id] = prefer
         self._registration_policies[component_id] = (lifespan, scope)
         if instance is not None:
             self._instance_implementation_types[component_id] = instance_implementation_type
@@ -11034,6 +11350,8 @@ class _BuilderBase:
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
+        parent_precedence: int = 0,
+        prefer: ComponentPreference | None = None,
         groups: Iterable[ServiceGroup] = (),
     ) -> str:
         """Declare a structural factory template specialized only during build."""
@@ -11048,6 +11366,8 @@ class _BuilderBase:
             arguments=arguments,
             tags=tags,
             when=when,
+            parent_precedence=parent_precedence,
+            prefer=prefer,
             groups=groups,
         )
         self._pattern_ids.append(component_id)
@@ -11121,8 +11441,14 @@ class _BuilderBase:
         lifespan: LifespanPolicy | None = None,
         scope: ScopePolicy | object = _SCOPE_UNSET,
         tags: Iterable[legacy.Tag] | None = None,
+        parent_precedence: int | None = None,
+        prefer: ComponentPreference | None | _Undefined = Undefined,
     ) -> None:
         self._assert_mutable()
+        if parent_precedence is not None:
+            _validate_parent_precedence(parent_precedence)
+        if prefer is not Undefined:
+            _validate_preference(prefer)
         service_type = _composition_type(service_type)
         old_policy = self._registration_policies.get(component_id)
         if old_policy is None:
@@ -11152,6 +11478,10 @@ class _BuilderBase:
                 tags=tags,
             )
             self._registration_policies[component_id] = (new_lifespan, new_scope)
+            if parent_precedence is not None:
+                self._registration_parent_precedence[component_id] = parent_precedence
+            if prefer is not Undefined:
+                self._registration_preferences[component_id] = prefer
             return
         except KeyError:
             pass
@@ -11161,6 +11491,7 @@ class _BuilderBase:
                 candidate
                 for candidate in self._composition._registry._registrations
                 if _composition_type(candidate) == service_type
+                and any(item.id == component_id for item in self._composition._registry._registrations[candidate])
             ),
             None,
         )
@@ -11173,6 +11504,10 @@ class _BuilderBase:
                 tags=tags,
             )
             self._registration_policies[component_id] = (new_lifespan, new_scope)
+            if parent_precedence is not None:
+                self._registration_parent_precedence[component_id] = parent_precedence
+            if prefer is not Undefined:
+                self._registration_preferences[component_id] = prefer
             return
 
         registration = next(
@@ -11232,6 +11567,10 @@ class _BuilderBase:
             tags=tags,
         )
         self._registration_policies[component_id] = (new_lifespan, new_scope)
+        if parent_precedence is not None:
+            self._registration_parent_precedence[component_id] = parent_precedence
+        if prefer is not Undefined:
+            self._registration_preferences[component_id] = prefer
 
     def register_decorator_template(
         self,
@@ -11516,6 +11855,8 @@ class _BuilderBase:
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
+        parent_precedence: int = 0,
+        prefer: ComponentPreference | None = None,
         groups: Iterable[ServiceGroup] = (),
     ) -> None:
         """Queue concrete subclass discovery for the next successful build.
@@ -11526,6 +11867,8 @@ class _BuilderBase:
         """
 
         self._assert_mutable()
+        _validate_parent_precedence(parent_precedence)
+        _validate_preference(prefer)
         effective_lifespan = _component_policy(lifespan, scope)
         if not isinstance(include_children, bool):
             raise TypeError("include_children must be a bool")
@@ -11545,6 +11888,8 @@ class _BuilderBase:
                 name=name,
                 tags=tuple(tags or ()),
                 when=when,
+                parent_precedence=parent_precedence,
+                prefer=prefer,
                 groups=service_groups,
                 origin=self._definition_origin("registration", None),
             )
@@ -11563,6 +11908,8 @@ class _BuilderBase:
         name: str | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
+        parent_precedence: int = 0,
+        prefer: ComponentPreference | None = None,
         groups: Iterable[ServiceGroup] = (),
     ) -> None:
         """Queue closed-generic subclass discovery for the build snapshot.
@@ -11573,6 +11920,8 @@ class _BuilderBase:
         """
 
         self._assert_mutable()
+        _validate_parent_precedence(parent_precedence)
+        _validate_preference(prefer)
         effective_lifespan = _component_policy(lifespan, scope)
         if not isinstance(include_children, bool):
             raise TypeError("include_children must be a bool")
@@ -11592,6 +11941,8 @@ class _BuilderBase:
                 name=name,
                 tags=tuple(tags or ()),
                 when=when,
+                parent_precedence=parent_precedence,
+                prefer=prefer,
                 groups=service_groups,
                 origin=self._definition_origin("registration", None),
             )

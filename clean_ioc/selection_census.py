@@ -605,6 +605,18 @@ def _record_explanation(
                     (
                         (*decision.reason_codes, "first-eligible-wins")
                         if outcome == "eligible-not-selected"
+                        and not any(
+                            code
+                            in (
+                                "lower-parent-precedence",
+                                "equal-parent-precedence-order",
+                                "equal-parent-precedence-ambiguous",
+                                "preference-eliminated",
+                                "preference-final-order",
+                                "preference-final-ambiguous",
+                            )
+                            for code in decision.reason_codes
+                        )
                         else decision.reason_codes
                     ),
                     explanation.subject,
@@ -619,6 +631,19 @@ def _record_explanation(
 
 
 def _rejection_outcome(codes: tuple[str, ...]) -> str:
+    if any(
+        code
+        in (
+            "lower-parent-precedence",
+            "equal-parent-precedence-order",
+            "equal-parent-precedence-ambiguous",
+            "preference-eliminated",
+            "preference-final-order",
+            "preference-final-ambiguous",
+        )
+        for code in codes
+    ):
+        return "eligible-not-selected"
     if any(code in ("pattern-shadowed-by-exact", "pattern-less-specific") for code in codes):
         return "excluded-by-precedence"
     if "rejected-overlay-visibility" in codes:
@@ -641,7 +666,18 @@ def failed_selection_census(error: Any) -> SelectionCensus:
     for explanation in error.explanations:
         path = safe_path(explanation.path)
         for decision in (*explanation.selected, *explanation.rejected):
-            outcome = "attempt-selected" if decision.outcome is not DecisionOutcome.rejected else "attempt-rejected"
+            if any(
+                code in ("preference-evaluation-failed", "preference-not-examined") for code in decision.reason_codes
+            ):
+                # The partial-attempt record below supplies the precise state once.
+                continue
+            if (
+                "preference-eliminated" in decision.reason_codes
+                or "preference-selection-incomplete" in decision.reason_codes
+            ):
+                outcome = "eligible-not-selected"
+            else:
+                outcome = "attempt-selected" if decision.outcome is not DecisionOutcome.rejected else "attempt-rejected"
             observations.append(
                 (
                     decision.component_id,
