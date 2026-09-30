@@ -2,7 +2,7 @@
 
 This document records the V2 architecture and implementation decisions made so far. It is intended for agents and maintainers extending V2 without accidentally restoring runtime graph construction, weakening build invariants, or breaking scope ownership.
 
-V2 is currently published in project metadata as `2.0.0b9`. Its public surface remains experimental.
+V2 is currently published in project metadata as `2.0.0b26`. Its public surface remains experimental.
 
 ## Core model
 
@@ -24,7 +24,7 @@ Container/Scope
 - `ContainerBuilder` and `ScopeBuilder` are the only mutable composition APIs.
 - `Container` and `Scope` contain frozen `_PlanSet` instances and expose no registration APIs.
 - A failed build leaves its builder reusable. A successful build makes the builder single-use.
-- Every visible closed root is compiled and validated. `mark_entrypoint()` only focuses tooling and reachability analysis; it does not weaken validation or make unmarked roots unresolvable.
+- Registrations default to `root_policy="resolvable"`, preserving whole-root compilation and validation. `"entrypoint"` also marks a root for tooling; `"dependency_only"` removes its direct root and keeps it only when another root needs it. `build(clean_orphans=True)` prunes unused dependency-only definitions from the frozen blueprint. With `clean_orphans=False`, they remain inspectable and validated as graph roots but cannot be directly resolved. `mark_entrypoint()` continues to mark synthetic or filtered requests without changing root eligibility.
 - Building never invokes user constructors, factories, generators, or context managers. Explicit `derive(...)`
   argument policies run during compilation and their concrete results become value nodes.
 - Runtime resolution executes `_Step` objects. It does not allocate legacy `DependencyNode`/object-graph structures.

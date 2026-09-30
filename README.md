@@ -178,7 +178,7 @@ composition, reusable rule factories, bundles, overlays, warnings, and CI policy
 Mark application entry points to focus graph output and reachability analysis:
 
 ```python
-builder.mark_entrypoint(Checkout)
+builder.register(Checkout, root_policy="entrypoint")
 container = builder.build()
 
 print(container.build_report.to_text())
@@ -187,6 +187,8 @@ container.graph.manifest().to_json()
 container.graph.ownership_report().to_json()
 container.graph.sharing_report().to_json()
 ```
+
+Use `root_policy="dependency_only"` for a helper that should be retained only when another root needs it. By default, `build(clean_orphans=True)` discards unused dependency-only registrations. Pass `clean_orphans=False` to retain and validate their graphs for inspection. `mark_entrypoint()` still marks collection and filtered requests.
 
 ```bash
 clean-ioc check my_app.composition:application_builder

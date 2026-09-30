@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 Lifespan: TypeAlias = Literal["transient", "per_resolution", "scoped", "singleton"]
 LifespanPolicy: TypeAlias = Lifespan | Literal["auto"]
 ScopePolicy: TypeAlias = Literal["current", "per_call"]
+RootPolicy: TypeAlias = Literal["entrypoint", "resolvable", "dependency_only"]
 ValidationRuleMode: TypeAlias = Literal["build", "validation"]
 BundleRunScope: TypeAlias = Literal["boundary", "scope", "container"]
 K = TypeVar("K")
@@ -518,6 +519,7 @@ class ComponentBuilder(Protocol):
         prefer: ComponentPreference | None = None,
         contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
         groups: Iterable[ServiceGroup] = (),
+        root_policy: RootPolicy = "resolvable",
     ) -> str: ...
 
     def register_pattern(

@@ -1,3 +1,14 @@
+2.0.0b26
+--------
+
+    Add ``root_policy`` to registrations. Entry-point registrations focus graph
+    tooling, resolvable registrations retain the existing root behavior, and
+    dependency-only registrations are unavailable to direct root resolution.
+
+    Add ``build(clean_orphans=True)`` to discard unused dependency-only
+    registrations. Set it to ``False`` to retain and validate their graphs.
+
+
 2.0.0b23
 --------
 

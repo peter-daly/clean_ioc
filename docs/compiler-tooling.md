@@ -12,15 +12,24 @@ from clean_ioc import ContainerBuilder
 
 builder = ContainerBuilder()
 builder.register(PaymentGateway, StripeGateway)
-builder.register(Checkout)
-builder.mark_entrypoint(Checkout)
+builder.register(Checkout, root_policy="entrypoint")
 
 container = builder.build()
 print(container.build_report.to_text())
 print(container.graph.to_text())
 ```
 
-An entry point changes the default tooling view, not compilation or resolution. Clean IoC still compiles and validates every visible root, and an unmarked root remains resolvable. Once any entry point is marked, registrations outside all marked component trees produce `unreachable-component` warnings.
+`root_policy` classifies each registration:
+
+| Policy | Build and resolution behavior |
+| --- | --- |
+| `"entrypoint"` | Public root, also marked for the focused graph view. |
+| `"resolvable"` (default) | Public root without a tooling marker; this is the existing registration behavior. |
+| `"dependency_only"` | Available to dependencies, but not directly resolvable as a root. An unused registration is discarded by default. |
+
+`build(clean_orphans=False)` retains and validates otherwise unused dependency-only registrations as graph roots for inspection. They remain unavailable to direct resolution. With the default `clean_orphans=True`, unused dependency-only registrations and their unneeded graphs are omitted from the frozen container. A broken dependency inside an omitted orphan does not fail the build.
+
+`mark_entrypoint()` remains available for request-level markers, such as a filtered selection or `list[MessageHandler]`. An entry-point marker focuses tooling; it does not change a registration's root policy. Once any entry point is marked, registrations outside all marked component trees produce `unreachable-component` warnings.
 
 Mark a collection when every implementation is an application entry point:
 

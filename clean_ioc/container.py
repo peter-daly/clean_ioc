@@ -59,6 +59,7 @@ from .arguments import (
 )
 from .boundaries import BoundaryAlias, Expose, Use
 from .compilation_profile import CompilationProfiler, safe_definition
+from .component_filters import with_id
 from .components import (
     BundleRunScope,
     Component,
@@ -68,6 +69,7 @@ from .components import (
     ComponentKind,
     Lifespan,
     LifespanPolicy,
+    RootPolicy,
     RuntimeOwnerKind,
     ScopePolicy,
     ValidationRuleMode,
@@ -628,6 +630,7 @@ class _Layer:
     registration_preferences: Mapping[str, ComponentPreference | None]
     registration_parent_precedence: Mapping[str, int]
     registration_policies: Mapping[str, tuple[LifespanPolicy, ScopePolicy]]
+    root_policies: Mapping[str, RootPolicy]
     registration_origins: dict[str, DefinitionOrigin]
     factory_ids: frozenset[str]
     factory_specializations: dict[str, object]
@@ -4467,6 +4470,10 @@ class _Compiler:
         profile_attempt: str | None = "primary",
     ):
         self.blueprint = blueprint
+        self._has_dependency_only = any(
+            "dependency_only" in layer.root_policies.values()
+            for layer in (*blueprint.layers, *(boundary.layer for boundary in blueprint.boundaries))
+        )
         self._profile = profile
         self._profile_phase = profile_phase
         self._profile_attempt = profile_attempt
@@ -5231,6 +5238,7 @@ class _Compiler:
         *,
         area: str | None = None,
         include_boundaries: bool = True,
+        clean_orphans: bool = True,
     ) -> _PlanSet:
         if self._source_inspection:
             raise RuntimeError("Source inspection cannot publish runtime plans")
@@ -5258,7 +5266,7 @@ class _Compiler:
             # from the concrete services discovered by the builder.
             if getattr(service_type, "__parameters__", ()):
                 continue
-            candidates = self._compile_candidates(service_type, parent=None, argument=None)
+            candidates = self._compile_candidates(service_type, parent=None, argument=None, root_only=True)
             eligible = tuple(candidate for candidate in candidates if candidate.eligible)
             roots[service_type] = tuple(
                 _RootPlan(component=candidate.component, step=candidate.step) for candidate in eligible
@@ -5349,7 +5357,7 @@ class _Compiler:
                 for service_type in dict.fromkeys((*local_service_types, *entrypoint_types)):
                     if getattr(service_type, "__parameters__", ()):
                         continue
-                    candidates = self._compile_candidates(service_type, parent=None, argument=None)
+                    candidates = self._compile_candidates(service_type, parent=None, argument=None, root_only=True)
                     eligible = tuple(candidate for candidate in candidates if candidate.eligible)
                     plans = tuple(
                         _RootPlan(component=candidate.component, step=candidate.step) for candidate in eligible
@@ -5375,6 +5383,32 @@ class _Compiler:
                     )
                 area_records[boundary.name] = local_records
             self._area = None
+        if not clean_orphans and service_types is None and self._has_dependency_only:
+            areas = (
+                (
+                    (None, self.blueprint.root_service_types()),
+                    *(
+                        (boundary.name, self.blueprint.service_types(boundary.name))
+                        for boundary in self.blueprint.boundaries
+                    ),
+                )
+                if area is None
+                else ((area, self.blueprint.service_types(area)),)
+            )
+            for orphan_area, orphan_types in areas:
+                self._area = orphan_area
+                for service_type in orphan_types:
+                    if getattr(service_type, "__parameters__", ()):
+                        continue
+                    candidates = self._compile_candidates(
+                        service_type, parent=None, argument=None, dependency_only_only=True
+                    )
+                    architecture_roots.extend(
+                        (orphan_area, service_type, _RootPlan(candidate.component, candidate.step))
+                        for candidate in candidates
+                        if candidate.eligible
+                    )
+            self._area = area
         if self._profile is None:
             self.graph.freeze()
         else:
@@ -5773,7 +5807,12 @@ class _Compiler:
         return tuple(selected)
 
     def _pattern_candidates(
-        self, service_type: Any, registrations: list[tuple[legacy._Registration, _Layer]]
+        self,
+        service_type: Any,
+        registrations: list[tuple[legacy._Registration, _Layer]],
+        *,
+        root_only: bool = False,
+        dependency_only_only: bool = False,
     ) -> tuple[list[tuple[legacy._Registration, _Layer]], list[_CompiledCandidate]]:
         available = [
             item
@@ -5781,6 +5820,12 @@ class _Compiler:
             if self.blueprint.registration_area(item[1]) == self._area
             or any(item[0].id == registration.id for registration, _ in registrations)
         ]
+        if dependency_only_only or (root_only and self._has_dependency_only):
+            available = [
+                item
+                for item in available
+                if (item[1].root_policies.get(item[0].id) == "dependency_only") == dependency_only_only
+            ]
         exact = [item for item in registrations if item[0].id not in item[1].pattern_ids]
         try:
             winners = exact or _winning_patterns(available, service_type)
@@ -5900,13 +5945,28 @@ class _Compiler:
         *,
         deferred_mode: typing.Literal["sync", "async"] | None = None,
         provider_map_group: ProviderMapGroup[Any, Any] | None = None,
+        root_only: bool = False,
+        dependency_only_only: bool = False,
     ) -> list[_CompiledCandidate]:
         service_type = normalize_type_alias(service_type)
         local_registrations = self.blueprint.local_registrations(self._area, service_type)
         visible_registrations = self.blueprint.visible_registrations(service_type, self._area)
+        if dependency_only_only or (root_only and self._has_dependency_only):
+            local_registrations = [
+                item
+                for item in local_registrations
+                if (item[1].root_policies.get(item[0].id) == "dependency_only") == dependency_only_only
+            ]
+            visible_registrations = [
+                item
+                for item in visible_registrations
+                if (item[1].root_policies.get(item[0].id) == "dependency_only") == dependency_only_only
+            ]
         candidates: list[_CompiledCandidate] = []
         if self._patterns:
-            local_registrations, candidates = self._pattern_candidates(service_type, local_registrations)
+            local_registrations, candidates = self._pattern_candidates(
+                service_type, local_registrations, root_only=root_only, dependency_only_only=dependency_only_only
+            )
         registrations: list[tuple[legacy._Registration, _Layer, _VisibilityTarget | None]] = [
             *((registration, layer, None) for registration, layer in local_registrations),
             *visible_registrations,
@@ -5915,6 +5975,8 @@ class _Compiler:
             registrations = [
                 (registration, layer, None)
                 for registration, layer in self.blueprint.local_registrations(self._area, get_origin(service_type))
+                if not (root_only or dependency_only_only)
+                or (layer.root_policies.get(registration.id) == "dependency_only") == dependency_only_only
             ]
         if provider_map_group is not None:
             registrations = [
@@ -8594,6 +8656,76 @@ def _graph_roots(plan: _PlanSet) -> tuple[GraphRoot, ...]:
     )
 
 
+def _prune_orphan_registrations(plan: _PlanSet) -> _PlanSet:
+    """Drop dependency-only definitions absent from the retained root trees."""
+
+    blueprint = plan.blueprint
+    layers = (*blueprint.layers, *(boundary.layer for boundary in blueprint.boundaries))
+    if not any("dependency_only" in layer.root_policies.values() for layer in layers):
+        return plan
+    retained = {
+        plan.census_sources.get(component.id, component.id)
+        for root in _graph_roots(plan)
+        for component in _component_tree(root.component)
+    }
+    # Explicit boundary contracts retain their selected definitions even when
+    # no current root activates them; overlays may consume an exposure later.
+    retained.update(
+        target.registration_id
+        for boundary in plan.blueprint.boundaries
+        for target in (*boundary.resolved_exposes, *boundary.resolved_uses)
+        if target.registration_id is not None
+    )
+
+    def prune_layer(layer: _Layer) -> _Layer:
+        orphan_ids = {
+            component_id
+            for component_id, policy in layer.root_policies.items()
+            if policy == "dependency_only" and component_id not in retained
+        }
+        if not orphan_ids:
+            return layer
+        registry = _clone_registry(layer.registry)
+        registry._registrations = defaultdict(
+            deque,
+            {
+                service: kept
+                for service, registrations in registry._registrations.items()
+                if (kept := deque(item for item in registrations if item.id not in orphan_ids))
+            },
+        )
+
+        def without(mapping: Mapping[str, Any]) -> dict[str, Any]:
+            return {key: value for key, value in mapping.items() if key not in orphan_ids}
+
+        return replace(
+            layer,
+            registry=registry,
+            registration_when=without(layer.registration_when),
+            registration_preferences=types.MappingProxyType(without(layer.registration_preferences)),
+            registration_parent_precedence=types.MappingProxyType(without(layer.registration_parent_precedence)),
+            registration_policies=types.MappingProxyType(without(layer.registration_policies)),
+            root_policies=types.MappingProxyType(without(layer.root_policies)),
+            registration_origins=without(layer.registration_origins),
+            factory_ids=layer.factory_ids - orphan_ids,
+            factory_specializations=without(layer.factory_specializations),
+            provider_maps=types.MappingProxyType(without(layer.provider_maps)),
+            contributions=types.MappingProxyType(without(layer.contributions)),
+            service_groups=without(layer.service_groups),
+            pattern_ids=tuple(item for item in layer.pattern_ids if item not in orphan_ids),
+            instance_implementation_types=types.MappingProxyType(without(layer.instance_implementation_types)),
+        )
+
+    return replace(
+        plan,
+        blueprint=replace(
+            blueprint,
+            layers=tuple(prune_layer(layer) for layer in blueprint.layers),
+            boundaries=tuple(replace(boundary, layer=prune_layer(boundary.layer)) for boundary in blueprint.boundaries),
+        ),
+    )
+
+
 def _component_tree(component: Component) -> Iterable[Component]:
     yield component
     for child in component.dependencies:
@@ -8708,6 +8840,7 @@ def _error_report(
     anchored_owner_tokens: frozenset[str] = frozenset(),
     inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
     profile: CompilationProfiler | None = None,
+    clean_orphans: bool = True,
 ) -> tuple[
     BuildReport,
     tuple[CompilationAttempt, ...],
@@ -8747,7 +8880,7 @@ def _error_report(
             )
             try:
                 if profile is None:
-                    compiler.compile((service_type,), area=area, include_boundaries=False)
+                    compiler.compile((service_type,), area=area, include_boundaries=False, clean_orphans=clean_orphans)
                 else:
                     profile.count("diagnostic root attempts")
                     profile.call(
@@ -8757,6 +8890,7 @@ def _error_report(
                         (service_type,),
                         area=area,
                         include_boundaries=False,
+                        clean_orphans=clean_orphans,
                         attempt=f"retry:{total_attempts}",
                         definition=safe_definition(service_type),
                     )
@@ -9546,6 +9680,7 @@ def _compile_with_report(
     anchored_owner_tokens: frozenset[str] = frozenset(),
     inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
     profile: CompilationProfiler | None = None,
+    clean_orphans: bool = True,
 ) -> _PlanSet:
     compilation_inputs: _CompilationInputs = {
         "build_args": build_args,
@@ -9679,12 +9814,17 @@ def _compile_with_report(
             compiled = compiler.compile((service_type,), area=area, include_boundaries=False)
         else:
             compiled = (
-                compiler.compile()
+                compiler.compile(clean_orphans=clean_orphans)
                 if profile is None
-                else profile.call("primary compilation", "phase", compiler.compile, attempt="primary")
+                else profile.call(
+                    "primary compilation", "phase", compiler.compile, clean_orphans=clean_orphans, attempt="primary"
+                )
             )
         plan = replace(compiled, census_definitions=census_definitions, census_ids=census_ids)
-        return plan if preview else _finalize_plan(plan, profile)
+        if preview:
+            return plan
+        finalized = _finalize_plan(plan, profile)
+        return _prune_orphan_registrations(finalized) if clean_orphans else finalized
     except ContainerBuildError as error:
         if error.report is not None:
             raise ContainerBuildError(
@@ -9714,6 +9854,7 @@ def _compile_with_report(
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
                 profile=profile,
+                clean_orphans=clean_orphans,
             )
 
         if profile is None:
@@ -9762,6 +9903,7 @@ def _compile_with_report(
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
                 profile=profile,
+                clean_orphans=clean_orphans,
             )
 
         if profile is None:
@@ -11030,6 +11172,7 @@ class _BuilderBase:
         self._registration_preferences: dict[str, ComponentPreference | None] = {}
         self._registration_parent_precedence: dict[str, int] = {}
         self._registration_policies: dict[str, tuple[LifespanPolicy, ScopePolicy]] = {}
+        self._root_policies: dict[str, RootPolicy] = {}
         self._registration_origins: dict[str, DefinitionOrigin] = {}
         self._factory_ids: set[str] = set()
         self._factory_specializations: dict[str, object] = {}
@@ -11161,6 +11304,7 @@ class _BuilderBase:
             registration_preferences=types.MappingProxyType(registration_preferences),
             registration_parent_precedence=types.MappingProxyType(registration_parent_precedence),
             registration_policies=types.MappingProxyType(registration_policies),
+            root_policies=types.MappingProxyType(dict(self._root_policies)),
             registration_origins=registration_origins,
             factory_ids=frozenset(self._factory_ids),
             factory_specializations=dict(self._factory_specializations),
@@ -11263,8 +11407,11 @@ class _BuilderBase:
         prefer: ComponentPreference | None = None,
         contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
         groups: Iterable[ServiceGroup] = (),
+        root_policy: RootPolicy = "resolvable",
     ) -> str:
         self._assert_mutable()
+        if root_policy not in ("entrypoint", "resolvable", "dependency_only"):
+            raise ValueError("root_policy must be 'entrypoint', 'resolvable', or 'dependency_only'")
         _validate_parent_precedence(parent_precedence)
         _validate_preference(prefer)
         effective_lifespan = _component_policy(lifespan, scope)
@@ -11272,6 +11419,8 @@ class _BuilderBase:
             raise ValueError("scope='per_call' cannot be used with instance=")
         declared_service_type = service_type
         service_type = _composition_type(service_type)
+        if root_policy == "entrypoint" and getattr(service_type, "__parameters__", ()):
+            raise ValueError("root_policy='entrypoint' requires a closed service type")
         if implementation_type is not None:
             implementation_type = _composition_type(implementation_type)
         if factory_specialization is not None:
@@ -11323,6 +11472,11 @@ class _BuilderBase:
         self._registration_parent_precedence[component_id] = parent_precedence
         self._registration_preferences[component_id] = prefer
         self._registration_policies[component_id] = (lifespan, scope)
+        self._root_policies[component_id] = root_policy
+        if root_policy == "entrypoint":
+            self._entrypoints.append(
+                _EntryPoint(service_type, with_id(component_id), self._definition_origin("entrypoint", None))
+            )
         if instance is not None:
             self._instance_implementation_types[component_id] = instance_implementation_type
         if normalized_contributions is not None:
@@ -12022,12 +12176,15 @@ class ContainerBuilder(_BuilderBase):
         build_args: Mapping[str, Any] | None = None,
         profile: CompilationProfiler | None = None,
         instrumentation: Instrumentation | None = None,
+        clean_orphans: bool = True,
     ) -> Container:
+        if not isinstance(clean_orphans, bool):
+            raise TypeError("clean_orphans must be a bool")
         if instrumentation is not None and not isinstance(instrumentation, Instrumentation):
             raise TypeError("instrumentation must be an Instrumentation instance or None")
         if profile is None:
             blueprint, inputs = self._compilation_snapshot(build_args)
-            plan = _compile_with_report(blueprint, **inputs)
+            plan = _compile_with_report(blueprint, clean_orphans=clean_orphans, **inputs)
             if instrumentation is None:
                 container = Container(plan, self._owner_token)
             else:
@@ -12042,7 +12199,7 @@ class ContainerBuilder(_BuilderBase):
             blueprint, inputs = profile.call(
                 "discovery and blueprint preparation", "phase", self._compilation_snapshot, build_args
             )
-            plan = _compile_with_report(blueprint, profile=profile, **inputs)
+            plan = _compile_with_report(blueprint, profile=profile, clean_orphans=clean_orphans, **inputs)
             if instrumentation is None:
                 container = Container(plan, self._owner_token)
             else:
@@ -12073,7 +12230,10 @@ class ScopeBuilder(_BuilderBase):
         build_args: Mapping[str, Any] | None = None,
         profile: CompilationProfiler | None = None,
         instrumentation: Instrumentation | None = None,
+        clean_orphans: bool = True,
     ) -> Scope:
+        if not isinstance(clean_orphans, bool):
+            raise TypeError("clean_orphans must be a bool")
         parent_profiler = getattr(self._parent, "_profiler", None)
         if instrumentation is None and parent_profiler is not None:
             instrumentation = Instrumentation(parent_profiler)
@@ -12083,7 +12243,7 @@ class ScopeBuilder(_BuilderBase):
             raise ValueError("overlay instrumentation must match its parent runtime")
         if profile is None:
             blueprint, inputs = self._compilation_snapshot(build_args)
-            plan = _compile_with_report(blueprint, **inputs)
+            plan = _compile_with_report(blueprint, clean_orphans=clean_orphans, **inputs)
             if instrumentation is not None:
                 plan, fingerprint, labels, paths = _observe_plan(
                     plan, instrumentation, cast(str, self._parent.container._owned_token), self._parent
@@ -12107,7 +12267,7 @@ class ScopeBuilder(_BuilderBase):
             blueprint, inputs = profile.call(
                 "discovery and blueprint preparation", "phase", self._compilation_snapshot, build_args
             )
-            plan = _compile_with_report(blueprint, profile=profile, **inputs)
+            plan = _compile_with_report(blueprint, profile=profile, clean_orphans=clean_orphans, **inputs)
             if instrumentation is not None:
                 plan, fingerprint, labels, paths = _observe_plan(
                     plan, instrumentation, cast(str, self._parent.container._owned_token), self._parent

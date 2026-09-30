@@ -596,6 +596,101 @@ def test_entrypoint_markers_focus_graphs_without_weakening_validation():
     assert container.resolve(Unused).__class__ is Unused
 
 
+def test_root_policy_entrypoint_marks_only_its_registration():
+    class Service:
+        pass
+
+    class OtherService(Service):
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service, OtherService)
+    marked_id = builder.register(Service, root_policy="entrypoint")
+    container = builder.build()
+
+    assert [root.component.id for root in container.graph.entrypoints] == [marked_id]
+    assert len([root for root in container.graph.roots if root.requested_type is Service]) == 2
+
+
+def test_dependency_only_registration_is_retained_when_reachable_but_is_not_a_root():
+    class Dependency:
+        pass
+
+    class Application:
+        def __init__(self, dependency: Dependency):
+            self.dependency = dependency
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, root_policy="dependency_only")
+    builder.register(Application, root_policy="entrypoint")
+    container = builder.build()
+
+    assert isinstance(container.resolve(Application).dependency, Dependency)
+    assert not container.has_component(Dependency)
+    assert all(root.requested_type is not Dependency for root in container.graph.roots)
+
+
+def test_clean_orphans_skips_unused_dependency_only_graphs_but_can_validate_them():
+    class Missing:
+        pass
+
+    class Orphan:
+        def __init__(self, missing: Missing):
+            self.missing = missing
+
+    builder = ContainerBuilder()
+    builder.register(Orphan, root_policy="dependency_only")
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build(clean_orphans=False)
+    report = raised.value.report
+    assert report is not None
+    assert [issue.code for issue in report.errors] == ["missing-component"]
+
+    container = builder.build()
+    assert not container.has_component(Orphan)
+    assert container.graph.roots == ()
+    assert container._plan.blueprint.registration_definition(next(iter(builder._root_policies))) is None
+
+
+def test_clean_orphans_false_keeps_valid_dependency_only_graph_without_exposing_a_root():
+    class Orphan:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Orphan, root_policy="dependency_only")
+    container = builder.build(clean_orphans=False)
+
+    assert [root.requested_type for root in container.graph.roots] == [Orphan]
+    assert not container.has_component(Orphan)
+
+
+def test_clean_orphans_controls_whether_an_overlay_can_reuse_an_orphan():
+    class Helper:
+        pass
+
+    class Application:
+        def __init__(self, helper: Helper):
+            self.helper = helper
+
+    cleaned_builder = ContainerBuilder()
+    cleaned_builder.register(Helper, root_policy="dependency_only")
+    cleaned_overlay = cleaned_builder.build().new_scope_builder()
+    cleaned_overlay.register(Application)
+    with pytest.raises(ContainerBuildError) as raised:
+        cleaned_overlay.build()
+    report = raised.value.report
+    assert report is not None
+    assert [issue.code for issue in report.errors] == ["missing-component"]
+
+    retained_builder = ContainerBuilder()
+    retained_builder.register(Helper, root_policy="dependency_only")
+    retained_overlay = retained_builder.build(clean_orphans=False).new_scope_builder()
+    retained_overlay.register(Application)
+    scope = retained_overlay.build()
+    assert isinstance(scope.resolve(Application).helper, Helper)
+    assert not scope.has_component(Helper)
+
+
 def test_custom_validation_rules_receive_the_complete_graph_and_aggregate_with_builtin_findings():
     class Service:
         pass
