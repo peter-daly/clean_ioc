@@ -744,6 +744,73 @@ def test_nested_resource_matching_produces_one_layer_and_preserves_position():
     assert isinstance(core, NestedTarget)
 
 
+def test_template_position_can_depend_on_decorator_and_target_components():
+    builder = ContainerBuilder()
+    source = Source()
+    ordinary = Source()
+    builder.register(Source, instance=source)
+    for name in ("outside", "inside", "skipped"):
+        builder.register(Target, name=name)
+    builder.register_decorator(Target, Wrapper, position=10, arguments={"source": ordinary})
+    calls = []
+
+    def position(decorator, decorated):
+        calls.append(decorated.name)
+        assert decorator.kind.value == "decorator"
+        assert decorator.implementation_type is Wrapper
+        assert decorator.name == "relative"
+        assert decorator.decorated is not None
+        assert decorator.decorated.id == decorated.id
+        assert decorated.service_type is Target
+        return 15 if decorated.name == "outside" else 5
+
+    builder.register_decorator_template(
+        for_each=Source,
+        template=lambda info: DecoratorTemplate(
+            DerivedServices(Target),
+            Wrapper,
+            name="relative",
+            arguments={"source": select(cf.with_id(info.id))},
+            when=lambda component: component.name != "skipped",
+            position=position,
+        ),
+    )
+
+    container = builder.build()
+    assert sorted(calls) == ["inside", "outside"]
+    for name, expected_sources, expected_positions in (
+        ("outside", [source, ordinary], [15, 10]),
+        ("inside", [ordinary, source], [10, 5]),
+        ("skipped", [ordinary], [10]),
+    ):
+        value = container.resolve(Target, filter=cf.with_name(name))
+        assert unwrap(value)[0] == expected_sources
+        core = next(root.component for root in container.graph.roots if root.component.name == name)
+        assert [component.position for component in core.decorators] == expected_positions
+
+
+@pytest.mark.parametrize("result", [None, True, 1.5])
+def test_template_position_callback_must_return_an_integer(result):
+    builder = ContainerBuilder()
+    source_id = builder.register(Source)
+    target_id = builder.register(Target)
+    template_id = builder.register_decorator_template(
+        for_each=Source,
+        template=lambda info: DecoratorTemplate(
+            DerivedServices(Target),
+            Wrapper,
+            arguments={"source": select(cf.with_id(info.id))},
+            position=lambda _decorator, _decorated: result,
+        ),
+    )
+    with pytest.raises(ContainerBuildError) as caught:
+        builder.build()
+    assert caught.value.report is not None
+    issue = caught.value.report.errors[0]
+    assert issue.code == "decorator-position-failed"
+    assert all(item in issue.path for item in (template_id, source_id, target_id))
+
+
 @pytest.mark.parametrize("overridden", [False, True])
 @pytest.mark.parametrize("closed_alias", [False, True])
 def test_constructor_annotation_scope_is_separate_from_implementation_scope(overridden, closed_alias):

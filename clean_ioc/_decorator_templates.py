@@ -50,7 +50,7 @@ class DecoratorTemplate:
     decorated_arg: str | None = None
     arguments: Mapping[str, Any] | None = None
     when: ComponentFilter = all_components
-    position: int = 0
+    position: int | Callable[[Component, Component], int] = 0
     name: str | None = None
     tags: Iterable[Tag] = ()
 
@@ -59,6 +59,8 @@ class DecoratorTemplate:
             raise TypeError("DecoratorTemplate.services requires ServiceGroup or DerivedServices")
         if not callable(self.when):
             raise TypeError("DecoratorTemplate.when must be callable")
+        if not callable(self.position) and (isinstance(self.position, bool) or not isinstance(self.position, int)):
+            raise TypeError("DecoratorTemplate.position must be an integer or callable")
         object.__setattr__(self, "arguments", MappingProxyType(dict(self.arguments or {})))
         object.__setattr__(self, "tags", tuple(self.tags))
 

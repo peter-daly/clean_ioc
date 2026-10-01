@@ -1,3 +1,10 @@
+2.0.0b27
+--------
+
+    Allow decorator templates to calculate ``position`` at build time from
+    the generated decorator and the decorated target component.
+
+
 2.0.0b26
 --------
 

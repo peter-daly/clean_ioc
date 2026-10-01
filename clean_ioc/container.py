@@ -75,6 +75,7 @@ from .components import (
     ValidationRuleMode,
     _ComponentDraft,
     _ComponentGraph,
+    _ComponentRecord,
     _undecorated_component_view,
     all_components,
     default_component_filter,
@@ -8174,6 +8175,7 @@ class _Compiler:
         # undecorated core subtree before any decorator dependencies are added.
         selected: list[_DecoratorDefinition] = []
         decisions: list[CandidateDecision] = []
+        position_callbacks: dict[str, Callable[[Component, Component], int]] = {}
         definitions = self.blueprint.decorators(core.service_type, self._area)
         if not definitions and not self.blueprint.generated_decorators:
             return ()
@@ -8248,13 +8250,16 @@ class _Compiler:
             if declaration_layer is None:
                 continue
             specification = candidate.specification
+            position = specification.position
+            if callable(position):
+                position_callbacks[candidate.id] = cast(Callable[[Component, Component], int], position)
             definition = _DecoratorDefinition(
                 candidate.id,
                 target.projected_contract,
                 specification.decorator_type,
                 specification.decorated_arg,
                 specification.arguments or {},
-                specification.position,
+                0 if callable(position) else position,
                 candidate.order,
                 specification.when,
                 specification.name,
@@ -8274,15 +8279,17 @@ class _Compiler:
         for definition, declaration_layer in definitions:
             declaration_id = generated[definition.id][0].declaration.id if definition.id in generated else definition.id
             definition_ranks[definition.id] = declaration_ranks[id(declaration_layer)].get(declaration_id, 0)
-        definitions.sort(
-            key=lambda item: (
-                item[0].position,
-                next(index for index, value in enumerate(area_layers) if value is item[1]),
-                -item[0].order,
-                definition_ranks[item[0].id],
-                -generated[item[0].id][0].source_order if item[0].id in generated else 0,
+
+        def order_key(definition: _DecoratorDefinition, declaration_layer: _Layer) -> tuple[int, int, int, int, int]:
+            return (
+                definition.position,
+                next(index for index, value in enumerate(area_layers) if value is declaration_layer),
+                -definition.order,
+                definition_ranks[definition.id],
+                -generated[definition.id][0].source_order if definition.id in generated else 0,
             )
-        )
+
+        definitions.sort(key=lambda item: order_key(*item))
         target_view = _undecorated_component_view(core) if generated else None
         for decorator_index, (decorator, _) in enumerate(definitions):
             try:
@@ -8346,6 +8353,62 @@ class _Compiler:
             )
             if matched:
                 selected.append(decorator)
+
+        if position_callbacks:
+            selected_with_layers = []
+            layers_by_id = {definition.id: declaration_layer for definition, declaration_layer in definitions}
+            for definition in selected:
+                callback = position_callbacks.get(definition.id)
+                if callback is not None:
+                    candidate, target = generated[definition.id]
+                    try:
+                        decorated_view = cast(Component, target_view)
+                        target_record = cast(_ComponentRecord, decorated_view._record)
+                        preview_record = replace(
+                            target_record,
+                            id=definition.id,
+                            occurrence_id=-1,
+                            implementation=definition.decorator_type,
+                            implementation_type=normalize_implementation_type(
+                                definition.decorator_type, core.service_type
+                            ),
+                            kind=ComponentKind.decorator,
+                            activation=_callable_activation(definition.decorator_type),
+                            name=definition.name,
+                            tags=definition.tags,
+                            position=None,
+                            dependency_ids=(),
+                            decorator_ids=(),
+                            decorated_id=core.occurrence_id,
+                            pre_configuration_ids=(),
+                            boundary=definition.origin.boundary,
+                        )
+                        preview_graph = _ComponentGraph()
+                        records = cast(dict[int, _ComponentRecord], decorated_view._graph._records)
+                        preview_graph._records = {**records, -1: preview_record}
+                        preview = Component(preview_graph, -1)
+                        position = callback(preview, Component(preview_graph, core.occurrence_id))
+                        if inspect.iscoroutine(position):
+                            position.close()
+                        if isinstance(position, bool) or not isinstance(position, int):
+                            raise TypeError("Decorator template position must return an integer synchronously")
+                    except Exception as error:
+                        raise ContainerBuildError(
+                            f"Template {candidate.declaration.id} source {candidate.source.id} target "
+                            f"{target.registration_id} ({qualified_name(core.service_type)}) "
+                            f"position callback raised {type(error).__name__}",
+                            code="decorator-position-failed",
+                            path=(
+                                *self._current_path(core.service_type),
+                                candidate.declaration.id,
+                                candidate.source.id,
+                                target.registration_id,
+                            ),
+                        ) from error
+                    definition = replace(definition, position=position)
+                selected_with_layers.append((definition, layers_by_id[definition.id]))
+            selected_with_layers.sort(key=lambda item: order_key(*item))
+            selected = [definition for definition, _ in selected_with_layers]
 
         # Independent policies remain additive. Mark overlap as an observed
         # selection fact so inspection can explain multiple generated layers.
