@@ -36,8 +36,8 @@ implementation begins.
 | P0 | Done | [Compilation provenance and explain](01-compilation-provenance-and-explain.md) | Make every build-time selection inspectable without changing graph fingerprints. |
 | P0 | Done | [Resource ownership proof](06-resource-ownership-proof.md) | Prove that cached objects, runtime contexts, and cleanup-bearing dependencies have compatible owners. |
 | P0 | Done | [Architecture contracts and policy packs](02-architecture-contracts-and-policy-packs.md) | Reusable rules, per-rule build/validation modes, and source-linked SARIF CI reports. |
-| P1 | Proposed | [Semantic graph-change policy](03-semantic-graph-change-policy.md) | Classify graph changes by meaning, risk, and affected entry point. |
-| P1 | Proposed | [Build-variant matrix checking](04-build-variant-matrix-checking.md) | Validate and compare every explicitly supported environment or tenant composition. |
+| P1 | Done | [Semantic graph-change policy](03-semantic-graph-change-policy.md) | Classify graph changes by meaning, risk, and affected entry point; enforce thresholds and path allowances. |
+| P1 | Done | [Build-variant matrix checking](04-build-variant-matrix-checking.md) | Validate and compare supported compositions with reference policies, aggregated findings, and source-linked reports. |
 | P1 | Done | [Typed deferred dependencies](05-typed-deferred-dependencies.md) | Support precompiled on-demand resolution without injecting an untyped service locator. |
 | P2 | Done | [Boundaries and visibility](07-boundaries-and-visibility.md) | Add opt-in compile-time visibility boundaries around reusable bundles without renaming components. |
 | P2 | Proposed | [Graph-correlated activation tracing](08-graph-correlated-activation-tracing.md) | Correlate optional runtime telemetry with the exact compiled component graph. |
@@ -70,16 +70,12 @@ diagnostics, CLI behavior, redaction, and compatibility rules for that type are 
 
 The remaining proposals are retained for later work:
 
-1. [Semantic graph-change policy](03-semantic-graph-change-policy.md): classify graph changes by architectural meaning,
-   risk, and affected entry points, then enforce an explicit acceptance policy in CI.
-2. [Build-variant matrix checking](04-build-variant-matrix-checking.md): compile and compare supported environments,
-   tenants, and feature configurations. This should follow policy packs and semantic graph-change policy.
-3. [Graph-correlated activation tracing](08-graph-correlated-activation-tracing.md): correlate runtime activation, caching,
+1. [Graph-correlated activation tracing](08-graph-correlated-activation-tracing.md): correlate runtime activation, caching,
    and cleanup events with compiled graph identities, with optional OpenTelemetry integration. This can proceed
    independently now that provenance and resource ownership are complete.
 
-Recommended sequence: semantic graph-change policy, then build-variant matrix checking. Activation tracing
-does not need to wait for that sequence.
+Policy packs, semantic graph-change policy, and build-variant matrices are implemented. Activation tracing is the
+remaining proposal in this sequence.
 
 ## Accepted core ideas
 

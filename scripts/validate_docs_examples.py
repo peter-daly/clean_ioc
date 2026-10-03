@@ -527,6 +527,21 @@ def validate_sarif_guide() -> None:
         exec(compile(snippet, f"{guide} example {index}", "exec"), {"__name__": "__main__"})  # noqa: S102
 
 
+def validate_graph_change_policy_guide() -> None:
+    guide = Path(__file__).resolve().parents[1] / "docs" / "graph-change-policies.md"
+    snippets = re.findall(r"```python\n(.*?)\n```", guide.read_text(), flags=re.DOTALL)
+    assert len(snippets) == 1  # noqa: S101
+    exec(compile(snippets[0], f"{guide} example 1", "exec"), {"__name__": "__main__"})  # noqa: S102
+
+
+def validate_build_matrix_guide() -> None:
+    guide = Path(__file__).resolve().parents[1] / "docs" / "build-matrices.md"
+    snippets = re.findall(r"```python\n(.*?)\n```", guide.read_text(), flags=re.DOTALL)
+    assert len(snippets) == 2  # noqa: S101
+    for index, snippet in enumerate(snippets, start=1):
+        exec(compile(snippet, f"{guide} example {index}", "exec"), {"__name__": "__main__"})  # noqa: S102
+
+
 def main() -> None:
     validate_build_and_resolution()
     validate_failed_builder_is_reusable()
@@ -546,6 +561,8 @@ def main() -> None:
     validate_registration_template_guide()
     validate_policy_guide()
     validate_sarif_guide()
+    validate_graph_change_policy_guide()
+    validate_build_matrix_guide()
     asyncio.run(validate_async_factory())
     print("documentation examples validated")
 

@@ -1,8 +1,16 @@
 # Semantic graph-change policy
 
-Status: Proposal
+Status: Done
 Priority: P1
 Dependencies: Compilation provenance; architecture policy conventions
+
+## Implementation
+
+Implemented with field-level classification, current entry-point enrichment, risk policies, text/JSON reports, and
+CLI controls. See [Graph-change policies](../docs/graph-change-policies.md). Workflow integration is separate work.
+The existing raw diff shape, boundary findings, and manifest fingerprints are preserved. Classified records cover
+boundary contracts too, mapping the earlier raw critical bypass label to the high policy tier. Unknown metadata values
+are omitted from classified reports, while their names remain visible and raw diffs remain lossless.
 
 ## Summary
 

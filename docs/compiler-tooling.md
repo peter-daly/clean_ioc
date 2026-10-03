@@ -178,6 +178,14 @@ for change in difference.changed:
 Manifests include `cache_owner`, `cleanup_owner`, and a semantic `owner_path` on every node. A diff reports added,
 removed, and semantically changed component paths and boundary contracts.
 
+Use `container.graph.diff(baseline)` for classified changes with known current entry points, and
+`difference.evaluate(DiffPolicy(...))` to enforce risk thresholds, denied kinds, and path allowances.
+See [Graph-change policies](graph-change-policies.md) for complete Python and CLI examples.
+
+[Build-variant matrices](build-matrices.md) compile an explicit set of supported configurations, aggregate each
+variant's build and validation findings, and apply entry-point and semantic-drift policies against a named reference.
+Use `clean-ioc matrix module:object --format json` or `--format sarif` for combined reports.
+
 Graph manifests, build reports, and ownership reports are unversioned during beta. They omit schema version fields,
 and readers use the current format without version checks or migration adapters. Regenerate saved graphs and baselines
 when the format changes. Schema versioning will begin after beta. Deterministic ordering and redaction still apply.

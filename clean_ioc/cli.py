@@ -13,7 +13,7 @@ from typing import Any, Sequence
 from . import component_filters as cf
 from .compilation_profile import CompilationProfiler
 from .container import ContainerBuilder, ContainerBuildError, Scope, ScopeBuilder
-from .tooling import BuildReport, BuildTriage, GraphManifest, IssueSeverity
+from .tooling import BuildReport, BuildTriage, ChangeRisk, DiffPolicy, GraphManifest, IssueSeverity
 
 
 def _load_object(locator: str) -> Any:
@@ -167,11 +167,56 @@ def _census(args: argparse.Namespace) -> int:
 
 
 def _diff(args: argparse.Namespace) -> int:
-    current = _load_scope(args.target).graph.manifest(all_roots=args.all)
+    policy = None
+    if args.policy is not None:
+        policy = _load_object(args.policy)
+        if not isinstance(policy, DiffPolicy):
+            raise ValueError("diff-policy-invalid: --policy must refer to a DiffPolicy")
+    elif args.fail_on is not None:
+        policy = DiffPolicy(fail_at=ChangeRisk(args.fail_on))
     baseline = GraphManifest.from_json(Path(args.baseline).read_text(encoding="utf-8"))
-    difference = current.diff(baseline)
-    _write(difference.to_json() if args.format == "json" else difference.to_text(), None)
+    difference = _load_scope(args.target).graph.diff(baseline, all_roots=args.all)
+    if policy is not None:
+        report = difference.evaluate(policy)
+        _write(report.to_json() if args.format == "json" else report.to_text(), args.output)
+        return 0 if report.is_valid else 1
+    if args.classify:
+        value = difference.to_semantic_json() if args.format == "json" else difference.to_semantic_text()
+    else:
+        value = difference.to_json() if args.format == "json" else difference.to_text()
+    _write(value, args.output)
     return 0 if difference.is_empty else 1
+
+
+def _matrix(args: argparse.Namespace) -> int:
+    import inspect
+
+    from .matrix import BuildMatrix, _synchronous
+
+    try:
+        target = _load_object(args.target)
+    except Exception:
+        raise ValueError("matrix-factory-error: matrix target could not be loaded") from None
+    if not isinstance(target, BuildMatrix) and callable(target):
+        if not _synchronous(target):
+            raise ValueError("matrix-factory-error: matrix factories must be synchronous")
+        try:
+            target = target()
+        except Exception:
+            raise ValueError("matrix-factory-error: matrix factory failed") from None
+        if inspect.iscoroutine(target):
+            target.close()
+    if not isinstance(target, BuildMatrix):
+        raise TypeError("Matrix target must be a BuildMatrix or a zero-argument factory returning one")
+    report = target.check()
+    if args.format == "sarif":
+        value = report.to_sarif()
+    elif args.format == "json":
+        value = report.to_json()
+    else:
+        value = report.to_text()
+    _write(value, args.output)
+    return report.exit_code
 
 
 def _explain(args: argparse.Namespace) -> int:
@@ -356,7 +401,20 @@ def _parser() -> argparse.ArgumentParser:
     difference.add_argument("baseline", help="baseline graph manifest")
     difference.add_argument("--format", choices=("text", "json"), default="text")
     difference.add_argument("--all", action="store_true", help="Compare every compiled root")
+    difference.add_argument("--classify", action="store_true", help="Describe architectural changes and affected roots")
+    diff_policy = difference.add_mutually_exclusive_group()
+    diff_policy.add_argument(
+        "--fail-on", choices=tuple(risk.value for risk in ChangeRisk), help="Fail at this risk tier"
+    )
+    diff_policy.add_argument("--policy", help="module:object DiffPolicy; implies classified output")
+    difference.add_argument("-o", "--output", help="Write output to a file instead of stdout")
     difference.set_defaults(handler=_diff)
+
+    matrix = commands.add_parser("matrix", help="Compile and compare supported application variants")
+    matrix.add_argument("target", help="module:object BuildMatrix or zero-argument matrix factory")
+    matrix.add_argument("--format", choices=("text", "json", "sarif"), default="text")
+    matrix.add_argument("-o", "--output", help="Write output to a file instead of stdout")
+    matrix.set_defaults(handler=_matrix)
 
     explain = commands.add_parser("explain", help="Explain a frozen compiler selection")
     explain.add_argument("target", help="module:object composition target")

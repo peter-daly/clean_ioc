@@ -1,8 +1,17 @@
 # Build-variant matrix checking
 
-Status: Proposal
+Status: Done
 Priority: P1
 Dependencies: Semantic graph-change policy; architecture policy packs
+
+## Implementation
+
+Implemented in `clean_ioc.matrix` with deterministic fresh-builder checks, aggregated build and validation reports,
+reference comparisons, built-in and custom matrix policies, automatic scope cleanup, and text/JSON/source-linked SARIF
+CLI output. `MatrixContext` supplies detached policy snapshots; `MatrixReport.assert_valid()` raises SARIF on failure.
+Supplied value types are normalized to declared dependency types before matrix comparison and fingerprinting, keeping
+private input metadata out of reports without changing ordinary manifests.
+See [Build-variant matrices](../docs/build-matrices.md). Workflow integration is separate work.
 
 ## Summary
 

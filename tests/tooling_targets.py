@@ -1,8 +1,38 @@
 """Importable composition targets used by CLI tests."""
 
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 from clean_ioc import BuildIssue, Container, ContainerBuilder, IssueSeverity, ValidationContext
+from clean_ioc.matrix import BuildMatrix, BuildVariant
+from clean_ioc.tooling import ChangeAllowance, DiffPolicy
+
+permissive_diff_policy = DiffPolicy(allowances=(ChangeAllowance(),))
+
+
+def valid_matrix():
+    return BuildMatrix(
+        (BuildVariant("production", valid_builder), BuildVariant("staging", valid_builder)), reference="production"
+    )
+
+
+def invalid_matrix():
+    return BuildMatrix(
+        (BuildVariant("production", valid_builder), BuildVariant("staging", invalid_builder)), reference="production"
+    )
+
+
+def factory_error_matrix():
+    return BuildMatrix(
+        (BuildVariant("production", valid_builder), BuildVariant("bad", cast(Any, lambda: None))),
+        reference="production",
+    )
+
+
+def invalid_matrix_factory():
+    return None
+
+
+dictionary_matrix = {}
 
 
 class Dependency:
@@ -156,3 +186,6 @@ def validation_only_error_builder() -> ContainerBuilder:
 
     builder.add_validation_rule(validation_rule, mode="validation")
     return builder
+
+
+matrix_object = valid_matrix()

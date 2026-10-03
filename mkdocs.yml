@@ -13,6 +13,8 @@ nav:
   - Custom Graph Validation: custom-validation.md
   - Policy Helpers: policies.md
   - Compiler Tooling: compiler-tooling.md
+  - Graph-change Policies: graph-change-policies.md
+  - Build-variant Matrices: build-matrices.md
   - Source-linked CI Reporting: sarif.md
   - Runtime Profiling: runtime-profiling.md
   - Registration: simple-uses.md

@@ -847,7 +847,7 @@ def test_manifest_provenance_rendering_and_semantic_diff_include_boundaries():
     without = ContainerBuilder().build().graph.manifest(all_roots=True)
     changes = manifest.diff(without).semantic_changes
     assert {change.category for change in changes} >= {"boundary-added"}
-    assert {change.category for change in without.diff(manifest).semantic_changes} == {"boundary-removed"}
+    assert "boundary-removed" in {change.category for change in without.diff(manifest).semantic_changes}
 
 
 def test_semantic_diff_reports_removed_boundary_access_and_bypasses():
@@ -862,11 +862,18 @@ def test_semantic_diff_reports_removed_boundary_access_and_bypasses():
     assert {(change.category, change.risk) for change in changes} == {
         ("boundary-use-removed", "high"),
         ("boundary-exposure-removed", "high"),
-        ("boundary-bypassed", "critical"),
+        ("boundary-bypassed", "high"),
     }
     assert {(change.category, change.risk) for change in baseline.diff(changed).semantic_changes} == {
         ("boundary-use-added", "high"),
         ("boundary-exposure-added", "medium"),
+    }
+    # Keep the earlier raw boundary JSON contract while classified policy risks
+    # use the three public tiers.
+    assert {(item["category"], item["risk"]) for item in changed.diff(baseline).to_dict()["semantic_changes"]} == {
+        ("boundary-use-removed", "high"),
+        ("boundary-exposure-removed", "high"),
+        ("boundary-bypassed", "critical"),
     }
 
 

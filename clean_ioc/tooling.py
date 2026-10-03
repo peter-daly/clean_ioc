@@ -35,6 +35,24 @@ from .components import (
     RuntimeOwnerKind,
     default_component_filter,
 )
+from .semantic_diff import (
+    ChangeAllowance as ChangeAllowance,
+)
+from .semantic_diff import (
+    ChangeRisk as ChangeRisk,
+)
+from .semantic_diff import (
+    DiffPolicy as DiffPolicy,
+)
+from .semantic_diff import (
+    DiffPolicyReport as DiffPolicyReport,
+)
+from .semantic_diff import (
+    GraphChangeKind as GraphChangeKind,
+)
+from .semantic_diff import (
+    SemanticGraphChange as SemanticGraphChange,
+)
 from .type_aliases import alias_label, is_new_type, is_type_alias, normalize_type_alias
 
 
@@ -1429,7 +1447,8 @@ class GraphDiff:
     added: tuple[str, ...] = ()
     removed: tuple[str, ...] = ()
     changed: tuple[GraphChange, ...] = ()
-    semantic_changes: tuple[GraphChange, ...] = ()
+    semantic_changes: tuple[SemanticGraphChange, ...] = ()
+    _legacy_semantic_changes: tuple[GraphChange, ...] = field(default=(), repr=False, compare=False, kw_only=True)
 
     @property
     def is_empty(self) -> bool:
@@ -1441,11 +1460,29 @@ class GraphDiff:
             "added": list(self.added),
             "removed": list(self.removed),
             "changed": [change.to_dict() for change in self.changed],
-            "semantic_changes": [change.to_dict() for change in self.semantic_changes],
+            "semantic_changes": [change.to_dict() for change in self._legacy_semantic_changes],
         }
 
     def to_json(self, *, indent: int | None = 2) -> str:
         return json.dumps(self.to_dict(), indent=indent, sort_keys=True)
+
+    def to_semantic_dict(self) -> dict[str, Any]:
+        """Classified changes; the raw diff's serialization stays unchanged."""
+
+        return {"same": self.is_empty, "changes": [change.to_dict() for change in self.semantic_changes]}
+
+    def to_semantic_json(self, *, indent: int | None = 2) -> str:
+        return json.dumps(self.to_semantic_dict(), indent=indent, sort_keys=True)
+
+    def to_semantic_text(self) -> str:
+        from .semantic_diff import semantic_text
+
+        return semantic_text(self.semantic_changes)
+
+    def evaluate(self, policy: DiffPolicy) -> DiffPolicyReport:
+        from .semantic_diff import evaluate
+
+        return evaluate(self.semantic_changes, policy)
 
     def to_text(self) -> str:
         if self.is_empty:
@@ -1489,6 +1526,10 @@ class GraphManifest:
     """Deterministic serialized component graph; unversioned during beta."""
 
     data: dict[str, Any]
+    _entrypoint_paths: Mapping[str, tuple[str, ...]] | None = field(
+        default=None, repr=False, compare=False, kw_only=True
+    )
+    _reachable_root_paths: frozenset[str] | None = field(default=None, repr=False, compare=False, kw_only=True)
 
     @property
     def fingerprint(self) -> str:
@@ -1506,9 +1547,16 @@ class GraphManifest:
         data = json.loads(value)
         if not isinstance(data, dict):
             raise ValueError("A graph manifest must be a JSON object")
+        from .semantic_diff import validate_manifest
+
+        validate_manifest(data)
         return cls(data)
 
     def diff(self, baseline: GraphManifest) -> GraphDiff:
+        from .semantic_diff import classify, validate_manifest
+
+        validate_manifest(self.data)
+        validate_manifest(baseline.data)
         current_nodes = _flatten_nodes(self.data.get("roots", ()))
         baseline_nodes = _flatten_nodes(baseline.data.get("roots", ()))
         current_paths = set(current_nodes)
@@ -1645,7 +1693,16 @@ class GraphManifest:
             added=tuple(sorted(current_paths - baseline_paths)),
             removed=tuple(sorted(baseline_paths - current_paths)),
             changed=(*node_changes, *semantic),
-            semantic_changes=tuple(semantic),
+            semantic_changes=classify(
+                current_nodes,
+                baseline_nodes,
+                self.data,
+                baseline.data,
+                tuple(semantic),
+                entrypoint_paths=self._entrypoint_paths,
+                reachable_root_paths=self._reachable_root_paths,
+            ),
+            _legacy_semantic_changes=tuple(semantic),
         )
 
 
@@ -2090,6 +2147,38 @@ class CompiledGraph:
         return manifest
 
     to_manifest = manifest
+
+    def diff(self, baseline: GraphManifest, *, all_roots: bool = False) -> GraphDiff:
+        """Compare a saved manifest with this graph's known entry-point context."""
+
+        manifest = self.manifest(all_roots=all_roots)
+        root_paths = {root["path"] for root in manifest.data["roots"]}
+        marker_paths: dict[int, list[str]] = {}
+        if self.entrypoints:
+            marked_roots = {root["path"] for root in self.manifest().data["roots"]}
+            for path, component in self._component_paths(all_roots=False).items():
+                if path in marked_roots:
+                    marker_paths.setdefault(id(component), []).append(path)
+        reachable_ids: set[str] = set()
+
+        def visit(component: Component) -> None:
+            reachable_ids.add(component.id)
+            for child in (*component.dependencies, *component.decorators, *component.pre_configurations):
+                visit(child)
+
+        for root in self.entrypoints:
+            visit(root.component)
+        roots = {
+            path: component
+            for path, component in self._component_paths(all_roots=all_roots).items()
+            if path in root_paths
+        }
+        manifest = replace(
+            manifest,
+            _entrypoint_paths={path: tuple(marker_paths.get(id(component), ())) for path, component in roots.items()},
+            _reachable_root_paths=frozenset(path for path, component in roots.items() if component.id in reachable_ids),
+        )
+        return manifest.diff(baseline)
 
     def to_text(self, *, all_roots: bool = False) -> str:
         lines: list[str] = []

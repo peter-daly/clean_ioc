@@ -201,10 +201,22 @@ clean-ioc check my_app.composition:application_builder --format sarif -o clean-i
 clean-ioc ownership my_app.composition:application_builder --format json
 clean-ioc sharing my_app.composition:application_builder --format json
 clean-ioc diff my_app.composition:application_builder dependency-graph.json
+clean-ioc diff my_app.composition:application_builder dependency-graph.json --fail-on high
+clean-ioc matrix my_app.composition:deployment_matrix --format json
 clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGateway
 ```
 
 Each target can be a builder, a built container or scope, or a zero-argument factory function returning one.
+
+[Graph-change policies](docs/graph-change-policies.md) classify wiring changes by meaning, risk, and affected entry
+point. Use `container.graph.diff(baseline).evaluate(DiffPolicy(...))` in tests, or `diff --classify`, `--fail-on`, and
+`--policy` in CI. Risk thresholds, denied change kinds, and path allowances permit expected changes while flagging
+architectural drift.
+
+[Build-variant matrices](docs/build-matrices.md) check supported environments, tenants, or feature configurations from
+fresh builders. They aggregate build and validation findings, compare each valid variant with a named reference, and
+support entry-point and graph-drift policies. Use `BuildMatrix(...).check().assert_valid()` in tests or the `matrix`
+command for text, JSON, and SARIF reports.
 
 [SARIF reporting](docs/sarif.md) exports validation findings with registration sources and dependency code flows for
 CI review. Structural failures also produce a report; text and JSON retain their existing shapes.

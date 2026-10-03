@@ -1,6 +1,22 @@
 Unreleased
 ----------
 
+    Add ``BuildMatrix`` and named ``BuildVariant`` checks from fresh builder
+    factories. Aggregate build and validation findings, compare valid variants
+    with a named reference, and enforce entry-point and semantic-drift policies.
+    Close built scopes after capture without activating components. Keep
+    private inputs and supplied value types out of comparisons and fingerprints.
+    Add ``clean-ioc matrix`` text, JSON, and source-linked SARIF reports, plus
+    ``MatrixReport.assert_valid()`` for unit tests.
+
+    Add semantic graph-change classification and ``DiffPolicy`` acceptance
+    rules with risk thresholds, denied kinds, and path allowances. Reports
+    identify affected roots and known entry points, preserve unknown membership,
+    and split changes by architectural concern. Keep raw diff output and
+    manifest fingerprints unchanged. Add ``CompiledGraph.diff()``, classified
+    renderers, policy reports, and ``clean-ioc diff --classify``, ``--fail-on``,
+    ``--policy``, and output-file support.
+
     Add SARIF 2.1.0 output to ``clean-ioc check --format sarif`` with captured
     registration sources, dependency code flows, and complete-graph fingerprints.
     Add ``BuildReport.to_sarif()`` and ``ContainerBuildError.to_sarif()``.

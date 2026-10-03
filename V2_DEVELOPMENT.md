@@ -396,11 +396,31 @@ Manifests use qualified semantic identities rather than UUIDs, occurrence IDs, m
 
 - `check module:object [--format text|json|sarif] [-o FILE] [--strict | --no-strict] [--ignore CODE]` (strict warning handling by default);
 - `graph module:object --format text|mermaid|json [--all]`;
-- `diff module:object baseline.json [--all]`.
+- `diff module:object baseline.json [--all] [--classify] [--fail-on low|medium|high | --policy module:object] [-o FILE]`.
+- `matrix module:object [--format text|json|sarif] [-o FILE]`.
 
 A target may be a builder, a built scope/container, or a zero-argument factory returning either a builder or a built
 scope/container. The CLI invokes a factory once. Errors cannot be ignored. `diff` returns `0` for no change and `1` for
-a semantic change. Baselines are never updated implicitly.
+a graph change without a policy; with a policy, it returns `1` only for violations or build failures.
+Baselines are never updated implicitly. `GraphDiff.semantic_changes` contains `SemanticGraphChange` records for
+independent architectural concerns. The existing raw renderers and JSON shape retain earlier boundary findings;
+classified renderers and `DiffPolicyReport` are opt-in. `CompiledGraph.diff()` supplies current marked-entrypoint and
+reachability context without changing manifests or fingerprints. Removed occurrences from all-roots baselines have
+unknown old entry-point membership. Denied kinds override allowances; the most specific case-sensitive path glob wins,
+with declaration order breaking ties. Unknown metadata values are omitted from classified reports. Keep classification
+activation-free, preserve redaction, and leave workflow checkout/baseline management to CI configuration.
+
+`clean_ioc.matrix` checks named variants from fresh synchronous builder factories in declaration order. Every successful
+build runs validation-only rules once, captures redacted metadata, and closes its scope before cross-variant policies.
+Never share builders between variants or activate components. `require_valid_variants()` is implicit and cannot be
+disabled. `same_entrypoints()` compares marked requested types and selected names; `semantic_drift()` evaluates normal
+`DiffPolicy` rules against the named reference. An invalid reference emits one comparison-unavailable finding while
+later variants and custom policies still run. Matrix callback contexts contain detached manifests and reports with no
+private graph or runtime context. Normalize supplied value-node implementation types to declared dependency types before
+comparing or hashing matrix snapshots; ordinary graph manifests remain unchanged. Capture SARIF and occurrence sources
+as strings, retain original build issue paths, and never keep live graphs or inputs in matrix reports. `MatrixReport`
+supports text/JSON/SARIF and SARIF-backed assertions. Matrix CLI statuses are 0 for valid, 1 for findings, and 2 for
+definition/factory/reused-builder/output errors. Caller-owned overlay parents remain open.
 
 ## Public extension guidance
 
