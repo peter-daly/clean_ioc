@@ -197,6 +197,7 @@ Use `root_policy="dependency_only"` for a helper that should be retained only wh
 ```bash
 clean-ioc check my_app.composition:application_builder
 clean-ioc graph my_app.composition:application_builder --format json -o dependency-graph.json
+clean-ioc check my_app.composition:application_builder --format sarif -o clean-ioc.sarif
 clean-ioc ownership my_app.composition:application_builder --format json
 clean-ioc sharing my_app.composition:application_builder --format json
 clean-ioc diff my_app.composition:application_builder dependency-graph.json
@@ -204,6 +205,9 @@ clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGat
 ```
 
 Each target can be a builder, a built container or scope, or a zero-argument factory function returning one.
+
+[SARIF reporting](docs/sarif.md) exports validation findings with registration sources and dependency code flows for
+CI review. Structural failures also produce a report; text and JSON retain their existing shapes.
 
 Build errors are aggregated across independent roots. Deterministic JSON manifests omit configured values and runtime
 identities, allowing wiring changes to be reviewed without serializing secrets. Entry points focus the default graph and

@@ -396,6 +396,7 @@ class ContainerBuildError(RuntimeError):
         code: str | None = None,
         path: tuple[str, ...] = (),
         explanations: tuple[CompilationExplanation, ...] = (),
+        compiled_graph: CompiledGraph | None = None,
         partial_graph: PartialGraph | None = None,
         evidence: tuple[FailureEvidence | None, ...] = (),
         entry_points: tuple[tuple[str | None, str], ...] | None = None,
@@ -405,12 +406,19 @@ class ContainerBuildError(RuntimeError):
         census_sources: Mapping[str, str] = types.MappingProxyType({}),
         census_attempts: tuple[tuple[str, str, PartialState, str | None], ...] = (),
     ):
-        self.report = report
         self.code = code
         self.path = path
-        self.explanations = explanations
+        self.explanations = explanations or (() if report is None else report._explanations)
+        self.compiled_graph = (
+            compiled_graph if compiled_graph is not None else (None if report is None else report._graph)
+        )
         self.partial_graph = partial_graph
-        self.evidence = evidence
+        self.evidence = evidence or (() if report is None else report._evidence)
+        self.report = (
+            None
+            if report is None
+            else replace(report, _graph=self.compiled_graph, _explanations=self.explanations, _evidence=self.evidence)
+        )
         self.entry_points = entry_points
         self.issue_boundaries = issue_boundaries
         self._census_definitions = census_definitions
@@ -418,6 +426,19 @@ class ContainerBuildError(RuntimeError):
         self._census_sources = census_sources
         self._census_attempts = census_attempts
         super().__init__(message or (report.to_text() if report is not None else "Container build failed"))
+
+    def to_sarif(self, *, indent: int | None = 2) -> str:
+        """Render captured build findings and source evidence as SARIF."""
+
+        report = self.report or BuildReport(
+            (BuildIssue(self.code or "compile-error", IssueSeverity.error, "Compilation failed.", path=self.path),)
+        )
+        return report.to_sarif(
+            graph=self.compiled_graph,
+            explanations=self.explanations,
+            evidence=self.evidence,
+            indent=indent,
+        )
 
     def triage_report(self) -> BuildTriage:
         """Summarize captured failures without retrying compilation."""
@@ -9554,9 +9575,9 @@ def _finalize_plan(plan: _PlanSet, profile: CompilationProfiler | None = None) -
         )
 
     deduplicated = tuple(dict.fromkeys((*built_in_issues, *build_rule_issues)))
-    report = BuildReport(deduplicated, checked_roots=len(all_roots))
+    report = BuildReport(deduplicated, checked_roots=len(all_roots), _graph=compiled_graph)
     if not report.is_valid:
-        raise ContainerBuildError(report=report)
+        raise ContainerBuildError(report=report, compiled_graph=compiled_graph)
     return replace(
         plan,
         compiled_graph=compiled_graph,
@@ -10464,6 +10485,7 @@ def _compile_with_report(
         if error.report is not None:
             raise ContainerBuildError(
                 report=error.report,
+                compiled_graph=error.compiled_graph,
                 entry_points=entry_points,
                 explanations=tuple(compiler.decision_history),
                 partial_graph=PartialGraph((compiler.partial_attempt(error),)),
@@ -10843,6 +10865,7 @@ class Scope(_RuntimeOwner):
         return BuildReport(
             tuple(dict.fromkeys((*self.build_report.issues, *validation_rule_issues))),
             checked_roots=self.build_report.checked_roots,
+            _graph=self.graph,
         )
 
     @property

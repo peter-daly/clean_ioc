@@ -519,6 +519,14 @@ def validate_policy_guide() -> None:
     exec(compile(snippets[0], f"{guide} example 1", "exec"), {"__name__": "__main__"})  # noqa: S102
 
 
+def validate_sarif_guide() -> None:
+    guide = Path(__file__).resolve().parents[1] / "docs" / "sarif.md"
+    snippets = re.findall(r"```python\n(.*?)\n```", guide.read_text(), flags=re.DOTALL)
+    assert len(snippets) == 2  # noqa: S101
+    for index, snippet in enumerate(snippets, start=1):
+        exec(compile(snippet, f"{guide} example {index}", "exec"), {"__name__": "__main__"})  # noqa: S102
+
+
 def main() -> None:
     validate_build_and_resolution()
     validate_failed_builder_is_reusable()
@@ -537,6 +545,7 @@ def main() -> None:
     validate_decorator_template_guide()
     validate_registration_template_guide()
     validate_policy_guide()
+    validate_sarif_guide()
     asyncio.run(validate_async_factory())
     print("documentation examples validated")
 

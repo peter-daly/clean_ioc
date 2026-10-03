@@ -1,3 +1,24 @@
+Unreleased
+----------
+
+    Add SARIF 2.1.0 output to ``clean-ioc check --format sarif`` with captured
+    registration sources, dependency code flows, and complete-graph fingerprints.
+    Add ``BuildReport.to_sarif()`` and ``ContainerBuildError.to_sarif()``.
+    Preserve strict warning handling and support text/JSON output files for
+    failed builds as well as successful checks.
+
+    Add ``BuildReport.assert_valid()`` for unit tests. Valid reports
+    return normally; invalid reports raise ``AssertionError`` with a SARIF
+    document, including available sources and dependency paths. Warnings alone
+    pass, and the check remains active under optimized Python.
+
+    Container, scope, and failed-build reports retain their static reporting
+    context. SARIF exports and assertions include available source links and
+    graph fingerprints automatically, without passing the graph again or
+    retaining the runtime container. Preserve existing report text/JSON output,
+    equality, and hashing.
+
+
 2.0.0b29
 --------
 

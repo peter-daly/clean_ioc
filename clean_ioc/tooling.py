@@ -384,6 +384,9 @@ class BuildIssue:
     message: str
     root: str | None = None
     path: tuple[str, ...] = ()
+    # Retain exact occurrence attribution for source-linked renderers without
+    # changing issue equality, existing serialization, or graph fingerprints.
+    _occurrence_path: tuple[int, ...] = field(default=(), repr=False, compare=False)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -406,6 +409,11 @@ class BuildReport:
 
     issues: tuple[BuildIssue, ...] = ()
     checked_roots: int = 0
+    # Captured reporting context is static and excluded from public report
+    # serialization/equality. No runtime container reference is added.
+    _graph: CompiledGraph | None = field(default=None, repr=False, compare=False, kw_only=True)
+    _explanations: tuple[CompilationExplanation, ...] = field(default=(), repr=False, compare=False, kw_only=True)
+    _evidence: tuple[FailureEvidence | None, ...] = field(default=(), repr=False, compare=False, kw_only=True)
 
     @property
     def errors(self) -> tuple[BuildIssue, ...]:
@@ -428,6 +436,53 @@ class BuildReport:
 
     def to_json(self, *, indent: int | None = 2) -> str:
         return json.dumps(self.to_dict(), indent=indent, sort_keys=True)
+
+    def to_sarif(
+        self,
+        *,
+        graph: CompiledGraph | None = None,
+        explanations: Iterable[CompilationExplanation] | None = None,
+        evidence: Iterable[FailureEvidence | None] | None = None,
+        indent: int | None = 2,
+    ) -> str:
+        """Render SARIF 2.1.0 using captured, optional source evidence.
+
+        Container-created and failed-build reports use their captured graph
+        and source evidence automatically. Optional arguments supply context
+        for manually constructed reports or override captured context. No
+        application code is evaluated; text and JSON shapes remain unchanged.
+        """
+
+        from .sarif import report_to_sarif
+
+        return report_to_sarif(
+            self,
+            graph=self._graph if graph is None else graph,
+            explanations=self._explanations if explanations is None else explanations,
+            evidence=self._evidence if evidence is None else evidence,
+            indent=indent,
+        )
+
+    def assert_valid(
+        self,
+        *,
+        graph: CompiledGraph | None = None,
+        explanations: Iterable[CompilationExplanation] | None = None,
+        evidence: Iterable[FailureEvidence | None] | None = None,
+        indent: int | None = 2,
+    ) -> None:
+        """Raise ``AssertionError`` with SARIF findings when the report is invalid.
+
+        Valid reports, including those with only warnings, return ``None``
+        without rendering. Source context captured by the container or build
+        failure is included automatically, as for ``to_sarif()``. This check
+        remains active when Python assertions are disabled with ``-O``.
+        """
+
+        if not self.is_valid:
+            raise AssertionError(
+                self.to_sarif(graph=graph, explanations=explanations, evidence=evidence, indent=indent)
+            )
 
     def to_text(self) -> str:
         if self.is_valid:
@@ -1228,6 +1283,7 @@ class GraphVisit:
             message=message,
             root=self.root_name,
             path=self.path,
+            _occurrence_path=tuple(component.occurrence_id for component in self.components),
         )
 
 

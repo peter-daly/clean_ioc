@@ -1,6 +1,6 @@
 # Architecture contracts and policy packs
 
-Status: Policy helpers and mixed-mode packs implemented; SARIF remains proposed
+Status: Implemented
 Priority: P0
 Dependencies: Compilation provenance for source-linked diagnostics
 
@@ -8,7 +8,7 @@ Dependencies: Compilation provenance for source-linked diagnostics
 
 Reusable first-party validation rules and callable policy packs are implemented in `clean_ioc.policies`. Packs accept a
 list of callbacks with an optional execution mode per rule. See [the policy guide](../docs/policies.md).
-The remaining proposal adds SARIF output to `clean-ioc check` for source-linked CI findings.
+`clean-ioc check --format sarif` exports source-linked CI findings. See [the SARIF guide](../docs/sarif.md).
 
 ## Problem and differentiation
 
@@ -160,7 +160,7 @@ matcher or policy callback remains `validation-rule-error`, and subsequent rules
 
 ## SARIF output
 
-This section remains proposed; policy helpers and packs use the existing text and JSON reports today.
+SARIF is implemented alongside the existing text and JSON reports.
 
 Extend the check command:
 
@@ -175,7 +175,19 @@ The output conforms to SARIF 2.1.0:
 - the primary location is the violating component's relative registration source when available;
 - dependency paths become a SARIF code flow with source locations when available;
 - the result message contains the safe issue text and semantic component path;
-- the tool execution records the Clean IoC version and graph fingerprint, but no build inputs.
+- the tool execution records the installed Clean IoC version and the all-roots graph fingerprint when a complete graph
+  exists, but no build inputs.
+
+`visit.issue()` retains private occurrence attribution so named and contextual registrations can be linked exactly.
+Ambiguous type-only paths and unavailable sources retain logical locations without guessed physical locations.
+Absolute source paths inside the current working directory are made relative; external sources are omitted.
+`BuildReport.to_sarif()` and `ContainerBuildError.to_sarif()` support programmatic export. A complete graph
+rejected by final validation is retained as `error.compiled_graph`; structural failures use captured failure evidence
+and do not claim a complete-graph fingerprint. `--triage` remains text/JSON only.
+`BuildReport.assert_valid()` passes valid reports and raises `AssertionError` with SARIF when errors exist.
+Reports created by containers/scopes or build errors retain static reporting context and use it automatically for
+source locations and graph fingerprints. Explicit renderer context remains optional for manually constructed reports.
+The assertion does not re-run validation and remains active under `-O`.
 
 `check -o` is supported for text, JSON, and SARIF. Existing text/JSON behavior and strict warning promotion remain
 unchanged. SARIF writes a valid report even when the target fails structurally. Invalid CLI input still exits `2` and

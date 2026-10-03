@@ -6,6 +6,7 @@ import argparse
 import importlib
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -46,20 +47,44 @@ def _write(value: str, output: str | None) -> None:
 
 
 def _filtered_report(report: BuildReport, ignored: set[str]) -> BuildReport:
-    return BuildReport(
-        tuple(issue for issue in report.issues if issue.severity is IssueSeverity.error or issue.code not in ignored),
-        checked_roots=report.checked_roots,
+    retained = tuple(
+        index
+        for index, issue in enumerate(report.issues)
+        if issue.severity is IssueSeverity.error or issue.code not in ignored
+    )
+    return replace(
+        report,
+        issues=tuple(report.issues[index] for index in retained),
+        _evidence=(
+            tuple(report._evidence[index] if index < len(report._evidence) else None for index in retained)
+            if report._evidence
+            else ()
+        ),
     )
 
 
+def _sarif_error(error: ContainerBuildError, ignored: set[str]) -> str:
+    if error.report is None:
+        return error.to_sarif()
+    return _filtered_report(error.report, ignored).to_sarif()
+
+
 def _check(args: argparse.Namespace) -> int:
+    if args.triage and args.format == "sarif":
+        raise ValueError("--triage supports text and JSON; SARIF reports individual findings")
     try:
         scope = _load_scope(args.target)
     except ContainerBuildError as error:
-        if not args.triage:
+        if args.triage:
+            triage = error.triage_report()
+            value = triage.to_json() if args.format == "json" else triage.to_text()
+        elif args.format == "sarif":
+            value = _sarif_error(error, set(args.ignore))
+        elif args.output is not None:
+            value = error.report.to_json() if args.format == "json" and error.report is not None else str(error)
+        else:
             raise
-        triage = error.triage_report()
-        _write(triage.to_json() if args.format == "json" else triage.to_text(), args.output)
+        _write(value, args.output)
         return 1
     report = _filtered_report(
         scope.validation_report(),
@@ -68,6 +93,8 @@ def _check(args: argparse.Namespace) -> int:
     if args.triage:
         triage = BuildTriage.from_report(report)
         value = triage.to_json() if args.format == "json" else triage.to_text()
+    elif args.format == "sarif":
+        value = report.to_sarif()
     else:
         value = report.to_json() if args.format == "json" else report.to_text()
     _write(value, args.output)
@@ -276,7 +303,7 @@ def _parser() -> argparse.ArgumentParser:
 
     check = commands.add_parser("check", help="Build a target and report compiler findings")
     check.add_argument("target", help="module:object composition target")
-    check.add_argument("--format", choices=("text", "json"), default="text")
+    check.add_argument("--format", choices=("text", "json", "sarif"), default="text")
     check.add_argument("--triage", action="store_true", help="Group captured failed-build evidence")
     check.add_argument("-o", "--output", help="Write output to a file instead of stdout")
     check.add_argument(

@@ -361,6 +361,8 @@ complete supported matching, filtering, exposure, and public-root rules.
 `clean_ioc/tooling.py` exposes read-only tooling over the exact compiled component plans:
 
 - `BuildIssue` and `BuildReport` for structured validation;
+- `BuildReport.to_sarif()` and `ContainerBuildError.to_sarif()` for captured source-linked CI findings;
+- `BuildReport.assert_valid()` for assertions over existing reports, raising with SARIF only when errors exist;
 - `CompiledGraph` with text and Mermaid renderers;
 - immutable compilation explanations with selected/rejected candidates, stable reason codes, and best-effort origins;
 - unversioned `GraphManifest` with deterministic fingerprints;
@@ -369,6 +371,15 @@ complete supported matching, filtering, exposure, and public-root rules.
 All Clean IoC tooling JSON formats remain unversioned during beta. Do not add schema version fields, version gates,
 legacy comparison branches, or migration adapters until the release leaves beta. Saved graphs and baselines should be
 regenerated when their format changes. Keep current-format round trips, deterministic fingerprints, and redaction intact.
+SARIF is an external standard and requires its own `version: "2.1.0"`; this does not version Clean IoC's JSON formats.
+The renderer uses exact private occurrence attribution from `visit.issue()`, captured registration decisions, and
+failure evidence. It never re-runs selection or activates components. Physical locations are checkout-relative and
+URI-encoded; external or ambiguous sources are omitted. A complete graph rejected by final validation is retained on
+`ContainerBuildError.compiled_graph`, while structural failures retain the existing partial graph and evidence.
+Reports created by containers/scopes and build errors retain their static graph and captured failure source context
+privately, so SARIF and assertions include locations automatically. The context is excluded from report equality,
+hashing, repr, and text/JSON output; reports do not retain a runtime container. CLI filtering preserves the graph and
+realigns per-issue failure evidence. Explicit renderer arguments remain available for manually constructed reports.
 
 `CompiledGraph.explain(...)` reads the frozen decision index for a service request or exact component occurrence. It
 must never re-run a filter or activation callable. Default and declarative exact-name root selection can be answered
@@ -383,7 +394,7 @@ Manifests use qualified semantic identities rather than UUIDs, occurrence IDs, m
 
 `clean_ioc/cli.py` installs the `clean-ioc` command:
 
-- `check module:object [--strict | --no-strict] [--ignore CODE]` (strict warning handling by default);
+- `check module:object [--format text|json|sarif] [-o FILE] [--strict | --no-strict] [--ignore CODE]` (strict warning handling by default);
 - `graph module:object --format text|mermaid|json [--all]`;
 - `diff module:object baseline.json [--all]`.
 

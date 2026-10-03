@@ -411,6 +411,7 @@ Validate, render, and diff it without starting the application:
 ```bash
 clean-ioc check my_app.composition:application_builder
 clean-ioc check my_app.composition:application_container
+clean-ioc check my_app.composition:application_builder --format sarif -o clean-ioc.sarif
 clean-ioc graph my_app.composition:application_builder --format mermaid
 clean-ioc graph my_app.composition:application_builder --format json -o dependency-graph.json
 clean-ioc ownership my_app.composition:application_builder --format json
@@ -435,6 +436,10 @@ clean-ioc impact my_app.composition:application_builder --path 'root:my_app.Chec
 unsuppressed warnings. `--ignore CODE` suppresses a warning code from either kind of rule; errors cannot be ignored.
 Pass `--no-strict` to leave warnings informational without skipping rules. The explicit `--strict` form is also accepted
 when a CI command should state the warning policy directly.
+
+`check --format sarif` exports source-linked findings and dependency code flows for CI viewers.
+Text, JSON, and SARIF support `-o` for successful and failed checks. See
+[Source-linked CI reporting](sarif.md) for GitHub upload configuration and programmatic exports.
 
 `diff` exits `0` when the graph is unchanged and `1` when it changed. Add `--all` to `graph` or `diff` when the baseline should include every root rather than the entry-point view. Baselines are never updated implicitly.
 `ownership` emits the frozen all-roots ownership proof as text or JSON and does not activate components.

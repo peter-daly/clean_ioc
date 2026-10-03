@@ -500,10 +500,13 @@ def test_architecture_policy(application_builder):
     container = application_builder.build()
     report = container.validation_report()
 
-    assert report.is_valid, report.to_text()
+    report.assert_valid()
 ```
 
-`report.is_valid` checks for errors. To apply the CLI's default strict policy in a unit test, reject warnings too:
+`report.assert_valid()` checks `report.is_valid` and raises `AssertionError` with a SARIF document when errors remain.
+Container-created reports include captured registration sources and dependency paths automatically; see
+[SARIF reporting](sarif.md).
+Warnings alone pass. To apply the CLI's default strict policy in a unit test, reject warnings too:
 
 ```python
 assert not report.issues, report.to_text()

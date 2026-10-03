@@ -47,7 +47,7 @@ builder.register_decorator(
 builder.apply_bundle(policies)
 container = builder.build()
 report = container.validation_report()
-assert report.is_valid, report.to_text()
+report.assert_valid()
 ```
 
 Custom callbacks work in the same list. Use `(inspect_implementation_source, "validation")` for an expensive AST rule.
@@ -157,3 +157,6 @@ Factories yield errors with stable codes:
 Policy configuration is validated before registration. Invalid counts, lifespans, layers, filters, pack entries, or
 phase names raise `TypeError` or `ValueError`. Callback failures during validation use the existing structured
 `validation-rule-error` finding.
+
+Export policy findings with `clean-ioc check ... --format sarif -o clean-ioc.sarif` for source-linked CI review.
+See [Source-linked CI reporting](sarif.md) for registration locations, dependency paths, and GitHub upload configuration.

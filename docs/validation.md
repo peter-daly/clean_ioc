@@ -113,6 +113,10 @@ of every rule registered with `mode="validation"`. Build rules are not rerun. Th
 report or raise for a validation error. Exact duplicate findings are removed within the new complete report. Calling it
 again performs another pass of validate-only rules.
 
+In a unit test, call `report.assert_valid()`. It passes valid reports, including warnings alone, and raises
+`AssertionError` with [SARIF findings](sarif.md#assert-validity-in-tests) when errors remain. The report automatically
+uses the graph it was validated against for source locations and the graph fingerprint.
+
 ### Inspecting implementation source
 
 `context.type_ast(type)` lazily extracts and parses an inspectable Python class definition. Results are cached within
