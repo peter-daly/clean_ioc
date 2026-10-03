@@ -42,7 +42,7 @@ def selected(compiler, selector, registration_id, request, *, specialize=False):
     assert definition is not None
     registration, layer = definition
     if specialize:
-        registration = compiler._specialize_factory(registration, layer, request)
+        registration = compiler._specialize_registration(registration, layer, request)
     return compiler._select_service_target(selector, registration, layer, request)
 
 
@@ -324,9 +324,7 @@ def test_deferred_discovery_and_fallback_are_selected_using_current_snapshot():
     group = ServiceGroup("discovered", service_type=Service[int])
     selector = DerivedServices(Service)
     builder = ContainerBuilder()
-    builder.register_generic_subclasses(
-        Service, groups=[group], subclass_type_filter=lambda cls: cls.__name__ == "Later"
-    )
+    builder.register_subclasses(Service, groups=[group], subclass_type_filter=lambda cls: cls.__name__ == "Later")
 
     class Later(Service[int]):
         pass
@@ -344,9 +342,8 @@ def test_deferred_discovery_and_fallback_are_selected_using_current_snapshot():
         pass
 
     fallback_builder = ContainerBuilder()
-    fallback_builder.register_generic_subclasses(
-        Service, fallback_type=Fallback, subclass_type_filter=lambda cls: False, groups=[group]
-    )
+    fallback_builder.register_subclasses(Service, subclass_type_filter=lambda cls: False, groups=[group])
+    fallback_builder.register_fallback(Service, Fallback, groups=[group])
     fallback_builder.mark_entrypoint(Service[str])
     with pytest.raises(ContainerBuildError, match="discovered"):
         fallback_builder.build()
@@ -398,7 +395,7 @@ def test_finite_candidate_stream_preserves_order_and_deduplicates_by_definition_
     second_registration, _ = second_definition
     closed = Contract[int, str]
     other_closed = Contract[bytes, str]
-    specialized = compiler._specialize_factory(first_registration, layer, closed)
+    specialized = compiler._specialize_registration(first_registration, layer, closed)
     alias = TypeAliasType("alias", closed)
     candidates = (
         (second_registration, layer, closed),

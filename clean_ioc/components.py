@@ -34,6 +34,7 @@ from .type_aliases import normalize_type_alias
 
 if TYPE_CHECKING:
     from ._decorator_templates import DecoratorTemplate, RegistrationInfo
+    from ._registration_templates import RegistrationTemplate
     from .boundaries import Expose, Use
     from .container import BoundaryBuilder
     from .preferences import ComponentPreference
@@ -522,6 +523,27 @@ class ComponentBuilder(Protocol):
         root_policy: RootPolicy = "resolvable",
     ) -> str: ...
 
+    def register_fallback(
+        self,
+        service_type: TypeForm[Any],
+        implementation_type: TypeForm[Any] | None = None,
+        *,
+        factory: Callable[..., Any] | None = None,
+        factory_specialization: object | None = None,
+        instance: Any | None = None,
+        lifespan: LifespanPolicy = "auto",
+        scope: ScopePolicy = "current",
+        name: str | None = None,
+        arguments: Mapping[str, Any] | None = None,
+        tags: Iterable[Tag] | None = None,
+        when: ComponentFilter = all_components,
+        parent_precedence: int = 0,
+        prefer: ComponentPreference | None = None,
+        contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
+        groups: Iterable[ServiceGroup] = (),
+        root_policy: RootPolicy = "resolvable",
+    ) -> str: ...
+
     def register_pattern(
         self,
         service_type: TypeForm[Any],
@@ -588,23 +610,24 @@ class ComponentBuilder(Protocol):
         groups: Iterable[ServiceGroup] = (),
     ) -> None: ...
 
-    def register_generic_subclasses(
+    def register_registration_template(
         self,
-        generic_service_type: type,
         *,
-        fallback_type: type | None = None,
-        ensure_import_modules: str | Iterable[str] = (),
-        include_children: bool = False,
-        lifespan: LifespanPolicy = "auto",
-        scope: ScopePolicy = "current",
-        subclass_type_filter: Callable[[type], bool] = ...,
-        name: str | None = None,
-        tags: Iterable[Tag] | None = None,
-        when: ComponentFilter = all_components,
-        parent_precedence: int = 0,
-        prefer: ComponentPreference | None = None,
-        groups: Iterable[ServiceGroup] = (),
+        for_each: Any,
+        template: Callable[[RegistrationInfo], RegistrationTemplate],
+        source_filter: ComponentFilter = all_components,
+    ) -> str: ...
+
+    def patch_registration_template(
+        self,
+        template_id: str,
+        *,
+        for_each: Any = ...,
+        template: Callable[[RegistrationInfo], RegistrationTemplate] | object = ...,
+        source_filter: ComponentFilter | object = ...,
     ) -> None: ...
+
+    def remove_registration_template(self, template_id: str) -> None: ...
 
     def register_decorator_template(
         self,

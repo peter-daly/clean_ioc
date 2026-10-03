@@ -578,7 +578,7 @@ def test_generic_discovery_enumerates_only_exact_closed_source_key():
 
     builder = ContainerBuilder()
     builder._register_decorator_template(for_each=Source[int], template=specification)
-    builder.register_generic_subclasses(Source)
+    builder.register_subclasses(Source)
 
     class Late(Source[int]):
         pass

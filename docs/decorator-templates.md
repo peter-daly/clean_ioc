@@ -4,6 +4,8 @@ A decorator template builds a policy from registered sources. At `build()`, Clea
 
 Use [ordinary decorators](decorators.md) when one fixed definition is enough. Both forms produce frozen decorator plans; neither creates runtime registrations by resolving a source during composition.
 
+To create a new service registration for each source, use [registration templates](registration-templates.md).
+
 ## One source, one target
 
 This complete program uses only Clean IoC and the standard library:
@@ -137,13 +139,13 @@ with builder.build() as container:
 
 ## Explicit membership or registered-contract matching
 
-`ServiceGroup("name", service_type=Stage)` declares an identity and a compatible contract. A target joins through `groups=[stages]` on its **registration**. Another `ServiceGroup` with the same name and contract is a different object and will not share members; bundles should import one shared declaration. Compatible registrations without that exact membership are not selected. Membership can also be passed to `register_pattern`, `register_subclasses`, and `register_generic_subclasses`; discovered registrations inherit the rule's groups when materialized during build.
+`ServiceGroup("name", service_type=Stage)` declares an identity and a compatible contract. A target joins through `groups=[stages]` on its **registration**. Another `ServiceGroup` with the same name and contract is a different object and will not share members; bundles should import one shared declaration. Compatible registrations without that exact membership are not selected. Membership can also be passed to `register_pattern`, `register_subclasses`, and `register_fallback`; discovered registrations inherit the rule's groups when materialized during build.
 
 `DerivedServices(Stage)` instead selects available registrations whose **registered service contract** derives from `Stage`; no `groups=` declaration is required. In the two-source program, replacing `services=stages` with `services=DerivedServices(Stage)` would also decorate the tagged `"ungrouped"` registration. The `"plain"` registration would still fail `when`. Conversely, an implementation subclass registered under an unrelated service contract does not become eligible merely because its class inherits `Stage`. Neither selector creates services, group memberships, map keys, injectable collections, or a `ProviderMapGroup`. [Provider maps](advanced/special-dependency-types.md#explicit-provider-map-groups) are a separate feature with `contributes=` keys. Group membership does not change ordinary service resolution.
 
 For bundles, declare `stages = ServiceGroup("audited-stages", service_type=Stage)` once in a shared module and import that same object into both the registration bundle (`groups=[stages]`) and the policy bundle (`DecoratorTemplate(services=stages, ...)`). For automatic selection, use `DecoratorTemplate(services=DerivedServices(Stage), ...)` and omit `groups=` from target registrations.
 
-Target declarations select among registrations and compiled requests that already exist. They do not discover classes, activate targets, or add new service keys. Queue subclass discovery with `register_subclasses(...)` or `register_generic_subclasses(...)` and, if needed, `ensure_import_modules=` before `build()`. Discovery materializes before template expansion. A successful build is immutable; classes imported afterward need a new builder/build.
+Target declarations select among registrations and compiled requests that already exist. They do not discover classes, activate targets, or add new service keys. Queue subclass discovery with `register_subclasses(...)` and, if needed, `ensure_import_modules=` before `build()`. Discovery materializes before template expansion. A successful build is immutable; classes imported afterward need a new builder/build.
 
 ## Generic identities and projection
 

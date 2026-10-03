@@ -2,7 +2,41 @@
 
 This document records the V2 architecture and implementation decisions made so far. It is intended for agents and maintainers extending V2 without accidentally restoring runtime graph construction, weakening build invariants, or breaking scope ownership.
 
-V2 is currently published in project metadata as `2.0.0b27`. Its public surface remains experimental.
+V2 is currently published in project metadata as `2.0.0b28`. Its public surface remains experimental.
+
+## Registration templates
+
+`register_registration_template(for_each=..., template=..., source_filter=...)` mirrors decorator-template source
+selection. Factories return frozen `RegistrationTemplate` specifications using ordinary registration options.
+Expansion runs after discovery and before decorator templates. Each declaration/source pair receives a stable ID;
+generated registrations never feed registration-template expansion. Source filters start with metadata; graph
+properties trigger disposable source compilation on demand, using the pre-expansion inventory. Metadata selection
+allows either the generated registration or its source to be the consumer. Structural filters that need generated
+dependencies fail with `registration-template-source-graph`. Inspection callbacks are released immediately after source
+selection. Boundary visibility is prepared for sources, then strictly validated after expansion.
+
+Generated registrations retain ordinary ownership and selection semantics. Overlays retain inherited outputs and add
+outputs for newly selected sources in the overlay. Patching an inherited declaration replaces its outputs with new IDs
+and overlay ownership; removal hides its outputs. Parent singleton activation plans remain anchored. Generated origins,
+source decisions, and selection-census references retain the source and template relationship. See
+[registration templates](docs/registration-templates.md).
+
+## Fallback registrations and subclass discovery
+
+`register_subclasses` detects open generic bases through their unresolved parameters.
+Concrete subclasses with a closed generic ancestor continue to use ordinary discovery.
+V2 no longer exposes `register_generic_subclasses` or discovery's `fallback_type` option.
+
+`register_fallback` mirrors `register` and records fallback IDs in each layer. Compilation
+first selects ordinary candidates, then lazily compiles and selects fallbacks if none match.
+Both passes receive the same dependency filter, parent, provider mode, and contribution group.
+Structural failures in ordinary candidates still fail the build. Root compilation freezes
+both sets for later root filters; runtime selection gives ordinary matches priority, including
+collections and providers. Fallbacks do not alter the existing ordinary exact/pattern tiers.
+
+Open constructor fallbacks bind their dependency annotations against each closed request.
+Factory fallbacks use existing generic factory specialization. Specializations keep distinct,
+stable cache identities; inherited singleton plans retain their original ownership.
 
 ## Core model
 

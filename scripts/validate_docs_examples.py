@@ -134,9 +134,13 @@ def validate_generics_and_decorators() -> None:
             self.child = child
 
     builder = ContainerBuilder()
-    builder.register_generic_subclasses(Handler)
+    builder.register_subclasses(Handler)
+    builder.register_fallback(Handler, Handler)
+    builder.mark_entrypoint(Handler[str])
     builder.register_decorator(Handler, Decorator, decorated_arg="child")
-    handler = builder.build().resolve(Handler[A])
+    container = builder.build()
+    handler = container.resolve(Handler[A])
+    assert isinstance(container.resolve(Handler[str]), Decorator)  # noqa: S101
 
     assert isinstance(handler, Decorator)  # noqa: S101
     assert isinstance(handler.child, AHandler)  # noqa: S101
@@ -500,6 +504,14 @@ def validate_decorator_template_guide() -> None:
         exec(compile(snippet, f"{guide} example {index}", "exec"), {"__name__": "__main__"})  # noqa: S102
 
 
+def validate_registration_template_guide() -> None:
+    guide = Path(__file__).resolve().parents[1] / "docs" / "registration-templates.md"
+    snippets = re.findall(r"```python\n(.*?)\n```", guide.read_text(), flags=re.DOTALL)
+    assert len(snippets) == 2  # noqa: S101
+    for index, snippet in enumerate(snippets, start=1):
+        exec(compile(snippet, f"{guide} example {index}", "exec"), {"__name__": "__main__"})  # noqa: S102
+
+
 def main() -> None:
     validate_build_and_resolution()
     validate_failed_builder_is_reusable()
@@ -516,6 +528,7 @@ def main() -> None:
     validate_provider_maps()
     validate_registration_patterns()
     validate_decorator_template_guide()
+    validate_registration_template_guide()
     asyncio.run(validate_async_factory())
     print("documentation examples validated")
 

@@ -48,6 +48,12 @@ from ._decorator_templates import (
     _TemplateSourceSelection,
 )
 from ._legacy_configuration import default_parameter_value_factory
+from ._registration_templates import (
+    RegistrationTemplate,
+    _GeneratedRegistration,
+    _RegistrationTemplateDefinition,
+    _RegistrationTemplateSource,
+)
 from ._service_targets import _select_service_target, _ServiceTarget
 from .arguments import (
     INJECT,
@@ -465,6 +471,17 @@ class _TemplateExpansionReentryError(ContainerBuildError):
         super().__init__("Template expansion cannot reenter its composition", code="template-expansion-reentry")
 
 
+class _RegistrationTemplateSourceGraphError(ContainerBuildError):
+    def __init__(self, path: tuple[str, ...]) -> None:
+        super().__init__(
+            "A registration-template source_filter requested a dependency graph that cannot compile before expansion; "
+            "select sources by registration metadata and put contextual dependency conditions "
+            "in RegistrationTemplate.when",
+            code="registration-template-source-graph",
+            path=path,
+        )
+
+
 class CannotResolveError(LookupError):
     """Raised when no compiled root matches a resolution request."""
 
@@ -652,6 +669,10 @@ class _Layer:
     decorator_declaration_ids: tuple[str, ...] = ()
     removed_template_ids: frozenset[str] = frozenset()
     instance_implementation_types: Mapping[str, Any] = field(default_factory=lambda: types.MappingProxyType({}))
+    registration_templates: tuple[_RegistrationTemplateDefinition, ...] = ()
+    removed_registration_template_ids: frozenset[str] = frozenset()
+    generated_registrations: Mapping[str, _GeneratedRegistration] = field(default_factory=dict)
+    fallback_ids: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True, slots=True)
@@ -963,7 +984,9 @@ def _census_inventory(blueprint: _Blueprint) -> tuple[tuple[DefinitionReference,
                     else registration.implementation
                 )
                 kind = (
-                    "registration-pattern"
+                    "generated-registration"
+                    if registration.id in layer.generated_registrations
+                    else "registration-pattern"
                     if registration.id in layer.pattern_ids
                     else "provider-map"
                     if registration.id in layer.provider_maps
@@ -1008,6 +1031,32 @@ def _census_inventory(blueprint: _Blueprint) -> tuple[tuple[DefinitionReference,
                 template.origin,
                 boundary=blueprint.registration_area(layer),
             )
+        for registration_template in layer.registration_templates:
+            add(
+                registration_template.id,
+                "registration-template",
+                registration_template.for_each,
+                None,
+                None,
+                registration_template.origin,
+                boundary=blueprint.registration_area(layer),
+            )
+    generated_sources = {
+        references[identity]: generated
+        for layer in (*blueprint.layers, *(boundary.layer for boundary in blueprint.boundaries))
+        for identity, generated in layer.generated_registrations.items()
+        if identity in references
+    }
+    definitions = [
+        replace(
+            item,
+            source=references.get(generated_sources[item.reference].source_id),
+            template=references.get(generated_sources[item.reference].template_id),
+        )
+        if item.reference in generated_sources
+        else item
+        for item in definitions
+    ]
     for generated in blueprint.generated_decorators:
         add(
             generated.id,
@@ -1157,6 +1206,10 @@ def _normalize_layer_aliases(layer: _Layer) -> _Layer:
             )
             for definition in layer.decorators
         ),
+        registration_templates=tuple(
+            replace(definition, for_each=normalize_type_alias(definition.for_each))
+            for definition in layer.registration_templates
+        ),
         decorator_templates=tuple(
             replace(definition, for_each=normalize_type_alias(definition.for_each))
             for definition in layer.decorator_templates
@@ -1217,6 +1270,7 @@ def _blueprint_alias_errors(blueprint: _Blueprint) -> tuple[TypeAliasNormalizati
         for definition in layer.decorators:
             values.extend((definition.service_type, definition.decorator_type))
         values.extend(definition.for_each for definition in layer.decorator_templates)
+        values.extend(definition.for_each for definition in layer.registration_templates)
         for definition in layer.pre_configurations:
             values.extend(definition.service_types)
         values.extend(service_type for service_type, _ in layer.slots)
@@ -1394,7 +1448,7 @@ def _compiled_boundary_component(
     )
     compiler._area = blueprint.registration_area(layer)
     if registration.id in layer.pattern_ids:
-        registration = compiler._specialize_factory(registration, layer, service_type)
+        registration = compiler._specialize_registration(registration, layer, service_type)
     component, _ = compiler._compile_registration(
         registration,
         layer,
@@ -1547,6 +1601,7 @@ def _prepare_boundary_visibility(
     *,
     build_args: Mapping[str, Any],
     compilation_inputs: _CompilationInputs | None = None,
+    defer_missing: bool = False,
 ) -> _Blueprint:
     """Validate and resolve every visibility declaration before plan compilation."""
 
@@ -1688,6 +1743,8 @@ def _prepare_boundary_visibility(
                 compilation_inputs=compilation_inputs,
             )
             if not matches:
+                if defer_missing:
+                    continue
                 # A matching import is a prohibited re-export rather than an absent local definition.
                 imported = any(
                     _service_definition_matches(use.service_type, exposure.service_type) for use in boundary.uses
@@ -1770,6 +1827,8 @@ def _prepare_boundary_visibility(
                         if use.filter(component):
                             slot_matches.append((slot_type, name))
                 if len(matches) + len(slot_matches) == 0:
+                    if defer_missing:
+                        continue
                     raise ContainerBuildError(
                         f"Boundary {boundary.name!r} uses root {use.service_type!r}, but no root component matches",
                         code="boundary-use-not-found",
@@ -1833,6 +1892,8 @@ def _prepare_boundary_visibility(
                     if use.filter(component):
                         selected.append(target)
                 if not selected:
+                    if defer_missing:
+                        continue
                     local_private = bool(_boundary_registrations(blueprint, (source.layer,), use.service_type))
                     message = (
                         f"Boundary {source.name!r} has matching private components; expose one before "
@@ -2176,6 +2237,40 @@ def _specialized_factory_dependencies(
     return dependencies, tuple(annotations)
 
 
+def _specialized_fallback_dependencies(
+    registration: legacy._Registration, service_type: Any
+) -> tuple[dict[str, legacy.Dependency], tuple[tuple[str, Any, Any], ...]]:
+    implementation = registration.implementation
+    if not getattr(implementation, "__parameters__", ()):
+        return registration.dependencies, ()
+    source = get_origin(service_type)
+    projected = legacy.try_to_map_generic_args_to_specialization(source, implementation)
+    if projected is source:
+        parameters = getattr(source, "__parameters__", ())
+        projected = source[parameters] if parameters else source
+    try:
+        bindings = patterns.factory_bindings(
+            projected, service_type, tuple(d.service_type for d in registration.dependencies.values())
+        )
+    except patterns.PatternError as error:
+        raise ContainerBuildError(str(error), code="invalid-generic-specialization") from error
+    dependencies: dict[str, legacy.Dependency] = {}
+    annotations: list[tuple[str, Any, Any]] = []
+    for name, dependency in registration.dependencies.items():
+        after = _resolve_factory_typevars(dependency.service_type, bindings)
+        specialized = legacy.Dependency(
+            name=name,
+            parent_implementation=implementation,
+            service_type=after,
+            settings=dependency.settings,
+            default_value=dependency.default_value,
+        )
+        specialized.declared_service_type = after
+        dependencies[name] = specialized
+        annotations.append((name, dependency.declared_service_type, after))
+    return dependencies, tuple(annotations)
+
+
 def _index_registration(registry: legacy._Registry, registration: legacy._Registration) -> None:
     registry._registrations[registration.service_type].appendleft(registration)
     registry._registrations[cast(type, registration.implementation)].appendleft(registration)
@@ -2256,7 +2351,6 @@ def _ensure_discovery_imports(rules: Iterable[_RegistrationDiscovery]) -> tuple[
 class _RegistrationDiscovery:
     base_type: type
     generic: bool
-    fallback_type: type | None
     ensure_import_modules: tuple[str, ...]
     include_children: bool
     lifespan: legacy.Lifespan
@@ -2271,7 +2365,6 @@ class _RegistrationDiscovery:
     groups: frozenset[ServiceGroup]
     origin: DefinitionOrigin
     registrations: dict[int, tuple[type, legacy._Registration]] = field(default_factory=dict)
-    fallback_registration: legacy._Registration | None = None
 
     def _filter(self, subclass: type) -> bool:
         if inspect.isabstract(subclass) or not self.subclass_type_filter(subclass):
@@ -2311,8 +2404,6 @@ class _RegistrationDiscovery:
                     continue
             _validate_service_groups(service_type, self.groups)
             candidates.append((subclass, service_type))
-        if self.generic and self.fallback_type is not None:
-            _validate_service_groups(self.base_type, self.groups)
         for subclass, service_type in candidates:
             registration = self._registration_for(subclass, service_type)
             _index_registration(registry, registration)
@@ -2326,34 +2417,11 @@ class _RegistrationDiscovery:
                 definition_id=registration.id,
             )
 
-        if self.generic and self.fallback_type is not None:
-            if self.fallback_registration is None:
-                self.fallback_registration = _create_discovered_registration(
-                    service_type=self.base_type,
-                    implementation_type=self.fallback_type,
-                    lifespan=self.lifespan,
-                    name=self.name,
-                    tags=self.tags,
-                )
-            _index_registration(registry, self.fallback_registration)
-            registration_preferences.setdefault(self.fallback_registration.id, self.prefer)
-            registration_parent_precedence.setdefault(self.fallback_registration.id, self.parent_precedence)
-            registration_when[self.fallback_registration.id] = self.when
-            registration_policies.setdefault(self.fallback_registration.id, (self.lifespan_policy, self.scope_policy))
-            service_groups[self.fallback_registration.id] = self.groups
-            registration_origins[self.fallback_registration.id] = replace(
-                self.origin,
-                definition_id=self.fallback_registration.id,
-            )
-
     def find_registration(self, service_type: Any, component_id: str) -> legacy._Registration | None:
         candidates = (item[1] for item in self.registrations.values())
         for registration in candidates:
             if registration.service_type == service_type and registration.id == component_id:
                 return registration
-        fallback = self.fallback_registration
-        if fallback is not None and fallback.service_type == service_type and fallback.id == component_id:
-            return fallback
         return None
 
 
@@ -4273,6 +4341,13 @@ class _ObservedCallSiteStep(_Step):
 class _RootPlan:
     component: Component
     step: _Step
+    is_fallback: bool = False
+
+
+def _preferred_root_plans(plans: Iterable[_RootPlan]) -> tuple[_RootPlan, ...]:
+    matching = tuple(plans)
+    ordinary = tuple(plan for plan in matching if not plan.is_fallback)
+    return ordinary or matching
 
 
 @dataclass(frozen=True, slots=True)
@@ -4446,6 +4521,7 @@ class _CompiledCandidate:
     parent_precedence: int | None = None
     preference: ComponentPreference | None = None
     preference_view: tuple[Any, str | None, tuple[legacy.Tag, ...]] | None = None
+    is_fallback: bool = False
 
 
 def _frame_description(frame: _CompilerFrame) -> str:
@@ -4471,6 +4547,9 @@ class _Compiler:
         profile_attempt: str | None = "primary",
     ):
         self.blueprint = blueprint
+        self._has_fallbacks = any(
+            layer.fallback_ids for layer in (*blueprint.layers, *(b.layer for b in blueprint.boundaries))
+        )
         self._has_dependency_only = any(
             "dependency_only" in layer.root_policies.values()
             for layer in (*blueprint.layers, *(boundary.layer for boundary in blueprint.boundaries))
@@ -5195,12 +5274,12 @@ class _Compiler:
             raise ValueError("Source inspection requires the definition's exact closed service key")
         self._area = self.blueprint.registration_area(layer)
         if self._profile is None or source.id not in layer.factory_ids:
-            registration = self._specialize_factory(source, layer, requested_service_type)
+            registration = self._specialize_registration(source, layer, requested_service_type)
         else:
             registration = self._profile.call(
                 self._profile_phase,
                 "factory specialization",
-                self._specialize_factory,
+                self._specialize_registration,
                 source,
                 layer,
                 requested_service_type,
@@ -5270,7 +5349,8 @@ class _Compiler:
             candidates = self._compile_candidates(service_type, parent=None, argument=None, root_only=True)
             eligible = tuple(candidate for candidate in candidates if candidate.eligible)
             roots[service_type] = tuple(
-                _RootPlan(component=candidate.component, step=candidate.step) for candidate in eligible
+                _RootPlan(component=candidate.component, step=candidate.step, is_fallback=candidate.is_fallback)
+                for candidate in eligible
             )
             architecture_roots.extend((area, service_type, plan) for plan in roots[service_type])
             records = tuple(
@@ -5361,7 +5441,8 @@ class _Compiler:
                     candidates = self._compile_candidates(service_type, parent=None, argument=None, root_only=True)
                     eligible = tuple(candidate for candidate in candidates if candidate.eligible)
                     plans = tuple(
-                        _RootPlan(component=candidate.component, step=candidate.step) for candidate in eligible
+                        _RootPlan(component=candidate.component, step=candidate.step, is_fallback=candidate.is_fallback)
+                        for candidate in eligible
                     )
                     architecture_roots.extend(
                         (boundary.name, service_type, plan)
@@ -5415,7 +5496,7 @@ class _Compiler:
         else:
             self._profile.call(self._profile_phase, "graph freezing", self.graph.freeze, attempt=self._profile_attempt)
         default_root_groups = {
-            service_type: tuple(plan for plan in plans if plan.component.name is None)
+            service_type: _preferred_root_plans(plan for plan in plans if plan.component.name is None)
             for service_type, plans in roots.items()
         }
         return _PlanSet(
@@ -5547,7 +5628,11 @@ class _Compiler:
             for provider_type, mode in ((Provider, "sync"), (AsyncProvider, "async")):
                 annotation = provider_type[service_type]
                 plans = tuple(
-                    self._provider_root_component(annotation, mode, plan.component, plan.step) for plan in target_plans
+                    replace(
+                        self._provider_root_component(annotation, mode, plan.component, plan.step),
+                        is_fallback=plan.is_fallback,
+                    )
+                    for plan in target_plans
                 )
                 provider_roots[annotation] = plans
                 records: list[_CandidateRecord] = []
@@ -5559,7 +5644,11 @@ class _Compiler:
                             CandidateDecision(
                                 plan.component.id,
                                 DecisionOutcome.selected,
-                                ("provider-target-frozen",),
+                                (
+                                    ("provider-target-frozen", "selected-fallback")
+                                    if target.is_fallback
+                                    else ("provider-target-frozen",)
+                                ),
                                 "The provider target plan was selected and frozen during compilation",
                                 origin,
                             ),
@@ -5568,7 +5657,7 @@ class _Compiler:
                     )
                 self.root_candidates[annotation] = tuple(records)
 
-                unnamed_targets = tuple(plan for plan in target_plans if plan.component.name is None)
+                unnamed_targets = _preferred_root_plans(plan for plan in target_plans if plan.component.name is None)
                 for collection_type in (list, tuple, set):
                     collection_target = (
                         tuple[service_type, ...] if collection_type is tuple else collection_type[service_type]
@@ -5597,13 +5686,19 @@ class _Compiler:
                     )
         return provider_roots
 
-    def _specialize_factory(
+    def _specialize_registration(
         self,
         registration: legacy._Registration,
         layer: _Layer,
         requested_service_type: Any,
     ) -> legacy._Registration:
-        if registration.id not in layer.factory_ids:
+        specialize_constructor = (
+            registration.id in layer.fallback_ids
+            and get_origin(requested_service_type) is not None
+            and constructor_type(registration.implementation) is not None
+            and not registration.is_instance
+        )
+        if registration.id not in layer.factory_ids and not specialize_constructor:
             return registration
         if self._profile is not None:
             self._profile.count("factory specialization requests")
@@ -5666,6 +5761,10 @@ class _Compiler:
                 raise ContainerBuildError(
                     str(error), code=error.code, path=self._current_path(requested_service_type)
                 ) from error
+        elif specialize_constructor:
+            dependencies, dependency_annotations = _specialized_fallback_dependencies(
+                registration, requested_service_type
+            )
         else:
             dependencies, dependency_annotations = _specialized_factory_dependencies(
                 registration,
@@ -5948,10 +6047,28 @@ class _Compiler:
         provider_map_group: ProviderMapGroup[Any, Any] | None = None,
         root_only: bool = False,
         dependency_only_only: bool = False,
+        fallback_only: bool = False,
     ) -> list[_CompiledCandidate]:
+        if fallback_only and not self._has_fallbacks:
+            return []
         service_type = normalize_type_alias(service_type)
         local_registrations = self.blueprint.local_registrations(self._area, service_type)
         visible_registrations = self.blueprint.visible_registrations(service_type, self._area)
+        if self._has_fallbacks:
+            local_registrations = [
+                item for item in local_registrations if (item[0].id in item[1].fallback_ids) == fallback_only
+            ]
+            visible_registrations = [
+                item for item in visible_registrations if (item[0].id in item[1].fallback_ids) == fallback_only
+            ]
+            if fallback_only and get_origin(service_type) is not None:
+                # Explicit fallbacks remain available even when exact ordinary
+                # registrations exist but fail the request's filter.
+                local_registrations.extend(
+                    item
+                    for item in self.blueprint.local_registrations(self._area, get_origin(service_type))
+                    if item[0].id in item[1].fallback_ids
+                )
         if dependency_only_only or (root_only and self._has_dependency_only):
             local_registrations = [
                 item
@@ -5964,7 +6081,7 @@ class _Compiler:
                 if (item[1].root_policies.get(item[0].id) == "dependency_only") == dependency_only_only
             ]
         candidates: list[_CompiledCandidate] = []
-        if self._patterns:
+        if self._patterns and not fallback_only:
             local_registrations, candidates = self._pattern_candidates(
                 service_type, local_registrations, root_only=root_only, dependency_only_only=dependency_only_only
             )
@@ -5972,12 +6089,15 @@ class _Compiler:
             *((registration, layer, None) for registration, layer in local_registrations),
             *visible_registrations,
         ]
-        if not registrations and get_origin(service_type) is not None:
+        if not registrations and not fallback_only and get_origin(service_type) is not None:
             registrations = [
                 (registration, layer, None)
                 for registration, layer in self.blueprint.local_registrations(self._area, get_origin(service_type))
-                if not (root_only or dependency_only_only)
-                or (layer.root_policies.get(registration.id) == "dependency_only") == dependency_only_only
+                if registration.id not in layer.fallback_ids
+                and (
+                    not (root_only or dependency_only_only)
+                    or (layer.root_policies.get(registration.id) == "dependency_only") == dependency_only_only
+                )
             ]
         if provider_map_group is not None:
             registrations = [
@@ -6001,12 +6121,12 @@ class _Compiler:
             self._partial_candidate_labels[source_registration.id] = qualified_name(source_registration.implementation)
             try:
                 if self._profile is None or source_registration.id not in layer.factory_ids:
-                    registration = self._specialize_factory(source_registration, layer, source_service_type)
+                    registration = self._specialize_registration(source_registration, layer, source_service_type)
                 else:
                     registration = self._profile.call(
                         self._profile_phase,
                         "factory specialization",
-                        self._specialize_factory,
+                        self._specialize_registration,
                         source_registration,
                         layer,
                         source_service_type,
@@ -6261,6 +6381,8 @@ class _Compiler:
                 consumer_area, source_registration.id, layer
             )
             codes: list[str] = ["registration-eligible"]
+            if fallback_only:
+                codes.append("selected-fallback")
             if source_registration.id in layer.pattern_ids:
                 codes.append("selected-registration-pattern")
             if boundary_code:
@@ -6295,6 +6417,20 @@ class _Compiler:
                     and definition_area == consumer_area
                     and original_parent_id is not None
                     else None,
+                    is_fallback=fallback_only,
+                )
+            )
+        if self._has_fallbacks and not fallback_only and (root_only or dependency_only_only):
+            candidates.extend(
+                self._compile_candidates(
+                    service_type,
+                    parent,
+                    argument,
+                    deferred_mode=deferred_mode,
+                    provider_map_group=provider_map_group,
+                    root_only=root_only,
+                    dependency_only_only=dependency_only_only,
+                    fallback_only=True,
                 )
             )
         return candidates
@@ -6311,6 +6447,7 @@ class _Compiler:
         preference: ComponentPreference | None = None,
         provider_target: bool = False,
         explanation_component: Component | None = None,
+        fallback_candidates: Callable[[], list[_CompiledCandidate]] | None = None,
     ) -> list[_CompiledCandidate]:
         """Apply a selection filter once and retain its safe outcome."""
 
@@ -6483,6 +6620,21 @@ class _Compiler:
                         )
                     decisions.append(decision)
             selected = decisions
+        if not selected_candidates and fallback_candidates is not None and self._has_fallbacks:
+            selected_candidates = self._select_candidates(
+                fallback_candidates(),
+                filter,
+                service_type=service_type,
+                subject=subject,
+                collection=collection,
+                parent_precedence=parent_precedence,
+                preference=preference,
+                provider_target=provider_target,
+                explanation_component=explanation_component,
+            )
+            fallback_explanation = self.decision_history.pop()
+            selected = list(fallback_explanation.selected)
+            rejected.extend(fallback_explanation.rejected)
         explanation = CompilationExplanation(
             subject=subject,
             path=self._current_path(service_type),
@@ -6996,6 +7148,9 @@ class _Compiler:
         candidates = self._select_candidates(
             candidates,
             definition.component_filter,
+            fallback_candidates=lambda: self._compile_candidates(
+                target, component, None, deferred_mode=mode, provider_map_group=definition.group, fallback_only=True
+            ),
             service_type=target,
             subject="Provider map target selection",
             collection=True,
@@ -7364,6 +7519,9 @@ class _Compiler:
             candidates = self._select_candidates(
                 candidates,
                 request.filter,
+                fallback_candidates=lambda: self._compile_candidates(
+                    request.service_type, parent=None, argument=None, fallback_only=True
+                ),
                 service_type=request.service_type,
                 subject=f"{qualified_name(implementation)} compiled resolution request",
             )
@@ -7561,6 +7719,9 @@ class _Compiler:
                 candidates = self._select_candidates(
                     candidates,
                     dependency.settings.filter,
+                    fallback_candidates=lambda: self._compile_candidates(
+                        element_type, collection, dependency.name, fallback_only=True
+                    ),
                     service_type=element_type,
                     subject=(
                         f"Deferred collection argument {dependency.name!r} of "
@@ -7585,6 +7746,9 @@ class _Compiler:
                 candidates = self._select_candidates(
                     candidates,
                     dependency.settings.filter,
+                    fallback_candidates=lambda: self._compile_candidates(
+                        element_type, provider, dependency.name, fallback_only=True
+                    ),
                     service_type=element_type,
                     subject=(f"Deferred argument {dependency.name!r} of " f"{qualified_name(parent.implementation)}"),
                     explanation_component=provider,
@@ -7843,6 +8007,9 @@ class _Compiler:
             candidates = self._select_candidates(
                 candidates,
                 dependency.settings.filter,
+                fallback_candidates=lambda: self._compile_candidates(
+                    element_type, collection, dependency.name, fallback_only=True
+                ),
                 service_type=element_type,
                 subject=f"Collection argument {dependency.name!r} of {qualified_name(parent.implementation)}",
                 collection=True,
@@ -7867,6 +8034,9 @@ class _Compiler:
         candidates = self._select_candidates(
             candidates,
             dependency.settings.filter,
+            fallback_candidates=lambda: self._compile_candidates(
+                dependency.service_type, parent, dependency.name, fallback_only=True
+            ),
             service_type=dependency.service_type,
             subject=f"Argument {dependency.name!r} of {qualified_name(parent.implementation)}",
             parent_precedence=True,
@@ -8776,6 +8946,7 @@ def _prune_orphan_registrations(plan: _PlanSet) -> _PlanSet:
             contributions=types.MappingProxyType(without(layer.contributions)),
             service_groups=without(layer.service_groups),
             pattern_ids=tuple(item for item in layer.pattern_ids if item not in orphan_ids),
+            fallback_ids=layer.fallback_ids - orphan_ids,
             instance_implementation_types=types.MappingProxyType(without(layer.instance_implementation_types)),
         )
 
@@ -9050,6 +9221,23 @@ def _recorded_root_selection(
                     record.decision.origin,
                 )
             )
+    if any("selected-fallback" not in record.decision.reason_codes for record in selected_records):
+        ordinary_records = []
+        ordinary_decisions = []
+        for record, decision in zip(selected_records, selected, strict=True):
+            if "selected-fallback" in record.decision.reason_codes:
+                rejected.append(
+                    replace(
+                        decision,
+                        outcome=DecisionOutcome.rejected,
+                        reason_codes=("fallback-not-needed",),
+                        reason="An ordinary registration satisfies the request",
+                    )
+                )
+            else:
+                ordinary_records.append(record)
+                ordinary_decisions.append(decision)
+        selected_records, selected = ordinary_records, ordinary_decisions
     return (
         CompilationExplanation(
             subject=qualified_name(service_type),
@@ -9376,6 +9564,25 @@ def _finalize_plan(plan: _PlanSet, profile: CompilationProfiler | None = None) -
     )
 
 
+def _registration_template_definitions(
+    blueprint: _Blueprint,
+) -> tuple[tuple[_RegistrationTemplateDefinition, _Layer, str | None], ...]:
+    found: list[tuple[_RegistrationTemplateDefinition, _Layer, str | None]] = []
+    seen: set[str] = set()
+    removed: set[str] = set()
+    for layer in blueprint.layers:
+        removed.update(layer.removed_registration_template_ids)
+        for definition in sorted(layer.registration_templates, key=lambda item: item.order):
+            if definition.id not in seen and definition.id not in removed:
+                found.append((definition, layer, None))
+                seen.add(definition.id)
+    for boundary in blueprint.boundaries:
+        for definition in sorted(boundary.layer.registration_templates, key=lambda item: item.order):
+            if definition.id not in boundary.layer.removed_registration_template_ids:
+                found.append((definition, boundary.layer, boundary.name))
+    return tuple(found)
+
+
 def _template_definitions(blueprint: _Blueprint) -> tuple[tuple[_DecoratorTemplateDefinition, _Layer, str | None], ...]:
     found: list[tuple[_DecoratorTemplateDefinition, _Layer, str | None]] = []
     seen: set[str] = set()
@@ -9480,6 +9687,355 @@ def _template_sources(blueprint: _Blueprint, key: Any, area: str | None) -> list
             declaration_order[id(item[1])].get(item[0].id, len(declaration_order[id(item[1])])),
         ),
     )
+
+
+def _remove_generated_registrations(layer: _Layer, removed: set[str]) -> _Layer:
+    if not removed:
+        return layer
+    registry = _clone_registry(layer.registry)
+    registry._registrations = defaultdict(
+        deque,
+        {
+            key: deque(item for item in values if item.id not in removed)
+            for key, values in registry._registrations.items()
+        },
+    )
+    updates = {
+        name: {key: value for key, value in getattr(layer, name).items() if key not in removed}
+        for name in (
+            "registration_when",
+            "registration_preferences",
+            "registration_parent_precedence",
+            "registration_policies",
+            "root_policies",
+            "registration_origins",
+            "factory_specializations",
+            "contributions",
+            "service_groups",
+            "instance_implementation_types",
+            "generated_registrations",
+        )
+    }
+    return replace(
+        layer,
+        registry=registry,
+        factory_ids=layer.factory_ids - removed,
+        entrypoints=tuple(item for item in layer.entrypoints if item.origin.definition_id not in removed),
+        **updates,
+    )
+
+
+def _materialize_registration_template(
+    layer: _Layer,
+    definition: _RegistrationTemplateDefinition,
+    declaration_layer: _Layer,
+    source: RegistrationInfo,
+    specification: RegistrationTemplate,
+    generated_id: str,
+) -> _Layer:
+    # Reuse ordinary registration validation and metadata preparation on a
+    # disposable builder. No callback can access this private composition.
+    builder = _BuilderBase()
+    temporary_id = builder.register(**{item.name: getattr(specification, item.name) for item in fields(specification)})
+    generated = builder._layer()
+    registry = _clone_registry(layer.registry)
+    for key, registrations in generated.registry._registrations.items():
+        for registration in reversed(registrations):
+            if registration.id == temporary_id:
+                registration.id = generated_id
+                registry._registrations[key].appendleft(registration)
+            elif registration.id == generated_id:
+                registry._registrations[key].appendleft(registration)
+    updates = {}
+    for name in (
+        "registration_when",
+        "registration_preferences",
+        "registration_parent_precedence",
+        "registration_policies",
+        "root_policies",
+        "registration_origins",
+        "factory_specializations",
+        "contributions",
+        "service_groups",
+        "instance_implementation_types",
+    ):
+        merged = dict(getattr(layer, name))
+        addition = getattr(generated, name)
+        if temporary_id in addition:
+            merged[generated_id] = addition[temporary_id]
+        updates[name] = merged
+    origin = replace(definition.origin, kind="generated-registration", definition_id=generated_id)
+    updates["registration_origins"][generated_id] = origin
+    entrypoints = layer.entrypoints
+    if specification.root_policy == "entrypoint":
+        entrypoints = (*entrypoints, _EntryPoint(specification.service_type, with_id(generated_id), origin))
+    return replace(
+        layer,
+        registry=registry,
+        entrypoints=entrypoints,
+        factory_ids=layer.factory_ids | ({generated_id} if temporary_id in generated.factory_ids else set()),
+        generated_registrations={
+            **layer.generated_registrations,
+            generated_id: _GeneratedRegistration(definition.id, source.id, declaration_layer.owner_token),
+        },
+        **updates,
+    )
+
+
+def _registration_template_source(
+    blueprint: _Blueprint,
+    registration: legacy._Registration,
+    layer: _Layer,
+    source: RegistrationInfo,
+    inputs: _CompilationInputs,
+    profile: CompilationProfiler | None,
+) -> _RegistrationTemplateSource:
+    graph = _ComponentGraph()
+    implementation_type = (
+        constructor_type(source.implementation_type) if source.implementation_type is not None else None
+    ) or normalize_implementation_type(registration.implementation, registration.service_type)
+    metadata = graph.add(
+        _ComponentDraft(
+            id=source.id,
+            occurrence_id=1,
+            service_type=registration.service_type,
+            declared_service_type=registration.declared_service_type,
+            implementation=registration.implementation,
+            implementation_type=implementation_type,
+            lifespan=_component_lifespan(registration.lifespan),
+            name=source.name,
+            tags=source.tags,
+            build_args=inputs.get("build_args", _EMPTY_BUILD_ARGS),
+            kind=ComponentKind.registration,
+            activation=_registration_activation(registration),
+            boundary=blueprint.registration_area(layer),
+        )
+    )
+    graph.freeze()
+
+    def inspect_source() -> Component:
+        compiler = _Compiler(
+            blueprint,
+            build_args=inputs.get("build_args", _EMPTY_BUILD_ARGS),
+            anchored_singletons=inputs.get("anchored_singleton_steps"),
+            anchored_pre_configurations=inputs.get("anchored_pre_configuration_steps"),
+            anchored_owner_tokens=inputs.get("anchored_owner_tokens", frozenset()),
+            inherited_graph_sidecars=inputs.get("inherited_graph_sidecars", types.MappingProxyType({})),
+            profile=profile,
+            profile_phase="registration-template expansion",
+            profile_attempt="template source inspection",
+        )
+        try:
+            return compiler._compile_source_core(registration.id, registration.service_type)
+        except ContainerBuildError as error:
+            raise _RegistrationTemplateSourceGraphError(error.path) from error
+
+    return _RegistrationTemplateSource(metadata, inspect_source)
+
+
+def _expand_registration_templates(
+    blueprint: _Blueprint,
+    inputs: _CompilationInputs,
+    *,
+    profile: CompilationProfiler | None = None,
+) -> _Blueprint:
+    if not any(
+        layer.registration_templates or layer.generated_registrations
+        for layer in (*blueprint.layers, *(boundary.layer for boundary in blueprint.boundaries))
+    ):
+        return blueprint
+    definitions = _registration_template_definitions(blueprint)
+    active = {definition.id: layer.owner_token for definition, layer, _ in definitions}
+
+    def retain(layer: _Layer) -> _Layer:
+        return _remove_generated_registrations(
+            layer,
+            {
+                key
+                for key, item in layer.generated_registrations.items()
+                if active.get(item.template_id) != item.declaration_owner_token
+            },
+        )
+
+    blueprint = replace(
+        blueprint,
+        layers=tuple(retain(layer) for layer in blueprint.layers),
+        boundaries=tuple(replace(boundary, layer=retain(boundary.layer)) for boundary in blueprint.boundaries),
+    )
+    # Generated outputs never become sources, including outputs inherited from
+    # a parent plan. Every declaration sees the same finite source inventory.
+    source_blueprint = replace(
+        blueprint,
+        layers=tuple(
+            _remove_generated_registrations(layer, set(layer.generated_registrations)) for layer in blueprint.layers
+        ),
+        boundaries=tuple(
+            replace(
+                boundary,
+                layer=_remove_generated_registrations(boundary.layer, set(boundary.layer.generated_registrations)),
+            )
+            for boundary in blueprint.boundaries
+        ),
+    )
+    source_blueprint = _prepare_boundary_visibility(
+        _normalize_blueprint_aliases(source_blueprint),
+        build_args=inputs.get("build_args", _EMPTY_BUILD_ARGS),
+        compilation_inputs=inputs,
+        defer_missing=True,
+    )
+    definitions = _registration_template_definitions(source_blueprint)
+    layers = list(blueprint.layers)
+    boundaries = {boundary.name: boundary for boundary in blueprint.boundaries}
+    existing = {
+        key
+        for layer in (*layers, *(boundary.layer for boundary in blueprint.boundaries))
+        for key in layer.generated_registrations
+    }
+    owners = frozenset(layer.owner_token for layer in (*layers, *(b.layer for b in blueprint.boundaries)))
+    running = _EXPANDING_TEMPLATE_OWNERS.get()
+    if owners & running:
+        raise _TemplateExpansionReentryError()
+    token = _EXPANDING_TEMPLATE_OWNERS.set(running | owners)
+    selections = []
+    try:
+        for definition, declaration_layer, area in definitions:
+            key = definition.for_each
+            if getattr(key, "__parameters__", ()) or _typevars_in(key):
+                raise ContainerBuildError(
+                    "Registration templates require an exact closed source service key",
+                    code="template-source-open-generic",
+                    path=(definition.id, qualified_name(key)),
+                )
+            seen: set[str] = set()
+            for registration, source_layer in _template_sources(source_blueprint, key, area):
+                if registration.id in seen:
+                    continue
+                if registration.service_type != key and not source_blueprint.visibility_targets(
+                    area, registration.id, key
+                ):
+                    continue
+                if getattr(registration.service_type, "__parameters__", ()) or _typevars_in(registration.service_type):
+                    continue
+                seen.add(registration.id)
+                phase = "source metadata"
+                try:
+                    source = _source_registration_info(registration, source_layer)
+                    inspection = _registration_template_source(
+                        source_blueprint, registration, source_layer, source, inputs, profile
+                    )
+                    phase = "source filter"
+                    candidate_id = str(uuid5(UUID(definition.id), f"{declaration_layer.owner_token}:{source.id}"))
+                    # Inherited outputs are frozen ordinary registrations; a
+                    # changed overlay context cannot silently replace them.
+                    inherited_boundary = area is not None and boundaries[area].root_layer_offset > 0
+                    try:
+                        selected = candidate_id in existing or (
+                            not inherited_boundary and bool(definition.source_filter(inspection))
+                        )
+                    finally:
+                        core = inspection.finish_inspection()
+                    generated_id = None
+                    if selected:
+                        generated_id = candidate_id
+                        if generated_id not in existing:
+                            phase = "template factory"
+                            specification = definition.template(source)
+                            if not isinstance(specification, RegistrationTemplate):
+                                if inspect.iscoroutine(specification):
+                                    specification.close()
+                                raise TypeError("Template factories must return a RegistrationTemplate synchronously")
+                            phase = "generated registration"
+                            if area is None:
+                                layers[0] = _materialize_registration_template(
+                                    layers[0],
+                                    definition,
+                                    declaration_layer,
+                                    source,
+                                    specification,
+                                    generated_id,
+                                )
+                            else:
+                                boundary = boundaries[area]
+                                boundaries[area] = replace(
+                                    boundary,
+                                    layer=_materialize_registration_template(
+                                        boundary.layer,
+                                        definition,
+                                        declaration_layer,
+                                        source,
+                                        specification,
+                                        generated_id,
+                                    ),
+                                )
+                    selections.append(
+                        _TemplateSourceSelection(
+                            template_id=definition.id,
+                            source=source,
+                            component=core,
+                            selected=selected,
+                            source_order=len(seen) - 1,
+                            declaration_area=area,
+                            source_area=source_blueprint.registration_area(source_layer),
+                            generated_id=generated_id,
+                            source_filter_description=_filter_description(definition.source_filter),
+                            source_bindings=_source_binding_labels(source),
+                            origin=definition.origin,
+                        )
+                    )
+                except Exception as error:
+                    callback = (
+                        phase in ("source filter", "template factory")
+                        and type(error) is not _RegistrationTemplateSourceGraphError
+                    )
+                    detail = f"{phase} raised {type(error).__name__}" if callback else _safe_error_message(error)
+                    raise ContainerBuildError(
+                        f"Registration template {definition.id} source {registration.id}: {detail}",
+                        code=(
+                            "template-expansion-reentry"
+                            if type(error) is _TemplateExpansionReentryError
+                            else "template-expansion"
+                            if callback
+                            else error.code
+                            if isinstance(error, ContainerBuildError) and error.code
+                            else "template-expansion"
+                        ),
+                        path=(
+                            definition.id,
+                            registration.id,
+                            *(error.path if isinstance(error, ContainerBuildError) and not callback else ()),
+                        ),
+                    ) from error
+        return replace(
+            blueprint,
+            layers=tuple(layers),
+            boundaries=tuple(boundaries.values()),
+            template_selections=tuple(selections),
+        )
+    finally:
+        _EXPANDING_TEMPLATE_OWNERS.reset(token)
+
+
+def _check_registration_template_sources(blueprint: _Blueprint) -> None:
+    """Expansion must not change the visibility that determined its sources."""
+    for definition, _, area in _registration_template_definitions(blueprint):
+        before = {item.source.id for item in blueprint.template_selections if item.template_id == definition.id}
+        after = {
+            registration.id
+            for registration, layer in _template_sources(blueprint, definition.for_each, area)
+            if registration.id not in layer.generated_registrations
+            and not getattr(registration.service_type, "__parameters__", ())
+            and not _typevars_in(registration.service_type)
+            and (
+                registration.service_type == definition.for_each
+                or blueprint.visibility_targets(area, registration.id, definition.for_each)
+            )
+        }
+        if before != after:
+            raise ContainerBuildError(
+                "Registration template expansion changed source visibility",
+                code="template-source-visibility-changed",
+                path=(definition.id,),
+            )
 
 
 def _expand_decorator_templates(
@@ -9773,6 +10329,19 @@ def _compile_with_report(
             census_ids=census_ids,
         )
     try:
+        if any(layer.registration_templates for layer in (*blueprint.layers, *(b.layer for b in blueprint.boundaries))):
+            blueprint = (
+                _expand_registration_templates(blueprint, compilation_inputs)
+                if profile is None
+                else profile.call(
+                    "registration-template expansion",
+                    "phase",
+                    _expand_registration_templates,
+                    blueprint,
+                    compilation_inputs,
+                    profile=profile,
+                )
+            )
         if profile is None:
             blueprint = _normalize_blueprint_aliases(blueprint)
             blueprint = _prepare_boundary_visibility(
@@ -9788,6 +10357,7 @@ def _compile_with_report(
                 build_args=build_args,
                 compilation_inputs=compilation_inputs,
             )
+        _check_registration_template_sources(blueprint)
         if profile is None:
             expansion = _expand_decorator_templates(
                 blueprint,
@@ -9811,7 +10381,9 @@ def _compile_with_report(
                 profile=profile,
             )
         expanded = replace(
-            blueprint, generated_decorators=expansion.candidates, template_selections=expansion.selections
+            blueprint,
+            generated_decorators=expansion.candidates,
+            template_selections=(*blueprint.template_selections, *expansion.selections),
         )
         if expansion.candidates:
 
@@ -10369,7 +10941,14 @@ class Scope(_RuntimeOwner):
                 plans = self._plan.provider_roots.get(service_type)
             if plans is not None:
                 self._resolution_started = True
-                return tuple(plan for plan in plans if filter(_provider_selection_component(plan.component)))
+                ordinary = tuple(
+                    plan
+                    for plan in plans
+                    if not plan.is_fallback and filter(_provider_selection_component(plan.component))
+                )
+                return ordinary or tuple(
+                    plan for plan in plans if plan.is_fallback and filter(_provider_selection_component(plan.component))
+                )
         if (service_type, None) not in self._plan.blueprint.slots:
             canonical_type = normalize_type_alias(service_type)
             if canonical_type is not service_type:
@@ -11243,8 +11822,11 @@ class _BuilderBase:
         self._contributions: dict[str, Mapping[ProviderMapGroup[Any, Any], Hashable]] = {}
         self._service_groups: dict[str, frozenset[ServiceGroup]] = {}
         self._pattern_ids: list[str] = []
+        self._fallback_ids: set[str] = set()
         self._decorators: list[_DecoratorDefinition] = []
         self._decorator_templates: list[_DecoratorTemplateDefinition] = []
+        self._registration_templates: list[_RegistrationTemplateDefinition] = []
+        self._removed_registration_template_ids: set[str] = set()
         self._decorator_declaration_ids: list[str] = []
         self._removed_template_ids: set[str] = set()
         self._instance_implementation_types: dict[str, Any] = {}
@@ -11383,8 +11965,11 @@ class _BuilderBase:
             contributions=types.MappingProxyType(dict(self._contributions)),
             service_groups=types.MappingProxyType(service_groups),
             pattern_ids=tuple(self._pattern_ids),
+            fallback_ids=frozenset(self._fallback_ids),
             ensured_import_modules=ensured_import_modules,
             decorator_templates=tuple(self._decorator_templates),
+            registration_templates=tuple(self._registration_templates),
+            removed_registration_template_ids=frozenset(self._removed_registration_template_ids),
             decorator_declaration_ids=tuple(self._decorator_declaration_ids),
             removed_template_ids=frozenset(self._removed_template_ids),
             instance_implementation_types=types.MappingProxyType(dict(self._instance_implementation_types)),
@@ -11554,6 +12139,53 @@ class _BuilderBase:
             self._factory_ids.add(component_id)
             if factory_specialization is not None:
                 self._factory_specializations[component_id] = factory_specialization
+        return component_id
+
+    def register_fallback(
+        self,
+        service_type: TypeForm[TService],
+        implementation_type: TypeForm[TService] | None = None,
+        *,
+        factory: Callable[..., Any] | None = None,
+        factory_specialization: object | None = None,
+        instance: TService | None = None,
+        lifespan: LifespanPolicy = "auto",
+        scope: ScopePolicy = "current",
+        name: str | None = None,
+        arguments: Mapping[str, Any] | None = None,
+        tags: Iterable[legacy.Tag] | None = None,
+        when: ComponentFilter = all_components,
+        parent_precedence: int = 0,
+        prefer: ComponentPreference | None = None,
+        contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
+        groups: Iterable[ServiceGroup] = (),
+        root_policy: RootPolicy = "resolvable",
+    ) -> str:
+        """Register a default used only when ordinary candidates fail selection.
+
+        Open generic implementations are specialized for each closed request.
+        The dependency filter and contextual ``when`` predicate apply unchanged.
+        """
+        component_id = self.register(
+            service_type,
+            implementation_type,
+            factory=factory,
+            factory_specialization=factory_specialization,
+            instance=instance,
+            lifespan=lifespan,
+            scope=scope,
+            name=name,
+            arguments=arguments,
+            tags=tags,
+            when=when,
+            parent_precedence=parent_precedence,
+            prefer=prefer,
+            contributes=contributes,
+            groups=groups,
+            root_policy=root_policy,
+        )
+        self._fallback_ids.add(component_id)
+        self._registration_origins[component_id] = self._definition_origin("fallback-registration", component_id)
         return component_id
 
     def register_pattern(
@@ -11789,6 +12421,87 @@ class _BuilderBase:
         if prefer is not Undefined:
             self._registration_preferences[component_id] = prefer
 
+    def register_registration_template(
+        self,
+        *,
+        for_each: Any,
+        template: Callable[[RegistrationInfo], RegistrationTemplate],
+        source_filter: ComponentFilter = all_components,
+    ) -> str:
+        self._assert_mutable()
+        if not callable(template) or inspect.iscoroutinefunction(template) or inspect.isasyncgenfunction(template):
+            raise TypeError("template must be a synchronous callable")
+        if not callable(source_filter):
+            raise TypeError("source_filter must be callable")
+        definition_id = str(uuid4())
+        self._registration_templates.append(
+            _RegistrationTemplateDefinition(
+                id=definition_id,
+                for_each=_composition_type(for_each),
+                template=template,
+                source_filter=source_filter,
+                order=self._new_decorator_order(),
+                origin=self._definition_origin("registration-template", definition_id),
+            )
+        )
+        return definition_id
+
+    def _find_registration_template(self, template_id: str) -> _RegistrationTemplateDefinition | None:
+        if template_id in self._removed_registration_template_ids:
+            return None
+        own = next((item for item in self._registration_templates if item.id == template_id), None)
+        if own is not None:
+            return own
+        parent = getattr(self, "_parent", None)
+        if parent is None:
+            return None
+        return next(
+            (
+                item
+                for item, _, area in _registration_template_definitions(parent._plan.blueprint)
+                if item.id == template_id and area is None
+            ),
+            None,
+        )
+
+    def patch_registration_template(
+        self,
+        template_id: str,
+        *,
+        for_each: Any = _DECORATOR_UNSET,
+        template: Callable[[RegistrationInfo], RegistrationTemplate] | object = _DECORATOR_UNSET,
+        source_filter: ComponentFilter | object = _DECORATOR_UNSET,
+    ) -> None:
+        self._assert_mutable()
+        definition = self._find_registration_template(template_id)
+        if definition is None:
+            raise KeyError(template_id)
+        factory = definition.template if template is _DECORATOR_UNSET else template
+        predicate = definition.source_filter if source_filter is _DECORATOR_UNSET else source_filter
+        if not callable(factory) or inspect.iscoroutinefunction(factory) or inspect.isasyncgenfunction(factory):
+            raise TypeError("template must be a synchronous callable")
+        if not callable(predicate):
+            raise TypeError("source_filter must be callable")
+        patched = replace(
+            definition,
+            for_each=definition.for_each if for_each is _DECORATOR_UNSET else _composition_type(for_each),
+            template=factory,
+            source_filter=predicate,
+        )
+        for index, candidate in enumerate(self._registration_templates):
+            if candidate.id == template_id:
+                self._registration_templates[index] = patched
+                break
+        else:
+            self._registration_templates.append(patched)
+
+    def remove_registration_template(self, template_id: str) -> None:
+        self._assert_mutable()
+        if self._find_registration_template(template_id) is None:
+            raise KeyError(template_id)
+        self._registration_templates = [item for item in self._registration_templates if item.id != template_id]
+        self._removed_registration_template_ids.add(template_id)
+
     def register_decorator_template(
         self,
         *,
@@ -11880,9 +12593,11 @@ class _BuilderBase:
     def _expand_decorator_templates(self, *, build_args: Mapping[str, Any] | None = None) -> _TemplateExpansion:
         """Inspect source expansion independently of generated target compilation."""
         blueprint, inputs = self._compilation_snapshot(build_args)
+        blueprint = _expand_registration_templates(blueprint, inputs)
         prepared = _prepare_boundary_visibility(
             _normalize_blueprint_aliases(blueprint), build_args=inputs["build_args"], compilation_inputs=inputs
         )
+        _check_registration_template_sources(prepared)
         return _expand_decorator_templates(prepared, **inputs)
 
     def register_decorator(
@@ -12076,7 +12791,7 @@ class _BuilderBase:
         prefer: ComponentPreference | None = None,
         groups: Iterable[ServiceGroup] = (),
     ) -> None:
-        """Queue concrete subclass discovery for the next successful build.
+        """Queue concrete subclass discovery, inferring open generic bases.
 
         Declared module names are imported before any discovery rule takes its
         live subclass snapshot. ``include_children=True`` recursively imports
@@ -12094,61 +12809,7 @@ class _BuilderBase:
         self._registration_discoveries.append(
             _RegistrationDiscovery(
                 base_type=base_type,
-                generic=False,
-                fallback_type=None,
-                ensure_import_modules=_module_imports(ensure_import_modules),
-                include_children=include_children,
-                lifespan=effective_lifespan,
-                lifespan_policy=lifespan,
-                scope_policy=scope,
-                subclass_type_filter=subclass_type_filter,
-                name=name,
-                tags=tuple(tags or ()),
-                when=when,
-                parent_precedence=parent_precedence,
-                prefer=prefer,
-                groups=service_groups,
-                origin=self._definition_origin("registration", None),
-            )
-        )
-
-    def register_generic_subclasses(
-        self,
-        generic_service_type: type,
-        *,
-        fallback_type: type | None = None,
-        ensure_import_modules: str | Iterable[str] = (),
-        include_children: bool = False,
-        lifespan: LifespanPolicy = "auto",
-        scope: ScopePolicy = "current",
-        subclass_type_filter: Callable[[type], bool] = legacy.always_true,
-        name: str | None = None,
-        tags: Iterable[legacy.Tag] | None = None,
-        when: ComponentFilter = all_components,
-        parent_precedence: int = 0,
-        prefer: ComponentPreference | None = None,
-        groups: Iterable[ServiceGroup] = (),
-    ) -> None:
-        """Queue closed-generic subclass discovery for the build snapshot.
-
-        Declared module names are imported before any discovery rule takes its
-        live subclass snapshot. ``include_children=True`` recursively imports
-        discoverable children of declared packages.
-        """
-
-        self._assert_mutable()
-        _validate_parent_precedence(parent_precedence)
-        _validate_preference(prefer)
-        effective_lifespan = _component_policy(lifespan, scope)
-        if not isinstance(include_children, bool):
-            raise TypeError("include_children must be a bool")
-        service_groups = _materialize_service_groups(groups)
-        _validate_service_groups(generic_service_type, service_groups)
-        self._registration_discoveries.append(
-            _RegistrationDiscovery(
-                base_type=generic_service_type,
-                generic=True,
-                fallback_type=fallback_type,
+                generic=bool(getattr(base_type, "__parameters__", ())),
                 ensure_import_modules=_module_imports(ensure_import_modules),
                 include_children=include_children,
                 lifespan=effective_lifespan,

@@ -24,16 +24,16 @@ class CreateOrderHandler(CommandHandler[CreateOrder]):
 
 
 builder = ContainerBuilder()
-builder.register_generic_subclasses(CommandHandler)
+builder.register_subclasses(CommandHandler)
 container = builder.build()
 
 handler = container.resolve(CommandHandler[CreateOrder])
 ```
 
-`register_generic_subclasses(...)` records a discovery rule and returns `None`. Module names declared with `ensure_import_modules=` are imported during `build()`, before any subclass rule takes its live snapshot. Pass one module name or an iterable of names. Imports declared by any rule happen before all discovery, so rule order cannot make a class disappear. The option only ensures imports; it does not filter discovery by module.
+`register_subclasses(...)` records a discovery rule and returns `None`. Module names declared with `ensure_import_modules=` are imported during `build()`, before any subclass rule takes its live snapshot. Pass one module name or an iterable of names. Imports declared by any rule happen before all discovery, so rule order cannot make a class disappear. The option only ensures imports; it does not filter discovery by module.
 
 ```python
-builder.register_generic_subclasses(
+builder.register_subclasses(
     CommandHandler,
     ensure_import_modules=(
         "my_app.create_order",
@@ -45,7 +45,7 @@ builder.register_generic_subclasses(
 Named packages do not import their children by default. Set `include_children=True` to recursively import every discoverable child module:
 
 ```python
-builder.register_generic_subclasses(
+builder.register_subclasses(
     CommandHandler,
     ensure_import_modules="my_app.command_handlers",
     include_children=True,
@@ -64,7 +64,7 @@ This means a class created after the rule is declared but before `build()` is in
 ```python
 import types
 
-builder.register_generic_subclasses(CommandHandler)
+builder.register_subclasses(CommandHandler)
 
 DynamicHandler = types.new_class(
     "DynamicHandler",
@@ -372,7 +372,7 @@ Template origins stay out of semantic fingerprints, and programs without pattern
 ```python
 import clean_ioc.type_filters as tf
 
-builder.register_generic_subclasses(
+builder.register_subclasses(
     CommandHandler,
     subclass_type_filter=~tf.name_end_with("Decorator"),
 )
@@ -383,13 +383,42 @@ Type filters remain separate from component filters because they answer a discov
 ## Fallback implementation
 
 ```python
-builder.register_generic_subclasses(
+builder.register_subclasses(Serializer)
+builder.register_fallback(Serializer, JsonSerializer)
+```
+
+`register_subclasses` detects open generic bases and discovers their closed implementations.
+`register_fallback` is independent of discovery and accepts the same options as `register`.
+It works for both ordinary and generic services. The compiler tries fallbacks only when
+no ordinary candidate passes both its `when` predicate and the dependency's component filter.
+A broken ordinary dependency graph still fails the build.
+
+The fallback's `when` sees the same parent context, and the dependency's name/tag filter
+is applied unchanged. For example:
+
+```python
+builder.register_fallback(
     Serializer,
-    fallback_type=JsonSerializer,
+    JsonSerializer,
+    name="namedx",
+    tags=[Tag("Y", "Z")],
+    when=cf.parent(cf.implementation_type_is(Consumer)),
+)
+builder.register(
+    Consumer,
+    arguments={"serializer": select(cf.with_name("namedx") & cf.has_tag("Y", "Z"))},
 )
 ```
 
-When no exact closed implementation exists, the compiler specializes the open fallback edge for the requested occurrence.
+If `Consumer.serializer` requests `Serializer[Order]`, the compiler specializes the
+fallback and its constructor dependencies for `Order`. Open generic factories also work
+through `factory=`. Each closed request has its own cache identity.
+
+Collections use fallbacks only when no ordinary members match. Root filters use the same
+priority; root plans are compiled during `build()`, including eligible fallback plans.
+Use `root_policy="dependency_only"` for a fallback intended only for injection.
+An exact fallback and an open fallback may both match; existing precedence, preference,
+and registration order rules decide between matching fallbacks.
 
 ## Generic decorators
 

@@ -21,7 +21,7 @@ def memberships(builder: ContainerBuilder) -> Mapping[str, frozenset[ServiceGrou
 
 def test_public_builder_protocol_and_concrete_methods_accept_groups():
     for builder_type in (ComponentBuilder, ContainerBuilder):
-        for method in ("register", "register_pattern", "register_subclasses", "register_generic_subclasses"):
+        for method in ("register", "register_pattern", "register_subclasses", "register_fallback"):
             assert "groups" in inspect.signature(getattr(builder_type, method)).parameters
 
 
@@ -222,7 +222,8 @@ def test_subclass_and_generic_discovery_include_fallback_membership():
     generic_group = ServiceGroup("generic", service_type=GenericService)
     builder = ContainerBuilder()
     builder.register_subclasses(Service, groups=(x for x in (simple_group, simple_group)))
-    builder.register_generic_subclasses(GenericService, fallback_type=Fallback, groups=(x for x in (generic_group,)))
+    builder.register_subclasses(GenericService, groups=(x for x in (generic_group,)))
+    builder.register_fallback(GenericService, Fallback, groups=(x for x in (generic_group,)))
     layer = builder._layer()
     simple_ids = [item.id for item in layer.registry.get_registrations(Service) if item.id not in layer.internal_ids]
     generic_ids = [item.id for item in layer.registry.get_registrations(GenericService[Command])]
@@ -247,7 +248,7 @@ def test_discovery_rejects_incompatible_groups_before_queue_mutation():
     with pytest.raises(TypeError, match="wrong"):
         builder.register_subclasses(Service, groups=[wrong])
     with pytest.raises(TypeError, match="wrong"):
-        builder.register_generic_subclasses(Service, groups=[wrong])
+        builder.register_subclasses(Service, groups=[wrong])
     assert builder._registration_discoveries == []
 
 
@@ -264,12 +265,11 @@ def test_discovered_closed_generic_conflict_does_not_publish_partial_cache():
     allowed = {Accepted, Rejected}
     group = ServiceGroup("integers", service_type=Service[int])
     builder = ContainerBuilder()
-    builder.register_generic_subclasses(Service, groups=[group], subclass_type_filter=lambda item: item in allowed)
+    builder.register_subclasses(Service, groups=[group], subclass_type_filter=lambda item: item in allowed)
     rule = builder._registration_discoveries[0]
     with pytest.raises(TypeError, match="integers"):
         builder.build()
     assert rule.registrations == {}
-    assert rule.fallback_registration is None
 
     allowed.remove(Rejected)
     container = builder.build()
@@ -312,7 +312,7 @@ def test_pattern_specialization_retains_membership_by_new_definition_id():
     definition = compiler.blueprint.registration_definition(template_id)
     assert definition is not None
     registration, normalized_layer = definition
-    specialized = compiler._specialize_factory(registration, normalized_layer, Service[list[int]])
+    specialized = compiler._specialize_registration(registration, normalized_layer, Service[list[int]])
     assert specialized.id != template_id
     assert specialized.service_type == Service[list[int]]
     assert compiler._service_groups_for(specialized, normalized_layer) == frozenset({group})

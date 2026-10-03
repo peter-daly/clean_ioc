@@ -448,7 +448,7 @@ class IntOperation(GenericOperation[int]):
 
 def test_closed_generic_discovery_and_pattern_propagate_scope_policy() -> None:
     builder = ContainerBuilder()
-    builder.register_generic_subclasses(GenericOperation, scope="per_call")
+    builder.register_subclasses(GenericOperation, scope="per_call")
     with builder.build() as container:
         assert container.resolve(GenericOperation[int]).run(3) == "int:3"
 

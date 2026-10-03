@@ -70,9 +70,7 @@ def test_signed_values_and_ordinary_ties(values):
 
 
 @pytest.mark.parametrize("bad", [True, False, 1.5, "10", None, lambda: 1])
-@pytest.mark.parametrize(
-    "method", ["register", "register_subclasses", "register_generic_subclasses", "register_pattern"]
-)
+@pytest.mark.parametrize("method", ["register", "register_subclasses", "register_fallback", "register_pattern"])
 def test_invalid_declarations_are_atomic(method, bad):
     builder = ContainerBuilder()
     kwargs: dict[str, Any] = {"parent_precedence": bad}
@@ -249,7 +247,8 @@ def test_generic_discovery_fallback_patch_and_exact_pattern_tier():
             self.service = service
 
     builder = ContainerBuilder()
-    builder.register_generic_subclasses(Service, fallback_type=Open, parent_precedence=10)
+    builder.register_subclasses(Service, parent_precedence=10)
+    builder.register_fallback(Service, Open, parent_precedence=10)
     discovered = builder.get_component_id(Service[int])
     assert discovered is not None
     builder.patch_component(Service[int], discovered, parent_precedence=-10)

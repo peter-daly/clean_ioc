@@ -1,3 +1,21 @@
+2.0.0b28
+--------
+
+    Add ``register_fallback`` for ordinary and generic services. Fallbacks use
+    the request's component filter and parent context when no ordinary candidate
+    matches. Specialize open generic fallback dependencies and cache identities
+    during build. ``register_subclasses`` now detects generic bases; replace
+    ``register_generic_subclasses(..., fallback_type=...)`` with
+    ``register_subclasses(...)`` and a separate ``register_fallback(...)``.
+
+    Add registration templates: create one ordinary registration per selected
+    source registration, with optional exact source dependency binding. Support
+    template edits, overlays, boundaries, and captured source explanations.
+    Sources can also consume their generated registrations, with parent filters
+    binding each generated dependency to its source. Metadata source filtering
+    runs before dependency compilation; structural filters inspect on demand.
+
+
 2.0.0b27
 --------
 

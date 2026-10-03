@@ -139,7 +139,7 @@ def test_invalid_stages_rejected_before_use(invalid):
 
 @pytest.mark.parametrize(
     "surface",
-    ["register", "register_pattern", "register_subclasses", "register_generic_subclasses", "patch_component", "select"],
+    ["register", "register_pattern", "register_subclasses", "register_fallback", "patch_component", "select"],
 )
 def test_wrong_chain_type_rejected_atomically(surface):
     builder = ContainerBuilder()
@@ -763,12 +763,10 @@ def test_generic_discovery_preferences_and_patched_fallback_are_preserved():
             self.service = service
 
     builder = ContainerBuilder()
-    builder.register_generic_subclasses(Service, fallback_type=Open, prefer=prefer(cf.implementation_type_is(First)))
+    builder.register_subclasses(Service, prefer=prefer(cf.implementation_type_is(First)))
+    fallback = builder.register_fallback(Service, Open, prefer=prefer(cf.implementation_type_is(First)))
     ids = builder.get_component_ids(Service[int])
-    assert len(ids) == 2
-    rule = builder._registration_discoveries[0]
-    assert rule.fallback_registration is not None
-    fallback = rule.fallback_registration.id
+    assert len(ids) == 3
     builder.patch_component(Service, fallback, prefer=None)
     builder.register(Consumer)
     assert type(builder.build().resolve(Consumer).service) is First

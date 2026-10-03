@@ -1500,7 +1500,7 @@ def test_generic_subclass_and_decorator_discovery_share_the_build_snapshot():
             self.child = child
 
     builder = ContainerBuilder()
-    assert builder.register_generic_subclasses(Handler) is None
+    assert builder.register_subclasses(Handler) is None
     builder.register_decorator(Handler, HandlerDecorator, decorated_arg="child")
 
     late_handler_type = types.new_class("LateHandler", (Handler[Command],))
@@ -1528,7 +1528,7 @@ def test_generic_subclass_discovery_imports_declared_modules_at_build(tmp_path, 
     )
 
     builder = ContainerBuilder()
-    builder.register_generic_subclasses(Handler, ensure_import_modules=[implementation_module_name])
+    builder.register_subclasses(Handler, ensure_import_modules=[implementation_module_name])
     container = builder.build()
 
     imported = sys.modules[implementation_module_name]
@@ -1560,7 +1560,7 @@ def test_deferred_generic_decorators_preserve_declaration_order(generic_first):
             self.child = child
 
     builder = ContainerBuilder()
-    builder.register_generic_subclasses(Handler)
+    builder.register_subclasses(Handler)
     if generic_first:
         builder.register_decorator(Handler, GenericDecorator, decorated_arg="child")
         builder.register_decorator(Handler[Command], ExplicitDecorator, decorated_arg="child")
@@ -1688,7 +1688,7 @@ def test_discovery_deduplicates_diamonds_and_excludes_abstract_and_raw_generics(
     raw_handler_type = type("RawHandler", (Handler,), {})
 
     generic_builder = ContainerBuilder()
-    generic_builder.register_generic_subclasses(Handler)
+    generic_builder.register_subclasses(Handler)
     generic_container = generic_builder.build()
 
     assert raw_handler_type not in {component.implementation_type for component in generic_container.components}

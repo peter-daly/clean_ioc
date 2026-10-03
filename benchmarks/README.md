@@ -8,6 +8,24 @@ against explicit controls. Setup and warmup are excluded from runtime measuremen
 compilation, and close. Use dedicated named baselines and explicit report paths under an ignored `.benchbro/`
 experiment, and inspect sample quality before interpreting comparisons.
 
+`bench_registration_templates.py` compares one generated worker per source against equivalent explicit registrations
+at 1, 10, and 100 sources. Build includes declarations, compilation, and close. Runtime uses prebuilt, warmed
+containers and measures single-worker resolution plus collections of 100 workers, with transient and singleton
+lifespans. Fixture checks ensure each worker receives the same exact source in both modes. The separate
+`registration-template-parent-build` case measures sources depending on generated services, using exact parent filters
+and dependency-only registrations at the same sizes. Its explicit control produces the same parent-specific edges.
+
+Capture the current registration-template baseline with explicit report paths:
+
+```bash
+uv run benchbro run benchmarks/bench_registration_templates.py --no-compare \
+  --output-json .benchbro/registration-templates-before-parent-resolution/run-1.json \
+  --output-md .benchbro/registration-templates-before-parent-resolution/run-1.md
+```
+
+Repeat unchanged code with different report filenames to check normal variance before comparing a later change.
+`--no-compare` skips comparison, but BenchBro can still backfill new entries in its local baseline.
+
 Run it from the repository root:
 
 ```bash

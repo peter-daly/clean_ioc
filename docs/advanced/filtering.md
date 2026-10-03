@@ -396,7 +396,7 @@ cannot override an explicit `10`. Bundle authors should document nonzero policie
 these values; there are no universal library, application, geography, or privacy bands. Controlled registration order,
 explicit consumer selection, and mutually exclusive `when` rules remain useful alternatives.
 
-The keyword is also available on `register_pattern`, `register_subclasses`, and `register_generic_subclasses`, including
+The keyword is also available on `register_pattern`, `register_subclasses`, and `register_fallback`, including
 discovery fallbacks, boundary builders, and scope builders. Locally owned registrations can be changed before build with
 `patch_component(Service, component_id, parent_precedence=20)`; `0` resets the value and `None` leaves it unchanged.
 
@@ -540,7 +540,7 @@ selects Europe before either chain runs. Library authors should document registr
 stage can defeat an application's later zero-precedence fallback. Applications can deliberately override this with
 a consumer preference, a hard filter, or a higher numeric precedence.
 
-`prefer=` is available on `register`, `register_pattern`, `register_subclasses`, and `register_generic_subclasses`,
+`prefer=` is available on `register`, `register_pattern`, `register_subclasses`, and `register_fallback`,
 including boundary and scope builders. `patch_component(..., prefer=Undefined)` leaves the chain unchanged,
 `prefer=None` clears it, and a new chain replaces it. Patches are local and available before successful build.
 `ComponentSelector` remains an eligibility abstraction; pair `selector.to_filter()` with a separate chain.

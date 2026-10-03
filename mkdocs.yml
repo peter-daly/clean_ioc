@@ -19,6 +19,7 @@ nav:
   - Generics: generics.md
   - Decorators: decorators.md
   - Decorator templates: decorator-templates.md
+  - Registration templates: registration-templates.md
   - Scopes: scopes.md
   - Pre-Configurations: pre-configurations.md
   - Bundles: bundles.md

@@ -80,7 +80,7 @@ def test_derived_arguments_with_generic_decorators():
 
     builder = ContainerBuilder()
 
-    builder.register_generic_subclasses(MessageHandler)
+    builder.register_subclasses(MessageHandler)
     builder.register_decorator(MessageHandler, TransactionMessageHandlerDecorator, decorated_arg="child")
 
     builder.register(
@@ -158,7 +158,7 @@ def test_generic_decorators_where_we_want_to_filter_away_on_certain_generic_type
 
     builder = ContainerBuilder()
 
-    builder.register_generic_subclasses(MessageHandler)
+    builder.register_subclasses(MessageHandler)
     builder.register_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
@@ -229,7 +229,7 @@ def test_generic_decorators_with_different_implementations_of_the_same_dependenc
 
     builder = ContainerBuilder()
 
-    builder.register_generic_subclasses(MessageHandler)
+    builder.register_subclasses(MessageHandler)
     builder.register_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
@@ -330,7 +330,7 @@ def test_generic_decorator_can_set_the_generic_args_of_a_dependency_with_differe
     builder.register(DocRepository)
     builder.register(SqlRepository)
 
-    builder.register_generic_subclasses(MessageHandler, subclass_type_filter=~tf.name_end_with("Decorator"))
+    builder.register_subclasses(MessageHandler, subclass_type_filter=~tf.name_end_with("Decorator"))
     builder.register_decorator(
         MessageHandler,
         TransactionMessageHandlerDecorator,
@@ -475,20 +475,26 @@ def test_generic_shared_dependency_among_different_generic_decorator_types_with_
 
     builder = ContainerBuilder()
 
-    builder.register_generic_subclasses(
+    builder.register_subclasses(
+        ContextGetter, when=cf.parent(cf.implementation_matches_type_filter(tf.is_subclass_of(CommandContextDecorator)))
+    )
+    builder.register_fallback(
         ContextGetter,
-        fallback_type=BasicCommandContextGetter,
+        BasicCommandContextGetter,
         when=cf.parent(cf.implementation_matches_type_filter(tf.is_subclass_of(CommandContextDecorator))),
     )
 
-    builder.register_generic_subclasses(
+    builder.register_subclasses(
+        ContextGetter, when=cf.parent(cf.implementation_matches_type_filter(tf.is_subclass_of(QueryContextDecorator)))
+    )
+    builder.register_fallback(
         ContextGetter,
-        fallback_type=BasicQueryContextGetter,
+        BasicQueryContextGetter,
         when=cf.parent(cf.implementation_matches_type_filter(tf.is_subclass_of(QueryContextDecorator))),
     )
 
-    builder.register_generic_subclasses(CommandHandler)
-    builder.register_generic_subclasses(QueryHandler)
+    builder.register_subclasses(CommandHandler)
+    builder.register_subclasses(QueryHandler)
 
     builder.register_decorator(CommandHandler, CommandContextDecorator)
     builder.register_decorator(QueryHandler, QueryContextDecorator)
@@ -625,10 +631,11 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes():
 
     builder = ContainerBuilder()
 
-    builder.register_generic_subclasses(CommandHandler)
-    builder.register_generic_subclasses(QueryHandler)
-    builder.register_generic_subclasses(EventHandler)
-    builder.register_generic_subclasses(ThingDoer, fallback_type=DefaultThingDoer)
+    builder.register_subclasses(CommandHandler)
+    builder.register_subclasses(QueryHandler)
+    builder.register_subclasses(EventHandler)
+    builder.register_subclasses(ThingDoer)
+    builder.register_fallback(ThingDoer, DefaultThingDoer)
 
     builder.register_decorator(CommandHandler, OperationDecorator, decorated_arg="handler")
     builder.register_decorator(QueryHandler, OperationDecorator, decorated_arg="handler")
@@ -737,22 +744,14 @@ def test_generic_decorator_when_decorator_decoprates_common_base_classes_can_hav
 
     builder = ContainerBuilder()
 
-    builder.register_generic_subclasses(
-        ThingDoer,
-        fallback_type=DoAThingWithCommand,
-        subclass_type_filter=thing_doer_type_filter(Command),
-        tags=[Tag("command")],
-    )
+    builder.register_subclasses(ThingDoer, subclass_type_filter=thing_doer_type_filter(Command), tags=[Tag("command")])
+    builder.register_fallback(ThingDoer, DoAThingWithCommand, tags=[Tag("command")])
 
-    builder.register_generic_subclasses(
-        ThingDoer,
-        fallback_type=DoAThingWithEvent,
-        subclass_type_filter=thing_doer_type_filter(Event),
-        tags=[Tag("event")],
-    )
+    builder.register_subclasses(ThingDoer, subclass_type_filter=thing_doer_type_filter(Event), tags=[Tag("event")])
+    builder.register_fallback(ThingDoer, DoAThingWithEvent, tags=[Tag("event")])
 
-    builder.register_generic_subclasses(CommandHandler)
-    builder.register_generic_subclasses(EventHandler)
+    builder.register_subclasses(CommandHandler)
+    builder.register_subclasses(EventHandler)
     builder.register_decorator(
         CommandHandler,
         OperationDecorator,
@@ -841,7 +840,7 @@ def test_generic_decorator_type_is_memoised_across_containers():
 
     def build_container():
         builder = ContainerBuilder()
-        builder.register_generic_subclasses(MessageHandler)
+        builder.register_subclasses(MessageHandler)
         builder.register_decorator(MessageHandler, LoggingDecorator, decorated_arg="child")
         return builder.build()
 
