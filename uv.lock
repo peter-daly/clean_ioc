@@ -182,7 +182,7 @@ wheels = [
 
 [[package]]
 name = "clean-ioc"
-version = "2.0.0b28"
+version = "2.0.0b29"
 source = { editable = "." }
 dependencies = [
     { name = "funcie" },

@@ -173,6 +173,10 @@ See the [custom graph validation guide](docs/custom-validation.md) for recipes c
 architecture layers, metadata and lifespan conventions, required decorators, AST inspection, environment-specific
 composition, reusable rule factories, bundles, overlays, warnings, and CI policy.
 
+[Policy helpers and packs](docs/policies.md) supply standard validation rules for layers, dependencies, decorators,
+lifespans, runtime access, tags, and capabilities. `PolicyPack("architecture", [rule, (expensive_rule, "validation")])`
+groups ordinary callbacks and chooses a phase per rule while preserving the existing validation execution model.
+
 ## Graph inspection
 
 Mark application entry points to focus graph output and reachability analysis:

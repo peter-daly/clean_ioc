@@ -90,6 +90,7 @@ def create_generic_decorator_type(concrete_decorator: type):
         f"__DecoratedGeneric__{concrete_decorator.__name__}",
         (concrete_decorator,),
         {},
+        exec_body=lambda namespace: namespace.update({"__clean_ioc_decorator_type__": concrete_decorator}),
     )
 
 

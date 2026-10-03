@@ -1,3 +1,13 @@
+2.0.0b29
+--------
+
+    Add policy rule factories for implementation layers, forbidden dependencies,
+    required decorators, lifespans, runtime access, exact tags, and declared
+    capability boundaries. ``PolicyPack(name, rules, mode="build")`` accepts a
+    list of ordinary validation callbacks with per-rule ``(rule, mode)`` entries.
+    Preserve the existing build and explicit-validation execution phases.
+
+
 2.0.0b28
 --------
 

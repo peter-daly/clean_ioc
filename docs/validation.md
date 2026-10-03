@@ -55,6 +55,9 @@ The examples below introduce the core API. See the dedicated [custom graph valid
 for registration-uniqueness, architecture, metadata, lifespan, decorator, build-argument, AST, bundle, overlay, testing,
 and CI recipes.
 
+For standard checks, [policy helpers and packs](policies.md) create ordinary rules for layers, dependencies, decorators,
+lifespans, runtime access, tags, and capabilities. A pack accepts a list of rules and per-rule build/validation modes.
+
 This example prevents a domain-layer component from depending directly on infrastructure:
 
 ```python

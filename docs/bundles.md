@@ -55,6 +55,9 @@ Rules installed on a root builder are inherited by scope overlays and validate e
 The `mode="validation"` form lets a bundle install an expensive CI policy without adding it to application startup.
 See [Custom graph validation](custom-validation.md#package-rules-in-bundles) for a complete policy-bundle example.
 
+Use a [PolicyPack](policies.md) to install a list of existing callbacks or built-in policy helpers together. Plain rules
+use the pack's default phase, and `(rule, "validation")` or `(rule, "build")` entries choose a phase per rule.
+
 ## Run-once policies
 
 Use `OnlyRunOncePerInstanceBundle` when one bundle object may be applied repeatedly but should compose each builder once:

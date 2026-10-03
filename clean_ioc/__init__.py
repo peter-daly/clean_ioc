@@ -63,6 +63,18 @@ from .graph_analysis import (
 )
 from .instrumentation import DurationSummary, Instrumentation, ProfileRecord, ResolutionProfile, ResolutionProfiler
 from .metadata import Tag
+from .policies import (
+    Layer,
+    PolicyPack,
+    PolicyPackEntry,
+    capability_boundary,
+    forbid_dependency,
+    forbid_runtime_access,
+    layering,
+    require_decorator,
+    require_lifespan,
+    require_tags,
+)
 from .preferences import ComponentPreference, prefer
 from .provider_maps import ProviderMapGroup
 from .providers import AsyncProvider, Provider
@@ -208,6 +220,9 @@ __all__ = [
     "ValidationContext",
     "ValidationRule",
     "ValidationRuleMode",
+    "Layer",
+    "PolicyPack",
+    "PolicyPackEntry",
     "all_components",
     "build_arg",
     "default_component_filter",
@@ -215,4 +230,11 @@ __all__ = [
     "generic_arg",
     "inject",
     "select",
+    "capability_boundary",
+    "forbid_dependency",
+    "forbid_runtime_access",
+    "layering",
+    "require_decorator",
+    "require_lifespan",
+    "require_tags",
 ]

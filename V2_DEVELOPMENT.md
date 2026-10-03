@@ -2,7 +2,7 @@
 
 This document records the V2 architecture and implementation decisions made so far. It is intended for agents and maintainers extending V2 without accidentally restoring runtime graph construction, weakening build invariants, or breaking scope ownership.
 
-V2 is currently published in project metadata as `2.0.0b28`. Its public surface remains experimental.
+V2 is currently published in project metadata as `2.0.0b29`. Its public surface remains experimental.
 
 ## Registration templates
 
@@ -233,6 +233,14 @@ removed within the newly constructed report. `clean-ioc check` builds its target
 so both rule sets run once. Its `--strict`/`--no-strict` policy controls only whether unsuppressed warnings produce a
 failing exit code; errors fail in either mode. Each phase gets its own shared `ValidationContext`, so deferred AST work
 is absent from startup.
+
+`clean_ioc.policies` factories return ordinary `ValidationRule` callbacks; keep phase execution in the existing engine.
+`PolicyPack(name, rules, mode="build")` snapshots an iterable of callbacks or `(callback, mode)` entries, validates the
+complete pack before application, and registers rules through `ComponentBuilder.add_validation_rule()`. Individual
+entries override the default mode. Policy names belong in reports, never manifests or fingerprints. Dependency checks
+must traverse collection/provider/per-call bridges and retain occurrence-specific shortest witness paths. Layer checks
+classify compiled implementation modules, not source imports; pre-configurations use their callback modules. Generic
+decorator matching uses the exact closed alias captured by the generated runtime class, not generated class names.
 
 Preview queries and failed structural compilations do not run custom rules because no final graph exists. A callback
 exception, non-iterable return, or malformed issue becomes `validation-rule-error`, and subsequent rules still run.

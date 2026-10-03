@@ -1,13 +1,14 @@
 # Architecture contracts and policy packs
 
-Status: Proposal
+Status: Policy helpers and mixed-mode packs implemented; SARIF remains proposed
 Priority: P0
 Dependencies: Compilation provenance for source-linked diagnostics
 
 ## Summary
 
-Provide reusable first-party validation rules for common architectural constraints and package them as callable policy
-bundles. Add SARIF output to `clean-ioc check` so graph violations appear as source-linked CI findings.
+Reusable first-party validation rules and callable policy packs are implemented in `clean_ioc.policies`. Packs accept a
+list of callbacks with an optional execution mode per rule. See [the policy guide](../docs/policies.md).
+The remaining proposal adds SARIF output to `clean-ioc check` for source-linked CI findings.
 
 ## Problem and differentiation
 
@@ -44,7 +45,7 @@ dependencies; it is enforcing application-specific rules over the complete occur
 
 ## Public API
 
-Add `clean_ioc.policies` with immutable matchers and rule factories:
+`clean_ioc.policies` provides immutable layer declarations and ordinary validation-rule factories:
 
 ```python
 import clean_ioc.component_filters as cf
@@ -63,29 +64,36 @@ from clean_ioc.policies import (
 
 architecture = PolicyPack(
     "application-architecture",
-    layering(
-        layers=(
-            Layer("domain", module_prefixes=("my_app.domain",)),
-            Layer("application", module_prefixes=("my_app.application",)),
-            Layer("infrastructure", module_prefixes=("my_app.infrastructure",)),
+    [
+        layering(
+            layers=(
+                Layer("domain", module_prefixes=("my_app.domain",)),
+                Layer("application", module_prefixes=("my_app.application",)),
+                Layer("infrastructure", module_prefixes=("my_app.infrastructure",)),
+            ),
+            allowed_dependencies={
+                "domain": frozenset({"domain"}),
+                "application": frozenset({"application", "domain", "infrastructure"}),
+                "infrastructure": frozenset({"infrastructure", "application", "domain"}),
+            },
         ),
-        allowed_dependencies={
-            "domain": frozenset({"domain"}),
-            "application": frozenset({"application", "domain"}),
-            "infrastructure": frozenset({"infrastructure", "application", "domain"}),
-        },
-    ),
-    require_decorator(
-        cf.service_type_is(PaymentGateway),
-        decorator_type=TracedGateway,
-    ),
-    forbid_runtime_access(
-        cf.create_filter(lambda component: component.implementation_type.__module__.startswith("my_app.domain")),
-    ),
-    require_tags(
-        cf.create_filter(lambda component: component.implementation_type.__module__.startswith("my_app.infrastructure")),
-        Tag("owner", "platform"),
-    ),
+        require_decorator(
+            cf.service_type_is(PaymentGateway),
+            decorator_type=TracedGateway,
+        ),
+        forbid_runtime_access(
+            cf.create_filter(lambda component: component.implementation_type.__module__.startswith("my_app.domain")),
+        ),
+        (
+            require_tags(
+                cf.create_filter(
+                    lambda component: component.implementation_type.__module__.startswith("my_app.infrastructure")
+                ),
+                Tag("owner", "platform"),
+            ),
+            "validation",
+        ),
+    ],
     mode="build",
 )
 
@@ -94,7 +102,8 @@ builder.apply_bundle(architecture)
 
 `PolicyPack` is a callable bundle implementing `__call__(builder: ComponentBuilder) -> None`. It registers its rules
 through `add_validation_rule()` and therefore works with both `ContainerBuilder` and `ScopeBuilder`; no new builder method
-is required. Pack and rule names are included in diagnostic metadata but not graph fingerprints.
+is required. Plain rules use the pack's default mode; `(rule, "build")` and `(rule, "validation")` entries override it.
+Pack names appear in issue messages and callback names appear in rule failures. Policies do not affect fingerprints.
 
 The standard factories are:
 
@@ -104,7 +113,8 @@ The standard factories are:
   reports the shortest semantic path for each source occurrence.
 - `require_decorator(target, *, decorator_type, count=1)`: require an exact compiled decorator type and count.
 - `require_lifespan(target, *allowed)`: constrain the public lifespan string of matching components.
-- `forbid_runtime_access(target)`: reject `Scope` or `ResolutionContext` dependencies below matching components.
+- `forbid_runtime_access(target)`: reject `Scope` (including `Container`) or `ResolutionContext` dependencies below
+  matching components.
 - `require_tags(target, *tags)`: require exact `Tag` pairs on the compiled occurrence.
 - `capability_boundary(entrypoints, *, allow)`: collect `Tag("capability", value)` transitively and reject capabilities
   not allowed for each matching entry point.
@@ -119,12 +129,14 @@ accepts an `entrypoints` filter limits its subject roots but still evaluates the
 root.
 
 One semantic occurrence produces at most one issue per rule. When the same registration occurs under multiple roots,
-each violating path is reported because its architectural context may differ. Issues are ordered by root order, graph
-walk order, pack order, then rule order.
+each violating path is reported because its architectural context may differ. Within each execution phase, packs and
+rules run in declaration order; each helper visits the graph in root/walk order. Build findings precede explicit
+validation findings, following the existing report behavior.
 
-Graph-only policies run during `build()` by default. `PolicyPack(mode="validation")` makes every contained rule
-validate-only. The complete validation report retains stored build findings and adds the validate-only findings without
-rerunning build rules. Source-AST policies are not part of this initial pack; applications continue to use explicit
+Graph-only policies run during `build()` by default. `PolicyPack(..., mode="validation")` makes plain rules validate-only;
+individual `(rule, mode)` entries can choose either phase. The complete validation report retains stored build findings
+and adds the validate-only findings without rerunning build rules. Source-AST policies are not part of this initial pack;
+applications continue to use explicit
 validate-only rules for AST work.
 
 Capabilities use ordinary exact tags in the first release. A component may declare multiple capability tags, such as
@@ -147,6 +159,8 @@ Issue messages name the policy pack and rule, but suppression continues to opera
 matcher or policy callback remains `validation-rule-error`, and subsequent rules continue.
 
 ## SARIF output
+
+This section remains proposed; policy helpers and packs use the existing text and JSON reports today.
 
 Extend the check command:
 

@@ -512,6 +512,13 @@ def validate_registration_template_guide() -> None:
         exec(compile(snippet, f"{guide} example {index}", "exec"), {"__name__": "__main__"})  # noqa: S102
 
 
+def validate_policy_guide() -> None:
+    guide = Path(__file__).resolve().parents[1] / "docs" / "policies.md"
+    snippets = re.findall(r"```python\n(.*?)\n```", guide.read_text(), flags=re.DOTALL)
+    assert snippets  # noqa: S101
+    exec(compile(snippets[0], f"{guide} example 1", "exec"), {"__name__": "__main__"})  # noqa: S102
+
+
 def main() -> None:
     validate_build_and_resolution()
     validate_failed_builder_is_reusable()
@@ -529,6 +536,7 @@ def main() -> None:
     validate_registration_patterns()
     validate_decorator_template_guide()
     validate_registration_template_guide()
+    validate_policy_guide()
     asyncio.run(validate_async_factory())
     print("documentation examples validated")
 

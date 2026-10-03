@@ -11,6 +11,7 @@ nav:
   - Build & Components: validation.md
   - Compilation Process: compilation-process.md
   - Custom Graph Validation: custom-validation.md
+  - Policy Helpers: policies.md
   - Compiler Tooling: compiler-tooling.md
   - Runtime Profiling: runtime-profiling.md
   - Registration: simple-uses.md

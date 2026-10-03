@@ -35,7 +35,7 @@ implementation begins.
 | --- | --- | --- | --- |
 | P0 | Done | [Compilation provenance and explain](01-compilation-provenance-and-explain.md) | Make every build-time selection inspectable without changing graph fingerprints. |
 | P0 | Done | [Resource ownership proof](06-resource-ownership-proof.md) | Prove that cached objects, runtime contexts, and cleanup-bearing dependencies have compatible owners. |
-| P0 | Proposed | [Architecture contracts and policy packs](02-architecture-contracts-and-policy-packs.md) | Turn the validation extension point into reusable architecture-as-code with CI-native output. |
+| P0 | Helpers and packs done; SARIF proposed | [Architecture contracts and policy packs](02-architecture-contracts-and-policy-packs.md) | Reusable rules and per-rule build/validation modes are implemented; source-linked CI output remains. |
 | P1 | Proposed | [Semantic graph-change policy](03-semantic-graph-change-policy.md) | Classify graph changes by meaning, risk, and affected entry point. |
 | P1 | Proposed | [Build-variant matrix checking](04-build-variant-matrix-checking.md) | Validate and compare every explicitly supported environment or tenant composition. |
 | P1 | Done | [Typed deferred dependencies](05-typed-deferred-dependencies.md) | Support precompiled on-demand resolution without injecting an untyped service locator. |
@@ -70,9 +70,8 @@ diagnostics, CLI behavior, redaction, and compatibility rules for that type are 
 
 The remaining proposals are retained for later work:
 
-1. [Architecture contracts and policy packs](02-architecture-contracts-and-policy-packs.md): provide reusable validation
-   rules for layering, lifespans, capabilities, runtime-container access, metadata, and SARIF reporting. This is the
-   recommended next item.
+1. [Source-linked policy CI reporting](02-architecture-contracts-and-policy-packs.md): policy helpers and mixed-mode
+   packs are implemented; SARIF reporting is the remaining work in this item.
 2. [Semantic graph-change policy](03-semantic-graph-change-policy.md): classify graph changes by architectural meaning,
    risk, and affected entry points, then enforce an explicit acceptance policy in CI.
 3. [Build-variant matrix checking](04-build-variant-matrix-checking.md): compile and compare supported environments,
@@ -81,7 +80,7 @@ The remaining proposals are retained for later work:
    and cleanup events with compiled graph identities, with optional OpenTelemetry integration. This can proceed
    independently now that provenance and resource ownership are complete.
 
-Recommended sequence: policy packs, semantic graph-change policy, then build-variant matrix checking. Activation tracing
+Recommended sequence: policy CI reporting, semantic graph-change policy, then build-variant matrix checking. Activation tracing
 does not need to wait for that sequence.
 
 ## Accepted core ideas

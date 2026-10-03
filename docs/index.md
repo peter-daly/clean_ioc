@@ -129,6 +129,7 @@ See [Custom graph validation](custom-validation.md) for a complete rule cookbook
 - [Decorators](decorators.md), [decorator templates](decorator-templates.md), and [generics](generics.md) — compiled handler pipelines
 - [Boundaries](boundaries.md) — private registrations, explicit exposures, and declared cross-boundary uses
 - [Custom graph validation](custom-validation.md) — executable architecture and policy recipes
+- [Policy helpers and packs](policies.md) — reusable rules with per-rule build and validation phases
 - [ASGI](extensions/asgi.md) — dependency-free lifespan and operation scopes
 - [FastAPI](extensions/fastapi.md) — request scopes and explicit request values
 - [Benchmarks](benchmarks.md) — build, runtime, and allocation experiments
