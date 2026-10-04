@@ -17,6 +17,7 @@ nav:
   - Build-variant Matrices: build-matrices.md
   - Source-linked CI Reporting: sarif.md
   - Runtime Profiling: runtime-profiling.md
+  - Warm-up Plans: warmup-plans.md
   - Registration: simple-uses.md
   - Factories: factories.md
   - Lifespans: lifespans.md

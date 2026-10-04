@@ -57,3 +57,17 @@ response serialization, and the complete ASGI middleware path remain inside it. 
 The configured run writes a complete machine-readable result to `benchmarks/results.json` and a readable report to `benchmarks/results.md`. BenchBro keeps the machine-local comparison baseline under `.benchbro/`, which is intentionally ignored by Git.
 
 These are framework-overhead microbenchmarks, not application-throughput claims. Compare results only on a matching Python, operating system, architecture, and machine environment.
+
+### Declared warm-up plans
+
+`bench_warmup.py` measures cached plain/observed runs (100 calls per batch),
+no-plan/declared builds, and cold build + warm-up + resource shutdown. Resources
+have no I/O; session fixtures are created during unmeasured warmup and closed at
+run end. `bench_managed_provider_regressions.py` also probes unchanged ordinary
+resolution, provider, child-scope and per-call paths. See item 17's measurements
+in [.work/17-declared-warmup-plans.md](../.work/17-declared-warmup-plans.md).
+
+```sh
+uv run benchbro run benchmarks/bench_warmup.py --fixed --repeats 25 --no-compare \
+  --output-json /tmp/warmup.json --output-md /tmp/warmup.md
+```

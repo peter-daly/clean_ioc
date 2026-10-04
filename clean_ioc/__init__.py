@@ -131,8 +131,16 @@ from .tooling import (
     ValidationContext,
     ValidationRule,
 )
+from .warmup import WarmupError, WarmupPlan, WarmupPlanInfo, WarmupReport, WarmupResult, WarmupTarget, WarmupTargetInfo
 
 __all__ = [
+    "WarmupError",
+    "WarmupPlan",
+    "WarmupPlanInfo",
+    "WarmupReport",
+    "WarmupResult",
+    "WarmupTarget",
+    "WarmupTargetInfo",
     "BuildMatrix",
     "BuildVariant",
     "MatrixContext",

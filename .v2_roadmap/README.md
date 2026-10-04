@@ -73,14 +73,14 @@ The remaining proposals are retained for later work:
 1. [Graph-correlated activation tracing](08-graph-correlated-activation-tracing.md): correlate runtime activation, caching,
    and cleanup events with compiled graph identities, with optional OpenTelemetry integration. Remaining coverage and
    tracing extensions are explicitly deferred in work items 21–22; the core runtime profiler is implemented.
-2. [Declared warm-up plans](../.work/17-declared-warmup-plans.md): compile selected singleton startup requests, then run
-   them explicitly after build with aggregated runtime diagnostics. Work item 17 is planned; implementation has not started.
 
-Policy packs, semantic graph-change policy, build-variant matrices and
-[managed resource providers](../.work/16-managed-resource-providers.md) are implemented. Managed providers were
-implemented by Sol Medium and independently reviewed by Sol High; APPROVE / KEEP. Activation tracing is the
-remaining proposal in the original sequence; managed resource providers and declared warm-up plans are tracked separately
-in work items 16 and 17.
+Policy packs, semantic graph-change policy, build-variant matrices,
+[managed resource providers](../.work/16-managed-resource-providers.md) and
+[declared warm-up plans](../.work/17-declared-warmup-plans.md) are implemented. Managed providers and warm-up plans
+were implemented sequentially by Sol Medium and independently reviewed by Sol High; APPROVE / KEEP for each.
+Warm-up declarations compile selected singleton startup requests and execute them only through an explicit runtime call,
+with aggregated diagnostics and normal cleanup ownership. Activation tracing is the remaining proposal in the original
+sequence; completed provider/startup work is recorded in work items 16 and 17.
 
 ## Deferred compiler and tooling work
 

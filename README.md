@@ -415,3 +415,5 @@ compiled container during application startup.
 
 
 Use `ManagedProvider[T]` with `with handle()` or `AsyncManagedProvider[T]` with `async with handle()` to acquire a frozen dependency plan in a fresh isolated scope and close its scoped resources at block exit. Handles can be retained by singleton consumers. Return materialized data while resources are open. See [managed resource providers](docs/advanced/special-dependency-types.md#managed-resource-providers).
+
+Declare singleton startup intent with `WarmupPlan` and `WarmupTarget`, then explicitly call `container.warmup(name)` or await `warmup_async(name)`. Build remains lazy; startup reports aggregate initialization failures while preserving ordinary singleton caches and cleanup ownership. See [declared warm-up plans](docs/warmup-plans.md).

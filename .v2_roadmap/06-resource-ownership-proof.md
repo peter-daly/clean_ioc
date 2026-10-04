@@ -230,3 +230,13 @@ remain unversioned until beta ends; no legacy readers or migration adapters are 
 - Render deterministic ownership reports without activating components.
 - Round-trip unversioned manifests, classify ownership changes, and preserve deterministic fingerprints.
 - Prove reports and manifests contain no owner tokens, UUIDs, cache keys, values, finalizers, or build inputs.
+
+## Declared startup initialization
+
+[Work item 17](../.work/17-declared-warmup-plans.md) adds explicit named singleton
+warm-up plans. Their frozen target steps reuse these compiled cache/cleanup owners
+and singleton coordination, including transient-resource promotion and anchored
+parent singletons. Aggregated startup failure reports neither roll back acquired
+resources nor introduce a second finalizer registry; enclosing owner shutdown
+remains responsible for cleanup. Sync startup preflights transitive activation
+and eager async cleanup before constructing any target.

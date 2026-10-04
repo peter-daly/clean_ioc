@@ -559,6 +559,14 @@ def validate_managed_provider_guide() -> None:
         exec(compile(snippet, f"{guide} managed example {index}", "exec"), {"__name__": "__main__"})  # noqa: S102
 
 
+def validate_warmup_guide() -> None:
+    guide = Path(__file__).resolve().parents[1] / "docs" / "warmup-plans.md"
+    snippets = re.findall(r"```python\n(.*?)\n```", guide.read_text(), flags=re.DOTALL)
+    assert len(snippets) == 3  # noqa: S101
+    for index, snippet in enumerate(snippets, start=1):
+        exec(compile(snippet, f"{guide} example {index}", "exec"), {"__name__": "__main__"})  # noqa: S102
+
+
 def main() -> None:
     validate_build_and_resolution()
     validate_failed_builder_is_reusable()
@@ -582,6 +590,7 @@ def main() -> None:
     validate_graph_change_policy_guide()
     validate_build_matrix_guide()
     validate_managed_provider_guide()
+    validate_warmup_guide()
     asyncio.run(validate_async_factory())
     print("documentation examples validated")
 

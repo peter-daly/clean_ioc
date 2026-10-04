@@ -483,3 +483,5 @@ For each V2 feature, the acceptance bar is: build-time invariants remain complet
 
 
 Managed resource providers compile dedicated deferred boundaries and execute frozen targets in fresh acquisition scopes. Scoped caches are isolated; provisions and singleton ownership follow the bound owner. Public graph metadata uses `managed_provider`, provider mode, deferred target and `scope_policy: per_call` for context entry. Existing graph manifests remain stable, and beta formats remain unversioned.
+
+Declared warm-up plans compile closed requests into frozen selected singleton steps. Intent inspection is a sidecar excluded from default manifests. Explicit ordered runs use normal owner/coordinator contexts, whole-plan sync activation/cleanup preflight, and detached safe reports. Existing observed request and step instrumentation captures actual work; uninstrumented resolve paths are unchanged.

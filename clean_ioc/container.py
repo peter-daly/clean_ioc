@@ -134,6 +134,7 @@ from .tooling import (
     qualified_name,
 )
 from .type_aliases import TypeAliasNormalizationError, alias_label, is_new_type, normalize_type_alias
+from .warmup import WarmupPlan, WarmupPlanInfo, WarmupReport, WarmupResult, WarmupTarget, WarmupTargetInfo
 
 TService = TypeVar("TService")
 K = TypeVar("K")
@@ -696,6 +697,7 @@ class _Layer:
     removed_registration_template_ids: frozenset[str] = frozenset()
     generated_registrations: Mapping[str, _GeneratedRegistration] = field(default_factory=dict)
     fallback_ids: frozenset[str] = frozenset()
+    warmup_declarations: tuple[tuple[WarmupPlan, SourceLocation | None], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -944,6 +946,12 @@ class _Blueprint:
 
     def root_service_types(self) -> tuple[Any, ...]:
         values = list(self.service_types(None))
+        values.extend(
+            normalize_type_alias(target.service_type)
+            for layer in self.layers
+            for declaration, _ in layer.warmup_declarations
+            for target in declaration.targets
+        )
         values.extend(target.service_type for boundary in self.boundaries for target in boundary.resolved_exposes)
         values.extend(
             (_collection_request(entrypoint.service_type) or (None, entrypoint.service_type))[1]
@@ -4670,6 +4678,9 @@ class _PlanSet:
     census_sources: Mapping[str, str] = field(default_factory=dict)
     census_definitions: tuple[DefinitionReference, ...] = ()
     census_ids: Mapping[str, str] = field(default_factory=dict)
+    warmup_steps: Mapping[str, tuple[_RootPlan, ...]] = field(default_factory=lambda: types.MappingProxyType({}))
+    warmup_infos: tuple[WarmupPlanInfo, ...] = ()
+    warmup_fingerprint: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -5663,9 +5674,20 @@ class _Compiler:
             else (self.blueprint.root_service_types() if area is None else self.blueprint.service_types(area))
         )
         if self._patterns and service_types is None and area is None:
-            declared = set(self.blueprint.service_types()) | {
-                target.service_type for boundary in self.blueprint.boundaries for target in boundary.resolved_exposes
-            }
+            declared = (
+                set(self.blueprint.service_types())
+                | {
+                    normalize_type_alias(target.service_type)
+                    for layer in self.blueprint.layers
+                    for declaration, _ in layer.warmup_declarations
+                    for target in declaration.targets
+                }
+                | {
+                    target.service_type
+                    for boundary in self.blueprint.boundaries
+                    for target in boundary.resolved_exposes
+                }
+            )
             selected_service_types = [
                 service_type
                 for service_type in selected_service_types
@@ -10684,6 +10706,144 @@ def _check_template_boundary_visibility(
     )
 
 
+def _warmup_build_error(code: str, service: str, source: SourceLocation | None, *, plan: str | None = None):
+    issue = BuildIssue(
+        code,
+        IssueSeverity.error,
+        "Warm-up declaration cannot select a unique resolvable singleton.",
+        root=plan,
+        path=(service,),
+    )
+    evidence = FailureEvidence("warmup", service, "Invalid warm-up declaration.", source_location=source)
+    return ContainerBuildError(report=BuildReport((issue,), _evidence=(evidence,)), evidence=(evidence,))
+
+
+def _validate_warmup_declarations(blueprint: _Blueprint) -> None:
+    names: set[str] = set()
+    for layer in blueprint.layers:
+        for declaration, source in layer.warmup_declarations:
+            name = declaration.name
+            if not isinstance(name, str) or not name.strip():
+                raise _warmup_build_error("warmup-invalid-target", "warmup declaration", source)
+            if name in names:
+                raise _warmup_build_error("warmup-duplicate-plan", "warmup declaration", source, plan=name)
+            names.add(name)
+            for target in declaration.targets:
+                if (
+                    not isinstance(target, WarmupTarget)
+                    or not callable(target.filter)
+                    or inspect.iscoroutinefunction(target.filter)
+                    or inspect.iscoroutinefunction(getattr(target.filter, "__call__", None))
+                ):
+                    raise _warmup_build_error("warmup-invalid-target", "warmup target", source, plan=name)
+                key = target.service_type
+                try:
+                    key = normalize_type_alias(key)
+                    hash(key)
+                    invalid = (
+                        not (isinstance(key, type) or get_origin(key) is not None or is_new_type(key))
+                        or bool(_typevars_in(key))
+                        or bool(getattr(key, "__parameters__", ()))
+                        or _collection_request(key) is not None
+                        or _provider_request(key) is not None
+                    )
+                except Exception:
+                    invalid = True
+                if invalid:
+                    raise _warmup_build_error(
+                        "warmup-invalid-target",
+                        qualified_name(key)
+                        if isinstance(key, type) or get_origin(key) is not None or is_new_type(key)
+                        else qualified_name(type(target.service_type)),
+                        source,
+                        plan=name,
+                    )
+
+
+def _warmup_async_cleanup(component: Component) -> bool:
+    # Deferred acquisitions are outside the target's initialization boundary.
+    if component.kind in (ComponentKind.provider, ComponentKind.managed_provider, ComponentKind.per_call_handle):
+        return False
+    if component.requires_async and component.manages_cleanup:
+        return True
+    return any(
+        _warmup_async_cleanup(child)
+        for child in (*component.dependencies, *component.pre_configurations, *component.decorators)
+    )
+
+
+def _compile_warmup_plans(plan: _PlanSet) -> _PlanSet:
+    if not any(layer.warmup_declarations for layer in plan.blueprint.layers):
+        return plan
+    graph = cast(CompiledGraph, plan.compiled_graph)
+    paths = {component.occurrence_id: path for path, component in graph._component_paths(all_roots=True).items()}
+    steps: dict[str, tuple[_RootPlan, ...]] = {}
+    infos: list[WarmupPlanInfo] = []
+    layer_ranks = {layer.owner_token: index for index, layer in enumerate(plan.blueprint.layers)}
+    layer_ranks.update(
+        {boundary.layer.owner_token: boundary.root_layer_offset for boundary in plan.blueprint.boundaries}
+    )
+    for layer in plan.blueprint.layers:
+        for declaration, source in layer.warmup_declarations:
+            selected: list[_RootPlan] = []
+            targets: list[WarmupTargetInfo] = []
+            seen: set[tuple[Any, ...]] = set()
+            for target in declaration.targets:
+                service_type = normalize_type_alias(target.service_type)
+                service = qualified_name(service_type)
+                try:
+                    filtered = []
+                    for root in plan.roots.get(service_type, ()):
+                        matched = target.filter(root.component)
+                        if inspect.isawaitable(matched):
+                            if inspect.iscoroutine(matched):
+                                matched.close()
+                            raise TypeError("Warm-up filters must be synchronous")
+                        if matched:
+                            filtered.append(root)
+                    matches = _preferred_root_plans(filtered)
+                except Exception:
+                    raise _warmup_build_error("warmup-invalid-target", service, source, plan=declaration.name) from None
+                if matches:
+                    nearest = min(layer_ranks.get(getattr(root.step, "owner_token", None), 0) for root in matches)
+                    matches = tuple(
+                        root
+                        for root in matches
+                        if layer_ranks.get(getattr(root.step, "owner_token", None), 0) == nearest
+                    )
+                if not matches:
+                    raise _warmup_build_error("warmup-missing-component", service, source, plan=declaration.name)
+                if len(matches) != 1:
+                    raise _warmup_build_error("warmup-ambiguous-component", service, source, plan=declaration.name)
+                root = matches[0]
+                if root.component.lifespan != "singleton" or root.component.kind is not ComponentKind.registration:
+                    raise _warmup_build_error("warmup-non-singleton-target", service, source, plan=declaration.name)
+                # Steps may contain unhashable fields; executable identity is internal only.
+                identity = (getattr(root.step, "owner_token", None), root.component.id)
+                if identity in seen:
+                    raise _warmup_build_error("warmup-duplicate-target", service, source, plan=declaration.name)
+                seen.add(identity)
+                selected.append(root)
+                targets.append(
+                    WarmupTargetInfo(
+                        service,
+                        qualified_name(root.component.implementation_type),
+                        paths[root.component.occurrence_id],
+                        not root.step.sync_supported or _warmup_async_cleanup(root.component),
+                        source,
+                    )
+                )
+            steps[declaration.name] = tuple(selected)
+            infos.append(WarmupPlanInfo(declaration.name, tuple(targets)))
+    return replace(
+        plan,
+        warmup_steps=types.MappingProxyType(steps),
+        warmup_infos=tuple(infos),
+        compiled_graph=replace(graph, warmup_plans=tuple(infos)),
+        warmup_fingerprint=graph.manifest(all_roots=True).fingerprint,
+    )
+
+
 def _declared_entry_point_labels(blueprint: _Blueprint) -> tuple[tuple[str | None, str], ...]:
     return tuple(
         dict.fromkeys(
@@ -10734,6 +10894,7 @@ def _compile_with_report(
         compilation_inputs["anchored_singleton_steps"] = anchored_singleton_steps
     if anchored_pre_configuration_steps is not None:
         compilation_inputs["anchored_pre_configuration_steps"] = anchored_pre_configuration_steps
+    _validate_warmup_declarations(blueprint)
     alias_errors = (
         _blueprint_alias_errors(blueprint)
         if profile is None
@@ -10882,7 +11043,7 @@ def _compile_with_report(
         plan = replace(compiled, census_definitions=census_definitions, census_ids=census_ids)
         if preview:
             return plan
-        finalized = _finalize_plan(plan, profile)
+        finalized = _compile_warmup_plans(_finalize_plan(plan, profile))
         return _prune_orphan_registrations(finalized) if clean_orphans else finalized
     except ContainerBuildError as error:
         if error.report is not None:
@@ -11315,6 +11476,79 @@ class Scope(_RuntimeOwner):
         if graph is None:
             raise RuntimeError("Compiled graph metadata is unavailable")
         return graph
+
+    @property
+    def warmup_plans(self) -> tuple[WarmupPlanInfo, ...]:
+        """Frozen startup intent; reading this does not initialize services."""
+        return self._plan.warmup_infos
+
+    def _warmup_plan(self, name: str) -> tuple[WarmupPlanInfo, tuple[_RootPlan, ...]]:
+        self._ensure_open()
+        roots = self._plan.warmup_steps[name]
+        info = next(info for info in self._plan.warmup_infos if info.name == name)
+        self._resolution_started = True
+        return info, roots
+
+    def warmup(self, name: str) -> WarmupReport:
+        """Explicitly initialize a named plan, aggregating ordinary failures."""
+        info, roots = self._warmup_plan(name)
+        fingerprint = self._plan.warmup_fingerprint
+        if info.requires_async:
+            return WarmupReport(
+                name,
+                fingerprint,
+                tuple(
+                    WarmupResult(
+                        target, "not_executed", code="warmup-requires-async" if target.requires_async else None
+                    )
+                    for target in info.targets
+                ),
+            )
+        results: list[WarmupResult] = []
+        observed = isinstance(self, _ObservedScopeMixin)
+        for root, target in zip(roots, info.targets, strict=True):
+            context = _ObservedResolutionContext(self) if observed else _RuntimeResolutionContext(self)
+            try:
+                if observed:
+                    _observed_call(
+                        self._profiler,
+                        cast(_ObservedScopeMixin, self)._request_key(root.component.service_type),
+                        lambda: cast(_ObservedResolutionContext, context)._resolve_observed_plan(root),
+                    )
+                else:
+                    root.step.resolve(context)
+            except Exception as error:
+                results.append(WarmupResult(target, "failed", qualified_name(type(error)), "warmup-activation-failed"))
+            else:
+                results.append(WarmupResult(target, "succeeded"))
+            finally:
+                context.finish()
+        return WarmupReport(name, fingerprint, tuple(results))
+
+    async def warmup_async(self, name: str) -> WarmupReport:
+        """Await a named plan in declaration order using normal singleton owners."""
+        info, roots = self._warmup_plan(name)
+        fingerprint = self._plan.warmup_fingerprint
+        results: list[WarmupResult] = []
+        observed = isinstance(self, _ObservedScopeMixin)
+        for root, target in zip(roots, info.targets, strict=True):
+            context = _ObservedResolutionContext(self) if observed else _RuntimeResolutionContext(self)
+            try:
+                if observed:
+                    await _observed_call_async(
+                        self._profiler,
+                        cast(_ObservedScopeMixin, self)._request_key(root.component.service_type),
+                        lambda: cast(_ObservedResolutionContext, context)._resolve_observed_plan_async(root),
+                    )
+                else:
+                    await root.step.resolve_async(context)
+            except Exception as error:
+                results.append(WarmupResult(target, "failed", qualified_name(type(error)), "warmup-activation-failed"))
+            else:
+                results.append(WarmupResult(target, "succeeded"))
+            finally:
+                context.finish()
+        return WarmupReport(name, fingerprint, tuple(results))
 
     @property
     def build_report(self) -> BuildReport:
@@ -12266,6 +12500,7 @@ def _observe_plan(
     observed = replace(
         plan,
         roots=observed_roots,
+        warmup_steps=types.MappingProxyType(roots(plan.warmup_steps)),
         provider_roots=observed_provider_roots,
         default_roots={
             key: next(
@@ -12346,6 +12581,7 @@ class _BuilderBase:
         self._slots: set[tuple[Any, str | None]] = set()
         self._slot_origins: dict[tuple[Any, str | None], DefinitionOrigin] = {}
         self._entrypoints: list[_EntryPoint] = []
+        self._warmup_declarations: list[tuple[WarmupPlan, SourceLocation | None]] = []
         self._validation_rules: list[_ValidationRuleDefinition] = []
         self._bundle_stack: list[str] = []
         self._boundaries: list[BoundaryBuilder] = []
@@ -12467,6 +12703,7 @@ class _BuilderBase:
             slots=frozenset(self._slots),
             slot_origins=dict(self._slot_origins),
             entrypoints=tuple(self._entrypoints),
+            warmup_declarations=tuple(self._warmup_declarations),
             validation_rules=tuple(self._validation_rules),
             provider_maps=types.MappingProxyType(dict(self._provider_maps)),
             contributions=types.MappingProxyType(dict(self._contributions)),
@@ -13398,7 +13635,23 @@ class _BuilderBase:
         )
 
 
-class ContainerBuilder(_BuilderBase):
+class _WarmupBuilder(_BuilderBase):
+    def add_warmup_plan(self, plan: WarmupPlan) -> ExtensionsSelf:
+        self._assert_mutable()
+        if not isinstance(plan, WarmupPlan):
+            raise TypeError("plan must be a WarmupPlan")
+        self._warmup_declarations.append((plan, _source_location()))
+        return self
+
+    def remove_warmup_plan(self, name: str) -> ExtensionsSelf:
+        self._assert_mutable()
+        self._warmup_declarations[:] = [
+            (plan, source) for plan, source in self._warmup_declarations if plan.name != name
+        ]
+        return self
+
+
+class ContainerBuilder(_WarmupBuilder):
     """Mutable root composition API. Call :meth:`build` exactly once."""
 
     def build(
@@ -13447,7 +13700,7 @@ class ContainerBuilder(_BuilderBase):
             profile._finish(state)
 
 
-class ScopeBuilder(_BuilderBase):
+class ScopeBuilder(_WarmupBuilder):
     """Compile a child scope with registrations layered over a runtime parent."""
 
     def __init__(self, parent: Scope):

@@ -24,7 +24,9 @@ and independently reviewed by Sol High; APPROVE / KEEP. Explicit context-manager
 in isolated scopes. CI, supported-Python checks, executable docs and focused measurements are recorded with the item.
 
 Item 17 was also added on 2026-10-04: declared warm-up plans compile selected singleton startup targets, then activate
-them only through an explicit runtime call with aggregated diagnostics. Implementation has not started.
+them only through an explicit runtime call with aggregated diagnostics. Sol Medium implemented the feature and
+Sol High independently reviewed it; APPROVE / KEEP. CI, supported-Python checks and executable docs pass;
+focused measurements and their noise limits are recorded with the item.
 
 Items 18–22 were added on 2026-10-04 and are explicitly deferred: incremental compilation, execution-plan optimization,
 compilation budgets, test activation coverage, and detailed activation tracing. None is scheduled or started. Items 21
@@ -50,7 +52,7 @@ and 22 scope the remaining coverage/tracing deliverables of item 08 and reuse it
 | 14 | [Parent-context registration selection](14-parent-context-registration-selection.md) — implemented by Astra medium and independently reviewed by Astra high; KEEP | P1 | Existing contextual registration compilation and selection explanations |
 | 15 | [Chained component preferences](15-chained-component-preferences.md) — implemented by Astra medium and independently reviewed by Astra high; KEEP | P1 | 14; existing argument policies and captured selection explanations |
 | 16 | [Managed resource providers](16-managed-resource-providers.md) — implemented and independently reviewed; KEEP | P1 | Existing typed providers, resource ownership proof, and isolated per-call scopes |
-| 17 | [Declared warm-up plans](17-declared-warmup-plans.md) — planned | P1 | Existing frozen root/activation plans, singleton ownership, and structured diagnostics |
+| 17 | [Declared warm-up plans](17-declared-warmup-plans.md) — implemented and independently reviewed; KEEP | P1 | Existing frozen root/activation plans, singleton ownership, and structured diagnostics |
 | 18 | [Incremental compilation](18-incremental-compilation.md) — deferred | P2 | Existing composition snapshots, occurrence-specific compilation, and 11 |
 | 19 | [Execution-plan optimization](19-execution-plan-optimization.md) — deferred | P2 | Existing frozen steps, ownership/sharing analysis, and 11–12 |
 | 20 | [Compilation budgets](20-compilation-budgets.md) — deferred | P2 | Existing work counters, structured failures, and 05 diagnostic evidence |

@@ -1,6 +1,9 @@
 Unreleased
 ----------
 
+    Add immutable declared singleton warm-up plans, explicit sync/async startup
+    execution, safe aggregated reports and side-effect-free intent inspection.
+
     Add ``ManagedProvider[T]`` and ``AsyncManagedProvider[T]`` for explicit
     context-manager acquisition of frozen targets in isolated scopes. Preserve
     singleton owner anchoring and declared provisions; finalize acquisition-owned

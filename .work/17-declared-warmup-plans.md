@@ -1,7 +1,7 @@
 # 17 — Declared warm-up plans
 
 Created: 2026-10-04\
-Status: Planned; implementation not started\
+Status: Implemented by Sol Medium and independently reviewed by Sol High; APPROVE / KEEP\
 Priority: P1\
 Baseline: Clean IoC 2.0.0b29 on `version2`\
 Dependencies: Existing frozen root/activation plans, singleton ownership, and structured diagnostics\
@@ -20,7 +20,7 @@ This makes startup activation deliberate and reviewable while preserving lazy ac
 An ordinary `resolve()` already initializes a singleton; the feature packages selected startup requests into a named,
 compiled plan with reporting and failure aggregation. It does not prove service health or invoke application methods.
 
-All APIs and examples below are proposed until implementation lands. Creating this work item does not start implementation.
+The public API below is implemented. Final verification and independent-review evidence are recorded below.
 
 ## Proposed public API
 
@@ -240,4 +240,118 @@ resource providers. Item 16 and detailed tracing are not prerequisites.
 
 Implementation and independent review are complete. Acceptance tests, CI, supported-Python checks, executable examples,
 strict docs, and focused measurements are recorded. Startup remains explicit; build stays side-effect free; ownership,
-runtime outcomes, and static declarations remain distinct. The item remains planned until those conditions are met.
+runtime outcomes, and static declarations remain distinct. All completion conditions are met.
+
+## Final design recorded before compiler changes
+
+Frozen `WarmupTarget(service_type, filter=default_component_filter)` and `WarmupPlan(name, targets)` capture ordered targets. ContainerBuilder/ScopeBuilder add declarations with source evidence; removal by name permits unsuccessful-build repair. Invalid declarations produce structured build findings. Boundary builders do not declare plans.
+
+Closed requests become compiler demand without entrypoint markers. Normal visible eligible roots and fallback preference select exactly one singleton; names and selected target duplicates fail. Frozen references retain ordinary root steps and anchored parent ownership. Safe immutable `warmup_plans` inspection on runtime/graph is excluded from manifests.
+
+Explicit sync/async methods execute frozen steps sequentially with fresh normal contexts. Sync preflight checks whole-step activation and eager cleanup before any execution. Unknown names raise KeyError; closed scopes use ScopeClosedError. Ordinary Exceptions become fixed-message observations; BaseExceptions propagate. Existing observed contexts/steps supply profiling; ordinary resolve code stays untouched.
+
+WarmupReport holds only name, full fingerprint, safe identities, paths, sources, statuses and qualified exception types. No exceptions/resources/tracebacks/timings are retained. WarmupError contains that report; assert_valid uses SARIF. Reports render deterministically and remain separate from BuildReport.
+
+## Implementation and verification evidence
+
+Sol Medium implemented the frozen public declarations and runtime observations in
+`clean_ioc/warmup.py`, compiler demand/selection and direct execution in
+`container.py`, and immutable `CompiledGraph.warmup_plans` inspection.
+`WarmupTargetInfo`, `WarmupPlanInfo`, and `WarmupResult` are public detached record
+types alongside the four original proposed exports. Unknown runtime names use
+KeyError; closed scopes use ScopeClosedError. Final build diagnostic codes match
+the proposal. Existing structural dependency/ownership compiler findings remain
+authoritative for invalid target graphs.
+
+`remove_warmup_plan(name)` is a narrow design refinement for failed-builder repair:
+it removes local pre-build declarations, does not replace declarations, cannot
+remove inherited parent intent, and is unavailable after a successful build.
+Visible overlay selection uses the nearest declaring singleton owner layer after
+normal filtering/fallback preference; ambiguities within that layer still fail.
+Duplicate target detection uses the actual declaring owner and singleton cache
+registration key, not incidental executable-step identity.
+
+`tests/test_warmup_plans.py` contains 39 behavioral cases, including frozen filters,
+invalid requests, aliases/NewType/unions, explicit closed generic and pattern
+demand, fallback selection, boundary privacy/exposure, overlays, template
+decorators, pre-configuration, promoted resource ownership, retries, concurrent
+sync/async runs, cancellation/control signals, report redaction and SARIF,
+profiling request/cache/cleanup counts, CLI/matrix/static non-activation and
+fingerprint/entrypoint-focus preservation. The three complete public examples in
+`docs/warmup-plans.md` execute through `scripts/validate_docs_examples.py`.
+Warm-up intent deliberately preserves existing unreachable-component warnings
+when targets are outside entry-point reachability.
+
+### Focused measurements
+
+Baseline was captured before compiler changes at HEAD 373bc1e, using the existing
+`bench_managed_provider_regressions.py`. All runs use CPython 3.14.4 on the same
+macOS 26.7.1 arm64 machine, AC power, fixed 25 repeat-level samples and five
+unmeasured warmup invocations. BenchBro's configured GC policy disables GC only
+during measurement. Heavy concurrent jobs were paused for the measurement
+window. Baseline/final/unchanged-final JSONs are temporary local artifacts, not
+committed baselines. Existing tracked benchmark reports were restored.
+
+| Ordinary operation | Baseline median | Final median | Unchanged final repeat |
+| --- | ---: | ---: | ---: |
+| cached singleton resolve | 0.532 us | 0.483 us | 0.457 us |
+| cached provider call | 0.734 us | 0.631 us | 0.607 us |
+| new scope + close | 1.673 us | 1.668 us | 1.708 us |
+| existing per-call method | 12.816 us | 12.806 us | 12.923 us |
+
+These are per-operation medians after dividing each 100-operation batch by 100;
+1,000 batches per repeat. Baseline CV was 6.3–20.9%, final CV 3.7–14.4%, and
+unchanged-repeat CV 5.5–19.8%; corresponding 95% relative margins were
+2.5–8.3%, 1.5–5.8%, and 2.2–7.9%. Every baseline/final case was flagged noisy;
+only the unchanged per-call repeat avoided the noisy flag. These measurements
+do not establish a speedup or performance regression. The ordinary uninstrumented
+resolve/provider/new-scope code paths are unchanged: no warm-up scan, callback,
+observer branch, timing call or allocation was added to them.
+
+The new `bench_warmup.py` uses 100 cached calls per batch, 100 batches per repeat,
+and ten complete build/lifecycle invocations per repeat. Descriptive medians:
+plain cached run 2.37 us, observed cached run 6.63 us, no-plan build+close
+2.14 ms, declared-plan build+close 2.25 ms, and cold declared build+warm-up+resource
+shutdown 2.11 ms. All five cases were noisy (CV 14.1–26.8%; 95% relative margin
+5.6–10.7%). Cold and build distributions overlap; do not interpret their medians
+as an ordering guarantee or extrapolate these no-I/O fixtures to application
+startup latency. These costs include safe report allocation and, when observed,
+existing exact profiling and full duration sampling.
+
+Verification artifacts: `/tmp/warmup-baseline.json`,
+`/tmp/warmup-existing-final.json`, `/tmp/warmup-existing-repeat.json`,
+`/tmp/warmup-feature.json`, and corresponding local Markdown reports.
+
+### Final verification
+
+- `UV_PROJECT_ENVIRONMENT=/tmp/clean-ioc-warmup-py314 make ci`: passed, including
+  Ruff, formatting, full ty checks, 1,618 tests, executable docs and all benchmark
+  discovery. CPython 3.14.4 runs in its own isolated uv environment.
+- Isolated full suites on Python 3.11.13: 1,610 passed / 8 skipped; 3.12.11:
+  1,615 passed / 3 skipped; 3.13.5: 1,618 passed. Each environment lives under
+  `/tmp/clean-ioc-warmup-py{311,312,313,314}`; no shared environment switching.
+- Focused final warm-up suite: 39 passed.
+- `uv run mkdocs build --strict --site-dir /tmp/clean-ioc-warmup-docs`: passed.
+  Existing upstream MkDocs dependency notices remain informational.
+- Final CI and supported-suite logs are local `/tmp/warmup-ci-final.log`,
+  `/tmp/warmup-final-py{311,312,313}.log`, and `/tmp/warmup-docs-final.log`.
+  The existing FastAPI/Starlette dependency deprecation warning appears across
+  supported full suites; no new warnings were introduced.
+- Fresh Sol High review found one P2 compatibility gap: NewType nominal service
+  keys were rejected by the initial warm-up key guard although ordinary
+  resolution accepts them. The guard now reuses `is_new_type`, and nominal and
+  union requests have a focused regression. Reviewer supplementary checks cover
+  detached weak-reference reports, SARIF schema, failed-initializer resource
+  ownership, cancellation/retry, deferred managed providers and generated
+  registration/decorator templates. Final independent review: **APPROVE / KEEP**;
+  no unresolved findings remain.
+
+### Independent review
+
+A separate `gpt-6.1-sol` agent at High reasoning reviewed the full final source,
+tests, documentation and measurement evidence after the Medium implementation.
+It independently passed 105 warm-up/SARIF tests, verified supplementary lifecycle
+and detached-report probes, and checked the final diff and whitespace. The P2
+NewType finding was resolved before approval. Final CI and supported-version
+evidence were reviewed before the APPROVE / KEEP verdict. No push or release was
+performed; the feature is recorded in its own local commit.
