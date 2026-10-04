@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+
+2.0.0b30
+--------
+
     Add immutable declared singleton warm-up plans, explicit sync/async startup
     execution, safe aggregated reports and side-effect-free intent inspection.
 
