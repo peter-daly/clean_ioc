@@ -33,6 +33,9 @@ Items 18–22 were added on 2026-10-04. The maintainer prioritized compiler item
 were captured before production changes; implementation and independent review will proceed sequentially. Items 21–22 remain deferred,
 scope the remaining coverage/tracing deliverables of item 08, and reuse item 12's implemented profiler.
 
+Item 18's Sol High investigation is complete and independently reviewed; KEEP the evidence and decline production
+cross-build caching for this delivery. Eligible reuse saves little additional work across builds, and timing is inconclusive.
+
 ## Work items
 
 | ID | Item | Priority | Prerequisites |
@@ -54,7 +57,7 @@ scope the remaining coverage/tracing deliverables of item 08, and reuse item 12'
 | 15 | [Chained component preferences](15-chained-component-preferences.md) — implemented by Astra medium and independently reviewed by Astra high; KEEP | P1 | 14; existing argument policies and captured selection explanations |
 | 16 | [Managed resource providers](16-managed-resource-providers.md) — implemented and independently reviewed; KEEP | P1 | Existing typed providers, resource ownership proof, and isolated per-call scopes |
 | 17 | [Declared warm-up plans](17-declared-warmup-plans.md) — implemented and independently reviewed; KEEP | P1 | Existing frozen root/activation plans, singleton ownership, and structured diagnostics |
-| 18 | [Incremental compilation](18-incremental-compilation.md) — prioritized; baseline captured; implementation next | P2 | Existing composition snapshots, occurrence-specific compilation, and 11 |
+| 18 | [Incremental compilation](18-incremental-compilation.md) — investigation complete and reviewed; production cache declined for this delivery | P2 | Existing composition snapshots, occurrence-specific compilation, and 11 |
 | 19 | [Execution-plan optimization](19-execution-plan-optimization.md) — queued after 18 | P2 | Existing frozen steps, ownership/sharing analysis, and 11–12 |
 | 20 | [Compilation budgets](20-compilation-budgets.md) — queued after 19 | P2 | Existing work counters, structured failures, and 05 diagnostic evidence |
 | 21 | [Test activation coverage](21-test-activation-coverage.md) — deferred; slice of 08 | P2 | 12 exact runtime observations and matching full graph catalog |

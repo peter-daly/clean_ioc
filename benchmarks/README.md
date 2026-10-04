@@ -102,3 +102,37 @@ allocations including runtime/plan metadata and exclude pre-trace declarations. 
 not comparable latency baselines. Existing runtime regressions remain in
 `bench_managed_provider_regressions.py`. See
 [the captured baseline and limitations](../.work/compiler-optimization-baseline.md).
+
+### Incremental-analysis investigation (item 18)
+
+`incremental_analysis_probe.py` is an isolated experiment, with no supported cache
+API. It preserves the original stable-schema fixture definitions and fresh owner
+close. It measures complete declarations + build + close in four modes: normal,
+conservative parameter-name reuse, an intentionally unsafe validation-omission
+ceiling, and an unchanged normal repeat. Definitions/imports and cache construction
+are excluded; fresh declarations and the patch context are included. The bounded
+probe is warm across builders. Patching is process-global: run this investigation
+alone, and never use its ceiling for application composition.
+
+```sh
+uv run benchbro run benchmarks/incremental_analysis_probe.py \
+  --case incremental-name-analysis-investigation --fixed --repeats 25 --warmup 5 \
+  --baseline item18-parameter-shape --no-compare \
+  --output-json /tmp/item18-measurement-1.json --output-md /tmp/item18-measurement-1.md
+# Repeat with measurement-2 output filenames; preserve the same probe digest.
+uv run benchbro run benchmarks/incremental_lifetime_probe.py \
+  --case incremental-analysis-lifetime --fixed --repeats 25 --warmup 5 \
+  --baseline item18-lifetime --no-compare \
+  --output-json /tmp/item18-lifetime.json --output-md /tmp/item18-lifetime.md
+uv run python -m benchmarks.incremental_analysis_evidence
+```
+
+The explicit case filter excludes imported baseline cases from this experiment.
+The evidence helper writes separate aggregate hit/rejection counts and five-sample
+tracemalloc allocations to `/tmp/item18-evidence.json`. Name/kind analysis hits are
+not runtime cache hits. See [the eligibility model and decision](../.work/18-incremental-compilation.md).
+
+The lifetime probe isolates cross-build warm reuse from the same bounded cache
+cleared before each build. Both retain within-build hits. It selects only the
+original generic and collection shapes, with a warm-repeat drift control. Clear
+is included in timing, slightly favoring warm reuse; probe construction is excluded.
