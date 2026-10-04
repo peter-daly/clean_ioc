@@ -19,8 +19,9 @@ with consumer and registration-context chains built using `prefer(...).then(...)
 Implementation is complete; Python 3.14 CI and supported-Python checks pass.
 Repeated benchmarks document compilation cost; separate Astra high review recommends KEEP.
 
-Item 16 was added on 2026-10-04 against Clean IoC 2.0.0b29. Managed resource providers are planned: explicit context
-manager acquisitions execute precompiled targets in isolated scopes. Implementation has not started.
+Item 16 was added on 2026-10-04 against Clean IoC 2.0.0b29. Managed resource providers are implemented by Sol Medium
+and independently reviewed by Sol High; APPROVE / KEEP. Explicit context-manager acquisitions execute frozen targets
+in isolated scopes. CI, supported-Python checks, executable docs and focused measurements are recorded with the item.
 
 Item 17 was also added on 2026-10-04: declared warm-up plans compile selected singleton startup targets, then activate
 them only through an explicit runtime call with aggregated diagnostics. Implementation has not started.
@@ -48,7 +49,7 @@ and 22 scope the remaining coverage/tracing deliverables of item 08 and reuse it
 | 13 | [Component-filter match strength](13-component-filter-match-strength.md) — retired; implementation archived locally | P1 | Superseded by 14 |
 | 14 | [Parent-context registration selection](14-parent-context-registration-selection.md) — implemented by Astra medium and independently reviewed by Astra high; KEEP | P1 | Existing contextual registration compilation and selection explanations |
 | 15 | [Chained component preferences](15-chained-component-preferences.md) — implemented by Astra medium and independently reviewed by Astra high; KEEP | P1 | 14; existing argument policies and captured selection explanations |
-| 16 | [Managed resource providers](16-managed-resource-providers.md) — planned | P1 | Existing typed providers, resource ownership proof, and isolated per-call scopes |
+| 16 | [Managed resource providers](16-managed-resource-providers.md) — implemented and independently reviewed; KEEP | P1 | Existing typed providers, resource ownership proof, and isolated per-call scopes |
 | 17 | [Declared warm-up plans](17-declared-warmup-plans.md) — planned | P1 | Existing frozen root/activation plans, singleton ownership, and structured diagnostics |
 | 18 | [Incremental compilation](18-incremental-compilation.md) — deferred | P2 | Existing composition snapshots, occurrence-specific compilation, and 11 |
 | 19 | [Execution-plan optimization](19-execution-plan-optimization.md) — deferred | P2 | Existing frozen steps, ownership/sharing analysis, and 11–12 |
@@ -105,6 +106,8 @@ items. Complete implementation and review of 09 before starting 10, and likewise
 For item 12, the maintainer requested Sol High implementation and separate Sol Extra High review.
 For items 14 and 15, the maintainer requested Astra Medium implementation and separate Astra High review.
 This overrides the default agent assignment above for those items.
+For items 16 and 17, the maintainer requested sequential Sol Medium implementation and separate Sol High review,
+with a local commit after each reviewed item. Finish and commit 16 before starting 17.
 
 ## Shared design rules
 
@@ -153,7 +156,7 @@ add explicit identity, redaction, uncertainty, and bounded-output requirements t
 
 ## Completion checklist for every item
 
-- [ ] Implemented by a Terra agent with medium reasoning and reviewed by a Sol agent with high reasoning; review
+- [ ] Implemented and reviewed with the assigned models and reasoning levels (including item-specific overrides); review
   findings are resolved.
 - [ ] Public API, compiler capture where needed, and frozen report representation agree.
 - [ ] Python and CLI output are documented with executable public-API examples.

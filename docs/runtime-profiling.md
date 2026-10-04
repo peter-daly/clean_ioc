@@ -74,3 +74,6 @@ no instances, arguments, traceback frames, per-request records, or unbounded eve
 marked by `incomplete` and `dropped_updates`; application resolution and cleanup continue to behave as before.
 Save the JSON next to the matching graph manifest if you need to inspect it later. A report is observational evidence;
 it does not change the graph, build findings, or manifest fingerprint.
+
+
+Managed provider entry records a request and the target activation/cache outcomes using the existing graph identities. Context exit records scope cleanup separately. Application work inside the block is excluded from DI request and activation duration. Creating an unentered manager records no acquisition or cleanup.

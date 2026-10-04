@@ -1,6 +1,12 @@
 Unreleased
 ----------
 
+    Add ``ManagedProvider[T]`` and ``AsyncManagedProvider[T]`` for explicit
+    context-manager acquisition of frozen targets in isolated scopes. Preserve
+    singleton owner anchoring and declared provisions; finalize acquisition-owned
+    resources on exit, failure and cancellation. Integrate deferred ownership,
+    sharing, policy traversal, manifests, semantic diffs and runtime profiling.
+
     Automatically validate factory return annotations during build. Report
     definite incompatibilities as ``factory-return-type-mismatch`` with
     dependency paths and source-linked SARIF. Support resolved generic results,

@@ -480,3 +480,6 @@ uv run benchbro run benchmarks/bench_clean_ioc.py --case compiler-tooling --no-c
 Use temporary output paths while shaping experiments. Do not opportunistically replace or commit machine-local `.benchbro` baselines. Consult the installed `use-benchbro` skill before changing benchmark boundaries or interpreting comparisons.
 
 For each V2 feature, the acceptance bar is: build-time invariants remain complete, runtime plans remain immutable, resolution does not reconstruct the dependency graph, ownership is explicit, static tooling describes the actual activation path, and failed composition is diagnosable before user code runs.
+
+
+Managed resource providers compile dedicated deferred boundaries and execute frozen targets in fresh acquisition scopes. Scoped caches are isolated; provisions and singleton ownership follow the bound owner. Public graph metadata uses `managed_provider`, provider mode, deferred target and `scope_policy: per_call` for context entry. Existing graph manifests remain stable, and beta formats remain unversioned.

@@ -88,7 +88,7 @@ from .policies import (
 )
 from .preferences import ComponentPreference, prefer
 from .provider_maps import ProviderMapGroup
-from .providers import AsyncProvider, Provider
+from .providers import AsyncManagedProvider, AsyncProvider, ManagedProvider, Provider
 from .selection_census import DefinitionCensus, DefinitionReference, SelectionCensus, SelectionUse
 from .sentinels import Undefined
 from .service_groups import DerivedServices, ServiceGroup
@@ -180,6 +180,7 @@ __all__ = [
     "BuildTriage",
     "FailureEvidence",
     "TriageGroup",
+    "AsyncManagedProvider",
     "AsyncProvider",
     "ActivationObligation",
     "ActivationReport",
@@ -230,6 +231,7 @@ __all__ = [
     "PartialGraph",
     "PartialNode",
     "PartialState",
+    "ManagedProvider",
     "Provider",
     "ProviderMapGroup",
     "ProviderScopeClosedError",

@@ -365,7 +365,7 @@ def selection_census(
     for path, component in selected_paths.items():
         if "/" not in path:
             continue
-        if component.kind in (ComponentKind.provider, ComponentKind.per_call_handle):
+        if component.kind in (ComponentKind.provider, ComponentKind.managed_provider, ComponentKind.per_call_handle):
             continue
         phase = phase_by_path.get(path, "eager")
         area = area_by_root_path.get(path.split("/", 1)[0])
@@ -451,7 +451,7 @@ def selection_census(
             continue
         source_component = (
             component.dependencies[0]
-            if component.kind is ComponentKind.provider
+            if component.kind in (ComponentKind.provider, ComponentKind.managed_provider)
             and component.dependencies
             and component.dependencies[0].kind is not ComponentKind.collection
             else component
@@ -515,7 +515,7 @@ def selection_census(
     else:
         for service_type, records in graph._root_candidates.items():
             for record in records:
-                if record.eligible or record.component.kind is ComponentKind.provider:
+                if record.eligible or record.component.kind in (ComponentKind.provider, ComponentKind.managed_provider):
                     continue
                 observations.append(
                     (

@@ -1,6 +1,6 @@
 # Special dependency types
 
-Clean IoC 2 keeps the runtime special surface small: `Provider`, `AsyncProvider`, `ResolutionContext`, `Scope`, and
+Clean IoC 2 keeps the runtime special surface small: `Provider`, `AsyncProvider`, `ManagedProvider`, `AsyncManagedProvider`, `ResolutionContext`, `Scope`, and
 `Container`.
 
 `ParameterContext` is related but is not a runtime dependency. Clean IoC passes it only to an explicit `derive(...)`
@@ -229,3 +229,147 @@ The provider is the target's immediate parent: a condition on its consumer must 
 `Provider[list[T]]` and provider maps retain every eligible member in their existing order, and duplicate map keys still
 fail. Marked provider root entrypoints and parentless requests through `ResolutionContext`, `use_component`, or its async
 helper keep their existing selection rules. See [parent precedence](filtering.md#parent-precedence-for-overlapping-registrations).
+
+## Managed resource providers
+
+`ManagedProvider[T]` acquires a precompiled target in a fresh isolated scope when
+its context manager is entered. Each call creates a single-use manager; build,
+handle resolution and manager creation activate no target. The reusable handle
+supports concurrent or nested acquisitions with independent scoped caches and
+reverse-order cleanup.
+
+```python
+from collections.abc import Iterator
+from contextlib import contextmanager
+from typing import assert_type
+
+from clean_ioc import ContainerBuilder, ManagedProvider
+
+
+class Session:
+    closed = False
+
+    def load(self) -> str:
+        assert not self.closed
+        return "materialized report"
+
+
+@contextmanager
+def session_factory() -> Iterator[Session]:
+    session = Session()
+    try:
+        yield session
+    finally:
+        session.closed = True
+
+
+class ReportRunner:
+    def __init__(self, sessions: ManagedProvider[Session]):
+        self.sessions = sessions
+
+    def run(self) -> str:
+        with self.sessions() as session:
+            assert_type(session, Session)
+            return session.load()
+
+
+builder = ContainerBuilder()
+builder.register(Session, factory=session_factory, lifespan="scoped")
+builder.register(ReportRunner, lifespan="singleton")
+with builder.build() as container:
+    runner = container.resolve(ReportRunner)
+    assert runner.run() == "materialized report"
+    with container.resolve(ManagedProvider[Session])() as session:
+        assert not session.closed
+    assert session.closed
+```
+
+`AsyncManagedProvider[T]` has a synchronous `__call__`: use `async with handle()`.
+It supports both synchronous and asynchronous activation and cleanup plans.
+`ManagedProvider[T]` requires synchronous initial activation and synchronous known
+acquisition-owned cleanup; an incompatible
+injected target or marked entry point fails build with
+`managed-provider-requires-async`. This includes acquisition-owned async cleanup
+reachable through an ordinary deferred provider. Independent managed/per-call
+boundaries and parent singleton cleanup keep their own owners; resource-free
+deferred async work remains permitted. An unmarked sync root rejects an
+incompatible frozen plan before target activation at entry. Later operations
+performed through an injected scope or unrestricted resolution-context lookup
+are caller controlled; the captured graph cannot prove every future operation.
+Use `AsyncManagedProvider` when those operations can acquire async resources.
+
+```python
+import asyncio
+from collections.abc import AsyncIterator
+from typing import assert_type
+
+from clean_ioc import AsyncManagedProvider, ContainerBuilder
+
+
+class AsyncSession:
+    closed = False
+
+
+async def session_factory() -> AsyncIterator[AsyncSession]:
+    session = AsyncSession()
+    try:
+        yield session
+    finally:
+        await asyncio.sleep(0)
+        session.closed = True
+
+
+async def example() -> None:
+    builder = ContainerBuilder()
+    builder.register(AsyncSession, factory=session_factory, lifespan="scoped")
+    async with builder.build() as container:
+        sessions = container.resolve(AsyncManagedProvider[AsyncSession])
+        async with sessions() as session:
+            assert_type(session, AsyncSession)
+            assert not session.closed
+        assert session.closed
+
+
+asyncio.run(example())
+```
+
+Targets support closed service types and `list[T]`, `tuple[T, ...]` and `set[T]`.
+`select(...)`, names, tags, aliases, generics, patterns, decorators, boundaries and
+pre-configurations follow ordinary provider selection. Targets need not own a
+resource. Entry executes the frozen plan without compilation or filter replay.
+
+Collection members activate sequentially in their frozen registration order; separate
+acquisitions may run concurrently. Scoped dependencies share inside an acquisition and differ between acquisitions,
+even if the enclosing scope has already resolved them. Per-resolution values
+share inside the acquisition's initial resolve. Singleton targets and dependencies
+retain their declaring owner and are not finalized by acquisition exit. Supplied
+slot values inherit from the handle's bound scope; they remain application owned.
+
+A singleton consumer can retain a managed handle for scoped resources. Its handle
+binds to the singleton owner and that owner's composition and provisions, even
+when the singleton is first resolved from a child or overlay. Ordinary providers
+retain their existing restrictions. Captive dependencies, runtime context checks
+and cycles inside a managed target are still build errors.
+
+Keep the bound owner and any shared singleton owners open throughout the block.
+An owner closed before entry causes `ProviderScopeClosedError`; an acquisition
+does not extend its lifetime. If the parent closes during the block, exit still
+cleans the acquisition's own resources. Body errors, failed entry and cancellation
+run cleanup. A cleanup failure propagates with the original body or activation
+error in `__context__`; multiple cleanup failures form the existing exception group.
+
+Use the target only during the block. Return materialized application data:
+objects, closures and lazy results backed by a scoped resource may be invalid
+after exit. There is no escape detector or method proxy. A singleton target retains
+its ordinary longer lifetime.
+
+Container-level marked managed entry points are supported. Boundary-local marked
+provider entry points retain the existing ordinary-provider restriction; use an
+exposed boundary target or a consumer entry point.
+
+Graphs identify `managed_provider` as a deferred boundary, with provider mode,
+target and `scope_policy: per_call` (a fresh scope per context entry). Ownership and
+sharing reports distinguish acquisition scopes from shared singleton owners.
+Direct dependency policies traverse the boundary; semantic diffs classify lifetime
+boundary changes. Existing graph manifests remain unchanged; managed graphs use
+the existing unversioned beta format.

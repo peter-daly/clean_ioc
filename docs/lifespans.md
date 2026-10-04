@@ -118,3 +118,6 @@ context-manager cleanup follows that frozen decision:
 Closing attempts every finalizer in reverse acquisition order. If several fail, cleanup continues and the failures are
 raised as an `ExceptionGroup` in finalization order. Closed scopes reject resolution, provision, and child-scope
 creation with `ScopeClosedError`.
+
+
+Managed provider acquisitions preserve registration lifespans: scoped values close at block exit, per-resolution values share during initial acquisition, and singleton values retain their declaring owner. A singleton consumer may retain a managed handle for scoped resources; internal captive dependencies remain invalid. See [managed resource providers](advanced/special-dependency-types.md#managed-resource-providers).

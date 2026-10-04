@@ -605,6 +605,7 @@ def graph_index(graph: CompiledGraph) -> GraphIndex:
                 parent_ref.component.kind
                 in (
                     ComponentKind.provider,
+                    ComponentKind.managed_provider,
                     ComponentKind.per_call_handle,
                 )
                 and edge_kind == "dependency"
@@ -621,7 +622,11 @@ def graph_index(graph: CompiledGraph) -> GraphIndex:
             incoming[component.occurrence_id].append(relationship)
             outgoing[parent_ref.component.occurrence_id].append(relationship)
         for index, child in enumerate(component.dependencies):
-            provider_target = component.kind in (ComponentKind.provider, ComponentKind.per_call_handle)
+            provider_target = component.kind in (
+                ComponentKind.provider,
+                ComponentKind.managed_provider,
+                ComponentKind.per_call_handle,
+            )
             declared_resolution = child.argument is not None and child.argument.startswith("resolution")
             child_phase = "deferred" if provider_target or declared_resolution else phase
             child_kind: RelationshipKind = "declared_resolution" if declared_resolution else "dependency"
@@ -813,6 +818,21 @@ def sharing_report(graph: CompiledGraph, target: Any | None = None) -> SharingRe
                 and component.cache_owner not in (RuntimeOwnerKind.singleton, RuntimeOwnerKind.supplied)
                 else ""
             )
+            managed_ancestor = component.parent
+            while managed_ancestor is not None and managed_ancestor.kind not in (
+                ComponentKind.managed_provider,
+                ComponentKind.per_call_handle,
+            ):
+                managed_ancestor = managed_ancestor.parent
+            if managed_ancestor is not None and component.cache_owner not in (
+                RuntimeOwnerKind.singleton,
+                RuntimeOwnerKind.supplied,
+            ):
+                ancestor_paths = index.references_for(managed_ancestor.occurrence_id)
+                per_call_boundary = next(
+                    (reference.path for reference in ancestor_paths if item.path.startswith(reference.path + "/")),
+                    per_call_boundary,
+                )
             key = (component.id, component.cache_owner, layer, per_call_boundary)
             grouped[key].append(item)
 
@@ -922,14 +942,18 @@ def activation_report(
                 )
                 visit(child, child_path, "deferred", per_call_target=True)
             return
-        if component.kind is ComponentKind.provider:
+        if component.kind in (ComponentKind.provider, ComponentKind.managed_provider):
             phase_obligations.append(
                 obligation(
                     component,
                     path,
                     phase,
-                    "provider",
-                    "Acquire a provider handle; invoking its target is deferred",
+                    component.kind.value,
+                    (
+                        "Acquire a managed handle; context entry activates its target in a fresh scope"
+                        if component.kind is ComponentKind.managed_provider
+                        else "Acquire a provider handle; invoking its target is deferred"
+                    ),
                 )
             )
             for order, child in enumerate(component.dependencies):
@@ -937,7 +961,12 @@ def activation_report(
                 relationships.append(
                     ExecutionRelationship(path, child_path, "deferred_target", "deferred", order, "on demand")
                 )
-                visit(child, child_path, "deferred", per_call_target=per_call_target)
+                visit(
+                    child,
+                    child_path,
+                    "deferred",
+                    per_call_target=(per_call_target or component.kind is ComponentKind.managed_provider),
+                )
             return
 
         if component.kind is ComponentKind.scope_slot:
@@ -1305,6 +1334,15 @@ def _sharing_owner_label(cache_owner: RuntimeOwnerKind, layer: str, boundary: st
 def _sharing_conditions(component: Component, *, per_call_target: bool = False) -> tuple[str, ...]:
     if component.kind is ComponentKind.per_call_handle:
         return ("Acquiring the handle does not activate the target; each method call starts a fresh scope.",)
+    ancestor = component.parent
+    while ancestor is not None and ancestor.kind not in (ComponentKind.managed_provider, ComponentKind.per_call_handle):
+        ancestor = ancestor.parent
+    if (
+        ancestor is not None
+        and ancestor.kind is ComponentKind.managed_provider
+        and component.cache_owner is RuntimeOwnerKind.scope
+    ):
+        return ("Shares within one managed acquisition only; each context entry starts a fresh scoped cache.",)
     if per_call_target and component.cache_owner is RuntimeOwnerKind.scope:
         return ("Shares within one method invocation only; each call starts a fresh scoped cache.",)
     if component.activation is ComponentActivation.instance:

@@ -71,6 +71,7 @@ class ComponentKind(str, Enum):
     value = "value"
     runtime_context = "runtime_context"
     provider = "provider"
+    managed_provider = "managed_provider"
     provider_map = "provider_map"
     per_call_handle = "per_call_handle"
 

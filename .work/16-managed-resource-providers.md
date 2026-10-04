@@ -1,7 +1,7 @@
 # 16 — Managed resource providers
 
 Created: 2026-10-04\
-Status: Planned; implementation not started\
+Status: Implemented by Sol Medium and independently reviewed by Sol High; APPROVE / KEEP\
 Priority: P1\
 Baseline: Clean IoC 2.0.0b29 on `version2`\
 Dependencies: Existing typed providers, resource ownership proof, and isolated per-call scope machinery\
@@ -232,3 +232,107 @@ per-call method scopes retain their public APIs and behavior.
 Implementation and independent review are complete; acceptance evidence, CI, supported-Python checks, docs examples,
 strict documentation build, and focused measurements are recorded. Public APIs, compiler metadata, runtime ownership,
 diagnostics, and tooling agree. This item remains planned until those conditions are met.
+
+## Implementation design (2026-10-04)
+
+The compiled handle is `ComponentKind.managed_provider` with deferred activation, provider mode and one target child.
+Its runtime step extends the frozen provider step, preserving existing selection, direct target wiring, and singleton
+owner anchoring. Manifests add `scope_policy: per_call` only for managed handles: here this denotes a fresh isolated
+scope per context entry, not a method proxy. Target scoped ownership remains `scope`; its managed ancestor identifies
+that owner as the acquisition. Singleton ownership remains with the declaring parent owner. Existing graph formats
+remain unversioned, and existing graphs require no baseline regeneration.
+
+Each call creates a single-use manager without opening a scope. Entry marks the manager used before checking the owner,
+then creates an isolated scope (`inherit_scoped=False`) whose provision lookup follows its bound parent. Exit takes and
+clears the acquisition scope before closing it, so finalization happens once. The synchronous handle checks the complete
+transitive target capability; an async handle supports either plan. No application method proxy or escape check is added.
+
+Failed entry closes the acquisition before re-raising. Cleanup uses existing reverse-order finalizers and exception
+aggregation: a cleanup failure propagates with the activation/body exception in `__context__`; multiple cleanup failures
+form the existing cleanup exception group. The original application exception is not suppressed. Cancellation uses the
+same async cleanup path. Owners are not pinned, and closing a parent does not close the acquisition's independent cache.
+
+Observed acquisition uses the existing request correlation and resolution context, and stops request timing on entry.
+The observed acquisition scope records exit cleanup as its own owner operation. Application work between entry and exit
+is excluded from DI activation/request timing. Uninstrumented ordinary runtime paths receive no new observer branch.
+
+Baseline: HEAD `58b1db7`, 1,499 tests, repository CI and strict docs passed before implementation (parent verification).
+Focused before/after measurements and implementation acceptance results will be recorded below.
+
+
+### Final collection execution decision
+
+Managed collections activate members sequentially in the frozen registration order. Parallel activation within a
+single collection is not a public promise. Sequential initial activation keeps one activation stack and per-resolution
+cache, avoids false cycles on repeated transient edges, preserves per-resolution sharing, and prevents a failed or
+cancelled entry from racing another member's context-manager entry or finalizer. Separate managers still support fully
+concurrent acquisitions. Tests cover cancellation while a later member is entering after an earlier resource has opened,
+including awaited finalizers and cleanup-failure chaining. This replaces the experimental concurrent cancel/drain design.
+
+The compiler captures managed variants for nested collections, declared resolution-context requests, and ordinary
+provider targets inside an acquisition. Managed resolution contexts reuse already-frozen managed root variants for the
+existing unrestricted root-lookup API; no target adaptation or compilation happens at runtime. Ordinary provider handles
+created in this context keep their original calling API and bound lifetime. Named collections of provider handles also
+preserve their existing supported shape. Acquisition itself performs no root lookup, callbacks, or discovery.
+
+Nearest isolated boundaries determine scope ownership and sharing: a per-call handle inside a managed acquisition owns
+its target's scoped resources per method invocation; a managed handle inside a per-call target owns its resources per
+context entry. Singleton and supplied identities remain outside these isolated cache groups.
+
+Inherited limitation: boundary-local marked provider entry points remain unsupported, matching ordinary Provider's
+existing `boundary-entrypoint-not-local` behavior. Container-level marked managed entry points and exposed boundary target
+injection are supported. This item does not expand boundary entry-point declaration syntax.
+
+
+### Sync cleanup capability proof
+
+Initial activation still uses the transitive step capability. A separate compiler proof traverses ordinary deferred
+provider targets for known asynchronous cleanup owned by the acquisition scope. It stops at independent managed and
+per-call boundaries, and ignores cleanup owned by parent singletons or supplied values. Consequently resource-free
+async provider work and deferred parent-owned singleton resources remain permitted in a sync managed block; known
+acquisition-owned asynchronous finalizers require `AsyncManagedProvider`. Injected and marked sync handles reject such
+plans during build with `managed-provider-requires-async`. An unmarked synthetic sync root checks its frozen cleanup
+capability before any target activation on entry. Both plain and observed plans preserve that capability. Later caller-controlled scope/unrestricted-context lookup
+can introduce resources outside the captured graph; use an async managed handle when such operations require async
+cleanup. The proof covers initial activation and known acquisition-owned cleanup, not arbitrary future application work.
+
+## Implementation verification evidence (2026-10-04; final review/status owned by parent)
+
+- `tests/test_managed_providers.py`: **80 passed**. Covers lazy entry, isolated warmed/nested/sequential/concurrent
+  scopes, same-acquisition sharing for all lifespans, scope provisions and first-child/root/overlay singleton anchoring,
+  parent closure and single-use managers, sync/async registration shapes, failed entry/body/cleanup/cancellation,
+  transitive captive checks and real cycles, selections/aliases/closed generics/patterns, actual registration and
+  decorator template callbacks, pre-configurations, boundary exposure/privacy, frozen runtime wiring and exception chains.
+- Tooling cases cover deferred activation, nearest managed/per-call ownership and sharing, direct policy traversal,
+  source-linked SARIF, semantic activation changes, build matrices, root explanations, argument categories and selection
+  census. Public reports are deterministic and redact build input names/values. Existing graph regression suites pass;
+  new metadata is limited to graphs using the new boundary, with no schema version or baseline regeneration.
+- Profiling cases count acquisition and cleanup independently using existing correlation, exercise plain and observed
+  failure/cancellation/ownership paths, and verify a large simulated application-body duration is excluded from DI timing.
+- `make ci`: **passed**, including Ruff lint/format, `ty`, **1,579 tests**, executable public documentation examples and
+  BenchBro discovery. The existing FastAPI/Starlette deprecation warning remains unrelated to this feature.
+- Supported Python full suites in isolated uv environments: **3.11.13: 1,571 passed / 8 skipped**;
+  **3.12.11: 1,576 passed / 3 skipped**; **3.13.5: 1,579 passed**; **3.14.4: 1,579 passed** (main CI).
+  Version-specific skips are the existing unsupported-native-syntax cases. Each interpreter used the final runtime
+  including the deferred async cleanup capability proof.
+- `uv run mkdocs build --strict --site-dir /tmp/clean-ioc-managed-docs`: **passed**. Sync and async snippets in
+  `docs/advanced/special-dependency-types.md` execute through `scripts/validate_docs_examples.py`, using only public imports
+  and `assert_type` examples for yielded products. Public docs cover owners, exception chaining, block lifetime and escape
+  limitations, collection sequencing, known cleanup proof and caller-controlled later lookup.
+- [Focused measurements](16-managed-provider-benchmarks.md) record baseline/after ordinary runtime probes against
+  `58b1db7` and 12 final managed/observed variants. No tested ordinary path shows material slowdown. Measurements have
+  substantial repeat noise; no small speedup, precise latency bound, compilation-cost bound or real-I/O claim is made.
+
+Independent Sol High review was requested by the parent. Reported findings have been repaired with focused regressions:
+root explanation/census parity, managed diagnostic wording, sequential collection failure/cancellation and sharing,
+managed context/provider root shapes, nearest isolated boundary ownership, and deferred acquisition-owned async cleanup.
+The implementation agent has not committed, pushed, released, changed completion status, or started item 17.
+
+## Independent review
+
+A separate `gpt-6.1-sol` agent at high reasoning independently reviewed the complete implementation,
+documentation, tests and benchmark artifacts after `gpt-6.1-sol` medium implementation. Final verdict:
+**APPROVE / KEEP**, with no unresolved correctness or acceptance findings. The reviewer independently ran all
+80 managed tests and verified the repaired lifecycle, sharing, context/provider, explanation/census, ownership
+and async cleanup capability cases in plain and observed plans. Documented collection sequencing, boundary entry-point
+limits, owner lifetime, caller-controlled lookup and benchmark uncertainty were accepted.

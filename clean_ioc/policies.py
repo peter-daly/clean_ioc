@@ -35,7 +35,13 @@ _IMPLEMENTATION_KINDS = frozenset(
     (ComponentKind.registration, ComponentKind.decorator, ComponentKind.pre_configuration)
 )
 _TRANSPARENT_KINDS = frozenset(
-    (ComponentKind.collection, ComponentKind.provider, ComponentKind.provider_map, ComponentKind.per_call_handle)
+    (
+        ComponentKind.collection,
+        ComponentKind.provider,
+        ComponentKind.managed_provider,
+        ComponentKind.provider_map,
+        ComponentKind.per_call_handle,
+    )
 )
 _LIFESPANS = frozenset(("transient", "per_resolution", "scoped", "singleton"))
 

@@ -193,3 +193,6 @@ Scopes are idempotently closeable through synchronous or asynchronous context ma
 `resolve_async`, `provide`, `new_scope`, and `new_scope_builder` raise `ScopeClosedError`. Closing a parent does not
 implicitly close child scopes that have their own boundary; integrations should still nest scope contexts so inherited
 resources are not used after their owner closes.
+
+
+A `ManagedProvider[T]` acquires its target in an isolated scope for each `with handle()` block; `AsyncManagedProvider[T]` uses `async with handle()`. Scoped caches do not inherit warmed parent values, while declared provisions follow the bound parent. Keep that owner open during the block. See [managed resource providers](advanced/special-dependency-types.md#managed-resource-providers).

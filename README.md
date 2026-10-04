@@ -412,3 +412,6 @@ compiled container during application startup.
 - [Benchmarks](https://peter-daly.github.io/clean_ioc/benchmarks/)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGES.rst)
+
+
+Use `ManagedProvider[T]` with `with handle()` or `AsyncManagedProvider[T]` with `async with handle()` to acquire a frozen dependency plan in a fresh isolated scope and close its scoped resources at block exit. Handles can be retained by singleton consumers. Return materialized data while resources are open. See [managed resource providers](docs/advanced/special-dependency-types.md#managed-resource-providers).

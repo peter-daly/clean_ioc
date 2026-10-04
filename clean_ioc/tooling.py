@@ -1339,7 +1339,10 @@ def _dependency_relationship(component: Component) -> str:
         boundary = f" via boundary:{source}"
     if component.parent is not None and component.parent.kind is ComponentKind.per_call_handle:
         return f"activates on each method call{boundary}"
-    if component.parent is not None and component.parent.kind is ComponentKind.provider:
+    if component.parent is not None and component.parent.kind in (
+        ComponentKind.provider,
+        ComponentKind.managed_provider,
+    ):
         return f"provides on demand{boundary}"
     if component.argument is None:
         return f"depends on{boundary}"
@@ -1387,11 +1390,13 @@ def _node_dict(
             None if component.owner_occurrence_id is None else owner_paths.get(component.owner_occurrence_id)
         ),
     }
-    if component.kind is ComponentKind.provider:
+    if component.kind in (ComponentKind.provider, ComponentKind.managed_provider):
         metadata["provider_mode"] = component.provider_mode
         metadata["deferred_target"] = (
             qualified_name(component.dependencies[0].service_type) if component.dependencies else None
         )
+    if component.kind is ComponentKind.managed_provider:
+        metadata["scope_policy"] = "per_call"
     if component.kind is ComponentKind.per_call_handle:
         metadata["scope_policy"] = "per_call"
         metadata["deferred_target"] = (
@@ -2002,7 +2007,7 @@ class CompiledGraph:
                 try:
                     path = self._path_for_component(component)
                 except ValueError:
-                    if component.kind is not ComponentKind.provider:
+                    if component.kind not in (ComponentKind.provider, ComponentKind.managed_provider):
                         raise
                     path = (f"root:{qualified_name(service_type)}",)
         return CompilationExplanation(

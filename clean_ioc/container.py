@@ -100,7 +100,7 @@ from .generic_utils import resolve_typevar_bindings as _resolve_factory_typevars
 from .instrumentation import _TIMED, Instrumentation, ResolutionProfiler
 from .preferences import ComponentPreference, _validate_preference
 from .provider_maps import ProviderMapGroup
-from .providers import AsyncProvider, Provider
+from .providers import AsyncManagedProvider, AsyncProvider, ManagedProvider, Provider
 from .selection_census import DefinitionReference
 from .sentinels import Undefined, _Undefined
 from .service_groups import DerivedServices, ServiceGroup
@@ -1160,7 +1160,7 @@ def _normalize_layer_aliases(layer: _Layer) -> _Layer:
                         patterns.validate_pattern(canonical_service)
                         if get_origin(canonical_service) in legacy.Dependency.GENERIC_COLLECTION_MAPPINGS or get_origin(
                             canonical_service
-                        ) in (Provider, AsyncProvider):
+                        ) in (Provider, AsyncProvider, ManagedProvider, AsyncManagedProvider):
                             raise patterns.PatternError(
                                 "Synthetic collection and provider requests cannot be outer registration patterns"
                             )
@@ -2562,6 +2562,71 @@ class _CollectionStep(_Step):
         return self.collection_type(values)
 
 
+async def _managed_collection_values(calls: Iterable[Any]) -> list[Any]:
+    # Initial acquisition is sequential. Separate acquisitions remain concurrent.
+    # Lazy iteration creates no sibling activation to race failure cleanup, and
+    # preserves one resolution cache/activation stack for repeated dependency edges.
+    return [await call for call in calls]
+
+
+class _ManagedCollectionStep(_CollectionStep):
+    __slots__ = ()
+
+    async def resolve_async(self, context: _RuntimeResolutionContext) -> Any:
+        values = await _managed_collection_values(member.resolve_async(context) for member in self.members)
+        return self.collection_type(values)
+
+
+def _managed_target_step(step: _Step, memo: dict[int, _Step] | None = None) -> _Step:
+    """Freeze managed collection failure semantics, including nested dependencies."""
+    memo = {} if memo is None else memo
+    if id(step) in memo:
+        return memo[id(step)]
+
+    def dependency(item: _CompiledDependency) -> _CompiledDependency:
+        target = _managed_target_step(item.step, memo)
+        return item if target is item.step else replace(item, step=target)
+
+    result = step
+    if isinstance(step, _CollectionStep):
+        result = _ManagedCollectionStep(
+            step.collection_type,
+            tuple(_managed_target_step(member, memo) for member in step.members),
+            step.sync_supported,
+        )
+    elif isinstance(step, _RegistrationStep):
+        dependencies = tuple(dependency(item) for item in step.dependencies)
+        configurations = tuple(
+            replace(item, dependencies=tuple(dependency(dep) for dep in item.dependencies))
+            for item in step.pre_configurations
+        )
+        decorators = tuple(
+            replace(item, dependencies=tuple(dependency(dep) for dep in item.dependencies)) for item in step.decorators
+        )
+        if any(left is not right for left, right in zip(dependencies, step.dependencies, strict=True)) or any(
+            any(a is not b for a, b in zip(left.dependencies, right.dependencies, strict=True))
+            for left, right in zip(
+                (*configurations, *decorators), (*step.pre_configurations, *step.decorators), strict=True
+            )
+        ):
+            result = replace(step, dependencies=dependencies, pre_configurations=configurations, decorators=decorators)
+    elif isinstance(step, _ScopeStep) and step.resolution_requests:
+        result = replace(
+            step,
+            resolution_requests=tuple(
+                replace(item, step=_managed_target_step(item.step, memo)) for item in step.resolution_requests
+            ),
+        )
+    elif isinstance(step, _ProviderStep):
+        target = _managed_target_step(step.target, memo)
+        if isinstance(step, _ManagedProviderStep):
+            result = replace(step, target=target) if target is not step.target else step
+        else:
+            result = _ContextProviderStep(step.mode, target, step.bound_owner_token, step.sync_supported)
+    memo[id(step)] = result
+    return result
+
+
 class _FrozenProvider:
     """Private runtime implementation of :class:`Provider`."""
 
@@ -2629,6 +2694,209 @@ class _ProviderStep(_Step):
 
     async def resolve_async(self, context: _RuntimeResolutionContext) -> Any:
         return self.resolve(context)
+
+
+class _FrozenContextProvider:
+    """Ordinary provider API within an acquisition, with safe frozen targets."""
+
+    __slots__ = ("_scope", "_step", "_mode", "_profile_key")
+
+    def __init__(self, scope: Scope, step: _Step, mode: str, profile_key: tuple[str, str] | None = None) -> None:
+        self._scope, self._step, self._mode, self._profile_key = scope, step, mode, profile_key
+
+    def _context(self) -> _RuntimeResolutionContext:
+        try:
+            self._scope._ensure_open()
+        except ScopeClosedError as error:
+            raise ProviderScopeClosedError("The provider's bound scope is closed") from error
+        return (
+            _ManagedResolutionContext(self._scope)
+            if self._profile_key is None
+            else _ObservedManagedResolutionContext(self._scope)
+        )
+
+    def _resolve(self) -> Any:
+        context = self._context()
+        try:
+            if not self._step.sync_supported:
+                raise RuntimeError("The provider target requires AsyncProvider")
+            return self._step.resolve(context)
+        finally:
+            context.finish()
+
+    async def _resolve_async(self) -> Any:
+        context = self._context()
+        try:
+            return await self._step.resolve_async(context)
+        finally:
+            context.finish()
+
+    def __call__(self) -> Any:
+        if self._mode == "async":
+            return (
+                self._resolve_async()
+                if self._profile_key is None
+                else _observed_call_async(self._scope._profiler, self._profile_key, self._resolve_async)
+            )
+        return (
+            self._resolve()
+            if self._profile_key is None
+            else _observed_call(self._scope._profiler, self._profile_key, self._resolve)
+        )
+
+
+class _ContextProviderStep(_ProviderStep):
+    __slots__ = ()
+
+    def resolve(self, context: _RuntimeResolutionContext) -> Any:
+        return _FrozenContextProvider(self._bound_scope(context), self.target, self.mode)
+
+
+class _ObservedContextProviderStep(_ContextProviderStep):
+    __slots__ = ("_profile_key",)
+
+    def resolve(self, context: _RuntimeResolutionContext) -> Any:
+        return _FrozenContextProvider(self._bound_scope(context), self.target, self.mode, _profile_key(self))
+
+
+class _ManagedAcquisition:
+    """Single-use acquisition. No scope or context exists before entry."""
+
+    __slots__ = ("_owner", "_step", "_used", "_scope", "_profile_key", "_cleanup_sync_supported")
+
+    def __init__(
+        self, owner: Scope, step: _Step, profile_key: tuple[str, str] | None = None, cleanup_sync_supported: bool = True
+    ) -> None:
+        self._cleanup_sync_supported = cleanup_sync_supported
+        self._owner = owner
+        self._step = step
+        self._used = False
+        self._scope: Scope | None = None
+        self._profile_key = profile_key
+
+    def _begin(self) -> Scope:
+        if self._used:
+            raise RuntimeError("A managed provider context manager is single-use")
+        self._used = True
+        owner = self._owner
+        try:
+            owner._ensure_open()
+        except ScopeClosedError as error:
+            raise ProviderScopeClosedError("The provider's bound scope is closed") from error
+        scope_class = Scope if self._profile_key is None else _ObservedScope
+        scope = scope_class(
+            owner._plan, container=owner.container, parent=owner, owners=owner._owners, inherit_scoped=False
+        )
+        if self._profile_key is not None:
+            cast(_ObservedScope, scope)._install_observation(
+                owner._profiler,
+                owner._profile_fingerprint,
+                cast(_ObservedScope, owner)._request_labels,
+                owner._profile_paths,
+            )
+        scope._resolution_started = True
+        self._scope = scope
+        return scope
+
+    def _resolve(self, scope: Scope) -> Any:
+        context = (
+            _ManagedResolutionContext(scope) if self._profile_key is None else _ObservedManagedResolutionContext(scope)
+        )
+        try:
+            if not self._step.sync_supported or not self._cleanup_sync_supported:
+                raise RuntimeError("The managed provider target requires AsyncManagedProvider")
+            return self._step.resolve(context)
+        finally:
+            context.finish()
+
+    async def _resolve_async(self, scope: Scope) -> Any:
+        context = (
+            _ManagedResolutionContext(scope) if self._profile_key is None else _ObservedManagedResolutionContext(scope)
+        )
+        try:
+            return await self._step.resolve_async(context)
+        finally:
+            context.finish()
+
+    def __enter__(self) -> Any:
+        scope = self._begin()
+        try:
+            if self._profile_key is None:
+                return self._resolve(scope)
+            return _observed_call(self._owner._profiler, self._profile_key, lambda: self._resolve(scope))
+        except BaseException:
+            self.__exit__()
+            raise
+
+    def __exit__(self, *_: Any) -> None:
+        scope, self._scope = self._scope, None
+        if scope is not None:
+            scope._close()
+
+
+class _AsyncManagedAcquisition(_ManagedAcquisition):
+    __slots__ = ()
+
+    def __enter__(self) -> Any:
+        raise TypeError("AsyncManagedProvider requires async with")
+
+    async def __aenter__(self) -> Any:
+        scope = self._begin()
+        try:
+            if self._profile_key is None:
+                return await self._resolve_async(scope)
+            return await _observed_call_async(
+                self._owner._profiler, self._profile_key, lambda: self._resolve_async(scope)
+            )
+        except BaseException:
+            await self.__aexit__()
+            raise
+
+    async def __aexit__(self, *_: Any) -> None:
+        scope, self._scope = self._scope, None
+        if scope is not None:
+            await scope._close_async()
+
+
+class _FrozenManagedProvider:
+    __slots__ = ("_scope", "_step", "_mode", "_profile_key", "_cleanup_sync_supported")
+
+    def __init__(
+        self,
+        scope: Scope,
+        step: _Step,
+        mode: str,
+        profile_key: tuple[str, str] | None = None,
+        cleanup_sync_supported: bool = True,
+    ) -> None:
+        self._cleanup_sync_supported = cleanup_sync_supported
+        self._scope = scope
+        self._step = step
+        self._mode = mode
+        self._profile_key = profile_key
+
+    def __call__(self) -> Any:
+        manager_type = _ManagedAcquisition if self._mode == "sync" else _AsyncManagedAcquisition
+        return manager_type(self._scope, self._step, self._profile_key, self._cleanup_sync_supported)
+
+
+@dataclass(frozen=True, slots=True)
+class _ManagedProviderStep(_ProviderStep):
+    cleanup_sync_supported: bool = True
+
+    def resolve(self, context: _RuntimeResolutionContext) -> Any:
+        return _FrozenManagedProvider(
+            self._bound_scope(context), self.target, self.mode, cleanup_sync_supported=self.cleanup_sync_supported
+        )
+
+
+class _ObservedManagedProviderStep(_ManagedProviderStep):
+    __slots__ = ("_profile_key",)
+
+    def resolve(self, context: _RuntimeResolutionContext) -> Any:
+        return _FrozenManagedProvider(
+            self._bound_scope(context), self.target, self.mode, _profile_key(self), self.cleanup_sync_supported
+        )
 
 
 def _per_call_methods(service_type: Any) -> tuple[tuple[str, Callable[..., Any], bool], ...]:
@@ -4508,11 +4776,27 @@ def _provider_request(annotation: Any) -> tuple[typing.Literal["sync", "async"],
 
     origin = get_origin(annotation)
     provider_type = annotation if origin is None else origin
-    if provider_type not in (Provider, AsyncProvider):
+    if provider_type not in (Provider, AsyncProvider, ManagedProvider, AsyncManagedProvider):
         return None
     arguments = get_args(annotation)
     target = arguments[0] if len(arguments) == 1 else None
-    return ("sync" if provider_type is Provider else "async"), target
+    return ("sync" if provider_type in (Provider, ManagedProvider) else "async"), target
+
+
+def _managed_async_cleanup(component: Component) -> bool:
+    """Known acquisition-owned async cleanup, including ordinary deferred providers."""
+    if component.kind in (ComponentKind.managed_provider, ComponentKind.per_call_handle):
+        return False
+    if component.requires_async and component.manages_cleanup and component.cleanup_owner is RuntimeOwnerKind.scope:
+        return True
+    return any(
+        _managed_async_cleanup(child)
+        for child in (*component.dependencies, *component.pre_configurations, *component.decorators)
+    )
+
+
+def _is_managed_provider(annotation: Any) -> bool:
+    return (get_origin(annotation) or annotation) in (ManagedProvider, AsyncManagedProvider)
 
 
 def _provider_target_collection(target: Any) -> tuple[type, Any] | None:
@@ -5091,7 +5375,8 @@ class _Compiler:
             (
                 index
                 for index in range(len(self._frames) - 1, -1, -1)
-                if self._frames[index].kind in (ComponentKind.provider, ComponentKind.per_call_handle)
+                if self._frames[index].kind
+                in (ComponentKind.provider, ComponentKind.managed_provider, ComponentKind.per_call_handle)
             ),
             -1,
         )
@@ -5191,12 +5476,16 @@ class _Compiler:
             return cache_owner, RuntimeOwnerKind.none, None, "The runtime supplies this context without cleanup"
         if kind is ComponentKind.collection:
             return RuntimeOwnerKind.none, RuntimeOwnerKind.none, None, "The collection is local to its activation edge"
-        if kind is ComponentKind.per_call_handle:
+        if kind in (ComponentKind.per_call_handle, ComponentKind.managed_provider):
             return (
                 RuntimeOwnerKind.none,
                 RuntimeOwnerKind.none,
                 None,
-                "The handle defers activation to a fresh scope for each invocation",
+                (
+                    "The handle defers activation to a fresh scope for each context entry"
+                    if kind is ComponentKind.managed_provider
+                    else "The handle defers activation to a fresh scope for each invocation"
+                ),
             )
         if kind is ComponentKind.provider:
             return (
@@ -5222,7 +5511,20 @@ class _Compiler:
             )
             return cache_owner, RuntimeOwnerKind.singleton, inherited, reason
         if lifespan == "scoped":
-            return cache_owner, RuntimeOwnerKind.scope, None, "The scoped instance closes with the resolving scope"
+            reason = (
+                "The scoped instance closes with its managed acquisition scope"
+                if next(
+                    (
+                        frame.kind
+                        for frame in reversed(self._frames)
+                        if frame.kind in (ComponentKind.managed_provider, ComponentKind.per_call_handle)
+                    ),
+                    None,
+                )
+                is ComponentKind.managed_provider
+                else "The scoped instance closes with the resolving scope"
+            )
+            return cache_owner, RuntimeOwnerKind.scope, None, reason
         if lifespan == "per_resolution":
             cleanup = RuntimeOwnerKind.scope if manages_cleanup else RuntimeOwnerKind.none
             reason = (
@@ -5573,11 +5875,11 @@ class _Compiler:
         provider, draft = self._draft(
             component_id=f"provider-root:{qualified_name(annotation)}:{target_component.id}",
             service_type=annotation,
-            implementation=Provider if mode == "sync" else AsyncProvider,
+            implementation=get_origin(annotation),
             lifespan="transient",
             name=target_component.name,
             tags=target_component.tags,
-            kind=ComponentKind.provider,
+            kind=(ComponentKind.managed_provider if _is_managed_provider(annotation) else ComponentKind.provider),
             activation=ComponentActivation.deferred,
             parent=None,
             provider_mode=mode,
@@ -5591,7 +5893,18 @@ class _Compiler:
                 explanation,
                 subject=qualified_name(annotation),
             )
-        return _RootPlan(provider, _ProviderStep(mode, target_step))
+        return _RootPlan(
+            provider,
+            (_ManagedProviderStep if _is_managed_provider(annotation) else _ProviderStep)(
+                mode,
+                _managed_target_step(target_step) if _is_managed_provider(annotation) else target_step,
+                **(
+                    {"cleanup_sync_supported": not _managed_async_cleanup(target_component)}
+                    if _is_managed_provider(annotation)
+                    else {}
+                ),
+            ),
+        )
 
     def _provider_collection_root(
         self,
@@ -5604,11 +5917,11 @@ class _Compiler:
         provider, provider_draft = self._draft(
             component_id=f"provider-root:{qualified_name(annotation)}",
             service_type=annotation,
-            implementation=Provider if mode == "sync" else AsyncProvider,
+            implementation=get_origin(annotation),
             lifespan="transient",
             name=None,
             tags=(),
-            kind=ComponentKind.provider,
+            kind=(ComponentKind.managed_provider if _is_managed_provider(annotation) else ComponentKind.provider),
             activation=ComponentActivation.deferred,
             parent=None,
             provider_mode=mode,
@@ -5642,7 +5955,18 @@ class _Compiler:
             code="included-collection",
             reason=f"The deferred collection target {qualified_name(target_type)} was frozen at build time",
         )
-        return _RootPlan(provider, _ProviderStep(mode, step))
+        return _RootPlan(
+            provider,
+            (_ManagedProviderStep if _is_managed_provider(annotation) else _ProviderStep)(
+                mode,
+                _managed_target_step(step) if _is_managed_provider(annotation) else step,
+                **(
+                    {"cleanup_sync_supported": not _managed_async_cleanup(collection)}
+                    if _is_managed_provider(annotation)
+                    else {}
+                ),
+            ),
+        )
 
     def _compile_provider_roots(
         self,
@@ -5654,7 +5978,12 @@ class _Compiler:
                 continue
             base_records = self.root_candidates.get(service_type, ())
             origins = {record.component.occurrence_id: record.decision.origin for record in base_records}
-            for provider_type, mode in ((Provider, "sync"), (AsyncProvider, "async")):
+            for provider_type, mode in (
+                (Provider, "sync"),
+                (AsyncProvider, "async"),
+                (ManagedProvider, "sync"),
+                (AsyncManagedProvider, "async"),
+            ):
                 annotation = provider_type[service_type]
                 plans = tuple(
                     replace(
@@ -7356,6 +7685,18 @@ class _Compiler:
         draft.cache_owner = source.cache_owner
         draft.cleanup_owner = source.cleanup_owner
         draft.ownership_reason = source.ownership_reason
+        ancestor = parent
+        while ancestor is not None and ancestor.kind not in (
+            ComponentKind.managed_provider,
+            ComponentKind.per_call_handle,
+        ):
+            ancestor = ancestor.parent
+        if (
+            ancestor is not None
+            and ancestor.kind is ComponentKind.managed_provider
+            and source.cache_owner is RuntimeOwnerKind.scope
+        ):
+            draft.ownership_reason = "The scoped instance closes with its managed acquisition scope"
         if source.owner_occurrence_id is not None:
             cloned_owner = mapping.get(source.owner_occurrence_id)
             if cloned_owner is None:
@@ -7502,6 +7843,7 @@ class _Compiler:
                 ComponentKind.scope_slot: "slot",
                 ComponentKind.collection: "collection",
                 ComponentKind.provider: "provider",
+                ComponentKind.managed_provider: "managed_provider",
                 ComponentKind.runtime_context: "runtime_context",
             }.get(child.kind, "component_edge")
         record = ParameterExplanation(
@@ -7659,7 +8001,7 @@ class _Compiler:
         }
 
         def visit(current: Component, path: tuple[Component, ...]) -> tuple[Component, ...] | None:
-            if current.kind is ComponentKind.per_call_handle:
+            if current.kind in (ComponentKind.per_call_handle, ComponentKind.managed_provider):
                 return None
             current_path = (*path, current)
             if (
@@ -7726,6 +8068,8 @@ class _Compiler:
         mode: typing.Literal["sync", "async"],
         target: Any | None,
     ) -> tuple[_Step, Component]:
+        managed = _is_managed_provider(dependency.service_type)
+        kind = ComponentKind.managed_provider if managed else ComponentKind.provider
         collection_type, element_type = self._validate_provider_target(dependency.service_type, target)
         capturing_singleton = next(
             (frame for frame in reversed(self._retention_frames()) if frame.lifespan == legacy.Lifespan.singleton),
@@ -7739,11 +8083,11 @@ class _Compiler:
         provider, provider_draft = self._draft(
             component_id=f"provider:{parent.occurrence_id}:{dependency.name}",
             service_type=dependency.service_type,
-            implementation=Provider if mode == "sync" else AsyncProvider,
+            implementation=get_origin(dependency.service_type),
             lifespan="transient",
             name=None,
             tags=(),
-            kind=ComponentKind.provider,
+            kind=kind,
             activation=ComponentActivation.deferred,
             parent=parent,
             argument=dependency.name,
@@ -7755,7 +8099,7 @@ class _Compiler:
                 label=dependency.service_type,
                 lifespan=legacy.Lifespan.transient,
                 owner_token=owner_token,
-                kind=ComponentKind.provider,
+                kind=kind,
                 component=provider,
             )
         )
@@ -7826,6 +8170,11 @@ class _Compiler:
                         dependency.name,
                     )
                     if slot is None:
+                        visibility_error = (
+                            self._visibility_error(element_type, dependency.settings.filter) if managed else None
+                        )
+                        if visibility_error is not None:
+                            raise visibility_error
                         raise ContainerBuildError(
                             f"No component satisfies deferred target {element_type!r}",
                             code="provider-missing-component",
@@ -7844,14 +8193,18 @@ class _Compiler:
                     target_step = candidates[0].step
 
             provider_draft.dependency_ids = (target_component.occurrence_id,)
-            if mode == "sync" and not target_step.sync_supported:
+            if mode == "sync" and (
+                not target_step.sync_supported or (managed and _managed_async_cleanup(target_component))
+            ):
                 raise ContainerBuildError(
-                    f"Synchronous Provider target {target!r} requires asynchronous resolution; "
-                    f"use AsyncProvider[{qualified_name(target)}]",
-                    code="provider-requires-async",
+                    f"Synchronous {'ManagedProvider' if managed else 'Provider'} target {target!r} "
+                    f"requires asynchronous "
+                    f"{'activation or acquisition-owned cleanup' if managed else 'resolution'}; use "
+                    f"{'AsyncManagedProvider' if managed else 'AsyncProvider'}[{qualified_name(target)}]",
+                    code="managed-provider-requires-async" if managed else "provider-requires-async",
                     path=self._current_path(target),
                 )
-            if capturing_singleton is not None:
+            if capturing_singleton is not None and not managed:
                 forbidden = self._provider_forbidden_path(target_component)
                 if forbidden is not None:
                     forbidden_target = forbidden[-1]
@@ -7864,9 +8217,9 @@ class _Compiler:
                         ),
                     )
             return (
-                _ProviderStep(
+                (_ManagedProviderStep if managed else _ProviderStep)(
                     mode,
-                    target_step,
+                    _managed_target_step(target_step) if managed else target_step,
                     None if capturing_singleton is None else capturing_singleton.owner_token,
                 ),
                 provider,
@@ -8876,7 +9229,7 @@ def _collection_request(service_type: Any) -> tuple[type, Any] | None:
 def _provider_selection_component(component: Component) -> Component:
     """Expose the frozen target to filters, not the synthetic provider handle."""
 
-    if component.kind is not ComponentKind.provider or not component.dependencies:
+    if component.kind not in (ComponentKind.provider, ComponentKind.managed_provider) or not component.dependencies:
         return component
     target = component.dependencies[0]
     return target if target.kind is not ComponentKind.collection else component
@@ -9383,13 +9736,26 @@ def _finalize_plan(plan: _PlanSet, profile: CompilationProfiler | None = None) -
             selected_plan = next(
                 candidate for candidate in plan.roots[request.service_type] if candidate.component.id == selected_id
             )
-            if isinstance(selected_plan.step, _ProviderStep) and not selected_plan.step.target.sync_supported:
+            if isinstance(selected_plan.step, _ProviderStep) and (
+                not selected_plan.step.target.sync_supported
+                or (
+                    isinstance(selected_plan.step, _ManagedProviderStep)
+                    and not selected_plan.step.cleanup_sync_supported
+                )
+            ):
                 issues.append(
                     BuildIssue(
-                        code="provider-requires-async",
+                        code=(
+                            "managed-provider-requires-async"
+                            if _is_managed_provider(request.service_type)
+                            else "provider-requires-async"
+                        ),
                         severity=IssueSeverity.error,
                         message=(
-                            f"Synchronous provider entry point {root_name} targets a component that "
+                            f"Managed provider entry point {root_name} requires asynchronous activation or "
+                            "acquisition-owned cleanup; use AsyncManagedProvider"
+                            if _is_managed_provider(request.service_type)
+                            else f"Synchronous provider entry point {root_name} targets a component that "
                             "requires asynchronous resolution"
                         ),
                         root=root_name,
@@ -10696,6 +11062,64 @@ class _RuntimeResolutionContext:
         raise RuntimeError("unsafe-cleanup-owner: compiled activation has no cleanup owner")
 
 
+class _ManagedResolutionContext(_RuntimeResolutionContext):
+    __slots__ = ()
+
+    def _provider_for_plan(self, original: _RootPlan, annotation: Any) -> Any:
+        if _is_managed_provider(annotation):
+            return original.step.resolve(self)
+        mode, target = cast(tuple[str, Any], _provider_request(annotation))
+        frozen = self.scope._plan.provider_roots[AsyncManagedProvider[target]]
+        selected = next(
+            candidate
+            for candidate in frozen
+            if (
+                _provider_target_collection(target) is not None
+                or candidate.component.dependencies[0].id == original.component.dependencies[0].id
+            )
+        )
+        profile_key = _profile_key(original.step) if isinstance(self, _ObservedResolutionContext) else None
+        return _FrozenContextProvider(self.scope, cast(_ProviderStep, selected.step).target, mode, profile_key)
+
+    def resolve_root(self, service_type: Any, filter: ComponentFilter) -> Any:
+        canonical = normalize_type_alias(service_type)
+        collection = _collection_request(canonical)
+        if collection is not None and _provider_request(collection[1]) is not None:
+            collection_type, element_type = collection
+            plans = self.scope._select_roots(element_type, filter)
+            return collection_type(self._provider_for_plan(plan, element_type) for plan in plans)
+        provider = _provider_request(canonical)
+        if provider is None or _is_managed_provider(canonical):
+            return super().resolve_root(service_type, filter)
+        return self._provider_for_plan(self.scope._select_root(canonical, filter), canonical)
+
+    async def resolve_root_async(self, service_type: Any, filter: ComponentFilter) -> Any:
+        # Existing ResolutionContext root lookup is permitted, but its selected
+        # targets use managed variants frozen at build, including nested collections.
+        collection = _collection_request(service_type)
+        if collection is not None:
+            collection_type, element_type = collection
+            if _provider_request(normalize_type_alias(element_type)) is not None:
+                return self.resolve_root(service_type, filter)
+            plans = self.scope._select_roots(element_type, filter)
+            canonical_element = normalize_type_alias(element_type)
+            managed_plans = self.scope._plan.provider_roots.get(AsyncManagedProvider[canonical_element], ())
+            targets = tuple(
+                next(
+                    cast(_ProviderStep, candidate.step).target
+                    for candidate in managed_plans
+                    if candidate.component.dependencies[0].id == plan.component.id
+                )
+                for plan in plans
+            )
+            values = await _managed_collection_values(target.resolve_async(self) for target in targets)
+            return collection_type(values)
+        if _provider_request(normalize_type_alias(service_type)) is not None:
+            return self.resolve_root(service_type, filter)
+        plan = self.scope._select_root(AsyncManagedProvider[service_type], filter)
+        return await cast(_ProviderStep, plan.step).target.resolve_async(self)
+
+
 class _PerCallResolutionContext(_RuntimeResolutionContext):
     __slots__ = ("captured_targets",)
 
@@ -10825,6 +11249,10 @@ class _ObservedResolutionContext(_RuntimeResolutionContext):
                 _TIMED.reset(token)
 
         super().add_finalizer(owner, wrapped)
+
+
+class _ObservedManagedResolutionContext(_ManagedResolutionContext, _ObservedResolutionContext):
+    __slots__ = ()
 
 
 class _ObservedPerCallResolutionContext(_ObservedResolutionContext, _PerCallResolutionContext):
@@ -11720,7 +12148,24 @@ def _observe_plan(
             )
             object.__setattr__(result, "_profile_key", owner_key(step.component, occurrence))
         elif isinstance(step, _ProviderStep):
-            result = _ObservedProviderStep(step.mode, step.target, step.bound_owner_token, step.sync_supported)
+            step_type = (
+                _ObservedManagedProviderStep
+                if isinstance(step, _ManagedProviderStep)
+                else _ObservedContextProviderStep
+                if isinstance(step, _ContextProviderStep)
+                else _ObservedProviderStep
+            )
+            result = step_type(
+                step.mode,
+                step.target,
+                step.bound_owner_token,
+                step.sync_supported,
+                **(
+                    {"cleanup_sync_supported": step.cleanup_sync_supported}
+                    if isinstance(step, _ManagedProviderStep)
+                    else {}
+                ),
+            )
             memo[id(step)] = result
             target_component = (
                 occurrence.dependencies[0] if occurrence is not None and occurrence.dependencies else None
@@ -11731,7 +12176,9 @@ def _observe_plan(
                 if target_component is not None
                 else "<unresolved request>"
             )
-            request_path = "provider request " + path
+            request_path = (
+                "managed acquisition " if isinstance(step, _ManagedProviderStep) else "provider request "
+            ) + path
             catalog.setdefault(request_path, (None, "request"))
             object.__setattr__(result, "_profile_key", (fingerprint, request_path))
         elif isinstance(step, _CollectionStep):
