@@ -112,6 +112,9 @@ def report_to_sarif(
             "message": {"text": str(issue)},
             "properties": {"root": issue.root, "componentPath": list(issue.path)},
         }
+        if issue.budget is not None:
+            properties: dict[str, Any] = result["properties"]
+            properties["compilationBudget"] = issue.budget.to_dict()
         primary = fact.source_location if fact is not None else (path_sources[-1] if path_sources else None)
         if issue.path:
             result["locations"] = [_location(issue.path[-1], primary)]

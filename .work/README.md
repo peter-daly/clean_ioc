@@ -30,7 +30,7 @@ focused measurements and their noise limits are recorded with the item.
 
 Items 18–22 were added on 2026-10-04. The maintainer prioritized compiler items 18–20 on branch
 `codex/compiler-optimization`, starting from released beta 2.0.0b30. [Baseline benchmarks](compiler-optimization-baseline.md)
-were captured before production changes; implementation and independent review will proceed sequentially. Items 21–22 remain deferred,
+were captured before production changes; implementation and independent review completed sequentially. Items 21–22 remain deferred,
 scope the remaining coverage/tracing deliverables of item 08, and reuse item 12's implemented profiler.
 
 Item 18's Sol High investigation is complete and independently reviewed; KEEP the evidence and decline production
@@ -39,6 +39,11 @@ cross-build caching for this delivery. Eligible reuse saves little additional wo
 Item 19 reuses captured implementation-type metadata when cloning compiled graphs. Sol High implemented and a
 separate Sol High agent reviewed it; KEEP. Repeated normalizations are eliminated while graph occurrences, ownership
 and executable structure remain unchanged. The introspection boundary and noisy measurements are documented with the item.
+
+Item 20 implements optional deterministic compilation budgets with bounded, source-linked diagnostics and independent
+allowances for matrix variants. Sol High implemented and a separate Sol High agent reviewed it; APPROVE / KEEP.
+CI, Python 3.11–3.14, executable docs and strict documentation checks pass. Measurements establish exact work limits;
+machine noise prevents a reliable small overhead estimate. Runtime execution gains no budget work.
 
 ## Work items
 
@@ -63,7 +68,7 @@ and executable structure remain unchanged. The introspection boundary and noisy 
 | 17 | [Declared warm-up plans](17-declared-warmup-plans.md) — implemented and independently reviewed; KEEP | P1 | Existing frozen root/activation plans, singleton ownership, and structured diagnostics |
 | 18 | [Incremental compilation](18-incremental-compilation.md) — investigation complete and reviewed; production cache declined for this delivery | P2 | Existing composition snapshots, occurrence-specific compilation, and 11 |
 | 19 | [Execution-plan optimization](19-execution-plan-optimization.md) — implemented and independently reviewed; KEEP | P2 | Existing frozen steps, ownership/sharing analysis, and 11–12 |
-| 20 | [Compilation budgets](20-compilation-budgets.md) — queued after 19 | P2 | Existing work counters, structured failures, and 05 diagnostic evidence |
+| 20 | [Compilation budgets](20-compilation-budgets.md) — implemented and independently reviewed; KEEP | P2 | Existing work counters, structured failures, and 05 diagnostic evidence |
 | 21 | [Test activation coverage](21-test-activation-coverage.md) — deferred; slice of 08 | P2 | 12 exact runtime observations and matching full graph catalog |
 | 22 | [Detailed activation tracing](22-detailed-activation-tracing.md) — deferred; slice of 08 | P2 | Existing observed plans, full graph catalog, and resource ownership proof |
 
@@ -99,8 +104,8 @@ uses item 12; detailed tracing from item 08 is not a prerequisite.
 Item 17 can proceed independently of item 16 and detailed tracing. Build compiles warm-up declarations; explicit startup
 activation is a separate runtime operation, and item 12's existing profiler observes it when enabled.
 
-Items 18–20 are now prioritized for sequential work after capturing a pre-change benchmark baseline. Items 18 and 19
-begin with measurement and equivalence investigations; item 20 can proceed independently but is scheduled after 19.
+Items 18–20 completed sequentially after capturing a pre-change benchmark baseline. Items 18 and 19 began with
+measurement and equivalence investigations; item 20 followed the reviewed item 19 implementation.
 Items 21–22 remain deferred. Item 21 can derive coverage from item
 12 without waiting for item 22. Item 08 remains the shared observation design; its remaining extensions are deferred.
 

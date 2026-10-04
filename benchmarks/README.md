@@ -171,3 +171,49 @@ are a lower bound and traced allocation is not RSS. The accidentally overlapped
 are diagnostic attribution only, while their process-local work/allocation counts
 remain usable. The original committed compiler baseline is also preserved.
 See [item 19's proof, results and digests](../.work/19-execution-plan-optimization.md).
+
+### Compilation budgets (item 20)
+
+The post-item-19/pre-item-20 baseline is preserved separately from release/item19
+artifacts. The first command captures disabled-budget overhead with the unchanged
+six build-only fixtures. Use two runs and retain both; fixed repeats do not remove
+between-run drift or high repeat variation.
+
+```sh
+uv run benchbro run benchmarks/bench_compiler_optimization.py \
+  --case compiler-build-only --fixed --repeats 25 --warmup 5 \
+  --baseline item20-post19 --no-compare \
+  --output-json /tmp/item20-before-1.json --output-md /tmp/item20-before-1.md
+# Repeat as before-2 before changing code. Final captures use item20-final and after-{1,2}.
+uv run benchbro run benchmarks/compilation_budget_experiment.py \
+  --case compilation-budgets --fixed --repeats 25 --warmup 5 \
+  --baseline item20-final-modes --no-compare \
+  --output-json /tmp/item20-budget-modes-1.json --output-md /tmp/item20-budget-modes-1.md
+# Repeat as budget-modes-2; keep profiling/allocation and CI idle during latency capture.
+uv run benchbro run benchmarks/bench_managed_provider_regressions.py \
+  --fixed --repeats 25 --warmup 5 --baseline item20-runtime --no-compare \
+  --output-json /tmp/item20-runtime-after-1.json --output-md /tmp/item20-runtime-after-1.md
+# Repeat as runtime-after-2 with the original 1000 iterations of each 100-operation batch.
+# Run only after all unprofiled measurements finish.
+TMPDIR=/tmp uv run python -m benchmarks.compilation_budget_evidence
+```
+
+The experiment is outside `bench_*.py` discovery and needs its explicit case
+filter because importing the stable fixture module also registers its cases.
+None, all-unlimited counting, generous finite limits and occurrence100 bounded
+failure use eight fresh prepared builds per repeat. Budgets, declarations and
+normal close are excluded. The bounded operation includes safe failure capture.
+Wide24, generic8, collection12 and template12 retain original fixture semantics;
+the additional overlay excludes its caller-owned parent build/close. Its parent
+uses the existing managed-warmup fixture. Runtime controls remain unchanged.
+
+The separate evidence helper writes `/tmp/item20-evidence.json`, per-cell
+`item20-*-compilation-profile.json` and raw `item20-*.prof`. Each cell records five
+independent Python-traced allocation samples with declarations before tracing
+and either an unactivated runtime or failure evidence retained. It also records
+one full compilation profile and five cProfile builds, with normal close outside
+profiling. Instrumented duration is not a latency result; traced bytes are not
+RSS. It checks source digests and zero component activation. Configured budget
+usage means admitted operation starts; successful profiler counters have their
+own units. See [the operation contract](../docs/compilation-budgets.md) and
+[the capture, uncertainty and review note](../.work/20-compilation-budgets.md).
