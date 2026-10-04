@@ -71,3 +71,34 @@ in [.work/17-declared-warmup-plans.md](../.work/17-declared-warmup-plans.md).
 uv run benchbro run benchmarks/bench_warmup.py --fixed --repeats 25 --no-compare \
   --output-json /tmp/warmup.json --output-md /tmp/warmup.md
 ```
+
+### Compiler optimization baseline (items 18–20)
+
+`bench_compiler_optimization.py` uses stable definitions with fresh single-use
+builders for bounded wide roots, diamonds, repeated generic subgraphs, explicit
+collections, registration templates, and a managed-provider/warmup compatibility
+shape. It separates declaration + build + close from build-only (fresh iteration
+fixtures exclude declarations and normal close). Three-builder same/changed-input
+batches, parent overlays, and a three-variant matrix exercise related compositions;
+matrix includes reports and teardown. No application objects activate during build.
+These cases measure steady schemas, not fresh definition creation or process import.
+
+Capture both unchanged runs before modifying production code:
+
+```sh
+uv run benchbro run benchmarks/bench_compiler_optimization.py --fixed --repeats 25 \
+  --warmup 5 --baseline compiler-optimization-preparation --no-compare \
+  --output-json /tmp/compiler-optimization-before-1.json \
+  --output-md /tmp/compiler-optimization-before-1.md
+# Repeat with before-2 output filenames.
+uv run python -m benchmarks.compiler_optimization_evidence
+```
+
+The evidence helper writes separate `/tmp/compiler-optimization-*` allocation,
+compiler-profile and cProfile artifacts. It records Python traced peak and retained
+runtime/plan bytes, graph visits/occurrences, and unique executable objects. The
+shallow executable-byte count is a lower bound; traced retained bytes are compiler-created
+allocations including runtime/plan metadata and exclude pre-trace declarations. Instrumented timings are diagnostic evidence,
+not comparable latency baselines. Existing runtime regressions remain in
+`bench_managed_provider_regressions.py`. See
+[the captured baseline and limitations](../.work/compiler-optimization-baseline.md).

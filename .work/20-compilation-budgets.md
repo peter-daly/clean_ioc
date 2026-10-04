@@ -1,9 +1,9 @@
 # 20 — Compilation budgets
 
 Created: 2026-10-04\
-Status: Deferred; not scheduled; implementation not started\
+Status: Prioritized; queued after item 19; implementation not started\
 Priority: P2\
-Baseline: Clean IoC 2.0.0b29 on `version2`\
+Baseline: Clean IoC 2.0.0b30 at `eacdf70` on `codex/compiler-optimization`\
 Dependencies: Existing compiler work counters, structured failures, and partial diagnostic graphs\
 Related work: [Compilation profiler](11-compilation-profiler.md),
 [failed-build diagnostics](05-failed-build-diagnostic-graphs.md), and
@@ -79,7 +79,13 @@ operations were counted and which diagnostics could not be collected after exhau
 - Failed builders can be repaired and rebuilt; reports and matrix aggregation remain deterministic and source linked.
 - CI/docs and focused measurements validate the contract without introducing wall-clock-dependent tests.
 
-## Deferred status
+## Scheduling
 
-Resume only when the maintainer prioritizes this item. It can proceed independently of incremental compilation and
-plan optimization; neither is required to define deterministic work limits.
+Pre-change timing, allocation and compilation profiles are recorded in
+[the compiler baseline](compiler-optimization-baseline.md). Its compiler draft counts include synthesized provider
+expansion and differ substantially from public graph visits; budgets must use real operation boundaries.
+
+The maintainer prioritized this item on 2026-10-04, scheduled after implementation and independent review of item 19.
+Sol High implements it and a separate Sol High agent reviews it. Preserve the pre-change baseline and compare the
+completed item 19 state to isolate configured/unconfigured budget overhead. Incremental compilation and plan
+optimization are not prerequisites for defining deterministic work limits.

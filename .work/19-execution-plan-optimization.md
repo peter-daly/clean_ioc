@@ -1,9 +1,9 @@
 # 19 — Execution-plan optimization
 
 Created: 2026-10-04\
-Status: Deferred; not scheduled; implementation not started\
+Status: Prioritized; queued after item 18; implementation not started\
 Priority: P2\
-Baseline: Clean IoC 2.0.0b29 on `version2`\
+Baseline: Clean IoC 2.0.0b30 at `eacdf70` on `codex/compiler-optimization`\
 Dependencies: Existing frozen steps, occurrence graph, ownership/sharing analysis, and compilation profiler\
 Related work: [Instance-sharing groups](02-instance-sharing-groups.md),
 [compilation profiler](11-compilation-profiler.md),
@@ -85,7 +85,13 @@ providers and warm-up plans only if those features have landed by implementation
 - A transformation without convincing equivalence or useful benefit is declined or remains experimental rather than
   weakening the compiler's guarantees.
 
-## Deferred status
+## Scheduling
 
-Resume only when the maintainer prioritizes this item. Benchmark evidence selects the implementation target; the
-common work-list CI, documentation, performance, and independent-review requirements apply.
+Pre-change timing, allocation and compilation profiles are recorded in
+[the compiler baseline](compiler-optimization-baseline.md). Eager provider-root expansion dominates the measured
+wide-root build and is the first concrete representation target to investigate.
+
+The maintainer prioritized this item on 2026-10-04 after item 18. Baseline benchmarks precede all compiler changes;
+measure the completed item 18 state as well so item 19's impact can be distinguished. Sol High implements this item
+and a separate Sol High agent reviews it before item 20 starts. Benchmark evidence selects the implementation target;
+the common work-list CI, documentation, performance, and independent-review requirements apply.

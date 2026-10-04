@@ -1,9 +1,9 @@
 # 18 — Incremental compilation
 
 Created: 2026-10-04\
-Status: Deferred; not scheduled; implementation not started\
+Status: Prioritized; baseline captured; implementation not started\
 Priority: P2\
-Baseline: Clean IoC 2.0.0b29 on `version2`\
+Baseline: Clean IoC 2.0.0b30 at `eacdf70` on `codex/compiler-optimization`\
 Dependencies: Existing composition snapshots, occurrence-specific compilation, and compilation profiler\
 Related work: [Compilation profiler](11-compilation-profiler.md),
 [build matrices](../.v2_roadmap/04-build-variant-matrix-checking.md), and
@@ -15,7 +15,7 @@ Reduce repeated compiler work across related fresh builds, overlays, or matrix v
 provably unaffected by the changed composition. Every build still produces its own immutable runtime with correct
 selection, values, owners, graph occurrences, diagnostics, and validation results.
 
-This is a deferred investigation and implementation item. Reusing an entire executable plan is not assumed safe, and
+This is a prioritized investigation and implementation item. Reusing an entire executable plan is not assumed safe, and
 no public cache API or performance claim is accepted by this document.
 
 ## Current foundation
@@ -88,7 +88,13 @@ source-code generation are outside the initial scope.
 - Representative measurements demonstrate a useful gain with stated limits; inconclusive measurements are labelled
   inconclusive. If eligibility leaves no worthwhile gain, record that finding instead of shipping an unsafe cache.
 
-## Deferred status
+## Scheduling
 
-Resume only when the maintainer prioritizes this item. The first decision is whether measured repeated work justifies
-implementation. The common work-list CI, documentation, performance, and independent-review requirements apply.
+Pre-change timing, allocation and compilation profiles are recorded in
+[the compiler baseline](compiler-optimization-baseline.md). Signature work is a minority cost in the measured builds;
+the implementation investigation must demonstrate useful eligible reuse before introducing a cache.
+
+The maintainer prioritized this item on 2026-10-04. Capture baseline benchmarks before assigning Sol High
+implementation, then obtain separate Sol High review before proceeding to item 19. The first decision is whether
+measured repeated work justifies implementation. The common work-list CI, documentation, performance, and
+independent-review requirements apply.

@@ -82,9 +82,11 @@ Warm-up declarations compile selected singleton startup requests and execute the
 with aggregated diagnostics and normal cleanup ownership. Activation tracing is the remaining proposal in the original
 sequence; completed provider/startup work is recorded in work items 16 and 17.
 
-## Deferred compiler and tooling work
+## Compiler and tooling work
 
-These work items were added on 2026-10-04 for later prioritization. Implementation has not started:
+These work items were added on 2026-10-04. Compiler items 18–20 are now prioritized on
+`codex/compiler-optimization`: capture baseline benchmarks, then implement and independently review each item
+sequentially with Sol High agents. Tooling items 21–22 remain deferred.
 
 | Item | Outcome |
 | --- | --- |

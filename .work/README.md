@@ -28,9 +28,10 @@ them only through an explicit runtime call with aggregated diagnostics. Sol Medi
 Sol High independently reviewed it; APPROVE / KEEP. CI, supported-Python checks and executable docs pass;
 focused measurements and their noise limits are recorded with the item.
 
-Items 18–22 were added on 2026-10-04 and are explicitly deferred: incremental compilation, execution-plan optimization,
-compilation budgets, test activation coverage, and detailed activation tracing. None is scheduled or started. Items 21
-and 22 scope the remaining coverage/tracing deliverables of item 08 and reuse item 12's implemented profiler.
+Items 18–22 were added on 2026-10-04. The maintainer prioritized compiler items 18–20 on branch
+`codex/compiler-optimization`, starting from released beta 2.0.0b30. [Baseline benchmarks](compiler-optimization-baseline.md)
+were captured before production changes; implementation and independent review will proceed sequentially. Items 21–22 remain deferred,
+scope the remaining coverage/tracing deliverables of item 08, and reuse item 12's implemented profiler.
 
 ## Work items
 
@@ -53,9 +54,9 @@ and 22 scope the remaining coverage/tracing deliverables of item 08 and reuse it
 | 15 | [Chained component preferences](15-chained-component-preferences.md) — implemented by Astra medium and independently reviewed by Astra high; KEEP | P1 | 14; existing argument policies and captured selection explanations |
 | 16 | [Managed resource providers](16-managed-resource-providers.md) — implemented and independently reviewed; KEEP | P1 | Existing typed providers, resource ownership proof, and isolated per-call scopes |
 | 17 | [Declared warm-up plans](17-declared-warmup-plans.md) — implemented and independently reviewed; KEEP | P1 | Existing frozen root/activation plans, singleton ownership, and structured diagnostics |
-| 18 | [Incremental compilation](18-incremental-compilation.md) — deferred | P2 | Existing composition snapshots, occurrence-specific compilation, and 11 |
-| 19 | [Execution-plan optimization](19-execution-plan-optimization.md) — deferred | P2 | Existing frozen steps, ownership/sharing analysis, and 11–12 |
-| 20 | [Compilation budgets](20-compilation-budgets.md) — deferred | P2 | Existing work counters, structured failures, and 05 diagnostic evidence |
+| 18 | [Incremental compilation](18-incremental-compilation.md) — prioritized; baseline captured; implementation next | P2 | Existing composition snapshots, occurrence-specific compilation, and 11 |
+| 19 | [Execution-plan optimization](19-execution-plan-optimization.md) — queued after 18 | P2 | Existing frozen steps, ownership/sharing analysis, and 11–12 |
+| 20 | [Compilation budgets](20-compilation-budgets.md) — queued after 19 | P2 | Existing work counters, structured failures, and 05 diagnostic evidence |
 | 21 | [Test activation coverage](21-test-activation-coverage.md) — deferred; slice of 08 | P2 | 12 exact runtime observations and matching full graph catalog |
 | 22 | [Detailed activation tracing](22-detailed-activation-tracing.md) — deferred; slice of 08 | P2 | Existing observed plans, full graph catalog, and resource ownership proof |
 
@@ -91,8 +92,9 @@ uses item 12; detailed tracing from item 08 is not a prerequisite.
 Item 17 can proceed independently of item 16 and detailed tracing. Build compiles warm-up declarations; explicit startup
 activation is a separate runtime operation, and item 12's existing profiler observes it when enabled.
 
-Items 18–22 are outside the active implementation sequence until explicitly prioritized. Items 18 and 19 begin with
-measurement and equivalence investigations; item 20 can proceed independently. Item 21 can derive coverage from item
+Items 18–20 are now prioritized for sequential work after capturing a pre-change benchmark baseline. Items 18 and 19
+begin with measurement and equivalence investigations; item 20 can proceed independently but is scheduled after 19.
+Items 21–22 remain deferred. Item 21 can derive coverage from item
 12 without waiting for item 22. Item 08 remains the shared observation design; its remaining extensions are deferred.
 
 ## Agent assignments and review
@@ -110,6 +112,10 @@ For items 14 and 15, the maintainer requested Astra Medium implementation and se
 This overrides the default agent assignment above for those items.
 For items 16 and 17, the maintainer requested sequential Sol Medium implementation and separate Sol High review,
 with a local commit after each reviewed item. Finish and commit 16 before starting 17.
+For items 18–20, the maintainer requested a new branch, baseline benchmarks before compiler changes, and sequential
+Sol High implementation. A separate Sol High agent reviews each item under the existing review requirement.
+Capture and preserve the baseline first, then finish implementation, verification and review of 18 before starting 19,
+and likewise finish 19 before starting 20. Record each reviewed item separately on the local branch.
 
 ## Shared design rules
 
