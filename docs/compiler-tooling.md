@@ -128,6 +128,7 @@ partial capture was truncated, and unknown entry-point membership when no declar
 Current issue codes include:
 
 - `missing-component`, `missing-entrypoint`, and `ambiguous-selection`;
+- `factory-return-type-mismatch` for a definite incompatibility between a factory annotation and its registered service;
 - `circular-dependency` and `captive-dependency`;
 - `generic-specialization` and `overlay-singleton`;
 - `invalid-argument` and `invalid-derived-argument`;

@@ -18,6 +18,49 @@ container = builder.build()
 
 Factory parameters become compiled dependency edges. The factory itself does not run during `build()`.
 
+## Factory return annotations
+
+Build automatically checks a factory's declared result against its registered service. A definite incompatibility
+fails with `factory-return-type-mismatch`; no additional validation rule or policy pack is required:
+
+```python
+from clean_ioc import ContainerBuilder, ContainerBuildError
+
+
+class Repository:
+    pass
+
+
+def incorrect_factory() -> str:
+    return "not a repository"
+
+
+builder = ContainerBuilder()
+builder.register(Repository, factory=incorrect_factory)
+try:
+    builder.build()
+except ContainerBuildError as error:
+    assert any(issue.code == "factory-return-type-mismatch" for issue in error.report.errors)
+    print(error.report.to_text())
+else:
+    raise AssertionError("The incompatible factory annotation should fail build")
+```
+
+The check reads annotations, not function bodies or ASTs, and never activates the factory. It compares an async
+function's return annotation directly and a generator or context-manager factory's yielded type. It uses the
+compiler's resolved bindings for generic factories, accepts subclasses and compatible union members, and checks
+supported closed generic arguments with their declared variance. Transparent aliases are normalized; `NewType`
+retains its nominal identity.
+
+Missing annotations, `Any`, erased generic arguments, and unsupported or unresolved typing forms do not produce a
+mismatch. Structural protocol compatibility is left to application type checkers when nominal inheritance does not
+establish it. Existing signature and type-alias errors remain errors independently of this rule. The check cannot
+prove that an implementation returns what its annotation promises; application type checkers own that responsibility.
+
+Findings include the compiled dependency path and available registration sources in SARIF. Boundaries, overlays,
+deferred provider targets, and ordinary registered factories use the same automatic check. Constructor and instance
+registrations are unaffected. Explicit validation reports retain the stored build findings without repeating the check.
+
 ## Union service types
 
 Register a union as one service key when a factory can return either of two types. For example, a Redis client factory

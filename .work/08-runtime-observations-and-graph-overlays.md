@@ -1,6 +1,6 @@
 # 08 — Runtime observations over the compiled graph
 
-Status: Planned extensions; item 12 runtime profiler implemented and independently reviewed  
+Status: Remaining extensions deferred; item 12 runtime profiler implemented and independently reviewed\
 Priority: P2  
 Dependencies: 01–03 stable references, sharing semantics, and activation analysis  
 Related proposal: [Graph-correlated activation tracing](../.v2_roadmap/08-graph-correlated-activation-tracing.md)
@@ -11,6 +11,11 @@ text/JSON report there. This item then extends that same model with detailed rec
 coverage, offline inspection, and optional OpenTelemetry integration. Do not duplicate observers, identities, or
 aggregation. Exact counts in item 12 remain independent of any timing sampler; a later tracing sampler may suppress
 detailed events but must not silently turn exact profiler counts into sampled counts.
+
+The remaining deliverables are scoped by deferred [item 21: test activation coverage](21-test-activation-coverage.md)
+and [item 22: detailed activation tracing](22-detailed-activation-tracing.md), added on 2026-10-04. This document remains
+their shared correlation/observation design; do not implement competing collectors or artifact models. Coverage can
+use item 12's exact snapshots without waiting for detailed event recording. No remaining extension is scheduled.
 
 ## Outcome
 

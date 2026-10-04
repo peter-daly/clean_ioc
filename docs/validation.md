@@ -28,7 +28,12 @@ Build fails when a visible plan contains:
 - a circular component path;
 - a singleton that captures a scoped component;
 - a singleton or scoped component that directly or transitively captures `per_resolution` state;
-- an invalid decorator or pre-configuration dependency.
+- an invalid decorator or pre-configuration dependency;
+- a factory result annotation that is definitely incompatible with its registered service.
+
+The automatic [factory return annotation check](factories.md#factory-return-annotations) reports
+`factory-return-type-mismatch`. It inspects declarations without running factories or analysing their bodies;
+missing or indeterminate return-type information does not fail this check.
 
 ```python
 from clean_ioc import ContainerBuildError

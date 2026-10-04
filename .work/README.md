@@ -19,6 +19,16 @@ with consumer and registration-context chains built using `prefer(...).then(...)
 Implementation is complete; Python 3.14 CI and supported-Python checks pass.
 Repeated benchmarks document compilation cost; separate Astra high review recommends KEEP.
 
+Item 16 was added on 2026-10-04 against Clean IoC 2.0.0b29. Managed resource providers are planned: explicit context
+manager acquisitions execute precompiled targets in isolated scopes. Implementation has not started.
+
+Item 17 was also added on 2026-10-04: declared warm-up plans compile selected singleton startup targets, then activate
+them only through an explicit runtime call with aggregated diagnostics. Implementation has not started.
+
+Items 18–22 were added on 2026-10-04 and are explicitly deferred: incremental compilation, execution-plan optimization,
+compilation budgets, test activation coverage, and detailed activation tracing. None is scheduled or started. Items 21
+and 22 scope the remaining coverage/tracing deliverables of item 08 and reuse item 12's implemented profiler.
+
 ## Work items
 
 | ID | Item | Priority | Prerequisites |
@@ -30,7 +40,7 @@ Repeated benchmarks document compilation cost; separate Astra high review recomm
 | 05 | [Failed-build diagnostic graphs](05-failed-build-diagnostic-graphs.md) — implemented and reviewed | P1 | 01 reference conventions; 04 improves detail |
 | 06 | [Architecture annotations and evidence paths](06-architecture-annotations-and-evidence-paths.md) | P1 | 01; 03 for eager/deferred summaries |
 | 07 | [Behaviour-aware diffs and build variants](07-behaviour-aware-diffs-and-build-variants.md) | P1 | 01–03; 06 for capability comparison |
-| 08 | [Runtime observations over the compiled graph](08-runtime-observations-and-graph-overlays.md) | P2 | 12 core profiler; 01–03 stable references and execution semantics |
+| 08 | [Runtime observations over the compiled graph](08-runtime-observations-and-graph-overlays.md) — remaining extensions deferred; scoped by 21–22 | P2 | 12 core profiler; 01–03 stable references and execution semantics |
 | 09 | [Build-error triage](09-build-error-triage.md) — implemented and independently reviewed | P1 | 05 partial failure evidence; existing build reports |
 | 10 | [Registration selection census](10-registration-selection-census.md) — implemented and independently reviewed | P1 | Existing selection explanations; 01 semantic references |
 | 11 | [Compilation profiler](11-compilation-profiler.md) — implemented and independently reviewed | P1 | Existing build pipeline; independent of runtime tracing |
@@ -38,6 +48,13 @@ Repeated benchmarks document compilation cost; separate Astra high review recomm
 | 13 | [Component-filter match strength](13-component-filter-match-strength.md) — retired; implementation archived locally | P1 | Superseded by 14 |
 | 14 | [Parent-context registration selection](14-parent-context-registration-selection.md) — implemented by Astra medium and independently reviewed by Astra high; KEEP | P1 | Existing contextual registration compilation and selection explanations |
 | 15 | [Chained component preferences](15-chained-component-preferences.md) — implemented by Astra medium and independently reviewed by Astra high; KEEP | P1 | 14; existing argument policies and captured selection explanations |
+| 16 | [Managed resource providers](16-managed-resource-providers.md) — planned | P1 | Existing typed providers, resource ownership proof, and isolated per-call scopes |
+| 17 | [Declared warm-up plans](17-declared-warmup-plans.md) — planned | P1 | Existing frozen root/activation plans, singleton ownership, and structured diagnostics |
+| 18 | [Incremental compilation](18-incremental-compilation.md) — deferred | P2 | Existing composition snapshots, occurrence-specific compilation, and 11 |
+| 19 | [Execution-plan optimization](19-execution-plan-optimization.md) — deferred | P2 | Existing frozen steps, ownership/sharing analysis, and 11–12 |
+| 20 | [Compilation budgets](20-compilation-budgets.md) — deferred | P2 | Existing work counters, structured failures, and 05 diagnostic evidence |
+| 21 | [Test activation coverage](21-test-activation-coverage.md) — deferred; slice of 08 | P2 | 12 exact runtime observations and matching full graph catalog |
+| 22 | [Detailed activation tracing](22-detailed-activation-tracing.md) — deferred; slice of 08 | P2 | Existing observed plans, full graph catalog, and resource ownership proof |
 
 ## Recommended implementation sequence
 
@@ -64,6 +81,16 @@ option.
 Item 15 builds on item 14's explicit parent precedence, with its completed baseline
 captured before implementation. Preferences narrow remaining ties without
 changing ordinary predicate composition, root selection or collection membership.
+
+Item 16 can proceed independently using the existing provider and per-call scope foundations. Its profiler integration
+uses item 12; detailed tracing from item 08 is not a prerequisite.
+
+Item 17 can proceed independently of item 16 and detailed tracing. Build compiles warm-up declarations; explicit startup
+activation is a separate runtime operation, and item 12's existing profiler observes it when enabled.
+
+Items 18–22 are outside the active implementation sequence until explicitly prioritized. Items 18 and 19 begin with
+measurement and equivalence investigations; item 20 can proceed independently. Item 21 can derive coverage from item
+12 without waiting for item 22. Item 08 remains the shared observation design; its remaining extensions are deferred.
 
 ## Agent assignments and review
 

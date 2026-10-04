@@ -182,6 +182,14 @@ Draft records are mutable only while `_Compiler` is building the graph. `_Compon
 
 Current hard failures include missing components, circular paths, invalid generic specialization, invalid parent singleton specialization in an overlay, missing marked entry points, and captive lifespans.
 
+Factory return annotations are also checked automatically during compilation. Definite declaration mismatches use
+`factory-return-type-mismatch`, aggregate with the normal built-in findings, and carry occurrence paths for SARIF.
+`_factory_validation.py` performs conservative annotation assignability: aliases, nominal classes, unions, NewType,
+and supported closed generic variance/projection. Unknown annotations and structural protocols are not guessed.
+Ordinary factory specialization captures the resolved result alongside its dependency bindings; compatibility is
+cached once per closed registration in the compiler, never on the runtime hot path or in graph manifests. The rule
+does not inspect bodies, activate factories, or check returned instances.
+
 Captive lifespan rules are transitive across constructors, factories, decorators, collections, argument-selected
 component edges, and pre-configuration dependencies:
 

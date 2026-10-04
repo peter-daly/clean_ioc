@@ -519,6 +519,14 @@ def validate_policy_guide() -> None:
     exec(compile(snippets[0], f"{guide} example 1", "exec"), {"__name__": "__main__"})  # noqa: S102
 
 
+def validate_factory_return_annotation_guide() -> None:
+    guide = Path(__file__).resolve().parents[1] / "docs" / "factories.md"
+    section = guide.read_text().split("## Factory return annotations\n", 1)[1].split("\n## ", 1)[0]
+    snippets = re.findall(r"```python\n(.*?)\n```", section, flags=re.DOTALL)
+    assert len(snippets) == 1  # noqa: S101
+    exec(compile(snippets[0], f"{guide} return annotations", "exec"), {"__name__": "__main__"})  # noqa: S102
+
+
 def validate_sarif_guide() -> None:
     guide = Path(__file__).resolve().parents[1] / "docs" / "sarif.md"
     snippets = re.findall(r"```python\n(.*?)\n```", guide.read_text(), flags=re.DOTALL)
@@ -560,6 +568,7 @@ def main() -> None:
     validate_decorator_template_guide()
     validate_registration_template_guide()
     validate_policy_guide()
+    validate_factory_return_annotation_guide()
     validate_sarif_guide()
     validate_graph_change_policy_guide()
     validate_build_matrix_guide()

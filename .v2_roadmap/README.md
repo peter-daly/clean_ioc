@@ -40,7 +40,7 @@ implementation begins.
 | P1 | Done | [Build-variant matrix checking](04-build-variant-matrix-checking.md) | Validate and compare supported compositions with reference policies, aggregated findings, and source-linked reports. |
 | P1 | Done | [Typed deferred dependencies](05-typed-deferred-dependencies.md) | Support precompiled on-demand resolution without injecting an untyped service locator. |
 | P2 | Done | [Boundaries and visibility](07-boundaries-and-visibility.md) | Add opt-in compile-time visibility boundaries around reusable bundles without renaming components. |
-| P2 | Proposed | [Graph-correlated activation tracing](08-graph-correlated-activation-tracing.md) | Correlate optional runtime telemetry with the exact compiled component graph. |
+| P2 | Deferred extensions; core profiler implemented | [Graph-correlated activation tracing](08-graph-correlated-activation-tracing.md) | Coverage and detailed tracing are scoped by work items 21–22. |
 | P1 | Done | [Modern Python type-alias support](09-modern-python-type-alias-support.md) | Normalize native and backported aliases across composition and resolution while preserving NewType identity. |
 | P1 | Done | [Lazy provider maps with callable keys](10-lazy-provider-maps.md) | Freeze application-defined keys and individually invocable provider targets during compilation. |
 | P1 | Done; performance inconclusive | [Generic registration patterns](11-generic-registration-patterns.md) | Structural factory templates compile with deterministic specificity and frozen closed plans; timing verification needs a quiet machine. |
@@ -71,11 +71,32 @@ diagnostics, CLI behavior, redaction, and compatibility rules for that type are 
 The remaining proposals are retained for later work:
 
 1. [Graph-correlated activation tracing](08-graph-correlated-activation-tracing.md): correlate runtime activation, caching,
-   and cleanup events with compiled graph identities, with optional OpenTelemetry integration. This can proceed
-   independently now that provenance and resource ownership are complete.
+   and cleanup events with compiled graph identities, with optional OpenTelemetry integration. Remaining coverage and
+   tracing extensions are explicitly deferred in work items 21–22; the core runtime profiler is implemented.
+2. [Managed resource providers](../.work/16-managed-resource-providers.md): typed sync/async context-manager handles
+   acquire precompiled targets in isolated scopes and release acquisition-owned resources at block exit. Work item 16
+   is planned; implementation has not started.
+3. [Declared warm-up plans](../.work/17-declared-warmup-plans.md): compile selected singleton startup requests, then run
+   them explicitly after build with aggregated runtime diagnostics. Work item 17 is planned; implementation has not started.
 
 Policy packs, semantic graph-change policy, and build-variant matrices are implemented. Activation tracing is the
-remaining proposal in this sequence.
+remaining proposal in the original sequence; managed resource providers and declared warm-up plans are tracked separately
+in work items 16 and 17.
+
+## Deferred compiler and tooling work
+
+These work items were added on 2026-10-04 for later prioritization. Implementation has not started:
+
+| Item | Outcome |
+| --- | --- |
+| [18: Incremental compilation](../.work/18-incremental-compilation.md) | Reuse eligible compiler analysis across related builds with explicit invalidation and fresh runtime ownership. |
+| [19: Execution-plan optimization](../.work/19-execution-plan-optimization.md) | Reduce measured plan cost while preserving occurrence graphs, activation semantics, and ownership. |
+| [20: Compilation budgets](../.work/20-compilation-budgets.md) | Enforce optional deterministic work limits with useful bounded build diagnostics. |
+| [21: Test activation coverage](../.work/21-test-activation-coverage.md) | Show requested, activated, cached, and not-observed compiled paths from named test observations. |
+| [22: Detailed activation tracing](../.work/22-detailed-activation-tracing.md) | Extend current observed plans with bounded detailed events and an optional OpenTelemetry adapter. |
+
+Items 21–22 are focused slices of the existing runtime-observation proposal, not separate tracing systems. These
+deferred items are distinct from the typed assisted factories and multiple-output factory ideas in the maybe pile.
 
 ## Accepted core ideas
 
@@ -110,6 +131,12 @@ not release commitments.
   framework extension needs to combine framework-supplied runtime arguments with injected dependencies and would benefit
   from container-managed product activation. Product lifespans, decorators, scope binding, and cleanup ownership need a
   separate design before implementation. This idea is under consideration, not accepted for implementation.
+- **Multiple outputs from one factory:** expose several injectable services from one factory-created bundle, sharing
+  its activation, lifespan, and cleanup owner. For example, a reader and writer could share one database session.
+  Existing aggregate registrations and small projection factories already express this pattern; a dedicated API would
+  make those declarations more concise. Revisit when a concrete use case justifies it, with explicit rules for output
+  selection, decorators, scope binding, and resource ownership. This idea is under consideration, not accepted for
+  implementation.
 
 ## Shared design decisions
 

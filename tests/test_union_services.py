@@ -87,8 +87,12 @@ def test_union_requires_an_explicit_activation_source(key: TypeForm[object]):
     builder = ContainerBuilder()
     with pytest.raises(TypeError, match="Union service .* requires a factory, instance or implementation type"):
         builder.register(key)
+
     # A rejected registration must leave the builder reusable and unmodified.
-    builder.register(key, factory=create_client)
+    def create_standalone() -> StandaloneClient:
+        return StandaloneClient()
+
+    builder.register(key, factory=create_standalone)
     with builder.build() as container:
         assert isinstance(container.resolve(key), StandaloneClient)
 

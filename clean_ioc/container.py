@@ -29,6 +29,7 @@ from collections.abc import (
 )
 from contextvars import ContextVar
 from dataclasses import dataclass, field, fields, replace
+from functools import partial
 from typing import Any, TypeVar, cast, get_args, get_origin, overload
 from uuid import UUID, uuid4, uuid5
 
@@ -47,6 +48,7 @@ from ._decorator_templates import (
     _TemplateExpansion,
     _TemplateSourceSelection,
 )
+from ._factory_validation import factory_result_compatibility
 from ._legacy_configuration import default_parameter_value_factory
 from ._registration_templates import (
     RegistrationTemplate,
@@ -2136,13 +2138,18 @@ def _infer_factory_bindings(
 
 
 def _factory_result_annotation(factory: Callable[..., Any]) -> Any:
+    target = factory
+    while isinstance(target, partial):
+        target = target.func
+    if not inspect.isroutine(target) and constructor_type(target) is None:
+        target = target.__call__
     try:
-        annotation = typing.get_type_hints(factory).get("return", inspect.Signature.empty)
+        annotation = typing.get_type_hints(target).get("return", inspect.Signature.empty)
     except (NameError, TypeError):
         annotation = inspect.signature(factory).return_annotation
     if annotation is not inspect.Signature.empty:
         annotation = normalize_type_alias(annotation)
-    target = inspect.unwrap(factory)
+    target = inspect.unwrap(target)
     if inspect.isgeneratorfunction(target) or inspect.isasyncgenfunction(target):
         arguments = get_args(annotation)
         annotation = arguments[0] if arguments else inspect.Signature.empty
@@ -2153,7 +2160,7 @@ def _specialized_factory_dependencies(
     registration: legacy._Registration,
     service_type: Any,
     explicit_specialization: object | None,
-) -> tuple[dict[str, legacy.Dependency], tuple[tuple[str, Any, Any], ...]]:
+) -> tuple[dict[str, legacy.Dependency], tuple[tuple[str, Any, Any], ...], Any]:
     factory = cast(Callable[..., Any], registration.implementation)
     result_annotation = _factory_result_annotation(factory)
     annotations = (
@@ -2171,7 +2178,7 @@ def _specialized_factory_dependencies(
         )
     typevars = {item.__name__: item for annotation in annotations for item in _typevars_in(annotation)}
     if not typevars:
-        return registration.dependencies, ()
+        return registration.dependencies, (), result_annotation
 
     bindings: dict[str, Any] = {}
     service_mapping = GenericTypeMap(service_type)
@@ -2255,7 +2262,7 @@ def _specialized_factory_dependencies(
         specialized.declared_service_type = _resolve_factory_typevars(dependency.declared_service_type, bindings)
         dependencies[name] = specialized
         annotations.append((name, before, after))
-    return dependencies, tuple(annotations)
+    return dependencies, tuple(annotations), _resolve_factory_typevars(result_annotation, bindings)
 
 
 def _specialized_fallback_dependencies(
@@ -4585,6 +4592,7 @@ class _Compiler:
         self._stack: list[legacy._Registration] = []
         self._frames: list[_CompilerFrame] = []
         self._specialized_factories: dict[tuple[str, tuple[Any, ...]], legacy._Registration] = {}
+        self._factory_result_types: dict[str, tuple[Any, bool | None]] = {}
         self._patterns: dict[Any, list[tuple[legacy._Registration, _Layer]]] = {}
         for layer in (*blueprint.layers, *(boundary.layer for boundary in blueprint.boundaries)):
             for component_id in reversed(layer.pattern_ids):
@@ -5730,6 +5738,7 @@ class _Compiler:
 
         is_pattern = registration.id in layer.pattern_ids
         dependency_annotations: tuple[tuple[str, Any, Any], ...] = ()
+        result_annotation = inspect.Signature.empty
         if is_pattern:
             pattern_stack = [item for item in self._stack if item.id in self._pattern_sources]
             active = [item for item in pattern_stack if self._pattern_sources[item.id] == registration.id]
@@ -5760,6 +5769,7 @@ class _Compiler:
                             "Factory result annotation conflicts with its closed pattern service",
                             "pattern-incompatible-binding",
                         )
+                    result_annotation = result
                 if any(_unsupported_factory_type_parameters(annotation) for annotation in annotations):
                     raise patterns.PatternError("Pattern factories support TypeVar parameters only")
                 dependencies = {}
@@ -5787,13 +5797,18 @@ class _Compiler:
                 registration, requested_service_type
             )
         else:
-            dependencies, dependency_annotations = _specialized_factory_dependencies(
+            dependencies, dependency_annotations, result_annotation = _specialized_factory_dependencies(
                 registration,
                 requested_service_type,
                 layer.factory_specializations.get(registration.id),
             )
         is_open_specialization = registration.service_type != requested_service_type
         if not is_open_specialization and dependencies is registration.dependencies:
+            self._factory_result_types[registration.id] = (
+                result_annotation,
+                factory_result_compatibility(result_annotation, registration.service_type),
+            )
+            self._specialized_factories[key] = registration
             return registration
 
         specialized = legacy._Registration(
@@ -5812,6 +5827,10 @@ class _Compiler:
         )
         specialized.declared_service_type = registration.declared_service_type
         specialized.dependencies = dependencies
+        self._factory_result_types[specialized.id] = (
+            result_annotation,
+            factory_result_compatibility(result_annotation, specialized.service_type),
+        )
         if dependency_annotations:
             self._specialized_dependency_annotations[specialized.id] = dependency_annotations
         if is_pattern:
@@ -7082,6 +7101,24 @@ class _Compiler:
             if map_definition is None:
                 dependencies = self._compile_dependencies(registration.dependencies, component)
                 self._record_generic_explanation(component, registration.dependencies)
+                result_type, compatible = self._factory_result_types.get(
+                    registration.id, (inspect.Signature.empty, None)
+                )
+                if component.activation is ComponentActivation.factory and compatible is False:
+                    self.issues.append(
+                        BuildIssue(
+                            code="factory-return-type-mismatch",
+                            severity=IssueSeverity.error,
+                            message=(
+                                f"Factory {qualified_name(registration.implementation)} declares result "
+                                f"{qualified_name(result_type)}, incompatible with registered service "
+                                f"{qualified_name(registration.service_type)}"
+                            ),
+                            root=qualified_name(self._frames[0].label),
+                            path=self._current_path(),
+                            _occurrence_path=tuple(frame.component.occurrence_id for frame in self._frames),
+                        )
+                    )
             else:
                 dependencies, key_indices = self._compile_provider_map(map_definition, component, draft)
             resolution_requests = self._compile_resolution_requests(registration.implementation, component)

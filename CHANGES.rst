@@ -1,6 +1,13 @@
 Unreleased
 ----------
 
+    Automatically validate factory return annotations during build. Report
+    definite incompatibilities as ``factory-return-type-mismatch`` with
+    dependency paths and source-linked SARIF. Support resolved generic results,
+    unions, aliases, and resource-factory yielded types without activation or
+    function-body analysis. Leave indeterminate annotation compatibility to
+    application type checkers.
+
     Add ``BuildMatrix`` and named ``BuildVariant`` checks from fresh builder
     factories. Aggregate build and validation findings, compare valid variants
     with a named reference, and enforce entry-point and semantic-drift policies.
