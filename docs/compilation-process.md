@@ -515,6 +515,14 @@ default semantic manifests as described in [compiler tooling](compiler-tooling.m
 is deeply immutable: fixed values can be mutable application objects, internal mappings are not all deeply frozen,
 and caches and pre-configuration coordination state necessarily change during execution.
 
+Occurrence metadata clones, including eager provider targets and anchored parent components, reuse the source's
+captured implementation type, including any source-inspection enrichment. Fresh occurrences still perform their
+normal reflection and validation. Cloning skips repeated introspection whose result would be discarded, so custom
+signature or annotation getters do not receive those incidental reads or raise errors from them. A composition
+callback that changes introspection state after capture can therefore remove an incidental clone-time failure;
+the captured type remains authoritative for that clone. Registered filters, derivations, templates and rules still
+run normally. Keep callbacks pure and avoid depending on a particular count of reflective reads.
+
 ## Finalization and failed builds
 
 After recursive compilation, `_finalize_plan()` validates entry-point selections, computes reachability warnings,

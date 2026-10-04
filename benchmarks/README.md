@@ -136,3 +136,38 @@ The lifetime probe isolates cross-build warm reuse from the same bounded cache
 cleared before each build. Both retain within-build hits. It selects only the
 original generic and collection shapes, with a warm-repeat drift control. Clear
 is included in timing, slightly favoring warm reuse; probe construction is excluded.
+
+### Captured clone metadata (item 19)
+
+Item 19 removes a discarded implementation-type normalization when cloning graph
+occurrences. It leaves eager provider roots, executable plans and ordinary runtime
+paths intact. Use the unchanged stable fixture/evidence helpers above; no experiment
+imports decorated benchmark modules into ordinary benchmark discovery.
+
+```sh
+uv run benchbro run benchmarks/bench_compiler_optimization.py \
+  --case compiler-declaration-build --case compiler-build-only \
+  --fixed --repeats 25 --warmup 5 --baseline item19-pre-state --no-compare \
+  --output-json /tmp/item19-after-1.json --output-md /tmp/item19-after-1.md
+# Repeat with after-2 filenames; pre-change isolated capture uses before-2.
+uv run benchbro run benchmarks/bench_managed_provider_regressions.py \
+  --fixed --repeats 25 --warmup 5 --baseline item19-runtime --no-compare \
+  --output-json /tmp/item19-runtime-after.json --output-md /tmp/item19-runtime-after.md
+# Repeat with runtime-after-2 filenames when a control shows an apparent increase.
+# Run the instrumented helper only after latency measurements finish.
+uv run python -m benchmarks.compiler_optimization_evidence --prefix /tmp/item19-after
+```
+
+Each latency run is unprofiled, with the existing eight build invocations per repeat;
+declarations/close and fresh-fixture build-only boundaries remain separate. Runtime
+controls retain 1,000 batches of 100 operations per repeat on prebuilt containers.
+`--no-compare` retains named machine-local baselines without overwriting earlier
+results. Read CV and unchanged-code drift before attributing differences. The
+allocation helper has five traced samples per shape; raw cProfiles cover five
+builds each, separately with and without declarations. Exact call counts, graph
+and retained executable counts are the strongest evidence here. Shallow plan bytes
+are a lower bound and traced allocation is not RSS. The accidentally overlapped
+`/tmp/item19-before-1.*` latency is excluded; the overlapped pre-change profile times
+are diagnostic attribution only, while their process-local work/allocation counts
+remain usable. The original committed compiler baseline is also preserved.
+See [item 19's proof, results and digests](../.work/19-execution-plan-optimization.md).

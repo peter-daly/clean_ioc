@@ -661,6 +661,7 @@ class _DecoratorUnset:
 
 _DECORATOR_UNSET = _DecoratorUnset()
 _SCOPE_UNSET = object()
+_IMPLEMENTATION_TYPE_UNSET = object()
 
 
 @dataclass(frozen=True, slots=True)
@@ -6389,6 +6390,7 @@ class _Compiler:
         build_args: Mapping[str, Any] | None = None,
         origin: DefinitionOrigin | None = None,
         declared_service_type: Any | None = None,
+        implementation_type: type | object = _IMPLEMENTATION_TYPE_UNSET,
     ) -> tuple[Component, _ComponentDraft]:
         occurrence = self._next_occurrence
         self._next_occurrence += 1
@@ -6404,7 +6406,11 @@ class _Compiler:
             occurrence_id=occurrence,
             service_type=service_type,
             implementation=implementation,
-            implementation_type=normalize_implementation_type(implementation, service_type),
+            implementation_type=(
+                normalize_implementation_type(implementation, service_type)
+                if implementation_type is _IMPLEMENTATION_TYPE_UNSET
+                else cast(type, implementation_type)
+            ),
             lifespan=lifespan,
             name=name,
             tags=tuple(tags),
@@ -7701,8 +7707,11 @@ class _Compiler:
                 else inherited_sidecars.origins.get(source.occurrence_id)
             ),
             declared_service_type=source.declared_service_type,
+            # The source already captured this metadata, including any later
+            # source-inspection enrichment. Re-normalizing produced a discarded
+            # result; fresh occurrences still use the ordinary normalization.
+            implementation_type=source.implementation_type,
         )
-        draft.implementation_type = source.implementation_type
         draft.boundary = source.boundary
         draft.cache_owner = source.cache_owner
         draft.cleanup_owner = source.cleanup_owner

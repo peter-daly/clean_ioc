@@ -91,7 +91,7 @@ sequentially with Sol High agents. Tooling items 21–22 remain deferred.
 | Item | Outcome |
 | --- | --- |
 | [18: Incremental compilation](../.work/18-incremental-compilation.md) | Investigation complete and reviewed; production cross-build cache declined because useful incremental benefit was not established. |
-| [19: Execution-plan optimization](../.work/19-execution-plan-optimization.md) | Reduce measured plan cost while preserving occurrence graphs, activation semantics, and ownership. |
+| [19: Execution-plan optimization](../.work/19-execution-plan-optimization.md) | Implemented and reviewed: reuse captured type metadata during cloning, preserving graph and executable structure; noisy timing limits documented. |
 | [20: Compilation budgets](../.work/20-compilation-budgets.md) | Enforce optional deterministic work limits with useful bounded build diagnostics. |
 | [21: Test activation coverage](../.work/21-test-activation-coverage.md) | Show requested, activated, cached, and not-observed compiled paths from named test observations. |
 | [22: Detailed activation tracing](../.work/22-detailed-activation-tracing.md) | Extend current observed plans with bounded detailed events and an optional OpenTelemetry adapter. |

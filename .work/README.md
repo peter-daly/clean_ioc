@@ -36,6 +36,10 @@ scope the remaining coverage/tracing deliverables of item 08, and reuse item 12'
 Item 18's Sol High investigation is complete and independently reviewed; KEEP the evidence and decline production
 cross-build caching for this delivery. Eligible reuse saves little additional work across builds, and timing is inconclusive.
 
+Item 19 reuses captured implementation-type metadata when cloning compiled graphs. Sol High implemented and a
+separate Sol High agent reviewed it; KEEP. Repeated normalizations are eliminated while graph occurrences, ownership
+and executable structure remain unchanged. The introspection boundary and noisy measurements are documented with the item.
+
 ## Work items
 
 | ID | Item | Priority | Prerequisites |
@@ -58,7 +62,7 @@ cross-build caching for this delivery. Eligible reuse saves little additional wo
 | 16 | [Managed resource providers](16-managed-resource-providers.md) — implemented and independently reviewed; KEEP | P1 | Existing typed providers, resource ownership proof, and isolated per-call scopes |
 | 17 | [Declared warm-up plans](17-declared-warmup-plans.md) — implemented and independently reviewed; KEEP | P1 | Existing frozen root/activation plans, singleton ownership, and structured diagnostics |
 | 18 | [Incremental compilation](18-incremental-compilation.md) — investigation complete and reviewed; production cache declined for this delivery | P2 | Existing composition snapshots, occurrence-specific compilation, and 11 |
-| 19 | [Execution-plan optimization](19-execution-plan-optimization.md) — queued after 18 | P2 | Existing frozen steps, ownership/sharing analysis, and 11–12 |
+| 19 | [Execution-plan optimization](19-execution-plan-optimization.md) — implemented and independently reviewed; KEEP | P2 | Existing frozen steps, ownership/sharing analysis, and 11–12 |
 | 20 | [Compilation budgets](20-compilation-budgets.md) — queued after 19 | P2 | Existing work counters, structured failures, and 05 diagnostic evidence |
 | 21 | [Test activation coverage](21-test-activation-coverage.md) — deferred; slice of 08 | P2 | 12 exact runtime observations and matching full graph catalog |
 | 22 | [Detailed activation tracing](22-detailed-activation-tracing.md) — deferred; slice of 08 | P2 | Existing observed plans, full graph catalog, and resource ownership proof |
