@@ -2,7 +2,7 @@
 
 This document records the V2 architecture and implementation decisions made so far. It is intended for agents and maintainers extending V2 without accidentally restoring runtime graph construction, weakening build invariants, or breaking scope ownership.
 
-V2 is currently published in project metadata as `2.0.0b30`. Its public surface remains experimental.
+V2 is currently set to `2.0.0rc1` in project metadata. This is its first release candidate.
 
 ## Registration templates
 
@@ -376,9 +376,10 @@ complete supported matching, filtering, exposure, and public-root rules.
 - unversioned `GraphManifest` with deterministic fingerprints;
 - `GraphDiff`/`GraphChange` for semantic added, removed, and changed paths.
 
-All Clean IoC tooling JSON formats remain unversioned during beta. Do not add schema version fields, version gates,
-legacy comparison branches, or migration adapters until the release leaves beta. Saved graphs and baselines should be
-regenerated when their format changes. Keep current-format round trips, deterministic fingerprints, and redaction intact.
+All Clean IoC tooling JSON formats remain unversioned for this release candidate. Add schema version fields, version
+gates, legacy comparison branches, or migration adapters only as a separately planned compatibility change. Saved
+graphs and baselines should be regenerated when their format changes. Keep current-format round trips, deterministic
+fingerprints, and redaction intact.
 SARIF is an external standard and requires its own `version: "2.1.0"`; this does not version Clean IoC's JSON formats.
 The renderer uses exact private occurrence attribution from `visit.issue()`, captured registration decisions, and
 failure evidence. It never re-runs selection or activates components. Physical locations are checkout-relative and

@@ -14,7 +14,7 @@ It is not generated source code, bytecode, or a graph JSON file loaded back into
 
 This guide explains the implementation for readers who want to understand or maintain the compiler, particularly
 those familiar with V1. Underscore-prefixed types and methods are private implementation details and may change during
-the V2 beta. Use the [build boundary](validation.md) and [compiler tooling](compiler-tooling.md) guides for the public API.
+the V2 release candidate. Use the [build boundary](validation.md) and [compiler tooling](compiler-tooling.md) guides for the public API.
 
 ## From V1 resolution to V2 compilation
 

@@ -175,6 +175,6 @@ file. It can also download a matching baseline artifact previously produced by t
 management belong to the workflow; Clean IoC consumes the baseline file. Review a baseline change explicitly when an
 architectural change is accepted.
 
-Graph manifests, classified JSON, and policy JSON remain unversioned during beta. No policy or risk metadata is added
+Graph manifests, classified JSON, and policy JSON remain unversioned in this release candidate. No policy or risk metadata is added
 to graph manifests or fingerprints. Reports derived from compiled graphs retain the existing exclusion of configured
 values, build arguments, provenance, runtime identities, and absolute source paths.

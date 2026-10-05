@@ -2,6 +2,18 @@ Unreleased
 ----------
 
 
+2.0.0rc1
+--------
+
+    Promote the Version 2 API to its first release candidate. Reuse compiled
+    implementation-type metadata when cloning graph plans, reducing repeated
+    reflective work without changing runtime resolution semantics.
+
+    Add optional compilation budgets with bounded, source-linked diagnostics
+    for excessive compiler work. Budgets do not affect ordinary builds unless
+    explicitly supplied.
+
+
 2.0.0b30
 --------
 

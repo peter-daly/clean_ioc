@@ -1536,7 +1536,7 @@ def _flatten_nodes(roots: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]
 
 @dataclass(frozen=True, slots=True)
 class GraphManifest:
-    """Deterministic serialized component graph; unversioned during beta."""
+    """Deterministic serialized component graph; unversioned in this prerelease."""
 
     data: dict[str, Any]
     _entrypoint_paths: Mapping[str, tuple[str, ...]] | None = field(

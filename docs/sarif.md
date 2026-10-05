@@ -36,7 +36,7 @@ registration sources.
 Build inputs, configured values, runtime IDs, and callable representations are not added to SARIF. Source metadata and
 policy findings do not change graph fingerprints. As with existing reports, custom issue messages must be safe to
 publish. SARIF's required `version: "2.1.0"` identifies the external standard; Clean IoC's own JSON formats remain
-unversioned during beta.
+unversioned in this release candidate.
 
 ## Exit status and output files
 

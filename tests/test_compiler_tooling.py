@@ -2836,7 +2836,7 @@ def test_cli_impact_reports_json_and_query_errors(capsys):
     assert "explain-path-not-found" in capsys.readouterr().err
 
 
-def test_tooling_json_is_unversioned_during_beta():
+def test_tooling_json_is_unversioned_during_prerelease():
     builder = ContainerBuilder()
     builder.register(str, instance="value")
     container = builder.build()

@@ -182,7 +182,7 @@ compile their visible targets while inherited singleton consumers retain their o
 select only targets visible within their declaring boundary, even when the map itself is exposed.
 
 Graph tooling represents a `provider_map` node with one `provider` child per entry and each child's direct target.
-Manifests include this node kind plus `key_type` and `provider_mode` metadata. The format is unversioned during beta.
+Manifests include this node kind plus `key_type` and `provider_mode` metadata. The format is unversioned in this release candidate.
 Computed keys and hashes are not added to manifests, explanations, or fingerprints. Ordinary component names and tags
 retain their existing graph representation, including when a callback also uses them as keys. Changing only redacted
 computed key values cannot be detected by the default fingerprint. Programs without maps keep their existing graph output.
@@ -372,4 +372,4 @@ target and `scope_policy: per_call` (a fresh scope per context entry). Ownership
 sharing reports distinguish acquisition scopes from shared singleton owners.
 Direct dependency policies traverse the boundary; semantic diffs classify lifetime
 boundary changes. Existing graph manifests remain unchanged; managed graphs use
-the existing unversioned beta format.
+the existing unversioned prerelease format.

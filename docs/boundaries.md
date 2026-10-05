@@ -300,8 +300,8 @@ The `boundaries`, `boundary`, and `source_boundary` fields describe visibility.
 Semantic diffs compare the whole recorded exposure. Changing a source field or a public alias field therefore reports
 the old contract as `boundary-exposure-removed` with high risk and the new contract as `boundary-exposure-added` with
 medium risk. The diff does not classify source and public edits separately. Boundary additions, removals, uses, and
-component moves have their own classifications. Tooling formats remain unversioned during beta; regenerate saved graphs
-and baselines when the format changes. Schema versioning will begin after beta.
+component moves have their own classifications. Tooling formats remain unversioned in this release candidate;
+regenerate saved graphs and baselines when the format changes. Schema versioning is planned for a future release.
 
 ```bash
 clean-ioc check my_app.composition:application_builder

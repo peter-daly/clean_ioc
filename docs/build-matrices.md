@@ -191,7 +191,7 @@ Build inputs are not exported as keys, values, input-type metadata, counts, or i
 supplied value nodes' actual Python types with their declared dependency types before comparing or fingerprinting.
 Declared application types and architectural changes remain visible. Matrix fingerprints describe this redacted default
 view; ordinary graph manifests and their fingerprints are unchanged. Reports also omit runtime identities and absolute
-source paths. JSON remains unversioned during beta; SARIF uses the required standard version.
+source paths. JSON remains unversioned in this release candidate; SARIF uses the required standard version.
 
 ## CLI
 

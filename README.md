@@ -26,12 +26,12 @@ runtime child containers or proxy registrations. `BoundaryAlias` may optionally 
 name, and tag set while the source activation plan and runtime identity remain unchanged. See the
 [boundaries guide](docs/boundaries.md).
 
-> **2.0 beta:** the compiled API remains subject to breaking changes while the V2 surface is finalized. V1 is not
-> shipped as a parallel public API.
+> **2.0 release candidate:** the compiled API is being finalized for 2.0.0. Please report compatibility issues before
+> the stable release. V1 is not shipped as a parallel public API.
 
 ```bash
-pip install clean_ioc
-pip install "clean_ioc[fastapi]"  # optional FastAPI integration
+pip install --pre clean_ioc
+pip install --pre "clean_ioc[fastapi]"  # optional FastAPI integration
 ```
 
 ## Minimal example
@@ -224,8 +224,9 @@ CI review. Structural failures also produce a report; text and JSON retain their
 Build errors are aggregated across independent roots. Deterministic JSON manifests omit configured values and runtime
 identities, allowing wiring changes to be reviewed without serializing secrets. Entry points focus the default graph and
 enable warnings for unreachable registrations; every visible root is still compiled, validated, and resolvable.
-Manifests record the compiled cache and cleanup owner for every occurrence. Tooling JSON formats are unversioned
-during beta; regenerate saved graphs and baselines when the format changes. Schema versioning will begin after beta.
+Manifests record the compiled cache and cleanup owner for every occurrence. Tooling JSON formats remain unversioned
+for this release candidate; regenerate saved graphs and baselines when the format changes. Schema versioning is planned
+for a future release.
 Cleanup-bearing transients retained by singletons are promoted to the singleton's declaring owner;
 ownership reports explain that decision without exposing runtime tokens or values.
 Sharing reports are static eligibility reports: they group occurrences by their compiled cache identity without

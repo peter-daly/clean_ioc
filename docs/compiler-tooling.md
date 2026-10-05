@@ -187,9 +187,10 @@ See [Graph-change policies](graph-change-policies.md) for complete Python and CL
 variant's build and validation findings, and apply entry-point and semantic-drift policies against a named reference.
 Use `clean-ioc matrix module:object --format json` or `--format sarif` for combined reports.
 
-Graph manifests, build reports, and ownership reports are unversioned during beta. They omit schema version fields,
-and readers use the current format without version checks or migration adapters. Regenerate saved graphs and baselines
-when the format changes. Schema versioning will begin after beta. Deterministic ordering and redaction still apply.
+Graph manifests, build reports, and ownership reports are unversioned in this release candidate. They omit schema
+version fields, and readers use the current format without version checks or migration adapters. Regenerate saved graphs
+and baselines when the format changes. Schema versioning is planned for a future release. Deterministic ordering and
+redaction still apply.
 
 `OwnershipReport` is a frozen, activation-free proof over the compiled graph. Each record includes the component's
 semantic path, cache and cleanup categories, the cached ancestor responsible for promotion when applicable, and a
