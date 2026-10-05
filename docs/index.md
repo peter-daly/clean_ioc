@@ -11,8 +11,10 @@ do not need to inherit from Clean IoC types or use injection decorators.
 Its complete compiled graph is also an application policy surface: custom rules can enforce architecture, composition
 conventions, and source-level checks before runtime or in CI.
 
+Version 2 is currently a release candidate. Include `--pre` to install it:
+
 ```bash
-pip install clean_ioc
+pip install --pre clean_ioc
 ```
 
 ## Minimal container

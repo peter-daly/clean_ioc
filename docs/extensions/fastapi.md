@@ -8,7 +8,7 @@ FastAPI.
 ## Installation
 
 ```bash
-pip install "clean_ioc[fastapi]"
+pip install --pre "clean_ioc[fastapi]"
 ```
 
 Clean IoC V2 supports FastAPI 0.121 and newer.
