@@ -5,6 +5,8 @@ description: Use Clean IoC 2 to compose and compile typed Python dependency plan
 
 # Use Clean IoC
 
+For a Clean IoC 1.x application upgrade, use the migrate-clean-ioc Library Skill first.
+
 Separate mutable composition from immutable runtime execution:
 
 ```python

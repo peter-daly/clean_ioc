@@ -2,6 +2,18 @@ Unreleased
 ----------
 
 
+2.0.0rc2
+--------
+
+    Add a bundled Clean IoC 1-to-2 migration Library Skill and a conservative
+    codemod that previews straightforward builder, lifespan, and argument
+    changes while flagging cases that require manual migration.
+
+    Expand the upgrade guide against the 1.24.0 and 2.0 release candidate APIs,
+    including removed imports, root policies, discovery, warm-up, and diagnostics.
+    Clarify prerelease installation in the Version 2 documentation.
+
+
 2.0.0rc1
 --------
 

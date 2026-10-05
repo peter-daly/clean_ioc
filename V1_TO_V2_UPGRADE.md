@@ -2,6 +2,10 @@
 
 This is an agent-oriented playbook for migrating applications, integrations, bundles, and tests from Clean IoC 1.x to 2.0. Version 2 has one public model: compose with a builder, call `build()`, then resolve from the immutable runtime.
 
+This guide has been checked against Clean IoC 1.24.0 on `main` and the 2.0.0rc2 API on `version2`. V2 requires Python
+3.11 or newer; V1 still supports Python 3.10. While V2 is a prerelease, install it with `pip install --pre clean_ioc`
+or pin the release candidate explicitly.
+
 V2 changes the container lifecycle: composition is mutable, but a runtime is immutable and fully compiled before application code starts.
 
 Clean IoC 2 does not ship the V1 container as a parallel public API. `clean_ioc.core`, registration filters, node filters, runtime dependency graphs, and compatibility method aliases are removed. Do not import private modules such as `clean_ioc._legacy`; they are temporary implementation details and may disappear without notice.
@@ -52,12 +56,11 @@ Apply all registrations, decorators, pre-configurations, discovery rules, patche
 | `container.expect_to_be_scoped(T)` | `builder.declare_scope_slot(T)` | Declare every late-bound slot before build. |
 | `container.has_registration(...)` | `builder.has_component(...)` | This previews compiled components. |
 | `get_registration_id(s)` | `get_component_id(s)` | IDs identify registrations; compiled occurrences also have `occurrence_id`. |
-| `container.validate(...)` | `builder.build()` / `BuildReport` | Validation is mandatory and covers every visible root. |
-| `container.explain(T)` | `container.graph` | Mark an entry point to focus renderers on a public root. |
 | `resolve_dependency_graph(...)` | `container.graph` / `Component` | V2 exposes a static compiled graph, not a graph containing runtime instances. |
 | `resolve_from_registration_id(...)` | `resolve(T, filter=cf.with_id(id))` | Use `clean_ioc.component_filters`. |
 | mutable `scope.register(...)` | scope slot or `new_scope_builder()` | Choose based on whether the change is a value or composition. |
-| `force_run_pre_configuration(T)` | resolve an applicable compiled root | Build never invokes user pre-configuration code. |
+| `force_run_pre_configuration(T)` | no direct equivalent | Resolve an applicable compiled root; use a declared warm-up plan for selected singleton startup targets. |
+| `register_generic_subclasses(T, fallback_type=F)` | `register_subclasses(T)` plus `register_fallback(T, F)` | Discovery and fallback selection are separate declarations. |
 | `call()` / `call_async()` | no direct equivalent | Register a service/factory before build or invoke explicitly with resolved dependencies. |
 | `scoped_teardown=callback` | generator or context-manager factory | Keep acquisition and release in the same factory. |
 
@@ -65,27 +68,37 @@ Apply all registrations, decorators, pre-configurations, discovery rules, patche
 
 The following removals are deliberate. Do not preserve them with local aliases or imports from private modules.
 
-| Removed V1 import/API | V2 replacement |
-| --- | --- |
-| `clean_ioc.core.Container` | `from clean_ioc import ContainerBuilder`; call `builder.build()` |
-| `clean_ioc.core.Scope` | `from clean_ioc import Scope` for runtime typing; create it from `container.new_scope()` |
-| `clean_ioc.core.Lifespan` | String literals accepted by `lifespan=`; `clean_ioc.Lifespan` is annotation-only |
-| `clean_ioc.registration_filters` | `clean_ioc.component_filters` |
-| `clean_ioc.node_filters` | `clean_ioc.component_filters` |
+| Removed V1 import/API | V2 replacement | Migration note |
+| --- | --- | --- |
+| `clean_ioc.core.Container` | `from clean_ioc import ContainerBuilder`; call `builder.build()` | V2 `Container` is a runtime. |
+| `clean_ioc.core.Scope` / `ChildScope` | `from clean_ioc import Scope` or `ScopeBuilder` | Use `ScopeBuilder` only to change composition. |
+| `clean_ioc.core.Lifespan` | String literals accepted by `lifespan=`; `clean_ioc.Lifespan` is annotation-only | `once_per_graph` becomes `"per_resolution"`. |
+| `Registration`, `Decorator`, `PreConfiguration`, `DependencyNode` | `Component` and `CompiledGraph` | Inspect static compiled occurrences; no runtime instance graph is retained. |
+| `DependencyConfig` / `SubDependencies` | `arguments=` | Pass fixed values or explicit argument policies. |
+| `DependencyContext` / `ParameterValueFactory` | `ParameterContext` with `derive(...)`, or runtime `ResolutionContext` | Choose build-time derivation or declared runtime resolution deliberately. |
+| `NeedsScopedRegistrationError` | Declared scope slots and `ScopeProvisionError` | Missing late values are provided before the first resolve. |
+| `UNKNOWN` | no public equivalent | V2 does not expose V1's unresolved-instance sentinel. |
+| `clean_ioc.registration_filters` | `clean_ioc.component_filters` | Filters inspect compiled components. |
+| `clean_ioc.node_filters` | `clean_ioc.component_filters` | Filters inspect compiled components. |
+| `RegistrationFilter` / `NodeFilter` | `ComponentFilter` | One read-only component predicate type. |
+| `default_registration_filter` | `default_component_filter` | Both select unnamed registrations/components. |
+| `default_parent_node_filter` / `default_decorated_node_filter` | `all_components` | Use when no contextual restriction is needed. |
+| `default_parameter_value_factory` | no override, or `derive(...)` | Python defaults and normal injection are compiled. |
+| `default_registration_list_modifier` | no direct equivalent | Collection order follows compiled candidate order. |
 | `clean_ioc.list_reduction_filters` | no direct equivalent | Filter a collection with `select(...)`; register an explicit collection factory when ordering or reduction is domain behavior. |
-| `DependencySettings(filter=f)` | `select(f)` |
+| `RegistrationListModifier` / `list_modifier=` | no direct equivalent | Filter compiled collection members or put ordering and reduction in an explicit factory. |
+| `DependencySettings(filter=f)` | `select(f)` | The filter now receives a `Component`. |
 | `DependencySettings(value_factory=f)` | `derive(f)` | The function now runs during build, not activation. |
-| `EMPTY` from a value factory | `INJECT` from `derive(...)` |
-| `RemoveDependencySetting` | `REMOVE` |
-| `clean_ioc.diagnostics` | `BuildReport`, `CompiledGraph`, manifests, and the `clean-ioc` CLI |
-| `clean_ioc.factories.use_registered` | `clean_ioc.factories.use_component` |
-| `clean_ioc.factories.use_from_current_graph` | `use_component` or an explicit `ResolutionContext` dependency |
-| `add_container_to_app` and `add_*_to_scope` | `builder.apply_bundle(FastAPIBundle())` plus `install_fastapi(app, container)` |
-| `register_generic_decorator(...)` | `register_decorator(...)`, which handles open and closed generic services |
+| `EMPTY` from a value factory | `INJECT` from `derive(...)` | Compile normal injection at that argument. |
+| `RemoveDependencySetting` | `REMOVE` | Remove an inherited argument override. |
+| `clean_ioc.factories.use_registered` / `use_registered_async` | `clean_ioc.factories.use_component` / `use_component_async` | Targets must be compiled at build. |
+| `clean_ioc.factories.use_from_current_graph` / `use_from_current_graph_async` | `use_component` / `use_component_async`, or an explicit `ResolutionContext` dependency | Runtime access selects compiled plans only. |
+| `add_container_to_app` and `add_*_to_scope` | `builder.apply_bundle(FastAPIBundle())` plus `install_fastapi(app, container)` | Apply the bundle before build. |
+| `register_generic_decorator(...)` | `register_decorator(...)`, which handles open and closed generic services | Declare on a builder. |
 
 The package root is the authoritative public import surface. Submodules documented by the V2 guide—such as
-`component_filters`, `type_filters`, `factories`, and `ext.fastapi`—are also public. `clean_ioc.configuration` and
-`clean_ioc.value_factories` are removed. An underscore-prefixed module is never a migration target.
+`component_filters`, `type_filters`, `factories`, and `ext.fastapi`—are also public. `clean_ioc.value_factories` is
+removed. An underscore-prefixed module is never a migration target.
 
 `resolve()` and `resolve_async()` remain runtime APIs. Use `resolve_async()` whenever the compiled path contains async factories, generators, context managers, or cleanup.
 
@@ -203,9 +216,21 @@ Allowed on `Container` and `Scope`:
 
 Do not add builder methods to a runtime to ease a migration. Move registration into the composition root instead.
 
+### Decide which registrations are public roots
+
+`register()` defaults to `root_policy="resolvable"`, which retains ordinary direct-resolution behavior. Set
+`root_policy="entrypoint"` to mark a resolvable registration as an application entry point. Set
+`root_policy="dependency_only"` for a registration that may be injected but must not be resolved directly. With the
+default `build(clean_orphans=True)`, an unused dependency-only registration and its graph are omitted; a broken
+dependency in that omitted graph does not fail the build. Use `build(clean_orphans=False)` to retain and validate those
+graphs for inspection. Neither setting makes a dependency-only registration directly resolvable.
+
+`mark_entrypoint()` focuses graph tooling on an existing public request; it does not grant root access or make an
+otherwise private generic specialization available at runtime.
+
 ## Filters now use `Component`
 
-V1 registration and node filters operated on different models and sometimes on partially or fully resolved object graphs. V2 uses one immutable `Component` model for root registration, dependency, decorator, pre-configuration, and contextual selection.
+V1 registration and node filters operated on different models and sometimes on partially or fully resolved object graphs. V2 uses one read-only `Component` view for root registration, dependency, decorator, pre-configuration, and contextual selection. During compilation, a callback can see an occurrence before all its descendants are complete.
 
 Change imports:
 
@@ -249,6 +274,9 @@ Filter timing changes matter:
 - collection selection preserves normal candidate order; V2 has no implicit collection reducer.
 - a filter passed to `resolve()` only selects among already-compiled root plans.
 - descendant filters see static dependency, decorator, and pre-configuration occurrences.
+
+V1 `list_modifier=` callbacks do not run over V2 registrations. Use `select(...)` to filter an injected collection;
+express ordering, deduplication, or reduction in an explicit application factory.
 
 Do not port a V1 filter that depended on activation order or runtime instance state verbatim.
 
@@ -343,11 +371,11 @@ Use an ordinary scope for the same composition and new request/unit-of-work stat
 
 ## Lifespan migration
 
-V2 replaces the `Lifespan` enum with string literals. Remove the enum import and pass one of `"transient"`, `"per_resolution"`, `"scoped"`, or `"singleton"`. The V1 `Lifespan.once_per_graph` member becomes `"per_resolution"`, which is also the V2 default.
+V2 replaces the `Lifespan` enum with string literals. Remove the enum import and pass one of `"transient"`, `"per_resolution"`, `"scoped"`, or `"singleton"`. The V1 `Lifespan.once_per_graph` member becomes `"per_resolution"`. V2's default `lifespan="auto"` normally chooses `per_resolution`; it chooses `scoped` for a `scope="per_call"` target.
 
 ```python
 # V1
-builder.register(Service, lifespan=Lifespan.singleton)
+container.register(Service, lifespan=Lifespan.singleton)
 
 # V2
 builder.register(Service, lifespan="singleton")
@@ -355,7 +383,7 @@ builder.register(Service, lifespan="singleton")
 
 Compiled `Component.lifespan` values and graph manifests use the same strings. Invalid runtime strings raise `ValueError` during composition.
 
-V2 also validates captive lifespans for all visible roots during build, so V1 code that silently promoted default dependencies beneath cached services may now fail.
+V2 validates captive lifespans for public roots and reached dependencies during build, so V1 code that silently promoted default dependencies beneath cached services may now fail. Unused dependency-only registrations are omitted by default.
 
 Invalid paths include:
 
@@ -423,9 +451,17 @@ builder.register(
 
 Use `@contextmanager` or `@asynccontextmanager` when that makes the factory contract clearer. Always exit the owning container or scope, using async context management for async cleanup. If V1 registered a prebuilt instance with `scoped_teardown`, replace it with a factory so creation and cleanup have an explicit owner.
 
+For intentional startup activation of a resolvable singleton, declare a `WarmupPlan` before build and explicitly run
+`container.warmup(name)` or `await container.warmup_async(name)` afterward. Warm-up runs the selected singleton's full
+compiled activation path, including applicable pre-configurations; it is not a direct invocation of a pre-configuration
+function. See [declared warm-up plans](docs/warmup-plans.md).
+
 ## Discovery and generics
 
-V1 subclass and generic discovery happened when `register_subclasses()` or related methods were called. V2 queues rules and takes one live class snapshot during `build()`.
+V1 subclass and generic discovery happened when `register_subclasses()` or `register_generic_subclasses()` was called.
+V2 queues rules and takes one live class snapshot during `build()`. Use `register_subclasses()` for ordinary and open
+generic bases. If V1 supplied `fallback_type=`, declare that default separately with `register_fallback()`; it applies
+only when no ordinary candidate matches the request.
 
 Migration requirements:
 
@@ -435,17 +471,41 @@ Migration requirements:
 - use `subclass_type_filter` from `clean_ioc.type_filters`, while component `when=` controls occurrence selection;
 - remember that a successful build freezes the discovery snapshot; later subclasses do not join the runtime.
 
-Open generic registrations are activation templates, not directly resolvable roots. Closed occurrences are compiled when encountered as dependencies. Explicitly register a closed service when callers must resolve it as a root.
+Ordinary open generic registrations are activation templates, not directly resolvable roots. Their closed occurrences
+can compile as dependencies without becoming direct roots; register the required closed service explicitly for direct
+resolution. Structural `register_pattern()` templates have a narrower additional rule: a closed pattern request reached
+through a public compiled dependency, provider, provider map, or explicit boundary exposure also becomes a public root.
+Private requests stay private, and runtime resolution cannot discover new closed requests after build.
 
 Generic factory annotations are now specialized at build. Ensure factory parameters and return values preserve the relevant `TypeVar` relationships:
 
 ```python
+from typing import Generic, TypeVar
+
+from clean_ioc import ContainerBuilder
+
+
 T = TypeVar("T")
 
-def create_product(dependency: Dependency[T]) -> Product[T]:
-    return Product(dependency)
 
-builder.register(Product, factory=create_product)
+class Source(Generic[T]):
+    pass
+
+
+class Product(Generic[T]):
+    def __init__(self, source: Source[T]):
+        self.source = source
+
+
+def create_product(source: Source[T]) -> Product[T]:
+    return Product(source)
+
+
+builder = ContainerBuilder()
+builder.register(Source[int])
+builder.register(Product[int], factory=create_product)
+container = builder.build()
+assert isinstance(container.resolve(Product[int]).source, Source)
 ```
 
 Use `factory_specialization=SomeClosedGeneric` only when the requested service and return annotation cannot reveal every binding. Unresolved/conflicting `TypeVar` values fail build. `ParamSpec` and `TypeVarTuple` are unsupported.
@@ -459,15 +519,22 @@ request `RedisClient` in constructors or `container.resolve(RedisClient)`. Type 
 
 The union must have an explicit factory, instance or implementation. It does not select among registrations for its
 members or register its members implicitly. Existing Python-default behaviour also applies to nullable unions;
-`A | None` alone does not request an automatic `None` fallback. Use assignment aliases or `typing.Union`; Python's
-`type Alias = ...` syntax does not gain new unwrapping behaviour. See [union factories](docs/factories.md#union-service-types).
+`A | None` alone does not request an automatic `None` fallback. Assignment aliases, `typing.Union`, native Python
+`type Alias = ...` declarations (Python 3.12+), and `typing_extensions.TypeAliasType` aliases of the same union select
+the same complete union key. Their individual members remain separate keys. See
+[union factories](docs/factories.md#union-service-types).
+
+Native `type` aliases and `TypeAliasType` are transparent for other service keys too, including generic aliases. The
+alias and its expanded target share one compiled component and runtime cache. `NewType` remains a distinct nominal key;
+register it with an explicit instance, factory, or implementation type.
 
 Tooling renders equivalent unions consistently across syntax and member order. Existing graphs containing unions
 may receive new fingerprints; identities for types without unions are unchanged.
 
 ## Diagnostics and failure handling
 
-V1 often discovered missing, circular, or captive dependencies during `resolve()`, unless code called `validate()` explicitly. V2 makes the successful build the validity boundary.
+V1 discovered missing, circular, or captive dependencies as paths were resolved. V2 makes the successful build the
+validity boundary for public roots and reached dependencies.
 
 ```python
 from clean_ioc import ContainerBuildError
@@ -490,7 +557,15 @@ print(container.graph.to_mermaid())
 manifest = container.graph.manifest()
 ```
 
-Use `builder.mark_entrypoint(ApplicationRoot)` to focus the default graph view and enable `unreachable-component` warnings. All roots remain compiled and resolvable. JSON manifests are deterministic and redact configured/default values.
+Use `builder.mark_entrypoint(ApplicationRoot)` to focus the default graph view and enable `unreachable-component`
+warnings. Public roots remain resolvable; dependency-only registrations are not direct roots, and unused ones are
+omitted by default. JSON manifests are deterministic and redact configured/default values.
+
+Use `container.graph.explain(Service)` to inspect recorded root selection, or pass an exact compiled `Component` to
+explain an occurrence. The query does not rerun selection callbacks. Definite factory return-annotation mismatches now
+fail build with `factory-return-type-mismatch`; correct the annotation, registered service, or factory result type.
+Custom rules registered with `mode="validation"` run through `container.validation_report()` or `clean-ioc check`; they
+are separate from the mandatory structural build checks.
 
 Do not replace `resolve_dependency_graph()` with runtime bookkeeping. If V1 code inspects nodes or instances after resolution, migrate it to static `Component`/`CompiledGraph` metadata or explicit application instrumentation.
 
@@ -502,8 +577,12 @@ V1 code may inject `Registrator`, `Resolver`, `ScopeCreator`, `CurrentGraph`, or
 - Replace request/framework registration with declared slots and `provide()`.
 - Replace intentional child composition with an injected/configured `ScopeBuilder` at the composition boundary, not in ordinary services.
 - Prefer explicit constructor dependencies over an injected resolver.
+- If a service only needs to create a known dependency later, inject `Provider[T]` or `AsyncProvider[T]`. Use
+  `ManagedProvider[T]` or `AsyncManagedProvider[T]` when each acquisition must own and close a fresh scope.
 - If dynamic selection among compiled roots is unavoidable, inject public `ResolutionContext`.
 - Inject public `Scope` only when the service genuinely owns creation of nested runtime scopes.
+- Replace `CurrentGraph` or `DependencyNode` inspection with `container.graph` and static `Component` metadata at
+  the composition boundary; V2 does not retain a graph of resolved instances.
 
 `ResolutionContext` can only select already-compiled roots and preserves `per_resolution` identity. It is not a mutation or compilation API.
 
@@ -550,23 +629,30 @@ If an integration needs a late external value, expose a helper that declares its
 | V2 `Container` cannot be constructed | Runtime construction is internal | Create `ContainerBuilder`, compose, then `build()`. |
 | `Container`/`Scope` has no `register` | Runtime is immutable | Move composition earlier, declare a slot, or build an overlay. |
 | `BuilderAlreadyBuiltError` | Mutation or second build after success | Create a new builder; do not reuse a successful one. |
-| `ContainerBuildError: missing-component` | V2 compiled a root V1 had never exercised | Register the dependency or remove the invalid visible root. |
+| `ContainerBuildError: missing-component` | V2 compiled a public root V1 had never exercised | Register the dependency or remove the invalid public root. |
 | `captive-dependency` mentioning `per-resolution` | Cached owner retained default resolution-local state | Promote the dependency or shorten the owner. |
 | `missing-entrypoint` | Marker filter selected no root | Register/fix the root or correct its component filter. |
+| `factory-return-type-mismatch` | A factory's declared result is definitely incompatible with its service | Fix the return annotation or register the matching service. |
+| Direct resolution cannot find a dependency-only registration | Its root policy forbids direct access | Resolve a public entry point that depends on it, or use `root_policy="resolvable"`. |
 | `unreachable-component` under `--strict` | Registration is outside all marked entry-point trees | Mark the real entry point, remove the registration, or explicitly ignore the warning. |
 | Old filter raises an attribute error during build | It expects `Registration`, `Node`, or an instance | Rewrite it against public `Component`. |
 | Dynamic subclass is missing | It was created/imported after build or garbage-collected | Import/create and retain it before build. |
-| Open generic cannot be resolved as a root | Open registrations are templates | Register the required closed root explicitly. |
+| Open generic cannot be resolved as a root | Open registrations are templates | Register the required closed service; public structural-pattern requests are the documented exception. |
 | Generic factory has unresolved `TypeVar` | Binding is absent from service/return annotations | Correct annotations or provide `factory_specialization`. |
 | Sync resolution says async is required | Compiled path contains async activation/cleanup | Use `resolve_async()` and async context ownership. |
 | Overlay unexpectedly reuses a root singleton | Root singleton plans are anchored by design | Register an overlay-owned replacement singleton if different wiring is required. |
 
 ## Agent migration workflow
 
+The bundled `migrate-clean-ioc` Library Skill includes a conservative codemod. Preview its edits with
+`python .library-skills/migrate-clean-ioc/scripts/migrate_v1_to_v2.py path/to/app`, then pass `--write` to apply them.
+It handles simple builder boundaries, supported `lifespan=` enum values, and literal-only `dependency_config=`
+dictionaries. Review its line-numbered findings and rerun it after manual edits; a clean run should propose no changes.
+
 1. Search for legacy construction and imports:
 
    ```bash
-   rg -n "Container\(|\.register\(|\.patch_registration\(|registration_filters|node_filters|resolve_dependency_graph|\.validate\(|\.explain\(" .
+   rg -n "Container\(|\.register\(|\.patch_registration\(|registration_filters|node_filters|resolve_dependency_graph" .
    rg -n "clean_ioc\.(core|registration_filters|node_filters|diagnostics)|use_registered|use_from_current_graph" .
    ```
 
