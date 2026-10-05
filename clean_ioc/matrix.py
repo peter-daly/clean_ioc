@@ -10,6 +10,7 @@ from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Any, Callable, Iterable, Mapping, TypeAlias
 
+from .compilation_budget import CompilationBudget
 from .container import ContainerBuilder, ContainerBuildError, ScopeBuilder, _valid_build_issue
 from .sarif import _location, _unique_source
 from .tooling import (
@@ -59,8 +60,11 @@ class BuildVariant:
     name: str
     builder_factory: Callable[[], ContainerBuilder | ScopeBuilder] = field(repr=False, compare=False)
     build_args: Mapping[str, object] = field(default_factory=dict, repr=False, compare=False)
+    budget: CompilationBudget | None = None
 
     def __post_init__(self) -> None:
+        if self.budget is not None and not isinstance(self.budget, CompilationBudget):
+            raise TypeError("budget must be a CompilationBudget instance or None")
         if not isinstance(self.name, str) or _NAME.fullmatch(self.name) is None:
             raise ValueError("matrix-invalid-name: variant names require ASCII letters, digits, _, -, or .")
         if not _synchronous(self.builder_factory):
@@ -370,7 +374,7 @@ def _build_variant(
         else:
             used.append(builder)
             try:
-                with builder.build(build_args=variant.build_args) as scope:
+                with builder.build(build_args=variant.build_args, budget=variant.budget) as scope:
                     graph = scope.graph
                     captured = _capture(variant.name, scope.validation_report(), graph)
                 return captured

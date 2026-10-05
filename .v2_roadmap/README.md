@@ -82,15 +82,17 @@ Warm-up declarations compile selected singleton startup requests and execute the
 with aggregated diagnostics and normal cleanup ownership. Activation tracing is the remaining proposal in the original
 sequence; completed provider/startup work is recorded in work items 16 and 17.
 
-## Deferred compiler and tooling work
+## Compiler and tooling work
 
-These work items were added on 2026-10-04 for later prioritization. Implementation has not started:
+These work items were added on 2026-10-04. Compiler items 18–20 were investigated and implemented on
+`codex/compiler-optimization`: baseline benchmarks preceded compiler changes, and separate Sol High agents
+implemented and independently reviewed each item sequentially. Tooling items 21–22 remain deferred.
 
 | Item | Outcome |
 | --- | --- |
-| [18: Incremental compilation](../.work/18-incremental-compilation.md) | Reuse eligible compiler analysis across related builds with explicit invalidation and fresh runtime ownership. |
-| [19: Execution-plan optimization](../.work/19-execution-plan-optimization.md) | Reduce measured plan cost while preserving occurrence graphs, activation semantics, and ownership. |
-| [20: Compilation budgets](../.work/20-compilation-budgets.md) | Enforce optional deterministic work limits with useful bounded build diagnostics. |
+| [18: Incremental compilation](../.work/18-incremental-compilation.md) | Investigation complete and reviewed; production cross-build cache declined because useful incremental benefit was not established. |
+| [19: Execution-plan optimization](../.work/19-execution-plan-optimization.md) | Implemented and reviewed: reuse captured type metadata during cloning, preserving graph and executable structure; noisy timing limits documented. |
+| [20: Compilation budgets](../.work/20-compilation-budgets.md) | Implemented and reviewed: optional per-build work limits with bounded, source-linked diagnostics and per-variant matrix allowances; no runtime budget work. |
 | [21: Test activation coverage](../.work/21-test-activation-coverage.md) | Show requested, activated, cached, and not-observed compiled paths from named test observations. |
 | [22: Detailed activation tracing](../.work/22-detailed-activation-tracing.md) | Extend current observed plans with bounded detailed events and an optional OpenTelemetry adapter. |
 

@@ -11,6 +11,8 @@ import types
 from dataclasses import dataclass
 from typing import Any, Callable, get_args, get_origin
 
+from .compilation_budget import CompilationBudgetExhaustion, _BudgetStop
+
 
 def safe_definition(value: Any) -> str:
     """Use only class/function metadata, never application repr or configured values."""
@@ -108,6 +110,8 @@ class CompilationProfile:
     max_records: int
     omitted_records: int
     diagnostics: tuple[str, ...]
+    budget_usage: tuple[tuple[str, int], ...] | None = None
+    budget_exhaustion: CompilationBudgetExhaustion | None = None
 
     @property
     def costly_definitions(self) -> tuple[CompilationHotspot, ...]:
@@ -129,7 +133,7 @@ class CompilationProfile:
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return dict(
+        result: dict[str, Any] = dict(
             elapsed_ns=self.elapsed_ns,
             state=self.state,
             phases_ns=dict(self.phases_ns),
@@ -145,6 +149,12 @@ class CompilationProfile:
                 "validation-only rules and parent builds are excluded."
             ),
         )
+        if self.budget_usage is not None:
+            result["budget"] = {
+                "admitted_operations": dict(self.budget_usage),
+                "exhaustion": None if self.budget_exhaustion is None else self.budget_exhaustion.to_dict(),
+            }
+        return result
 
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), indent=2, sort_keys=True)
@@ -157,6 +167,11 @@ class CompilationProfile:
         lines.extend(f"  {name}: {duration / 1_000_000_000:.6f} s" for name, duration in self.phases_ns)
         lines.append("Work counts:")
         lines.extend(f"  {name}: {count}" for name, count in self.counters.values)
+        if self.budget_usage is not None:
+            lines.append("Budget work admitted (includes failed operations; depth is a high-water mark):")
+            lines.extend(f"  {name}: {count}" for name, count in self.budget_usage)
+            if self.budget_exhaustion is not None:
+                lines.append("Budget exhausted; further compilation and diagnostic recovery omitted.")
         lines.append(
             f"Detailed spans: {len(self.spans)} retained, {self.omitted_records} omitted (limit {self.max_records})"
         )
@@ -247,6 +262,8 @@ class CompilationProfiler:
         self._phases: dict[str, int] = {}
         self._diagnostics: list[str] = []
         self._definition_refs: dict[str, str] = {}
+        self._budget_usage: tuple[tuple[str, int], ...] | None = None
+        self._budget_exhaustion: CompilationBudgetExhaustion | None = None
 
     def _problem(self) -> None:
         if not self._diagnostics:
@@ -315,7 +332,7 @@ class CompilationProfiler:
         try:
             return function(*args, **kwargs)
         except BaseException as error:
-            state = "interrupted" if not isinstance(error, Exception) else "failed"
+            state = "failed" if isinstance(error, (Exception, _BudgetStop)) else "interrupted"
             raise
         finally:
             if frame is not None:
@@ -364,4 +381,6 @@ class CompilationProfiler:
             self.max_records,
             self._omitted,
             tuple(self._diagnostics),
+            self._budget_usage,
+            self._budget_exhaustion,
         )

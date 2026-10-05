@@ -28,6 +28,7 @@ from typing import (
     overload,
 )
 
+from .compilation_budget import CompilationBudgetExhaustion
 from .components import (
     Component,
     ComponentActivation,
@@ -406,15 +407,19 @@ class BuildIssue:
     # Retain exact occurrence attribution for source-linked renderers without
     # changing issue equality, existing serialization, or graph fingerprints.
     _occurrence_path: tuple[int, ...] = field(default=(), repr=False, compare=False)
+    budget: CompilationBudgetExhaustion | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "code": self.code,
             "severity": self.severity.value,
             "message": self.message,
             "root": self.root,
             "path": list(self.path),
         }
+        if self.budget is not None:
+            result["budget"] = self.budget.to_dict()
+        return result
 
     def __str__(self) -> str:
         location = " -> ".join(self.path)
@@ -896,6 +901,8 @@ def _triage_reason(fact: FailureEvidence) -> str:
 
 
 def _triage_hint(fact: FailureEvidence) -> str:
+    if fact.kind == "budget":
+        return "the compilation budget and admitted work; further diagnostic compilation was omitted"
     if fact.kind == "missing":
         if fact.reason == "invisible definition":
             return "Expose and Use declarations for this boundary"

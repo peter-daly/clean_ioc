@@ -66,6 +66,7 @@ from .arguments import (
     _SelectArgument,
 )
 from .boundaries import BoundaryAlias, Expose, Use
+from .compilation_budget import CompilationBudget, _BudgetState, _BudgetStop
 from .compilation_profile import CompilationProfiler, safe_definition
 from .component_filters import with_id
 from .components import (
@@ -488,6 +489,133 @@ class ContainerBuildError(RuntimeError):
         return failed_selection_census(self)
 
 
+def _budget_build_error(
+    stop: _BudgetStop,
+    state: _BudgetState | None,
+    blueprint: _Blueprint | None,
+) -> ContainerBuildError:
+    fact = stop.fact
+    message = (
+        f"Compilation budget {fact.kind} exhausted in {fact.phase}: "
+        f"maximum {fact.maximum}, admitted {fact.admitted}, refused next {fact.attempted}. "
+        "Further compilation and diagnostic recovery were omitted."
+    )
+    issue = BuildIssue(
+        "compilation-budget-exceeded",
+        IssueSeverity.error,
+        message,
+        root=stop.path[0] if stop.path else None,
+        path=stop.path,
+        budget=fact,
+    )
+    origin = stop.origin
+    evidence = FailureEvidence(
+        "budget",
+        issue.root or "composition",
+        fact.kind,
+        boundary=None if origin is None else origin.boundary,
+        layer=None if origin is None else origin.layer,
+        source_location=None if origin is None else origin.location,
+        witness=stop.path,
+        identity=(fact.kind, fact.maximum, fact.phase),
+    )
+    issues = list(stop.issues)
+    facts = list(stop.evidence)
+    if state is not None:
+        for finding in (*state.preparation_findings, *state.findings):
+            if finding not in issues:
+                issues.append(finding)
+                facts.append(state.finding_evidence.get(id(finding)))
+    attempts = list(stop.attempts)
+    if stop.original is not None:
+        original = stop.original
+        if isinstance(original, ContainerBuildError) and original.report is not None:
+            originals = original.report.issues
+            original_facts = original.evidence
+        else:
+            path = original.path if isinstance(original, ContainerBuildError) else ()
+            originals = (
+                BuildIssue(
+                    _build_error_code(original),
+                    IssueSeverity.error,
+                    _safe_error_message(original),
+                    root=path[0] if path else None,
+                    path=path,
+                ),
+            )
+            original_facts = original.evidence if isinstance(original, ContainerBuildError) else ()
+        for index, finding in reversed(tuple(enumerate(originals))):
+            if finding not in issues:
+                issues.insert(0, finding)
+                facts.insert(0, original_facts[index] if index < len(original_facts) else None)
+        if state is not None and state.primary is not None:
+            attempts.insert(0, state.primary.partial_attempt(original))
+    elif stop.compiler is not None:
+        # Convert only the compiler-owned signal; no callback is replayed.
+        attempts.append(stop.compiler.partial_attempt(ContainerBuildError(message, code=issue.code, path=stop.path)))
+    issues = [
+        replace(finding, message="A validation rule failed before compilation was stopped by its budget.")
+        if state is not None and id(finding) in state.callback_errors
+        else finding
+        for finding in issues
+    ]
+    issues.append(issue)
+    facts.append(evidence)
+    started = 0 if state is None else state.usage["diagnostic_attempts"]
+    total_roots = stop.total_roots
+    if blueprint is not None and not total_roots:
+        total_roots = sum(
+            not bool(getattr(key, "__parameters__", ()))
+            for keys in (
+                blueprint.root_service_types(),
+                *(blueprint.service_types(b.name) for b in blueprint.boundaries),
+            )
+            for key in keys
+        )
+    primary_count = 1 if state is not None and state.primary is not None else 0
+    partial = PartialGraph(
+        tuple(attempts),
+        truncated=True,
+        total_attempts=primary_count + started if state is None else state.compilation_attempts,
+        retained_attempts=len(attempts),
+        omitted_attempts=max(
+            0, (primary_count + started if state is None else state.compilation_attempts) - len(attempts)
+        ),
+        total_roots=total_roots,
+        retained_roots=min(started, len(stop.attempts)),
+        omitted_roots=max(0, total_roots - min(started, len(stop.attempts))),
+    )
+    return ContainerBuildError(
+        report=BuildReport(tuple(issues), checked_roots=started),
+        code=issue.code,
+        path=stop.path,
+        partial_graph=partial,
+        evidence=tuple(facts),
+        entry_points=None if blueprint is None else _declared_entry_point_labels(blueprint),
+        explanations=() if state is None or state.primary is None else tuple(state.primary.decision_history),
+    )
+
+
+def _budget_callback(
+    callback: Any,
+    state: _BudgetState,
+    phase: str,
+    origin: DefinitionOrigin | None = None,
+    *,
+    path: tuple[str, ...] = (),
+):
+    """Compile-only callback adapter. Runtime call sites retain their original callbacks."""
+
+    def invoke(*args: Any, **kwargs: Any):
+        state.admit("preparation_operations", phase, origin=origin, path=path)
+        result = callback(*args, **kwargs)
+        state.check()
+        return result
+
+    setattr(invoke, "__clean_ioc_description__", _filter_description(callback))
+    return invoke
+
+
 class _TemplateExpansionReentryError(ContainerBuildError):
     """Compiler-owned callback reentry guard with fixed diagnostic content."""
 
@@ -661,6 +789,7 @@ class _DecoratorUnset:
 
 _DECORATOR_UNSET = _DecoratorUnset()
 _SCOPE_UNSET = object()
+_IMPLEMENTATION_TYPE_UNSET = object()
 
 
 @dataclass(frozen=True, slots=True)
@@ -1430,9 +1559,12 @@ def _boundary_component(
     boundary: str | None,
     name: str | None | object = _UNCHANGED_COMPONENT_NAME,
     tags: tuple[legacy.Tag, ...] | None = None,
+    budget_state: _BudgetState | None = None,
 ) -> Component:
     """Create metadata-only input for an Expose/Use selection predicate."""
 
+    if budget_state is not None:
+        budget_state.occurrence("boundary preparation", depth=1, path=(safe_definition(service_type),))
     graph = _ComponentGraph()
     component = graph.add(
         _ComponentDraft(
@@ -1476,6 +1608,8 @@ def _compiled_boundary_component(
         anchored_pre_configurations=inputs.get("anchored_pre_configuration_steps"),
         anchored_owner_tokens=inputs.get("anchored_owner_tokens", frozenset()),
         inherited_graph_sidecars=inputs.get("inherited_graph_sidecars", types.MappingProxyType({})),
+        budget_state=inputs.get("budget_state"),
+        profile_phase="boundary preparation",
     )
     compiler._area = blueprint.registration_area(layer)
     if registration.id in layer.pattern_ids:
@@ -1584,9 +1718,10 @@ def _select_boundary_registrations(
                 service_type=service_type,
                 build_args=build_args,
                 boundary=blueprint.registration_area(layer),
+                budget_state=(compilation_inputs or {}).get("budget_state"),
             )
         try:
-            matched = filter(component)
+            matched = _preparation_filter(filter, component, compilation_inputs, "boundary preparation")
         except Exception as error:
             raise ContainerBuildError(
                 f"Boundary filter {_filter_description(filter)} raised {type(error).__name__}",
@@ -1596,6 +1731,16 @@ def _select_boundary_registrations(
         if matched:
             selected.append((registration, layer))
     return selected
+
+
+def _preparation_filter(callback: Any, component: Component, inputs: _CompilationInputs | None, phase: str):
+    state = (inputs or {}).get("budget_state")
+    if state is not None:
+        state.admit("preparation_operations", phase, path=(safe_definition(component.service_type),))
+    result = callback(component)
+    if state is not None:
+        state.check()
+    return result
 
 
 def _boundary_cycle(boundaries: tuple[_BoundaryBlueprint, ...]) -> tuple[str, ...] | None:
@@ -1839,6 +1984,9 @@ def _prepare_boundary_visibility(
                     for slot_type, name in layer.slots:
                         if slot_type != use.service_type:
                             continue
+                        state = (compilation_inputs or {}).get("budget_state")
+                        if state is not None:
+                            state.occurrence("boundary preparation", depth=1, path=(safe_definition(slot_type),))
                         slot_component = _ComponentGraph()
                         component = slot_component.add(
                             _ComponentDraft(
@@ -1855,7 +2003,7 @@ def _prepare_boundary_visibility(
                                 activation=ComponentActivation.supplied,
                             )
                         )
-                        if use.filter(component):
+                        if _preparation_filter(use.filter, component, compilation_inputs, "boundary preparation"):
                             slot_matches.append((slot_type, name))
                 if len(matches) + len(slot_matches) == 0:
                     if defer_missing:
@@ -1919,8 +2067,9 @@ def _prepare_boundary_visibility(
                             boundary=blueprint.registration_area(layer),
                             name=target.name,
                             tags=target.tags,
+                            budget_state=(compilation_inputs or {}).get("budget_state"),
                         )
-                    if use.filter(component):
+                    if _preparation_filter(use.filter, component, compilation_inputs, "boundary preparation"):
                         selected.append(target)
                 if not selected:
                     if defer_missing:
@@ -2354,12 +2503,16 @@ def _module_imports(value: str | Iterable[str]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(modules))
 
 
-def _ensure_discovery_imports(rules: Iterable[_RegistrationDiscovery]) -> tuple[str, ...]:
+def _ensure_discovery_imports(
+    rules: Iterable[_RegistrationDiscovery], budget_state: _BudgetState | None = None
+) -> tuple[str, ...]:
     ensured: list[str] = []
     seen: set[str] = set()
     traversed_packages: set[str] = set()
 
-    def ensure(module_name: str) -> types.ModuleType:
+    def ensure(module_name: str, origin: DefinitionOrigin) -> types.ModuleType:
+        if budget_state is not None:
+            budget_state.admit("preparation_operations", "discovery imports", origin=origin)
         module = importlib.import_module(module_name)
         if module.__name__ not in seen:
             seen.add(module.__name__)
@@ -2368,18 +2521,26 @@ def _ensure_discovery_imports(rules: Iterable[_RegistrationDiscovery]) -> tuple[
 
     for rule in rules:
         for module_name in rule.ensure_import_modules:
-            module = ensure(module_name)
+            module = ensure(module_name, rule.origin)
             if not rule.include_children or module.__name__ in traversed_packages:
                 continue
             traversed_packages.add(module.__name__)
             package_path = getattr(module, "__path__", None)
             if package_path is None:
                 continue
-            child_names = sorted(
-                module_info.name for module_info in pkgutil.walk_packages(package_path, prefix=f"{module.__name__}.")
-            )
+            walker = iter(pkgutil.walk_packages(package_path, prefix=f"{module.__name__}."))
+            child_names = []
+            while True:
+                if budget_state is not None:
+                    budget_state.admit("preparation_operations", "discovery module enumeration", origin=rule.origin)
+                try:
+                    module_info = next(walker)
+                except StopIteration:
+                    break
+                child_names.append(module_info.name)
+            child_names.sort()
             for child_name in child_names:
-                ensure(child_name)
+                ensure(child_name, rule.origin)
     return tuple(ensured)
 
 
@@ -2430,9 +2591,15 @@ class _RegistrationDiscovery:
         registration_policies: dict[str, tuple[LifespanPolicy, ScopePolicy]],
         registration_origins: dict[str, DefinitionOrigin],
         service_groups: dict[str, frozenset[ServiceGroup]],
+        budget_state: _BudgetState | None = None,
     ) -> None:
         candidates: list[tuple[type, Any]] = []
-        for subclass in _unique_subclasses(self.base_type, self._filter):
+        filter = (
+            self._filter
+            if budget_state is None
+            else _budget_callback(self._filter, budget_state, "subclass discovery", self.origin)
+        )
+        for subclass in _unique_subclasses(self.base_type, filter):
             service_type: Any = self.base_type
             if self.generic:
                 service_type = legacy.Container._get_target_generic_base(self.base_type, subclass)
@@ -4868,6 +5035,7 @@ class _Compiler:
         profile: CompilationProfiler | None = None,
         profile_phase: str = "primary compilation",
         profile_attempt: str | None = "primary",
+        budget_state: _BudgetState | None = None,
     ):
         self.blueprint = blueprint
         self._has_fallbacks = any(
@@ -4878,6 +5046,11 @@ class _Compiler:
             for layer in (*blueprint.layers, *(boundary.layer for boundary in blueprint.boundaries))
         )
         self._profile = profile
+        self._budget = budget_state
+        if budget_state is not None:
+            budget_state.compilation_attempts += 1
+            if profile_phase == "primary compilation":
+                budget_state.primary = self
         self._profile_phase = profile_phase
         self._profile_attempt = profile_attempt
         self.build_args = build_args
@@ -4928,6 +5101,36 @@ class _Compiler:
         self._partial_candidates: list[tuple[str, str, PartialState, str | None]] = []
         self._partial_candidate_labels: dict[str, str] = {}
         self._partial_truncated = False
+
+    def _record_issue(self, issue: BuildIssue) -> None:
+        self.issues.append(issue)
+        if self._budget is not None:
+            self._budget.findings.append(issue)
+            occurrence = (
+                issue._occurrence_path[-1]
+                if issue._occurrence_path
+                else (self._frames[-1].component.occurrence_id if self._frames else None)
+            )
+            origin = self.origins.get(occurrence) if occurrence is not None else None
+            self._budget.finding_evidence[id(issue)] = FailureEvidence(
+                "compile",
+                issue.root or "composition",
+                issue.code,
+                witness=issue.path,
+                source_location=None if origin is None else origin.location,
+                layer=None if origin is None else origin.layer,
+                boundary=None if origin is None else origin.boundary,
+            )
+
+    def _admit_preparation(self, service_type: Any = None, origin: DefinitionOrigin | None = None) -> None:
+        if self._budget is not None:
+            self._budget.admit(
+                "preparation_operations",
+                self._profile_phase,
+                path=(lambda: self._current_path(service_type)) if service_type is not None else (),
+                origin=origin,
+                compiler=self,
+            )
 
     def _missing_evidence(
         self,
@@ -6087,6 +6290,7 @@ class _Compiler:
         if cached is not None:
             return cached
 
+        self._admit_preparation(requested_service_type, self.blueprint.registration_origin(registration.id, layer))
         is_pattern = registration.id in layer.pattern_ids
         dependency_annotations: tuple[tuple[str, Any, Any], ...] = ()
         result_annotation = inspect.Signature.empty
@@ -6162,6 +6366,14 @@ class _Compiler:
             self._specialized_factories[key] = registration
             return registration
 
+        if self._budget is not None:
+            self._budget.admit(
+                "specialization_materializations",
+                self._profile_phase,
+                path=self._current_path(requested_service_type),
+                origin=self.blueprint.registration_origin(registration.id, layer),
+                compiler=self,
+            )
         specialized = legacy._Registration(
             activator_class=registration.activator_class,
             service_type=requested_service_type,
@@ -6357,6 +6569,7 @@ class _Compiler:
                         service_type=service_type,
                         build_args=self.build_args,
                         boundary=self.blueprint.registration_area(layer),
+                        budget_state=self._budget,
                     ),
                     _ValueStep(None),
                     self.blueprint.registration_origin(registration.id, layer),
@@ -6389,7 +6602,25 @@ class _Compiler:
         build_args: Mapping[str, Any] | None = None,
         origin: DefinitionOrigin | None = None,
         declared_service_type: Any | None = None,
+        implementation_type: type | object = _IMPLEMENTATION_TYPE_UNSET,
     ) -> tuple[Component, _ComponentDraft]:
+        if self._budget is not None:
+            path = []
+            ancestor = parent
+            while ancestor is not None:
+                path.append(ancestor.service_type)
+                ancestor = ancestor.parent
+
+            def witness() -> tuple[str, ...]:
+                return (*[safe_definition(item) for item in reversed(path)], safe_definition(service_type))
+
+            self._budget.occurrence(
+                self._profile_phase,
+                depth=1 + len(path),
+                path=witness,
+                origin=origin,
+                compiler=self,
+            )
         occurrence = self._next_occurrence
         self._next_occurrence += 1
         if self._profile is not None:
@@ -6404,7 +6635,11 @@ class _Compiler:
             occurrence_id=occurrence,
             service_type=service_type,
             implementation=implementation,
-            implementation_type=normalize_implementation_type(implementation, service_type),
+            implementation_type=(
+                normalize_implementation_type(implementation, service_type)
+                if implementation_type is _IMPLEMENTATION_TYPE_UNSET
+                else cast(type, implementation_type)
+            ),
             lifespan=lifespan,
             name=name,
             tags=tuple(tags),
@@ -6693,6 +6928,8 @@ class _Compiler:
                 # by being its caller.
                 component_record.parent_id = None
             try:
+                if predicate is not None:
+                    self._admit_preparation(service_type, origin)
                 if predicate is None:
                     registration_matches = True
                 elif self._profile is None:
@@ -6747,6 +6984,7 @@ class _Compiler:
                     )
                     continue
                 if registration.parent_node_filter is not legacy.default_parent_node_filter:
+                    self._admit_preparation(service_type, origin)
                     if component.parent is None or not registration.parent_node_filter(cast(Any, component.parent)):
                         self._record_partial_candidate(
                             (qualified_name(service_type), registration.id, PartialState.rejected, "rejected-filter")
@@ -6861,6 +7099,7 @@ class _Compiler:
                 )
                 continue
             try:
+                self._admit_preparation(service_type, candidate.origin)
                 if self._profile is None:
                     matched = filter(candidate.component)
                 else:
@@ -7112,6 +7351,7 @@ class _Compiler:
                             record.service_type, record.name, record.tags = cast(
                                 tuple[Any, str | None, tuple[legacy.Tag, ...]], candidate.preference_view
                             )
+                        self._admit_preparation(service_type, candidate.origin)
                         if self._profile is None:
                             result = predicate(candidate.component)
                         else:
@@ -7290,9 +7530,10 @@ class _Compiler:
                     code="overlay-singleton",
                     path=self._current_path(requested_service_type),
                 )
+            component = self._clone_component_tree(anchored.component, parent=parent, argument=argument)
             if self._profile is not None:
                 self._profile.count("anchored parent plan reuses")
-            return self._clone_component_tree(anchored.component, parent=parent, argument=argument), anchored
+            return component, anchored
         if registration in self._stack:
             for index in range(len(self._partial_edges) - 1, -1, -1):
                 _, _, requested, target = self._partial_edges[index]
@@ -7456,7 +7697,7 @@ class _Compiler:
                     registration.id, (inspect.Signature.empty, None)
                 )
                 if component.activation is ComponentActivation.factory and compatible is False:
-                    self.issues.append(
+                    self._record_issue(
                         BuildIssue(
                             code="factory-return-type-mismatch",
                             severity=IssueSeverity.error,
@@ -7594,7 +7835,10 @@ class _Compiler:
                 key = candidate.source_layer.contributions[candidate.source_registration_id][definition.group]
             else:
                 try:
+                    self._admit_preparation(target, candidate.origin)
                     key = cast(Callable[[Component], Hashable], callback)(target_component)
+                    if self._budget is not None:
+                        self._budget.check()
                 except Exception:
                     raise ContainerBuildError(
                         "Provider map key evaluation failed", code="provider-map-key-evaluation", path=path
@@ -7701,8 +7945,11 @@ class _Compiler:
                 else inherited_sidecars.origins.get(source.occurrence_id)
             ),
             declared_service_type=source.declared_service_type,
+            # The source already captured this metadata, including any later
+            # source-inspection enrichment. Re-normalizing produced a discarded
+            # result; fresh occurrences still use the ordinary normalization.
+            implementation_type=source.implementation_type,
         )
-        draft.implementation_type = source.implementation_type
         draft.boundary = source.boundary
         draft.cache_owner = source.cache_owner
         draft.cleanup_owner = source.cleanup_owner
@@ -7956,7 +8203,7 @@ class _Compiler:
                 )
             if len(candidates) > 1:
                 path = self._current_path(request.service_type)
-                self.issues.append(
+                self._record_issue(
                     BuildIssue(
                         code="ambiguous-selection",
                         severity=IssueSeverity.warning,
@@ -8292,6 +8539,7 @@ class _Compiler:
                 has_default=has_default,
             )
             try:
+                self._admit_preparation(parent.service_type, self.origins.get(parent.occurrence_id))
                 if self._profile is None:
                     value = policy.function(context)
                 else:
@@ -8478,7 +8726,7 @@ class _Compiler:
         if candidates:
             if len(candidates) > 1:
                 path = self._current_path(dependency.service_type)
-                self.issues.append(
+                self._record_issue(
                     BuildIssue(
                         code="ambiguous-selection",
                         severity=IssueSeverity.warning,
@@ -8543,6 +8791,7 @@ class _Compiler:
                 argument=argument,
                 origin=origin,
             )
+            self._admit_preparation(component.service_type, self.origins.get(component.occurrence_id))
             if filter(component):
                 singleton = next(
                     (item for item in reversed(self._retention_frames()) if item.lifespan == legacy.Lifespan.singleton),
@@ -8575,6 +8824,7 @@ class _Compiler:
         applicability: list[tuple[_PreConfigurationDefinition, _Layer, bool]] = []
         for definition_index, (definition, layer) in enumerate(definitions):
             try:
+                self._admit_preparation(parent.service_type, definition.origin)
                 matched = definition.when(parent)
             except Exception as error:
                 subject = f"Pre-configurations for {qualified_name(parent.service_type)}"
@@ -8896,6 +9146,7 @@ class _Compiler:
         target_view = _undecorated_component_view(core) if generated else None
         for decorator_index, (decorator, _) in enumerate(definitions):
             try:
+                self._admit_preparation(core.service_type, decorator.origin)
                 matched = decorator.when(cast(Component, target_view) if decorator.id in generated else core)
             except Exception as error:
                 subject = f"Decorators for {qualified_name(core.service_type)}"
@@ -8967,6 +9218,14 @@ class _Compiler:
                     try:
                         decorated_view = cast(Component, target_view)
                         target_record = cast(_ComponentRecord, decorated_view._record)
+                        if self._budget is not None:
+                            self._budget.occurrence(
+                                self._profile_phase,
+                                depth=1,
+                                path=self._current_path(core.service_type),
+                                origin=definition.origin,
+                                compiler=self,
+                            )
                         preview_record = replace(
                             target_record,
                             id=definition.id,
@@ -8990,7 +9249,10 @@ class _Compiler:
                         records = cast(dict[int, _ComponentRecord], decorated_view._graph._records)
                         preview_graph._records = {**records, -1: preview_record}
                         preview = Component(preview_graph, -1)
+                        self._admit_preparation(core.service_type, definition.origin)
                         position = callback(preview, Component(preview_graph, core.occurrence_id))
+                        if self._budget is not None:
+                            self._budget.check()
                         if inspect.iscoroutine(position):
                             position.close()
                         if isinstance(position, bool) or not isinstance(position, int):
@@ -9482,6 +9744,87 @@ def _run_validation_rules(
     return tuple(issues)
 
 
+def _budget_validation_rule_issues(
+    rule: ValidationRule,
+    context: ValidationContext,
+    state: _BudgetState,
+    origin: DefinitionOrigin,
+) -> Iterable[BuildIssue]:
+    # Keep labels/error behavior identical to ordinary runtime validation.
+    try:
+        result = rule(context)
+        state.check()
+        if inspect.iscoroutine(result):
+            result.close()
+            raise TypeError("returned an awaitable; validation rules must be synchronous")
+        iterator = iter(result)
+        while True:
+            state.admit("preparation_operations", "final validation", origin=origin)
+            try:
+                issue = next(iterator)
+            except StopIteration:
+                break
+            state.check()
+            if not _valid_build_issue(issue):
+                raise TypeError("yielded a malformed BuildIssue")
+            state.findings.append(issue)
+            yield issue
+    except Exception as error:
+        issue = BuildIssue(
+            code="validation-rule-error",
+            severity=IssueSeverity.error,
+            message=f"Validation rule {qualified_name(rule)} failed: {type(error).__name__}: {error}",
+        )
+        state.callback_errors.add(id(issue))
+        state.findings.append(issue)
+        yield issue
+
+
+def _run_budget_validation_rules(
+    graph: CompiledGraph,
+    definitions: Iterable[_ValidationRuleDefinition],
+    profile: CompilationProfiler | None = None,
+    *,
+    budget_state: _BudgetState,
+) -> tuple[BuildIssue, ...]:
+    selected = tuple(definitions)
+    if not selected:
+        return ()
+    issues: list[BuildIssue] = []
+    contexts: dict[str | None, ValidationContext] = {}
+    for definition in selected:
+        boundary = definition.origin.boundary
+        context = contexts.get(boundary)
+        if context is None:
+            visible_graph = graph
+            if boundary is not None:
+                local_roots = tuple(root for root in graph.roots if root.area == boundary)
+                local_entrypoints = tuple(root for root in graph.entrypoints if root.area == boundary)
+                visible_graph = replace(
+                    graph,
+                    roots=local_roots,
+                    entrypoints=local_entrypoints,
+                    _manifest_cache={},
+                    _ownership_report_cache=[],
+                    _analysis_index_cache=None,
+                )
+            context = ValidationContext(visible_graph, boundary=boundary)
+            contexts[boundary] = context
+        budget_state.admit("preparation_operations", "final validation", origin=definition.origin)
+        if profile is None:
+            issues.extend(_budget_validation_rule_issues(definition.rule, context, budget_state, definition.origin))
+        else:
+            profile.count("build validation rule calls")
+            profile.call(
+                "final validation",
+                "validation rule",
+                issues.extend,
+                _budget_validation_rule_issues(definition.rule, context, budget_state, definition.origin),
+                definition=safe_definition(definition.rule),
+            )
+    return tuple(issues)
+
+
 def _build_error_code(error: BaseException) -> str:
     if isinstance(error, ContainerBuildError) and error.code is not None:
         return error.code
@@ -9507,6 +9850,7 @@ def _error_report(
     anchored_owner_tokens: frozenset[str] = frozenset(),
     inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
     profile: CompilationProfiler | None = None,
+    budget_state: _BudgetState | None = None,
     clean_orphans: bool = True,
 ) -> tuple[
     BuildReport,
@@ -9532,6 +9876,18 @@ def _error_report(
         for service_type in service_types:
             if getattr(service_type, "__parameters__", ()):
                 continue
+            if budget_state is not None:
+                try:
+                    budget_state.admit(
+                        "diagnostic_attempts", "diagnostic root retries", path=(safe_definition(service_type),)
+                    )
+                except _BudgetStop as stop:
+                    stop.original = original
+                    stop.issues, stop.evidence, stop.attempts = issues, evidence, attempts
+                    stop.total_roots = sum(
+                        not bool(getattr(key, "__parameters__", ())) for _, keys in areas for key in keys
+                    )
+                    raise
             checked += 1
             total_attempts += 1
             compiler = _Compiler(
@@ -9541,6 +9897,7 @@ def _error_report(
                 anchored_pre_configurations=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
+                budget_state=budget_state,
                 profile=profile,
                 profile_phase="diagnostic root retries",
                 profile_attempt=f"retry:{total_attempts}",
@@ -9563,6 +9920,23 @@ def _error_report(
                     )
                 if len(attempts) < attempt_limit:
                     attempts.append(compiler.partial_success_attempt(root=qualified_name(service_type)))
+            except _BudgetStop as stop:
+                stop.original = original
+                stop.issues, stop.evidence = issues, evidence
+                if len(attempts) < attempt_limit:
+                    attempts.append(
+                        compiler.partial_attempt(
+                            ContainerBuildError(
+                                "Compilation allowance exhausted", code="compilation-budget-exceeded", path=stop.path
+                            ),
+                            root=qualified_name(service_type),
+                        )
+                    )
+                stop.attempts = attempts
+                stop.total_roots = sum(
+                    not bool(getattr(key, "__parameters__", ())) for _, keys in areas for key in keys
+                )
+                raise
             except Exception as error:
                 root = qualified_name(service_type)
                 if len(attempts) < attempt_limit:
@@ -9682,21 +10056,38 @@ def _recorded_root_selection(
     )
 
 
-def _finalize_plan(plan: _PlanSet, profile: CompilationProfiler | None = None) -> _PlanSet:
+def _finalize_plan(
+    plan: _PlanSet, profile: CompilationProfiler | None = None, budget_state: _BudgetState | None = None
+) -> _PlanSet:
     all_roots = _graph_roots(plan)
     entrypoints: list[GraphRoot] = []
     issues: list[BuildIssue] = list(plan.compiler_issues)
+    if budget_state is not None:
+        # Share the live captured list so a later callback refusal preserves prior findings.
+        budget_state.preparation_findings.extend(budget_state.findings)
+        budget_state.findings = issues
     known_root_selections: dict[tuple[str | None, Any, int], CompilationExplanation] = {}
     census_root_selections: list[tuple[str | None, CompilationExplanation]] = []
 
     for request in plan.blueprint.entrypoints:
+        selection_filter = (
+            request.filter
+            if budget_state is None
+            else _budget_callback(
+                request.filter,
+                budget_state,
+                "final validation",
+                request.origin,
+                path=(safe_definition(request.service_type),),
+            )
+        )
         collection = _collection_request(request.service_type)
         if collection is not None:
             _, element_type = collection
             explanation, selected_records = _recorded_root_selection(
                 plan,
                 element_type,
-                request.filter,
+                selection_filter,
                 collection=True,
             )
             known_root_selections[(None, element_type, id(request.filter))] = explanation
@@ -9720,7 +10111,7 @@ def _finalize_plan(plan: _PlanSet, profile: CompilationProfiler | None = None) -
         explanation, selected_records = _recorded_root_selection(
             plan,
             request.service_type,
-            request.filter,
+            selection_filter,
             collection=False,
         )
         known_root_selections[(None, request.service_type, id(request.filter))] = explanation
@@ -9792,12 +10183,23 @@ def _finalize_plan(plan: _PlanSet, profile: CompilationProfiler | None = None) -
         }
         area_records = plan.area_root_candidates.get(boundary.name, {})
         for request in boundary.layer.entrypoints:
+            selection_filter = (
+                request.filter
+                if budget_state is None
+                else _budget_callback(
+                    request.filter,
+                    budget_state,
+                    "final validation",
+                    request.origin,
+                    path=(safe_definition(request.service_type),),
+                )
+            )
             collection = _collection_request(request.service_type)
             candidate_type = request.service_type if collection is None else collection[1]
             explanation, selected_records = _recorded_root_selection(
                 plan,
                 candidate_type,
-                request.filter,
+                selection_filter,
                 collection=collection is not None,
                 records=area_records.get(candidate_type, ()),
             )
@@ -9984,8 +10386,13 @@ def _finalize_plan(plan: _PlanSet, profile: CompilationProfiler | None = None) -
     compiled_graph = replace(compiled_graph, _parameter_explanations=parameter_explanations)
     compiled_graph.ownership_report()
     built_in_issues = tuple(dict.fromkeys(issues))
+    validation_runner = (
+        _run_validation_rules
+        if budget_state is None
+        else partial(_run_budget_validation_rules, budget_state=budget_state)
+    )
     if profile is None:
-        build_rule_issues = _run_validation_rules(
+        build_rule_issues = validation_runner(
             compiled_graph,
             (definition for definition in plan.blueprint.validation_rules if definition.mode == "build"),
         )
@@ -9993,7 +10400,7 @@ def _finalize_plan(plan: _PlanSet, profile: CompilationProfiler | None = None) -
         build_rule_issues = profile.call(
             "final validation",
             "phase",
-            _run_validation_rules,
+            validation_runner,
             compiled_graph,
             (definition for definition in plan.blueprint.validation_rules if definition.mode == "build"),
             profile,
@@ -10236,6 +10643,14 @@ def _registration_template_source(
     inputs: _CompilationInputs,
     profile: CompilationProfiler | None,
 ) -> _RegistrationTemplateSource:
+    budget_state = inputs.get("budget_state")
+    if budget_state is not None:
+        budget_state.occurrence(
+            "registration-template expansion",
+            depth=1,
+            path=(safe_definition(registration.service_type),),
+            origin=blueprint.registration_origin(registration.id, layer),
+        )
     graph = _ComponentGraph()
     implementation_type = (
         constructor_type(source.implementation_type) if source.implementation_type is not None else None
@@ -10267,6 +10682,7 @@ def _registration_template_source(
             anchored_pre_configurations=inputs.get("anchored_pre_configuration_steps"),
             anchored_owner_tokens=inputs.get("anchored_owner_tokens", frozenset()),
             inherited_graph_sidecars=inputs.get("inherited_graph_sidecars", types.MappingProxyType({})),
+            budget_state=inputs.get("budget_state"),
             profile=profile,
             profile_phase="registration-template expansion",
             profile_attempt="template source inspection",
@@ -10364,6 +10780,9 @@ def _expand_registration_templates(
                     continue
                 seen.add(registration.id)
                 phase = "source metadata"
+                state = inputs.get("budget_state")
+                if state is not None:
+                    state.admit("preparation_operations", "registration-template expansion", origin=definition.origin)
                 try:
                     source = _source_registration_info(registration, source_layer)
                     inspection = _registration_template_source(
@@ -10376,7 +10795,12 @@ def _expand_registration_templates(
                     inherited_boundary = area is not None and boundaries[area].root_layer_offset > 0
                     try:
                         selected = candidate_id in existing or (
-                            not inherited_boundary and bool(definition.source_filter(inspection))
+                            not inherited_boundary
+                            and bool(
+                                _preparation_filter(
+                                    definition.source_filter, inspection, inputs, "registration-template expansion"
+                                )
+                            )
                         )
                     finally:
                         core = inspection.finish_inspection()
@@ -10385,7 +10809,15 @@ def _expand_registration_templates(
                         generated_id = candidate_id
                         if generated_id not in existing:
                             phase = "template factory"
+                            if state is not None:
+                                state.output(
+                                    "registration-template expansion",
+                                    path=(safe_definition(key),),
+                                    origin=definition.origin,
+                                )
                             specification = definition.template(source)
+                            if state is not None:
+                                state.check()
                             if not isinstance(specification, RegistrationTemplate):
                                 if inspect.iscoroutine(specification):
                                     specification.close()
@@ -10493,6 +10925,7 @@ def _expand_decorator_templates(
     anchored_owner_tokens: frozenset[str] = frozenset(),
     inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
     profile: CompilationProfiler | None = None,
+    budget_state: _BudgetState | None = None,
 ) -> _TemplateExpansion:
     """Expand a normalized, visibility-prepared snapshot once, without target activation.
 
@@ -10529,6 +10962,10 @@ def _expand_decorator_templates(
                 seen.add(registration.id)
                 source_area = blueprint.registration_area(layer)
                 phase = "source compilation"
+                if budget_state is not None:
+                    budget_state.admit(
+                        "preparation_operations", "decorator-template expansion", origin=definition.origin
+                    )
                 try:
                     source_compiler = _Compiler(
                         blueprint,
@@ -10537,6 +10974,7 @@ def _expand_decorator_templates(
                         anchored_pre_configurations=anchored_pre_configuration_steps,
                         anchored_owner_tokens=anchored_owner_tokens,
                         inherited_graph_sidecars=inherited_graph_sidecars,
+                        budget_state=budget_state,
                         profile=profile,
                         profile_phase="decorator-template expansion",
                         profile_attempt="template source inspection",
@@ -10555,6 +10993,10 @@ def _expand_decorator_templates(
                             definition=safe_definition(registration.implementation),
                         )
                     phase = "source filter"
+                    if budget_state is not None:
+                        budget_state.admit(
+                            "preparation_operations", "decorator-template expansion", origin=definition.origin
+                        )
                     if profile is None:
                         selected = bool(definition.source_filter(core))
                     else:
@@ -10569,12 +11011,20 @@ def _expand_decorator_templates(
                                 definition=safe_definition(definition.source_filter),
                             )
                         )
+                    if budget_state is not None:
+                        budget_state.check()
                     phase = "source metadata"
                     source = _source_registration_info(registration, layer)
                     source_bindings = _source_binding_labels(source)
                     generated_id = None
                     if selected:
                         phase = "template factory"
+                        if budget_state is not None:
+                            budget_state.output(
+                                "decorator-template expansion",
+                                path=(safe_definition(key),),
+                                origin=definition.origin,
+                            )
                         if profile is None:
                             specification = definition.template(source)
                         else:
@@ -10587,6 +11037,8 @@ def _expand_decorator_templates(
                                 attempt="template source inspection",
                                 definition=safe_definition(definition.template),
                             )
+                        if budget_state is not None:
+                            budget_state.check()
                         if not isinstance(specification, DecoratorTemplate):
                             if inspect.iscoroutine(specification):
                                 specification.close()
@@ -10772,7 +11224,7 @@ def _warmup_async_cleanup(component: Component) -> bool:
     )
 
 
-def _compile_warmup_plans(plan: _PlanSet) -> _PlanSet:
+def _compile_warmup_plans(plan: _PlanSet, budget_state: _BudgetState | None = None) -> _PlanSet:
     if not any(layer.warmup_declarations for layer in plan.blueprint.layers):
         return plan
     graph = cast(CompiledGraph, plan.compiled_graph)
@@ -10794,6 +11246,13 @@ def _compile_warmup_plans(plan: _PlanSet) -> _PlanSet:
                 try:
                     filtered = []
                     for root in plan.roots.get(service_type, ()):
+                        if budget_state is not None:
+                            budget_state.admit(
+                                "preparation_operations",
+                                "warm-up compilation",
+                                path=(service,),
+                                origin=replace(_synthetic_origin(), location=source),
+                            )
                         matched = target.filter(root.component)
                         if inspect.isawaitable(matched):
                             if inspect.iscoroutine(matched):
@@ -10883,10 +11342,12 @@ def _compile_with_report(
     anchored_owner_tokens: frozenset[str] = frozenset(),
     inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
     profile: CompilationProfiler | None = None,
+    budget_state: _BudgetState | None = None,
     clean_orphans: bool = True,
 ) -> _PlanSet:
     compilation_inputs: _CompilationInputs = {
         "build_args": build_args,
+        "budget_state": budget_state,
         "anchored_owner_tokens": anchored_owner_tokens,
         "inherited_graph_sidecars": inherited_graph_sidecars,
     }
@@ -10951,6 +11412,7 @@ def _compile_with_report(
                 anchored_pre_configuration_steps=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
+                budget_state=budget_state,
             )
         else:
             expansion = profile.call(
@@ -10963,6 +11425,7 @@ def _compile_with_report(
                 anchored_pre_configuration_steps=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
+                budget_state=budget_state,
                 profile=profile,
             )
         expanded = replace(
@@ -11025,6 +11488,7 @@ def _compile_with_report(
         anchored_pre_configurations=anchored_pre_configuration_steps,
         anchored_owner_tokens=anchored_owner_tokens,
         inherited_graph_sidecars=inherited_graph_sidecars,
+        budget_state=budget_state,
         profile=profile,
     )
     census_definitions, census_ids = _census_inventory(blueprint)
@@ -11043,7 +11507,7 @@ def _compile_with_report(
         plan = replace(compiled, census_definitions=census_definitions, census_ids=census_ids)
         if preview:
             return plan
-        finalized = _compile_warmup_plans(_finalize_plan(plan, profile))
+        finalized = _compile_warmup_plans(_finalize_plan(plan, profile, budget_state), budget_state)
         return _prune_orphan_registrations(finalized) if clean_orphans else finalized
     except ContainerBuildError as error:
         if error.report is not None:
@@ -11074,6 +11538,7 @@ def _compile_with_report(
                 anchored_pre_configuration_steps=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
+                budget_state=budget_state,
                 profile=profile,
                 clean_orphans=clean_orphans,
             )
@@ -11123,6 +11588,7 @@ def _compile_with_report(
                 anchored_pre_configuration_steps=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
+                budget_state=budget_state,
                 profile=profile,
                 clean_orphans=clean_orphans,
             )
@@ -12525,6 +12991,7 @@ def _observe_plan(
 
 
 class _CompilationInputs(typing.TypedDict, total=False):
+    budget_state: _BudgetState | None
     build_args: Mapping[str, Any]
     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep]
     anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration]
@@ -12602,27 +13069,78 @@ class _BuilderBase:
             return self._bundle_container_id
         raise ValueError("per must be 'boundary', 'scope', or 'container'")
 
+    def _build_plan(
+        self,
+        build_args: Mapping[str, Any] | None,
+        profile: CompilationProfiler | None,
+        clean_orphans: bool,
+        budget: CompilationBudget | None,
+    ) -> _PlanSet:
+        if budget is not None and not isinstance(budget, CompilationBudget):
+            raise TypeError("budget must be a CompilationBudget instance or None")
+        state = None if budget is None else _BudgetState(budget)
+        blueprint = None
+        try:
+            if profile is None:
+                blueprint, inputs = self._compilation_snapshot(build_args, state)
+            else:
+                blueprint, inputs = profile.call(
+                    "discovery and blueprint preparation", "phase", self._compilation_snapshot, build_args, state
+                )
+            result = _compile_with_report(
+                blueprint, profile=profile, clean_orphans=clean_orphans, **cast(_CompilationInputs, inputs)
+            )
+            if state is not None:
+                state.check()
+            return result
+        except _BudgetStop as stop:
+            raise _budget_build_error(stop, state, blueprint) from None
+        except Exception as error:
+            if state is not None and state.exhaustion is not None:
+                stop = state.exhaustion
+                stop.original = error
+                raise _budget_build_error(stop, state, blueprint) from None
+            raise
+        finally:
+            if profile is not None and state is not None:
+                profile._budget_usage = tuple(state.usage.items())
+                profile._budget_exhaustion = None if state.exhaustion is None else state.exhaustion.fact
+            if state is not None:
+                state.primary = None
+                if state.exhaustion is not None:
+                    state.exhaustion.compiler = None
+                    state.exhaustion.original = None
+                    state.exhaustion.__traceback__ = None
+                    state.exhaustion.__context__ = None
+                    state.exhaustion.__cause__ = None
+
     def _effective_build_args(self, build_args: Mapping[str, Any] | None) -> Mapping[str, Any]:
         parent = getattr(self, "_parent", None)
         if parent is None:
             return _normalize_build_args(build_args)
         return _merge_build_args(parent.build_args, build_args)
 
-    def _compilation_snapshot(self, build_args: Mapping[str, Any] | None) -> tuple[_Blueprint, _CompilationInputs]:
+    def _compilation_snapshot(
+        self, build_args: Mapping[str, Any] | None, budget_state: _BudgetState | None = None
+    ) -> tuple[_Blueprint, _CompilationInputs]:
         """Use the same original declarations and parent anchors for every build-time view."""
         self._assert_mutable()
         parent = getattr(self, "_parent", None)
         if parent is not None:
             parent._ensure_open()
-        inputs: _CompilationInputs = {"build_args": self._effective_build_args(build_args)}
+        inputs: _CompilationInputs = {
+            "build_args": self._effective_build_args(build_args),
+            "budget_state": budget_state,
+        }
         # Boundary discovery is deferred alongside root discovery. Import every
         # declared module before any layer captures the live subclass graph.
         if self._boundaries:
             _ensure_discovery_imports(
-                rule for builder in (self, *self._boundaries) for rule in builder._registration_discoveries
+                (rule for builder in (self, *self._boundaries) for rule in builder._registration_discoveries),
+                budget_state,
             )
-        layer = self._layer()
-        boundaries = tuple(boundary._snapshot() for boundary in self._boundaries)
+        layer = self._layer(budget_state)
+        boundaries = tuple(boundary._snapshot(budget_state) for boundary in self._boundaries)
         if parent is None:
             return _Blueprint((layer,), boundaries), inputs
         inherited_boundaries = tuple(
@@ -12656,7 +13174,7 @@ class _BuilderBase:
             boundary=self._boundary_name,
         )
 
-    def _layer(self) -> _Layer:
+    def _layer(self, budget_state: _BudgetState | None = None) -> _Layer:
         registry = _clone_registry(self._composition._registry)
         registration_when = dict(self._registration_when)
         registration_preferences = dict(self._registration_preferences)
@@ -12667,7 +13185,7 @@ class _BuilderBase:
 
         # Imports from every rule happen before any rule takes its live subclass
         # snapshot. This keeps declaration order from changing discovery results.
-        ensured_import_modules = _ensure_discovery_imports(self._registration_discoveries)
+        ensured_import_modules = _ensure_discovery_imports(self._registration_discoveries, budget_state)
 
         discovered = legacy._Registry()
         for rule in self._registration_discoveries:
@@ -12679,6 +13197,7 @@ class _BuilderBase:
                 registration_policies,
                 registration_origins,
                 service_groups,
+                budget_state,
             )
         for service_type, registrations in discovered._registrations.items():
             # Explicit composition always precedes convention-based discovery.
@@ -13659,6 +14178,7 @@ class ContainerBuilder(_WarmupBuilder):
         *,
         build_args: Mapping[str, Any] | None = None,
         profile: CompilationProfiler | None = None,
+        budget: CompilationBudget | None = None,
         instrumentation: Instrumentation | None = None,
         clean_orphans: bool = True,
     ) -> Container:
@@ -13667,8 +14187,7 @@ class ContainerBuilder(_WarmupBuilder):
         if instrumentation is not None and not isinstance(instrumentation, Instrumentation):
             raise TypeError("instrumentation must be an Instrumentation instance or None")
         if profile is None:
-            blueprint, inputs = self._compilation_snapshot(build_args)
-            plan = _compile_with_report(blueprint, clean_orphans=clean_orphans, **inputs)
+            plan = self._build_plan(build_args, profile, clean_orphans, budget)
             if instrumentation is None:
                 container = Container(plan, self._owner_token)
             else:
@@ -13680,10 +14199,7 @@ class ContainerBuilder(_WarmupBuilder):
         profile._begin()
         state = "interrupted"
         try:
-            blueprint, inputs = profile.call(
-                "discovery and blueprint preparation", "phase", self._compilation_snapshot, build_args
-            )
-            plan = _compile_with_report(blueprint, profile=profile, clean_orphans=clean_orphans, **inputs)
+            plan = self._build_plan(build_args, profile, clean_orphans, budget)
             if instrumentation is None:
                 container = Container(plan, self._owner_token)
             else:
@@ -13713,6 +14229,7 @@ class ScopeBuilder(_WarmupBuilder):
         *,
         build_args: Mapping[str, Any] | None = None,
         profile: CompilationProfiler | None = None,
+        budget: CompilationBudget | None = None,
         instrumentation: Instrumentation | None = None,
         clean_orphans: bool = True,
     ) -> Scope:
@@ -13726,8 +14243,7 @@ class ScopeBuilder(_WarmupBuilder):
         if (instrumentation.profiler if instrumentation is not None else None) is not parent_profiler:
             raise ValueError("overlay instrumentation must match its parent runtime")
         if profile is None:
-            blueprint, inputs = self._compilation_snapshot(build_args)
-            plan = _compile_with_report(blueprint, clean_orphans=clean_orphans, **inputs)
+            plan = self._build_plan(build_args, profile, clean_orphans, budget)
             if instrumentation is not None:
                 plan, fingerprint, labels, paths = _observe_plan(
                     plan, instrumentation, cast(str, self._parent.container._owned_token), self._parent
@@ -13748,10 +14264,7 @@ class ScopeBuilder(_WarmupBuilder):
         profile._begin()
         state = "interrupted"
         try:
-            blueprint, inputs = profile.call(
-                "discovery and blueprint preparation", "phase", self._compilation_snapshot, build_args
-            )
-            plan = _compile_with_report(blueprint, profile=profile, clean_orphans=clean_orphans, **inputs)
+            plan = self._build_plan(build_args, profile, clean_orphans, budget)
             if instrumentation is not None:
                 plan, fingerprint, labels, paths = _observe_plan(
                     plan, instrumentation, cast(str, self._parent.container._owned_token), self._parent
@@ -13830,10 +14343,12 @@ class BoundaryBuilder(_BuilderBase):
         self._boundary_owner._assert_mutable()
         super()._assert_mutable()
 
-    def _snapshot(self) -> _BoundaryBlueprint:
+    def _snapshot(self, budget_state: _BudgetState | None = None) -> _BoundaryBlueprint:
         self._assert_mutable()
-        return _BoundaryBlueprint(name=self.name, layer=self._layer(), uses=self.uses, exposes=self.exposes)
+        return _BoundaryBlueprint(name=self.name, layer=self._layer(budget_state), uses=self.uses, exposes=self.exposes)
 
-    def _compilation_snapshot(self, build_args: Mapping[str, Any] | None) -> tuple[_Blueprint, _CompilationInputs]:
+    def _compilation_snapshot(
+        self, build_args: Mapping[str, Any] | None, budget_state: _BudgetState | None = None
+    ) -> tuple[_Blueprint, _CompilationInputs]:
         self._assert_mutable()
-        return self._boundary_owner._compilation_snapshot(build_args)
+        return self._boundary_owner._compilation_snapshot(build_args, budget_state)

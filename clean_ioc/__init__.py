@@ -4,6 +4,7 @@ from ._decorator_templates import DecoratorTemplate, RegistrationInfo
 from ._registration_templates import RegistrationTemplate
 from .arguments import INJECT, REMOVE, ParameterContext, build_arg, derive, generic_arg, inject, select
 from .boundaries import BoundaryAlias, Expose, Use
+from .compilation_budget import CompilationBudget, CompilationBudgetExhaustion
 from .compilation_profile import (
     CompilationCounters,
     CompilationHotspot,
@@ -154,6 +155,8 @@ __all__ = [
     "ComponentPreference",
     "prefer",
     "CompilationCounters",
+    "CompilationBudget",
+    "CompilationBudgetExhaustion",
     "CompilationHotspot",
     "CompilationProfile",
     "CompilationProfiler",
