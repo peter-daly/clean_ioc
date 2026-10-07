@@ -112,6 +112,9 @@ class CompilationProfile:
     diagnostics: tuple[str, ...]
     budget_usage: tuple[tuple[str, int], ...] | None = None
     budget_exhaustion: CompilationBudgetExhaustion | None = None
+    definition_counts: tuple[tuple[str, tuple[tuple[str, int], ...]], ...] = ()
+    root_counts: tuple[tuple[str, tuple[tuple[str, int], ...]], ...] = ()
+    registration_counts: tuple[tuple[str, str, tuple[tuple[str, int], ...]], ...] = ()
 
     @property
     def costly_definitions(self) -> tuple[CompilationHotspot, ...]:
@@ -140,6 +143,12 @@ class CompilationProfile:
             spans=[span.to_dict() for span in self.spans],
             costly_definitions=[item.to_dict() for item in self.costly_definitions],
             counters=self.counters.to_dict(),
+            definition_counts={label: dict(counts) for label, counts in self.definition_counts},
+            root_counts={label: dict(counts) for label, counts in self.root_counts},
+            registration_counts={
+                identity: {"definition": label, "counts": dict(counts)}
+                for identity, label, counts in self.registration_counts
+            },
             max_records=self.max_records,
             omitted_records=self.omitted_records,
             attribution_complete=self.omitted_records == 0 and not self.diagnostics,
@@ -259,6 +268,9 @@ class CompilationProfiler:
         self._sequence = 0
         self._omitted = 0
         self._counters: dict[str, int] = {}
+        self._definition_counts: dict[str, dict[str, int]] = {}
+        self._root_counts: dict[str, dict[str, int]] = {}
+        self._registration_counts: dict[str, tuple[str, dict[str, int]]] = {}
         self._phases: dict[str, int] = {}
         self._diagnostics: list[str] = []
         self._definition_refs: dict[str, str] = {}
@@ -296,6 +308,28 @@ class CompilationProfiler:
     def count(self, unit: str, amount: int = 1) -> None:
         try:
             self._counters[unit] = self._counters.get(unit, 0) + amount
+        except Exception:
+            self._problem()
+
+    def count_definition(
+        self,
+        definition: str,
+        unit: str,
+        amount: int = 1,
+        *,
+        root: str | None = None,
+        definition_id: str | None = None,
+    ) -> None:
+        """Aggregate safe labels without retaining per-occurrence span records."""
+        try:
+            counts = self._definition_counts.setdefault(definition, {})
+            counts[unit] = counts.get(unit, 0) + amount
+            if root is not None:
+                root_counts = self._root_counts.setdefault(root, {})
+                root_counts[unit] = root_counts.get(unit, 0) + amount
+            if definition_id is not None:
+                _, registration_counts = self._registration_counts.setdefault(definition_id, (definition, {}))
+                registration_counts[unit] = registration_counts.get(unit, 0) + amount
         except Exception:
             self._problem()
 
@@ -383,4 +417,10 @@ class CompilationProfiler:
             tuple(self._diagnostics),
             self._budget_usage,
             self._budget_exhaustion,
+            tuple((label, tuple(sorted(counts.items()))) for label, counts in sorted(self._definition_counts.items())),
+            tuple((label, tuple(sorted(counts.items()))) for label, counts in sorted(self._root_counts.items())),
+            tuple(
+                (identity, label, tuple(sorted(counts.items())))
+                for identity, (label, counts) in sorted(self._registration_counts.items())
+            ),
         )

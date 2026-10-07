@@ -1,0 +1,126 @@
+[
+  {
+    "app": "api",
+    "counters": {
+      "build validation rule calls": 6,
+      "candidate compilation attempts": 12556,
+      "candidate plan steps returned": 12556,
+      "factory specialization requests": 2740,
+      "graph occurrences": 116095,
+      "parameter processing attempts": 7605,
+      "registration selection callback calls": 21063
+    },
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 721502208,
+    "phases_seconds": {
+      "alias and boundary preparation": 0.003456792,
+      "decorator-template expansion": 3.2e-05,
+      "discovery and blueprint preparation": 9.9417e-05,
+      "final validation": 4.337907208,
+      "other build work": 0.550600583,
+      "primary compilation": 4.174233625
+    },
+    "physical_component_records": 116095,
+    "provider_root_keys": 3104,
+    "provider_view_contexts": 0,
+    "seconds": 9.066329625,
+    "revision": "baseline"
+  },
+  {
+    "app": "worker",
+    "counters": {
+      "build validation rule calls": 6,
+      "candidate compilation attempts": 127451,
+      "candidate plan steps returned": 127451,
+      "factory specialization requests": 30688,
+      "graph occurrences": 802981,
+      "parameter processing attempts": 78587,
+      "registration selection callback calls": 208237
+    },
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 3585916928,
+    "phases_seconds": {
+      "alias and boundary preparation": 0.006471916,
+      "decorator-template expansion": 3.3458e-05,
+      "discovery and blueprint preparation": 0.0001875,
+      "final validation": 5.820031792,
+      "other build work": 6.258167209,
+      "primary compilation": 38.4760055
+    },
+    "physical_component_records": 802981,
+    "provider_root_keys": 4976,
+    "provider_view_contexts": 0,
+    "seconds": 50.560897375,
+    "revision": "baseline"
+  },
+  {
+    "app": "api",
+    "counters": {
+      "build validation rule calls": 6,
+      "candidate compilation attempts": 12556,
+      "candidate definitions considered": 12556,
+      "candidate plan steps returned": 12556,
+      "factory specialization requests": 2740,
+      "graph occurrences": 23247,
+      "parameter processing attempts": 7605,
+      "physical component records": 19435,
+      "provider adapters": 2972,
+      "provider induced component copies": 0,
+      "provider target views": 3812,
+      "registration selection callback calls": 21063,
+      "reused activation templates": 9642,
+      "unique activation templates": 2914
+    },
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 435126272,
+    "phases_seconds": {
+      "alias and boundary preparation": 0.003493542,
+      "decorator-template expansion": 2.9584e-05,
+      "discovery and blueprint preparation": 9.025e-05,
+      "final validation": 4.620998917,
+      "other build work": 0.019874124,
+      "primary compilation": 2.386258667
+    },
+    "physical_component_records": 19435,
+    "provider_root_keys": 2688,
+    "provider_view_contexts": 3812,
+    "seconds": 7.030745084,
+    "revision": "candidate",
+    "wheel_sha256": "c67f749cc06fe4e9d51b5a536cfd38850bdebcc471a55c4959739a0b4c1bc6e1"
+  },
+  {
+    "app": "worker",
+    "counters": {
+      "build validation rule calls": 6,
+      "candidate compilation attempts": 127451,
+      "candidate definitions considered": 127451,
+      "candidate plan steps returned": 127451,
+      "factory specialization requests": 30688,
+      "graph occurrences": 156397,
+      "parameter processing attempts": 78587,
+      "physical component records": 151633,
+      "provider adapters": 4152,
+      "provider induced component copies": 0,
+      "provider target views": 4764,
+      "registration selection callback calls": 208237,
+      "reused activation templates": 99810,
+      "unique activation templates": 27641
+    },
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 1669251072,
+    "phases_seconds": {
+      "alias and boundary preparation": 0.00661075,
+      "decorator-template expansion": 3.9458e-05,
+      "discovery and blueprint preparation": 0.000157834,
+      "final validation": 6.173071416,
+      "other build work": 0.119221376,
+      "primary compilation": 25.834011
+    },
+    "physical_component_records": 151633,
+    "provider_root_keys": 3872,
+    "provider_view_contexts": 4764,
+    "seconds": 32.133111834,
+    "revision": "candidate",
+    "wheel_sha256": "c67f749cc06fe4e9d51b5a536cfd38850bdebcc471a55c4959739a0b4c1bc6e1"
+  }
+]

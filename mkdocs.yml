@@ -14,6 +14,7 @@ nav:
   - Policy Helpers: policies.md
   - Compiler Tooling: compiler-tooling.md
   - Compilation Budgets: compilation-budgets.md
+  - Compiler Memory Evidence: compiler-memory-evidence.md
   - Graph-change Policies: graph-change-policies.md
   - Build-variant Matrices: build-matrices.md
   - Source-linked CI Reporting: sarif.md

@@ -31,10 +31,10 @@ def _normalized(value, replacements):
         for before, after in replacements.items():
             value = value.replace(before, after)
         return value
-    if is_dataclass(value) and not isinstance(value, type):
-        return {item.name: _normalized(getattr(value, item.name), replacements) for item in fields(value)}
     if isinstance(value, Mapping):
         return {_normalized(key, replacements): _normalized(item, replacements) for key, item in value.items()}
+    if is_dataclass(value) and not isinstance(value, type):
+        return {item.name: _normalized(getattr(value, item.name), replacements) for item in fields(value)}
     if isinstance(value, (tuple, list)):
         return tuple(_normalized(item, replacements) for item in value)
     return value
@@ -191,9 +191,10 @@ def test_captured_type_survives_changed_signature_getter_but_fresh_inspection_fa
         patch.setattr(compiler_module._Compiler, "_draft", _baseline_draft(original))
         baseline_factory = Factory()
         baseline_callbacks = []
-        with pytest.raises(ContainerBuildError) as raised:
-            composition(baseline_factory, baseline_callbacks).build()
-        assert raised.value.report.errors[0].code == "compile-error"
+        # Automatic adapters now read the captured source metadata directly;
+        # even forcing fresh normalization on physical clones cannot affect them.
+        with composition(baseline_factory, baseline_callbacks).build() as owner:
+            assert owner._plan.provider_roots
         assert baseline_callbacks == [Service]
         assert baseline_factory.activations == 0
 

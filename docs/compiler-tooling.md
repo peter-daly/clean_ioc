@@ -530,3 +530,36 @@ In a local smoke measurement on Python 3.14 (25 paired builds per shape), the me
 1.05× for 25 independent roots, 1.04× for a 20-level dependency chain, 1.01× for 25 closed generic registrations, and
 1.01× for 25 roots with selection predicates. These short runs are noisy and are not a production overhead guarantee;
 the disabled path was the current codebase, without a historical baseline comparison.
+
+## Compiler allocation and eligibility counts
+
+`CompilationProfiler(max_records=0)` retains aggregate counts and safe per-definition
+`definition_counts`, `registration_counts` and `root_counts` while omitting all spans.
+Attribution grows with registered definitions and root labels, rather than the
+number of candidate attempts. Registration IDs separate multiple uses of one implementation.
+Counts distinguish definitions considered, actual candidate subtree compilation,
+early exclusions, retained early rejection records, unique/reused activation templates,
+physical component records, provider adapters and provider target view contexts.
+`graph occurrences` counts physical component records plus view contexts, matching
+`CompilationBudget.graph_occurrences`. Logical graph visits may exceed that count.
+
+Activation templates are interned only after full per-occurrence validation and
+selection. Equivalence requires the same actual registration and layer, closed type
+binding, step type, runtime owner, cleanup descriptor and selected dependency-step
+identities/names. Decorated, configured, provider-map and per-call targets bypass
+interning. This shares immutable executable plans, without skipping opaque callbacks
+or merging runtime caches; it does not reduce candidate compilation attempts.
+Runtime profiling binds separate observations to each graph occurrence.
+
+Frozen explanation mappings transfer into the inspection graph without a second
+copy. Argument occurrence references stay compact until `explain_arguments` renders
+paths. Ownership/captive validation still runs during compilation; the richer
+`ownership_report()` presentation and path index are allocated only on request.
+Generic maps are inspected lazily using typetoolbox's read-only mapping API. Freezing
+releases drafts as records are created, and successful builds release compiler caches.
+
+See [compiler memory evidence](compiler-memory-evidence.md) for measurements and
+remaining application/deployment work. `benchmarks/compiler_memory_evidence.py`
+reports retained physical record/context counts and shallow storage separately from
+fresh-process RSS and profiled operation counts. Shallow storage is a lower bound,
+not a retained heap measurement. Do not compare profiled timing against normal builds.

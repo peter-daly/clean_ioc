@@ -373,3 +373,15 @@ sharing reports distinguish acquisition scopes from shared singleton owners.
 Direct dependency policies traverse the boundary; semantic diffs classify lifetime
 boundary changes. Existing graph manifests remain unchanged; managed graphs use
 the existing unversioned prerelease format.
+
+### Dependency-only provider-map declarations
+
+Both forms of `register_provider_map` accept `root_policy`, defaulting to
+`"resolvable"`, like ordinary registration. Declare an internal grouped map with
+`builder.register_provider_map(group, root_policy="dependency_only")` and mark its
+internal contributions dependency-only separately. An unused map creates no public
+root or automatic provider family. When a constructor consumes the map, its selected
+contributions, keys, generic bindings, visibility and dependency graphs still compile
+and validate during build. Named maps, boundaries and overlay contribution ordering
+use the same rules as public maps. `"entrypoint"` and invalid-value validation also
+follow ordinary registration semantics.

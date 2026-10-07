@@ -95,7 +95,7 @@ def test_hostile_int_subclass_is_rejected_without_comparison():
         leaf_builder().build(budget=cast(Any, {"graph_occurrences": 0}))
 
 
-def test_occurrence_exact_threshold_includes_eager_provider_clones_and_no_activation():
+def test_occurrence_exact_threshold_includes_provider_view_contexts_and_no_activation():
     before = Leaf.activations
     profile = CompilationProfiler(max_records=0)
     with leaf_builder().build(budget=CompilationBudget(graph_occurrences=45), profile=profile) as owner:

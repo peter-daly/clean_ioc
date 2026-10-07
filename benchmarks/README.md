@@ -217,3 +217,21 @@ RSS. It checks source digests and zero component activation. Configured budget
 usage means admitted operation starts; successful profiler counters have their
 own units. See [the operation contract](../docs/compilation-budgets.md) and
 [the capture, uncertainty and review note](../.work/20-compilation-budgets.md).
+
+### Compiler memory probes
+
+`uv run python -m benchmarks.compiler_memory_evidence chain --size 32 --profile`
+reports physical graph storage, provider view contexts, retained activation templates
+and aggregate compiler counters. Other shapes are `small-chain`, `two-transports`,
+`routes` and `senders`; `--early` opts senders into `candidate_when`. Omit `--profile`
+for a separate fresh-process timing/RSS sample. The allocation totals are shallow
+lower bounds, and RSS is a process high-water mark, not retained heap size.
+
+For pinned Cop application comparisons, run `benchmarks/cop_compiler_memory_evidence.py`
+with the Cop environment's Python, `api` or `worker`, and `--project /path/to/cop`.
+`--settings-json /path/to/report-settings.json` loads environment strings without
+printing values; `--profile` uses the existing zero-span profiler. Use separate
+disposable environments for a candidate wheel; preserve the shared lock and environment.
+Normal timing covers the actual `get_container` call after constructing Config.
+Treat wheel substitution as development evidence and perform released Linux readiness
+acceptance separately. See `docs/compiler-memory-evidence.md` for the recorded runs.

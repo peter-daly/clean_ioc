@@ -68,7 +68,7 @@ from .arguments import (
 from .boundaries import BoundaryAlias, Expose, Use
 from .compilation_budget import CompilationBudget, _BudgetState, _BudgetStop
 from .compilation_profile import CompilationProfiler, safe_definition
-from .component_filters import with_id
+from .component_filters import _early_match, with_id
 from .components import (
     BundleRunScope,
     Component,
@@ -802,6 +802,7 @@ class _Layer:
     registration_parent_precedence: Mapping[str, int]
     registration_policies: Mapping[str, tuple[LifespanPolicy, ScopePolicy]]
     root_policies: Mapping[str, RootPolicy]
+    candidate_when: Mapping[str, ComponentFilter]
     registration_origins: dict[str, DefinitionOrigin]
     factory_ids: frozenset[str]
     factory_specializations: dict[str, object]
@@ -4822,6 +4823,22 @@ def _preferred_root_plans(plans: Iterable[_RootPlan]) -> tuple[_RootPlan, ...]:
 
 
 @dataclass(frozen=True, slots=True)
+class _OccurrenceLayers(Mapping[int, str]):
+    graph: _ComponentGraph
+    origins: Mapping[int, DefinitionOrigin]
+
+    def __getitem__(self, key: int) -> str:
+        view = self.graph.view_source(key)
+        return self.origins[key if view is None else view[1]].layer
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self.origins)
+
+    def __len__(self) -> int:
+        return len(self.origins)
+
+
+@dataclass(frozen=True, slots=True)
 class _PlanSet:
     graph: _ComponentGraph
     roots: dict[Any, tuple[_RootPlan, ...]]
@@ -4999,6 +5016,22 @@ class _CompilerFrame:
 
 
 @dataclass(frozen=True, slots=True)
+class _EligibilityPreview:
+    id: str
+    service_type: Any
+    name: str | None
+    tags: tuple[legacy.Tag, ...]
+    parent: Component | None
+
+    @property
+    def generic_mapping(self) -> GenericTypeMap:
+        return GenericTypeMap(self.service_type)
+
+    def has_tag(self, name: str, value: str | None = None) -> bool:
+        return any(tag.name == name and (value is None or tag.value == value) for tag in self.tags)
+
+
+@dataclass(frozen=True, slots=True)
 class _CompiledCandidate:
     component: Component
     step: _Step
@@ -5057,6 +5090,10 @@ class _Compiler:
         self._source_inspection = False
         self.graph = _ComponentGraph()
         self._next_occurrence = 1
+        self._managed_adapter_memo: dict[int, _Step] = {}
+        self._managed_adapter_sources: dict[int, _Step] = {}
+        self._provider_view_depths: dict[int, int] = {}
+        self._activation_templates: dict[tuple[Any, ...], _RegistrationStep] = {}
         self._stack: list[legacy._Registration] = []
         self._frames: list[_CompilerFrame] = []
         self._specialized_factories: dict[tuple[str, tuple[Any, ...]], legacy._Registration] = {}
@@ -6063,20 +6100,18 @@ class _Compiler:
             blueprint=self.blueprint,
             build_args=self.build_args,
             compiler_issues=tuple(self.issues),
-            root_candidates=types.MappingProxyType(dict(self.root_candidates)),
-            occurrence_explanations=types.MappingProxyType(dict(self.occurrence_explanations)),
-            occurrence_origins=types.MappingProxyType(dict(self.origins)),
-            decorator_explanations=types.MappingProxyType(dict(self.decorator_explanations)),
+            root_candidates=types.MappingProxyType(self.root_candidates),
+            occurrence_explanations=types.MappingProxyType(self.occurrence_explanations),
+            occurrence_origins=types.MappingProxyType(self.origins),
+            decorator_explanations=types.MappingProxyType(self.decorator_explanations),
             parameter_explanations=types.MappingProxyType(
                 {
-                    occurrence: types.MappingProxyType(dict(records))
+                    occurrence: types.MappingProxyType(records)
                     for occurrence, records in self.parameter_explanations.items()
                 }
             ),
-            generic_explanations=types.MappingProxyType(dict(self.generic_explanations)),
-            occurrence_layers=types.MappingProxyType(
-                {occurrence: origin.layer for occurrence, origin in self.origins.items()}
-            ),
+            generic_explanations=types.MappingProxyType(self.generic_explanations),
+            occurrence_layers=_OccurrenceLayers(self.graph, types.MappingProxyType(self.origins)),
             provider_roots=types.MappingProxyType(provider_roots),
             architecture_roots=tuple(architecture_roots),
             area_root_candidates=types.MappingProxyType(
@@ -6089,6 +6124,44 @@ class _Compiler:
                 }
             ),
         )
+
+    def _provider_subtree_depth(self, component: Component) -> int:
+        cached = self._provider_view_depths.get(component.occurrence_id)
+        if cached is not None:
+            return cached
+        children = (*component.dependencies, *component.pre_configurations)
+        depth = 1 + max((self._provider_subtree_depth(child) for child in children), default=0)
+        for decorator in component.decorators:
+            depth = max(depth, self._provider_subtree_depth(decorator))
+        self._provider_view_depths[component.occurrence_id] = depth
+        return depth
+
+    def _provider_view(self, source: Component, parent: Component) -> Component:
+        if self._budget is not None:
+            ancestors = []
+            ancestor: Component | None = parent
+            while ancestor is not None:
+                ancestors.append(ancestor.service_type)
+                ancestor = ancestor.parent
+            self._budget.occurrence(
+                self._profile_phase,
+                depth=len(ancestors) + self._provider_subtree_depth(source),
+                path=lambda: (
+                    *[safe_definition(item) for item in reversed(ancestors)],
+                    safe_definition(source.service_type),
+                ),
+                origin=self.origins.get(source.occurrence_id),
+                compiler=self,
+            )
+        if self._profile is not None:
+            self._profile.count("graph occurrences")
+        return self.graph.view(source, parent)
+
+    def _managed_adapter_target(self, step: _Step) -> _Step:
+        # Memo keys are identities. Keep source roots (and their descendants)
+        # alive even when conversion replaces a temporary collection step.
+        self._managed_adapter_sources[id(step)] = step
+        return _managed_target_step(step, self._managed_adapter_memo)
 
     def _provider_root_component(
         self,
@@ -6110,7 +6183,10 @@ class _Compiler:
             provider_mode=mode,
             origin=self.origins.get(target_component.occurrence_id),
         )
-        cloned_target = self._clone_component_tree(target_component, parent=provider)
+        cloned_target = self._provider_view(target_component, provider)
+        if self._profile is not None:
+            self._profile.count("provider target views")
+            self._profile.count("provider adapters")
         draft.dependency_ids = (cloned_target.occurrence_id,)
         explanation = self.occurrence_explanations.get(target_component.occurrence_id)
         if explanation is not None:
@@ -6122,7 +6198,7 @@ class _Compiler:
             provider,
             (_ManagedProviderStep if _is_managed_provider(annotation) else _ProviderStep)(
                 mode,
-                _managed_target_step(target_step) if _is_managed_provider(annotation) else target_step,
+                self._managed_adapter_target(target_step) if _is_managed_provider(annotation) else target_step,
                 **(
                     {"cleanup_sync_supported": not _managed_async_cleanup(target_component)}
                     if _is_managed_provider(annotation)
@@ -6165,7 +6241,10 @@ class _Compiler:
             parent=provider,
             origin=_synthetic_origin(),
         )
-        members = tuple(self._clone_component_tree(plan.component, parent=collection) for plan in targets)
+        members = tuple(self._provider_view(plan.component, collection) for plan in targets)
+        if self._profile is not None:
+            self._profile.count("provider target views", len(members))
+            self._profile.count("provider adapters")
         collection_draft.dependency_ids = tuple(member.occurrence_id for member in members)
         provider_draft.dependency_ids = (collection.occurrence_id,)
         target_steps = tuple(plan.step for plan in targets)
@@ -6184,7 +6263,7 @@ class _Compiler:
             provider,
             (_ManagedProviderStep if _is_managed_provider(annotation) else _ProviderStep)(
                 mode,
-                _managed_target_step(step) if _is_managed_provider(annotation) else step,
+                self._managed_adapter_target(step) if _is_managed_provider(annotation) else step,
                 **(
                     {"cleanup_sync_supported": not _managed_async_cleanup(collection)}
                     if _is_managed_provider(annotation)
@@ -6198,10 +6277,16 @@ class _Compiler:
         roots: Mapping[Any, tuple[_RootPlan, ...]],
     ) -> dict[Any, tuple[_RootPlan, ...]]:
         provider_roots: dict[Any, tuple[_RootPlan, ...]] = {}
+        if self._profile is not None:
+            self._profile.count("provider induced component copies", 0)
         for service_type, target_plans in tuple(roots.items()):
             if _provider_request(service_type) is not None or _collection_request(service_type) is not None:
                 continue
             base_records = self.root_candidates.get(service_type, ())
+            if not target_plans and not base_records:
+                # Dependency-only declarations do not create automatic provider
+                # families, including synthetic empty collection providers.
+                continue
             origins = {record.component.occurrence_id: record.decision.origin for record in base_records}
             for provider_type, mode in (
                 (Provider, "sync"),
@@ -6625,6 +6710,7 @@ class _Compiler:
         self._next_occurrence += 1
         if self._profile is not None:
             self._profile.count("graph occurrences")
+            self._profile.count("physical component records")
         cache_owner, cleanup_owner, owner_id, ownership_reason = self._compiled_ownership(
             lifespan,
             kind,
@@ -6662,6 +6748,15 @@ class _Compiler:
         component = self.graph.add(draft)
         self.origins[occurrence] = origin or _synthetic_origin()
         return component, draft
+
+    def _count_candidate_definition(self, registration: legacy._Registration, service_type: Any, unit: str) -> None:
+        if self._profile is not None:
+            self._profile.count_definition(
+                safe_definition(registration.implementation),
+                unit,
+                root=safe_definition(self._frames[0].label if self._frames else service_type),
+                definition_id=registration.id,
+            )
 
     def _compile_candidates(
         self,
@@ -6745,6 +6840,61 @@ class _Compiler:
             ):
                 self._pattern_requests[service_type] = None
             self._partial_candidate_labels[source_registration.id] = qualified_name(source_registration.implementation)
+            early_policy = layer.candidate_when.get(source_registration.id)
+            if self._profile is not None:
+                self._profile.count("candidate definitions considered")
+                self._count_candidate_definition(source_registration, service_type, "considered")
+            if early_policy is not None and deferred_mode is None:
+                self._admit_preparation(service_type, origin)
+                if self._profile is not None:
+                    self._profile.count("early eligibility evaluations")
+                preview = _EligibilityPreview(
+                    source_registration.id,
+                    source_service_type,
+                    source_registration.name,
+                    tuple(source_registration.tags),
+                    parent if definition_area == consumer_area else None,
+                )
+                if _early_match(early_policy, cast(Component, preview)) is False:
+                    # Retain a compact rejected root and decision, never its excluded subtree.
+                    component, _ = self._draft(
+                        component_id=source_registration.id,
+                        service_type=source_service_type,
+                        implementation=source_registration.implementation,
+                        implementation_type=constructor_type(source_registration.implementation) or object,
+                        lifespan=_component_lifespan(source_registration.lifespan),
+                        name=source_registration.name,
+                        tags=tuple(source_registration.tags),
+                        kind=ComponentKind.registration,
+                        activation=_registration_activation(source_registration),
+                        parent=parent,
+                        argument=argument,
+                        origin=origin,
+                    )
+                    reason = "Declarative candidate_when policy excluded this definition before subtree compilation"
+                    candidates.append(
+                        _CompiledCandidate(
+                            component,
+                            _ValueStep(None),
+                            origin,
+                            False,
+                            ("rejected-candidate-when",),
+                            reason,
+                        )
+                    )
+                    self._record_partial_candidate(
+                        (
+                            qualified_name(service_type),
+                            source_registration.id,
+                            PartialState.rejected,
+                            "rejected-candidate-when",
+                        )
+                    )
+                    if self._profile is not None:
+                        self._profile.count("early excluded candidates")
+                        self._count_candidate_definition(source_registration, service_type, "early excluded")
+                        self._profile.count("retained early rejection records")
+                    continue
             try:
                 if self._profile is None or source_registration.id not in layer.factory_ids:
                     registration = self._specialize_registration(source_registration, layer, source_service_type)
@@ -6850,6 +7000,7 @@ class _Compiler:
                     )
                 else:
                     self._profile.count("candidate compilation attempts")
+                    self._count_candidate_definition(source_registration, service_type, "subtrees compiled")
                     component, step = self._profile.call(
                         self._profile_phase,
                         "candidate compilation",
@@ -6908,6 +7059,7 @@ class _Compiler:
                 if deferred_mode is not None:
                     self._frames.pop()
             predicate = layer.registration_when.get(source_registration.id)
+            registration_predicates = tuple(item for item in (early_policy, predicate) if item is not None)
             component_record = cast(_ComponentDraft, self.graph.record(component.occurrence_id))
             if visibility_target is not None:
                 # An anchored plan may already carry its parent's public view.
@@ -6928,22 +7080,23 @@ class _Compiler:
                 # by being its caller.
                 component_record.parent_id = None
             try:
-                if predicate is not None:
+                registration_matches = True
+                for predicate in registration_predicates:
                     self._admit_preparation(service_type, origin)
-                if predicate is None:
-                    registration_matches = True
-                elif self._profile is None:
-                    registration_matches = predicate(component)
-                else:
-                    self._profile.count("registration selection callback calls")
-                    registration_matches = self._profile.call(
-                        self._profile_phase,
-                        "selection callback",
-                        predicate,
-                        component,
-                        attempt=self._profile_attempt,
-                        definition=safe_definition(predicate),
-                    )
+                    if self._profile is None:
+                        registration_matches = predicate(component)
+                    else:
+                        self._profile.count("registration selection callback calls")
+                        registration_matches = self._profile.call(
+                            self._profile_phase,
+                            "selection callback",
+                            predicate,
+                            component,
+                            attempt=self._profile_attempt,
+                            definition=safe_definition(predicate),
+                        )
+                    if not registration_matches:
+                        break
             except Exception as error:
                 self._record_partial_candidate(
                     (qualified_name(service_type), registration.id, PartialState.failed, "filter-evaluation-failed")
@@ -7752,6 +7905,33 @@ class _Compiler:
                 ),
                 **({} if map_definition is None else {"key_indices": key_indices}),
             )
+            # Intern only proven equivalent, fully validated executable plans.
+            # Selection, derive, decorator and configuration callbacks have already
+            # run for this occurrence; none are skipped by this cache. Different
+            # selected dependency steps, generic bindings, layers or cleanup owners
+            # cannot collide. Occurrence inspection stays on the separate graph.
+            if map_definition is None and not per_call_target and not configurations and not decorators:
+                template_key = (
+                    id(registration),
+                    id(layer),
+                    _runtime_type_key(requested_service_type),
+                    step_type,
+                    layer.owner_token,
+                    step.cleanup_owner,
+                    step.sync_supported,
+                    tuple((item.name, id(item.step)) for item in dependencies),
+                )
+                existing = self._activation_templates.get(template_key)
+                if existing is None:
+                    self._activation_templates[template_key] = step
+                    if self._profile is not None:
+                        self._profile.count("unique activation templates")
+                else:
+                    step = existing
+                    if self._profile is not None:
+                        self._profile.count("reused activation templates")
+            elif self._profile is not None:
+                self._profile.count("unique activation templates")
             return component, step
         finally:
             self._frames.pop()
@@ -9630,6 +9810,7 @@ def _prune_orphan_registrations(plan: _PlanSet) -> _PlanSet:
             layer,
             registry=registry,
             registration_when=without(layer.registration_when),
+            candidate_when=types.MappingProxyType(without(layer.candidate_when)),
             registration_preferences=types.MappingProxyType(without(layer.registration_preferences)),
             registration_parent_precedence=types.MappingProxyType(without(layer.registration_parent_precedence)),
             registration_policies=types.MappingProxyType(without(layer.registration_policies)),
@@ -10333,14 +10514,14 @@ def _finalize_plan(
         build_args=plan.build_args,
         entrypoints=tuple(entrypoints),
         boundaries=boundary_contracts,
-        _root_candidates=types.MappingProxyType(dict(plan.root_candidates)),
+        _root_candidates=plan.root_candidates,
         _known_root_selections=types.MappingProxyType(known_root_selections),
         _census_root_selections=tuple(census_root_selections),
-        _occurrence_explanations=types.MappingProxyType(dict(plan.occurrence_explanations)),
-        _decorator_explanations=types.MappingProxyType(dict(plan.decorator_explanations)),
-        _parameter_explanations=types.MappingProxyType(dict(plan.parameter_explanations)),
-        _generic_explanations=types.MappingProxyType(dict(plan.generic_explanations)),
-        _occurrence_layers=types.MappingProxyType(dict(plan.occurrence_layers)),
+        _occurrence_explanations=plan.occurrence_explanations,
+        _decorator_explanations=plan.decorator_explanations,
+        _parameter_explanations=plan.parameter_explanations,
+        _generic_explanations=plan.generic_explanations,
+        _occurrence_layers=plan.occurrence_layers,
         _template_source_decisions=tuple(
             TemplateSourceDecision(
                 template_id=item.template_id,
@@ -10360,31 +10541,9 @@ def _finalize_plan(
             for item in plan.blueprint.template_selections
         ),
         _census_definitions=plan.census_definitions,
-        _census_sources=types.MappingProxyType(dict(plan.census_sources)),
-        _census_ids=types.MappingProxyType(dict(plan.census_ids)),
+        _census_sources=plan.census_sources,
+        _census_ids=plan.census_ids,
     )
-    occurrence_paths = {
-        str(component.occurrence_id): path
-        for path, component in compiled_graph._component_paths(all_roots=True).items()
-    }
-    parameter_explanations = types.MappingProxyType(
-        {
-            occurrence: types.MappingProxyType(
-                {
-                    name: replace(
-                        record,
-                        selected_components=tuple(
-                            occurrence_paths.get(item, item) for item in record.selected_components
-                        ),
-                    )
-                    for name, record in records.items()
-                }
-            )
-            for occurrence, records in plan.parameter_explanations.items()
-        }
-    )
-    compiled_graph = replace(compiled_graph, _parameter_explanations=parameter_explanations)
-    compiled_graph.ownership_report()
     built_in_issues = tuple(dict.fromkeys(issues))
     validation_runner = (
         _run_validation_rules
@@ -10561,6 +10720,7 @@ def _remove_generated_registrations(layer: _Layer, removed: set[str]) -> _Layer:
             "registration_parent_precedence",
             "registration_policies",
             "root_policies",
+            "candidate_when",
             "registration_origins",
             "factory_specializations",
             "contributions",
@@ -10606,6 +10766,7 @@ def _materialize_registration_template(
         "registration_parent_precedence",
         "registration_policies",
         "root_policies",
+        "candidate_when",
         "registration_origins",
         "factory_specializations",
         "contributions",
@@ -12767,7 +12928,7 @@ def _observe_plan(
             collection_label = "request " + qualified_name(origin) + "[" + qualified_name(service_type) + "]"
             request_labels[(origin, service_type)] = collection_label
             catalog[collection_label] = (None, "request")
-    memo: dict[int, _Step] = {}
+    memo: dict[Any, _Step] = {}
 
     def observe_edge(step: _Step, component: Component | None) -> _Step:
         target = observe(step, component)
@@ -12810,10 +12971,16 @@ def _observe_plan(
         return next((child for child in children if child.id == source.id), None)
 
     def observe(step: _Step, occurrence: Component | None = None) -> _Step:
-        if id(step) in memo:
-            return memo[id(step)]
+        # Shared activation templates still need occurrence-specific observation.
+        memo_key = (
+            (id(step), occurrence.occurrence_id)
+            if isinstance(step, _RegistrationStep) and occurrence is not None and step.component._graph is plan.graph
+            else id(step)
+        )
+        if memo_key in memo:
+            return memo[memo_key]
         if hasattr(step, "_profile_key"):
-            memo[id(step)] = step
+            memo[memo_key] = step
             return step
         if isinstance(step, _RegistrationStep):
             cls = _OBSERVED_STEP_TYPES.get(type(step))
@@ -12821,7 +12988,7 @@ def _observe_plan(
                 raise RuntimeError("Unsupported observed registration step")
             values = {item.name: getattr(step, item.name) for item in fields(step)}
             result = cls(**values)
-            memo[id(step)] = result
+            memo[memo_key] = result
             current_component = (
                 occurrence if occurrence is not None and current_path(occurrence) is not None else step.component
             )
@@ -12846,7 +13013,11 @@ def _observe_plan(
                     for item in step.decorators
                 ),
             )
-            object.__setattr__(result, "_profile_key", owner_key(step.component, occurrence))
+            object.__setattr__(
+                result,
+                "_profile_key",
+                owner_key(current_component if step.component._graph is plan.graph else step.component, occurrence),
+            )
         elif isinstance(step, _ProviderStep):
             step_type = (
                 _ObservedManagedProviderStep
@@ -12866,7 +13037,7 @@ def _observe_plan(
                     else {}
                 ),
             )
-            memo[id(step)] = result
+            memo[memo_key] = result
             target_component = (
                 occurrence.dependencies[0] if occurrence is not None and occurrence.dependencies else None
             )
@@ -12883,7 +13054,7 @@ def _observe_plan(
             object.__setattr__(result, "_profile_key", (fingerprint, request_path))
         elif isinstance(step, _CollectionStep):
             result = replace(step)
-            memo[id(step)] = result
+            memo[memo_key] = result
             members = occurrence.dependencies if occurrence is not None else ()
             object.__setattr__(
                 result,
@@ -12895,14 +13066,14 @@ def _observe_plan(
             )
         elif isinstance(step, _PerCallStep):
             result = replace(step)
-            memo[id(step)] = result
+            memo[memo_key] = result
             target_component = (
                 occurrence.dependencies[0] if occurrence is not None and occurrence.dependencies else None
             )
             object.__setattr__(result, "target", observe_edge(step.target, target_component))
         elif isinstance(step, _ScopeStep):
             result = replace(step)
-            memo[id(step)] = result
+            memo[memo_key] = result
             object.__setattr__(
                 result,
                 "resolution_requests",
@@ -12913,7 +13084,7 @@ def _observe_plan(
             )
         else:
             result = step
-        memo[id(step)] = result
+        memo[memo_key] = result
         return result
 
     def observe_decorator(decorator: _CompiledDecorator, occurrence: Component | None) -> _CompiledDecorator:
@@ -13020,6 +13191,7 @@ class _BuilderBase:
         self._boundary_name = boundary_name
         self._composition_layer = composition_layer
         self._registration_when: dict[str, ComponentFilter] = {}
+        self._candidate_when: dict[str, ComponentFilter] = {}
         self._registration_preferences: dict[str, ComponentPreference | None] = {}
         self._registration_parent_precedence: dict[str, int] = {}
         self._registration_policies: dict[str, tuple[LifespanPolicy, ScopePolicy]] = {}
@@ -13212,6 +13384,7 @@ class _BuilderBase:
             registration_parent_precedence=types.MappingProxyType(registration_parent_precedence),
             registration_policies=types.MappingProxyType(registration_policies),
             root_policies=types.MappingProxyType(dict(self._root_policies)),
+            candidate_when=types.MappingProxyType(dict(self._candidate_when)),
             registration_origins=registration_origins,
             factory_ids=frozenset(self._factory_ids),
             factory_specializations=dict(self._factory_specializations),
@@ -13314,6 +13487,7 @@ class _BuilderBase:
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
+        candidate_when: ComponentFilter | None = None,
         parent_precedence: int = 0,
         prefer: ComponentPreference | None = None,
         contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
@@ -13321,6 +13495,8 @@ class _BuilderBase:
         root_policy: RootPolicy = "resolvable",
     ) -> str:
         self._assert_mutable()
+        if candidate_when is not None and not callable(candidate_when):
+            raise TypeError("candidate_when must be a component filter or None")
         if root_policy not in ("entrypoint", "resolvable", "dependency_only"):
             raise ValueError("root_policy must be 'entrypoint', 'resolvable', or 'dependency_only'")
         _validate_parent_precedence(parent_precedence)
@@ -13380,6 +13556,8 @@ class _BuilderBase:
             parent_node_filter=legacy.default_parent_node_filter,
         )
         self._registration_when[component_id] = when
+        if candidate_when is not None:
+            self._candidate_when[component_id] = candidate_when
         self._registration_parent_precedence[component_id] = parent_precedence
         self._registration_preferences[component_id] = prefer
         self._registration_policies[component_id] = (lifespan, scope)
@@ -13418,6 +13596,7 @@ class _BuilderBase:
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
+        candidate_when: ComponentFilter | None = None,
         parent_precedence: int = 0,
         prefer: ComponentPreference | None = None,
         contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
@@ -13441,6 +13620,7 @@ class _BuilderBase:
             arguments=arguments,
             tags=tags,
             when=when,
+            candidate_when=candidate_when,
             parent_precedence=parent_precedence,
             prefer=prefer,
             contributes=contributes,
@@ -13462,6 +13642,7 @@ class _BuilderBase:
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[legacy.Tag] | None = None,
         when: ComponentFilter = all_components,
+        candidate_when: ComponentFilter | None = None,
         parent_precedence: int = 0,
         prefer: ComponentPreference | None = None,
         groups: Iterable[ServiceGroup] = (),
@@ -13478,6 +13659,7 @@ class _BuilderBase:
             arguments=arguments,
             tags=tags,
             when=when,
+            candidate_when=candidate_when,
             parent_precedence=parent_precedence,
             prefer=prefer,
             groups=groups,
@@ -13494,6 +13676,7 @@ class _BuilderBase:
         asynchronous: bool = False,
         component_filter: ComponentFilter = all_components,
         name: str | None = None,
+        root_policy: RootPolicy = "resolvable",
     ) -> str: ...
 
     @overload
@@ -13506,6 +13689,7 @@ class _BuilderBase:
         asynchronous: bool = False,
         component_filter: ComponentFilter = all_components,
         name: str | None = None,
+        root_policy: RootPolicy = "resolvable",
     ) -> str: ...
 
     def register_provider_map(
@@ -13517,6 +13701,7 @@ class _BuilderBase:
         asynchronous: bool = False,
         component_filter: ComponentFilter = all_components,
         name: str | None = None,
+        root_policy: RootPolicy = "resolvable",
     ) -> str:
         """Declare a read-only map of frozen provider targets, keyed during build.
 
@@ -13538,7 +13723,9 @@ class _BuilderBase:
             raise TypeError("register_provider_map requires key= unless given a ProviderMapGroup")
         provider_type = AsyncProvider if asynchronous else Provider
         annotation: Any = types.GenericAlias(Mapping, (key_type, provider_type[service_type]))
-        component_id = self.register(annotation, factory=_provider_map_factory, lifespan="transient", name=name)
+        component_id = self.register(
+            annotation, factory=_provider_map_factory, lifespan="transient", name=name, root_policy=root_policy
+        )
         self._factory_ids.discard(component_id)
         self._provider_maps[component_id] = _ProviderMapDefinition(key, component_filter, group)
         self._registration_origins[component_id] = self._definition_origin("provider-map", component_id)

@@ -25,19 +25,20 @@ with builder.build(
     assert dict(profile.report().budget_usage)["graph_occurrences"] == 45
 ```
 
-A single leaf expands into 45 compiler occurrences because compilation also
-prepares its ordinary and managed providers and provider collections. Its public
-graph has one root, and its synthetic parent paths reach depth three. Limits use
-compiler work, rather than public graph visits or retained executable steps.
+A single leaf admits 45 physical allocations: 29 component records and 16 provider
+target view contexts. Compilation prepares ordinary and managed providers and
+provider collections without copying their target subtrees. Its public graph has
+one root, and its logical synthetic parent paths reach depth three. Limits use
+compiler allocations, rather than public graph visits or retained executable steps.
 
 | Limit | One admitted unit |
 | --- | --- |
-| `graph_occurrences` | Creation of a component draft or new synthetic preview occurrence. Includes source metadata, visibility/scope-slot views, recursive expansion, and provider/overlay clones. Reusing an existing frozen record or executable step does not itself count; creating its metadata clone does. |
-| `active_dependency_depth` | Maximum length of the active component parent path at occurrence creation, including the new component. Roots have depth one. Synthetic providers, collections, clone branches and their targets count. Independent roots do not add their depths together. |
+| `graph_occurrences` | Creation of a component draft, synthetic preview record, or provider target view context. Includes source metadata, visibility/scope-slot records, recursive expansion, and overlay clones. A provider target context counts once regardless of logical subtree size; descendant inspection creates no retained records. Reusing an executable step does not itself count. |
+| `active_dependency_depth` | Maximum length of the active component parent path at occurrence creation, including the new component. Roots have depth one. Synthetic providers, collections, clone branches and the complete logical target paths of views count, even though views do not allocate descendant records. Independent roots do not add their depths together. |
 | `specialization_materializations` | Start of constructing a new specialized registration after the compiler has established that a cached registration or closed no-op cannot satisfy it. Cache hits do not count. Earlier binding/dependency preparation is a separate preparation operation. |
 | `generated_template_outputs` | Start of producing one new registration/decorator template output, before calling its factory. Invalid returns or subsequent failed materialization consume the unit. Already frozen inherited registration-template outputs do not count again. Decorator templates count the outputs they actually regenerate. |
 | `diagnostic_attempts` | Start of one recovery compilation for a closed root/boundary root after a failed primary compile. The primary compile is excluded. A failed recovery attempt still consumes its unit. |
-| `preparation_operations` | One discovery import attempt; one package-enumeration iterator advance (including terminal advance); one subclass candidate examination, including rejected/abstract candidates; one template source examination; one invoked source/visibility filter or template factory; one uncached specialization preparation; one invoked registration, parent, selection, preference, argument derivation, pre-configuration/decorator applicability, decorator position or provider-map key callback; one entry-point/warm-up selection callback; one build validation rule entry or iterator advance, including the terminal advance. |
+| `preparation_operations` | One discovery import attempt; one package-enumeration iterator advance (including terminal advance); one subclass candidate examination, including rejected/abstract candidates; one template source examination; one invoked source/visibility filter or template factory; one uncached specialization preparation; one early eligibility expression evaluation; one invoked registration, candidate eligibility, parent, selection, preference, argument derivation, pre-configuration/decorator applicability, decorator position or provider-map key callback; one entry-point/warm-up selection callback; one build validation rule entry or iterator advance, including the terminal advance. |
 
 These are operation-start counters. An admitted operation consumes allowance even
 if it raises. A refused next operation does not run, increment its operation

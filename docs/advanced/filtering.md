@@ -572,3 +572,77 @@ Prefer a hard filter for requirements, mutually exclusive `when` rules for imple
 registration order for simple overrides, or numeric precedence for an explicit global priority. Chains are useful
 when ordered preferences and valid fallback behavior are both necessary; they add coordination cost when supplied
 by independent libraries.
+
+## Explicit early candidate eligibility
+
+`candidate_when=` on `register`, `register_fallback` and `register_pattern` is an opt-in
+policy that may exclude a definition before its generic specialization or dependency
+subtree is compiled. Use the existing `cf` vocabulary for declared route eligibility:
+
+```python
+from clean_ioc import ContainerBuilder
+from clean_ioc import component_filters as cf
+
+class Transport:
+    pass
+
+class HttpTransport(Transport):
+    pass
+
+class QueueClient:
+    pass
+
+class QueueTransport(Transport):
+    def __init__(self, client: QueueClient):
+        self.client = client
+
+class WebhookSender:
+    def __init__(self, transport: Transport):
+        self.transport = transport
+
+builder = ContainerBuilder()
+sender_id = builder.register(WebhookSender)
+builder.register(
+    Transport, HttpTransport,
+    candidate_when=cf.parent(cf.with_id(sender_id)),
+    root_policy="dependency_only",
+)
+builder.register(
+    Transport, QueueTransport,
+    candidate_when=cf.parent(cf.with_name("queue")),
+    root_policy="dependency_only",
+)
+with builder.build() as container:
+    assert isinstance(container.resolve(WebhookSender).transport, HttpTransport)
+```
+
+Here the queue subtree is excluded for the webhook request, so its missing
+`QueueClient` does not fail that request. A selected queue subtree or an independently
+registered public `QueueTransport` root still fails full dependency validation.
+This changes the error contract only for definitions with the explicit early policy.
+Existing `when=` and `select(...)` retain compilation-before-filtering behavior.
+
+Known static facts include registration ID, name, tags, closed service/generic
+bindings and stable ancestor identity. `with_id`, name predicates, `has_tag`,
+`service_type_is`, `has_generic_arg`, `parent`, and compositions using `&`, `|` and
+`~` preserve inspectable expression structure. A collection is itself a parent
+occurrence; inspecting its consumer requires another `cf.parent(...)`.
+Cross-boundary eligibility observes definition-side visibility and hides an external
+consumer parent, just as ordinary `when` does.
+
+Arbitrary callbacks, implementation/lifespan/build-argument filters and
+`has_descendant` remain unknown at the early stage. The compiler does not inspect
+closures. Unknown never means false: the full subtree is compiled and the complete
+policy then executes with normal short-circuit order. Thus known false `&` unknown
+can be excluded immediately; unknown `&` known false remains unknown to preserve
+its first callback. The same rule preserves callbacks in ordered OR expressions.
+Opaque callbacks run once on the complete occurrence. Built-in static predicates
+may run both early and after compilation. Provider-map candidates currently evaluate
+this policy on their complete deferred occurrence rather than at the early stage.
+
+Rejected early candidates retain a root metadata record and the diagnostic reason
+`rejected-candidate-when`, including definition origin and parent/root context.
+A false early policy does not alter exact/pattern/fallback tiers, preferences,
+parent precedence, collection order, provider uniqueness or visibility rules.
+Occurrence IDs are opaque integers local to a graph; compact views may use negative
+IDs. Do not interpret their sign or magnitude.

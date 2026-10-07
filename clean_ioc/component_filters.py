@@ -6,13 +6,13 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from functools import wraps
 from types import GenericAlias
-from typing import Any, Callable, Generic, Self, TypeVar, cast
+from typing import Any, Callable, Generic, Self, TypeVar, cast, get_args
 
-from funcie import predicate
+from funcie import predicate as _predicate
 from typetoolbox.generics import get_generic_mapping
 from typing_extensions import TypeForm
 
-from .components import ComponentFilter, Lifespan, all_components, default_component_filter
+from .components import Component, ComponentFilter, Lifespan, all_components, default_component_filter
 from .metadata import Tag
 from .sentinels import Undefined, _Undefined
 from .tooling import qualified_name
@@ -172,8 +172,85 @@ class ComponentSelector(Generic[TService]):
         return result
 
 
+class _StructuredPredicate(_predicate):
+    """Normal predicate semantics plus an inspectable early eligibility expression."""
+
+    def __init__(self, function, expression=None):
+        super().__init__(function)
+        self.expression = expression
+
+    def __and__(self, other):
+        return _StructuredPredicate(lambda value: self(value) and other(value), ("and", self, other))
+
+    def __rand__(self, other):
+        return _StructuredPredicate(lambda value: other(value) and self(value), ("and", other, self))
+
+    def __or__(self, other):
+        return _StructuredPredicate(lambda value: self(value) or other(value), ("or", self, other))
+
+    def __ror__(self, other):
+        return _StructuredPredicate(lambda value: other(value) or self(value), ("or", other, self))
+
+    def __invert__(self):
+        return _StructuredPredicate(lambda value: not self(value), ("not", self))
+
+
+def predicate(function):
+    if isinstance(function, _StructuredPredicate):
+        return function
+    return _StructuredPredicate(
+        function, ("static",) if (function is all_components or function is default_component_filter) else None
+    )
+
+
+def _early_match(filter: ComponentFilter, component: Component) -> bool | None:
+    """Evaluate only declared static leaves; unknown is never a rejection.
+
+    Unknown left operands stop evaluation so their callbacks retain normal
+    short-circuit order when evaluated later against the complete subtree.
+    """
+    if filter is all_components:
+        return True
+    expression = getattr(filter, "expression", None)
+    if expression is None:
+        return None
+    operation, *operands = expression
+    if operation == "generic":
+        binding = component.generic_mapping.get(operands[0], Undefined)
+
+        def unbound(value):
+            return isinstance(value, TypeVar) or any(unbound(argument) for argument in get_args(value))
+
+        return None if unbound(binding) else bool(filter(component))
+    if operation == "static":
+        return bool(filter(component))
+    if operation == "parent":
+        return False if component.parent is None else _early_match(operands[0], component.parent)
+    left = _early_match(operands[0], component)
+    if left is None:
+        return None
+    if operation == "not":
+        return not left
+    if operation == "and":
+        return False if not left else _early_match(operands[1], component)
+    return True if left else _early_match(operands[1], component)
+
+
 def _described(filter, description: str, *, selector: tuple[str, Any] | None = None):
     filter.__clean_ioc_description__ = description
+    if description.startswith(
+        (
+            "with_id(",
+            "with_name(",
+            "name_starts_with(",
+            "name_ends_with(",
+            "service_type_is(",
+            "has_tag(",
+            "has_generic_arg",
+            "is_named",
+        )
+    ):
+        filter.expression = ("static",)
     if selector is not None:
         filter.__clean_ioc_selector__ = selector
     return filter
@@ -269,7 +346,9 @@ TGeneric = TypeVar("TGeneric")
 
 
 def has_generic_arg(key: TypeVar | str, value: type):
-    return _described(predicate(lambda component: component.generic_mapping.get(key) == value), "has_generic_arg")
+    result = _described(predicate(lambda component: component.generic_mapping.get(key) == value), "has_generic_arg")
+    result.expression = ("generic", key)
+    return result
 
 
 def has_lifespan(lifespan: Lifespan):
@@ -286,7 +365,10 @@ def has_descendant(filter: ComponentFilter):
 
 
 def parent(filter: ComponentFilter):
-    return _described(
+    result = _described(
         predicate(lambda component: component.parent is not None and filter(component.parent)),
         "parent",
     )
+
+    result.expression = ("parent", filter)
+    return result

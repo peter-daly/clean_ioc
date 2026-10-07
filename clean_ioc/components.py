@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Hashable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from types import UnionType
 from typing import (
@@ -110,7 +110,6 @@ class _ComponentRecord:
     provider_mode: Literal["sync", "async"] | None
     position: int | None
     argument: str | None
-    generic_mapping: GenericTypeMap
     parent_id: int | None
     dependency_ids: tuple[int, ...]
     decorator_ids: tuple[int, ...]
@@ -118,6 +117,15 @@ class _ComponentRecord:
     pre_configuration_ids: tuple[int, ...]
     boundary: str | None
     declared_service_type: Any | None
+    _generic_mapping: GenericTypeMap | None = field(default=None, compare=False, repr=False)
+
+    @property
+    def generic_mapping(self) -> GenericTypeMap:
+        mapping = self._generic_mapping
+        if mapping is None:
+            mapping = GenericTypeMap(self.service_type)
+            object.__setattr__(self, "_generic_mapping", mapping)
+        return mapping
 
 
 @dataclass(slots=True)
@@ -172,7 +180,6 @@ class _ComponentDraft:
             provider_mode=self.provider_mode,
             position=self.position,
             argument=self.argument,
-            generic_mapping=GenericTypeMap(self.service_type),
             parent_id=self.parent_id,
             dependency_ids=self.dependency_ids,
             decorator_ids=self.decorator_ids,
@@ -208,9 +215,10 @@ def normalize_implementation_type(implementation: Any, service_type: Any) -> typ
 
 
 class _ComponentGraph:
-    __slots__ = ("_drafts", "_records")
+    __slots__ = ("_drafts", "_records", "_views")
 
     def __init__(self) -> None:
+        self._views: list[_ComponentViewContext] = []
         self._drafts: dict[int, _ComponentDraft] = {}
         self._records: dict[int, _ComponentRecord] | None = None
 
@@ -218,14 +226,107 @@ class _ComponentGraph:
         self._drafts[draft.occurrence_id] = draft
         return Component(self, draft.occurrence_id)
 
-    def record(self, occurrence_id: int) -> _ComponentDraft | _ComponentRecord:
-        if self._records is not None:
-            return self._records[occurrence_id]
-        return self._drafts[occurrence_id]
+    def view(self, source: Component, parent: Component) -> Component:
+        context = _ComponentViewContext(source.occurrence_id, parent.occurrence_id, len(self._views))
+        self._views.append(context)
+        return Component(self, context.remap(source.occurrence_id))
+
+    def view_source(self, occurrence_id: int) -> tuple[_ComponentViewContext, int] | None:
+        if occurrence_id > -(1 << 64):
+            return None
+        context, source = divmod(-occurrence_id, 1 << 64)
+        if context > len(self._views):
+            return None
+        return self._views[context - 1], source
+
+    def record(self, occurrence_id: int) -> _ComponentDraft | _ComponentRecord | _ComponentViewRecord:
+        records = self._drafts if self._records is None else self._records
+        if occurrence_id in records:
+            return records[occurrence_id]
+        view = self.view_source(occurrence_id)
+        if view is not None:
+            return _ComponentViewRecord(self, *view)
+        raise KeyError(occurrence_id)
 
     def freeze(self) -> None:
-        self._records = {key: value.freeze() for key, value in self._drafts.items()}
-        self._drafts.clear()
+        records: dict[int, _ComponentRecord] = {}
+        # Release each draft as its frozen replacement is created.
+        for key in tuple(self._drafts):
+            records[key] = self._drafts.pop(key).freeze()
+        self._records = records
+
+
+@dataclass(frozen=True, slots=True)
+class _ComponentViewContext:
+    root: int
+    parent: int
+    index: int
+
+    def remap(self, source: int) -> int:
+        return -(((self.index + 1) << 64) + source)
+
+
+class _ComponentViewRecord:
+    """Ephemeral metadata projection; no target subtree is copied or retained."""
+
+    __slots__ = ("graph", "context", "source")
+
+    def __init__(self, graph: _ComponentGraph, context: _ComponentViewContext, source: int) -> None:
+        self.graph = graph
+        self.context = context
+        self.source = source
+
+    def __getattr__(self, name: str) -> Any:
+        record = self.graph.record(self.source)
+        if name == "occurrence_id":
+            return self.context.remap(self.source)
+        value = getattr(record, name)
+        if name == "parent_id":
+            return (
+                self.context.parent if self.source == self.context.root or value is None else self.context.remap(value)
+            )
+        if name in ("owner_id", "decorated_id"):
+            return None if value is None else self.context.remap(value)
+        if name in ("dependency_ids", "decorator_ids", "pre_configuration_ids"):
+            return tuple(self.context.remap(item) for item in value)
+        if name == "ownership_reason" and record.cache_owner is RuntimeOwnerKind.scope:
+            parent = Component(self.graph, record.parent_id) if record.parent_id is not None else None
+            while parent is not None and parent.kind not in (
+                ComponentKind.managed_provider,
+                ComponentKind.per_call_handle,
+            ):
+                parent = parent.parent
+            if parent is None:
+                parent = Component(self.graph, self.context.parent)
+                while parent is not None and parent.kind not in (
+                    ComponentKind.managed_provider,
+                    ComponentKind.per_call_handle,
+                ):
+                    parent = parent.parent
+            if parent is not None and parent.kind is ComponentKind.managed_provider:
+                return "The scoped instance closes with its managed acquisition scope"
+        return value
+
+    def freeze(self) -> _ComponentRecord:
+        record = self.graph.record(self.source)
+        base = record if isinstance(record, _ComponentRecord) else record.freeze()
+        return replace(
+            base,
+            **{
+                name: getattr(self, name)
+                for name in (
+                    "occurrence_id",
+                    "parent_id",
+                    "owner_id",
+                    "decorated_id",
+                    "dependency_ids",
+                    "decorator_ids",
+                    "pre_configuration_ids",
+                    "ownership_reason",
+                )
+            },
+            _generic_mapping=None,
+        )
 
 
 class Component:
@@ -243,7 +344,7 @@ class Component:
         self._occurrence_id = occurrence_id
 
     @property
-    def _record(self) -> _ComponentDraft | _ComponentRecord:
+    def _record(self) -> _ComponentDraft | _ComponentRecord | _ComponentViewRecord:
         return self._graph.record(self._occurrence_id)
 
     @property
@@ -459,7 +560,7 @@ def _undecorated_component_view(component: Component) -> Component:
         if key in records:
             continue
         value = source.record(key)
-        record = value.freeze() if isinstance(value, _ComponentDraft) else value
+        record = value if isinstance(value, _ComponentRecord) else value.freeze()
         records[key] = replace(record, decorator_ids=())
         pending.extend(record.dependency_ids)
         pending.extend(record.pre_configuration_ids)
@@ -517,6 +618,7 @@ class ComponentBuilder(Protocol):
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
+        candidate_when: ComponentFilter | None = None,
         parent_precedence: int = 0,
         prefer: ComponentPreference | None = None,
         contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
@@ -538,6 +640,7 @@ class ComponentBuilder(Protocol):
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
+        candidate_when: ComponentFilter | None = None,
         parent_precedence: int = 0,
         prefer: ComponentPreference | None = None,
         contributes: Mapping[ProviderMapGroup[Any, Any], Hashable] | None = None,
@@ -556,6 +659,7 @@ class ComponentBuilder(Protocol):
         arguments: Mapping[str, Any] | None = None,
         tags: Iterable[Tag] | None = None,
         when: ComponentFilter = all_components,
+        candidate_when: ComponentFilter | None = None,
         parent_precedence: int = 0,
         prefer: ComponentPreference | None = None,
         groups: Iterable[ServiceGroup] = (),
@@ -569,6 +673,7 @@ class ComponentBuilder(Protocol):
         asynchronous: bool = False,
         component_filter: ComponentFilter = all_components,
         name: str | None = None,
+        root_policy: RootPolicy = "resolvable",
     ) -> str: ...
 
     @overload
@@ -581,6 +686,7 @@ class ComponentBuilder(Protocol):
         asynchronous: bool = False,
         component_filter: ComponentFilter = all_components,
         name: str | None = None,
+        root_policy: RootPolicy = "resolvable",
     ) -> str: ...
 
     def register_provider_map(
@@ -592,6 +698,7 @@ class ComponentBuilder(Protocol):
         asynchronous: bool = False,
         component_filter: ComponentFilter = all_components,
         name: str | None = None,
+        root_policy: RootPolicy = "resolvable",
     ) -> str: ...
 
     def register_subclasses(

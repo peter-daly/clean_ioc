@@ -194,9 +194,9 @@ For an ordinary dependency, the selection process is:
 
 1. Find definitions visible in the current composition area.
 2. Choose the applicable definition tier: exact registrations, matching structural patterns, or open-generic fallback.
-3. Specialize candidate registrations where required.
-4. Compile each candidate's subtree.
-5. Evaluate its registration-level `when` predicate.
+3. Evaluate an explicitly declared `candidate_when` policy using known static facts; retain unknown candidates.
+4. Specialize remaining candidate registrations and compile each subtree.
+5. Evaluate any `candidate_when` policy on the full candidate, then its registration-level `when` predicate.
 6. Apply the dependency's selection filter.
 7. Select the first matching ordinary component, or retain matching collection members.
 
@@ -431,6 +431,13 @@ dependency, pre-configuration, and decorator. Synchronous resolution can therefo
 starting that root's activation. `Component.requires_async` describes local activation metadata; it is not the same
 field as the execution step's transitive capability.
 
+Automatic typed provider roots preserve a direct reference to the selected compiled target step. Their inspection
+metadata uses immutable parent-aware views over the target graph: each target needs one compact context, not a
+copy of every descendant. Views remap parent, ownership, decorator and explanation references without changing
+source records. Ordinary, async, managed and async-managed providers, including list, tuple and set targets,
+remain available for public roots without constructor scanning or runtime compilation. Dependency-only declarations
+create no automatic provider families, including empty collection providers.
+
 Typed providers preserve a direct reference to the compiled target step. Acquiring a provider does not execute its
 target; calling it starts a new resolution context in its bound scope. Acquiring an `AsyncProvider[T]` can be
 synchronous even though invoking the target requires `await`.
@@ -442,7 +449,8 @@ singleton-captured provider is bound to the singleton's declaring scope owner.
 Provider maps compile their selected targets and evaluate their key functions during build. The resulting map step
 stores frozen key-to-index information and provider targets. Runtime map acquisition creates scope-bound handles;
 looking up a key and calling its handle activates the selected target without repeating key calculation or selection.
-See [special dependency types](advanced/special-dependency-types.md).
+Provider-map declarations also accept `root_policy="dependency_only"` to compile only when consumed; selected
+contributions still receive full validation. See [special dependency types](advanced/special-dependency-types.md).
 
 `ProviderMapGroup` maps make the candidate set explicit before specialization and target compilation: only visible
 registrations whose `contributes` metadata contains that exact group identity are considered. Contributions are

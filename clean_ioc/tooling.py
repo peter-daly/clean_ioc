@@ -1762,6 +1762,7 @@ class CompiledGraph:
     warmup_plans: tuple[WarmupPlanInfo, ...] = field(default=(), compare=False, repr=False)
     _manifest_cache: dict[bool, GraphManifest] = field(default_factory=dict, compare=False, repr=False)
     _ownership_report_cache: list[OwnershipReport] = field(default_factory=list, compare=False, repr=False)
+    _argument_paths_cache: dict[int, str] = field(default_factory=dict, compare=False, repr=False)
     _analysis_index_cache: Any | None = field(default=None, compare=False, repr=False)
 
     def selection_census(self, *, all_roots: bool = False, include_deferred: bool = True):
@@ -2061,7 +2062,7 @@ class CompiledGraph:
 
         if isinstance(subject, Component):
             path = self._path_for_component(subject)
-            explanation = self._occurrence_explanations.get(subject.occurrence_id)
+            explanation = self._component_evidence(self._occurrence_explanations, subject)
             if explanation is None:
                 raise ValueError("explain-path-not-found: no compiler decision exists for this occurrence")
             if subject.declared_service_type != subject.service_type and " -> " not in explanation.subject:
@@ -2085,18 +2086,64 @@ class CompiledGraph:
             )
         return explanation
 
+    @staticmethod
+    def _component_evidence(records: Mapping[int, Any], component: Component) -> Any:
+        value = records.get(component.occurrence_id)
+        if value is not None:
+            return value
+        view = component._graph.view_source(component.occurrence_id)
+        if view is None:
+            return None
+        context, source = view
+        value = records.get(source)
+        if isinstance(value, CompilationExplanation):
+
+            def decision(item):
+                if item.template is None:
+                    return item
+                return replace(
+                    item,
+                    template=replace(
+                        item.template,
+                        target_occurrence_id=context.remap(item.template.target_occurrence_id),
+                    ),
+                )
+
+            return replace(
+                value, selected=tuple(map(decision, value.selected)), rejected=tuple(map(decision, value.rejected))
+            )
+        return value
+
     def explain_arguments(self, component: Component) -> tuple[ParameterExplanation, ...]:
         """Return frozen parameter evidence for one exact graph occurrence."""
         self._path_for_component(component)
-        records = self._parameter_explanations.get(component.occurrence_id)
+        records = self._component_evidence(self._parameter_explanations, component)
         if records is None:
             raise ValueError("explain-arguments-not-recorded: no parameter evidence exists for this occurrence")
-        return tuple(records[name] for name in sorted(records))
+        if not self._argument_paths_cache:
+            self._argument_paths_cache.update(
+                (item.occurrence_id, path) for path, item in self._component_paths(all_roots=True).items()
+            )
+        view = component._graph.view_source(component.occurrence_id)
+
+        def selected_path(item: str) -> str:
+            try:
+                occurrence = int(item)
+            except ValueError:
+                return item
+            if view is not None:
+                occurrence = view[0].remap(occurrence)
+            return self._argument_paths_cache.get(occurrence, item)
+
+        return tuple(
+            replace(records[name], selected_components=tuple(map(selected_path, records[name].selected_components)))
+            for name in sorted(records)
+        )
 
     def explain_specialization(self, component: Component) -> GenericBindingExplanation:
         """Return frozen generic substitutions for one exact occurrence."""
         self._path_for_component(component)
-        explanation = self._generic_explanations.get(component.occurrence_id)
+        explanation = self._component_evidence(self._generic_explanations, component)
         if explanation is None:
             raise ValueError("explain-specialization-not-recorded: this occurrence has no generic specialization")
         return explanation
@@ -2110,7 +2157,7 @@ class CompiledGraph:
     def explain_decorators(self, component: Component) -> CompilationExplanation:
         """Explain captured decorator choices for a target registration occurrence."""
         path = self._path_for_component(component)
-        explanation = self._decorator_explanations.get(component.occurrence_id)
+        explanation = self._component_evidence(self._decorator_explanations, component)
         if explanation is None:
             raise ValueError("explain-decorators-not-recorded: no decorator decision exists for this occurrence")
         return replace(explanation, path=path)

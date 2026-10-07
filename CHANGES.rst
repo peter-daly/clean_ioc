@@ -1,6 +1,12 @@
 Unreleased
 ----------
 
+    Replace automatic provider target subtree copies with compact immutable graph
+    views while retaining every public provider family and collection form.
+    Add opt-in declarative candidate_when eligibility and provider-map root_policy.
+    Share proven equivalent immutable activation plans, reduce freezing/finalization
+    allocations, and extend span-free compiler allocation/eligibility attribution.
+
 
 2.0.0rc2
 --------
