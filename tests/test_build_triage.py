@@ -38,7 +38,7 @@ def test_shared_missing_request_groups_roots_and_retains_attempts_and_original_r
     builder.register(Second)
     builder.mark_entrypoint(First)
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
     error = raised.value
     assert error.report is not None
     original_json = error.report.to_json()
@@ -57,7 +57,7 @@ def test_shared_missing_request_groups_roots_and_retains_attempts_and_original_r
     with pytest.raises(FrozenInstanceError):
         setattr(group, "ref", "mutated")
     builder.register(Missing)
-    assert builder.build().build_report.is_valid
+    assert builder.build(diagnostics=True).build_report.is_valid
 
 
 def test_same_display_name_different_type_identity_stays_separate():
@@ -101,7 +101,7 @@ def test_boundary_and_named_selection_contexts_do_not_merge():
     builder.register(Root)
     builder.create_boundary("feature").apply_bundle(install_feature)
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
     groups = raised.value.triage_report().groups
     assert len(groups) == 2
     assert {fact.boundary for fact in raised.value.evidence if fact is not None} == {None, "feature"}
@@ -122,7 +122,7 @@ def test_boundary_and_named_selection_contexts_do_not_merge():
     named.register(First, arguments={"candidate": select(cf.with_name("first"))})
     named.register(Second, arguments={"candidate": select(cf.with_name("second"))})
     with pytest.raises(ContainerBuildError) as named_failure:
-        named.build()
+        named.build(diagnostics=True)
     named_groups = named_failure.value.triage_report().groups
     assert len(named_groups) == 2
     assert all("rejected candidates" in group.reason for group in named_groups)
@@ -146,7 +146,7 @@ def test_same_root_failure_in_two_boundaries_keeps_both_issues_and_entrypoint_co
     builder.create_boundary("a").apply_bundle(install_a)
     builder.create_boundary("b").apply_bundle(install_b)
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
     error = raised.value
     assert error.report is not None
     assert len(error.report.issues) == 2
@@ -393,7 +393,7 @@ def test_changed_filter_result_marks_retry_inconsistent_without_reexecuting_on_r
     builder.register(Service)
     builder.register(Root, arguments={"service": select(varying_filter)})
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
     calls_after_build = calls
     triage = raised.value.triage_report()
     assert triage.inconsistent_retries
@@ -416,7 +416,7 @@ def test_wide_failed_report_bounds_group_details_and_accounts_for_every_issue():
 
         builder.register(type(f"Root{number}", (), {"__init__": initialize}))
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
     triage = raised.value.triage_report()
     assert len(triage.report.issues) == 105
     assert len(triage.groups) == 1

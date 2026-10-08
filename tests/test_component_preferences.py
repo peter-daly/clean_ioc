@@ -174,7 +174,7 @@ def test_ordered_consumer_stages_choose_all_matches_then_narrow(order):
     chain = prefer(stage("primary", cf.has_tag("primary"))).then(stage("eu", cf.has_tag("region", "eu"))).then(explode)
     builder.register(Client, arguments={"policy": select(prefer=chain)})
     builder.mark_entrypoint(Client)
-    container = builder.build()
+    container = builder.build(diagnostics=True)
     assert type(container.resolve(Client).policy) is A
     assert observations == [("primary", item) for item in reversed(order)] + [
         ("eu", item) for item in reversed(order) if item in (A, B)
@@ -241,7 +241,7 @@ def test_filter_and_default_name_constraints_cannot_be_undone():
 def test_provider_final_tie_and_unique_choice(target, unique):
     builder = build_pair(consumer=prefer(cf.implementation_type_is(A) if unique else cf.all_components), target=target)
     if unique:
-        container = builder.build()
+        container = builder.build(diagnostics=True)
         explanation = dependency_explanation(container, target)
         assert len(explanation.selected) == 1
         assert "preference-final-ambiguous" not in explanation.to_json()
@@ -249,7 +249,7 @@ def test_provider_final_tie_and_unique_choice(target, unique):
             assert type(container.resolve(Deferred).policy()) is A
     else:
         with pytest.raises(ContainerBuildError) as caught:
-            builder.build()
+            builder.build(diagnostics=True)
         explanations = [
             item
             for item in caught.value.explanations
@@ -278,7 +278,7 @@ def test_reached_failure_redacted_and_failed_builder_repairable(phase):
         Client, arguments={"policy": select(prefer=prefer(explode) if phase == "consumer" else None)}
     )
     with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
+        builder.build(diagnostics=True)
     error = caught.value
     assert "SECRET" not in str(error)
     assert phase in str(error)
@@ -288,7 +288,7 @@ def test_reached_failure_redacted_and_failed_builder_repairable(phase):
     builder.patch_component(
         Client, client_id, arguments={"policy": select(prefer=prefer(cf.implementation_type_is(A)))}
     )
-    assert type(builder.build().resolve(Client).policy) is A
+    assert type(builder.build(diagnostics=True).resolve(Client).policy) is A
     with pytest.raises(BuilderAlreadyBuiltError):
         builder.patch_component(Policy, component_id, prefer=None)
 
@@ -371,7 +371,7 @@ def test_boundary_context_masking_and_strict_cardinality():
     source.register(Policy, A, prefer=prefer(explode))
     builder.register(Policy, B)
     builder.register(Client)
-    with builder.build() as container:
+    with builder.build(diagnostics=True) as container:
         assert type(container.resolve(Client).policy) is B
         explanation = dependency_explanation(container)
         assert any(
@@ -384,7 +384,7 @@ def test_boundary_context_masking_and_strict_cardinality():
     source.register(Policy, A, prefer=prefer(explode))
     source.register(Policy, B)
     with pytest.raises(ContainerBuildError):
-        invalid.build()
+        invalid.build(diagnostics=True)
 
 
 def test_patch_undefined_replace_clear_and_discovery_persistence():
@@ -495,7 +495,7 @@ def test_diagnostics_census_profile_and_runtime_do_not_replay_callbacks():
         return component.implementation is A
 
     profile = CompilationProfiler(max_records=10000)
-    first = build_pair(consumer=prefer(choose)).build(profile=profile)
+    first = build_pair(consumer=prefer(choose)).build(profile=profile, diagnostics=True)
     before = list(calls)
     explanation = dependency_explanation(first)
     assert len(explanation.selected) == 1
@@ -519,8 +519,8 @@ def test_diagnostics_census_profile_and_runtime_do_not_replay_callbacks():
         with first.new_scope() as scope:
             scope.resolve(Client)
     assert calls == before
-    second = build_pair(consumer=prefer(cf.implementation_type_is(A)).then(explode)).build()
-    changed = build_pair(consumer=prefer(cf.implementation_type_is(B))).build()
+    second = build_pair(consumer=prefer(cf.implementation_type_is(A)).then(explode)).build(diagnostics=True)
+    changed = build_pair(consumer=prefer(cf.implementation_type_is(B))).build(diagnostics=True)
     assert first.graph.manifest().fingerprint == second.graph.manifest().fingerprint
     assert first.graph.manifest().fingerprint != changed.graph.manifest().fingerprint
 
@@ -537,7 +537,7 @@ def test_failed_stage_census_preserves_prior_elimination_without_selected_winner
     )
     profile = CompilationProfiler(max_records=10000)
     with pytest.raises(ContainerBuildError) as caught:
-        builder.build(profile=profile)
+        builder.build(profile=profile, diagnostics=True)
     error = caught.value
     explanation = next(
         item
@@ -569,7 +569,7 @@ def test_unreachable_tail_evidence_is_compact():
     chain = prefer(cf.implementation_type_is(A))
     for _ in range(100):
         chain = chain.then(explode)
-    container = build_pair(consumer=chain).build()
+    container = build_pair(consumer=chain).build(diagnostics=True)
     explanation = dependency_explanation(container)
     for decision in (*explanation.selected, *explanation.rejected):
         assert len(decision.preferences) == 2
@@ -773,7 +773,7 @@ def test_generic_discovery_preferences_and_patched_fallback_are_preserved():
 
 
 def test_missing_registration_rule_is_not_misreported_as_masked_context():
-    container = build_pair(first=prefer(cf.all_components)).build()
+    container = build_pair(first=prefer(cf.all_components)).build(diagnostics=True)
     explanation = dependency_explanation(container)
     stage = explanation.rejected[0].preferences[0]
     assert stage.reason == "missing-rule"

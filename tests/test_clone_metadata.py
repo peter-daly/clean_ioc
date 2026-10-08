@@ -42,6 +42,7 @@ def _normalized(value, replacements):
 
 def _assert_equivalent(builder, monkeypatch, *, build_args=None):
     blueprint, inputs = builder._compilation_snapshot(build_args)
+    inputs["diagnostics"] = True
     optimized = compiler_module._compile_with_report(blueprint, **inputs)
     with monkeypatch.context() as patch:
         patch.setattr(compiler_module._Compiler, "_draft", _baseline_draft(compiler_module._Compiler._draft))
@@ -98,7 +99,7 @@ def test_anchored_overlay_preserves_source_graph_sidecars(monkeypatch):
     parent_builder = ContainerBuilder()
     parent_builder.register(workloads.Leaf, lifespan="singleton")
     parent_builder.register(workloads.Worker, lifespan="singleton")
-    with parent_builder.build() as parent:
+    with parent_builder.build(diagnostics=True) as parent:
         builder = parent.new_scope_builder()
         builder.register(workloads.CollectionRoot)
         _assert_equivalent(builder, monkeypatch)

@@ -1,5 +1,42 @@
 # Compiler memory evidence — 7 October 2026
 
+For the latest measured state, see
+[the sequential runtime-build evidence](runtime-build-series-evidence.md).
+It includes the subsequent production options, signature-parser fix, actual-host
+adoption and draft-capacity release. Measurements below are historical.
+
+The subsequent [early rejection allocation change](early-rejection-records-evidence.md) removes proven
+early-rejected physical records in ordinary builds and preserves them in diagnostic builds. Its isolated
+before/after evidence is separate from the historical comparisons below.
+
+## Latest combined result — all five follow-up changes
+
+The final installed **development** wheels include reusable graph path indexes,
+compiler-local diagnostic names, early eligibility in Bark/Cop, five dependency-only
+internal provider maps, and proven invariant subplan reuse. Three alternating fresh
+installed-wheel samples per app show worker build time of **6.2177–6.3208 s** after
+all five changes, versus **6.8317–6.8961 s** with changes 1–4. The additional reuse
+reduces worker build time by about 9%; overlapping process RSS ranges do not
+establish an isolated, repeatable Cop memory reduction for change 5.
+
+Clean IoC CI, final Bark unit tests and final Cop unit tests passed. The final full
+Cop integration run passed all 64 tests in 405.62 s, including all four unchanged
+catalogue memory assertions and all five application hosts. The earlier changes
+1–4 integration result is retained as historical evidence.
+Linux/deployment acceptance remains unpassed: the configured ARM64 base image fails
+before compilation because `_zstd` is missing, and the diagnostic reference image's
+worker does not become ready within the unchanged 120-second window at 512 MiB/100m.
+Clean IoC rc2 remains unpublished and downstream locks still select the original
+released dependencies. See [the detailed combined follow-up evidence](compiler-combined-evidence.md)
+and [sanitized raw combined measurements](../benchmarks/compiler_combined_results.json).
+
+## Historical measurements below
+
+The following sections preserve the original compiler-memory revision and its
+then-current development-wheel results. Their “final” measurements and outstanding
+work refer to that historical revision; the combined follow-up above supersedes
+its current-status claims without replacing the original evidence.
+
 This revision reduces automatic compiler allocation and adds explicit early eligibility. It does **not** establish the 512 MiB / 100m deployment gate. The worker still exceeds the memory budget in macOS development measurements.
 
 ## Implementation and opt-in changes
@@ -85,3 +122,20 @@ After the separate Bark v1_rc update/publication, Cop must lock that released re
 - `benchmarks/compiler_memory_cop_profiles.json`: separate profiled Cop counters/phases and allocation evidence.
 - `/tmp/ioc-memory-final-ci.log`: local complete CI output.
 - `/tmp/ioc-memory-final-wheels/clean_ioc-2.0.0rc2-py3-none-any.whl`: measured development wheel; package version was not bumped or published.
+
+
+## Latest followup: optional diagnostic capture
+
+[Optional compiler diagnostics evidence](optional-diagnostics-evidence.md) records the latest same-wheel off/on
+comparison and preserves the historical measurements above. Three fresh worker samples per mode measured
+5.39–5.45 seconds / 410–430 MiB with diagnostics off, versus 6.19–6.32 seconds / 470–506 MiB with capture on;
+physical record/view counts were unchanged. API RSS did not show a reliable improvement. Final Bark unit checks passed
+5,941 tests (26 skipped), Cop unit checks passed 494 tests, and the full Cop integration suite passed 64 tests
+with the four original catalogue-capacity cases and all five host readiness checks unchanged. The actual worker heap
+comparison saved 52.415 MiB (44.614%) after GC and 56.263 MiB (22.837%) at traced peak.
+
+The ARM64 Python 3.14.4-slim Linux reference API became ready at 89.388 seconds under the unchanged 512 MiB / 100m
+limits. The worker did not become ready within 120 seconds, reached the 512 MiB memory cap and recorded 112 memory-max
+events without an OOM kill. This is not successful worker or configured-image acceptance; the configured base's missing
+Python `_zstd` extension remains unresolved. That followup contains completed integration and actual-worker heap results; configured-image and constrained-worker
+readiness acceptance remain unresolved.

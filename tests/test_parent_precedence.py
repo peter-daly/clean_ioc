@@ -113,7 +113,7 @@ def test_provider_unique_maximum_and_tied_maximum(tied):
     builder.register(Deferred)
     if tied:
         with pytest.raises(ContainerBuildError) as caught:
-            builder.build()
+            builder.build(diagnostics=True)
         assert caught.value.report is not None
         assert any(issue.code == "provider-ambiguous-component" for issue in caught.value.report.errors)
         explanations = [
@@ -123,7 +123,7 @@ def test_provider_unique_maximum_and_tied_maximum(tied):
         ]
         assert explanations and not explanations[0].selected
     else:
-        with builder.build() as container:
+        with builder.build(diagnostics=True) as container:
             assert isinstance(container.resolve(Deferred).policy(), Preferred)
 
 
@@ -151,7 +151,7 @@ def test_evidence_census_and_fingerprint_do_not_replay_callbacks():
         builder.register(Policy, Default)
         builder.register(Consumer)
         builder.mark_entrypoint(Consumer)
-        return builder.build()
+        return builder.build(diagnostics=True)
 
     first = build(10)
     second = build(20)
@@ -360,7 +360,7 @@ def test_failed_callback_is_not_hidden_by_precedence_and_build_can_be_repaired()
     builder.register(Policy, Preferred, parent_precedence=10)
     builder.register(Consumer)
     with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
+        builder.build(diagnostics=True)
     assert caught.value.report is not None
     assert any(
         "ValueError" in decision.reason
@@ -368,7 +368,7 @@ def test_failed_callback_is_not_hidden_by_precedence_and_build_can_be_repaired()
         for decision in explanation.rejected
     )
     state["fail"] = False
-    assert isinstance(builder.build().resolve(Consumer).policy, Preferred)
+    assert isinstance(builder.build(diagnostics=True).resolve(Consumer).policy, Preferred)
 
 
 def test_scope_slot_fallback_and_per_call_target_use_frozen_plans():
@@ -420,7 +420,7 @@ def test_tied_maximum_census_does_not_claim_first_eligible_won():
     builder.register(Policy, Default)
     builder.register(Consumer)
     builder.mark_entrypoint(Consumer)
-    container = builder.build()
+    container = builder.build(diagnostics=True)
     assert isinstance(container.resolve(Consumer).policy, Application)
     uses = [use for item in container.graph.selection_census().definitions for use in item.examples]
     tie = next(use for use in uses if "equal-parent-precedence-order" in use.reason_codes)
@@ -438,7 +438,7 @@ def test_unbounded_integer_scores_build_and_serialize_without_decimal_conversion
     builder.register(Policy, Preferred, parent_precedence=value)
     builder.register(Policy, Default, parent_precedence=value - 1)
     builder.register(Consumer)
-    container = builder.build()
+    container = builder.build(diagnostics=True)
     assert isinstance(container.resolve(Consumer).policy, Preferred)
     root = next(root for root in container.graph.roots if root.component.service_type is Consumer)
     dependency = next(item for item in root.component.dependencies if item.service_type is Policy)

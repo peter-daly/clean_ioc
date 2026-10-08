@@ -933,7 +933,7 @@ def test_generated_predicate_failure_preserves_safe_provenance_and_original_caus
 
     template_id = builder.register_decorator_template(for_each=Source, source_filter=source_filter, template=template)
     with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
+        builder.build(diagnostics=True)
     assert caught.value.report is not None
     assert source_calls == factory_calls == [source_id]
     issues = caught.value.report.errors

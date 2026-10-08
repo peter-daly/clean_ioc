@@ -131,6 +131,7 @@ from .tooling import (
     ValidationContext,
     ValidationRule,
     _CandidateRecord,
+    _DiagnosticNames,
     _issue_path_name,
     qualified_name,
 )
@@ -370,6 +371,8 @@ def _validate_dependency_names(
 ) -> None:
     """Reject configured names that activation cannot pass to the callable."""
 
+    if not dependencies:
+        return
     try:
         parameters = inspect.signature(constructor_type(implementation) or implementation).parameters
     except (TypeError, ValueError):
@@ -409,7 +412,9 @@ class ContainerBuildError(RuntimeError):
         census_ids: Mapping[str, str] = types.MappingProxyType({}),
         census_sources: Mapping[str, str] = types.MappingProxyType({}),
         census_attempts: tuple[tuple[str, str, PartialState, str | None], ...] = (),
+        diagnostics_enabled: bool = True,
     ):
+        self.diagnostics_enabled = diagnostics_enabled
         self.code = code
         self.path = path
         self.explanations = explanations or (() if report is None else report._explanations)
@@ -486,6 +491,8 @@ class ContainerBuildError(RuntimeError):
 
         from .selection_census import failed_selection_census
 
+        if not self.diagnostics_enabled:
+            raise ValueError("diagnostics-disabled: build with diagnostics=True to inspect captured compiler evidence")
         return failed_selection_census(self)
 
 
@@ -493,6 +500,7 @@ def _budget_build_error(
     stop: _BudgetStop,
     state: _BudgetState | None,
     blueprint: _Blueprint | None,
+    diagnostics: bool,
 ) -> ContainerBuildError:
     fact = stop.fact
     message = (
@@ -548,9 +556,9 @@ def _budget_build_error(
             if finding not in issues:
                 issues.insert(0, finding)
                 facts.insert(0, original_facts[index] if index < len(original_facts) else None)
-        if state is not None and state.primary is not None:
+        if diagnostics and state is not None and state.primary is not None:
             attempts.insert(0, state.primary.partial_attempt(original))
-    elif stop.compiler is not None:
+    elif diagnostics and stop.compiler is not None:
         # Convert only the compiler-owned signal; no callback is replayed.
         attempts.append(stop.compiler.partial_attempt(ContainerBuildError(message, code=issue.code, path=stop.path)))
     issues = [
@@ -573,23 +581,28 @@ def _budget_build_error(
             for key in keys
         )
     primary_count = 1 if state is not None and state.primary is not None else 0
-    partial = PartialGraph(
-        tuple(attempts),
-        truncated=True,
-        total_attempts=primary_count + started if state is None else state.compilation_attempts,
-        retained_attempts=len(attempts),
-        omitted_attempts=max(
-            0, (primary_count + started if state is None else state.compilation_attempts) - len(attempts)
-        ),
-        total_roots=total_roots,
-        retained_roots=min(started, len(stop.attempts)),
-        omitted_roots=max(0, total_roots - min(started, len(stop.attempts))),
+    partial = (
+        None
+        if not diagnostics
+        else PartialGraph(
+            tuple(attempts),
+            truncated=True,
+            total_attempts=primary_count + started if state is None else state.compilation_attempts,
+            retained_attempts=len(attempts),
+            omitted_attempts=max(
+                0, (primary_count + started if state is None else state.compilation_attempts) - len(attempts)
+            ),
+            total_roots=total_roots,
+            retained_roots=min(started, len(stop.attempts)),
+            omitted_roots=max(0, total_roots - min(started, len(stop.attempts))),
+        )
     )
     return ContainerBuildError(
         report=BuildReport(tuple(issues), checked_roots=started),
         code=issue.code,
         path=stop.path,
         partial_graph=partial,
+        diagnostics_enabled=diagnostics,
         evidence=tuple(facts),
         entry_points=None if blueprint is None else _declared_entry_point_labels(blueprint),
         explanations=() if state is None or state.primary is None else tuple(state.primary.decision_history),
@@ -1611,6 +1624,8 @@ def _compiled_boundary_component(
         inherited_graph_sidecars=inputs.get("inherited_graph_sidecars", types.MappingProxyType({})),
         budget_state=inputs.get("budget_state"),
         profile_phase="boundary preparation",
+        diagnostics=inputs.get("diagnostics", False),
+        provider_roots=inputs.get("provider_roots"),
     )
     compiler._area = blueprint.registration_area(layer)
     if registration.id in layer.pattern_ids:
@@ -4844,8 +4859,12 @@ class _PlanSet:
     roots: dict[Any, tuple[_RootPlan, ...]]
     default_roots: dict[Any, _RootPlan]
     default_root_groups: dict[Any, tuple[_RootPlan, ...]]
-    blueprint: _Blueprint
+    _blueprint: _Blueprint | None
     build_args: Mapping[str, Any]
+    diagnostics: bool = False
+    unreachable_checked: bool = True
+    unreachable_issue_offset: int = 0
+    fallback_ids: frozenset[str] = frozenset()
     compiled_graph: CompiledGraph | None = None
     build_report: BuildReport = field(default_factory=BuildReport)
     compiler_issues: tuple[BuildIssue, ...] = ()
@@ -4857,6 +4876,7 @@ class _PlanSet:
     generic_explanations: Mapping[int, GenericBindingExplanation] = field(default_factory=dict)
     occurrence_layers: Mapping[int, str] = field(default_factory=dict)
     provider_roots: Mapping[Any, tuple[_RootPlan, ...]] = field(default_factory=dict)
+    managed_provider_roots: Mapping[Any, tuple[_RootPlan, ...]] = field(default_factory=dict)
     architecture_roots: tuple[tuple[str | None, Any, _RootPlan], ...] = ()
     area_root_candidates: Mapping[str, Mapping[Any, tuple[_CandidateRecord, ...]]] = field(default_factory=dict)
     census_sources: Mapping[str, str] = field(default_factory=dict)
@@ -4865,6 +4885,17 @@ class _PlanSet:
     warmup_steps: Mapping[str, tuple[_RootPlan, ...]] = field(default_factory=lambda: types.MappingProxyType({}))
     warmup_infos: tuple[WarmupPlanInfo, ...] = ()
     warmup_fingerprint: str = ""
+    selected_registrations: tuple[RegistrationInfo, ...] = ()
+    slots: frozenset[tuple[Any, str | None]] = frozenset()
+    ensured_import_modules: tuple[str, ...] = ()
+    validation_rules: tuple[_ValidationRuleDefinition, ...] = ()
+
+    @property
+    def blueprint(self) -> _Blueprint:
+        blueprint = self._blueprint
+        if blueprint is None:
+            raise RuntimeError("Scope builders are disabled: this runtime was built with allow_scope_builders=False")
+        return blueprint
 
 
 @dataclass(frozen=True, slots=True)
@@ -4876,6 +4907,7 @@ class _GraphExplanationSidecars:
     origins: Mapping[int, DefinitionOrigin]
     parameters: Mapping[int, Mapping[str, ParameterExplanation]]
     generics: Mapping[int, GenericBindingExplanation]
+    fallback_ids: frozenset[str]
 
 
 class _ExplanationCloneContext:
@@ -4935,6 +4967,7 @@ def _graph_explanation_sidecars(plan: _PlanSet) -> _GraphExplanationSidecars:
         plan.occurrence_origins,
         plan.parameter_explanations,
         plan.generic_explanations,
+        plan.fallback_ids,
     )
 
 
@@ -5047,12 +5080,21 @@ class _CompiledCandidate:
     is_fallback: bool = False
 
 
-def _frame_description(frame: _CompilerFrame) -> str:
-    label = qualified_name(frame.label)
+def _frame_description(frame: _CompilerFrame, name: Callable[[Any], str] = qualified_name) -> str:
+    label = name(frame.label)
     if frame.kind is ComponentKind.pre_configuration:
         return f"Pre-configuration {label}"
     owner = "Singleton" if frame.lifespan == legacy.Lifespan.singleton else "Scoped"
     return f"{owner} {label}"
+
+
+@dataclass(frozen=True, slots=True)
+class _InvariantSubplan:
+    component: Component
+    step: _Step
+    # Retain the actual registrations, including unselected alternatives. Identity
+    # keys must not be recycled, and a cache hit must not conceal a stack cycle.
+    registrations: tuple[legacy._Registration, ...]
 
 
 class _Compiler:
@@ -5069,8 +5111,20 @@ class _Compiler:
         profile_phase: str = "primary compilation",
         profile_attempt: str | None = "primary",
         budget_state: _BudgetState | None = None,
+        diagnostics: bool = False,
+        provider_roots: tuple[Any, ...] | None = None,
     ):
+        self._diagnostics = diagnostics
+        self._requested_provider_roots = provider_roots
+        self._managed_provider_roots: dict[Any, tuple[_RootPlan, ...]] = {}
         self.blueprint = blueprint
+        self._fallback_component_ids = {
+            component_id
+            for layer in (*blueprint.layers, *(b.layer for b in blueprint.boundaries))
+            for component_id in layer.fallback_ids
+        }
+        for sidecars in inherited_graph_sidecars.values():
+            self._fallback_component_ids.update(sidecars.fallback_ids)
         self._has_fallbacks = any(
             layer.fallback_ids for layer in (*blueprint.layers, *(b.layer for b in blueprint.boundaries))
         )
@@ -5094,6 +5148,9 @@ class _Compiler:
         self._managed_adapter_sources: dict[int, _Step] = {}
         self._provider_view_depths: dict[int, int] = {}
         self._activation_templates: dict[tuple[Any, ...], _RegistrationStep] = {}
+        self._invariant_subplans: dict[tuple[Any, ...], _InvariantSubplan] = {}
+        self._subplan_unsafe_epoch = 0
+        self._subplan_registrations: list[legacy._Registration] = []
         self._stack: list[legacy._Registration] = []
         self._frames: list[_CompilerFrame] = []
         self._specialized_factories: dict[tuple[str, tuple[Any, ...]], legacy._Registration] = {}
@@ -5116,11 +5173,14 @@ class _Compiler:
         self._inherited_graph_sidecars = inherited_graph_sidecars
         # These caches live only for this compilation, never in the frozen plan.
         # Identity keys avoid invoking user-defined hashing/equality on contracts.
-        self._template_labels: dict[int, tuple[Any, str]] = {}
+        self._qualified_name = _DiagnosticNames()
         self._service_target_cache: dict[tuple[Any, ...], tuple[tuple[Any, ...], _ServiceTarget | None]] = {}
         self._area: str | None = None
         self.issues: list[BuildIssue] = []
         self.root_candidates: dict[Any, tuple[_CandidateRecord, ...]] = {}
+        # A declared root with only early exclusions still has automatic empty
+        # collection providers, even when no rejected occurrence is allocated.
+        self._early_rejected_root_services: set[Any] = set()
         self.occurrence_explanations: dict[int, CompilationExplanation] = {}
         self.decorator_explanations: dict[int, CompilationExplanation] = {}
         self.parameter_explanations: dict[int, dict[str, ParameterExplanation]] = {}
@@ -5198,7 +5258,7 @@ class _Compiler:
                 reason = "rejected scope slot"
         return FailureEvidence(
             "missing",
-            qualified_name(service_type),
+            self._qualified_name(service_type),
             reason,
             boundary=self._area,
             layer=None if origin is None else origin.layer,
@@ -5219,13 +5279,13 @@ class _Compiler:
         origin = self.origins.get(ancestor.component.occurrence_id)
         return FailureEvidence(
             "captive",
-            qualified_name(dependency),
+            self._qualified_name(dependency),
             "retaining lifespan",
             boundary=self._area,
             layer=None if origin is None else origin.layer,
             source_location=None if origin is None else origin.location,
-            retaining_ancestor=qualified_name(ancestor.label),
-            offending_dependency=qualified_name(dependency),
+            retaining_ancestor=self._qualified_name(ancestor.label),
+            offending_dependency=self._qualified_name(dependency),
             witness=path,
             identity=(
                 ancestor.component.id,
@@ -5236,12 +5296,16 @@ class _Compiler:
         )
 
     def _record_partial_candidate(self, item: tuple[str, str, PartialState, str | None]) -> None:
+        if not self._diagnostics:
+            return
         if len(self._partial_candidates) >= 500:
             self._partial_truncated = True
             return
         self._partial_candidates.append(item)
 
     def _record_partial_edge(self, item: tuple[int, str, str, int | None]) -> int | None:
+        if not self._diagnostics:
+            return None
         if len(self._partial_edges) >= 500:
             self._partial_truncated = True
             return None
@@ -5249,12 +5313,22 @@ class _Compiler:
         return len(self._partial_edges) - 1
 
     def _record_partial_declaration_edge(self, item: tuple[int | None, str, str, str, bool]) -> None:
+        if not self._diagnostics:
+            return
         if len(self._partial_declaration_edges) >= 500:
             self._partial_truncated = True
             return
         self._partial_declaration_edges.append(item)
 
     def partial_attempt(self, error: BaseException, *, root: str | None = None) -> CompilationAttempt:
+        if not self._diagnostics:
+            path = error.path if isinstance(error, ContainerBuildError) else ()
+            return CompilationAttempt(
+                root or (path[0] if path else None),
+                issue_code=_build_error_code(error),
+                witness_path=path,
+                boundary=self._area,
+            )
         """Copy only safe structural draft data while it is still available."""
         limit = 500
         records = self.graph._records if self.graph._records is not None else self.graph._drafts
@@ -5266,10 +5340,13 @@ class _Compiler:
             or self._partial_truncated
         )
         drafts = drafts[:limit]
+        labels = {
+            draft.occurrence_id: _issue_path_name(cast(Component, draft), self._qualified_name) for draft in drafts
+        }
         node_items = [
             PartialNode(
                 str(draft.occurrence_id),
-                _issue_path_name(cast(Component, draft)),
+                labels[draft.occurrence_id],
                 PartialState.complete,
                 draft.kind.value,
                 draft.lifespan,
@@ -5306,7 +5383,7 @@ class _Compiler:
                 return cached
             draft = drafts_by_occurrence[occurrence_id]
             parents = tuple(dict.fromkeys(traversal_parents.get(occurrence_id, ())))
-            label = _issue_path_name(cast(Component, draft))
+            label = labels[draft.occurrence_id]
             if not parents:
                 result = ((label,),)
             else:
@@ -5340,7 +5417,7 @@ class _Compiler:
         for draft in drafts:
             if draft.parent_id is not None:
                 edges_by_source.append(
-                    (draft.parent_id, "contains", qualified_name(draft.service_type), draft.occurrence_id)
+                    (draft.parent_id, "contains", self._qualified_name(draft.service_type), draft.occurrence_id)
                 )
             if draft.decorated_id is not None:
                 edges_by_source.append((draft.occurrence_id, "decorates", "", draft.decorated_id))
@@ -5467,7 +5544,7 @@ class _Compiler:
             # compiler decisions are retained in evaluation order.
             node_id = f"candidate_{len(node_items)}"
             implementation = (
-                qualified_name(occurrence.implementation)
+                self._qualified_name(occurrence.implementation)
                 if occurrence is not None
                 else self._partial_candidate_labels.get(candidate, subject)
             )
@@ -5528,7 +5605,7 @@ class _Compiler:
         return replace(attempt, succeeded=True)
 
     def _current_path(self, *tail: Any) -> tuple[str, ...]:
-        return tuple(qualified_name(value) for value in (*(frame.label for frame in self._frames), *tail))
+        return tuple(self._qualified_name(value) for value in (*(frame.label for frame in self._frames), *tail))
 
     def _visibility_error(
         self,
@@ -5590,14 +5667,15 @@ class _Compiler:
             for registration, layer, reason_code in hidden_definitions
         )
         if rejected:
-            self.decision_history.append(
-                CompilationExplanation(
-                    subject=qualified_name(service_type),
-                    path=self._current_path(service_type),
-                    selected=(),
-                    rejected=rejected,
+            if self._diagnostics:
+                self.decision_history.append(
+                    CompilationExplanation(
+                        subject=self._qualified_name(service_type),
+                        path=self._current_path(service_type),
+                        selected=(),
+                        rejected=rejected,
+                    )
                 )
-            )
         sources = ", ".join(repr(item) for item in hidden)
         suggestion = (
             "add Use.root(...)"
@@ -5647,7 +5725,7 @@ class _Compiler:
         )
         if singleton is not None and lifespan == legacy.Lifespan.scoped and not is_instance:
             raise ContainerBuildError(
-                f"{_frame_description(singleton)} cannot retain scoped {label}",
+                f"{_frame_description(singleton, self._qualified_name)} cannot retain scoped {label}",
                 code="captive-dependency",
                 path=self._current_path(label),
                 evidence=(self._captive_evidence(singleton, label),),
@@ -5662,7 +5740,7 @@ class _Compiler:
         )
         if long_lived is not None and lifespan == legacy.Lifespan.per_resolution:
             raise ContainerBuildError(
-                f"{_frame_description(long_lived)} cannot retain per-resolution {label}",
+                f"{_frame_description(long_lived, self._qualified_name)} cannot retain per-resolution {label}",
                 code="captive-dependency",
                 path=self._current_path(label),
                 evidence=(self._captive_evidence(long_lived, label),),
@@ -5682,7 +5760,8 @@ class _Compiler:
             )
             if long_lived is not None:
                 raise ContainerBuildError(
-                    f"{_frame_description(long_lived)} cannot retain per-resolution " f"{qualified_name(service_type)}",
+                    f"{_frame_description(long_lived, self._qualified_name)} cannot retain per-resolution "
+                    f"{self._qualified_name(service_type)}",
                     code="captive-resolution-context",
                     path=self._current_path(service_type),
                     evidence=(self._captive_evidence(long_lived, service_type),),
@@ -5695,7 +5774,8 @@ class _Compiler:
             )
             if singleton is not None:
                 raise ContainerBuildError(
-                    f"{_frame_description(singleton)} cannot retain runtime scope {qualified_name(service_type)}",
+                    f"{_frame_description(singleton, self._qualified_name)} cannot retain runtime scope "
+                    f"{self._qualified_name(service_type)}",
                     code="captive-runtime-scope",
                     path=self._current_path(service_type),
                     evidence=(self._captive_evidence(singleton, service_type),),
@@ -5830,7 +5910,7 @@ class _Compiler:
                 declaring_owner_token = frame.owner_token
             return _CleanupOwnerDescriptor(RuntimeOwnerKind.singleton, declaring_owner_token)
         raise ContainerBuildError(
-            f"No executable cleanup owner exists for {qualified_name(component.service_type)}",
+            f"No executable cleanup owner exists for {self._qualified_name(component.service_type)}",
             code="unsafe-cleanup-owner",
             path=self._current_path(component.service_type),
         )
@@ -5933,6 +6013,13 @@ class _Compiler:
                 for service_type in selected_service_types
                 if service_type in declared or get_origin(service_type) not in self._patterns
             ]
+        if self._requested_provider_roots is not None and service_types is None:
+            for annotation in self._requested_provider_roots:
+                _, target = cast(tuple[str, Any], _provider_request(annotation))
+                self._validate_provider_target(annotation, target)
+                target = (_provider_target_collection(target) or (None, target))[1]
+                if target not in selected_service_types:
+                    selected_service_types.append(target)
         for service_type in selected_service_types:
             # Open generic registrations are reusable activation templates, not
             # directly resolvable roots. Closed occurrences compile on demand
@@ -5965,36 +6052,46 @@ class _Compiler:
             else:
                 area_records.setdefault(area, {})[service_type] = records
             if records:
-                self.decision_history.append(
-                    CompilationExplanation(
-                        subject=qualified_name(service_type),
-                        path=(qualified_name(service_type),),
-                        selected=tuple(record.decision for record in records if record.eligible),
-                        rejected=tuple(record.decision for record in records if not record.eligible),
+                if self._diagnostics:
+                    self.decision_history.append(
+                        CompilationExplanation(
+                            subject=self._qualified_name(service_type),
+                            path=(self._qualified_name(service_type),),
+                            selected=tuple(record.decision for record in records if record.eligible),
+                            rejected=tuple(record.decision for record in records if not record.eligible),
+                        )
                     )
-                )
-            for candidate in eligible:
-                selected = CandidateDecision(
-                    component_id=candidate.component.id,
-                    outcome=DecisionOutcome.selected,
-                    reason_codes=candidate.reason_codes,
-                    reason=candidate.reason,
-                    origin=candidate.origin,
-                )
-                self.occurrence_explanations.setdefault(
-                    candidate.component.occurrence_id,
-                    CompilationExplanation(
-                        subject=qualified_name(service_type),
-                        path=(qualified_name(service_type),),
-                        selected=(selected,),
-                        rejected=tuple(record.decision for record in records if not record.eligible),
-                    ),
-                )
+            if self._diagnostics:
+                for candidate in eligible:
+                    selected = CandidateDecision(
+                        component_id=candidate.component.id,
+                        outcome=DecisionOutcome.selected,
+                        reason_codes=candidate.reason_codes,
+                        reason=candidate.reason,
+                        origin=candidate.origin,
+                    )
+                    self.occurrence_explanations.setdefault(
+                        candidate.component.occurrence_id,
+                        CompilationExplanation(
+                            subject=self._qualified_name(service_type),
+                            path=(self._qualified_name(service_type),),
+                            selected=(selected,),
+                            rejected=tuple(record.decision for record in records if not record.eligible),
+                        ),
+                    )
             if area is None:
                 selected_service_types.extend(
                     request for request in self._pattern_requests if request not in selected_service_types
                 )
         provider_roots = self._compile_provider_roots(roots)
+        if self._requested_provider_roots is not None and service_types is None:
+            for annotation in self._requested_provider_roots:
+                if not provider_roots.get(annotation):
+                    raise ContainerBuildError(
+                        f"No component satisfies declared provider root {annotation!r}",
+                        code="provider-missing-component",
+                        path=(self._qualified_name(annotation),),
+                    )
         entrypoint_requests = (
             self.blueprint.entrypoints
             if area is None
@@ -6014,7 +6111,7 @@ class _Compiler:
                 raise ContainerBuildError(
                     f"No component satisfies deferred root {provider[1]!r}",
                     code="provider-missing-component",
-                    path=(qualified_name(entrypoint.service_type),),
+                    path=(self._qualified_name(entrypoint.service_type),),
                 )
             roots[entrypoint.service_type] = plans
             architecture_roots.extend((area, entrypoint.service_type, plan) for plan in plans)
@@ -6094,10 +6191,12 @@ class _Compiler:
         }
         return _PlanSet(
             graph=self.graph,
+            diagnostics=self._diagnostics,
+            fallback_ids=frozenset(self._fallback_component_ids),
             roots=roots,
             default_roots={service_type: plans[0] for service_type, plans in default_root_groups.items() if plans},
             default_root_groups=default_root_groups,
-            blueprint=self.blueprint,
+            _blueprint=self.blueprint,
             build_args=self.build_args,
             compiler_issues=tuple(self.issues),
             root_candidates=types.MappingProxyType(self.root_candidates),
@@ -6113,6 +6212,7 @@ class _Compiler:
             generic_explanations=types.MappingProxyType(self.generic_explanations),
             occurrence_layers=_OccurrenceLayers(self.graph, types.MappingProxyType(self.origins)),
             provider_roots=types.MappingProxyType(provider_roots),
+            managed_provider_roots=types.MappingProxyType(self._managed_provider_roots),
             architecture_roots=tuple(architecture_roots),
             area_root_candidates=types.MappingProxyType(
                 {name: types.MappingProxyType(records) for name, records in area_records.items()}
@@ -6171,7 +6271,7 @@ class _Compiler:
         target_step: _Step,
     ) -> _RootPlan:
         provider, draft = self._draft(
-            component_id=f"provider-root:{qualified_name(annotation)}:{target_component.id}",
+            component_id=f"provider-root:{self._qualified_name(annotation)}:{target_component.id}",
             service_type=annotation,
             implementation=get_origin(annotation),
             lifespan="transient",
@@ -6190,10 +6290,11 @@ class _Compiler:
         draft.dependency_ids = (cloned_target.occurrence_id,)
         explanation = self.occurrence_explanations.get(target_component.occurrence_id)
         if explanation is not None:
-            self.occurrence_explanations[provider.occurrence_id] = replace(
-                explanation,
-                subject=qualified_name(annotation),
-            )
+            if self._diagnostics:
+                self.occurrence_explanations[provider.occurrence_id] = replace(
+                    explanation,
+                    subject=self._qualified_name(annotation),
+                )
         return _RootPlan(
             provider,
             (_ManagedProviderStep if _is_managed_provider(annotation) else _ProviderStep)(
@@ -6216,7 +6317,7 @@ class _Compiler:
         targets: tuple[_RootPlan, ...],
     ) -> _RootPlan:
         provider, provider_draft = self._draft(
-            component_id=f"provider-root:{qualified_name(annotation)}",
+            component_id=f"provider-root:{self._qualified_name(annotation)}",
             service_type=annotation,
             implementation=get_origin(annotation),
             lifespan="transient",
@@ -6230,7 +6331,7 @@ class _Compiler:
         )
         target_request = get_args(annotation)[0]
         collection, collection_draft = self._draft(
-            component_id=f"provider-root-collection:{qualified_name(annotation)}",
+            component_id=f"provider-root-collection:{self._qualified_name(annotation)}",
             service_type=target_request,
             implementation=collection_type,
             lifespan="transient",
@@ -6255,9 +6356,9 @@ class _Compiler:
         )
         self._record_component_decision(
             provider,
-            subject=qualified_name(annotation),
+            subject=self._qualified_name(annotation),
             code="included-collection",
-            reason=f"The deferred collection target {qualified_name(target_type)} was frozen at build time",
+            reason=f"The deferred collection target {self._qualified_name(target_type)} was frozen at build time",
         )
         return _RootPlan(
             provider,
@@ -6277,13 +6378,53 @@ class _Compiler:
         roots: Mapping[Any, tuple[_RootPlan, ...]],
     ) -> dict[Any, tuple[_RootPlan, ...]]:
         provider_roots: dict[Any, tuple[_RootPlan, ...]] = {}
+        requested = self._requested_provider_roots
+        boundary = self.blueprint.boundary(self._area) if self._area is not None else None
+        if requested is not None:
+            entrypoints = (
+                self.blueprint.entrypoints
+                if self._area is None
+                else (boundary.layer.entrypoints if boundary is not None else ())
+            )
+            requested = tuple(
+                dict.fromkeys(
+                    (
+                        *requested,
+                        *(
+                            entrypoint.service_type
+                            for entrypoint in entrypoints
+                            if _provider_request(entrypoint.service_type) is not None
+                        ),
+                    )
+                )
+            )
+        public_requests = None if requested is None else frozenset(requested)
+        # A managed acquisition may perform arbitrary already-compiled root
+        # lookups through ResolutionContext. Keep its complete scalar closure
+        # whenever a managed handle or an inherited activation may enter it.
+        requires_managed_context = (
+            requested is None
+            or any(_is_managed_provider(annotation) for annotation in requested)
+            or bool(self._anchored_singletons or self._anchored_pre_configurations)
+            # Independent boundary roots are compiled after this preparation.
+            or bool(self.blueprint.boundaries)
+            or any(
+                draft.kind is ComponentKind.managed_provider or _is_managed_provider(draft.service_type)
+                for draft in self.graph._drafts.values()
+            )
+        )
+        managed_requests = (
+            None
+            if requested is None
+            else frozenset(AsyncManagedProvider[target] for annotation in requested for target in get_args(annotation))
+        )
         if self._profile is not None:
             self._profile.count("provider induced component copies", 0)
         for service_type, target_plans in tuple(roots.items()):
             if _provider_request(service_type) is not None or _collection_request(service_type) is not None:
                 continue
             base_records = self.root_candidates.get(service_type, ())
-            if not target_plans and not base_records:
+            if not target_plans and not base_records and service_type not in self._early_rejected_root_services:
                 # Dependency-only declarations do not create automatic provider
                 # families, including synthetic empty collection providers.
                 continue
@@ -6295,16 +6436,39 @@ class _Compiler:
                 (AsyncManagedProvider, "async"),
             ):
                 annotation = provider_type[service_type]
+                include_scalar = public_requests is None or annotation in public_requests
+                internal_scalar = provider_type is AsyncManagedProvider and requires_managed_context
+                include_collections = (
+                    public_requests is None
+                    or any(
+                        provider_type[target] in public_requests
+                        for target in (list[service_type], tuple[service_type, ...], set[service_type])
+                    )
+                    or (
+                        provider_type is AsyncManagedProvider
+                        and managed_requests is not None
+                        and any(
+                            provider_type[target] in managed_requests
+                            for target in (list[service_type], tuple[service_type, ...], set[service_type])
+                        )
+                    )
+                )
+                if not include_scalar and not internal_scalar and not include_collections:
+                    continue
                 plans = tuple(
                     replace(
                         self._provider_root_component(annotation, mode, plan.component, plan.step),
                         is_fallback=plan.is_fallback,
                     )
                     for plan in target_plans
+                    if include_scalar or internal_scalar
                 )
-                provider_roots[annotation] = plans
+                if internal_scalar:
+                    self._managed_provider_roots[annotation] = plans
+                if include_scalar:
+                    provider_roots[annotation] = plans
                 records: list[_CandidateRecord] = []
-                for plan, target in zip(plans, target_plans, strict=True):
+                for plan, target in zip(plans, target_plans, strict=True) if include_scalar else ():
                     origin = origins.get(target.component.occurrence_id, _synthetic_origin())
                     records.append(
                         _CandidateRecord(
@@ -6323,7 +6487,8 @@ class _Compiler:
                             True,
                         )
                     )
-                self.root_candidates[annotation] = tuple(records)
+                if include_scalar:
+                    self.root_candidates[annotation] = tuple(records)
 
                 unnamed_targets = _preferred_root_plans(plan for plan in target_plans if plan.component.name is None)
                 for collection_type in (list, tuple, set):
@@ -6331,6 +6496,14 @@ class _Compiler:
                         tuple[service_type, ...] if collection_type is tuple else collection_type[service_type]
                     )
                     collection_annotation = provider_type[collection_target]
+                    include_collection = public_requests is None or collection_annotation in public_requests
+                    internal_collection = (
+                        requires_managed_context
+                        and provider_type is AsyncManagedProvider
+                        and (managed_requests is None or collection_annotation in managed_requests)
+                    )
+                    if not include_collection and not internal_collection:
+                        continue
                     collection_plan = self._provider_collection_root(
                         collection_annotation,
                         mode,
@@ -6338,7 +6511,12 @@ class _Compiler:
                         service_type,
                         unnamed_targets,
                     )
-                    provider_roots[collection_annotation] = (collection_plan,)
+                    collection_plans = (collection_plan,)
+                    if internal_collection:
+                        self._managed_provider_roots[collection_annotation] = collection_plans
+                    if not include_collection:
+                        continue
+                    provider_roots[collection_annotation] = collection_plans
                     self.root_candidates[collection_annotation] = (
                         _CandidateRecord(
                             collection_plan.component,
@@ -6491,13 +6669,13 @@ class _Compiler:
                 bindings.items(),
                 key=lambda item: (
                     item[0] if isinstance(item[0], str) else getattr(item[0], "__name__", ""),
-                    qualified_name(item[1]),
+                    self._qualified_name(item[1]),
                 ),
             ):
                 name = binding_key if isinstance(binding_key, str) else getattr(binding_key, "__name__", "TypeVar")
                 seen[name] = seen.get(name, 0) + 1
                 rendered_name = name if isinstance(binding_key, str) else f"{name}#{seen[name]}"
-                rendered.append((rendered_name, qualified_name(value)))
+                rendered.append((rendered_name, self._qualified_name(value)))
             self._factory_pattern_bindings[specialized.id] = tuple(rendered)
         self._specialized_registration_sources[specialized.id] = registration
         self._specialized_factories[key] = specialized
@@ -6516,12 +6694,7 @@ class _Compiler:
         )
 
     def _template_label(self, value: Any) -> str:
-        cached = self._template_labels.get(id(value))
-        if cached is not None:
-            return cached[1]
-        label = qualified_name(value)
-        self._template_labels[id(value)] = value, label
-        return label
+        return self._qualified_name(value)
 
     def _select_service_target(
         self,
@@ -6564,7 +6737,7 @@ class _Compiler:
                 else f"derived services {selector.service_type!r}"
             )
             raise ContainerBuildError(
-                f"Registration {source.id} for {qualified_name(requested_service_type)} "
+                f"Registration {source.id} for {self._qualified_name(requested_service_type)} "
                 f"cannot satisfy {label}: {error}",
                 code="service-group-incompatible"
                 if isinstance(selector, ServiceGroup)
@@ -6618,23 +6791,24 @@ class _Compiler:
         try:
             winners = exact or _winning_patterns(available, service_type)
         except ContainerBuildError as error:
-            self.decision_history.append(
-                CompilationExplanation(
-                    subject=qualified_name(service_type),
-                    path=self._current_path(service_type),
-                    selected=(),
-                    rejected=tuple(
-                        CandidateDecision(
-                            registration.id,
-                            DecisionOutcome.rejected,
-                            (error.code or "pattern-invalid",),
-                            "The structural templates cannot select a unique supported specialization",
-                            self.blueprint.registration_origin(registration.id, layer),
-                        )
-                        for registration, layer in available
-                    ),
+            if self._diagnostics:
+                self.decision_history.append(
+                    CompilationExplanation(
+                        subject=self._qualified_name(service_type),
+                        path=self._current_path(service_type),
+                        selected=(),
+                        rejected=tuple(
+                            CandidateDecision(
+                                registration.id,
+                                DecisionOutcome.rejected,
+                                (error.code or "pattern-invalid",),
+                                "The structural templates cannot select a unique supported specialization",
+                                self.blueprint.registration_origin(registration.id, layer),
+                            )
+                            for registration, layer in available
+                        ),
+                    )
                 )
-            )
             raise ContainerBuildError(str(error), code=error.code, path=self._current_path(service_type)) from error
         selected_ids = {registration.id for registration, _ in winners}
         rejected = []
@@ -6839,8 +7013,25 @@ class _Compiler:
                 source_registration.id in layer.pattern_ids or patterns.variables(visibility_target.service_type)
             ):
                 self._pattern_requests[service_type] = None
-            self._partial_candidate_labels[source_registration.id] = qualified_name(source_registration.implementation)
+            if self._diagnostics:
+                self._partial_candidate_labels[source_registration.id] = self._qualified_name(
+                    source_registration.implementation
+                )
             early_policy = layer.candidate_when.get(source_registration.id)
+            # These policies belong to this occurrence. Even rejected alternatives
+            # participate in a parent's transitive proof of selection invariance.
+            if (
+                early_policy is not None
+                or (
+                    layer.registration_when.get(source_registration.id) is not None
+                    and layer.registration_when.get(source_registration.id) is not all_components
+                )
+                or source_registration.parent_node_filter is not legacy.default_parent_node_filter
+                or layer.registration_preferences.get(source_registration.id) is not None
+                or layer.registration_parent_precedence.get(source_registration.id, 0)
+                or visibility_target is not None
+            ):
+                self._subplan_unsafe_epoch += 1
             if self._profile is not None:
                 self._profile.count("candidate definitions considered")
                 self._count_candidate_definition(source_registration, service_type, "considered")
@@ -6856,6 +7047,16 @@ class _Compiler:
                     parent if definition_area == consumer_area else None,
                 )
                 if _early_match(early_policy, cast(Component, preview)) is False:
+                    if self._profile is not None:
+                        self._profile.count("early excluded candidates")
+                        self._count_candidate_definition(source_registration, service_type, "early excluded")
+                    if not self._diagnostics:
+                        # No selection callback can observe an ineligible
+                        # candidate. Keep the proof/counter updates above, but
+                        # allocate neither an occurrence nor its history.
+                        if root_only and consumer_area is None:
+                            self._early_rejected_root_services.add(service_type)
+                        continue
                     # Retain a compact rejected root and decision, never its excluded subtree.
                     component, _ = self._draft(
                         component_id=source_registration.id,
@@ -6882,17 +7083,16 @@ class _Compiler:
                             reason,
                         )
                     )
-                    self._record_partial_candidate(
-                        (
-                            qualified_name(service_type),
-                            source_registration.id,
-                            PartialState.rejected,
-                            "rejected-candidate-when",
+                    if self._diagnostics:
+                        self._record_partial_candidate(
+                            (
+                                self._qualified_name(service_type),
+                                source_registration.id,
+                                PartialState.rejected,
+                                "rejected-candidate-when",
+                            )
                         )
-                    )
                     if self._profile is not None:
-                        self._profile.count("early excluded candidates")
-                        self._count_candidate_definition(source_registration, service_type, "early excluded")
                         self._profile.count("retained early rejection records")
                     continue
             try:
@@ -6910,35 +7110,39 @@ class _Compiler:
                         definition=safe_definition(source_registration.implementation),
                     )
             except ContainerBuildError as error:
-                self._record_partial_candidate(
-                    (
-                        qualified_name(service_type),
-                        source_registration.id,
-                        PartialState.failed,
-                        error.code or "generic-specialization",
-                    )
-                )
-                for pending, _, _ in registrations[registration_index + 1 :]:
-                    self._partial_candidate_labels[pending.id] = qualified_name(pending.implementation)
+                if self._diagnostics:
                     self._record_partial_candidate(
-                        (qualified_name(service_type), pending.id, PartialState.not_examined, None)
+                        (
+                            self._qualified_name(service_type),
+                            source_registration.id,
+                            PartialState.failed,
+                            error.code or "generic-specialization",
+                        )
                     )
-                self.decision_history.append(
-                    CompilationExplanation(
-                        subject=qualified_name(service_type),
-                        path=self._current_path(service_type),
-                        selected=(),
-                        rejected=(
-                            CandidateDecision(
-                                source_registration.id,
-                                DecisionOutcome.rejected,
-                                ("rejected-generic-binding",),
-                                "The registration could not be specialized for the requested generic binding",
-                                origin,
+                for pending, _, _ in registrations[registration_index + 1 :]:
+                    if self._diagnostics:
+                        self._partial_candidate_labels[pending.id] = self._qualified_name(pending.implementation)
+                    if self._diagnostics:
+                        self._record_partial_candidate(
+                            (self._qualified_name(service_type), pending.id, PartialState.not_examined, None)
+                        )
+                if self._diagnostics:
+                    self.decision_history.append(
+                        CompilationExplanation(
+                            subject=self._qualified_name(service_type),
+                            path=self._current_path(service_type),
+                            selected=(),
+                            rejected=(
+                                CandidateDecision(
+                                    source_registration.id,
+                                    DecisionOutcome.rejected,
+                                    ("rejected-generic-binding",),
+                                    "The registration could not be specialized for the requested generic binding",
+                                    origin,
+                                ),
                             ),
-                        ),
+                        )
                     )
-                )
                 raise ContainerBuildError(
                     str(error),
                     code=error.code or "generic-specialization",
@@ -6946,12 +7150,12 @@ class _Compiler:
                     evidence=(
                         FailureEvidence(
                             "generic",
-                            qualified_name(service_type),
+                            self._qualified_name(service_type),
                             error.code or "generic-specialization",
                             boundary=consumer_area,
                             layer=origin.layer,
                             source_location=origin.location,
-                            template=qualified_name(source_registration.service_type),
+                            template=self._qualified_name(source_registration.service_type),
                             witness=error.path or self._current_path(service_type),
                             identity=(
                                 _runtime_type_key(service_type),
@@ -7000,7 +7204,6 @@ class _Compiler:
                     )
                 else:
                     self._profile.count("candidate compilation attempts")
-                    self._count_candidate_definition(source_registration, service_type, "subtrees compiled")
                     component, step = self._profile.call(
                         self._profile_phase,
                         "candidate compilation",
@@ -7019,40 +7222,44 @@ class _Compiler:
             except ContainerBuildError as error:
                 # The structural compilation failed before its `when` predicate
                 # could run; diagnostic output must not call it rejected.
-                self._record_partial_candidate(
-                    (
-                        qualified_name(service_type),
-                        registration.id,
-                        PartialState.failed,
-                        error.code or _build_error_code(error),
-                    )
-                )
-                for pending, _, _ in registrations[registration_index + 1 :]:
-                    self._partial_candidate_labels[pending.id] = qualified_name(pending.implementation)
+                if self._diagnostics:
                     self._record_partial_candidate(
-                        (qualified_name(service_type), pending.id, PartialState.not_examined, None)
+                        (
+                            self._qualified_name(service_type),
+                            registration.id,
+                            PartialState.failed,
+                            error.code or _build_error_code(error),
+                        )
                     )
+                for pending, _, _ in registrations[registration_index + 1 :]:
+                    if self._diagnostics:
+                        self._partial_candidate_labels[pending.id] = self._qualified_name(pending.implementation)
+                    if self._diagnostics:
+                        self._record_partial_candidate(
+                            (self._qualified_name(service_type), pending.id, PartialState.not_examined, None)
+                        )
                 if (
                     error.code == "overlay-singleton"
                     and registration.lifespan == legacy.Lifespan.singleton
                     and layer.owner_token in self._anchored_owner_tokens
                 ):
-                    self.decision_history.append(
-                        CompilationExplanation(
-                            subject=qualified_name(service_type),
-                            path=self._current_path(service_type),
-                            selected=(),
-                            rejected=(
-                                CandidateDecision(
-                                    registration.id,
-                                    DecisionOutcome.rejected,
-                                    ("rejected-overlay-visibility",),
-                                    "The parent singleton has no visible frozen specialization in this overlay",
-                                    origin,
+                    if self._diagnostics:
+                        self.decision_history.append(
+                            CompilationExplanation(
+                                subject=self._qualified_name(service_type),
+                                path=self._current_path(service_type),
+                                selected=(),
+                                rejected=(
+                                    CandidateDecision(
+                                        registration.id,
+                                        DecisionOutcome.rejected,
+                                        ("rejected-overlay-visibility",),
+                                        "The parent singleton has no visible frozen specialization in this overlay",
+                                        origin,
+                                    ),
                                 ),
-                            ),
+                            )
                         )
-                    )
                 raise
             finally:
                 self._area = consumer_area
@@ -7098,9 +7305,16 @@ class _Compiler:
                     if not registration_matches:
                         break
             except Exception as error:
-                self._record_partial_candidate(
-                    (qualified_name(service_type), registration.id, PartialState.failed, "filter-evaluation-failed")
-                )
+                self._callback_failure_path = self._current_path(service_type)
+                if self._diagnostics:
+                    self._record_partial_candidate(
+                        (
+                            self._qualified_name(service_type),
+                            registration.id,
+                            PartialState.failed,
+                            "filter-evaluation-failed",
+                        )
+                    )
                 failed = CandidateDecision(
                     component.id,
                     DecisionOutcome.rejected,
@@ -7109,21 +7323,28 @@ class _Compiler:
                     f"raised {type(error).__name__}",
                     origin,
                 )
-                self.decision_history.append(
-                    CompilationExplanation(
-                        subject=qualified_name(service_type),
-                        path=self._current_path(service_type),
-                        selected=(),
-                        rejected=(failed,),
+                if self._diagnostics:
+                    self.decision_history.append(
+                        CompilationExplanation(
+                            subject=self._qualified_name(service_type),
+                            path=self._current_path(service_type),
+                            selected=(),
+                            rejected=(failed,),
+                        )
                     )
-                )
                 component_record.parent_id = original_parent_id
                 raise
             try:
                 if not registration_matches:
-                    self._record_partial_candidate(
-                        (qualified_name(service_type), registration.id, PartialState.rejected, "rejected-filter")
-                    )
+                    if self._diagnostics:
+                        self._record_partial_candidate(
+                            (
+                                self._qualified_name(service_type),
+                                registration.id,
+                                PartialState.rejected,
+                                "rejected-filter",
+                            )
+                        )
                     candidates.append(
                         _CompiledCandidate(
                             component,
@@ -7139,9 +7360,15 @@ class _Compiler:
                 if registration.parent_node_filter is not legacy.default_parent_node_filter:
                     self._admit_preparation(service_type, origin)
                     if component.parent is None or not registration.parent_node_filter(cast(Any, component.parent)):
-                        self._record_partial_candidate(
-                            (qualified_name(service_type), registration.id, PartialState.rejected, "rejected-filter")
-                        )
+                        if self._diagnostics:
+                            self._record_partial_candidate(
+                                (
+                                    self._qualified_name(service_type),
+                                    registration.id,
+                                    PartialState.rejected,
+                                    "rejected-filter",
+                                )
+                            )
                         candidates.append(
                             _CompiledCandidate(
                                 component,
@@ -7153,6 +7380,9 @@ class _Compiler:
                             )
                         )
                         continue
+            except Exception:
+                self._callback_failure_path = self._current_path(service_type)
+                raise
             finally:
                 component_record.parent_id = original_parent_id
                 if visibility_target is not None:
@@ -7164,6 +7394,7 @@ class _Compiler:
             )
             codes: list[str] = ["registration-eligible"]
             if fallback_only:
+                self._fallback_component_ids.add(component.id)
                 codes.append("selected-fallback")
             if source_registration.id in layer.pattern_ids:
                 codes.append("selected-registration-pattern")
@@ -7176,8 +7407,8 @@ class _Compiler:
             ):
                 codes.append("specialized-generic")
                 reasons.append(
-                    f"specialized {qualified_name(source_registration.service_type)} "
-                    f"for {qualified_name(source_service_type)}"
+                    f"specialized {self._qualified_name(source_registration.service_type)} "
+                    f"for {self._qualified_name(source_service_type)}"
                 )
             if registration.lifespan == legacy.Lifespan.singleton and layer.owner_token in self._anchored_owner_tokens:
                 codes.append("anchored-parent-singleton")
@@ -7233,6 +7464,23 @@ class _Compiler:
     ) -> list[_CompiledCandidate]:
         """Apply a selection filter once and retain its safe outcome."""
 
+        if (
+            filter is not default_component_filter
+            and filter is not legacy.default_registration_filter
+            and filter is not all_components
+        ):
+            self._subplan_unsafe_epoch += 1
+        if preference is not None:
+            self._subplan_unsafe_epoch += 1
+        if not self._diagnostics:
+            return self._select_without_diagnostics(
+                candidates,
+                filter,
+                service_type=service_type,
+                parent_precedence=parent_precedence,
+                preference=preference,
+                fallback_candidates=fallback_candidates,
+            )
         considered = tuple(candidates)
         selected_candidates: list[_CompiledCandidate] = []
         selected: list[CandidateDecision] = []
@@ -7266,14 +7514,15 @@ class _Compiler:
                         definition=safe_definition(filter),
                     )
             except Exception as error:
-                self._partial_candidate_labels[candidate.component.id] = qualified_name(
+                self._callback_failure_path = self._current_path(service_type)
+                self._partial_candidate_labels[candidate.component.id] = self._qualified_name(
                     candidate.component.implementation
                 )
                 self._record_partial_candidate(
                     (subject, candidate.component.id, PartialState.failed, "filter-evaluation-failed")
                 )
                 for pending in considered[candidate_index + 1 :]:
-                    self._partial_candidate_labels[pending.component.id] = qualified_name(
+                    self._partial_candidate_labels[pending.component.id] = self._qualified_name(
                         pending.component.implementation
                     )
                     self._record_partial_candidate((subject, pending.component.id, PartialState.not_examined, None))
@@ -7431,6 +7680,123 @@ class _Compiler:
             self.occurrence_explanations[explanation_component.occurrence_id] = explanation
         return selected_candidates
 
+    def _select_without_diagnostics(
+        self,
+        candidates: Iterable[_CompiledCandidate],
+        filter: ComponentFilter,
+        *,
+        service_type: Any,
+        parent_precedence: bool,
+        preference: ComponentPreference | None,
+        fallback_candidates: Callable[[], list[_CompiledCandidate]] | None,
+    ) -> list[_CompiledCandidate]:
+        selected = []
+        for candidate in candidates:
+            if not candidate.eligible:
+                continue
+            try:
+                self._admit_preparation(service_type, candidate.origin)
+                if self._profile is None:
+                    matched = filter(candidate.component)
+                else:
+                    self._profile.count("registration selection callback calls")
+                    matched = self._profile.call(
+                        self._profile_phase,
+                        "selection callback",
+                        filter,
+                        candidate.component,
+                        attempt=self._profile_attempt,
+                        definition=safe_definition(filter),
+                    )
+                if matched:
+                    selected.append(candidate)
+            except Exception:
+                self._callback_failure_path = self._current_path(service_type)
+                raise
+        if parent_precedence and any(candidate.parent_precedence for candidate in selected):
+            maximum = max(candidate.parent_precedence or 0 for candidate in selected)
+            selected = [candidate for candidate in selected if (candidate.parent_precedence or 0) == maximum]
+        if parent_precedence:
+            original = tuple(selected)
+            for phase in ("consumer", "registration"):
+                count = (
+                    len(preference.predicates)
+                    if phase == "consumer" and preference is not None
+                    else max(
+                        (len(c.preference.predicates) if c.preference is not None else 0 for c in original), default=0
+                    )
+                    if phase == "registration"
+                    else 0
+                )
+                for stage in range(count):
+                    if len(selected) < 2 or (
+                        phase == "registration"
+                        and not any(
+                            c.preference is not None
+                            and c.preference_view is not None
+                            and len(c.preference.predicates) > stage
+                            for c in selected
+                        )
+                    ):
+                        break
+                    matched_candidates = []
+                    for candidate in selected:
+                        chain = preference if phase == "consumer" else candidate.preference
+                        if (
+                            chain is None
+                            or stage >= len(chain.predicates)
+                            or (phase == "registration" and candidate.preference_view is None)
+                        ):
+                            continue
+                        predicate = chain.predicates[stage]
+                        record = cast(_ComponentDraft, self.graph.record(candidate.component.occurrence_id))
+                        previous = record.service_type, record.name, record.tags, record.parent_id
+                        try:
+                            if phase == "registration":
+                                record.service_type, record.name, record.tags = cast(
+                                    tuple[Any, str | None, tuple[legacy.Tag, ...]], candidate.preference_view
+                                )
+                            self._admit_preparation(service_type, candidate.origin)
+                            if self._profile is None:
+                                result = predicate(candidate.component)
+                            else:
+                                self._profile.count("preference callback calls")
+                                self._profile.count(f"{phase} preference callback calls")
+                                result = self._profile.call(
+                                    self._profile_phase,
+                                    "preference callback",
+                                    predicate,
+                                    candidate.component,
+                                    attempt=self._profile_attempt,
+                                    definition=safe_definition(predicate),
+                                )
+                            if inspect.isawaitable(result) or inspect.isgenerator(result) or inspect.isasyncgen(result):
+                                if inspect.iscoroutine(result) or inspect.isgenerator(result):
+                                    result.close()
+                                raise TypeError("Preference predicates must return synchronous truth values")
+                            if bool(result):
+                                matched_candidates.append(candidate)
+                        except Exception as error:
+                            raise ContainerBuildError(
+                                f"The {phase} preference stage {stage} failed ({type(error).__name__})",
+                                code="preference-evaluation-failed",
+                                path=self._current_path(service_type),
+                            ) from None
+                        finally:
+                            record.service_type, record.name, record.tags, record.parent_id = previous
+                    if matched_candidates:
+                        selected = matched_candidates
+        if not selected and fallback_candidates is not None and self._has_fallbacks:
+            return self._select_without_diagnostics(
+                fallback_candidates(),
+                filter,
+                service_type=service_type,
+                parent_precedence=parent_precedence,
+                preference=preference,
+                fallback_candidates=None,
+            )
+        return selected
+
     def _apply_preferences(
         self,
         candidates: list[_CompiledCandidate],
@@ -7528,7 +7894,7 @@ class _Compiler:
                         self._record_partial_candidate(
                             (subject, candidate.component.id, PartialState.failed, "preference-evaluation-failed")
                         )
-                        self._partial_candidate_labels[candidate.component.id] = qualified_name(
+                        self._partial_candidate_labels[candidate.component.id] = self._qualified_name(
                             candidate.component.implementation
                         )
                         partial = []
@@ -7545,7 +7911,7 @@ class _Compiler:
                                 code = "preference-not-examined"
                                 reason = "Preference evaluation stopped before this candidate's stage"
                                 stages.append(PreferenceStageDecision(phase, stage, None, "not-examined"))
-                                self._partial_candidate_labels[pending.component.id] = qualified_name(
+                                self._partial_candidate_labels[pending.component.id] = self._qualified_name(
                                     pending.component.implementation
                                 )
                                 self._record_partial_candidate(
@@ -7616,6 +7982,8 @@ class _Compiler:
         reason: str,
         origin: DefinitionOrigin | None = None,
     ) -> None:
+        if not self._diagnostics:
+            return
         selected = CandidateDecision(
             component.id,
             DecisionOutcome.selected,
@@ -7646,10 +8014,12 @@ class _Compiler:
             updated = replace(
                 explanation,
                 subject=(
-                    f"{explanation.subject} " f"({qualified_name(declared_type)} -> {qualified_name(canonical_type)})"
+                    f"{explanation.subject} "
+                    f"({self._qualified_name(declared_type)} -> {self._qualified_name(canonical_type)})"
                 ),
             )
-            self.occurrence_explanations[component.occurrence_id] = updated
+            if self._diagnostics:
+                self.occurrence_explanations[component.occurrence_id] = updated
             for index in range(len(self.decision_history) - 1, -1, -1):
                 if self.decision_history[index] is explanation:
                     self.decision_history[index] = updated
@@ -7667,14 +8037,16 @@ class _Compiler:
         origin: DefinitionOrigin,
         per_call_target: bool = False,
     ) -> tuple[Component, _Step]:
+        self._subplan_registrations.append(registration)
         # Deferred membership constraints become enforceable only for the actual
         # concrete request (constructors, factories and patterns share this seam).
         groups = self._service_groups_for(registration, layer)
-        for group in sorted(groups, key=lambda item: (item.name, qualified_name(item.service_type))):
+        for group in sorted(groups, key=lambda item: (item.name, self._qualified_name(item.service_type))):
             self._select_service_target(group, registration, layer, requested_service_type)
         map_definition = layer.provider_maps.get(registration.id)
         _validate_dependency_names(registration.implementation, registration.dependencies)
         if registration.lifespan == legacy.Lifespan.singleton and layer.owner_token in self._anchored_owner_tokens:
+            self._subplan_unsafe_epoch += 1
             anchored = self._anchored_singletons.get((registration.id, _runtime_type_key(requested_service_type)))
             if anchored is None:
                 raise ContainerBuildError(
@@ -7690,16 +8062,16 @@ class _Compiler:
         if registration in self._stack:
             for index in range(len(self._partial_edges) - 1, -1, -1):
                 _, _, requested, target = self._partial_edges[index]
-                if target is None and requested == qualified_name(registration.service_type):
+                if target is None and requested == self._qualified_name(registration.service_type):
                     self._partial_back_references.add(index)
                     break
-            path = " -> ".join(qualified_name(item.service_type) for item in (*self._stack, registration))
+            path = " -> ".join(self._qualified_name(item.service_type) for item in (*self._stack, registration))
             cycle_items = self._stack[self._stack.index(registration) :]
             rotations = [tuple(cycle_items[index:] + cycle_items[:index]) for index in range(len(cycle_items))]
             canonical_cycle = min(
                 rotations,
                 key=lambda items: (
-                    tuple(qualified_name(item.service_type) for item in items),
+                    tuple(self._qualified_name(item.service_type) for item in items),
                     tuple(item.id for item in items),
                 ),
             )
@@ -7710,11 +8082,11 @@ class _Compiler:
                 evidence=(
                     FailureEvidence(
                         "cycle",
-                        qualified_name(registration.service_type),
+                        self._qualified_name(registration.service_type),
                         "directed registration cycle",
                         boundary=self._area,
                         cycle=tuple(
-                            qualified_name(item.service_type) for item in (*canonical_cycle, canonical_cycle[0])
+                            self._qualified_name(item.service_type) for item in (*canonical_cycle, canonical_cycle[0])
                         ),
                         witness=self._current_path(registration.service_type),
                         identity=(self._area, tuple(item.id for item in canonical_cycle)),
@@ -7777,7 +8149,7 @@ class _Compiler:
                 _validate_per_call_implementation(decorator.source.implementation, contract_type, methods)
             if any(not asynchronous for _, _, asynchronous in methods) and not target_step.sync_supported:
                 raise ContainerBuildError(
-                    f"Per-call service {qualified_name(requested_service_type)} has synchronous methods "
+                    f"Per-call service {self._qualified_name(requested_service_type)} has synchronous methods "
                     "but its target requires asynchronous activation or cleanup",
                     code="per-call-sync-activation",
                     path=self._current_path(requested_service_type),
@@ -7806,12 +8178,75 @@ class _Compiler:
             and layer.owner_token != anchored_owner.owner_token
         ):
             raise ContainerBuildError(
-                f"{_frame_description(anchored_owner)} cannot retain overlay-owned singleton "
+                f"{_frame_description(anchored_owner, self._qualified_name)} cannot retain overlay-owned singleton "
                 f"{registration.service_type}",
                 code="captive-dependency",
                 path=self._current_path(registration.service_type),
                 evidence=(self._captive_evidence(anchored_owner, registration.service_type),),
             )
+
+        # Reuse only successful work whose entire compilation reached no opaque
+        # or contextual operation. The nearest retention owners are part of the
+        # key: successful descendant captive checks cannot be borrowed from a
+        # different ancestor context. External cleanup owners are excluded below.
+        retention = self._retention_frames()
+        singleton = next((f for f in reversed(retention) if f.lifespan == legacy.Lifespan.singleton), None)
+        long_lived = next(
+            (f for f in reversed(retention) if f.lifespan in (legacy.Lifespan.scoped, legacy.Lifespan.singleton)),
+            None,
+        )
+        boundary_kind = next(
+            (
+                f.kind
+                for f in reversed(self._frames)
+                if f.kind in (ComponentKind.provider, ComponentKind.managed_provider, ComponentKind.per_call_handle)
+            ),
+            None,
+        )
+        subplan_key = (
+            id(registration),
+            id(layer),
+            _runtime_type_key(requested_service_type),
+            self._area,
+            None if singleton is None else singleton.owner_token,
+            None if long_lived is None else (long_lived.lifespan, long_lived.owner_token),
+            boundary_kind,
+            self._source_inspection,
+        )
+        subplan_allowed = map_definition is None and not per_call_target and scope_policy != "per_call"
+        cached = self._invariant_subplans.get(subplan_key) if subplan_allowed else None
+        if cached is not None and not any(item in self._stack for item in cached.registrations):
+            self._subplan_registrations.extend(cached.registrations)
+            component = self._clone_component_tree(cached.component, parent=parent, argument=argument)
+            # The source root may now carry a boundary alias or a different
+            # argument. Selection still receives a fresh, mutable definition view.
+            draft = cast(_ComponentDraft, self.graph.record(component.occurrence_id))
+            draft.service_type = requested_service_type
+            draft.name = registration.name
+            draft.tags = tuple(registration.tags)
+            draft.argument = argument
+            for node in (component, *component.descendants()):
+                for child in node.dependencies:
+                    self._record_partial_edge(
+                        (
+                            node.occurrence_id,
+                            child.argument or "dependency",
+                            self._qualified_name(child.service_type),
+                            child.occurrence_id,
+                        )
+                    )
+            if self._profile is not None:
+                self._profile.count("invariant subplan cache hits")
+                self._count_candidate_definition(source_registration, requested_service_type, "subplans reused")
+            return component, cached.step
+        if self._profile is not None:
+            self._profile.count("registration subplans compiled")
+            self._count_candidate_definition(source_registration, requested_service_type, "subtrees compiled")
+        unsafe_epoch = self._subplan_unsafe_epoch
+        registration_start = len(self._subplan_registrations) - 1
+        issues_start = len(self.issues)
+        if not subplan_allowed:
+            self._subplan_unsafe_epoch += 1
 
         component, draft = self._draft(
             component_id=registration.id,
@@ -7855,11 +8290,11 @@ class _Compiler:
                             code="factory-return-type-mismatch",
                             severity=IssueSeverity.error,
                             message=(
-                                f"Factory {qualified_name(registration.implementation)} declares result "
-                                f"{qualified_name(result_type)}, incompatible with registered service "
-                                f"{qualified_name(registration.service_type)}"
+                                f"Factory {self._qualified_name(registration.implementation)} declares result "
+                                f"{self._qualified_name(result_type)}, incompatible with registered service "
+                                f"{self._qualified_name(registration.service_type)}"
                             ),
-                            root=qualified_name(self._frames[0].label),
+                            root=self._qualified_name(self._frames[0].label),
                             path=self._current_path(),
                             _occurrence_path=tuple(frame.component.occurrence_id for frame in self._frames),
                         )
@@ -7932,6 +8367,19 @@ class _Compiler:
                         self._profile.count("reused activation templates")
             elif self._profile is not None:
                 self._profile.count("unique activation templates")
+            if subplan_allowed and self._subplan_unsafe_epoch == unsafe_epoch and len(self.issues) == issues_start:
+                # Metadata cloning needs every cleanup owner inside the subtree.
+                # A transient resource promoted to an external singleton must
+                # compile normally so its new owner is validated and captured.
+                nodes = (component, *component.descendants())
+                occurrences = {node.occurrence_id for node in nodes}
+                if all(node.owner_occurrence_id in occurrences or node.owner_occurrence_id is None for node in nodes):
+                    registrations = tuple(
+                        {id(item): item for item in self._subplan_registrations[registration_start:]}.values()
+                    )
+                    self._invariant_subplans[subplan_key] = _InvariantSubplan(component, step, registrations)
+                    if self._profile is not None:
+                        self._profile.count("invariant subplans cached")
             return component, step
         finally:
             self._frames.pop()
@@ -8066,20 +8514,21 @@ class _Compiler:
             )
             dependencies.append(_CompiledDependency(str(index), provider_step))
             child_ids.append(provider.occurrence_id)
-            self.occurrence_explanations[provider.occurrence_id] = CompilationExplanation(
-                subject=qualified_name(provider.service_type),
-                path=path,
-                selected=(
-                    CandidateDecision(
-                        target_component.id,
-                        DecisionOutcome.selected,
-                        ("provider-target-frozen",),
-                        "The provider map entry target was selected and frozen during compilation",
-                        candidate.origin,
+            if self._diagnostics:
+                self.occurrence_explanations[provider.occurrence_id] = CompilationExplanation(
+                    subject=self._qualified_name(provider.service_type),
+                    path=path,
+                    selected=(
+                        CandidateDecision(
+                            target_component.id,
+                            DecisionOutcome.selected,
+                            ("provider-target-frozen",),
+                            "The provider map entry target was selected and frozen during compilation",
+                            candidate.origin,
+                        ),
                     ),
-                ),
-                rejected=(),
-            )
+                    rejected=(),
+                )
         draft.dependency_ids = tuple(child_ids)
         draft.provider_mode = mode
         return tuple(dependencies), types.MappingProxyType(indices)
@@ -8158,14 +8607,19 @@ class _Compiler:
         mapping[source.occurrence_id] = component
 
         explanation = (
-            self.occurrence_explanations.get(source.occurrence_id)
-            if local_source
-            else None
-            if inherited_sidecars is None
-            else inherited_sidecars.occurrence.get(source.occurrence_id)
+            None
+            if not self._diagnostics
+            else (
+                self.occurrence_explanations.get(source.occurrence_id)
+                if local_source
+                else None
+                if inherited_sidecars is None
+                else inherited_sidecars.occurrence.get(source.occurrence_id)
+            )
         )
         if explanation is not None:
-            self.occurrence_explanations[component.occurrence_id] = explanations.remap(explanation, mapping)
+            if self._diagnostics:
+                self.occurrence_explanations[component.occurrence_id] = explanations.remap(explanation, mapping)
         decorator_explanation = (
             self.decorator_explanations.get(source.occurrence_id)
             if local_source
@@ -8176,20 +8630,28 @@ class _Compiler:
         if decorator_explanation is not None:
             self.decorator_explanations[component.occurrence_id] = explanations.remap(decorator_explanation, mapping)
         parameters = (
-            self.parameter_explanations.get(source.occurrence_id)
-            if local_source
-            else None
-            if inherited_sidecars is None
-            else inherited_sidecars.parameters.get(source.occurrence_id)
+            None
+            if not self._diagnostics
+            else (
+                self.parameter_explanations.get(source.occurrence_id)
+                if local_source
+                else None
+                if inherited_sidecars is None
+                else inherited_sidecars.parameters.get(source.occurrence_id)
+            )
         )
         if parameters is not None:
             self.parameter_explanations[component.occurrence_id] = dict(parameters)
         generic = (
-            self.generic_explanations.get(source.occurrence_id)
-            if local_source
-            else None
-            if inherited_sidecars is None
-            else inherited_sidecars.generics.get(source.occurrence_id)
+            None
+            if not self._diagnostics
+            else (
+                self.generic_explanations.get(source.occurrence_id)
+                if local_source
+                else None
+                if inherited_sidecars is None
+                else inherited_sidecars.generics.get(source.occurrence_id)
+            )
         )
         if generic is not None:
             self.generic_explanations[component.occurrence_id] = generic
@@ -8239,8 +8701,12 @@ class _Compiler:
         for name, dependency in dependencies.items():
             # Record the requested edge before descent.  If descent fails the incomplete
             # edge is retained solely by the diagnostic snapshot, never by a plan.
-            edge_index = self._record_partial_edge(
-                (parent.occurrence_id, name, qualified_name(dependency.service_type), None)
+            edge_index = (
+                self._record_partial_edge(
+                    (parent.occurrence_id, name, self._qualified_name(dependency.service_type), None)
+                )
+                if self._diagnostics
+                else None
             )
             if self._profile is None:
                 step, child = self._compile_dependency(dependency, parent)
@@ -8259,7 +8725,7 @@ class _Compiler:
                 self._partial_edges[edge_index] = (
                     parent.occurrence_id,
                     name,
-                    qualified_name(dependency.service_type),
+                    self._qualified_name(dependency.service_type),
                     None if child is None else child.occurrence_id,
                 )
             self._record_parameter_explanation(parent, dependency, child)
@@ -8273,6 +8739,8 @@ class _Compiler:
     def _record_parameter_explanation(
         self, parent: Component, dependency: legacy.Dependency, child: Component | None
     ) -> None:
+        if not self._diagnostics:
+            return
         """Store post-compilation facts without inspecting policy closures or values."""
         policy = dependency.settings.value_factory
         if isinstance(policy, _FixedArgument):
@@ -8296,15 +8764,15 @@ class _Compiler:
                 ComponentKind.runtime_context: "runtime_context",
             }.get(child.kind, "component_edge")
         record = ParameterExplanation(
-            owner=qualified_name(parent.implementation),
+            owner=self._qualified_name(parent.implementation),
             parameter=dependency.name,
-            declared_annotation=qualified_name(dependency.declared_service_type),
-            canonical_annotation=qualified_name(dependency.service_type),
+            declared_annotation=self._qualified_name(dependency.declared_service_type),
+            canonical_annotation=self._qualified_name(dependency.service_type),
             has_default=dependency.default_value is not legacy.EMPTY,
             policy_kind=policy_kind,
             evaluation_phase="compilation" if category == "fixed_value" else "runtime",
             result_category=category,
-            result_type=qualified_name(dependency.service_type),
+            result_type=self._qualified_name(dependency.service_type),
             # Occurrence IDs are private compiler evidence until finalization,
             # when they become deterministic semantic graph paths.
             selected_components=() if child is None else (str(child.occurrence_id),),
@@ -8313,16 +8781,22 @@ class _Compiler:
         self.parameter_explanations.setdefault(parent.occurrence_id, {})[dependency.name] = record
 
     def _record_generic_explanation(self, component: Component, dependencies: Mapping[str, legacy.Dependency]) -> None:
+        if not self._diagnostics:
+            return
         mapping = tuple(
             sorted(
-                ((str(key), qualified_name(value)) for key, value in component.generic_mapping.items()),
+                ((str(key), self._qualified_name(value)) for key, value in component.generic_mapping.items()),
                 key=lambda item: item[0],
             )
         )
         substitutions = tuple(
             sorted(
                 (
-                    (name, qualified_name(dependency.declared_service_type), qualified_name(dependency.service_type))
+                    (
+                        name,
+                        self._qualified_name(dependency.declared_service_type),
+                        self._qualified_name(dependency.service_type),
+                    )
                     for name, dependency in dependencies.items()
                     if dependency.declared_service_type != dependency.service_type
                 ),
@@ -8332,14 +8806,15 @@ class _Compiler:
         specialized_annotations = self._specialized_dependency_annotations.get(component.id)
         if specialized_annotations is not None:
             substitutions = tuple(
-                (name, qualified_name(before), qualified_name(after)) for name, before, after in specialized_annotations
+                (name, self._qualified_name(before), self._qualified_name(after))
+                for name, before, after in specialized_annotations
             )
         if not mapping and not substitutions and component.declared_service_type == component.service_type:
             return
         pattern_bindings = self._factory_pattern_bindings.get(component.id, ())
         self.generic_explanations[component.occurrence_id] = GenericBindingExplanation(
-            requested_service=qualified_name(component.service_type),
-            template_identity=qualified_name(component.declared_service_type),
+            requested_service=self._qualified_name(component.service_type),
+            template_identity=self._qualified_name(component.declared_service_type),
             selected_tier=(
                 "structural_pattern"
                 if pattern_bindings
@@ -8361,6 +8836,8 @@ class _Compiler:
             tuple[_ResolutionRequest, ...],
             getattr(implementation, _RESOLUTION_REQUESTS_ATTRIBUTE, ()),
         )
+        if requests:
+            self._subplan_unsafe_epoch += 1
         compiled: list[_CompiledResolutionRequest] = []
         for index, request in enumerate(requests):
             request = replace(request, service_type=normalize_type_alias(request.service_type))
@@ -8372,11 +8849,11 @@ class _Compiler:
                     request.service_type, parent=None, argument=None, fallback_only=True
                 ),
                 service_type=request.service_type,
-                subject=f"{qualified_name(implementation)} compiled resolution request",
+                subject=f"{self._qualified_name(implementation)} compiled resolution request",
             )
             if not candidates:
                 raise ContainerBuildError(
-                    f"Factory {qualified_name(implementation)} requests {request.service_type!r}, "
+                    f"Factory {self._qualified_name(implementation)} requests {request.service_type!r}, "
                     "but no compiled root matches",
                     code="missing-component",
                     path=self._current_path(request.service_type),
@@ -8388,7 +8865,7 @@ class _Compiler:
                         code="ambiguous-selection",
                         severity=IssueSeverity.warning,
                         message=(
-                            f"Factory {qualified_name(implementation)} requests {request.service_type!r}, "
+                            f"Factory {self._qualified_name(implementation)} requests {request.service_type!r}, "
                             f"which matches {len(candidates)} components; the first is selected"
                         ),
                         root=path[0] if path else None,
@@ -8398,7 +8875,7 @@ class _Compiler:
             component, step = candidates[0].component, candidates[0].step
             if not request.resolve_async and not step.sync_supported:
                 raise ContainerBuildError(
-                    f"Synchronous factory {qualified_name(implementation)} cannot resolve async "
+                    f"Synchronous factory {self._qualified_name(implementation)} cannot resolve async "
                     f"component {request.service_type!r}",
                     code="async-required",
                     path=self._current_path(request.service_type),
@@ -8431,7 +8908,7 @@ class _Compiler:
             bound.append(_CompiledDependency(dependency.name, step))
         if not found_context:
             raise ContainerBuildError(
-                f"Factory {qualified_name(implementation)} declares compiled resolution requests "
+                f"Factory {self._qualified_name(implementation)} declares compiled resolution requests "
                 "but does not inject ResolutionContext",
                 code="invalid-factory",
                 path=self._current_path(implementation),
@@ -8576,7 +9053,7 @@ class _Compiler:
                     service_type=element_type,
                     subject=(
                         f"Deferred collection argument {dependency.name!r} of "
-                        f"{qualified_name(parent.implementation)}"
+                        f"{self._qualified_name(parent.implementation)}"
                     ),
                     collection=True,
                     explanation_component=collection,
@@ -8591,7 +9068,8 @@ class _Compiler:
                 target_component = collection
                 explanation = self.occurrence_explanations.get(collection.occurrence_id)
                 if explanation is not None:
-                    self.occurrence_explanations[provider.occurrence_id] = explanation
+                    if self._diagnostics:
+                        self.occurrence_explanations[provider.occurrence_id] = explanation
             else:
                 candidates = self._compile_candidates(element_type, provider, dependency.name)
                 candidates = self._select_candidates(
@@ -8601,7 +9079,9 @@ class _Compiler:
                         element_type, provider, dependency.name, fallback_only=True
                     ),
                     service_type=element_type,
-                    subject=(f"Deferred argument {dependency.name!r} of " f"{qualified_name(parent.implementation)}"),
+                    subject=(
+                        f"Deferred argument {dependency.name!r} of " f"{self._qualified_name(parent.implementation)}"
+                    ),
                     explanation_component=provider,
                     parent_precedence=True,
                     preference=(
@@ -8649,7 +9129,7 @@ class _Compiler:
                     f"Synchronous {'ManagedProvider' if managed else 'Provider'} target {target!r} "
                     f"requires asynchronous "
                     f"{'activation or acquisition-owned cleanup' if managed else 'resolution'}; use "
-                    f"{'AsyncManagedProvider' if managed else 'AsyncProvider'}[{qualified_name(target)}]",
+                    f"{'AsyncManagedProvider' if managed else 'AsyncProvider'}[{self._qualified_name(target)}]",
                     code="managed-provider-requires-async" if managed else "provider-requires-async",
                     path=self._current_path(target),
                 )
@@ -8658,8 +9138,9 @@ class _Compiler:
                 if forbidden is not None:
                     forbidden_target = forbidden[-1]
                     raise ContainerBuildError(
-                        f"{_frame_description(capturing_singleton)} cannot retain a provider whose target "
-                        f"reaches scoped state {qualified_name(forbidden_target.service_type)}",
+                        f"{_frame_description(capturing_singleton, self._qualified_name)} cannot retain a provider "
+                        f"whose target "
+                        f"reaches scoped state {self._qualified_name(forbidden_target.service_type)}",
                         code="provider-captive-scope",
                         path=self._current_path(
                             *(component.service_type for component in forbidden),
@@ -8688,13 +9169,17 @@ class _Compiler:
         )
         policy = dependency.settings.value_factory
         provider = _provider_request(dependency.service_type)
+        if provider is not None or (
+            policy is not default_parameter_value_factory and not isinstance(policy, _FixedArgument)
+        ):
+            self._subplan_unsafe_epoch += 1
         if provider is not None:
             valid_policy = isinstance(policy, _SelectArgument) or (
                 policy is default_parameter_value_factory and dependency.default_value is legacy.EMPTY
             )
             if not valid_policy:
                 raise ContainerBuildError(
-                    f"Argument {dependency.name!r} of {qualified_name(parent.implementation)} applies a "
+                    f"Argument {dependency.name!r} of {self._qualified_name(parent.implementation)} applies a "
                     "value-producing policy to a typed provider",
                     code="provider-invalid-argument-policy",
                     path=self._current_path(dependency.service_type),
@@ -8739,7 +9224,7 @@ class _Compiler:
                     detail = f"generic binding {binding} unavailable ({detail})"
                 raise ContainerBuildError(
                     f"Could not derive argument {dependency.name!r} for "
-                    f"{qualified_name(parent.implementation)}: {detail}",
+                    f"{self._qualified_name(parent.implementation)}: {detail}",
                     code="invalid-derived-argument",
                     path=self._current_path(dependency.service_type),
                 ) from error
@@ -8750,7 +9235,7 @@ class _Compiler:
             value = dependency.default_value
         else:
             raise ContainerBuildError(
-                f"Unsupported argument policy for {dependency.name!r} of {qualified_name(parent.implementation)}",
+                f"Unsupported argument policy for {dependency.name!r} of {self._qualified_name(parent.implementation)}",
                 code="invalid-argument",
                 path=self._current_path(dependency.service_type),
             )
@@ -8771,7 +9256,11 @@ class _Compiler:
             )
             self._record_component_decision(
                 component,
-                subject=f"Argument {dependency.name!r} of {qualified_name(parent.implementation)}",
+                subject=(
+                    f"Argument {dependency.name!r} of {self._qualified_name(parent.implementation)}"
+                    if self._diagnostics
+                    else ""
+                ),
                 code=policy_code,
                 reason="The argument policy compiled a fixed value; its value is redacted",
                 origin=self.origins.get(parent.occurrence_id),
@@ -8790,19 +9279,19 @@ class _Compiler:
             names = ", ".join(variable.__name__ for variable in unresolved)
             raise ContainerBuildError(
                 f"Unable to resolve constructor TypeVar(s) {names} in {dependency.service_type!r} "
-                f"for argument {dependency.name!r} of {qualified_name(parent.implementation)}",
+                f"for argument {dependency.name!r} of {self._qualified_name(parent.implementation)}",
                 code="invalid-generic-specialization",
                 path=self._current_path(dependency.service_type),
                 evidence=(
                     FailureEvidence(
                         "generic",
-                        qualified_name(dependency.service_type),
+                        self._qualified_name(dependency.service_type),
                         "unresolved constructor TypeVar",
                         boundary=self._area,
                         layer=self.origins.get(parent.occurrence_id, _synthetic_origin()).layer,
                         source_location=self.origins.get(parent.occurrence_id, _synthetic_origin()).location,
                         parameter=dependency.name,
-                        template=qualified_name(parent.implementation),
+                        template=self._qualified_name(parent.implementation),
                         witness=self._current_path(dependency.service_type),
                         identity=(
                             _runtime_type_key(dependency.service_type),
@@ -8823,6 +9312,7 @@ class _Compiler:
             legacy.ScopeCreator,
             legacy.CurrentGraph,
         ):
+            self._subplan_unsafe_epoch += 1
             effective_lifespan = self._validate_runtime_context_dependency(dependency.service_type, parent)
             component, _ = self._draft(
                 component_id=f"context:{parent.occurrence_id}:{dependency.name}",
@@ -8839,7 +9329,11 @@ class _Compiler:
             )
             self._record_component_decision(
                 component,
-                subject=f"Argument {dependency.name!r} of {qualified_name(parent.implementation)}",
+                subject=(
+                    f"Argument {dependency.name!r} of {self._qualified_name(parent.implementation)}"
+                    if self._diagnostics
+                    else ""
+                ),
                 code="runtime-context",
                 reason="The annotation selects a frozen runtime context edge",
             )
@@ -8872,7 +9366,7 @@ class _Compiler:
                     element_type, collection, dependency.name, fallback_only=True
                 ),
                 service_type=element_type,
-                subject=f"Collection argument {dependency.name!r} of {qualified_name(parent.implementation)}",
+                subject=f"Collection argument {dependency.name!r} of {self._qualified_name(parent.implementation)}",
                 collection=True,
                 explanation_component=collection,
             )
@@ -8899,7 +9393,11 @@ class _Compiler:
                 dependency.service_type, parent, dependency.name, fallback_only=True
             ),
             service_type=dependency.service_type,
-            subject=f"Argument {dependency.name!r} of {qualified_name(parent.implementation)}",
+            subject=(
+                f"Argument {dependency.name!r} of {self._qualified_name(parent.implementation)}"
+                if self._diagnostics
+                else ""
+            ),
             parent_precedence=True,
             preference=policy.prefer if isinstance(policy, _SelectArgument) else None,
         )
@@ -8936,9 +9434,13 @@ class _Compiler:
         if visibility_error is not None:
             raise visibility_error
         raise ContainerBuildError(
-            f"No component for {qualified_name(dependency.service_type)}, argument {dependency.name!r} of "
-            f"{qualified_name(parent.implementation)}"
-            + (f" (declared as {qualified_name(declared_type)})" if declared_type != dependency.service_type else ""),
+            f"No component for {self._qualified_name(dependency.service_type)}, argument {dependency.name!r} of "
+            f"{self._qualified_name(parent.implementation)}"
+            + (
+                f" (declared as {self._qualified_name(declared_type)})"
+                if declared_type != dependency.service_type
+                else ""
+            ),
             code="missing-component",
             path=self._current_path(dependency.service_type),
             evidence=(
@@ -8958,6 +9460,7 @@ class _Compiler:
         argument: str,
     ) -> tuple[str | None, Component] | None:
         for slot_type, name, origin in self.blueprint.slot_definitions(service_type, self._area):
+            self._subplan_unsafe_epoch += 1
             component, _ = self._draft(
                 component_id=f"slot:{slot_type!r}:{name}",
                 service_type=slot_type,
@@ -8979,8 +9482,9 @@ class _Compiler:
                 )
                 if singleton is not None:
                     raise ContainerBuildError(
-                        f"{_frame_description(singleton)} cannot retain scoped value from scope slot "
-                        f"{qualified_name(slot_type)}",
+                        f"{_frame_description(singleton, self._qualified_name)} cannot retain scoped value "
+                        f"from scope slot "
+                        f"{self._qualified_name(slot_type)}",
                         code="captive-runtime-scope",
                         path=self._current_path(slot_type),
                     )
@@ -9001,70 +9505,80 @@ class _Compiler:
         items: list[_CompiledPreConfiguration] = []
         decisions: list[CandidateDecision] = []
         definitions = self.blueprint.pre_configurations(parent.service_type, self._area)
+        if definitions:
+            self._subplan_unsafe_epoch += 1
         applicability: list[tuple[_PreConfigurationDefinition, _Layer, bool]] = []
         for definition_index, (definition, layer) in enumerate(definitions):
             try:
                 self._admit_preparation(parent.service_type, definition.origin)
                 matched = definition.when(parent)
             except Exception as error:
-                subject = f"Pre-configurations for {qualified_name(parent.service_type)}"
-                self._partial_candidate_labels[definition.id] = qualified_name(definition.configuration_fn)
-                self._record_partial_candidate(
-                    (subject, definition.id, PartialState.failed, "pre-configuration-filter-failed")
-                )
+                subject = f"Pre-configurations for {self._qualified_name(parent.service_type)}"
+                if self._diagnostics:
+                    self._partial_candidate_labels[definition.id] = self._qualified_name(definition.configuration_fn)
+                if self._diagnostics:
+                    self._record_partial_candidate(
+                        (subject, definition.id, PartialState.failed, "pre-configuration-filter-failed")
+                    )
                 for pending, _ in definitions[definition_index + 1 :]:
-                    self._partial_candidate_labels[pending.id] = qualified_name(pending.configuration_fn)
-                    self._record_partial_candidate((subject, pending.id, PartialState.not_examined, None))
+                    if self._diagnostics:
+                        self._partial_candidate_labels[pending.id] = self._qualified_name(pending.configuration_fn)
+                    if self._diagnostics:
+                        self._record_partial_candidate((subject, pending.id, PartialState.not_examined, None))
+                if self._diagnostics:
+                    decisions.append(
+                        CandidateDecision(
+                            definition.id,
+                            DecisionOutcome.rejected,
+                            ("pre-configuration-filter-rejected",),
+                            (
+                                f"Pre-configuration filter {_filter_description(definition.when)} "
+                                f"raised {type(error).__name__}"
+                            ),
+                            definition.origin,
+                        )
+                    )
+                if self._diagnostics:
+                    self.decision_history.append(
+                        CompilationExplanation(
+                            subject=f"Pre-configurations for {self._qualified_name(parent.service_type)}",
+                            path=self._current_path(parent.service_type),
+                            selected=tuple(
+                                decision for decision in decisions if decision.outcome is DecisionOutcome.selected
+                            ),
+                            rejected=tuple(
+                                decision for decision in decisions if decision.outcome is DecisionOutcome.rejected
+                            ),
+                        )
+                    )
+                raise
+            applicability.append((definition, layer, matched))
+            if self._diagnostics:
                 decisions.append(
                     CandidateDecision(
                         definition.id,
-                        DecisionOutcome.rejected,
-                        ("pre-configuration-filter-rejected",),
+                        DecisionOutcome.selected if matched else DecisionOutcome.rejected,
+                        ("pre-configuration-filter-matched" if matched else "pre-configuration-filter-rejected",),
                         (
-                            f"Pre-configuration filter {_filter_description(definition.when)} "
-                            f"raised {type(error).__name__}"
+                            f"Pre-configuration filter {_filter_description(definition.when)} returned "
+                            f"{'true' if matched else 'false'}"
                         ),
                         definition.origin,
                     )
                 )
-                self.decision_history.append(
-                    CompilationExplanation(
-                        subject=f"Pre-configurations for {qualified_name(parent.service_type)}",
-                        path=self._current_path(parent.service_type),
-                        selected=tuple(
-                            decision for decision in decisions if decision.outcome is DecisionOutcome.selected
-                        ),
-                        rejected=tuple(
-                            decision for decision in decisions if decision.outcome is DecisionOutcome.rejected
-                        ),
-                    )
-                )
-                raise
-            applicability.append((definition, layer, matched))
-            decisions.append(
-                CandidateDecision(
-                    definition.id,
-                    DecisionOutcome.selected if matched else DecisionOutcome.rejected,
-                    ("pre-configuration-filter-matched" if matched else "pre-configuration-filter-rejected",),
-                    (
-                        f"Pre-configuration filter {_filter_description(definition.when)} returned "
-                        f"{'true' if matched else 'false'}"
-                    ),
-                    definition.origin,
-                )
-            )
         for definition, layer, matched in applicability:
             if not matched:
                 continue
-            self._record_partial_declaration_edge(
-                (
-                    parent.occurrence_id,
-                    "pre-configuration",
-                    qualified_name(definition.configuration_fn),
-                    "pre-configuration-pending",
-                    False,
+            if self._diagnostics:
+                self._record_partial_declaration_edge(
+                    (
+                        parent.occurrence_id,
+                        "pre-configuration",
+                        self._qualified_name(definition.configuration_fn),
+                        "pre-configuration-pending",
+                        False,
+                    )
                 )
-            )
             existing = self._compiled_pre_configurations.get(definition.id)
             if existing is not None:
                 items.append(existing)
@@ -9074,7 +9588,7 @@ class _Compiler:
                     if not (
                         edge[0] == parent.occurrence_id
                         and edge[1] == "pre-configuration"
-                        and edge[2] == qualified_name(definition.configuration_fn)
+                        and edge[2] == self._qualified_name(definition.configuration_fn)
                         and edge[3] == "pre-configuration-pending"
                     )
                 ]
@@ -9083,7 +9597,7 @@ class _Compiler:
                 anchored = self._anchored_pre_configurations.get(definition.id)
                 if anchored is None:
                     raise ContainerBuildError(
-                        f"Parent-owned pre-configuration {qualified_name(definition.configuration_fn)} "
+                        f"Parent-owned pre-configuration {self._qualified_name(definition.configuration_fn)} "
                         "has no frozen parent plan; declare it in the scope builder",
                         code="overlay-pre-configuration",
                         path=self._current_path(definition.configuration_fn),
@@ -9097,17 +9611,18 @@ class _Compiler:
                 items.append(compiled)
                 continue
             if definition.id in self._compiling_pre_configurations:
-                self._record_partial_declaration_edge(
-                    (
-                        parent.occurrence_id,
-                        "pre-configuration",
-                        qualified_name(definition.configuration_fn),
-                        "circular-dependency",
-                        True,
+                if self._diagnostics:
+                    self._record_partial_declaration_edge(
+                        (
+                            parent.occurrence_id,
+                            "pre-configuration",
+                            self._qualified_name(definition.configuration_fn),
+                            "circular-dependency",
+                            True,
+                        )
                     )
-                )
                 raise ContainerBuildError(
-                    f"Circular pre-configuration trigger for {qualified_name(definition.configuration_fn)}",
+                    f"Circular pre-configuration trigger for {self._qualified_name(definition.configuration_fn)}",
                     code="circular-dependency",
                     path=self._current_path(definition.configuration_fn),
                 )
@@ -9119,7 +9634,7 @@ class _Compiler:
                 _validate_dependency_names(definition.configuration_fn, dependencies)
             except Exception as error:
                 raise ContainerBuildError(
-                    f"Pre-configuration {qualified_name(definition.configuration_fn)} has an invalid signature: "
+                    f"Pre-configuration {self._qualified_name(definition.configuration_fn)} has an invalid signature: "
                     f"{error}",
                     code="invalid-pre-configuration",
                     path=self._current_path(definition.configuration_fn),
@@ -9180,20 +9695,23 @@ class _Compiler:
                 if not (
                     edge[0] == parent.occurrence_id
                     and edge[1] == "pre-configuration"
-                    and edge[2] == qualified_name(definition.configuration_fn)
+                    and edge[2] == self._qualified_name(definition.configuration_fn)
                     and edge[3] == "pre-configuration-pending"
                 )
             ]
-        explanation = CompilationExplanation(
-            subject=f"Pre-configurations for {qualified_name(parent.service_type)}",
-            path=self._current_path(parent.service_type),
-            selected=tuple(decision for decision in decisions if decision.outcome is DecisionOutcome.selected),
-            rejected=tuple(decision for decision in decisions if decision.outcome is DecisionOutcome.rejected),
-        )
-        if decisions:
-            self.decision_history.append(explanation)
-        for item in items:
-            self.occurrence_explanations[item.component.occurrence_id] = explanation
+        if self._diagnostics:
+            explanation = CompilationExplanation(
+                subject=f"Pre-configurations for {self._qualified_name(parent.service_type)}",
+                path=self._current_path(parent.service_type),
+                selected=tuple(decision for decision in decisions if decision.outcome is DecisionOutcome.selected),
+                rejected=tuple(decision for decision in decisions if decision.outcome is DecisionOutcome.rejected),
+            )
+            if decisions:
+                if self._diagnostics:
+                    self.decision_history.append(explanation)
+            for item in items:
+                if self._diagnostics:
+                    self.occurrence_explanations[item.component.occurrence_id] = explanation
         return tuple(items)
 
     def _compile_decorators(
@@ -9212,6 +9730,7 @@ class _Compiler:
         definitions = self.blueprint.decorators(core.service_type, self._area)
         if not definitions and not self.blueprint.generated_decorators:
             return ()
+        self._subplan_unsafe_epoch += 1
         generated: dict[str, tuple[_GeneratedDecoratorDefinition, _ServiceTarget]] = {}
         area_layers = self.blueprint.layers if self._area is None else (layer,)
         target_registration = self._specialized_registration_sources.get(registration.id, registration)
@@ -9256,7 +9775,8 @@ class _Compiler:
             except ContainerBuildError as error:
                 raise ContainerBuildError(
                     f"Template {candidate.declaration.id} source {candidate.source.id} target "
-                    f"{target_registration.id} ({qualified_name(core.service_type)}): {_safe_error_message(error)}",
+                    f"{target_registration.id} ({self._qualified_name(core.service_type)}): "
+                    f"{_safe_error_message(error)}",
                     code=error.code,
                     path=(
                         *self._current_path(core.service_type),
@@ -9329,12 +9849,18 @@ class _Compiler:
                 self._admit_preparation(core.service_type, decorator.origin)
                 matched = decorator.when(cast(Component, target_view) if decorator.id in generated else core)
             except Exception as error:
-                subject = f"Decorators for {qualified_name(core.service_type)}"
-                self._partial_candidate_labels[decorator.id] = qualified_name(decorator.decorator_type)
-                self._record_partial_candidate((subject, decorator.id, PartialState.failed, "decorator-filter-failed"))
+                subject = f"Decorators for {self._qualified_name(core.service_type)}"
+                if self._diagnostics:
+                    self._partial_candidate_labels[decorator.id] = self._qualified_name(decorator.decorator_type)
+                if self._diagnostics:
+                    self._record_partial_candidate(
+                        (subject, decorator.id, PartialState.failed, "decorator-filter-failed")
+                    )
                 for pending, _ in definitions[decorator_index + 1 :]:
-                    self._partial_candidate_labels[pending.id] = qualified_name(pending.decorator_type)
-                    self._record_partial_candidate((subject, pending.id, PartialState.not_examined, None))
+                    if self._diagnostics:
+                        self._partial_candidate_labels[pending.id] = self._qualified_name(pending.decorator_type)
+                    if self._diagnostics:
+                        self._record_partial_candidate((subject, pending.id, PartialState.not_examined, None))
                 decisions.append(
                     CandidateDecision(
                         decorator.id,
@@ -9345,23 +9871,24 @@ class _Compiler:
                         template_fact(*generated[decorator.id]) if decorator.id in generated else None,
                     )
                 )
-                self.decision_history.append(
-                    CompilationExplanation(
-                        subject=f"Decorators for {qualified_name(core.service_type)}",
-                        path=self._current_path(core.service_type),
-                        selected=tuple(
-                            decision for decision in decisions if decision.outcome is DecisionOutcome.selected
-                        ),
-                        rejected=tuple(
-                            decision for decision in decisions if decision.outcome is DecisionOutcome.rejected
-                        ),
+                if self._diagnostics:
+                    self.decision_history.append(
+                        CompilationExplanation(
+                            subject=f"Decorators for {self._qualified_name(core.service_type)}",
+                            path=self._current_path(core.service_type),
+                            selected=tuple(
+                                decision for decision in decisions if decision.outcome is DecisionOutcome.selected
+                            ),
+                            rejected=tuple(
+                                decision for decision in decisions if decision.outcome is DecisionOutcome.rejected
+                            ),
+                        )
                     )
-                )
                 if decorator.id in generated:
                     candidate, target = generated[decorator.id]
                     raise ContainerBuildError(
                         f"Template {candidate.declaration.id} source {candidate.source.id} "
-                        f"target {target.registration_id} ({qualified_name(core.service_type)}) "
+                        f"target {target.registration_id} ({self._qualified_name(core.service_type)}) "
                         f"predicate raised {type(error).__name__}",
                         code="decorator-filter-failed",
                         path=(
@@ -9440,7 +9967,7 @@ class _Compiler:
                     except Exception as error:
                         raise ContainerBuildError(
                             f"Template {candidate.declaration.id} source {candidate.source.id} target "
-                            f"{target.registration_id} ({qualified_name(core.service_type)}) "
+                            f"{target.registration_id} ({self._qualified_name(core.service_type)}) "
                             f"position callback raised {type(error).__name__}",
                             code="decorator-position-failed",
                             path=(
@@ -9484,19 +10011,20 @@ class _Compiler:
                     else _materialize_decorator(definition, core.service_type, core.implementation_type)
                 )
             except ContainerBuildError as error:
-                self._record_partial_declaration_edge(
-                    (
-                        core.occurrence_id,
-                        "decorator",
-                        qualified_name(definition.decorator_type),
-                        "invalid-decorator",
-                        False,
+                if self._diagnostics:
+                    self._record_partial_declaration_edge(
+                        (
+                            core.occurrence_id,
+                            "decorator",
+                            self._qualified_name(definition.decorator_type),
+                            "invalid-decorator",
+                            False,
+                        )
                     )
-                )
                 raise ContainerBuildError(
                     f"Template {generated[definition.id][0].declaration.id} source "
                     f"{generated[definition.id][0].source.id} target "
-                    f"{generated[definition.id][1].registration_id} ({qualified_name(core.service_type)}): "
+                    f"{generated[definition.id][1].registration_id} ({self._qualified_name(core.service_type)}): "
                     f"{error}"
                     if definition.id in generated
                     else str(error),
@@ -9553,7 +10081,7 @@ class _Compiler:
                 candidate, target = generated[definition.id]
                 raise ContainerBuildError(
                     f"Template {candidate.declaration.id} source {candidate.source.id} target "
-                    f"{target.registration_id} ({qualified_name(core.service_type)}): {error}",
+                    f"{target.registration_id} ({self._qualified_name(core.service_type)}): {error}",
                     code=error.code,
                     path=(*error.path, candidate.declaration.id, candidate.source.id, target.registration_id),
                 ) from error
@@ -9573,17 +10101,20 @@ class _Compiler:
                 )
             )
             decorated = component
-        explanation = CompilationExplanation(
-            subject=f"Decorators for {qualified_name(core.service_type)}",
-            path=self._current_path(core.service_type),
-            selected=tuple(decision for decision in decisions if decision.outcome is DecisionOutcome.selected),
-            rejected=tuple(decision for decision in decisions if decision.outcome is DecisionOutcome.rejected),
-        )
-        if decisions:
-            self.decision_history.append(explanation)
-            self.decorator_explanations[core.occurrence_id] = explanation
-        for item in items:
-            self.occurrence_explanations[item.component.occurrence_id] = explanation
+        if decisions or self._diagnostics:
+            explanation = CompilationExplanation(
+                subject=f"Decorators for {self._qualified_name(core.service_type)}",
+                path=self._current_path(core.service_type) if self._diagnostics else (),
+                selected=tuple(decision for decision in decisions if decision.outcome is DecisionOutcome.selected),
+                rejected=tuple(decision for decision in decisions if decision.outcome is DecisionOutcome.rejected),
+            )
+            if decisions:
+                if self._diagnostics:
+                    self.decision_history.append(explanation)
+                self.decorator_explanations[core.occurrence_id] = explanation
+            for item in items:
+                if self._diagnostics:
+                    self.occurrence_explanations[item.component.occurrence_id] = explanation
         return tuple(items)
 
 
@@ -9828,7 +10359,7 @@ def _prune_orphan_registrations(plan: _PlanSet) -> _PlanSet:
 
     return replace(
         plan,
-        blueprint=replace(
+        _blueprint=replace(
             blueprint,
             layers=tuple(prune_layer(layer) for layer in blueprint.layers),
             boundaries=tuple(replace(boundary, layer=prune_layer(boundary.layer)) for boundary in blueprint.boundaries),
@@ -9844,6 +10375,59 @@ def _component_tree(component: Component) -> Iterable[Component]:
         yield from _component_tree(configuration)
     for decorator in component.decorators:
         yield from _component_tree(decorator)
+
+
+def _selected_registration_catalogue(plan: _PlanSet) -> tuple[RegistrationInfo, ...]:
+    """Capture selected metadata without retaining occurrences or compiling discovery roots."""
+    roots = (
+        root.component
+        for groups in (plan.roots, plan.provider_roots, plan.managed_provider_roots, plan.warmup_steps)
+        for plans in groups.values()
+        for root in plans
+    )
+    visited: set[tuple[int, int]] = set()
+    selected: dict[tuple[str, tuple[Any, ...]], RegistrationInfo] = {}
+    pending = list(reversed(tuple(roots)))
+    while pending:
+        component = pending.pop()
+        graph = component._graph
+        occurrence = component.occurrence_id
+        # Provider views change parents, not the selected subtree or registration
+        # metadata. Traverse their source once instead of expanding every view.
+        while (view := graph.view_source(occurrence)) is not None:
+            occurrence = view[1]
+        key = (id(graph), occurrence)
+        if key in visited:
+            continue
+        visited.add(key)
+        component = Component(graph, occurrence)
+        pending.extend(reversed((*component.dependencies, *component.pre_configurations, *component.decorators)))
+        if component.kind not in (ComponentKind.registration, ComponentKind.decorator):
+            continue
+        registration_key = (component.id, _runtime_type_key(component.service_type))
+        if registration_key in selected:
+            continue
+        implementation = component.implementation
+        if constructor_type(implementation) is None:
+            if component.activation is ComponentActivation.instance:
+                implementation = component.implementation_type
+            else:
+                try:
+                    implementation = _factory_result_annotation(implementation)
+                except Exception:
+                    # Discovery is optional static evidence, not additional
+                    # activation validation. Uninspectable factories remain valid.
+                    implementation = None
+                if constructor_type(implementation) is None:
+                    implementation = None
+        selected[registration_key] = RegistrationInfo(
+            id=component.id,
+            service_type=component.service_type,
+            implementation_type=implementation,
+            name=component.name,
+            tags=component.tags,
+        )
+    return tuple(selected.values())
 
 
 def _valid_build_issue(issue: Any) -> bool:
@@ -9907,6 +10491,8 @@ def _run_validation_rules(
                     entrypoints=local_entrypoints,
                     _manifest_cache={},
                     _ownership_report_cache=[],
+                    _occurrence_paths_cache={},
+                    _component_membership_cache=[],
                     _analysis_index_cache=None,
                 )
             context = ValidationContext(visible_graph, boundary=boundary)
@@ -9987,6 +10573,8 @@ def _run_budget_validation_rules(
                     entrypoints=local_entrypoints,
                     _manifest_cache={},
                     _ownership_report_cache=[],
+                    _occurrence_paths_cache={},
+                    _component_membership_cache=[],
                     _analysis_index_cache=None,
                 )
             context = ValidationContext(visible_graph, boundary=boundary)
@@ -10033,6 +10621,8 @@ def _error_report(
     profile: CompilationProfiler | None = None,
     budget_state: _BudgetState | None = None,
     clean_orphans: bool = True,
+    diagnostics: bool = False,
+    provider_roots: tuple[Any, ...] | None = None,
 ) -> tuple[
     BuildReport,
     tuple[CompilationAttempt, ...],
@@ -10078,6 +10668,8 @@ def _error_report(
                 anchored_pre_configurations=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
+                diagnostics=diagnostics,
+                provider_roots=provider_roots,
                 budget_state=budget_state,
                 profile=profile,
                 profile_phase="diagnostic root retries",
@@ -10170,8 +10762,17 @@ def _recorded_root_selection(
     *,
     collection: bool,
     records: tuple[_CandidateRecord, ...] | None = None,
-) -> tuple[CompilationExplanation, tuple[_CandidateRecord, ...]]:
+) -> tuple[CompilationExplanation | None, tuple[_CandidateRecord, ...]]:
     records = plan.root_candidates.get(service_type, ()) if records is None else records
+    if not plan.diagnostics:
+        # Keep callback order/count and provider target selection exactly as in
+        # diagnostic capture, but do not allocate presentation-only decisions.
+        matches = tuple(
+            record for record in records if record.eligible and filter(_provider_selection_component(record.component))
+        )
+        if any("selected-fallback" not in record.decision.reason_codes for record in matches):
+            matches = tuple(record for record in matches if "selected-fallback" not in record.decision.reason_codes)
+        return None, matches
     selected_records: list[_CandidateRecord] = []
     selected: list[CandidateDecision] = []
     rejected: list[CandidateDecision] = []
@@ -10237,8 +10838,45 @@ def _recorded_root_selection(
     )
 
 
+def _unreachable_component_issues(graph: CompiledGraph) -> tuple[BuildIssue, ...]:
+    """Inspect frozen reachability without replaying composition or activation."""
+    issues: list[BuildIssue] = []
+    if graph.entrypoints:
+        reachable_ids = {
+            component.id
+            for root in graph.entrypoints
+            for component in _component_tree(root.component)
+            if component.kind is ComponentKind.registration
+        }
+        reported: set[str] = set()
+        for root in graph.roots:
+            component = root.component
+            if component.kind is not ComponentKind.registration:
+                continue
+            if component.id in reachable_ids or component.id in reported:
+                continue
+            reported.add(component.id)
+            issues.append(
+                BuildIssue(
+                    code="unreachable-component",
+                    severity=IssueSeverity.warning,
+                    message=(
+                        f"{qualified_name(component.service_type)} -> "
+                        f"{qualified_name(component.implementation_type)} is not reachable from a marked entry point"
+                    ),
+                    root=qualified_name(root.requested_type),
+                )
+            )
+
+    return tuple(issues)
+
+
 def _finalize_plan(
-    plan: _PlanSet, profile: CompilationProfiler | None = None, budget_state: _BudgetState | None = None
+    plan: _PlanSet,
+    profile: CompilationProfiler | None = None,
+    budget_state: _BudgetState | None = None,
+    *,
+    check_unreachable: bool = True,
 ) -> _PlanSet:
     all_roots = _graph_roots(plan)
     entrypoints: list[GraphRoot] = []
@@ -10271,8 +10909,9 @@ def _finalize_plan(
                 selection_filter,
                 collection=True,
             )
-            known_root_selections[(None, element_type, id(request.filter))] = explanation
-            census_root_selections.append((None, explanation))
+            if explanation is not None:
+                known_root_selections[(None, element_type, id(request.filter))] = explanation
+                census_root_selections.append((None, explanation))
             matches = [GraphRoot(request.service_type, record.component, None) for record in selected_records]
             if not matches:
                 root_name = qualified_name(request.service_type)
@@ -10295,8 +10934,9 @@ def _finalize_plan(
             selection_filter,
             collection=False,
         )
-        known_root_selections[(None, request.service_type, id(request.filter))] = explanation
-        census_root_selections.append((None, explanation))
+        if explanation is not None:
+            known_root_selections[(None, request.service_type, id(request.filter))] = explanation
+            census_root_selections.append((None, explanation))
         matches = [GraphRoot(request.service_type, record.component, None) for record in selected_records]
         root_name = qualified_name(request.service_type)
         if not matches:
@@ -10384,8 +11024,9 @@ def _finalize_plan(
                 collection=collection is not None,
                 records=area_records.get(candidate_type, ()),
             )
-            known_root_selections[(boundary.name, candidate_type, id(request.filter))] = explanation
-            census_root_selections.append((boundary.name, explanation))
+            if explanation is not None:
+                known_root_selections[(boundary.name, candidate_type, id(request.filter))] = explanation
+                census_root_selections.append((boundary.name, explanation))
             selected_local = tuple(record for record in selected_records if record.component.boundary == boundary.name)
             if len(selected_local) != len(selected_records):
                 issues.append(
@@ -10447,33 +11088,6 @@ def _finalize_plan(
                 GraphRoot(request.service_type, record.component, boundary.name) for record in selected_local
             )
 
-    if entrypoints:
-        reachable_ids = {
-            component.id
-            for root in entrypoints
-            for component in _component_tree(root.component)
-            if component.kind is ComponentKind.registration
-        }
-        reported: set[str] = set()
-        for root in all_roots:
-            component = root.component
-            if component.kind is not ComponentKind.registration:
-                continue
-            if component.id in reachable_ids or component.id in reported:
-                continue
-            reported.add(component.id)
-            issues.append(
-                BuildIssue(
-                    code="unreachable-component",
-                    severity=IssueSeverity.warning,
-                    message=(
-                        f"{qualified_name(component.service_type)} -> "
-                        f"{qualified_name(component.implementation_type)} is not reachable from a marked entry point"
-                    ),
-                    root=qualified_name(root.requested_type),
-                )
-            )
-
     boundary_contracts = tuple(
         {
             "name": boundary.name,
@@ -10511,6 +11125,9 @@ def _finalize_plan(
     )
     compiled_graph = CompiledGraph(
         roots=all_roots,
+        diagnostics_enabled=plan.diagnostics,
+        _occurrence_origins=plan.occurrence_origins,
+        _fallback_ids=plan.fallback_ids,
         build_args=plan.build_args,
         entrypoints=tuple(entrypoints),
         boundaries=boundary_contracts,
@@ -10544,6 +11161,11 @@ def _finalize_plan(
         _census_sources=plan.census_sources,
         _census_ids=plan.census_ids,
     )
+    # Retain only the position needed to recover eager finding order after
+    # deferred validation, including duplicate findings emitted by build rules.
+    unreachable_issue_offset = len(dict.fromkeys(issues))
+    if check_unreachable:
+        issues.extend(_unreachable_component_issues(compiled_graph))
     built_in_issues = tuple(dict.fromkeys(issues))
     validation_runner = (
         _run_validation_rules
@@ -10573,6 +11195,8 @@ def _finalize_plan(
         plan,
         compiled_graph=compiled_graph,
         build_report=report,
+        unreachable_checked=check_unreachable,
+        unreachable_issue_offset=unreachable_issue_offset,
     )
 
 
@@ -10847,6 +11471,8 @@ def _registration_template_source(
             profile=profile,
             profile_phase="registration-template expansion",
             profile_attempt="template source inspection",
+            diagnostics=inputs.get("diagnostics", False),
+            provider_roots=inputs.get("provider_roots"),
         )
         try:
             return compiler._compile_source_core(registration.id, registration.service_type)
@@ -11087,6 +11713,8 @@ def _expand_decorator_templates(
     inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
     profile: CompilationProfiler | None = None,
     budget_state: _BudgetState | None = None,
+    diagnostics: bool = False,
+    provider_roots: tuple[Any, ...] | None = None,
 ) -> _TemplateExpansion:
     """Expand a normalized, visibility-prepared snapshot once, without target activation.
 
@@ -11139,6 +11767,8 @@ def _expand_decorator_templates(
                         profile=profile,
                         profile_phase="decorator-template expansion",
                         profile_attempt="template source inspection",
+                        diagnostics=diagnostics,
+                        provider_roots=provider_roots,
                     )
                     if profile is None:
                         core = source_compiler._compile_source_core(registration.id, registration.service_type)
@@ -11505,12 +12135,18 @@ def _compile_with_report(
     profile: CompilationProfiler | None = None,
     budget_state: _BudgetState | None = None,
     clean_orphans: bool = True,
+    diagnostics: bool = False,
+    provider_roots: tuple[Any, ...] | None = None,
+    check_unreachable: bool = True,
+    aggregate_errors: bool = True,
 ) -> _PlanSet:
     compilation_inputs: _CompilationInputs = {
         "build_args": build_args,
         "budget_state": budget_state,
         "anchored_owner_tokens": anchored_owner_tokens,
         "inherited_graph_sidecars": inherited_graph_sidecars,
+        "diagnostics": diagnostics,
+        "provider_roots": provider_roots,
     }
     if anchored_singleton_steps is not None:
         compilation_inputs["anchored_singleton_steps"] = anchored_singleton_steps
@@ -11525,15 +12161,22 @@ def _compile_with_report(
     entry_points = _declared_entry_point_labels(blueprint)
     if alias_errors:
         report = _alias_error_report(alias_errors)
-        census_definitions, census_ids = _census_inventory(blueprint)
+        census_definitions, census_ids = (
+            _census_inventory(blueprint) if diagnostics else ((), types.MappingProxyType({}))
+        )
         raise ContainerBuildError(
             report=report,
             entry_points=entry_points,
-            partial_graph=PartialGraph(
-                (CompilationAttempt(None, issue_code=report.errors[0].code, witness_path=report.errors[0].path),)
+            partial_graph=(
+                PartialGraph(
+                    (CompilationAttempt(None, issue_code=report.errors[0].code, witness_path=report.errors[0].path),)
+                )
+                if diagnostics
+                else None
             ),
             census_definitions=census_definitions,
             census_ids=census_ids,
+            diagnostics_enabled=diagnostics,
         )
     try:
         if any(layer.registration_templates for layer in (*blueprint.layers, *(b.layer for b in blueprint.boundaries))):
@@ -11573,6 +12216,8 @@ def _compile_with_report(
                 anchored_pre_configuration_steps=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
+                diagnostics=diagnostics,
+                provider_roots=provider_roots,
                 budget_state=budget_state,
             )
         else:
@@ -11586,6 +12231,8 @@ def _compile_with_report(
                 anchored_pre_configuration_steps=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
+                diagnostics=diagnostics,
+                provider_roots=provider_roots,
                 budget_state=budget_state,
                 profile=profile,
             )
@@ -11614,15 +12261,22 @@ def _compile_with_report(
             blueprint = expanded
     except TypeAliasNormalizationError as error:
         report = _alias_error_report((error,))
-        census_definitions, census_ids = _census_inventory(blueprint)
+        census_definitions, census_ids = (
+            _census_inventory(blueprint) if diagnostics else ((), types.MappingProxyType({}))
+        )
         raise ContainerBuildError(
             report=report,
             entry_points=entry_points,
-            partial_graph=PartialGraph(
-                (CompilationAttempt(None, issue_code=report.errors[0].code, witness_path=report.errors[0].path),)
+            partial_graph=(
+                PartialGraph(
+                    (CompilationAttempt(None, issue_code=report.errors[0].code, witness_path=report.errors[0].path),)
+                )
+                if diagnostics
+                else None
             ),
             census_definitions=census_definitions,
             census_ids=census_ids,
+            diagnostics_enabled=diagnostics,
         ) from error
     except ContainerBuildError as error:
         issue = BuildIssue(
@@ -11633,14 +12287,21 @@ def _compile_with_report(
             path=error.path,
         )
         report = BuildReport((issue,), checked_roots=0)
-        census_definitions, census_ids = _census_inventory(blueprint)
+        census_definitions, census_ids = (
+            _census_inventory(blueprint) if diagnostics else ((), types.MappingProxyType({}))
+        )
         raise ContainerBuildError(
             report=report,
             entry_points=entry_points,
-            partial_graph=PartialGraph((CompilationAttempt(None, issue_code=issue.code, witness_path=issue.path),)),
+            partial_graph=(
+                PartialGraph((CompilationAttempt(None, issue_code=issue.code, witness_path=issue.path),))
+                if diagnostics
+                else None
+            ),
             evidence=error.evidence,
             census_definitions=census_definitions,
             census_ids=census_ids,
+            diagnostics_enabled=diagnostics,
         ) from error
     compiler = _Compiler(
         blueprint,
@@ -11651,8 +12312,10 @@ def _compile_with_report(
         inherited_graph_sidecars=inherited_graph_sidecars,
         budget_state=budget_state,
         profile=profile,
+        diagnostics=diagnostics,
+        provider_roots=provider_roots,
     )
-    census_definitions, census_ids = _census_inventory(blueprint)
+    census_definitions, census_ids = _census_inventory(blueprint) if diagnostics else ((), types.MappingProxyType({}))
     try:
         if preview_request is not None:
             area, service_type = preview_request
@@ -11668,16 +12331,19 @@ def _compile_with_report(
         plan = replace(compiled, census_definitions=census_definitions, census_ids=census_ids)
         if preview:
             return plan
-        finalized = _compile_warmup_plans(_finalize_plan(plan, profile, budget_state), budget_state)
-        return _prune_orphan_registrations(finalized) if clean_orphans else finalized
-    except ContainerBuildError as error:
-        if error.report is not None:
+        finalized = _compile_warmup_plans(
+            _finalize_plan(plan, profile, budget_state, check_unreachable=check_unreachable), budget_state
+        )
+        retained = _prune_orphan_registrations(finalized) if clean_orphans else finalized
+        return replace(retained, selected_registrations=_selected_registration_catalogue(retained))
+    except Exception as error:
+        if isinstance(error, ContainerBuildError) and error.report is not None:
             raise ContainerBuildError(
                 report=error.report,
                 compiled_graph=error.compiled_graph,
                 entry_points=entry_points,
                 explanations=tuple(compiler.decision_history),
-                partial_graph=PartialGraph((compiler.partial_attempt(error),)),
+                partial_graph=(PartialGraph((compiler.partial_attempt(error),)) if diagnostics else None),
                 evidence=error.evidence,
                 census_definitions=census_definitions,
                 census_ids=census_ids,
@@ -11688,6 +12354,7 @@ def _compile_with_report(
                     }
                 ),
                 census_attempts=tuple(compiler._partial_candidates),
+                diagnostics_enabled=diagnostics,
             ) from error
 
         def retry(original: BaseException = error):
@@ -11699,34 +12366,68 @@ def _compile_with_report(
                 anchored_pre_configuration_steps=anchored_pre_configuration_steps,
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
+                diagnostics=diagnostics,
+                provider_roots=provider_roots,
                 budget_state=budget_state,
                 profile=profile,
                 clean_orphans=clean_orphans,
             )
 
-        if profile is None:
+        if not aggregate_errors:
+            failure_path = (
+                error.path
+                if isinstance(error, ContainerBuildError)
+                else getattr(compiler, "_callback_failure_path", ())
+            )
+            # Callback stacks have unwound by here. Capture their compiler-owned
+            # request path at the failure site, never by replaying the callback.
+            primary_attempt = compiler.partial_attempt(
+                error
+                if isinstance(error, ContainerBuildError) or not failure_path
+                else ContainerBuildError(_safe_error_message(error), code="compile-error", path=failure_path)
+            )
+            issue = BuildIssue(
+                code=_build_error_code(error),
+                severity=IssueSeverity.error,
+                message=_safe_error_message(error),
+                root=primary_attempt.root,
+                path=failure_path,
+            )
+            report = BuildReport((issue,), checked_roots=0)
+            retries, retry_counts = (), (0, 0)
+            facts = error.evidence if isinstance(error, ContainerBuildError) else ()
+            evidence = tuple(None if fact is None else replace(fact, attempt_ref="attempt:1") for fact in facts)
+            issue_boundaries = (primary_attempt.boundary,)
+        elif profile is None:
             report, retries, retry_counts, evidence, issue_boundaries = retry()
         else:
             report, retries, retry_counts, evidence, issue_boundaries = profile.call(
                 "diagnostic root retries", "phase", retry
             )
-        primary_attempt = compiler.partial_attempt(error)
+        if aggregate_errors:
+            primary_attempt = compiler.partial_attempt(error)
         raise ContainerBuildError(
             report=report,
+            code=None if aggregate_errors else _build_error_code(error),
+            path=() if aggregate_errors else report.errors[0].path,
             entry_points=entry_points,
             evidence=evidence,
             issue_boundaries=issue_boundaries,
             explanations=tuple(compiler.decision_history),
-            partial_graph=PartialGraph(
-                (primary_attempt, *retries),
-                inconsistent_retries=_retry_outcomes_differ(primary_attempt, retries),
-                truncated=retry_counts[1] > 0,
-                total_attempts=1 + retry_counts[0],
-                omitted_attempts=retry_counts[1],
-                retained_attempts=1 + len(retries),
-                total_roots=retry_counts[0],
-                retained_roots=len(retries),
-                omitted_roots=retry_counts[1],
+            partial_graph=(
+                PartialGraph(
+                    (primary_attempt, *retries),
+                    inconsistent_retries=_retry_outcomes_differ(primary_attempt, retries),
+                    truncated=retry_counts[1] > 0,
+                    total_attempts=1 + retry_counts[0],
+                    omitted_attempts=retry_counts[1],
+                    retained_attempts=1 + len(retries),
+                    total_roots=retry_counts[0],
+                    retained_roots=len(retries),
+                    omitted_roots=retry_counts[1],
+                )
+                if diagnostics
+                else None
             ),
             census_definitions=census_definitions,
             census_ids=census_ids,
@@ -11737,56 +12438,7 @@ def _compile_with_report(
                 }
             ),
             census_attempts=tuple(compiler._partial_candidates),
-        ) from error
-    except Exception as error:
-
-        def retry(original: BaseException = error):
-            return _error_report(
-                blueprint,
-                original,
-                build_args=build_args,
-                anchored_singleton_steps=anchored_singleton_steps,
-                anchored_pre_configuration_steps=anchored_pre_configuration_steps,
-                anchored_owner_tokens=anchored_owner_tokens,
-                inherited_graph_sidecars=inherited_graph_sidecars,
-                budget_state=budget_state,
-                profile=profile,
-                clean_orphans=clean_orphans,
-            )
-
-        if profile is None:
-            report, retries, retry_counts, evidence, issue_boundaries = retry()
-        else:
-            report, retries, retry_counts, evidence, issue_boundaries = profile.call(
-                "diagnostic root retries", "phase", retry
-            )
-        primary_attempt = compiler.partial_attempt(error)
-        raise ContainerBuildError(
-            report=report,
-            entry_points=entry_points,
-            evidence=evidence,
-            issue_boundaries=issue_boundaries,
-            explanations=tuple(compiler.decision_history),
-            partial_graph=PartialGraph(
-                (primary_attempt, *retries),
-                inconsistent_retries=_retry_outcomes_differ(primary_attempt, retries),
-                truncated=retry_counts[1] > 0,
-                total_attempts=1 + retry_counts[0],
-                omitted_attempts=retry_counts[1],
-                retained_attempts=1 + len(retries),
-                total_roots=retry_counts[0],
-                retained_roots=len(retries),
-                omitted_roots=retry_counts[1],
-            ),
-            census_definitions=census_definitions,
-            census_ids=census_ids,
-            census_sources=types.MappingProxyType(
-                {
-                    **{key: value.id for key, value in compiler._specialized_registration_sources.items()},
-                    **compiler._pattern_sources,
-                }
-            ),
-            census_attempts=tuple(compiler._partial_candidates),
+            diagnostics_enabled=diagnostics,
         ) from error
 
 
@@ -11857,7 +12509,7 @@ class _ManagedResolutionContext(_RuntimeResolutionContext):
         if _is_managed_provider(annotation):
             return original.step.resolve(self)
         mode, target = cast(tuple[str, Any], _provider_request(annotation))
-        frozen = self.scope._plan.provider_roots[AsyncManagedProvider[target]]
+        frozen = self.scope._plan.managed_provider_roots[AsyncManagedProvider[target]]
         selected = next(
             candidate
             for candidate in frozen
@@ -11891,7 +12543,7 @@ class _ManagedResolutionContext(_RuntimeResolutionContext):
                 return self.resolve_root(service_type, filter)
             plans = self.scope._select_roots(element_type, filter)
             canonical_element = normalize_type_alias(element_type)
-            managed_plans = self.scope._plan.provider_roots.get(AsyncManagedProvider[canonical_element], ())
+            managed_plans = self.scope._plan.managed_provider_roots.get(AsyncManagedProvider[canonical_element], ())
             targets = tuple(
                 next(
                     cast(_ProviderStep, candidate.step).target
@@ -11904,7 +12556,8 @@ class _ManagedResolutionContext(_RuntimeResolutionContext):
             return collection_type(values)
         if _provider_request(normalize_type_alias(service_type)) is not None:
             return self.resolve_root(service_type, filter)
-        plan = self.scope._select_root(AsyncManagedProvider[service_type], filter)
+        canonical = normalize_type_alias(service_type)
+        plan = self.scope._select_root(AsyncManagedProvider[canonical], filter, managed=True)
         return await cast(_ProviderStep, plan.step).target.resolve_async(self)
 
 
@@ -12098,6 +12751,18 @@ class Scope(_RuntimeOwner):
         return tuple(plan.component for plans in self._plan.roots.values() for plan in plans)
 
     @property
+    def selected_registrations(self) -> tuple[RegistrationInfo, ...]:
+        """Frozen registrations reachable from this scope's executable plans.
+
+        Includes dependency-only and deferred selections and decorators, with
+        closed constructor types. Excludes synthetic components, rejected
+        candidates, and unexposed architecture-only boundary roots. Entries are
+        deduplicated by registration ID and visible canonical service type in
+        root/dependency traversal order. Reading never resolves or compiles.
+        """
+        return self._plan.selected_registrations
+
+    @property
     def graph(self) -> CompiledGraph:
         graph = self._plan.compiled_graph
         if graph is None:
@@ -12182,14 +12847,17 @@ class Scope(_RuntimeOwner):
         return self._plan.build_report
 
     def validation_report(self) -> BuildReport:
-        """Return build findings plus a fresh run of validate-only rules."""
+        """Return build/deferred reachability findings and fresh validate-only rules."""
 
         validation_rule_issues = _run_validation_rules(
             self.graph,
-            (definition for definition in self._plan.blueprint.validation_rules if definition.mode == "validation"),
+            self._plan.validation_rules,
         )
+        deferred_issues = () if self._plan.unreachable_checked else _unreachable_component_issues(self.graph)
+        stored = self.build_report.issues
+        offset = self._plan.unreachable_issue_offset
         return BuildReport(
-            tuple(dict.fromkeys((*self.build_report.issues, *validation_rule_issues))),
+            tuple(dict.fromkeys((*stored[:offset], *deferred_issues, *stored[offset:], *validation_rule_issues))),
             checked_roots=self.build_report.checked_roots,
             _graph=self.graph,
         )
@@ -12204,11 +12872,7 @@ class Scope(_RuntimeOwner):
     def ensured_import_modules(self) -> tuple[str, ...]:
         """Concrete module names explicitly imported for subclass discovery."""
 
-        layers = (
-            *self._plan.blueprint.layers,
-            *(boundary.layer for boundary in self._plan.blueprint.boundaries),
-        )
-        return tuple(dict.fromkeys(module_name for layer in layers for module_name in layer.ensured_import_modules))
+        return self._plan.ensured_import_modules
 
     def has_component(self, service_type: Any, filter: ComponentFilter = default_component_filter) -> bool:
         """Return whether the frozen plan contains a matching root component."""
@@ -12226,14 +12890,14 @@ class Scope(_RuntimeOwner):
     def has_scope_slot(self, service_type: Any, name: str | None = None) -> bool:
         """Return whether this runtime can accept the supplied scope value."""
 
-        slots = self._plan.blueprint.slots
+        slots = self._plan.slots
         return (service_type, name) in slots or (normalize_type_alias(service_type), name) in slots
 
     def has_provision(self, service_type: Any, name: str | None = None) -> bool:
         """Return whether this scope or one of its parents supplied a slot value."""
 
         key = (service_type, name)
-        if key not in self._plan.blueprint.slots:
+        if key not in self._plan.slots:
             key = (normalize_type_alias(service_type), name)
         scope: Scope | None = self
         while scope is not None:
@@ -12242,9 +12906,9 @@ class Scope(_RuntimeOwner):
             scope = scope.parent
         return False
 
-    def _select_root(self, service_type: Any, filter: ComponentFilter) -> _RootPlan:
+    def _select_root(self, service_type: Any, filter: ComponentFilter, *, managed: bool = False) -> _RootPlan:
         self._ensure_open()
-        if filter is default_component_filter:
+        if filter is default_component_filter and not managed:
             plan = self._plan.default_roots.get(service_type)
             if plan is not None:
                 self._resolution_started = True
@@ -12252,13 +12916,13 @@ class Scope(_RuntimeOwner):
 
         # The plan's keys are already canonical. Normalize only unknown spellings,
         # never a known key whose candidates were rejected by the caller's filter.
-        plans = self._plan.roots.get(service_type)
-        if plans is None:
+        plans = self._plan.managed_provider_roots.get(service_type) if managed else self._plan.roots.get(service_type)
+        if plans is None and not managed:
             plans = self._plan.provider_roots.get(service_type)
-        if plans is None and (service_type, None) not in self._plan.blueprint.slots:
+        if plans is None and (service_type, None) not in self._plan.slots:
             canonical_type = normalize_type_alias(service_type)
             if canonical_type is not service_type:
-                return self._select_root(canonical_type, filter)
+                return self._select_root(canonical_type, filter, managed=managed)
 
         self._resolution_started = True
         if plans is not None and filter is default_component_filter:
@@ -12269,7 +12933,7 @@ class Scope(_RuntimeOwner):
             for plan in plans:
                 if filter(_provider_selection_component(plan.component)):
                     return plan
-        if (service_type, None) in self._plan.blueprint.slots:
+        if (service_type, None) in self._plan.slots:
             raise ScopeProvisionError(f"Scope slot {service_type!r} has no provided value")
         raise CannotResolveError(service_type)
 
@@ -12298,7 +12962,7 @@ class Scope(_RuntimeOwner):
                 return ordinary or tuple(
                     plan for plan in plans if plan.is_fallback and filter(_provider_selection_component(plan.component))
                 )
-        if (service_type, None) not in self._plan.blueprint.slots:
+        if (service_type, None) not in self._plan.slots:
             canonical_type = normalize_type_alias(service_type)
             if canonical_type is not service_type:
                 return self._select_roots(canonical_type, filter)
@@ -12315,7 +12979,7 @@ class Scope(_RuntimeOwner):
             self._resolution_started = True
             plan = self._plan.default_roots.get(service_type)
             if plan is None:
-                if (service_type, None) in self._plan.blueprint.slots:
+                if (service_type, None) in self._plan.slots:
                     raise ScopeProvisionError(f"Scope slot {service_type!r} has no provided value")
                 raise CannotResolveError(service_type)
             if not plan.step.sync_supported:
@@ -12350,7 +13014,7 @@ class Scope(_RuntimeOwner):
             self._resolution_started = True
             plan = self._plan.default_roots.get(service_type)
             if plan is None:
-                if (service_type, None) in self._plan.blueprint.slots:
+                if (service_type, None) in self._plan.slots:
                     raise ScopeProvisionError(f"Scope slot {service_type!r} has no provided value")
                 raise CannotResolveError(service_type)
             if isinstance(plan.step, _SingletonRegistrationStep):
@@ -12376,10 +13040,10 @@ class Scope(_RuntimeOwner):
     def provide(self, service_type: TypeForm[TService], value: TService, name: str | None = None) -> Scope:
         self._ensure_open()
         key = (service_type, name)
-        if key not in self._plan.blueprint.slots:
+        if key not in self._plan.slots:
             service_type = normalize_type_alias(service_type)
             key = (service_type, name)
-        if key not in self._plan.blueprint.slots:
+        if key not in self._plan.slots:
             raise UndeclaredScopeSlotError(f"No scope slot declared for {service_type!r} named {name!r}")
         if self._resolution_started:
             raise ScopeProvisionError("Scope provisions are locked after resolution begins")
@@ -12411,6 +13075,11 @@ class Scope(_RuntimeOwner):
             parent=self,
             owners=self._owners,
         )
+
+    @property
+    def allow_scope_builders(self) -> bool:
+        """Whether this runtime retains composition for compiling overlays."""
+        return self._plan._blueprint is not None
 
     def new_scope_builder(self) -> ScopeBuilder:
         self._ensure_open()
@@ -13139,6 +13808,7 @@ def _observe_plan(
         roots=observed_roots,
         warmup_steps=types.MappingProxyType(roots(plan.warmup_steps)),
         provider_roots=observed_provider_roots,
+        managed_provider_roots=roots(plan.managed_provider_roots),
         default_roots={
             key: next(
                 item
@@ -13162,6 +13832,8 @@ def _observe_plan(
 
 
 class _CompilationInputs(typing.TypedDict, total=False):
+    diagnostics: bool
+    provider_roots: tuple[Any, ...] | None
     budget_state: _BudgetState | None
     build_args: Mapping[str, Any]
     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep]
@@ -13247,9 +13919,23 @@ class _BuilderBase:
         profile: CompilationProfiler | None,
         clean_orphans: bool,
         budget: CompilationBudget | None,
+        diagnostics: bool,
+        provider_roots: Iterable[Any] | None,
+        allow_scope_builders: bool,
+        check_unreachable: bool,
+        aggregate_errors: bool,
     ) -> _PlanSet:
         if budget is not None and not isinstance(budget, CompilationBudget):
             raise TypeError("budget must be a CompilationBudget instance or None")
+        requested_providers = (
+            None
+            if provider_roots is None
+            else tuple(dict.fromkeys(normalize_type_alias(annotation) for annotation in provider_roots))
+        )
+        if requested_providers is not None:
+            for annotation in requested_providers:
+                if _provider_request(annotation) is None:
+                    raise TypeError("provider_roots must contain provider annotations")
         state = None if budget is None else _BudgetState(budget)
         blueprint = None
         try:
@@ -13259,19 +13945,50 @@ class _BuilderBase:
                 blueprint, inputs = profile.call(
                     "discovery and blueprint preparation", "phase", self._compilation_snapshot, build_args, state
                 )
+            inputs["diagnostics"] = diagnostics
+            inputs["provider_roots"] = requested_providers
             result = _compile_with_report(
-                blueprint, profile=profile, clean_orphans=clean_orphans, **cast(_CompilationInputs, inputs)
+                blueprint,
+                profile=profile,
+                clean_orphans=clean_orphans,
+                check_unreachable=check_unreachable,
+                aggregate_errors=aggregate_errors,
+                **cast(_CompilationInputs, inputs),
             )
             if state is not None:
                 state.check()
-            return result
+            runtime_blueprint = result.blueprint
+            layers = (*runtime_blueprint.layers, *(boundary.layer for boundary in runtime_blueprint.boundaries))
+            return replace(
+                result,
+                slots=runtime_blueprint.slots,
+                ensured_import_modules=tuple(
+                    dict.fromkeys(module_name for layer in layers for module_name in layer.ensured_import_modules)
+                ),
+                validation_rules=tuple(
+                    definition for definition in runtime_blueprint.validation_rules if definition.mode == "validation"
+                ),
+                _blueprint=runtime_blueprint if allow_scope_builders else None,
+            )
         except _BudgetStop as stop:
-            raise _budget_build_error(stop, state, blueprint) from None
+            raise _budget_build_error(stop, state, blueprint, diagnostics) from None
         except Exception as error:
+            if isinstance(error, ContainerBuildError) and error.diagnostics_enabled != diagnostics:
+                # Snapshot/declaration failures can precede the compiler wrapper.
+                error.diagnostics_enabled = diagnostics
+                if not diagnostics:
+                    error.partial_graph = None
+                    error.explanations = ()
+                    error._census_definitions = ()
+                    error._census_ids = types.MappingProxyType({})
+                    error._census_sources = types.MappingProxyType({})
+                    error._census_attempts = ()
+                    if error.report is not None:
+                        error.report = replace(error.report, _explanations=())
             if state is not None and state.exhaustion is not None:
                 stop = state.exhaustion
                 stop.original = error
-                raise _budget_build_error(stop, state, blueprint) from None
+                raise _budget_build_error(stop, state, blueprint, diagnostics) from None
             raise
         finally:
             if profile is not None and state is not None:
@@ -14290,6 +15007,7 @@ class _BuilderBase:
         build_args: Mapping[str, Any] | None = None,
     ) -> tuple[Component, ...]:
         blueprint, inputs = self._compilation_snapshot(build_args)
+        inputs["diagnostics"] = False
         alias_errors = _blueprint_alias_errors(blueprint)
         if alias_errors:
             raise ContainerBuildError(report=_alias_error_report(alias_errors))
@@ -14368,13 +15086,56 @@ class ContainerBuilder(_WarmupBuilder):
         budget: CompilationBudget | None = None,
         instrumentation: Instrumentation | None = None,
         clean_orphans: bool = True,
+        diagnostics: bool = False,
+        provider_roots: Iterable[Any] | None = None,
+        allow_scope_builders: bool = True,
+        check_unreachable: bool = True,
+        aggregate_errors: bool = True,
     ) -> Container:
+        """Compile all ordinary roots and the requested public provider forms.
+
+        ``provider_roots=None`` preserves every automatic provider family/form.
+        An iterable restricts automatic public handles to those annotations and
+        marked provider entrypoints. Injection is unaffected; internal managed
+        context targets remain frozen when a managed acquisition is possible.
+
+        ``aggregate_errors=False`` skips independent root recompilation after a
+        compile failure. The original failure/evidence is preserved; preparation
+        findings, build-rule reports and all essential validation still run.
+        The default aggregates independent failures, regardless of diagnostics.
+
+        ``check_unreachable=False`` defers only unreachable-component warnings
+        to validation_report(), using the immutable compiled graph. Structural
+        checks, entrypoint validation and build-mode rules always run.
+
+        ``allow_scope_builders=False`` releases composition after validation.
+        The runtime and ordinary descendants still resolve, inspect, warm up,
+        and clean up normally, but cannot create or compile scope builders.
+        """
+        if not isinstance(aggregate_errors, bool):
+            raise TypeError("aggregate_errors must be a bool")
+        if not isinstance(check_unreachable, bool):
+            raise TypeError("check_unreachable must be a bool")
+        if not isinstance(allow_scope_builders, bool):
+            raise TypeError("allow_scope_builders must be a bool")
+        if not isinstance(diagnostics, bool):
+            raise TypeError("diagnostics must be a bool")
         if not isinstance(clean_orphans, bool):
             raise TypeError("clean_orphans must be a bool")
         if instrumentation is not None and not isinstance(instrumentation, Instrumentation):
             raise TypeError("instrumentation must be an Instrumentation instance or None")
         if profile is None:
-            plan = self._build_plan(build_args, profile, clean_orphans, budget)
+            plan = self._build_plan(
+                build_args,
+                profile,
+                clean_orphans,
+                budget,
+                diagnostics,
+                provider_roots,
+                allow_scope_builders,
+                check_unreachable,
+                aggregate_errors,
+            )
             if instrumentation is None:
                 container = Container(plan, self._owner_token)
             else:
@@ -14386,7 +15147,17 @@ class ContainerBuilder(_WarmupBuilder):
         profile._begin()
         state = "interrupted"
         try:
-            plan = self._build_plan(build_args, profile, clean_orphans, budget)
+            plan = self._build_plan(
+                build_args,
+                profile,
+                clean_orphans,
+                budget,
+                diagnostics,
+                provider_roots,
+                allow_scope_builders,
+                check_unreachable,
+                aggregate_errors,
+            )
             if instrumentation is None:
                 container = Container(plan, self._owner_token)
             else:
@@ -14407,6 +15178,11 @@ class ScopeBuilder(_WarmupBuilder):
     """Compile a child scope with registrations layered over a runtime parent."""
 
     def __init__(self, parent: Scope):
+        parent._ensure_open()
+        # Guard the direct public constructor as well as new_scope_builder(),
+        # before allocating mutable composition state.
+        if parent._plan._blueprint is None:
+            raise RuntimeError("Scope builders are disabled: this runtime was built with allow_scope_builders=False")
         super().__init__()
         self._parent = parent
         self._bundle_container_id = parent.container._owned_token
@@ -14419,7 +15195,40 @@ class ScopeBuilder(_WarmupBuilder):
         budget: CompilationBudget | None = None,
         instrumentation: Instrumentation | None = None,
         clean_orphans: bool = True,
+        diagnostics: bool = False,
+        provider_roots: Iterable[Any] | None = None,
+        allow_scope_builders: bool = True,
+        check_unreachable: bool = True,
+        aggregate_errors: bool = True,
     ) -> Scope:
+        """Compile all ordinary roots and the requested public provider forms.
+
+        ``provider_roots=None`` preserves every automatic provider family/form.
+        An iterable restricts automatic public handles to those annotations and
+        marked provider entrypoints. Injection is unaffected; internal managed
+        context targets remain frozen when a managed acquisition is possible.
+
+        ``aggregate_errors=False`` skips independent root recompilation after a
+        compile failure. The original failure/evidence is preserved; preparation
+        findings, build-rule reports and all essential validation still run.
+        The default aggregates independent failures, regardless of diagnostics.
+
+        ``check_unreachable=False`` defers only unreachable-component warnings
+        to validation_report(), using the immutable compiled graph. Structural
+        checks, entrypoint validation and build-mode rules always run.
+
+        ``allow_scope_builders=False`` releases composition after validation.
+        The runtime and ordinary descendants still resolve, inspect, warm up,
+        and clean up normally, but cannot create or compile scope builders.
+        """
+        if not isinstance(aggregate_errors, bool):
+            raise TypeError("aggregate_errors must be a bool")
+        if not isinstance(check_unreachable, bool):
+            raise TypeError("check_unreachable must be a bool")
+        if not isinstance(allow_scope_builders, bool):
+            raise TypeError("allow_scope_builders must be a bool")
+        if not isinstance(diagnostics, bool):
+            raise TypeError("diagnostics must be a bool")
         if not isinstance(clean_orphans, bool):
             raise TypeError("clean_orphans must be a bool")
         parent_profiler = getattr(self._parent, "_profiler", None)
@@ -14430,7 +15239,17 @@ class ScopeBuilder(_WarmupBuilder):
         if (instrumentation.profiler if instrumentation is not None else None) is not parent_profiler:
             raise ValueError("overlay instrumentation must match its parent runtime")
         if profile is None:
-            plan = self._build_plan(build_args, profile, clean_orphans, budget)
+            plan = self._build_plan(
+                build_args,
+                profile,
+                clean_orphans,
+                budget,
+                diagnostics,
+                provider_roots,
+                allow_scope_builders,
+                check_unreachable,
+                aggregate_errors,
+            )
             if instrumentation is not None:
                 plan, fingerprint, labels, paths = _observe_plan(
                     plan, instrumentation, cast(str, self._parent.container._owned_token), self._parent
@@ -14451,7 +15270,17 @@ class ScopeBuilder(_WarmupBuilder):
         profile._begin()
         state = "interrupted"
         try:
-            plan = self._build_plan(build_args, profile, clean_orphans, budget)
+            plan = self._build_plan(
+                build_args,
+                profile,
+                clean_orphans,
+                budget,
+                diagnostics,
+                provider_roots,
+                allow_scope_builders,
+                check_unreachable,
+                aggregate_errors,
+            )
             if instrumentation is not None:
                 plan, fingerprint, labels, paths = _observe_plan(
                     plan, instrumentation, cast(str, self._parent.container._owned_token), self._parent

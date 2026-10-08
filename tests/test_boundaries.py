@@ -9,6 +9,7 @@ import pytest
 from clean_ioc import (
     AsyncProvider,
     BoundaryAlias,
+    CompilationBudget,
     ContainerBuilder,
     ContainerBuildError,
     Expose,
@@ -594,7 +595,7 @@ def test_missing_visibility_reports_private_source_and_boundary_decisions():
     builder.create_boundary("orders", exposes=(Expose(PlaceOrder),)).apply_bundle(orders_bundle)
 
     with pytest.raises(ContainerBuildError) as captured:
-        builder.build()
+        builder.build(diagnostics=True)
     assert captured.value.report is not None
     assert {issue.code for issue in captured.value.report.errors} == {"boundary-private-component"}
     assert "payments" in captured.value.report.errors[0].message
@@ -809,7 +810,7 @@ def test_overlay_can_add_a_boundary_use_parent_exposure_but_cannot_reopen_it():
 
 
 def test_manifest_provenance_rendering_and_semantic_diff_include_boundaries():
-    container = application_builder().build()
+    container = application_builder().build(diagnostics=True)
     graph = container.graph
     manifest = graph.manifest(all_roots=True)
 
@@ -844,7 +845,7 @@ def test_manifest_provenance_rendering_and_semantic_diff_include_boundaries():
         graph.explain(child).selected[0].reason_codes for child in order.dependencies if child.service_type is Gateway
     )
 
-    without = ContainerBuilder().build().graph.manifest(all_roots=True)
+    without = ContainerBuilder().build(diagnostics=True).graph.manifest(all_roots=True)
     changes = manifest.diff(without).semantic_changes
     assert {change.category for change in changes} >= {"boundary-added"}
     assert "boundary-removed" in {change.category for change in without.diff(manifest).semantic_changes}
@@ -960,6 +961,49 @@ def test_root_and_local_validation_rules_receive_the_promised_graph_views():
     local_view = next(areas for boundary, areas in seen if boundary == "reporting")
     assert root_view >= {None, "orders", "payments", "reporting"}
     assert local_view == {"reporting"}
+
+
+@pytest.mark.parametrize("budget", [None, CompilationBudget()])
+def test_validation_occurrence_path_caches_are_isolated_between_full_and_boundary_views(budget):
+    graphs = {}
+    full_components = []
+
+    def validate(context: ValidationContext):
+        graph = context.graph
+        graphs[context.boundary] = graph
+        if context.boundary is None:
+            full_components.extend(root.component for root in graph.roots)
+        paths = graph._component_paths(all_roots=False)
+        expected = {item.occurrence_id: path for path, item in reversed(tuple(paths.items()))}
+        for root in graph.roots:
+            for _ in range(3):
+                assert "/".join(graph._path_for_component(root.component)) == expected[root.component.occurrence_id]
+        if context.boundary is not None:
+            for component in full_components:
+                if component.occurrence_id not in expected:
+                    with pytest.raises(ValueError, match="does not belong to this compiled graph"):
+                        graph.explain(component)
+        return ()
+
+    builder = ContainerBuilder()
+    builder.register(FirstMarker)
+    builder.add_validation_rule(validate)
+
+    def local_bundle(boundary_builder):
+        boundary_builder.register(Repository)
+        boundary_builder.add_validation_rule(validate)
+
+    for name in ("first", "second"):
+        builder.create_boundary(name).apply_bundle(local_bundle)
+    with builder.build(budget=budget) as owner:
+        assert graphs[None] is owner.graph
+        assert graphs[None]._occurrence_paths_cache is not graphs["first"]._occurrence_paths_cache
+        assert graphs["first"]._occurrence_paths_cache is not graphs["second"]._occurrence_paths_cache
+        # Boundary caches were populated after the full view; they must not
+        # invalidate its original numbering or alter its graph membership.
+        paths = owner.graph._component_paths(all_roots=True)
+        for path, component in paths.items():
+            assert "/".join(owner.graph._path_for_component(component)) == path
 
 
 def test_bundle_failure_keeps_partial_composition_and_nested_boundaries_are_rejected():

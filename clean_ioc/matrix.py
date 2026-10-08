@@ -374,7 +374,7 @@ def _build_variant(
         else:
             used.append(builder)
             try:
-                with builder.build(build_args=variant.build_args, budget=variant.budget) as scope:
+                with builder.build(build_args=variant.build_args, budget=variant.budget, diagnostics=True) as scope:
                     graph = scope.graph
                     captured = _capture(variant.name, scope.validation_report(), graph)
                 return captured

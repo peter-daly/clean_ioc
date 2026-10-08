@@ -2,6 +2,17 @@
 
 The suite uses [BenchBro](https://github.com/peter-daly/benchbro) to measure repeat-level samples, report noise and confidence, and keep comparisons environment-aware.
 
+### Compiled graph artifact experiment: not ready
+
+`graph_artifact_evidence.py` is an unfinished local experiment that **may be
+dropped**. It is not a supported feature or production-ready artifact format.
+Current measurements show about 0.62 seconds saved, similar retained memory, and
+higher startup peak memory; they do not justify expanding support yet. The
+prototype and results are retained for reference. See the
+[experiment status, results, and reproduction instructions](../docs/graph-artifact-experiment.md).
+
+### Benchmark suite
+
 `bench_registration_patterns.py` compares pattern compilation with explicit closed registrations at nesting depths
 1, 3, and 6; measures additional same-origin template alternatives; and compares frozen transient/singleton resolution
 against explicit controls. Setup and warmup are excluded from runtime measurements. Build includes declarations,

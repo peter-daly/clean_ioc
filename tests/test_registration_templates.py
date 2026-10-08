@@ -464,7 +464,7 @@ def test_generated_registration_census_records_source_and_template():
     builder = ContainerBuilder()
     builder.register(Source)
     builder.register_registration_template(for_each=Source, template=target_for)
-    with builder.build() as container:
+    with builder.build(diagnostics=True) as container:
         census = container.graph.selection_census(all_roots=True).to_dict()
         definitions = [item["definition"] for item in census["definitions"]]
         generated = next(item for item in definitions if item["kind"] == "generated-registration")

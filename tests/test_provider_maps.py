@@ -651,7 +651,7 @@ def test_graph_explain_fingerprints_are_deterministic_and_keys_redacted():
         builder.register(Service, name="a")
         builder.register(Service, name="b")
         builder.register_provider_map(Service, key=lambda c: secret + c.name)
-        return builder.build()
+        return builder.build(diagnostics=True)
 
     first, second = build("private-one"), build("private-two")
     assert first.graph.manifest().fingerprint == second.graph.manifest().fingerprint

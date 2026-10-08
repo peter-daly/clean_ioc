@@ -1194,9 +1194,38 @@ class TypeAst:
     node: ast.ClassDef
 
 
+class _DiagnosticNames:
+    """One compilation's identity snapshots and canonical immutable labels.
+
+    Source references prevent recycled identities from reusing unrelated labels.
+    Only the compiler owns this cache; frozen diagnostics keep strings, not it or
+    its sources. No user hashing/equality or process-wide interning is involved.
+    """
+
+    def __init__(self) -> None:
+        self._sources: dict[int, tuple[Any, str]] = {}
+        self._strings: dict[str, str] = {}
+
+    def __call__(self, value: Any) -> str:
+        cached = self._sources.get(id(value))
+        if cached is not None:
+            return cached[1]
+        rendered = _render_qualified_name(value, self)
+        # A Literal string or unusual type metadata can be a str subclass.
+        # Dictionary keys must be exact strings to avoid user hash/equality.
+        rendered = str.__str__(rendered)
+        label = self._strings.setdefault(rendered, rendered)
+        self._sources[id(value)] = value, label
+        return label
+
+
 def qualified_name(value: Any) -> str:
     """Return a deterministic display identity without using object reprs."""
 
+    return _render_qualified_name(value, qualified_name)
+
+
+def _render_qualified_name(value: Any, render_name: Callable[[Any], str]) -> str:
     if value is None or value is type(None):
         return "None"
     if isinstance(value, TypeVar):
@@ -1225,16 +1254,16 @@ def qualified_name(value: Any) -> str:
             if item_type in (bytes,):
                 return bytes.__repr__(item)
             if isinstance(item, Enum):
-                return f"{qualified_name(type(item))}.{item.name}"
-            return qualified_name(type(item))
+                return f"{render_name(type(item))}.{item.name}"
+            return render_name(type(item))
 
         return f"typing.Literal[{', '.join(literal_label(item) for item in arguments)}]"
     if origin in (Union, UnionType):
-        rendered = ", ".join(sorted(qualified_name(argument) for argument in arguments))
+        rendered = ", ".join(sorted(render_name(argument) for argument in arguments))
         return f"typing.Union[{rendered}]"
     if origin is not None:
-        rendered = ", ".join(qualified_name(argument) for argument in arguments)
-        return f"{qualified_name(origin)}[{rendered}]"
+        rendered = ", ".join(render_name(argument) for argument in arguments)
+        return f"{render_name(origin)}[{rendered}]"
     if isinstance(value, type) or inspect.isroutine(value):
         module = getattr(value, "__module__", None)
         qualname = getattr(value, "__qualname__", None) or getattr(value, "__name__", None)
@@ -1259,10 +1288,10 @@ class GraphRoot:
         return self.component.boundary
 
 
-def _issue_path_name(component: Component) -> str:
+def _issue_path_name(component: Component, name: Callable[[Any], str] = qualified_name) -> str:
     if component.kind in (ComponentKind.decorator, ComponentKind.pre_configuration):
-        return qualified_name(component.implementation)
-    return qualified_name(component.service_type)
+        return name(component.implementation)
+    return name(component.service_type)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1724,10 +1753,89 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True)
+class _OccurrencePaths:
+    first: Mapping[int, str]
+    # Argument evidence historically uses the last path in the all-root view.
+    # Most occurrences have one path; retain only the alternatives here.
+    alternate_last: Mapping[int, str]
+
+
+class _CompiledSelectionDecision(CandidateDecision):
+    """Identity/origin facts without optional selection-policy history."""
+
+    __slots__ = ()
+
+    def __getattribute__(self, name: str) -> Any:
+        if name in ("preferences", "parent_precedence", "template"):
+            raise ValueError("diagnostics-disabled: build with diagnostics=True to inspect selection-policy history")
+        return super().__getattribute__(name)
+
+    def __repr__(self) -> str:
+        return f"Compiled selection {self.component_id} ({', '.join(self.reason_codes)}; origin={self.origin!r})"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _CompiledSelectionDecision):
+            return NotImplemented
+        return (self.component_id, self.outcome, self.reason_codes, self.origin) == (
+            other.component_id,
+            other.outcome,
+            other.reason_codes,
+            other.origin,
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.component_id, self.outcome, self.reason_codes, self.origin))
+
+
+class _CapturedSelectionFacts(CompilationExplanation):
+    """Selected structural facts without a captured predicate history."""
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return f"Selection facts for {self.subject} (full diagnostics not recorded; build with diagnostics=True)"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _CapturedSelectionFacts) or type(self) is not type(other):
+            return NotImplemented
+        return (self.subject, self.selected, self.rejected) == (other.subject, other.selected, other.rejected)
+
+    def __hash__(self) -> int:
+        return hash((self.subject, self.selected, self.rejected))
+
+    def __getattribute__(self, name: str) -> Any:
+        if name == "path":
+            raise ValueError("diagnostics-disabled: build with diagnostics=True to inspect explanation paths")
+        return super().__getattribute__(name)
+
+
+class _SelectionExplanation(_CapturedSelectionFacts):
+    __slots__ = ()
+
+    def __getattribute__(self, name: str) -> Any:
+        if name == "rejected":
+            raise ValueError("diagnostics-disabled: build with diagnostics=True to inspect candidate history")
+        return super().__getattribute__(name)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _SelectionExplanation):
+            return NotImplemented
+        return self.subject == other.subject and self.selected == other.selected
+
+    def __hash__(self) -> int:
+        return hash((self.subject, self.selected))
+
+
+@dataclass(frozen=True, slots=True)
 class CompiledGraph:
     """Read-only view and renderer for compiled root component plans."""
 
     roots: tuple[GraphRoot, ...]
+    diagnostics_enabled: bool = field(default=True, compare=False, kw_only=True)
+    _fallback_ids: frozenset[str] = field(default=frozenset(), compare=False, repr=False, kw_only=True)
+    _occurrence_origins: Mapping[int, DefinitionOrigin] = field(
+        default_factory=lambda: MappingProxyType({}), compare=False, repr=False, kw_only=True
+    )
     entrypoints: tuple[GraphRoot, ...] = ()
     boundaries: tuple[dict[str, Any], ...] = ()
     build_args: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}), compare=False, repr=False)
@@ -1760,9 +1868,12 @@ class CompiledGraph:
     _census_sources: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}), compare=False, repr=False)
     _census_ids: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}), compare=False, repr=False)
     warmup_plans: tuple[WarmupPlanInfo, ...] = field(default=(), compare=False, repr=False)
+    _component_membership_cache: list[tuple[tuple[GraphRoot, ...], frozenset[int]]] = field(
+        default_factory=list, compare=False, repr=False, kw_only=True
+    )
     _manifest_cache: dict[bool, GraphManifest] = field(default_factory=dict, compare=False, repr=False)
     _ownership_report_cache: list[OwnershipReport] = field(default_factory=list, compare=False, repr=False)
-    _argument_paths_cache: dict[int, str] = field(default_factory=dict, compare=False, repr=False)
+    _occurrence_paths_cache: dict[bool, _OccurrencePaths] = field(default_factory=dict, compare=False, repr=False)
     _analysis_index_cache: Any | None = field(default=None, compare=False, repr=False)
 
     def selection_census(self, *, all_roots: bool = False, include_deferred: bool = True):
@@ -1770,7 +1881,22 @@ class CompiledGraph:
 
         from .selection_census import selection_census
 
+        self._require_diagnostics()
         return selection_census(self, all_roots=all_roots, include_deferred=include_deferred)
+
+    def _require_component(self, component: Component) -> None:
+        if self.roots and component._graph is not self.roots[0].component._graph:
+            raise ValueError("explain-path-not-found: the component belongs to a different compiled graph")
+        if not self._component_membership_cache or self._component_membership_cache[0][0] is not self.roots:
+            self._component_membership_cache[:] = [
+                (self.roots, frozenset(visit.component.occurrence_id for visit in self.walk()))
+            ]
+        if component.occurrence_id not in self._component_membership_cache[0][1]:
+            raise ValueError("explain-path-not-found: the component does not belong to this compiled graph")
+
+    def _require_diagnostics(self) -> None:
+        if not self.diagnostics_enabled:
+            raise ValueError("diagnostics-disabled: build with diagnostics=True to inspect captured compiler evidence")
 
     def ownership_report(self) -> OwnershipReport:
         """Return the immutable ownership proof compiled for every graph occurrence."""
@@ -1909,13 +2035,31 @@ class CompiledGraph:
             raise ValueError(f"explain-path-not-found: {path!r} is not in the current graph manifest")
         return component
 
+    def _occurrence_paths(self, *, all_roots: bool) -> _OccurrencePaths:
+        # Without entrypoints the two views are identical, including root order.
+        view = all_roots or not self.entrypoints
+        cached = self._occurrence_paths_cache.get(view)
+        if cached is not None:
+            return cached
+        first: dict[int, str] = {}
+        alternate_last: dict[int, str] = {}
+        for path, component in self._component_paths(all_roots=view).items():
+            occurrence = component.occurrence_id
+            if occurrence in first:
+                alternate_last[occurrence] = path
+            else:
+                first[occurrence] = path
+        paths = _OccurrencePaths(MappingProxyType(first), MappingProxyType(alternate_last))
+        self._occurrence_paths_cache[view] = paths
+        return paths
+
     def _path_for_component(self, component: Component) -> tuple[str, ...]:
         if self.roots and component._graph is not self.roots[0].component._graph:
             raise ValueError("explain-path-not-found: the component belongs to a different compiled graph")
         for all_roots in (False, True):
-            for path, candidate in self._component_paths(all_roots=all_roots).items():
-                if candidate.occurrence_id == component.occurrence_id:
-                    return tuple(path.split("/"))
+            path = self._occurrence_paths(all_roots=all_roots).first.get(component.occurrence_id)
+            if path is not None:
+                return tuple(path.split("/"))
         raise ValueError("explain-path-not-found: the component does not belong to this compiled graph")
 
     @staticmethod
@@ -2061,6 +2205,35 @@ class CompiledGraph:
         """
 
         if isinstance(subject, Component):
+            if not self.diagnostics_enabled:
+                self._require_component(subject)
+                origin = self._component_evidence(self._occurrence_origins, subject)
+                if origin is None:
+                    origin = DefinitionOrigin("compiled-occurrence", None, "unknown", (), None)
+                code = "selected-fallback" if subject.id in self._fallback_ids else "compiled-occurrence"
+                selected_components = (
+                    subject.dependencies
+                    if subject.kind
+                    in (ComponentKind.collection, ComponentKind.provider, ComponentKind.managed_provider)
+                    else (subject,)
+                )
+                return _SelectionExplanation(
+                    qualified_name(subject.service_type),
+                    (),
+                    tuple(
+                        _CompiledSelectionDecision(
+                            component.id,
+                            DecisionOutcome.included
+                            if subject.kind is ComponentKind.collection
+                            else DecisionOutcome.selected,
+                            ("selected-fallback",) if component.id in self._fallback_ids else (code,),
+                            "This component is present in the compiled plan",
+                            self._component_evidence(self._occurrence_origins, component) or origin,
+                        )
+                        for component in selected_components
+                    ),
+                    (),
+                )
             path = self._path_for_component(subject)
             explanation = self._component_evidence(self._occurrence_explanations, subject)
             if explanation is None:
@@ -2074,6 +2247,7 @@ class CompiledGraph:
                     ),
                 )
             return replace(explanation, path=path)
+        self._require_diagnostics()
         if not callable(filter):
             raise TypeError("filter must be callable")
         declared_subject = subject
@@ -2116,14 +2290,12 @@ class CompiledGraph:
 
     def explain_arguments(self, component: Component) -> tuple[ParameterExplanation, ...]:
         """Return frozen parameter evidence for one exact graph occurrence."""
+        self._require_diagnostics()
         self._path_for_component(component)
         records = self._component_evidence(self._parameter_explanations, component)
         if records is None:
             raise ValueError("explain-arguments-not-recorded: no parameter evidence exists for this occurrence")
-        if not self._argument_paths_cache:
-            self._argument_paths_cache.update(
-                (item.occurrence_id, path) for path, item in self._component_paths(all_roots=True).items()
-            )
+        paths = self._occurrence_paths(all_roots=True)
         view = component._graph.view_source(component.occurrence_id)
 
         def selected_path(item: str) -> str:
@@ -2133,7 +2305,7 @@ class CompiledGraph:
                 return item
             if view is not None:
                 occurrence = view[0].remap(occurrence)
-            return self._argument_paths_cache.get(occurrence, item)
+            return paths.alternate_last.get(occurrence, paths.first.get(occurrence, item))
 
         return tuple(
             replace(records[name], selected_components=tuple(map(selected_path, records[name].selected_components)))
@@ -2142,6 +2314,7 @@ class CompiledGraph:
 
     def explain_specialization(self, component: Component) -> GenericBindingExplanation:
         """Return frozen generic substitutions for one exact occurrence."""
+        self._require_diagnostics()
         self._path_for_component(component)
         explanation = self._component_evidence(self._generic_explanations, component)
         if explanation is None:
@@ -2156,10 +2329,14 @@ class CompiledGraph:
 
     def explain_decorators(self, component: Component) -> CompilationExplanation:
         """Explain captured decorator choices for a target registration occurrence."""
-        path = self._path_for_component(component)
+        path = self._path_for_component(component) if self.diagnostics_enabled else ()
+        if not self.diagnostics_enabled:
+            self._require_component(component)
         explanation = self._component_evidence(self._decorator_explanations, component)
         if explanation is None:
             raise ValueError("explain-decorators-not-recorded: no decorator decision exists for this occurrence")
+        if not self.diagnostics_enabled:
+            return _CapturedSelectionFacts(explanation.subject, (), explanation.selected, explanation.rejected)
         return replace(explanation, path=path)
 
     def walk(self) -> Iterator[GraphVisit]:

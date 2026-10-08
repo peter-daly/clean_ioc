@@ -41,7 +41,7 @@ def test_alias_and_target_are_interchangeable_and_share_singleton(registered, re
 
     assert builder.has_component(requested)
     assert builder.get_component_id(IntRepository) == component_id
-    with builder.build() as container:
+    with builder.build(diagnostics=True) as container:
         value = container.resolve(requested)
         checkout = container.resolve(Checkout)
         assert checkout.repository is value
@@ -191,7 +191,7 @@ def test_alias_and_canonical_compositions_have_identical_semantic_manifests():
         builder = ContainerBuilder()
         builder.register(key)
         builder.mark_entrypoint(key)
-        return builder.build().graph.manifest()
+        return builder.build(diagnostics=True).graph.manifest()
 
     canonical = manifest(Service)
     aliased = manifest(Alias)
@@ -200,7 +200,7 @@ def test_alias_and_canonical_compositions_have_identical_semantic_manifests():
 
     builder = ContainerBuilder()
     builder.register(Service)
-    explanation = builder.build().graph.explain(Alias)
+    explanation = builder.build(diagnostics=True).graph.explain(Alias)
     assert "Alias ->" in explanation.subject
     assert explanation.subject.endswith("Service")
 

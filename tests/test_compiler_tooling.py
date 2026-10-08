@@ -2,6 +2,7 @@ import ast
 import json
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Generic, Literal, NewType, TypeVar, cast
 
@@ -71,7 +72,7 @@ def test_argument_explanations_are_frozen_redacted_and_do_not_rerun_derivations(
         Service,
         arguments={"dependency": inject(), "timeout": derive(timeout), "environment": build_arg("token")},
     )
-    graph = builder.build(build_args={"token": "super-secret"}).graph
+    graph = builder.build(build_args={"token": "super-secret"}, diagnostics=True).graph
     service = next(root.component for root in graph.roots if root.component.service_type is Service)
 
     records = {item.parameter: item for item in graph.explain_arguments(service)}
@@ -96,7 +97,7 @@ def test_generic_specialization_explanation_keeps_substituted_dependency_annotat
 
     builder = ContainerBuilder()
     builder.register(Repository[int], arguments={"item_type": generic_arg(TItem)})
-    graph = builder.build().graph
+    graph = builder.build(diagnostics=True).graph
     component = next(root.component for root in graph.roots if root.component.service_type == Repository[int])
 
     explanation = graph.explain_specialization(component)
@@ -129,7 +130,7 @@ def test_explanation_records_structural_factory_substitutions_and_never_stringif
     builder.register(Serializer[int], factory=Serializer)
     builder.register_pattern(Serializer[list[TItem]], factory=factory, arguments={"configured": HostileValue()})
     builder.register(Root)
-    graph = builder.build().graph
+    graph = builder.build(diagnostics=True).graph
     component = next(visit.component for visit in graph.walk() if visit.component.service_type == Serializer[list[int]])
 
     specialization = graph.explain_specialization(component)
@@ -175,7 +176,7 @@ def test_parameter_explanation_serialization_is_deterministic_and_provenance_is_
         builder = ContainerBuilder()
         builder.register(Dependency)
         builder.register(Service)
-        graph = builder.build().graph
+        graph = builder.build(diagnostics=True).graph
         component = next(root.component for root in graph.roots if root.component.service_type is Service)
         return graph.explain_arguments(component)[0]
 
@@ -203,7 +204,7 @@ def test_closed_generic_constructor_keeps_declared_and_resolved_parameter_annota
     builder.register(Dependency[int])
     builder.register(Service[int])
     builder.register(Root)
-    graph = builder.build().graph
+    graph = builder.build(diagnostics=True).graph
     service = next(visit.component for visit in graph.walk() if visit.component.service_type == Service[int])
     parameter = graph.explain_arguments(service)[0]
     assert parameter.declared_annotation.endswith("Dependency[TypeVar(TItem)]")
@@ -328,7 +329,7 @@ def test_build_report_aggregates_independent_errors_and_failed_builder_is_reusab
     builder.register(Second)
 
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     report = raised.value.report
     assert isinstance(report, BuildReport)
@@ -342,7 +343,7 @@ def test_build_report_aggregates_independent_errors_and_failed_builder_is_reusab
 
     builder.register(FirstMissing)
     builder.register(SecondMissing)
-    assert builder.build().build_report.is_valid
+    assert builder.build(diagnostics=True).build_report.is_valid
 
 
 def test_complete_component_graph_includes_special_injection_edges_and_redacts_values():
@@ -2066,7 +2067,7 @@ def test_failed_build_exposes_frozen_redacted_partial_graph_and_cli(capsys):
     builder = ContainerBuilder()
     builder.register(Service)
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     diagnostic = raised.value.partial_graph
     assert diagnostic is not None
@@ -2078,7 +2079,7 @@ def test_failed_build_exposes_frozen_redacted_partial_graph_and_cli(capsys):
     assert "flowchart TD" in diagnostic.to_mermaid()
 
     builder.register(Missing)
-    repaired = builder.build()
+    repaired = builder.build(diagnostics=True)
     assert repaired.resolve(Service).__class__ is Service
 
     # The command writes an artifact but still reports the failed build.
@@ -2104,7 +2105,7 @@ def test_partial_graph_marks_cycle_back_references_and_unexamined_candidates():
     builder.register(First, Alternative)
     builder.register(Second)
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     attempt = _failed_partial_graph(raised.value).attempts[0]
     assert attempt.witness_path
@@ -2134,7 +2135,7 @@ def test_partial_graph_retains_complete_structure_for_build_rule_failure():
     builder.register(Service)
     builder.add_validation_rule(reject)
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     attempt = _failed_partial_graph(raised.value).attempts[0]
     assert attempt.issue_code == "rule-failed"
@@ -2159,7 +2160,7 @@ def test_partial_graph_never_formats_hostile_user_exceptions():
     builder = ContainerBuilder()
     builder.register(Service, when=hostile)
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     assert raised.value.partial_graph is not None
     assert "compile-error" in raised.value.partial_graph.to_json()
@@ -2187,7 +2188,7 @@ def test_partial_graph_marks_throwing_selection_filter_failed_and_later_candidat
     builder.register(Service, First)
     builder.register(Root, arguments={"service": select(throwing_filter)})
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     graph = raised.value.partial_graph
     assert graph is not None
@@ -2216,7 +2217,7 @@ def test_partial_graph_marks_throwing_decorator_filter_failed_and_later_decorato
     builder.register_decorator(Service, LaterDecorator, decorated_arg="decorated")
     builder.register_decorator(Service, BrokenDecorator, when=throwing_filter, decorated_arg="decorated")
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     graph = raised.value.partial_graph
     assert graph is not None
@@ -2245,7 +2246,7 @@ def test_partial_graph_marks_throwing_pre_configuration_filter_failed_and_later_
     builder.pre_configure(Service, broken_configuration, when=throwing_filter)
     builder.pre_configure(Service, later_configuration)
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     graph = raised.value.partial_graph
     assert graph is not None
@@ -2291,7 +2292,7 @@ def test_partial_graph_is_equal_for_equivalent_failing_builds():
         builder = ContainerBuilder()
         builder.register(Service)
         with pytest.raises(ContainerBuildError) as raised:
-            builder.build()
+            builder.build(diagnostics=True)
         return _failed_partial_graph(raised.value).to_json()
 
     assert diagnostic() == diagnostic()
@@ -2310,7 +2311,7 @@ def test_partial_graph_retains_bounded_retry_accounting_without_skipping_roots()
         builder.register(type(f"Good{number}", (), {}))
     builder.register(Bad)
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     error = raised.value
     graph = _failed_partial_graph(error).to_dict()
@@ -2348,7 +2349,7 @@ def test_unallocated_candidates_have_safe_distinct_declaration_links_and_are_det
         builder.register(Service, LaterB)
         builder.register(Service, Bad)
         with pytest.raises(ContainerBuildError) as raised:
-            builder.build()
+            builder.build(diagnostics=True)
         graph = _failed_partial_graph(raised.value).to_dict()
         attempt = graph["attempts"][0]
         candidates = [node for node in attempt["nodes"] if node["kind"] == "candidate"]
@@ -2376,7 +2377,7 @@ def test_partial_attempt_witness_clipping_is_structured():
     from clean_ioc.container import _Blueprint, _Compiler
 
     builder = ContainerBuilder()
-    compiler = _Compiler(_Blueprint((builder._layer(),)))
+    compiler = _Compiler(_Blueprint((builder._layer(),)), diagnostics=True)
     path = tuple(f"node-{index}" for index in range(40))
     attempt = compiler.partial_attempt(ContainerBuildError(code="missing-component", path=path))
     assert attempt.truncated is True
@@ -2404,7 +2405,7 @@ def test_generic_specialization_failure_has_safe_declaration_candidate_link():
         builder = ContainerBuilder()
         builder.register(Product[int], factory=conflicting, factory_specialization=StrProduct)
         with pytest.raises(ContainerBuildError) as raised:
-            builder.build()
+            builder.build(diagnostics=True)
         attempt = _failed_partial_graph(raised.value).to_dict()["attempts"][0]
         candidate = next(node for node in attempt["nodes"] if node["kind"] == "candidate")
         declaration = next(
@@ -2427,7 +2428,7 @@ def test_partial_declaration_capture_is_bounded():
     from clean_ioc.container import _Blueprint, _Compiler
 
     builder = ContainerBuilder()
-    compiler = _Compiler(_Blueprint((builder._layer(),)))
+    compiler = _Compiler(_Blueprint((builder._layer(),)), diagnostics=True)
     for number in range(501):
         compiler._record_partial_declaration_edge((None, "declaration", f"decl-{number}", "test", False))
     attempt = compiler.partial_attempt(ContainerBuildError(code="compile-error"))
@@ -2448,7 +2449,7 @@ def test_partial_graph_caps_validation_issue_nodes_after_500_compiled_roots():
 
     builder.add_validation_rule(reject_all)
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     assert raised.value.report is not None
     assert len(raised.value.report.errors) == 500
@@ -2495,7 +2496,7 @@ def test_partial_graph_links_validation_issue_to_the_exact_shared_occurrence_pat
     builder.register(RootB)
     builder.add_validation_rule(reject_root_b_shared)
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     graph = _failed_partial_graph(raised.value)
     attempt = graph.attempts[0]
@@ -2531,7 +2532,7 @@ def test_partial_graph_links_graph_visit_decorator_issue_to_its_decorator_occurr
     builder.register_decorator(Service, Decorated, decorated_arg="service")
     builder.add_validation_rule(reject_decorator)
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     attempt = _failed_partial_graph(raised.value).attempts[0]
     decorator = next(node for node in attempt.nodes if node.kind == ComponentKind.decorator.value)
@@ -2577,7 +2578,7 @@ def test_partial_graph_does_not_invent_decorator_paths_from_allocation_parent():
     builder.register_decorator(Service, Decorated, decorated_arg="service")
     builder.add_validation_rule(check_paths)
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     attempt = _failed_partial_graph(raised.value).attempts[0]
     root = next(node for node in attempt.nodes if node.label == qualified_name(Root))
@@ -2614,7 +2615,7 @@ def test_partial_graph_links_graph_visit_pre_configuration_issue_to_its_occurren
     builder.pre_configure(Service, configure)
     builder.add_validation_rule(reject_pre_configuration)
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     attempt = _failed_partial_graph(raised.value).attempts[0]
     configuration = next(node for node in attempt.nodes if node.kind == ComponentKind.pre_configuration.value)
@@ -2644,7 +2645,7 @@ def test_explain_records_default_named_filtered_and_collection_selection_without
     default_id = builder.register(Gateway, DefaultGateway)
     stripe_id = builder.register(Gateway, StripeGateway, name="stripe")
     builder.mark_entrypoint(Gateway, filter=stripe)
-    graph = builder.build().graph
+    graph = builder.build(diagnostics=True).graph
     build_calls = calls
 
     default = graph.explain(Gateway)
@@ -2665,6 +2666,135 @@ def test_explain_records_default_named_filtered_and_collection_selection_without
     assert isinstance(default, CompilationExplanation)
     assert isinstance(default.selected[0], CandidateDecision)
     assert json.loads(default.to_json()) == default.to_dict()
+
+
+def test_occurrence_explanations_build_each_path_view_once_and_prefer_entrypoints(monkeypatch):
+    class Dependency:
+        pass
+
+    class Service:
+        def __init__(self, dependency: Dependency):
+            pass
+
+    class OtherService(Service):
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Dependency)
+    builder.register(Service, OtherService)
+    marked_id = builder.register(Service, root_policy="entrypoint")
+    graph = builder.build(diagnostics=True).graph
+    marked_root = next(root for root in graph.roots if root.component.id == marked_id)
+    # Ensure the marked occurrence has a different candidate number in each
+    # view regardless of the compiler's registration ordering.
+    graph = replace(graph, roots=(*(root for root in graph.roots if root is not marked_root), marked_root))
+    selected_paths = graph._component_paths(all_roots=False)
+    all_paths = graph._component_paths(all_roots=True)
+    marked = next(root.component for root in graph.roots if root.component.id == marked_id)
+    selected_path = next(path for path, item in selected_paths.items() if item.occurrence_id == marked.occurrence_id)
+    all_path = next(path for path, item in all_paths.items() if item.occurrence_id == marked.occurrence_id)
+    assert selected_path.endswith(":0")
+    assert all_path.endswith(":1")
+    expected_paths = {item.occurrence_id: path for path, item in reversed(tuple(all_paths.items()))}
+    expected_paths.update({item.occurrence_id: path for path, item in reversed(tuple(selected_paths.items()))})
+    argument_paths = {item.occurrence_id: path for path, item in all_paths.items()}
+    calls = []
+    original = CompiledGraph._component_paths
+
+    def record(self, *, all_roots):
+        calls.append(all_roots)
+        return original(self, all_roots=all_roots)
+
+    monkeypatch.setattr(CompiledGraph, "_component_paths", record)
+    # Populate all roots first through argument evidence; this must not change
+    # explanation precedence when the entrypoint path has different numbering.
+    graph.explain_arguments(marked)
+    for _ in range(3):
+        for visit in graph.walk():
+            component = visit.component
+            assert "/".join(graph.explain(component).path) == expected_paths[component.occurrence_id]
+            if not component.dependencies:
+                continue
+            for argument in graph.explain_arguments(component):
+                assert argument.selected_components == tuple(
+                    argument_paths[child.occurrence_id]
+                    for child in component.dependencies
+                    if child.argument == argument.parameter
+                )
+    assert calls == [False, True]
+    assert "/".join(graph.explain(marked).path) == selected_path
+
+
+def test_occurrence_paths_share_identical_views_and_preserve_first_and_last_paths(monkeypatch):
+    class Dependency:
+        pass
+
+    class Service:
+        def __init__(self, dependency: Dependency):
+            pass
+
+    builder = ContainerBuilder()
+    builder.register(Dependency, root_policy="dependency_only")
+    builder.register(Service)
+    original_graph = builder.build(diagnostics=True).graph
+    root = original_graph.roots[0]
+    # A graph can project the same occurrence under multiple semantic roots.
+    graph = replace(original_graph, roots=(root, root))
+    paths = graph._component_paths(all_roots=True)
+    first = {item.occurrence_id: path for path, item in reversed(tuple(paths.items()))}
+    last = {item.occurrence_id: path for path, item in paths.items()}
+    calls = []
+    original = CompiledGraph._component_paths
+
+    def record(self, *, all_roots):
+        calls.append(all_roots)
+        return original(self, all_roots=all_roots)
+
+    monkeypatch.setattr(CompiledGraph, "_component_paths", record)
+    for _ in range(3):
+        assert "/".join(graph.explain(root.component).path) == first[root.component.occurrence_id]
+        child = root.component.dependencies[0]
+        assert "/".join(graph.explain(child).path) == first[child.occurrence_id]
+        assert graph.explain_arguments(root.component)[0].selected_components == (last[child.occurrence_id],)
+    assert first[child.occurrence_id] != last[child.occurrence_id]
+    assert calls == [True]
+
+
+def test_occurrence_path_cache_rejects_foreign_and_absent_components_including_empty_graphs(monkeypatch):
+    class Service:
+        pass
+
+    class Other:
+        pass
+
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register(Other)
+    graph = builder.build(diagnostics=True).graph
+    service = graph.roots[0].component
+    graph.explain(service)
+    foreign_builder = ContainerBuilder()
+    foreign_builder.register(Service)
+    foreign = foreign_builder.build(diagnostics=True).graph.roots[0].component
+    assert foreign.occurrence_id == service.occurrence_id
+    with pytest.raises(ValueError, match="different compiled graph"):
+        graph.explain(foreign)
+    reduced = replace(graph, roots=(graph.roots[1],), _occurrence_paths_cache={})
+    with pytest.raises(ValueError, match="does not belong to this compiled graph"):
+        reduced.explain(service)
+    empty = CompiledGraph(roots=())
+    calls = []
+    original = CompiledGraph._component_paths
+
+    def record(self, *, all_roots):
+        calls.append(all_roots)
+        return original(self, all_roots=all_roots)
+
+    monkeypatch.setattr(CompiledGraph, "_component_paths", record)
+    for _ in range(3):
+        with pytest.raises(ValueError, match="does not belong to this compiled graph"):
+            empty.explain(service)
+    assert calls == [True]
 
 
 def test_explain_occurrences_captures_origins_bundles_argument_policies_and_applicability():
@@ -2709,7 +2839,7 @@ def test_explain_occurrences_captures_origins_bundles_argument_policies_and_appl
 
     builder = ContainerBuilder()
     builder.apply_bundle(bundle)
-    graph = builder.build().graph
+    graph = builder.build(diagnostics=True).graph
     service = next(root.component for root in graph.roots if root.requested_type is Service)
     dependency = next(item for item in service.dependencies if item.service_type is Dependency)
     request = next(item for item in service.dependencies if item.service_type is Request)
@@ -2736,7 +2866,7 @@ def test_explain_occurrences_captures_origins_bundles_argument_policies_and_appl
     assert "secret" not in graph.explain(configured).to_json()
 
 
-def test_explain_overlay_anchoring_normal_scope_reuse_and_manifest_stability():
+def test_explain_overlay_anchoring_normal_scope_reuse_and_manifest_stability(monkeypatch):
     class Dependency:
         pass
 
@@ -2747,17 +2877,31 @@ def test_explain_overlay_anchoring_normal_scope_reuse_and_manifest_stability():
     builder = ContainerBuilder()
     builder.register(Dependency, lifespan="singleton")
     builder.register(Service, lifespan="singleton")
-    container = builder.build()
+    container = builder.build(diagnostics=True)
     before = container.graph.manifest(all_roots=True).to_json()
 
     assert container.new_scope().graph is container.graph
-    overlay = container.new_scope_builder().build()
+    overlay = container.new_scope_builder().build(diagnostics=True)
+    calls = []
+    original = CompiledGraph._component_paths
+
+    def record(self, *, all_roots):
+        calls.append((self is overlay.graph, all_roots))
+        return original(self, all_roots=all_roots)
+
+    monkeypatch.setattr(CompiledGraph, "_component_paths", record)
     explanation = overlay.graph.explain(Service)
 
     assert "anchored-parent-singleton" in explanation.selected[0].reason_codes
     assert explanation.selected[0].origin.layer == "root"
     component = next(root.component for root in overlay.graph.roots if root.component.service_type is Service)
-    assert overlay.graph.explain_arguments(component)[0].selected_components[0].startswith("root:")
+    for _ in range(3):
+        assert overlay.graph.explain(component).path == explanation.path
+        assert overlay.graph.explain_arguments(component)[0].selected_components[0].startswith("root:")
+    assert calls == [(True, True)]
+    parent_component = next(root.component for root in container.graph.roots if root.component.service_type is Service)
+    with pytest.raises(ValueError, match="different compiled graph"):
+        overlay.graph.explain(parent_component)
     assert container.graph.manifest(all_roots=True).to_json() == before
 
 
@@ -2776,14 +2920,14 @@ def test_failed_filter_explanation_records_only_the_error_type_and_builder_remai
     builder.register(Service, when=broken_filter)
 
     with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+        builder.build(diagnostics=True)
 
     explanation_json = "\n".join(item.to_json() for item in raised.value.explanations)
     assert "RuntimeError" in explanation_json
     assert "do-not-copy-this-filter-secret" not in explanation_json
 
     repaired = True
-    assert isinstance(builder.build().resolve(Service), Service)
+    assert isinstance(builder.build(diagnostics=True).resolve(Service), Service)
 
 
 def test_cli_explain_text_json_path_and_invalid_selection(capsys):

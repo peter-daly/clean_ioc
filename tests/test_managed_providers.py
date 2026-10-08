@@ -646,7 +646,7 @@ async def test_async_manager_rejects_sync_protocol(composition):
 def test_managed_root_explanations_and_census_match_provider_semantics(composition):
     builder, _ = composition
     builder.mark_entrypoint(Runner)
-    with builder.build() as container:
+    with builder.build(diagnostics=True) as container:
         assert container.graph.explain(ManagedProvider[Resource]).selected
         arguments = container.graph.explain_arguments(container.graph.entrypoints[0].component)
         assert arguments[0].result_category == "managed_provider"
@@ -657,7 +657,7 @@ def test_managed_root_explanations_and_census_match_provider_semantics(compositi
     builder = ContainerBuilder()
     builder.register(Resource)
     builder.mark_entrypoint(ManagedProvider[Resource])
-    with builder.build() as container:
+    with builder.build(diagnostics=True) as container:
         resource = next(
             item
             for item in container.graph.selection_census().definitions

@@ -64,7 +64,7 @@ def leaf_builder():
 
 def failure(builder, budget, *, profile=None):
     with pytest.raises(ContainerBuildError) as caught:
-        builder.build(budget=budget, profile=profile)
+        builder.build(budget=budget, profile=profile, diagnostics=True)
     error = caught.value
     assert error.compiled_graph is None
     assert error.report is not None and not error.report.is_valid
@@ -160,7 +160,10 @@ def test_exhaustion_exports_are_stable_redacted_source_linked_and_cannot_be_igno
     profile = CompilationProfiler()
     with pytest.raises(ContainerBuildError) as caught:
         builder.build(
-            budget=CompilationBudget(graph_occurrences=0), build_args={"secret": "PRIVATE-VALUE"}, profile=profile
+            budget=CompilationBudget(graph_occurrences=0),
+            build_args={"secret": "PRIVATE-VALUE"},
+            profile=profile,
+            diagnostics=True,
         )
     error = caught.value
     assert error.report is not None and error.partial_graph is not None
@@ -364,7 +367,7 @@ def test_configured_entrypoint_decisions_preserve_labels_and_fingerprint():
         builder.mark_entrypoint(Leaf)
         return builder
 
-    with make().build() as plain, make().build(budget=CompilationBudget()) as limited:
+    with make().build(diagnostics=True) as plain, make().build(budget=CompilationBudget(), diagnostics=True) as limited:
         assert plain.graph.manifest().fingerprint == limited.graph.manifest().fingerprint
         assert plain.build_report.to_dict() == limited.build_report.to_dict()
         ordinary = plain.graph.explain(Leaf).selected[0]

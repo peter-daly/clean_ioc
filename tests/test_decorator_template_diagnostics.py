@@ -129,7 +129,7 @@ def test_generic_source_and_target_projections_remain_separate():
             arguments={"source": select(cf.with_id(source.id))},
         ),
     )
-    graph = builder.build().graph
+    graph = builder.build(diagnostics=True).graph
     source_decision = graph.explain_template_sources()[0]
     assert any(key.endswith("Backend.T") and value == "str" for key, value in source_decision.source_bindings)
     handler = _roots(graph, Handler)[0]
@@ -177,7 +177,7 @@ def test_alias_target_label_survives_frozen_template_inspection():
             DerivedServices(Target), Wrapper, arguments={"source": select(cf.with_id(source.id))}
         ),
     )
-    graph = builder.build().graph
+    graph = builder.build(diagnostics=True).graph
     target = _roots(graph, Target)[0]
     assert graph.explain_decorators(target).selected[0].template is not None
     assert "PublicTargetAlias" in graph.explain(PublicTargetAlias).subject
@@ -223,12 +223,12 @@ def test_anchored_overlay_relabels_target_occurrence_without_replaying_factory()
             DecoratorTemplate(DerivedServices(Target), Wrapper, arguments={"source": select(cf.with_id(info.id))}),
         )[1],
     )
-    container = builder.build()
+    container = builder.build(diagnostics=True)
     parent = _roots(container.graph, Target)[0]
     parent_fact = container.graph.explain_decorators(parent).selected[0].template
     overlay_builder = container.new_scope_builder()
     overlay_builder.register(Source, name="new-overlay-source", lifespan="singleton")
-    overlay = overlay_builder.build()
+    overlay = overlay_builder.build(diagnostics=True)
     child = _roots(overlay.graph, Target)[0]
     child_fact = overlay.graph.explain_decorators(child).selected[0].template
     assert parent_fact is not None and child_fact is not None
@@ -241,7 +241,7 @@ def test_anchored_overlay_relabels_target_occurrence_without_replaying_factory()
     assert decorator_fact.template_id == parent_fact.template_id
     assert overlay.graph.explain(child).selected[0].origin.kind == "registration"
     assert overlay.graph.explain(child.decorators[0]).selected[0].origin.kind == "decorator-template"
-    grandchild = overlay.new_scope_builder().build()
+    grandchild = overlay.new_scope_builder().build(diagnostics=True)
     grandchild_target = _roots(grandchild.graph, Target)[0]
     grandchild_decision = grandchild.graph.explain_decorators(grandchild_target).selected[0]
     grandchild_wrapper_decision = grandchild.graph.explain(grandchild_target.decorators[0]).selected[0]
@@ -276,7 +276,7 @@ def test_failure_keeps_context_without_exception_or_argument_secrets():
         ),
     )
     with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
+        builder.build(diagnostics=True)
     assert caught.value.report is not None
     assert caught.value.partial_graph is not None
     issue = caught.value.report.errors[0]
@@ -304,7 +304,7 @@ def test_pregraph_expansion_failure_identifies_phase_and_source(phase):
 
     template = builder.register_decorator_template(for_each=Source, source_filter=source_filter, template=factory)
     with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
+        builder.build(diagnostics=True)
     assert caught.value.report is not None
     assert caught.value.partial_graph is not None
     issue = caught.value.report.errors[0]
@@ -337,7 +337,7 @@ def test_hostile_decorator_signature_error_never_formats_exception_text():
         template=lambda _: DecoratorTemplate(DerivedServices(Target), HostileWrapper),
     )
     with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
+        builder.build(diagnostics=True)
     assert caught.value.report is not None
     assert caught.value.partial_graph is not None
     issue = caught.value.report.errors[0]
@@ -364,7 +364,7 @@ def test_callback_container_build_error_cannot_supply_report_code_or_path(phase)
 
     template = builder.register_decorator_template(for_each=Source, source_filter=source_filter, template=factory)
     with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
+        builder.build(diagnostics=True)
     assert caught.value.report is not None
     assert caught.value.partial_graph is not None
     issue = caught.value.report.errors[0]
@@ -388,7 +388,7 @@ def test_clone_explanations_follow_growing_and_sibling_occurrence_mappings():
             DerivedServices(Target), Wrapper, arguments={"source": select(cf.with_id(info.id))}
         ),
     )
-    with builder.build() as container:
+    with builder.build(diagnostics=True) as container:
         graph = container.graph
         target = _roots(graph, Target)[0]
         source = _roots(graph, Source)[0]

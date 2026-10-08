@@ -289,7 +289,7 @@ def test_union_selection_helpers_patching_and_pre_configuration():
     composition.register(Consumer, arguments={"client": select(cf.with_name("cluster"))})
     unnamed_union = cf.service_type_is(Client) & cf.is_not_named
     composition.mark_entrypoint(Client, filter=unnamed_union)
-    with builder.build() as container:
+    with builder.build(diagnostics=True) as container:
         assert events == []
         assert container.resolve(Consumer).client.mode == "cluster"
         assert events == ["configured"]

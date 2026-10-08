@@ -253,6 +253,9 @@ class _ComponentGraph:
         # Release each draft as its frozen replacement is created.
         for key in tuple(self._drafts):
             records[key] = self._drafts.pop(key).freeze()
+        # Popping entries leaves the draft dictionary's allocated table behind.
+        # Frozen graphs need none of that capacity; clear the now-empty table.
+        self._drafts.clear()
         self._records = records
 
 

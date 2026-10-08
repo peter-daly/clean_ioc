@@ -1,6 +1,41 @@
 Unreleased
 ----------
 
+    Skip repeated callable signature inspection when there are no dependency
+    names to validate. Preserve registration signature extraction, configured
+    argument validation, required dependency checks and build-time dormancy.
+
+    Add build(aggregate_errors=False) to skip independent diagnostic root retries
+    after a compiler failure. Preserve the first error, captured structural
+    evidence and callback budgets; keep preparation/build-rule reports and all
+    essential validation. The default continues full error aggregation.
+
+    Make full compiler diagnostics opt-in with build(diagnostics=True). Normal
+    builds preserve executable graphs, safety validation, selected fallback and
+    origin facts, decorator/template safety evidence and actionable errors while
+    skipping optional history allocations. CLI inspection and matrix validation builds
+    enable diagnostics; CLI profiling stays lean unless --diagnostics is supplied.
+    Existing runtime scopes are never implicitly recompiled.
+
+    Omit diagnostic-only entrypoint selection histories when diagnostics=False.
+    Add build(check_unreachable=False) to defer only unreachable-component
+    advisories to validation_report()/CLI check using the frozen graph, including
+    compact runtimes. Keep all structural/application build checks and callbacks.
+
+    Avoid allocating proven early-rejected candidate graph records in ordinary
+    builds; retain their full evidence with diagnostics=True. Preserve empty
+    automatic provider collections and invariant-subplan safety proof updates.
+
+    Add explicit build(provider_roots=...) declarations for automatic public
+    provider forms. Preserve every family/form by default, provider injection,
+    marked provider roots and private frozen managed-context lookup targets.
+    Omit private targets only when managed acquisition is proven absent.
+
+    Expose frozen scope.selected_registrations discovery metadata independently
+    of public resolution roots and optional diagnostics. Include selected
+    dependency-only/deferred registrations and decorators without compiling
+    discovery trees or retaining occurrence graphs in the catalogue.
+
     Replace automatic provider target subtree copies with compact immutable graph
     views while retaining every public provider family and collection form.
     Add opt-in declarative candidate_when eligibility and provider-map root_policy.

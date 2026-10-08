@@ -154,7 +154,7 @@ def test_exact_occurrence_attribution_does_not_guess_between_same_type_named_reg
     builder.register(Dependency)
     monkeypatch.setattr("clean_ioc.container._source_location", lambda: SourceLocation(None, None, "src/named.py", 20))
     builder.register(Dependency, name="named")
-    graph = builder.build().graph
+    graph = builder.build(diagnostics=True).graph
     visit = next(visit for visit in graph.walk() if visit.component.name == "named")
     exact = visit.issue("example-policy", "Finding")
     ambiguous = BuildIssue(exact.code, exact.severity, exact.message, root=exact.root, path=exact.path)
@@ -189,7 +189,7 @@ def test_source_uris_are_relative_encoded_and_omit_external_paths(source_path, e
     monkeypatch.setattr("clean_ioc.container._source_location", lambda: source)
     builder = ContainerBuilder()
     builder.register(Dependency)
-    graph = builder.build().graph
+    graph = builder.build(diagnostics=True).graph
     issue = next(graph.walk()).issue("example-policy", "Finding")
     value = BuildReport((issue,)).to_sarif(graph=graph)
     result = validated_run(value, validator)["results"][0]
@@ -208,7 +208,7 @@ def test_unknown_or_invalid_lines_are_omitted_without_fabrication(line, monkeypa
     monkeypatch.setattr("clean_ioc.container._source_location", lambda: SourceLocation(None, None, "src/app.py", line))
     builder = ContainerBuilder()
     builder.register(Dependency)
-    graph = builder.build().graph
+    graph = builder.build(diagnostics=True).graph
     issue = next(graph.walk()).issue("example-policy", "Finding")
     result = validated_run(BuildReport((issue,)).to_sarif(graph=graph), validator)["results"][0]
     assert result["locations"][0]["physicalLocation"] == {"artifactLocation": {"uri": "src/app.py"}}
@@ -313,7 +313,7 @@ def test_source_linked_paths_cover_decorators_preconfigurations_and_deferred_pro
     builder.register(LazyService)
     builder.register_decorator(Service, Decorated, decorated_arg="inner")
     builder.pre_configure(Service, configure)
-    graph = builder.build().graph
+    graph = builder.build(diagnostics=True).graph
     issues = tuple(visit.issue("example-policy", "Finding") for visit in graph.walk())
     run = validated_run(BuildReport(issues).to_sarif(graph=graph), validator)
     for result in run["results"]:
@@ -327,13 +327,13 @@ def test_overlay_uses_declaring_registration_sources_and_full_overlay_fingerprin
     monkeypatch.setattr("clean_ioc.container._source_location", lambda: SourceLocation(None, None, "src/root.py", 10))
     builder = ContainerBuilder()
     builder.register(Dependency, lifespan="singleton")
-    parent = builder.build()
+    parent = builder.build(diagnostics=True)
     overlay = parent.new_scope_builder()
     monkeypatch.setattr(
         "clean_ioc.container._source_location", lambda: SourceLocation(None, None, "src/overlay.py", 20)
     )
     overlay.register(Service)
-    scope = overlay.build()
+    scope = overlay.build(diagnostics=True)
     visit = next(visit for visit in scope.graph.walk() if len(visit.components) == 2)
     run = validated_run(BuildReport((visit.issue("example-policy", "Finding"),)).to_sarif(graph=scope.graph), validator)
     flow = run["results"][0]["codeFlows"][0]["threadFlows"][0]["locations"]
@@ -361,7 +361,7 @@ def test_cli_already_built_container_runs_validation_once(monkeypatch, capsys, v
 
 
 def test_ambiguous_failure_decisions_do_not_create_a_source_location(validator):
-    container = policy_builder().build()
+    container = policy_builder().build(diagnostics=True)
     visit = next(visit for visit in container.graph.walk() if len(visit.components) == 2)
     decision = container.graph.explain(visit.component)
     first = replace(
@@ -522,7 +522,7 @@ def test_assert_valid_raises_with_complete_schema_valid_sarif_for_an_unlocated_e
 
 
 def test_assert_valid_links_policy_findings_to_matching_graph_without_repeating_validation(validator, monkeypatch):
-    container = policy_builder().build()
+    container = policy_builder().build(diagnostics=True)
     report = container.validation_report()
 
     def must_not_validate(*args, **kwargs):
@@ -558,7 +558,7 @@ def test_assert_valid_accepts_captured_structural_failure_evidence(validator):
 
 
 def test_container_validation_report_automatically_retains_graph_without_changing_report_identity_semantics(validator):
-    container = policy_builder().build()
+    container = policy_builder().build(diagnostics=True)
     report = container.validation_report()
     standalone = BuildReport(report.issues, checked_roots=report.checked_roots)
     run = validated_run(report.to_sarif(), validator)
@@ -584,7 +584,7 @@ def test_build_and_validation_reports_retain_their_graph_for_warning_findings(mo
             yield visit.issue("advisory", "Advisory only", severity=IssueSeverity.warning)
 
     builder.add_validation_rule(warning, mode=mode)
-    container = builder.build()
+    container = builder.build(diagnostics=True)
     report = container.build_report if mode == "build" else container.validation_report()
     result = validated_run(report.to_sarif(), validator)["results"][0]
     assert result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "tests/test_sarif.py"
@@ -597,7 +597,7 @@ def test_failed_build_reports_automatically_export_complete_captured_context(fai
 
     builder = policy_builder("build") if failure == "policy" else invalid_builder()
     with pytest.raises(ContainerBuildError) as failed:
-        builder.build()
+        builder.build(diagnostics=True)
     error = failed.value
     assert error.report is not None
     run = validated_run(error.report.to_sarif(), validator)
@@ -626,13 +626,13 @@ def test_report_can_render_after_container_is_closed_and_collected(validator):
 def test_overlay_report_automatically_uses_overlay_graph(validator):
     builder = ContainerBuilder()
     builder.register(Dependency, lifespan="singleton")
-    parent = builder.build()
+    parent = builder.build(diagnostics=True)
     overlay = parent.new_scope_builder()
     overlay.register(Service)
     overlay.add_validation_rule(
         forbid_dependency(cf.service_type_is(Service), cf.service_type_is(Dependency)), mode="validation"
     )
-    scope = overlay.build()
+    scope = overlay.build(diagnostics=True)
     report = scope.validation_report()
     run = validated_run(report.to_sarif(), validator)
     assert run["properties"]["graphFingerprint"] == scope.graph.manifest(all_roots=True).fingerprint

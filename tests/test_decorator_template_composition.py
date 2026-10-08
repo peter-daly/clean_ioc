@@ -476,14 +476,14 @@ def test_failed_build_diagnostic_retries_and_repair_do_not_accumulate_generated_
     template_id = builder.register_decorator_template(
         for_each=Source, template=template_for(DerivedServices(Target), calls=calls)
     )
-    root = builder.build() if overlay_build else None
+    root = builder.build(diagnostics=True) if overlay_build else None
     current = root.new_scope_builder() if root is not None else builder
     current.register(Broken)
     baseline_calls = len(calls)
     failures = []
     for attempt in range(2):
         with pytest.raises(ContainerBuildError) as caught:
-            current.build()
+            current.build(diagnostics=True)
         failures.append(caught.value)
         assert len(calls) == baseline_calls + attempt + 1
         assert caught.value.partial_graph is not None
@@ -496,7 +496,7 @@ def test_failed_build_diagnostic_retries_and_repair_do_not_accumulate_generated_
     resource = Missing()
     current.register(Missing, instance=resource)
     assert current.has_component(Broken, filter=lambda c: len(c.decorators) == 1)
-    with current.build() as repaired:
+    with current.build(diagnostics=True) as repaired:
         layers, core = unwrap(repaired.resolve(Broken))
         assert layers == [("base", source)]
         assert core.missing is resource

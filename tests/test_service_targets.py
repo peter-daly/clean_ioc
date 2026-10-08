@@ -655,7 +655,7 @@ def test_cached_projection_does_not_merge_same_named_selector_typevars():
 
 
 def test_template_labels_do_not_hash_user_metadata_and_are_compiler_local(monkeypatch):
-    import clean_ioc.container as implementation
+    import clean_ioc.tooling as tooling
 
     class Unhashable:
         __hash__ = None
@@ -663,11 +663,11 @@ def test_template_labels_do_not_hash_user_metadata_and_are_compiler_local(monkey
     value = Unhashable()
     calls = []
 
-    def label(item):
+    def label(item, name):
         calls.append(item)
         return "captured label"
 
-    monkeypatch.setattr(implementation, "qualified_name", label)
+    monkeypatch.setattr(tooling, "_render_qualified_name", label)
     compiler = compiler_for(ContainerBuilder())
     assert compiler._template_label(value) == "captured label"
     assert compiler._template_label(value) == "captured label"

@@ -423,7 +423,7 @@ def test_fallback_explanation_retains_rejected_ordinary_candidate():
     ordinary = builder.register(Service[int], name="other")
     builder.register_fallback(Service, Default)
     builder.register(Consumer)
-    container = builder.build()
+    container = builder.build(diagnostics=True)
     consumer = next(root.component for root in container.graph.roots if root.component.service_type is Consumer)
     explanation = container.graph.explain(consumer.dependencies[0])
     assert "selected-fallback" in explanation.selected[0].reason_codes

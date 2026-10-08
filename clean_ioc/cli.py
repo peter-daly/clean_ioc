@@ -29,11 +29,11 @@ def _load_object(locator: str) -> Any:
 def _load_scope(locator: str) -> Scope:
     value = _load_object(locator)
     if isinstance(value, (ContainerBuilder, ScopeBuilder)):
-        value = value.build()
+        value = value.build(diagnostics=True)
     elif not isinstance(value, Scope) and callable(value):
         value = value()
         if isinstance(value, (ContainerBuilder, ScopeBuilder)):
-            value = value.build()
+            value = value.build(diagnostics=True)
     if not isinstance(value, Scope):
         raise TypeError("Target must be a builder, a built Container/Scope, or a zero-argument factory returning one")
     return value
@@ -113,7 +113,7 @@ def _profile(args: argparse.Namespace) -> int:
         raise TypeError("Profile target must be an unbuilt builder")
     collector = CompilationProfiler(max_records=args.max_records)
     try:
-        target.build(profile=collector)
+        target.build(profile=collector, diagnostics=args.diagnostics)
     except Exception:
         result = 1
     else:
@@ -363,6 +363,7 @@ def _parser() -> argparse.ArgumentParser:
     profile = commands.add_parser("profile", help="Measure one actual builder compilation")
     profile.add_argument("target", help="module:object unbuilt builder or zero-argument builder factory")
     profile.add_argument("--format", choices=("text", "json"), default="text")
+    profile.add_argument("--diagnostics", action="store_true", help="Include optional compiler diagnostic capture")
     profile.add_argument("--max-records", type=int, default=10_000, help="Maximum detailed spans (default: 10000)")
     profile.add_argument("-o", "--output", help="Write output to a file instead of stdout")
     profile.set_defaults(handler=_profile)

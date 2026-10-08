@@ -51,6 +51,10 @@ class _Sources:
                 sources: list[SourceLocation | None] = []
                 for component in visit.components:
                     explanation = graph._occurrence_explanations.get(component.occurrence_id)
+                    if explanation is None and not graph.diagnostics_enabled:
+                        origin = graph._component_evidence(graph._occurrence_origins, component)
+                        sources.append(None if origin is None else origin.location)
+                        continue
                     selected = () if explanation is None else explanation.selected
                     sources.append(
                         _unique_source(

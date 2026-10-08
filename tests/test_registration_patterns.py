@@ -556,7 +556,7 @@ def test_graph_explain_redaction_fingerprints_and_original_factory():
         builder.register_pattern(Serializer[dict[str, T]], factory=Serializer)
         builder.register_pattern(Serializer[list[T]], factory=make_list_serializer)
         root = request(builder, Serializer[list[int]])
-        return builder.build(build_args={"secret": secret}), root
+        return builder.build(build_args={"secret": secret}, diagnostics=True), root
 
     first, root = build("private-one")
     second, _ = build("private-two")
