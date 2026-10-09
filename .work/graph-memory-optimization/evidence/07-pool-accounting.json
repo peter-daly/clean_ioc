@@ -1,0 +1,12 @@
+{
+  "drafts": 88558,
+  "definitions": 116,
+  "seconds": 0.6821512499591336,
+  "pool_retained_traced_bytes": 77304,
+  "pool_allocation_peak_bytes": 77720,
+  "pool_tuple_dict_shallow_bytes": 36240,
+  "unique_key_integer_referents": 1276,
+  "key_integer_referent_bytes": 40832,
+  "borrowed_definition_referents": "already held by original drafts; not charged twice",
+  "ownership": "observer-only pool; original drafts are retained; no replacement or build-peak saving"
+}

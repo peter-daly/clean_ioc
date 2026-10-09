@@ -1,0 +1,16 @@
+{
+  "revision": "d51b6f569e67891e72e022b35aa5590c1c0fda46",
+  "matches_baseline_source_hashes": true,
+  "source_sha256": {
+    "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81",
+    "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+    "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+    "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+    "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+    "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211"
+  },
+  "git_diff_HEAD_clean_ioc_tests_benchmarks": "",
+  "production_experiments": "process-local only; no runtime edits active",
+  "pre_compilation": "unrelated planning retained untouched",
+  "commits_or_pushes_performed": false
+}

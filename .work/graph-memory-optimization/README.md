@@ -8,11 +8,11 @@ The [retest after task 05](artifact-retest-post05.md) compares full and reduced
 artifacts using the same current runtime in separate compile/export/load processes.
 
 Created: 2026-10-08\
-Status: Tasks 01 and 02 retained; 03 pruning declined; 04 reverted; 05 implemented and retained on 2026-10-09.
+Status: Tasks 01 and 02 retained; 03 pruning declined; 04 reverted; 05 retained; 06 investigation complete; 07 investigation complete.
 
 Reduce the memory retained by the compiled output graph while preserving
 resolution, ownership, filtering, inspection and diagnostic behaviour. Measure
-compilation peak memory and build time alongside retained memory. These five
+compilation peak memory and build time alongside retained memory. These seven
 tasks follow the investigation using the large graph fixture with registration
 templates, decorator templates, providers and maps.
 
@@ -21,6 +21,14 @@ metadata unnecessary for resolution and enabled runtime capabilities. It permits
 reduced inspection in that mode, addressing the compatibility constraint that
 blocked task 03. GPT-6.1 Sol with high reasoning implemented and verified the option; its
 [result](05-result.md) records the capability limits and measured tradeoffs.
+
+Task 06 investigates preventing unnecessary metadata allocation during compilation.
+It extends the work from successful-runtime retention to creation costs and
+intermediate lifetimes, using task 05's reduced mode as the initial target.
+
+Task 07 investigates object layout and avoidable construction: effective slots
+across inheritance, smaller drafts, graph indexes, and cache lookup before step
+allocation. It builds on task 06's findings without implementing its proposals.
 
 ## Tasks and recommended order
 
@@ -31,11 +39,17 @@ blocked task 03. GPT-6.1 Sol with high reasoning implemented and verified the op
 | 03 | [Audit and prune discarded compilation records](03-prune-discarded-records.md) | Complete — pruning declined | GPT-6.1 Sol (`gpt-6.1-sol`), medium reasoning; [result](03-result.md) |
 | 04 | [Share repeated subtrees through contextual views](04-share-contextual-subtrees.md) | Reverted — dropped | GPT-6.1 Sol (`gpt-6.1-sol`), medium reasoning; [result](04-result.md), [rollback](04-rollback.md) |
 | 05 | [Make explanation metadata optional and minimize the runtime container](05-optional-explanation-metadata.md) | Complete — retained | GPT-6.1 Sol (`gpt-6.1-sol`), high reasoning; [result](05-result.md), [inventory](05-inventory.md) |
+| 06 | [Investigate avoiding metadata creation during compilation](06-avoid-metadata-creation.md) | Complete — investigation only | GPT-6 Astra (`gpt-6-astra`), high reasoning; [result](06-result.md), [inventory](06-inventory.md) |
+| 07 | [Investigate object layout and avoidable allocation](07-object-layout-and-allocation.md) | Complete — investigation only | GPT-6.1 Sol (`gpt-6.1-sol`), medium reasoning; [result](07-result.md), [inventory](07-inventory.md) |
 
-Start with 01 and record its result before continuing. The remaining order is a
-recommendation; reassess it against the measured graph after each task. A task
-may conclude that a proposed optimization is unsafe or not worthwhile; record
-that outcome and its evidence instead of forcing an implementation.
+Tasks 01–07 have recorded outcomes. Task 06 was completed by Astra with high
+reasoning on 2026-10-09; production optimization remains unimplemented. Task 07
+was completed by GPT-6.1 Sol with medium reasoning on 2026-10-09; its proposals
+remain unimplemented. Reassess
+recommendations against the measured compiler.
+A task may conclude that a proposed optimization is unsafe
+or not worthwhile; record that outcome and its evidence instead of forcing an
+implementation.
 
 ## Current evidence
 
@@ -175,3 +189,34 @@ their build allocation peak rises about 3.20 MiB. Future overlays cost about
 222 reused reduced-mode execution checks and required CI checks pass, except
 strict MkDocs' same eight existing external-file link warnings. Inspection limits,
 escaped views, scope modes, ownership and failure evidence are documented.
+
+
+Task 06's [investigation](06-result.md) locates reduced-mode peak in primary
+compilation. Conservative scalar-only weak cache ownership is recommended for a
+scoped implementation/review: repeated peak 72.844→52.053 MiB and normal RSS
+130.766→106.781 MiB, with unchanged ~3.10 MiB Python retention and graph/activation
+counts. Build median rises 7.1%; the three short resolution samples rise 2.410 ms
+at the median, so timing needs follow-up before acceptance. Strong fallback
+preserves opaque values, map keys and unknown carriers: broad weak caching fails
+16 lifetime cases despite passing all 2,132 existing tests. The conservative probe
+passes both. Early fact interning avoids 1,695,090 named metadata constructor calls
+and lowers build median 40.6%, but has no demonstrated peak-memory benefit.
+Smaller drafts and diagnostic history remain unmeasured design opportunities;
+coarse fact omission is incompatible. All changes are evidence/tooling, with no
+production optimization, commit, or pre-compilation implementation.
+
+
+## Task 07 result — investigation only
+
+The [result](07-result.md) records source/MRO inventory, independent probes and
+five normal/three traced processes per candidate. Effective slots retain weakrefs,
+lower traced peak 72.844→71.422 MiB and normal RSS median 130.578→128.812 MiB
+(with overlapping RSS ranges), and are ready for scoped implementation/review.
+Compact indexes lower peak to 67.851 MiB and RSS to 121.031 MiB, but fail eight
+full-artifact cases and need mapping/codec/sparsity design; not ready. Pre-lookup
+avoids 25,081 constructors but establishes no peak/RSS/speed benefit. Early draft
+sharing remains a bounded feasibility result with unresolved mutation/pool-lifetime
+semantics, not an achieved saving. Slots/pre-lookup pass all 2,132 existing tests;
+full/reduced attribution/facts and 16 lifetime cases match, and slots checks pass
+Python 3.11–3.14. No production/test/benchmark source, commit, push or pre-compilation
+implementation is changed.

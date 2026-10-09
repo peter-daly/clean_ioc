@@ -61,8 +61,33 @@ records with explicit inspection limits while preserving resolution. The
 Python retention 38.43→3.10 MiB and RSS 134.16→129.45 MiB, diagnostics' larger
 compilation floor, ownership costs, all 2,127 passing tests and the existing strict
 documentation-link limitation.
-See that plan for task status,
-baseline evidence and acceptance criteria.
+[Task 06](graph-memory-optimization/06-result.md) was investigated by GPT-6 Astra
+with high reasoning; production sources remain unchanged. Its conservative
+scalar-only weak cache probe lowers peak 72.844→52.053 MiB and RSS
+130.766→106.781 MiB, with observed timing costs and strong fallback for opaque
+application values. Broad weak caching and coarse evidence omission are rejected.
+Early immutable fact interning is a separate build-speed proposal. The report
+records phase attribution, repeated measurements, lifetime counterexamples and
+ranked implementation readiness.
+[Task 07](graph-memory-optimization/07-result.md) was completed by GPT-6.1 Sol
+with medium reasoning. Effective slots reduce traced peak 1.422 MiB and normal
+RSS median 1.766 MiB (overlapping ranges), preserving weakrefs; ready for scoped
+implementation/review. Compact indexes save more in the probe but have eight
+artifact failures and mapping design limits; not ready. Draft sharing remains
+not ready, and pre-lookup avoids 25,081 constructors without established memory/
+speed benefit. All 2,132 tests pass for slots/pre-lookup, lifetime/attribution/fact
+checks match and slots checks pass Python 3.11–3.14. These are investigation
+artifacts; production sources remain unchanged.
+
+## Pre-compilation
+
+The [pre-compilation plan](pre-compilation/README.md), created on 2026-10-09,
+tracks nine tasks after the reduced-artifact experiment: unified slots, feature
+coverage, Python symbol loading, fresh runtime state, build inputs and variants,
+artifact format and packaging, startup, profiling, and application validation.
+The feature inventory is ready for investigation; the implementation work is
+marked not ready where decisions or prerequisites remain. The agreed slot rules
+are preserved. This work is planning only and remains unassigned.
 
 ## Work items
 
