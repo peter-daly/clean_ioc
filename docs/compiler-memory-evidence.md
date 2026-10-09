@@ -28,7 +28,7 @@ before compilation because `_zstd` is missing, and the diagnostic reference imag
 worker does not become ready within the unchanged 120-second window at 512 MiB/100m.
 Clean IoC rc2 remains unpublished and downstream locks still select the original
 released dependencies. See [the detailed combined follow-up evidence](compiler-combined-evidence.md)
-and [sanitized raw combined measurements](../benchmarks/compiler_combined_results.json).
+and [sanitized raw combined measurements](https://github.com/peter-daly/clean_ioc/blob/version2/benchmarks/compiler_combined_results.json).
 
 ## Historical measurements below
 

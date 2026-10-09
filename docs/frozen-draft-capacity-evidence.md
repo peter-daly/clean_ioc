@@ -124,7 +124,7 @@ compiler allocation reduction, not a repeatable whole-process RSS reduction.
 Graph records, provider views, selected catalogue and public root counts match.
 
 All fourteen sanitized samples and frozen source/wheel identities are in
-[`frozen_draft_capacity_application_results.json`](../benchmarks/frozen_draft_capacity_application_results.json).
+[`frozen_draft_capacity_application_results.json`](https://github.com/peter-daly/clean_ioc/blob/version2/benchmarks/frozen_draft_capacity_application_results.json).
 Full Linux memory observations and downstream checks belong to the parent
 [combined evidence](runtime-build-series-evidence.md).
 

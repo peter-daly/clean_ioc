@@ -61,7 +61,7 @@ the full runtime graph still occupies memory and decoding creates temporary
 structures. Reducing that decoding peak or exploring a smaller runtime
 representation remain possible investigations, not committed follow-up work.
 
-Raw samples: [graph_artifact_results.json](../benchmarks/graph_artifact_results.json).
+Raw samples: [graph_artifact_results.json](https://github.com/peter-daly/clean_ioc/blob/version2/benchmarks/graph_artifact_results.json).
 
 ## Run locally
 

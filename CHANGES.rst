@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+
+2.0.0rc3
+--------
+
     Skip repeated callable signature inspection when there are no dependency
     names to validate. Preserve registration signature extraction, configured
     argument validation, required dependency checks and build-time dormancy.
@@ -41,6 +45,13 @@ Unreleased
     Add opt-in declarative candidate_when eligibility and provider-map root_policy.
     Share proven equivalent immutable activation plans, reduce freezing/finalization
     allocations, and extend span-free compiler allocation/eligibility attribution.
+
+    Share immutable component definitions and decorator-selection facts to reduce
+    compiled graph memory while preserving occurrence-specific context and evidence.
+
+    Add build(explain_metadata=False) to omit successful-build metadata that is
+    unnecessary for resolution and enabled runtime capabilities, with explicit
+    inspection limits. Full explanation metadata remains enabled by default.
 
 
 2.0.0rc2

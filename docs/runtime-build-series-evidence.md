@@ -73,7 +73,7 @@ before/after comparison for this series.
 Each row below uses that step's own paired experiment. Ordinary run-to-run
 variation means rows should not be treated as a single uninterrupted trend.
 All before/after samples, stage hashes and wheel identities are retained in
-[`runtime_build_series_results.json`](../benchmarks/runtime_build_series_results.json).
+[`runtime_build_series_results.json`](https://github.com/peter-daly/clean_ioc/blob/version2/benchmarks/runtime_build_series_results.json).
 
 | Step | Change | API median s | Worker median s | Worker peak RSS range MiB |
 | --- | --- | ---: | ---: | ---: |
@@ -231,7 +231,7 @@ diagnostic measured 164.3 MiB peak RSS after imports/configuration but before
 compilation; that portion is outside compiler allocations.
 
 All fourteen paired actual-host samples are in
-[`frozen_draft_capacity_application_results.json`](../benchmarks/frozen_draft_capacity_application_results.json).
+[`frozen_draft_capacity_application_results.json`](https://github.com/peter-daly/clean_ioc/blob/version2/benchmarks/frozen_draft_capacity_application_results.json).
 The larger graph-storage redesign remains a future opportunity; this pass stops
 with the measured dead-storage release. Required decorator selection facts stay
 available because Bark's lock-validation rules use them even with diagnostics off.
@@ -298,7 +298,7 @@ on the configured deployment image. The Step 8 reference image is
 
 Sanitized raw samples, cgroup counters, image identities and the configured-image
 failure are in
-[`runtime_build_linux_results.json`](../benchmarks/runtime_build_linux_results.json).
+[`runtime_build_linux_results.json`](https://github.com/peter-daly/clean_ioc/blob/version2/benchmarks/runtime_build_linux_results.json).
 The configured image still needs repair before deployment-image acceptance.
 The user has deferred startup-time optimization; the memory follow-up below
 observes completed startup without changing the deployed settings.

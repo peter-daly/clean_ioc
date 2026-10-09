@@ -6,7 +6,7 @@ but release coherence and Linux deployment acceptance remain outstanding. Final
 Cop integration passed all 64 tests in 405.62 s (0:06:45).
 
 The [original evidence report](compiler-memory-evidence.md) retains historical
-measurements. [Sanitized combined results](../benchmarks/compiler_combined_results.json)
+measurements. [Sanitized combined results](https://github.com/peter-daly/clean_ioc/blob/version2/benchmarks/compiler_combined_results.json)
 contain exact fresh-process samples, wheel hashes, base heads, final work counters,
 and relevant Linux resource measurements without settings or unrelated filenames.
 

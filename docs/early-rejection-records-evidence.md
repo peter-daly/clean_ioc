@@ -25,7 +25,7 @@ the prior development wheel, SHA-256
 `4e0d2fd53eafcfc9d03837b58b6f2d59e0d14c88e1405a0240b22dd7174d7749`.
 The candidate is the current source. Sanitized samples, Python/platform metadata, source
 fingerprints and separate profiler counts are in
-[`early_rejection_records_results.json`](../benchmarks/early_rejection_records_results.json).
+[`early_rejection_records_results.json`](https://github.com/peter-daly/clean_ioc/blob/version2/benchmarks/early_rejection_records_results.json).
 
 | Senders | Baseline off records | Candidate off records | Views, both | Baseline off retained bytes | Candidate off retained bytes | Baseline off peak bytes | Candidate off peak bytes |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
