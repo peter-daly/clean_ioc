@@ -1,0 +1,572 @@
+........................................................................ [ 74%]
+.......FFFF....F..FF.F...                                                [100%]
+=================================== FAILURES ===================================
+_________ test_lifetime_and_identity_survive_roundtrip[True-transient] _________
+
+tmp_path = PosixPath('/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/pytest-of-peter.daly/pytest-639/test_lifetime_and_identity_sur0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107b94750>
+lifespan = 'transient', explain_metadata = True
+
+    @pytest.mark.parametrize("lifespan", ["transient", "per_resolution", "scoped", "singleton"])
+    @pytest.mark.parametrize("explain_metadata", [True, False])
+    async def test_lifetime_and_identity_survive_roundtrip(tmp_path, monkeypatch, lifespan, explain_metadata):
+        builder = ContainerBuilder()
+        builder.register(fixture.Leaf, lifespan=lifespan, root_policy="dependency_only")
+        builder.register(fixture.Pair, lifespan="transient")
+        original = _build(builder, explain_metadata=explain_metadata)
+        artifact = tmp_path / "graph.jsonl"
+>       dump_graph(original, artifact)
+
+tests/test_graph_artifact_experiment.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+benchmarks/graph_artifact.py:307: in dump_graph
+    plan = writer.ref(runtime._plan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <benchmarks.graph_artifact._Writer object at 0x10784b4d0>
+value = mappingproxy(<__main__.IndexedMapping object at 0x10856fa80>)
+
+    def encode(self, value):
+        cls = type(value)
+        if cls is str:
+            return "str", value
+        if cls is int:
+            return "int", value
+        if id(value) in _SPECIAL_SYMBOLS:
+            return "symbol", self.symbol(value, *_SPECIAL_SYMBOLS[id(value)])
+        if isinstance(value, Enum):
+            return "enum", [self.symbol(cls, cls.__module__, cls.__qualname__), value.name]
+        if isinstance(value, (type, FunctionType)):
+            return "symbol", self.symbol(value, value.__module__, value.__qualname__)
+        origin = get_origin(value)
+        if origin is not None and any(origin is allowed for allowed in _ALIAS_ORIGINS):
+            return "alias", [self.ref(origin), self.ref(get_args(value)), type(value) is GenericAlias]
+        if cls is component_filters._StructuredPredicate:
+            name, argument = _filter_spec(value)
+            return "filter", [name, self.ref(argument)]
+        if cls in _FIELDS:
+            if isinstance(value, legacy._Registration) and value.is_instance:
+                raise ValueError("Instance registrations are outside this experiment")
+            fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+            return "record", [f"{cls.__module__}:{cls.__qualname__}", fields]
+        if cls is MappingProxyType:
+            # Separate read-only views can share one backing dictionary. Saving
+            # their items independently duplicates large metadata maps on load.
+            referents = gc.get_referents(value)
+            if len(referents) != 1 or not isinstance(referents[0], dict):
+>               raise ValueError("Expected a mapping proxy backed by a dictionary")
+E               ValueError: Expected a mapping proxy backed by a dictionary
+
+benchmarks/graph_artifact.py:201: ValueError
+______ test_lifetime_and_identity_survive_roundtrip[True-per_resolution] _______
+
+tmp_path = PosixPath('/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/pytest-of-peter.daly/pytest-639/test_lifetime_and_identity_sur1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107c7ec90>
+lifespan = 'per_resolution', explain_metadata = True
+
+    @pytest.mark.parametrize("lifespan", ["transient", "per_resolution", "scoped", "singleton"])
+    @pytest.mark.parametrize("explain_metadata", [True, False])
+    async def test_lifetime_and_identity_survive_roundtrip(tmp_path, monkeypatch, lifespan, explain_metadata):
+        builder = ContainerBuilder()
+        builder.register(fixture.Leaf, lifespan=lifespan, root_policy="dependency_only")
+        builder.register(fixture.Pair, lifespan="transient")
+        original = _build(builder, explain_metadata=explain_metadata)
+        artifact = tmp_path / "graph.jsonl"
+>       dump_graph(original, artifact)
+
+tests/test_graph_artifact_experiment.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+benchmarks/graph_artifact.py:307: in dump_graph
+    plan = writer.ref(runtime._plan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <benchmarks.graph_artifact._Writer object at 0x107d451d0>
+value = mappingproxy(<__main__.IndexedMapping object at 0x107e93980>)
+
+    def encode(self, value):
+        cls = type(value)
+        if cls is str:
+            return "str", value
+        if cls is int:
+            return "int", value
+        if id(value) in _SPECIAL_SYMBOLS:
+            return "symbol", self.symbol(value, *_SPECIAL_SYMBOLS[id(value)])
+        if isinstance(value, Enum):
+            return "enum", [self.symbol(cls, cls.__module__, cls.__qualname__), value.name]
+        if isinstance(value, (type, FunctionType)):
+            return "symbol", self.symbol(value, value.__module__, value.__qualname__)
+        origin = get_origin(value)
+        if origin is not None and any(origin is allowed for allowed in _ALIAS_ORIGINS):
+            return "alias", [self.ref(origin), self.ref(get_args(value)), type(value) is GenericAlias]
+        if cls is component_filters._StructuredPredicate:
+            name, argument = _filter_spec(value)
+            return "filter", [name, self.ref(argument)]
+        if cls in _FIELDS:
+            if isinstance(value, legacy._Registration) and value.is_instance:
+                raise ValueError("Instance registrations are outside this experiment")
+            fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+            return "record", [f"{cls.__module__}:{cls.__qualname__}", fields]
+        if cls is MappingProxyType:
+            # Separate read-only views can share one backing dictionary. Saving
+            # their items independently duplicates large metadata maps on load.
+            referents = gc.get_referents(value)
+            if len(referents) != 1 or not isinstance(referents[0], dict):
+>               raise ValueError("Expected a mapping proxy backed by a dictionary")
+E               ValueError: Expected a mapping proxy backed by a dictionary
+
+benchmarks/graph_artifact.py:201: ValueError
+__________ test_lifetime_and_identity_survive_roundtrip[True-scoped] ___________
+
+tmp_path = PosixPath('/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/pytest-of-peter.daly/pytest-639/test_lifetime_and_identity_sur2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x108192150>
+lifespan = 'scoped', explain_metadata = True
+
+    @pytest.mark.parametrize("lifespan", ["transient", "per_resolution", "scoped", "singleton"])
+    @pytest.mark.parametrize("explain_metadata", [True, False])
+    async def test_lifetime_and_identity_survive_roundtrip(tmp_path, monkeypatch, lifespan, explain_metadata):
+        builder = ContainerBuilder()
+        builder.register(fixture.Leaf, lifespan=lifespan, root_policy="dependency_only")
+        builder.register(fixture.Pair, lifespan="transient")
+        original = _build(builder, explain_metadata=explain_metadata)
+        artifact = tmp_path / "graph.jsonl"
+>       dump_graph(original, artifact)
+
+tests/test_graph_artifact_experiment.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+benchmarks/graph_artifact.py:307: in dump_graph
+    plan = writer.ref(runtime._plan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <benchmarks.graph_artifact._Writer object at 0x107d46d50>
+value = mappingproxy(<__main__.IndexedMapping object at 0x1086cb140>)
+
+    def encode(self, value):
+        cls = type(value)
+        if cls is str:
+            return "str", value
+        if cls is int:
+            return "int", value
+        if id(value) in _SPECIAL_SYMBOLS:
+            return "symbol", self.symbol(value, *_SPECIAL_SYMBOLS[id(value)])
+        if isinstance(value, Enum):
+            return "enum", [self.symbol(cls, cls.__module__, cls.__qualname__), value.name]
+        if isinstance(value, (type, FunctionType)):
+            return "symbol", self.symbol(value, value.__module__, value.__qualname__)
+        origin = get_origin(value)
+        if origin is not None and any(origin is allowed for allowed in _ALIAS_ORIGINS):
+            return "alias", [self.ref(origin), self.ref(get_args(value)), type(value) is GenericAlias]
+        if cls is component_filters._StructuredPredicate:
+            name, argument = _filter_spec(value)
+            return "filter", [name, self.ref(argument)]
+        if cls in _FIELDS:
+            if isinstance(value, legacy._Registration) and value.is_instance:
+                raise ValueError("Instance registrations are outside this experiment")
+            fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+            return "record", [f"{cls.__module__}:{cls.__qualname__}", fields]
+        if cls is MappingProxyType:
+            # Separate read-only views can share one backing dictionary. Saving
+            # their items independently duplicates large metadata maps on load.
+            referents = gc.get_referents(value)
+            if len(referents) != 1 or not isinstance(referents[0], dict):
+>               raise ValueError("Expected a mapping proxy backed by a dictionary")
+E               ValueError: Expected a mapping proxy backed by a dictionary
+
+benchmarks/graph_artifact.py:201: ValueError
+_________ test_lifetime_and_identity_survive_roundtrip[True-singleton] _________
+
+tmp_path = PosixPath('/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/pytest-of-peter.daly/pytest-639/test_lifetime_and_identity_sur3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x108266710>
+lifespan = 'singleton', explain_metadata = True
+
+    @pytest.mark.parametrize("lifespan", ["transient", "per_resolution", "scoped", "singleton"])
+    @pytest.mark.parametrize("explain_metadata", [True, False])
+    async def test_lifetime_and_identity_survive_roundtrip(tmp_path, monkeypatch, lifespan, explain_metadata):
+        builder = ContainerBuilder()
+        builder.register(fixture.Leaf, lifespan=lifespan, root_policy="dependency_only")
+        builder.register(fixture.Pair, lifespan="transient")
+        original = _build(builder, explain_metadata=explain_metadata)
+        artifact = tmp_path / "graph.jsonl"
+>       dump_graph(original, artifact)
+
+tests/test_graph_artifact_experiment.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+benchmarks/graph_artifact.py:307: in dump_graph
+    plan = writer.ref(runtime._plan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <benchmarks.graph_artifact._Writer object at 0x107bb35c0>
+value = mappingproxy(<__main__.IndexedMapping object at 0x107e72c40>)
+
+    def encode(self, value):
+        cls = type(value)
+        if cls is str:
+            return "str", value
+        if cls is int:
+            return "int", value
+        if id(value) in _SPECIAL_SYMBOLS:
+            return "symbol", self.symbol(value, *_SPECIAL_SYMBOLS[id(value)])
+        if isinstance(value, Enum):
+            return "enum", [self.symbol(cls, cls.__module__, cls.__qualname__), value.name]
+        if isinstance(value, (type, FunctionType)):
+            return "symbol", self.symbol(value, value.__module__, value.__qualname__)
+        origin = get_origin(value)
+        if origin is not None and any(origin is allowed for allowed in _ALIAS_ORIGINS):
+            return "alias", [self.ref(origin), self.ref(get_args(value)), type(value) is GenericAlias]
+        if cls is component_filters._StructuredPredicate:
+            name, argument = _filter_spec(value)
+            return "filter", [name, self.ref(argument)]
+        if cls in _FIELDS:
+            if isinstance(value, legacy._Registration) and value.is_instance:
+                raise ValueError("Instance registrations are outside this experiment")
+            fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+            return "record", [f"{cls.__module__}:{cls.__qualname__}", fields]
+        if cls is MappingProxyType:
+            # Separate read-only views can share one backing dictionary. Saving
+            # their items independently duplicates large metadata maps on load.
+            referents = gc.get_referents(value)
+            if len(referents) != 1 or not isinstance(referents[0], dict):
+>               raise ValueError("Expected a mapping proxy backed by a dictionary")
+E               ValueError: Expected a mapping proxy backed by a dictionary
+
+benchmarks/graph_artifact.py:201: ValueError
+__________________ test_large_topology_and_runtime_instances ___________________
+
+tmp_path = PosixPath('/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/pytest-of-peter.daly/pytest-639/test_large_topology_and_runtim0')
+
+    def test_large_topology_and_runtime_instances(tmp_path):
+        original = fixture.build(4)
+        artifact = tmp_path / "graph.jsonl"
+>       dump_graph(original, artifact)
+
+tests/test_graph_artifact_experiment.py:78: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+benchmarks/graph_artifact.py:307: in dump_graph
+    plan = writer.ref(runtime._plan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <benchmarks.graph_artifact._Writer object at 0x1077a8b50>
+value = mappingproxy(<__main__.IndexedMapping object at 0x1086c9c00>)
+
+    def encode(self, value):
+        cls = type(value)
+        if cls is str:
+            return "str", value
+        if cls is int:
+            return "int", value
+        if id(value) in _SPECIAL_SYMBOLS:
+            return "symbol", self.symbol(value, *_SPECIAL_SYMBOLS[id(value)])
+        if isinstance(value, Enum):
+            return "enum", [self.symbol(cls, cls.__module__, cls.__qualname__), value.name]
+        if isinstance(value, (type, FunctionType)):
+            return "symbol", self.symbol(value, value.__module__, value.__qualname__)
+        origin = get_origin(value)
+        if origin is not None and any(origin is allowed for allowed in _ALIAS_ORIGINS):
+            return "alias", [self.ref(origin), self.ref(get_args(value)), type(value) is GenericAlias]
+        if cls is component_filters._StructuredPredicate:
+            name, argument = _filter_spec(value)
+            return "filter", [name, self.ref(argument)]
+        if cls in _FIELDS:
+            if isinstance(value, legacy._Registration) and value.is_instance:
+                raise ValueError("Instance registrations are outside this experiment")
+            fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+            return "record", [f"{cls.__module__}:{cls.__qualname__}", fields]
+        if cls is MappingProxyType:
+            # Separate read-only views can share one backing dictionary. Saving
+            # their items independently duplicates large metadata maps on load.
+            referents = gc.get_referents(value)
+            if len(referents) != 1 or not isinstance(referents[0], dict):
+>               raise ValueError("Expected a mapping proxy backed by a dictionary")
+E               ValueError: Expected a mapping proxy backed by a dictionary
+
+benchmarks/graph_artifact.py:201: ValueError
+______________ test_rejects_incompatible_and_incomplete_artifacts ______________
+
+tmp_path = PosixPath('/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/pytest-of-peter.daly/pytest-639/test_rejects_incompatible_and_0')
+
+    def test_rejects_incompatible_and_incomplete_artifacts(tmp_path):
+        artifact = tmp_path / "graph.jsonl"
+>       dump_graph(fixture.build(1), artifact)
+
+tests/test_graph_artifact_experiment.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+benchmarks/graph_artifact.py:307: in dump_graph
+    plan = writer.ref(runtime._plan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <benchmarks.graph_artifact._Writer object at 0x107d3a8a0>
+value = mappingproxy(<__main__.IndexedMapping object at 0x107cc4c00>)
+
+    def encode(self, value):
+        cls = type(value)
+        if cls is str:
+            return "str", value
+        if cls is int:
+            return "int", value
+        if id(value) in _SPECIAL_SYMBOLS:
+            return "symbol", self.symbol(value, *_SPECIAL_SYMBOLS[id(value)])
+        if isinstance(value, Enum):
+            return "enum", [self.symbol(cls, cls.__module__, cls.__qualname__), value.name]
+        if isinstance(value, (type, FunctionType)):
+            return "symbol", self.symbol(value, value.__module__, value.__qualname__)
+        origin = get_origin(value)
+        if origin is not None and any(origin is allowed for allowed in _ALIAS_ORIGINS):
+            return "alias", [self.ref(origin), self.ref(get_args(value)), type(value) is GenericAlias]
+        if cls is component_filters._StructuredPredicate:
+            name, argument = _filter_spec(value)
+            return "filter", [name, self.ref(argument)]
+        if cls in _FIELDS:
+            if isinstance(value, legacy._Registration) and value.is_instance:
+                raise ValueError("Instance registrations are outside this experiment")
+            fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+            return "record", [f"{cls.__module__}:{cls.__qualname__}", fields]
+        if cls is MappingProxyType:
+            # Separate read-only views can share one backing dictionary. Saving
+            # their items independently duplicates large metadata maps on load.
+            referents = gc.get_referents(value)
+            if len(referents) != 1 or not isinstance(referents[0], dict):
+>               raise ValueError("Expected a mapping proxy backed by a dictionary")
+E               ValueError: Expected a mapping proxy backed by a dictionary
+
+benchmarks/graph_artifact.py:201: ValueError
+_____________________ test_rejects_changed_imported_module _____________________
+
+tmp_path = PosixPath('/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/pytest-of-peter.daly/pytest-639/test_rejects_changed_imported_0')
+
+    def test_rejects_changed_imported_module(tmp_path):
+        artifact = tmp_path / "graph.jsonl"
+>       dump_graph(fixture.build(1), artifact)
+
+tests/test_graph_artifact_experiment.py:136: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+benchmarks/graph_artifact.py:307: in dump_graph
+    plan = writer.ref(runtime._plan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <benchmarks.graph_artifact._Writer object at 0x107d89d60>
+value = mappingproxy(<__main__.IndexedMapping object at 0x10838ffc0>)
+
+    def encode(self, value):
+        cls = type(value)
+        if cls is str:
+            return "str", value
+        if cls is int:
+            return "int", value
+        if id(value) in _SPECIAL_SYMBOLS:
+            return "symbol", self.symbol(value, *_SPECIAL_SYMBOLS[id(value)])
+        if isinstance(value, Enum):
+            return "enum", [self.symbol(cls, cls.__module__, cls.__qualname__), value.name]
+        if isinstance(value, (type, FunctionType)):
+            return "symbol", self.symbol(value, value.__module__, value.__qualname__)
+        origin = get_origin(value)
+        if origin is not None and any(origin is allowed for allowed in _ALIAS_ORIGINS):
+            return "alias", [self.ref(origin), self.ref(get_args(value)), type(value) is GenericAlias]
+        if cls is component_filters._StructuredPredicate:
+            name, argument = _filter_spec(value)
+            return "filter", [name, self.ref(argument)]
+        if cls in _FIELDS:
+            if isinstance(value, legacy._Registration) and value.is_instance:
+                raise ValueError("Instance registrations are outside this experiment")
+            fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+            return "record", [f"{cls.__module__}:{cls.__qualname__}", fields]
+        if cls is MappingProxyType:
+            # Separate read-only views can share one backing dictionary. Saving
+            # their items independently duplicates large metadata maps on load.
+            referents = gc.get_referents(value)
+            if len(referents) != 1 or not isinstance(referents[0], dict):
+>               raise ValueError("Expected a mapping proxy backed by a dictionary")
+E               ValueError: Expected a mapping proxy backed by a dictionary
+
+benchmarks/graph_artifact.py:201: ValueError
+___ test_rich_graph_roundtrip_preserves_facts_sharing_and_provider_lifetimes ___
+
+tmp_path = PosixPath('/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/pytest-of-peter.daly/pytest-639/test_rich_graph_roundtrip_pres0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107c979a0>
+
+    async def test_rich_graph_roundtrip_preserves_facts_sharing_and_provider_lifetimes(tmp_path, monkeypatch):
+        from benchmarks import graph_memory_fixture as rich
+        from benchmarks.graph_memory_evidence import census
+        from clean_ioc.components import Component
+    
+        case = rich.build(2)
+        artifact = tmp_path / "rich.jsonl"
+>       dump_graph(case.runtime, artifact)
+
+tests/test_graph_artifact_experiment.py:177: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+benchmarks/graph_artifact.py:307: in dump_graph
+    plan = writer.ref(runtime._plan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:194: in encode
+    fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+benchmarks/graph_artifact.py:166: in ref
+    kind, payload = self.encode(value)
+                    ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <benchmarks.graph_artifact._Writer object at 0x107815b70>
+value = mappingproxy(<__main__.IndexedMapping object at 0x1083002c0>)
+
+    def encode(self, value):
+        cls = type(value)
+        if cls is str:
+            return "str", value
+        if cls is int:
+            return "int", value
+        if id(value) in _SPECIAL_SYMBOLS:
+            return "symbol", self.symbol(value, *_SPECIAL_SYMBOLS[id(value)])
+        if isinstance(value, Enum):
+            return "enum", [self.symbol(cls, cls.__module__, cls.__qualname__), value.name]
+        if isinstance(value, (type, FunctionType)):
+            return "symbol", self.symbol(value, value.__module__, value.__qualname__)
+        origin = get_origin(value)
+        if origin is not None and any(origin is allowed for allowed in _ALIAS_ORIGINS):
+            return "alias", [self.ref(origin), self.ref(get_args(value)), type(value) is GenericAlias]
+        if cls is component_filters._StructuredPredicate:
+            name, argument = _filter_spec(value)
+            return "filter", [name, self.ref(argument)]
+        if cls in _FIELDS:
+            if isinstance(value, legacy._Registration) and value.is_instance:
+                raise ValueError("Instance registrations are outside this experiment")
+            fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+            return "record", [f"{cls.__module__}:{cls.__qualname__}", fields]
+        if cls is MappingProxyType:
+            # Separate read-only views can share one backing dictionary. Saving
+            # their items independently duplicates large metadata maps on load.
+            referents = gc.get_referents(value)
+            if len(referents) != 1 or not isinstance(referents[0], dict):
+>               raise ValueError("Expected a mapping proxy backed by a dictionary")
+E               ValueError: Expected a mapping proxy backed by a dictionary
+
+benchmarks/graph_artifact.py:201: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_graph_artifact_experiment.py::test_lifetime_and_identity_survive_roundtrip[True-transient]
+FAILED tests/test_graph_artifact_experiment.py::test_lifetime_and_identity_survive_roundtrip[True-per_resolution]
+FAILED tests/test_graph_artifact_experiment.py::test_lifetime_and_identity_survive_roundtrip[True-scoped]
+FAILED tests/test_graph_artifact_experiment.py::test_lifetime_and_identity_survive_roundtrip[True-singleton]
+FAILED tests/test_graph_artifact_experiment.py::test_large_topology_and_runtime_instances
+FAILED tests/test_graph_artifact_experiment.py::test_rejects_incompatible_and_incomplete_artifacts
+FAILED tests/test_graph_artifact_experiment.py::test_rejects_changed_imported_module
+FAILED tests/test_graph_artifact_experiment.py::test_rich_graph_roundtrip_preserves_facts_sharing_and_provider_lifetimes
+8 failed, 89 passed in 7.33s

@@ -1,0 +1,2 @@
+.work/graph-memory-optimization/evidence/08-hash-counterexamples.py:123:121: E501 Line too long (129 > 120)
+Found 1 error.

@@ -1,0 +1,269 @@
+"""Positive contextual projections preserve captured occurrence metadata."""
+
+from dataclasses import fields, replace
+from types import MappingProxyType
+from unittest.mock import patch
+
+import pytest
+
+from clean_ioc._component_subtrees import share_subtrees
+from clean_ioc.components import ComponentActivation, ComponentKind, RuntimeOwnerKind, _ComponentDraft, _ComponentGraph
+from clean_ioc.components import _ComponentSubtreeRecord as Projection
+
+
+def experiment(graph, *, apply=False):
+    if apply:
+        share_subtrees(graph._records)
+    aliases = [record for record in graph._records.values() if isinstance(record, Projection)]
+    return {"contexts": len({id(record.context) for record in aliases}), "projection_records": len(aliases)}
+
+
+EMPTY = MappingProxyType({})
+
+
+def repeated_trees(**changes):
+    graph = _ComponentGraph()
+    roots = []
+    for offset in (0, 100):
+        roots.append(
+            graph.add(
+                _ComponentDraft(
+                    id="parent",
+                    occurrence_id=offset + 50,
+                    service_type=object,
+                    implementation=object,
+                    implementation_type=object,
+                    lifespan="transient",
+                    name=None,
+                    tags=(),
+                    build_args=EMPTY,
+                    kind=ComponentKind.registration,
+                    activation=ComponentActivation.constructor,
+                )
+            )
+        )
+        for index in range(1, 8):
+            children = (offset + index * 2, offset + index * 2 + 1) if index < 4 else ()
+            draft = _ComponentDraft(
+                id="tree",
+                occurrence_id=offset + index,
+                service_type=object,
+                implementation=object,
+                implementation_type=object,
+                lifespan="transient",
+                name=None,
+                tags=(),
+                build_args=EMPTY,
+                kind=ComponentKind.registration,
+                activation=ComponentActivation.constructor,
+                parent_id=offset + 50 if index == 1 else offset + index // 2,
+                dependency_ids=children,
+            )
+            if offset and index == 4:
+                draft = replace(draft, **changes)
+            graph.add(draft)
+    with patch("clean_ioc._component_subtrees.share_subtrees", lambda records: None):
+        graph.freeze()
+    return graph, roots
+
+
+def test_disjoint_projection_preserves_all_captured_fields_and_positive_identities():
+    graph, parents = repeated_trees()
+    before = dict(graph._records)
+    result = experiment(graph, apply=True)
+    assert result["contexts"] == 1
+    assert result["projection_records"] == 7
+    assert len(graph._records) == len(before)
+    for occurrence, source in before.items():
+        current = graph.record(occurrence)
+        for field in fields(source):
+            first, second = getattr(source, field.name), getattr(current, field.name)
+            if field.name.endswith("_ids") or field.name in ("parent_id", "occurrence_id"):
+                assert first == second
+            else:
+                assert first is second
+    root = graph.record(101)
+    assert isinstance(root, Projection)
+    assert root.parent_id == parents[1].occurrence_id
+    assert root.freeze().dependency_ids == (102, 103)
+    assert graph.record(102).parent_id == 101
+    assert root.source is before[1]
+    assert not isinstance(root.source, Projection)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"id": "other-registration"},
+        {"argument": "selected-other-argument"},
+        {"build_args": MappingProxyType({"derived": 42})},
+        {"boundary": "another-boundary"},
+        {"owner_id": 150},
+        {"decorated_id": 150},
+        {"requires_async": True},
+        {"manages_cleanup": True},
+        {"cache_owner": RuntimeOwnerKind.scope},
+        {"cleanup_owner": RuntimeOwnerKind.scope},
+        {"ownership_reason": "context-dependent-cleanup"},
+        {"provider_mode": "async"},
+    ],
+)
+def test_contextual_differences_reject_the_larger_subtree(changes):
+    graph, _ = repeated_trees(**changes)
+    before = graph.record(101)
+    result = experiment(graph, apply=True)
+    assert result["projection_records"] == 0
+    assert graph.record(101) is before
+
+
+def test_existing_provider_view_projects_positive_alias_without_nesting_sources():
+    graph, parents = repeated_trees()
+    experiment(graph, apply=True)
+    from clean_ioc.components import Component
+
+    root = Component(graph, 101)
+    provider_view = graph.view(root, parents[0])
+    assert provider_view.parent.occurrence_id == parents[0].occurrence_id
+    assert provider_view.dependencies[0].parent.occurrence_id == provider_view.occurrence_id
+    assert (
+        provider_view.dependencies[0].dependencies[0].parent.occurrence_id
+        == provider_view.dependencies[0].occurrence_id
+    )
+    assert graph.record(101).context.remapping[1] == 101
+    assert all(source > 0 and target > 0 for source, target in graph.record(101).context.remapping.items())
+
+
+def test_generic_mapping_cache_remains_lazy_and_per_occurrence():
+    from clean_ioc.components import Component
+
+    graph, _ = repeated_trees()
+    experiment(graph, apply=True)
+    canonical, projection = graph.record(1), graph.record(101)
+    assert canonical._generic_mapping is projection._generic_mapping is None
+    mapping = Component(graph, 101).generic_mapping
+    assert projection._generic_mapping is mapping
+    assert canonical._generic_mapping is None
+    assert Component(graph, 101).generic_mapping is mapping
+    assert projection.freeze()._generic_mapping is mapping
+
+
+@pytest.mark.parametrize("diagnostics", [False, True])
+def test_fixture_contextual_graph_matches_unshared_public_facts_and_runtime(diagnostics):
+    from benchmarks.graph_memory_fixture import build
+
+    with patch("clean_ioc._component_subtrees.share_subtrees", lambda records: None):
+        fixture = build(2, diagnostics=diagnostics)
+    with fixture.runtime:
+        graph = fixture.runtime.graph
+
+        def facts():
+            result = []
+            for visit in graph.walk():
+                component = visit.component
+                try:
+                    explanation = graph.explain_decorators(component)
+                except ValueError as error:
+                    explanation = str(error)
+                result.append(
+                    (
+                        component.occurrence_id,
+                        component.id,
+                        component.argument,
+                        component.owner_occurrence_id,
+                        component.ownership_reason,
+                        tuple(item.occurrence_id for item in component.dependencies),
+                        None if component.parent is None else component.parent.occurrence_id,
+                        explanation,
+                    )
+                )
+            return result
+
+        before = facts()
+        fingerprint = graph.manifest(all_roots=True).fingerprint
+        census_before = graph.selection_census(all_roots=True) if diagnostics else None
+        records = fixture.runtime._plan.graph._records
+        assert records is not None
+        share_subtrees(records)
+        assert any(isinstance(record, Projection) for record in records.values())
+        assert facts() == before
+        graph._manifest_cache.clear()
+        assert graph.manifest(all_roots=True).fingerprint == fingerprint
+        if diagnostics:
+            assert graph.selection_census(all_roots=True) == census_before
+
+
+def test_cycles_and_non_tree_dependency_links_remain_concrete():
+    graph, _ = repeated_trees()
+    records = graph._records
+    records[104] = replace(records[104], dependency_ids=(101,))
+    original = dict(records)
+    share_subtrees(records)
+    assert records[101] is original[101]
+    assert records[104] is original[104]
+    graph, _ = repeated_trees()
+    records = graph._records
+    records[104] = replace(records[104], parent_id=150)
+    share_subtrees(records)
+    assert not any(isinstance(record, Projection) for record in records.values())
+
+
+@pytest.mark.parametrize("lifespan", ["transient", "per_resolution", "scoped", "singleton"])
+def test_overlay_inherits_shared_metadata_without_merging_runtime_instances(lifespan):
+    from benchmarks.graph_memory_fixture import TREE_TYPES
+    from clean_ioc import ContainerBuilder
+
+    builder = ContainerBuilder()
+    for service in TREE_TYPES:
+        builder.register(service, lifespan=lifespan)
+    with builder.build() as parent:
+        records = parent._plan.graph._records
+        assert records is not None
+        assert any(isinstance(record, Projection) for record in records.values())
+        with parent.new_scope_builder().build() as overlay:
+            first = overlay.resolve(TREE_TYPES[-1])
+            second = overlay.resolve(TREE_TYPES[-1])
+            if lifespan in ("singleton", "scoped"):
+                assert first is second
+            else:
+                assert first is not second
+            if lifespan == "transient":
+                assert first.left is not first.right
+            else:
+                assert first.left is first.right
+            assert overlay.graph.manifest(all_roots=True).fingerprint
+
+
+def test_context_remappings_are_immutable_and_views_keep_original_parent_identity():
+    graph, parents = repeated_trees()
+    share_subtrees(graph._records)
+    projection = graph.record(101)
+    assert isinstance(projection, Projection)
+    with pytest.raises(TypeError):
+        projection.context.remapping[1] = 999
+    assert projection.parent_id == parents[1].occurrence_id
+    assert projection.occurrence_id == 101
+
+
+@pytest.mark.parametrize("argument", [int, str])
+def test_projected_generic_specialization_uses_its_own_captured_service_binding(argument):
+    from typing import Generic, TypeVar
+
+    from clean_ioc.components import Component
+
+    parameter = TypeVar("parameter")
+
+    class Specialized(Generic[parameter]):
+        pass
+
+    graph, _ = repeated_trees()
+    records = graph._records
+    assert records is not None
+    definition = replace(records[1]._definition, service_type=Specialized[argument])
+    for occurrence in (*range(1, 8), *range(101, 108)):
+        records[occurrence] = replace(records[occurrence], _definition=definition)
+    share_subtrees(records)
+    projection = records[101]
+    assert isinstance(projection, Projection)
+    assert Component(graph, 101).generic_mapping[parameter] is argument
+    assert projection.source._generic_mapping is None
+    assert Component(graph, 101).service_type is definition.service_type

@@ -1,0 +1,635 @@
+{
+  "revision": "d51b6f569e67891e72e022b35aa5590c1c0fda46",
+  "scope": "Task 06 investigation only; production unchanged; no commits/pushes",
+  "measurement_policy": "Serial processes; normal timings/RSS separate from traced allocations and observers. Historical failures preserved.",
+  "source_archives": [
+    {
+      "sha256": "116b6bfc37a6bf977ced1a0e2eef5b15ab4b8f68581d60c0cefb2709833ce94f",
+      "source_file": ".work/graph-memory-optimization/evidence/06-probe-small-original.py.txt",
+      "used_in": [
+        ".work/graph-memory-optimization/evidence/06-small-reduced-baseline.json",
+        ".work/graph-memory-optimization/evidence/06-small-reduced-no-decorator-evidence.json",
+        ".work/graph-memory-optimization/evidence/06-small-reduced-release-source-graphs.json",
+        ".work/graph-memory-optimization/evidence/06-small-reduced-snapshot-intern.json",
+        ".work/graph-memory-optimization/evidence/06-small-reduced-snapshot-reuse.json",
+        ".work/graph-memory-optimization/evidence/06-small-reduced-weak-activation-cache.json"
+      ]
+    },
+    {
+      "sha256": "1bbf9842481a248a7e17a1ffbe4d8f8909df051fc356a82d5cbb73980c3ce0f6",
+      "source_file": ".work/graph-memory-optimization/evidence/06-probe-v3.py.txt",
+      "used_in": [
+        ".work/graph-memory-optimization/evidence/06-count-intern-template-facts.json",
+        ".work/graph-memory-optimization/evidence/06-final-semantics-baseline-full.json",
+        ".work/graph-memory-optimization/evidence/06-final-semantics-baseline-reduced.json",
+        ".work/graph-memory-optimization/evidence/06-final-semantics-intern-template-facts-full.json",
+        ".work/graph-memory-optimization/evidence/06-final-semantics-intern-template-facts-reduced.json",
+        ".work/graph-memory-optimization/evidence/06-final-semantics-weak-activation-cache-full.json",
+        ".work/graph-memory-optimization/evidence/06-final-semantics-weak-activation-cache-reduced.json",
+        ".work/graph-memory-optimization/evidence/06-repeat-baseline.json",
+        ".work/graph-memory-optimization/evidence/06-repeat-intern-template-facts.json",
+        ".work/graph-memory-optimization/evidence/06-repeat-weak-activation-cache.json",
+        ".work/graph-memory-optimization/evidence/06-screen-no-decorator-evidence-heap.json",
+        ".work/graph-memory-optimization/evidence/06-screen-no-decorator-evidence-normal.json",
+        ".work/graph-memory-optimization/evidence/06-screen-release-source-graphs-heap.json",
+        ".work/graph-memory-optimization/evidence/06-screen-release-source-graphs-normal.json",
+        ".work/graph-memory-optimization/evidence/06-screen-snapshot-intern-heap.json",
+        ".work/graph-memory-optimization/evidence/06-screen-snapshot-intern-normal.json",
+        ".work/graph-memory-optimization/evidence/06-screen-snapshot-reuse-heap.json",
+        ".work/graph-memory-optimization/evidence/06-screen-snapshot-reuse-normal.json",
+        ".work/graph-memory-optimization/evidence/06-timeline-diagnostics.json"
+      ]
+    },
+    {
+      "sha256": "539c1a96bc90218a7af6fa0667a0361bb3414e7da5f0f1d7f1a9dbc5d692199e",
+      "source_file": ".work/graph-memory-optimization/evidence/06-probe-v1.py.txt",
+      "used_in": [
+        ".work/graph-memory-optimization/evidence/06-count-baseline.json",
+        ".work/graph-memory-optimization/evidence/06-small-initial-full-no-decorator-evidence.json",
+        ".work/graph-memory-optimization/evidence/06-small-initial-full-release-source-graphs.json",
+        ".work/graph-memory-optimization/evidence/06-small-initial-full-snapshot-intern.json",
+        ".work/graph-memory-optimization/evidence/06-small-initial-full-snapshot-reuse.json",
+        ".work/graph-memory-optimization/evidence/06-small-initial-full-weak-activation-cache.json"
+      ]
+    },
+    {
+      "sha256": "5fd34c0c296053254c43d891a0a84535aa50de438a1616250b45c054596e9a82",
+      "source_file": ".work/graph-memory-optimization/evidence/06-probe-v2.py.txt",
+      "used_in": [
+        ".work/graph-memory-optimization/evidence/06-small-reduced-intern-template-facts.json"
+      ]
+    },
+    {
+      "sha256": "6f95b4e4707f1f43e51cad14df9e550026f94a710d7def2a7b68566242f7586d",
+      "source_file": ".work/graph-memory-optimization/evidence/06-probe-timeline-original.py.txt",
+      "used_in": [
+        ".work/graph-memory-optimization/evidence/06-timeline.json"
+      ]
+    },
+    {
+      "sha256": "78341ff0a0cb14f38383523caf2a0a56be18c596bd9d6bf9b27152b9dffa23bd",
+      "source_file": ".work/graph-memory-optimization/evidence/06-probe-v4-typed.py.txt",
+      "used_in": [
+        ".work/graph-memory-optimization/evidence/06-final-semantics-scalar-weak-cache-full.json",
+        ".work/graph-memory-optimization/evidence/06-final-semantics-scalar-weak-cache-reduced.json"
+      ]
+    },
+    {
+      "sha256": "df8ae1ea99b6f5eb0c9d9f77a16e4ed6056c1252fe8e4048be53b8f19df2ae53",
+      "source_file": ".work/graph-memory-optimization/evidence/06-probe-v4.py.txt",
+      "used_in": [
+        ".work/graph-memory-optimization/evidence/06-repeat-scalar-weak-cache.json",
+        ".work/graph-memory-optimization/evidence/06-small-reduced-scalar-weak-cache.json"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": ".work/README.md",
+      "bytes": 19239,
+      "sha256": "0bb3ed0cca65b396aa609545ac9f7c1ef1ad282bc3f14a901fa6243c195cd7ae",
+      "purpose": "Task assignment, report, inventory or shared task index"
+    },
+    {
+      "path": ".work/graph-memory-optimization/06-avoid-metadata-creation.md",
+      "bytes": 11957,
+      "sha256": "5ceaa0338592e7d5266fee8f1a713aa8872f2d11fd1d2c5cb3f5482ba2761ba0",
+      "purpose": "Task assignment, report, inventory or shared task index"
+    },
+    {
+      "path": ".work/graph-memory-optimization/06-inventory.md",
+      "bytes": 20023,
+      "sha256": "135c909447782290a769aa6e3cf1c52c2ba092c6d3c1450cf4a5a07b8deecdc3",
+      "purpose": "Task assignment, report, inventory or shared task index"
+    },
+    {
+      "path": ".work/graph-memory-optimization/06-result.md",
+      "bytes": 27554,
+      "sha256": "c92161ae58dfa41ec9fd946b707d16044e263d17c87bf7cb255ad96d220c210b",
+      "purpose": "Task assignment, report, inventory or shared task index"
+    },
+    {
+      "path": ".work/graph-memory-optimization/README.md",
+      "bytes": 12336,
+      "sha256": "43cedb01df7d69204959e5c645a123314e0888dd51dfc8d6fb6563f7e3385e8d",
+      "purpose": "Task assignment, report, inventory or shared task index"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-allocator-stats.txt",
+      "bytes": 14203,
+      "sha256": "8cb20a6af5e0b4fe46f0051f76ffa0a7ccf0f48328d2ccd91f7922a2ea7d7892",
+      "purpose": "Separate default allocator attribution; no allocator change"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-allocator.json",
+      "bytes": 6501,
+      "sha256": "5f47cb320d0eee7e51744e4aaa53056958543e81fab8d7130e13d1ba68b47dc9",
+      "purpose": "Separate default allocator attribution; no allocator change"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-allocator.py",
+      "bytes": 1390,
+      "sha256": "76cb4b1df6a0dc7c8460f7f35b16dcde13aa6f12518d3c34c661b3b768f8204b",
+      "purpose": "Executable process-local probe / validation / observation source; no production changes"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-baseline.json",
+      "bytes": 68061,
+      "sha256": "763c7629ac92f9adb46d7aa430a25f515dadcf8d7af21026cf49d24a384fbef4",
+      "purpose": "Three serial normal and three separate traced fresh-process runs"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-cache-lifetime.py",
+      "bytes": 2199,
+      "sha256": "d2023d99ced51166560173b3331f471ceb1876efae1a3f56d739e30f210169f2",
+      "purpose": "Executable process-local probe / validation / observation source; no production changes"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-cache-strong.json",
+      "bytes": 14069,
+      "sha256": "c5786e1c74eb78f9fc02756491ff66977f41fc122eae0552df7040d7d2f6fa41",
+      "purpose": "Separate cache insert/hit/live-count observation"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-cache-weak.json",
+      "bytes": 14128,
+      "sha256": "ea709298f307e54f59c9e3d26ea1c2243c0374ecde2cd588a5fc50da61c30e19",
+      "purpose": "Separate cache insert/hit/live-count observation"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-count-baseline.json",
+      "bytes": 72952,
+      "sha256": "7a6321c685850d8831ad870a056ead61e983250438252c8bcd6f85047abe8fde",
+      "purpose": "Constructor counters and sampled live object counts; observer run"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-count-intern-template-facts.json",
+      "bytes": 77168,
+      "sha256": "2dc70e628fa86dc51efc2fb5085ba81d5dcfe3628115de61f009fca9065956be",
+      "purpose": "Constructor counters and sampled live object counts; observer run"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-final-check-exit-codes.json",
+      "bytes": 545,
+      "sha256": "b603d9a162b06983a9fb8ddfd1a75f0fe83e02428384bcf223539b00960733f0",
+      "purpose": "Recorded subprocess completion statuses from the named investigation stage"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-final-semantics-baseline-full.json",
+      "bytes": 13557,
+      "sha256": "a7b89c315eb51883ad80185dca42d28b8cb725c954ee615fa484c780a5087e23",
+      "purpose": "Eight-route reduced source attribution or two-route full manifest/fact comparison plus truthful failure facts"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-final-semantics-baseline-reduced.json",
+      "bytes": 57599,
+      "sha256": "65b8ffc660941ea656285d62adce95275e43cc7c5ba27446090b8f006174f66c",
+      "purpose": "Eight-route reduced source attribution or two-route full manifest/fact comparison plus truthful failure facts"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-final-semantics-intern-template-facts-full.json",
+      "bytes": 13960,
+      "sha256": "5355634519a6a30f46d1d053b8183d01bd6b8a779eee5d43f797d6e1cd05b699",
+      "purpose": "Eight-route reduced source attribution or two-route full manifest/fact comparison plus truthful failure facts"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-final-semantics-intern-template-facts-reduced.json",
+      "bytes": 57989,
+      "sha256": "8cdafbc927fd9177914a6212caa10bfd4b7903568d8b5232ed2e7e8aa41a4a52",
+      "purpose": "Eight-route reduced source attribution or two-route full manifest/fact comparison plus truthful failure facts"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-final-semantics-scalar-weak-cache-full.json",
+      "bytes": 15386,
+      "sha256": "59dd2831c636d8bc7aa244348fabdc2179c86250524c9ff6e389f0172cf6455e",
+      "purpose": "Eight-route reduced source attribution or two-route full manifest/fact comparison plus truthful failure facts"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-final-semantics-scalar-weak-cache-reduced.json",
+      "bytes": 59419,
+      "sha256": "e15545c1a934630b2378e105b5d4621a43ca0347819e62fb055b349fc32c0d4b",
+      "purpose": "Eight-route reduced source attribution or two-route full manifest/fact comparison plus truthful failure facts"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-final-semantics-weak-activation-cache-full.json",
+      "bytes": 13765,
+      "sha256": "7191e7a146387d4a2c39663f2c812aca887ff5fd7f92684d2b5aa68d54f9be9f",
+      "purpose": "Eight-route reduced source attribution or two-route full manifest/fact comparison plus truthful failure facts"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-final-semantics-weak-activation-cache-reduced.json",
+      "bytes": 57794,
+      "sha256": "0b8cddb0c2d597e89fa2e50e2bb6a9caea902635ab41c4e2abff264b2f31c56d",
+      "purpose": "Eight-route reduced source attribution or two-route full manifest/fact comparison plus truthful failure facts"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-full-tests-intern-template-facts.txt",
+      "bytes": 2926,
+      "sha256": "ac23b636085ef0d71b389ad79379818614272b675b5552195ec5e961c869a591",
+      "purpose": "Complete existing 2,132-test suite under process-local candidate"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-full-tests-scalar-weak-cache.txt",
+      "bytes": 2926,
+      "sha256": "2fa7db4189d22d6133d7f8107eb638f2d5b80968a582b4618de72ccb8f37b069",
+      "purpose": "Complete existing 2,132-test suite under process-local candidate"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-full-tests-weak-activation-cache.txt",
+      "bytes": 2926,
+      "sha256": "8399b66d513ff1fba904c2c23d2cb873028c81def1ea8dc82a5cba3656273529",
+      "purpose": "Complete existing 2,132-test suite under process-local candidate"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-payload-baseline.json",
+      "bytes": 6306,
+      "sha256": "73eb1839fa18b7cab29417c10d8bacdf213c81731c4b7c21ba617eb3952a246a",
+      "purpose": "Minimal callback-visible application-value lifetime counterexample"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-payload-lifetime.py",
+      "bytes": 2060,
+      "sha256": "a03c74e6117046104c486272e8fafbd32271f3e7441bf654ae301f611f532c7d",
+      "purpose": "Executable process-local probe / validation / observation source; no production changes"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-payload-scalar-weak-cache.json",
+      "bytes": 6696,
+      "sha256": "c1e9c19f171c212bdeab357d8745fef619a9028df73ef6862e96ea4559465fcd",
+      "purpose": "Minimal callback-visible application-value lifetime counterexample"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-payload-weak-cache.json",
+      "bytes": 6393,
+      "sha256": "f36069a86614658a4d4590ef47d6f4e59c27bfb05499bc9481240032ab639b50",
+      "purpose": "Minimal callback-visible application-value lifetime counterexample"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-probe-small-original.py.txt",
+      "bytes": 18409,
+      "sha256": "116b6bfc37a6bf977ced1a0e2eef5b15ab4b8f68581d60c0cefb2709833ce94f",
+      "purpose": "Exact inert historical probe source corresponding to recorded SHA256"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-probe-timeline-original.py.txt",
+      "bytes": 14394,
+      "sha256": "6f95b4e4707f1f43e51cad14df9e550026f94a710d7def2a7b68566242f7586d",
+      "purpose": "Exact inert historical probe source corresponding to recorded SHA256"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-probe-v1.py.txt",
+      "bytes": 15809,
+      "sha256": "539c1a96bc90218a7af6fa0667a0361bb3414e7da5f0f1d7f1a9dbc5d692199e",
+      "purpose": "Exact inert historical probe source corresponding to recorded SHA256"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-probe-v2.py.txt",
+      "bytes": 18856,
+      "sha256": "5fd34c0c296053254c43d891a0a84535aa50de438a1616250b45c054596e9a82",
+      "purpose": "Exact inert historical probe source corresponding to recorded SHA256"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-probe-v3.py.txt",
+      "bytes": 19572,
+      "sha256": "1bbf9842481a248a7e17a1ffbe4d8f8909df051fc356a82d5cbb73980c3ce0f6",
+      "purpose": "Exact inert historical probe source corresponding to recorded SHA256"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-probe-v4-typed.py.txt",
+      "bytes": 22021,
+      "sha256": "78341ff0a0cb14f38383523caf2a0a56be18c596bd9d6bf9b27152b9dffa23bd",
+      "purpose": "Exact inert historical probe source corresponding to recorded SHA256"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-probe-v4.py.txt",
+      "bytes": 21925,
+      "sha256": "df8ae1ea99b6f5eb0c9d9f77a16e4ed6056c1252fe8e4048be53b8f19df2ae53",
+      "purpose": "Exact inert historical probe source corresponding to recorded SHA256"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-probe.py",
+      "bytes": 22032,
+      "sha256": "fba5d44b24d188fb57915250674696cda6d9aec733ded74c54f4bec432193082",
+      "purpose": "Executable process-local probe / validation / observation source; no production changes"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-repeat-baseline.json",
+      "bytes": 90830,
+      "sha256": "b4924ac0ff3570a0ebc0c833d369b6f1d677493fc8955815225416dc0db2d94c",
+      "purpose": "Three serial normal and three separate traced fresh-process runs"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-repeat-intern-template-facts.json",
+      "bytes": 94039,
+      "sha256": "2f74f8bedd4d52c4604509c39c4bbda6c5825bc3c225377a38e90b6c35b18ecc",
+      "purpose": "Three serial normal and three separate traced fresh-process runs"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-repeat-scalar-weak-cache.json",
+      "bytes": 111081,
+      "sha256": "eca9efce7048f2ce29f141acdba5908cab0760d987e7cd22f66aca693614ebb3",
+      "purpose": "Three serial normal and three separate traced fresh-process runs"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-repeat-weak-activation-cache.json",
+      "bytes": 92759,
+      "sha256": "4c880ce8c6a2086b03121eb8db5077ea928d64bb12c8d42b5f1b6b8df5fa020f",
+      "purpose": "Three serial normal and three separate traced fresh-process runs"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-screen-no-decorator-evidence-heap.json",
+      "bytes": 13957,
+      "sha256": "bf269f667c5176d11908647e7711b5765a511a061840d269f8790c2813440995",
+      "purpose": "Single bounded eight-route screen; not repeated benefit evidence"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-screen-no-decorator-evidence-normal.json",
+      "bytes": 13716,
+      "sha256": "715be3661942925be72220a414b2b31dce163cb899e6c6e3d596816440a1967d",
+      "purpose": "Single bounded eight-route screen; not repeated benefit evidence"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-screen-release-source-graphs-heap.json",
+      "bytes": 13895,
+      "sha256": "2cfe45210dfa12c725fcfed462c01ee01f1bde40af64c15153c2246b50e79a1a",
+      "purpose": "Single bounded eight-route screen; not repeated benefit evidence"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-screen-release-source-graphs-normal.json",
+      "bytes": 13655,
+      "sha256": "95be652471428868510b2e7d4f26e1c94a19a749b9ee4f074b517a2a64a7407a",
+      "purpose": "Single bounded eight-route screen; not repeated benefit evidence"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-screen-snapshot-intern-heap.json",
+      "bytes": 13606,
+      "sha256": "58787dd9f03fe60ce93c8dee6c575b180de6296f2ce8fea2c1ad41e9eb4b8643",
+      "purpose": "Single bounded eight-route screen; not repeated benefit evidence"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-screen-snapshot-intern-normal.json",
+      "bytes": 13373,
+      "sha256": "8d02037ba8a720275eb0d9457a21eb2bab74567fae06cd1e726860d0a2ad3c25",
+      "purpose": "Single bounded eight-route screen; not repeated benefit evidence"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-screen-snapshot-reuse-heap.json",
+      "bytes": 13441,
+      "sha256": "6205c42cc20924d913806f88695d3404af28f59fafd94e41d65bdb6df3195f8f",
+      "purpose": "Single bounded eight-route screen; not repeated benefit evidence"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-screen-snapshot-reuse-normal.json",
+      "bytes": 13207,
+      "sha256": "d37071f40c46d65dbead911d304ed0a92b7dab5e71bd9fe6bd8066018e861de0",
+      "purpose": "Single bounded eight-route screen; not repeated benefit evidence"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-semantics-baseline.json",
+      "bytes": 8023,
+      "sha256": "51de65b6330b32d2775bffd62730cddf14190124127bcfc522c17b68fb7df26f",
+      "purpose": "Small semantic/failure screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-semantics-intern-template-facts.json",
+      "bytes": 8036,
+      "sha256": "6b2cd65b5456cbfef642db3c8a2800518e7d2f9cdd793c9042aaa25775782570",
+      "purpose": "Small semantic/failure screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-semantics-no-decorator-evidence.json",
+      "bytes": 8118,
+      "sha256": "831b6be589c86efccee0e675dcebfd6a6c01b42c5b9865b87ece0bd16be422dc",
+      "purpose": "Small semantic/failure screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-semantics-release-source-graphs.json",
+      "bytes": 8036,
+      "sha256": "e0b08eb21bc1b8a74998bb489816d53105a99ec875d95414293f959313f3bae2",
+      "purpose": "Small semantic/failure screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-semantics-snapshot-intern.json",
+      "bytes": 8030,
+      "sha256": "d3f2d8a26a7e66cea36f49e57bdfa836c029c6ff5d77e6ef3eae24a78a20ec5b",
+      "purpose": "Small semantic/failure screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-semantics-snapshot-reuse.json",
+      "bytes": 8029,
+      "sha256": "7b05cec4eec259127bd0d0140ca06d04586cbdad080978d5a508ddba1e636c3d",
+      "purpose": "Small semantic/failure screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-semantics-weak-activation-cache.json",
+      "bytes": 8036,
+      "sha256": "751c1ebc0048ddc8ee7bbe991f15c441aa8ce9c6f43ed5694b374000270dc940",
+      "purpose": "Small semantic/failure screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-semantics.py",
+      "bytes": 4941,
+      "sha256": "be4106e976ec6121cf43104d2d99717b39b19cd1e06f33c91903a214462d6f5b",
+      "purpose": "Executable process-local probe / validation / observation source; no production changes"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-small-initial-full-no-decorator-evidence.json",
+      "bytes": 10997,
+      "sha256": "e615da8b5626137a078962d780421eba0065263ff3e0704564eeb124e9fbe50d",
+      "purpose": "Initial flag-inversion output, actual full mode; excluded from reduced comparison"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-small-initial-full-release-source-graphs.json",
+      "bytes": 10949,
+      "sha256": "91d13c7428b353e1f46f1299e547fa3c17c5a797555724d81b2a15f49774a30c",
+      "purpose": "Initial flag-inversion output, actual full mode; excluded from reduced comparison"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-small-initial-full-snapshot-intern.json",
+      "bytes": 10757,
+      "sha256": "5222b73bda42abd110f8eb6b58587552382eab3305baf8828f70aa1b1ba6ceda",
+      "purpose": "Initial flag-inversion output, actual full mode; excluded from reduced comparison"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-small-initial-full-snapshot-reuse.json",
+      "bytes": 10681,
+      "sha256": "932c954de2444dc6c3bed1612246be25f7aadaab9682f3d6511eda75e3374ad3",
+      "purpose": "Initial flag-inversion output, actual full mode; excluded from reduced comparison"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-small-initial-full-weak-activation-cache.json",
+      "bytes": 10916,
+      "sha256": "578729225455cf66711c0d589c3719499cc25eb55830548ed0efa6cf9e93080e",
+      "purpose": "Initial flag-inversion output, actual full mode; excluded from reduced comparison"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-small-reduced-baseline.json",
+      "bytes": 10993,
+      "sha256": "b37ae0160769c27431ac429e222c92b0ef51d84a03cd7127fd27baca6d7d97c0",
+      "purpose": "Small reduced smoke screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-small-reduced-intern-template-facts.json",
+      "bytes": 12062,
+      "sha256": "a4c9c1da3622256692c7a8c43a78f74237c2a9795dcfdf4d05764b0f30baf6ca",
+      "purpose": "Small reduced smoke screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-small-reduced-no-decorator-evidence.json",
+      "bytes": 11787,
+      "sha256": "71931d5980463cf69a004f740e82b349e4af1c2cbbd7dcf9d2d046c4576e3559",
+      "purpose": "Small reduced smoke screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-small-reduced-release-source-graphs.json",
+      "bytes": 11552,
+      "sha256": "f8deccd3da88c8ff65d0286d34080426e32931a066ce3ae2e74a3d1cd9b00214",
+      "purpose": "Small reduced smoke screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-small-reduced-scalar-weak-cache.json",
+      "bytes": 15407,
+      "sha256": "0efdf57058166cdc58afc23b0140518061b5e0abbef3a3a4af06d5923e608c0d",
+      "purpose": "Small reduced smoke screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-small-reduced-snapshot-intern.json",
+      "bytes": 11271,
+      "sha256": "3a91af192196014bc0a0b4c12d21045e3099311b4d4c4a5773589fd1ca0bc9a8",
+      "purpose": "Small reduced smoke screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-small-reduced-snapshot-reuse.json",
+      "bytes": 11110,
+      "sha256": "66a7f4a709df99c5b65642d3fa9a4ad3204d8ace394f0faee59dccea90e03a9a",
+      "purpose": "Small reduced smoke screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-small-reduced-weak-activation-cache.json",
+      "bytes": 11611,
+      "sha256": "a857a719468e42d82c9588c83011ef1821aecfe04e9b646f7ab7a17439f334d6",
+      "purpose": "Small reduced smoke screen"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-source-check.json",
+      "bytes": 974,
+      "sha256": "b1b6d1d6ae02add1fd7cee9964029b69cdcccfadb66341ce8947231717d5fcbb",
+      "purpose": "Unchanged source hashes/revision and production/test/benchmark diff verification"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-test-exit-codes.json",
+      "bytes": 170,
+      "sha256": "57d83bad711d8143fbf04b6438cfda5a012c3d5cbe6d04ad274644f3b83b6161",
+      "purpose": "Recorded subprocess completion statuses from the named investigation stage"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-tests-intern-template-facts-corrected.txt",
+      "bytes": 500,
+      "sha256": "8218658d45ede34d7924fcfa6902002777e2bfc2beb2498ef3704c9c50376b1b",
+      "purpose": "Targeted semantic tests, including deliberate omission-probe rejection"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-tests-intern-template-facts.txt",
+      "bytes": 6945,
+      "sha256": "471f3809f4842c3338022c337e378509ceb71631ef0795c4bbc9f9865b9c1738",
+      "purpose": "Preserved initial harness failures; superseded by corrected targeted and full suite"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-tests-no-decorator-evidence.txt",
+      "bytes": 42506,
+      "sha256": "aa39457ecc0be6989685212609bd8864a09444c1665dd231f195c9c2e166b157",
+      "purpose": "Targeted semantic tests, including deliberate omission-probe rejection"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-tests-release-source-graphs.txt",
+      "bytes": 501,
+      "sha256": "59bbbdc91f0c38607ff051e16e521e836bf9790589ce06dddab540d6c4b2d59b",
+      "purpose": "Targeted semantic tests, including deliberate omission-probe rejection"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-tests-snapshot-intern.txt",
+      "bytes": 501,
+      "sha256": "890cef9f57486d5460c591126b74ea4311e214a5db0aaec7b78cb87431ebe21e",
+      "purpose": "Targeted semantic tests, including deliberate omission-probe rejection"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-tests-snapshot-reuse.txt",
+      "bytes": 501,
+      "sha256": "1b110f26fe5627f6bb5379cd4ba4d0742cefede09b3b41994014daf87ad4e6d0",
+      "purpose": "Targeted semantic tests, including deliberate omission-probe rejection"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-tests-weak-activation-cache.txt",
+      "bytes": 501,
+      "sha256": "e048908ca4bc0d3acc65ea41c8e5c3577781ca8f20061b132d1ceccba73d6d84",
+      "purpose": "Targeted semantic tests, including deliberate omission-probe rejection"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-timeline-diagnostics.json",
+      "bytes": 60487,
+      "sha256": "c20d5f04706ea648dd4b46f2a44e40feb4122b038ef04c6c5621b1c517894c58",
+      "purpose": "Phase live allocations and reset segment peaks; observer run"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-timeline.json",
+      "bytes": 56276,
+      "sha256": "dfaceff907c4cd5af90bc795bd9cb3dde04f3132f50f05e57a7849224fb84e24",
+      "purpose": "Phase live allocations and reset segment peaks; observer run"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-tooling-format.txt",
+      "bytes": 26,
+      "sha256": "ef7d13d02214e98ca902b05257cdbe6a8e84f3b4714508efdc19766460b54209",
+      "purpose": "Final retained-tooling static check result"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-tooling-lint.txt",
+      "bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "purpose": "Final retained-tooling static check result"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-tooling-types-initial.txt",
+      "bytes": 8723,
+      "sha256": "ef0754227fa3907ecaa36bd2efba0ab93eb8108d6139ed92a569bc52ef9bf323",
+      "purpose": "Preserved initial tooling type diagnostics; final type check passes"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-tooling-types.txt",
+      "bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "purpose": "Final retained-tooling static check result"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-validation.json",
+      "bytes": 7140,
+      "sha256": "4749d088c64feab09e03f049a3d1292963c2bc4da173f4caf1a544697a86ba26",
+      "purpose": "Final consistency checks over repeated runs, semantic equality, lifetime cases and checks"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-value-kinds-baseline.json",
+      "bytes": 10878,
+      "sha256": "d25d25ebf12fb640b0aee2df516191fa95c0c232ede67d057ab62fe8611e2cb6",
+      "purpose": "Sixteen value-lifetime cases across diagnostics/explanation flags"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-value-kinds-plain-weak.json",
+      "bytes": 10983,
+      "sha256": "2957c785f00b0d2f3d4afa47bcbd264f229a1379709f6c76aaf139d950bdd8a4",
+      "purpose": "Sixteen value-lifetime cases across diagnostics/explanation flags"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-value-kinds-scalar-weak.json",
+      "bytes": 11040,
+      "sha256": "e7a923ff7333c3df74283ad06b30434a20b4a8d952dd6414f7c1c752c17e4ef1",
+      "purpose": "Sixteen value-lifetime cases across diagnostics/explanation flags"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/06-value-kinds.py",
+      "bytes": 3323,
+      "sha256": "5f89b92b5a24ef0191a399a91b76fd5289b7ead1173b77267d040d260e397318",
+      "purpose": "Executable process-local probe / validation / observation source; no production changes"
+    }
+  ],
+  "self": "This index omits its own hash; shared README hashes describe completion-time contents."
+}

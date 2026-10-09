@@ -1,0 +1,3528 @@
+{
+  "policy_rows": [
+    {
+      "threshold": 32,
+      "size": 0,
+      "shape": "dense",
+      "dict": {
+        "seconds": 6.660120561718941e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 1.249951310455799e-06,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 0,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 5.00003807246685e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 6.660120561718941e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 0,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 2.50060111284256e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 4.159519448876381e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 0,
+      "shape": "negative",
+      "dict": {
+        "seconds": 2.08965502679348e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 2.909218892455101e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 0,
+      "shape": "huge",
+      "dict": {
+        "seconds": 1.6693957149982452e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 2.919696271419525e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 0,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 1.6705598682165146e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 2.50060111284256e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 1,
+      "shape": "dense",
+      "dict": {
+        "seconds": 4.580942913889885e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 1.834006980061531e-06,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 1,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 5.00003807246685e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 1.4581019058823586e-06,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 1,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 4.5902561396360397e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 1.00000761449337e-06,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 1,
+      "shape": "negative",
+      "dict": {
+        "seconds": 4.169996827840805e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 5.830079317092896e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 1,
+      "shape": "huge",
+      "dict": {
+        "seconds": 5.420297384262085e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 8.330680429935455e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 1,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 4.169996827840805e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 6.658956408500671e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 10,
+      "shape": "dense",
+      "dict": {
+        "seconds": 1.249951310455799e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.9170187190175056e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 10,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 1.125037670135498e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.3329630494117737e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 10,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 9.160721674561501e-07,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.249958924949169e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 10,
+      "shape": "negative",
+      "dict": {
+        "seconds": 1.541106030344963e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.749962732195854e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 10,
+      "shape": "huge",
+      "dict": {
+        "seconds": 1.125037670135498e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 3.0410010367631912e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 10,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 1.5830155462026596e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 3.00002284348011e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 32,
+      "shape": "dense",
+      "dict": {
+        "seconds": 3.2919924706220627e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 1.129100564867258e-05,
+        "shallow_bytes": 760
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 32,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 2.8329668566584587e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 8.66700429469347e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 32,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 2.4579931050539017e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 9.665964171290398e-06,
+        "shallow_bytes": 760
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 32,
+      "shape": "negative",
+      "dict": {
+        "seconds": 2.959044650197029e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 8.333008736371994e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 32,
+      "shape": "huge",
+      "dict": {
+        "seconds": 3.0830269679427147e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 8.500064723193645e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 32,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 3.00002284348011e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 8.457922376692295e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 64,
+      "shape": "dense",
+      "dict": {
+        "seconds": 4.667090252041817e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 2.745899837464094e-05,
+        "shallow_bytes": 1272
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 64,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 5.332985892891884e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.6166013665497303e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 64,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 4.500034265220165e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 2.1290965378284454e-05,
+        "shallow_bytes": 1272
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 64,
+      "shape": "negative",
+      "dict": {
+        "seconds": 4.833913408219814e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.616694498807192e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 64,
+      "shape": "huge",
+      "dict": {
+        "seconds": 5.332985892891884e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.695798709988594e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 64,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 5.375011824071407e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.6207923181355e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 127,
+      "shape": "dense",
+      "dict": {
+        "seconds": 8.707982487976551e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 5.291705019772053e-05,
+        "shallow_bytes": 2296
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 127,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 1.037493348121643e-05,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.8791953809559345e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 127,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 8.833943866193295e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 4.10410575568676e-05,
+        "shallow_bytes": 2288
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 127,
+      "shape": "negative",
+      "dict": {
+        "seconds": 9.124982170760632e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.7957954443991184e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 127,
+      "shape": "huge",
+      "dict": {
+        "seconds": 9.375042282044888e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.7125002816319466e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 127,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 9.750016033649445e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.6999972760677338e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 128,
+      "shape": "dense",
+      "dict": {
+        "seconds": 7.958966307342052e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 4.866695962846279e-05,
+        "shallow_bytes": 2296
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 128,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 9.625102393329144e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.9499991796910763e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 128,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 8.082948625087738e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 3.850006032735109e-05,
+        "shallow_bytes": 2296
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 128,
+      "shape": "negative",
+      "dict": {
+        "seconds": 8.499948307871819e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.8792070224881172e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 128,
+      "shape": "huge",
+      "dict": {
+        "seconds": 9.457929991185665e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 3.091699909418821e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 128,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 9.792041964828968e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.987496554851532e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 129,
+      "shape": "dense",
+      "dict": {
+        "seconds": 8.167000487446785e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 4.970806185156107e-05,
+        "shallow_bytes": 2616
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 129,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 9.582960046827793e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.9791961424052715e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 129,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 8.124974556267262e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 4.558300133794546e-05,
+        "shallow_bytes": 2464
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 129,
+      "shape": "negative",
+      "dict": {
+        "seconds": 8.458038792014122e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.9084039852023125e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 129,
+      "shape": "huge",
+      "dict": {
+        "seconds": 9.541981853544712e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 3.1208968721330166e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 129,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 9.66701190918684e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.9834103770554066e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 256,
+      "shape": "dense",
+      "dict": {
+        "seconds": 1.5457975678145885e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 0.00011070899199694395,
+        "shallow_bytes": 4536
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 256,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 1.8457998521625996e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 5.879206582903862e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 256,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 1.6000005416572094e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 7.708300836384296e-05,
+        "shallow_bytes": 4440
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 256,
+      "shape": "negative",
+      "dict": {
+        "seconds": 2.0708073861896992e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 5.6958990171551704e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 256,
+      "shape": "huge",
+      "dict": {
+        "seconds": 1.8417020328342915e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 6.17500627413392e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 256,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 1.837499439716339e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 5.879194941371679e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 1000,
+      "shape": "dense",
+      "dict": {
+        "seconds": 5.620799493044615e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00045262498315423727,
+        "shallow_bytes": 17848
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 1000,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 7.516599725931883e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00023908400908112526,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 1000,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 6.0165999457240105e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.0003113329876214266,
+        "shallow_bytes": 16888
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 1000,
+      "shape": "negative",
+      "dict": {
+        "seconds": 6.204203236848116e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.0002055419608950615,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 1000,
+      "shape": "huge",
+      "dict": {
+        "seconds": 6.937503349035978e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00021670793648809195,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 1000,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 6.770901381969452e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00020933302585035563,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 10000,
+      "shape": "dense",
+      "dict": {
+        "seconds": 0.0005533749936148524,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.004462750046513975,
+        "shallow_bytes": 170488
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 10000,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 0.0007048749830573797,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.001733458018861711,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 10000,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 0.0006044169422239065,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.0017818749183788896,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 10000,
+      "shape": "negative",
+      "dict": {
+        "seconds": 0.0006028749048709869,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.0015575418947264552,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 10000,
+      "shape": "huge",
+      "dict": {
+        "seconds": 0.0007096669869497418,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.0017127080354839563,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 32,
+      "size": 10000,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 0.0006747919833287597,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.0018021250143647194,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 0,
+      "shape": "dense",
+      "dict": {
+        "seconds": 5.16669824719429e-05,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 1.5830155462026596e-06,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 0,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 3.330642357468605e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 5.420297384262085e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 0,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 2.4994369596242905e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 3.7497375160455704e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 0,
+      "shape": "negative",
+      "dict": {
+        "seconds": 1.6705598682165146e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 2.919696271419525e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 0,
+      "shape": "huge",
+      "dict": {
+        "seconds": 2.0803418010473251e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 3.7497375160455704e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 0,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 1.6693957149982452e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 3.33995558321476e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 1,
+      "shape": "dense",
+      "dict": {
+        "seconds": 5.420297384262085e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 1.208973117172718e-06,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 1,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 3.330642357468605e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 7.080379873514175e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 1,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 2.50060111284256e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 5.84055669605732e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 1,
+      "shape": "negative",
+      "dict": {
+        "seconds": 2.9103830456733704e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 5.830079317092896e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 1,
+      "shape": "huge",
+      "dict": {
+        "seconds": 4.169996827840805e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 7.50063918530941e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 1,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 3.330642357468605e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 7.919734343886375e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 10,
+      "shape": "dense",
+      "dict": {
+        "seconds": 1.208973117172718e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.874992787837982e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 10,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 1.125037670135498e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.8329668566584587e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 10,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 8.75093974173069e-07,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.7080532163381577e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 10,
+      "shape": "negative",
+      "dict": {
+        "seconds": 1.374981366097927e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 3.1660310924053192e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 10,
+      "shape": "huge",
+      "dict": {
+        "seconds": 1.125037670135498e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 3.2499665394425392e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 10,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 1.1249212548136711e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.458924427628517e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 32,
+      "shape": "dense",
+      "dict": {
+        "seconds": 3.500026650726795e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.4159976318478584e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 32,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 2.624932676553726e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.582937203347683e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 32,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 2.2921012714505196e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.375019438564777e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 32,
+      "shape": "negative",
+      "dict": {
+        "seconds": 2.749962732195854e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.792019121348858e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 32,
+      "shape": "huge",
+      "dict": {
+        "seconds": 2.7080532163381577e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.500049494206905e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 32,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 2.959044650197029e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.833928637206554e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 64,
+      "shape": "dense",
+      "dict": {
+        "seconds": 4.500034265220165e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.76670728251338e-05,
+        "shallow_bytes": 1272
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 64,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 5.166046321392059e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.4125020243227482e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 64,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 4.29095234721899e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.570803578943014e-05,
+        "shallow_bytes": 1272
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 64,
+      "shape": "negative",
+      "dict": {
+        "seconds": 4.708068445324898e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.4125020243227482e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 64,
+      "shape": "huge",
+      "dict": {
+        "seconds": 5.124951712787151e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.4791963621973991e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 64,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 4.958012141287327e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.4249933883547783e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 127,
+      "shape": "dense",
+      "dict": {
+        "seconds": 8.542090654373169e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 6.066600326448679e-05,
+        "shallow_bytes": 2296
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 127,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 1.8708989955484867e-05,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.6333029381930828e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 127,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 8.333008736371994e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 3.816699609160423e-05,
+        "shallow_bytes": 2288
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 127,
+      "shape": "negative",
+      "dict": {
+        "seconds": 8.66700429469347e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.550007775425911e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 127,
+      "shape": "huge",
+      "dict": {
+        "seconds": 9.458046406507492e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.6332912966609e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 127,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 9.95793379843235e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.6332912966609e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 128,
+      "shape": "dense",
+      "dict": {
+        "seconds": 8.041970431804657e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 5.3709023632109165e-05,
+        "shallow_bytes": 2296
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 128,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 9.458046406507492e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 3.26669542118907e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 128,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 8.207978680729866e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 4.2416038922965527e-05,
+        "shallow_bytes": 2296
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 128,
+      "shape": "negative",
+      "dict": {
+        "seconds": 8.541042916476727e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 3.266602288931608e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 128,
+      "shape": "huge",
+      "dict": {
+        "seconds": 9.499955922365189e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 3.0082999728620052e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 128,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 9.541050530970097e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.904096618294716e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 129,
+      "shape": "dense",
+      "dict": {
+        "seconds": 8.124974556267262e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 4.741700831800699e-05,
+        "shallow_bytes": 2616
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 129,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 9.29099041968584e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.8959009796380997e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 129,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 8.124974556267262e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 3.187498077750206e-05,
+        "shallow_bytes": 2464
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 129,
+      "shape": "negative",
+      "dict": {
+        "seconds": 8.333008736371994e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.850010059773922e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 129,
+      "shape": "huge",
+      "dict": {
+        "seconds": 9.500072337687016e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 3.8375030271708965e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 129,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 9.584007784724236e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.9082992114126682e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 256,
+      "shape": "dense",
+      "dict": {
+        "seconds": 1.566705759614706e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 0.0001277080737054348,
+        "shallow_bytes": 4536
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 256,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 1.808302477002144e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 7.12500186637044e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 256,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 1.5749945305287838e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 8.099991828203201e-05,
+        "shallow_bytes": 4440
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 256,
+      "shape": "negative",
+      "dict": {
+        "seconds": 1.550000160932541e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 5.6208926253020763e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 256,
+      "shape": "huge",
+      "dict": {
+        "seconds": 1.837499439716339e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 7.783295586705208e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 256,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 1.8666964024305344e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 5.849997978657484e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 1000,
+      "shape": "dense",
+      "dict": {
+        "seconds": 6.41250517219305e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.0004918749909847975,
+        "shallow_bytes": 17848
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 1000,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 7.441604975610971e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00022116699256002903,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 1000,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 5.9999991208314896e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00031424988992512226,
+        "shallow_bytes": 16888
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 1000,
+      "shape": "negative",
+      "dict": {
+        "seconds": 8.749996777623892e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.000230124918743968,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 1000,
+      "shape": "huge",
+      "dict": {
+        "seconds": 6.904208566993475e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00022095802705734968,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 1000,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 6.716593634337187e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.0002092079957947135,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 10000,
+      "shape": "dense",
+      "dict": {
+        "seconds": 0.0005737500032410026,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.004605583962984383,
+        "shallow_bytes": 170488
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 10000,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 0.0007224580040201545,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.0016786250052973628,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 10000,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 0.0005801670486107469,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.0015554999699816108,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 10000,
+      "shape": "negative",
+      "dict": {
+        "seconds": 0.0006136669544503093,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.0015667090192437172,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 10000,
+      "shape": "huge",
+      "dict": {
+        "seconds": 0.0006829999620094895,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.0017460000235587358,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 64,
+      "size": 10000,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 0.0006844580639153719,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.001653083018027246,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 0,
+      "shape": "dense",
+      "dict": {
+        "seconds": 4.891701973974705e-05,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 1.0420335456728935e-06,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 0,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 2.0791776478290558e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 5.409820005297661e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 0,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 2.0803418010473251e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 3.7509016692638397e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 0,
+      "shape": "negative",
+      "dict": {
+        "seconds": 2.08965502679348e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 3.3294782042503357e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 0,
+      "shape": "huge",
+      "dict": {
+        "seconds": 2.0803418010473251e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 3.3294782042503357e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 0,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 1.6600824892520905e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 3.3294782042503357e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 1,
+      "shape": "dense",
+      "dict": {
+        "seconds": 3.330642357468605e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 1.084059476852417e-06,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 1,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 3.7497375160455704e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 7.079215720295906e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 1,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 2.909218892455101e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 6.249174475669861e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 1,
+      "shape": "negative",
+      "dict": {
+        "seconds": 2.9103830456733704e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 6.25033862888813e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 1,
+      "shape": "huge",
+      "dict": {
+        "seconds": 2.9103830456733704e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 7.080379873514175e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 1,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 3.33995558321476e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 6.25033862888813e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 10,
+      "shape": "dense",
+      "dict": {
+        "seconds": 9.579816833138466e-07,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.875109203159809e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 10,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 1.041102223098278e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.9159709811210632e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 10,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 9.579816833138466e-07,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.750079147517681e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 10,
+      "shape": "negative",
+      "dict": {
+        "seconds": 1.2919772416353226e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 3.1670788303017616e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 10,
+      "shape": "huge",
+      "dict": {
+        "seconds": 1.125037670135498e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 3.1670788303017616e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 10,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 1.084059476852417e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.374988980591297e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 32,
+      "shape": "dense",
+      "dict": {
+        "seconds": 2.334010787308216e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.375019438564777e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 32,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 2.5419285520911217e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.375019438564777e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 32,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 2.291053533554077e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.292015314102173e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 32,
+      "shape": "negative",
+      "dict": {
+        "seconds": 2.624932676553726e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.708083674311638e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 32,
+      "shape": "huge",
+      "dict": {
+        "seconds": 2.6669586077332497e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.500049494206905e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 32,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 2.749962732195854e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.749993190169334e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 64,
+      "shape": "dense",
+      "dict": {
+        "seconds": 4.166038706898689e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.208402682095766e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 64,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 4.832982085645199e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.2333039194345474e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 64,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 4.166970029473305e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.1999974958598614e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 64,
+      "shape": "negative",
+      "dict": {
+        "seconds": 4.541012458503246e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.2332922779023647e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 64,
+      "shape": "huge",
+      "dict": {
+        "seconds": 1.2375065125524998e-05,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.237494871020317e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 64,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 4.916917532682419e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.595797948539257e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 127,
+      "shape": "dense",
+      "dict": {
+        "seconds": 7.916009053587914e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.350006252527237e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 127,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 9.457929991185665e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 3.2082898542284966e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 127,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 8.167000487446785e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.7709058485925198e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 127,
+      "shape": "negative",
+      "dict": {
+        "seconds": 8.375034667551517e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.733292058110237e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 127,
+      "shape": "huge",
+      "dict": {
+        "seconds": 9.66701190918684e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 3.0459021218121052e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 127,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 1.0333023965358734e-05,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.5957939215004444e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 128,
+      "shape": "dense",
+      "dict": {
+        "seconds": 8.292030543088913e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 3.316602669656277e-05,
+        "shallow_bytes": 2296
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 128,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 1.1582975275814533e-05,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.9208953492343426e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 128,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 8.167000487446785e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 3.02919652312994e-05,
+        "shallow_bytes": 2296
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 128,
+      "shape": "negative",
+      "dict": {
+        "seconds": 8.416944183409214e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.687494270503521e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 128,
+      "shape": "huge",
+      "dict": {
+        "seconds": 9.458977729082108e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.820801455527544e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 128,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 9.375042282044888e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.745899837464094e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 129,
+      "shape": "dense",
+      "dict": {
+        "seconds": 8.041039109230042e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 4.224991425871849e-05,
+        "shallow_bytes": 2616
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 129,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 9.416951797902584e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.7708010748028755e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 129,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 8.124974556267262e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 3.0708033591508865e-05,
+        "shallow_bytes": 2464
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 129,
+      "shape": "negative",
+      "dict": {
+        "seconds": 8.457922376692295e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.6958994567394257e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 129,
+      "shape": "huge",
+      "dict": {
+        "seconds": 9.541981853544712e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.820801455527544e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 129,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 9.584007784724236e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.7667032554745674e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 256,
+      "shape": "dense",
+      "dict": {
+        "seconds": 1.5083001926541328e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 9.099999442696571e-05,
+        "shallow_bytes": 4536
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 256,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 1.8124934285879135e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 5.662499461323023e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 256,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 1.5750061720609665e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 7.974996697157621e-05,
+        "shallow_bytes": 4440
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 256,
+      "shape": "negative",
+      "dict": {
+        "seconds": 1.554097980260849e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 5.4875039495527744e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 256,
+      "shape": "huge",
+      "dict": {
+        "seconds": 1.8457998521625996e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 6.270897574722767e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 256,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 1.8583028577268124e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 5.670799873769283e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 1000,
+      "shape": "dense",
+      "dict": {
+        "seconds": 5.5541982874274254e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00044341699685901403,
+        "shallow_bytes": 17848
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 1000,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 7.045897655189037e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00021062500309199095,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 1000,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 6.004096940159798e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.0003006249899044633,
+        "shallow_bytes": 16888
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 1000,
+      "shape": "negative",
+      "dict": {
+        "seconds": 5.9582991525530815e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00020566699095070362,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 1000,
+      "shape": "huge",
+      "dict": {
+        "seconds": 6.900005973875523e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00021387508604675531,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 1000,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 6.750004831701517e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00020904105622321367,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 10000,
+      "shape": "dense",
+      "dict": {
+        "seconds": 0.0005345840472728014,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.004465417005121708,
+        "shallow_bytes": 170488
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 10000,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 0.0007275830721482635,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.001759040984325111,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 10000,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 0.0005819170037284493,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.0016003749333322048,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 10000,
+      "shape": "negative",
+      "dict": {
+        "seconds": 0.000617832993157208,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.001571625005453825,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 10000,
+      "shape": "huge",
+      "dict": {
+        "seconds": 0.0006745830178260803,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.0017836249899119139,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 128,
+      "size": 10000,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 0.0006697920616716146,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.0016745419707149267,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 0,
+      "shape": "dense",
+      "dict": {
+        "seconds": 4.516600165516138e-05,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 3.458932042121887e-06,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 0,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 2.0803418010473251e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 1.500011421740055e-06,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 0,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 2.08965502679348e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 3.3294782042503357e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 0,
+      "shape": "negative",
+      "dict": {
+        "seconds": 2.0908191800117493e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 3.3294782042503357e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 0,
+      "shape": "huge",
+      "dict": {
+        "seconds": 2.0803418010473251e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 3.3294782042503357e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 0,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 1.6693957149982452e-07,
+        "shallow_bytes": 64
+      },
+      "candidate": {
+        "seconds": 2.919696271419525e-07,
+        "shallow_bytes": 136
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 1,
+      "shape": "dense",
+      "dict": {
+        "seconds": 3.3294782042503357e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 3.875000402331352e-06,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 1,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 2.9208604246377945e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 6.660120561718941e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 1,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 3.330642357468605e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 6.660120561718941e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 1,
+      "shape": "negative",
+      "dict": {
+        "seconds": 2.9208604246377945e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 5.830079317092896e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 1,
+      "shape": "huge",
+      "dict": {
+        "seconds": 3.7497375160455704e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 7.0908572524786e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 1,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 2.9208604246377945e-07,
+        "shallow_bytes": 224
+      },
+      "candidate": {
+        "seconds": 5.84055669605732e-07,
+        "shallow_bytes": 296
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 10,
+      "shape": "dense",
+      "dict": {
+        "seconds": 1.041102223098278e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.834014594554901e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 10,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 1.0420335456728935e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.834014594554901e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 10,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 9.579816833138466e-07,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.791057340800762e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 10,
+      "shape": "negative",
+      "dict": {
+        "seconds": 1.166015863418579e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 3.1670788303017616e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 10,
+      "shape": "huge",
+      "dict": {
+        "seconds": 1.08394306153059e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 3.00002284348011e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 10,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 1.00000761449337e-06,
+        "shallow_bytes": 352
+      },
+      "candidate": {
+        "seconds": 2.4579931050539017e-06,
+        "shallow_bytes": 424
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 32,
+      "shape": "dense",
+      "dict": {
+        "seconds": 2.291053533554077e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.375019438564777e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 32,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 2.583954483270645e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.500049494206905e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 32,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 2.2919848561286926e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.2909675762057304e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 32,
+      "shape": "negative",
+      "dict": {
+        "seconds": 2.625049091875553e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.66698906570673e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 32,
+      "shape": "huge",
+      "dict": {
+        "seconds": 2.6670750230550766e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.458023563027382e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 32,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 2.750079147517681e-06,
+        "shallow_bytes": 1168
+      },
+      "candidate": {
+        "seconds": 6.66698906570673e-06,
+        "shallow_bytes": 1240
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 64,
+      "shape": "dense",
+      "dict": {
+        "seconds": 4.167086444795132e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.2042000889778137e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 64,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 4.832982085645199e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.225003506988287e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 64,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 4.207948222756386e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.191697083413601e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 64,
+      "shape": "negative",
+      "dict": {
+        "seconds": 4.500034265220165e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.237494871020317e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 64,
+      "shape": "huge",
+      "dict": {
+        "seconds": 4.915986210107803e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.237494871020317e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 64,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 4.874891601502895e-06,
+        "shallow_bytes": 2264
+      },
+      "candidate": {
+        "seconds": 1.2625008821487427e-05,
+        "shallow_bytes": 2336
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 127,
+      "shape": "dense",
+      "dict": {
+        "seconds": 8.041039109230042e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.3458036594092846e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 127,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 9.37492586672306e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.4416949599981308e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 127,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 8.167000487446785e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.337503246963024e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 127,
+      "shape": "negative",
+      "dict": {
+        "seconds": 8.334056474268436e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.37500062212348e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 127,
+      "shape": "huge",
+      "dict": {
+        "seconds": 9.416951797902584e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.4124979972839355e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 127,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 9.375042282044888e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.479099202901125e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 128,
+      "shape": "dense",
+      "dict": {
+        "seconds": 7.958034984767437e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.366595435887575e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 128,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 9.29099041968584e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.450007013976574e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 128,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 8.084112778306007e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.3667002096772194e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 128,
+      "shape": "negative",
+      "dict": {
+        "seconds": 8.249888196587563e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.4124979972839355e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 128,
+      "shape": "huge",
+      "dict": {
+        "seconds": 9.458046406507492e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.4292035959661007e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 128,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 9.292038157582283e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.4916953407227993e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 129,
+      "shape": "dense",
+      "dict": {
+        "seconds": 8.041970431804657e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.38749198615551e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 129,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 9.417068213224411e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.458400558680296e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 129,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 8.08399636298418e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.38749198615551e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 129,
+      "shape": "negative",
+      "dict": {
+        "seconds": 8.25000461190939e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.4000066332519054e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 129,
+      "shape": "huge",
+      "dict": {
+        "seconds": 9.499955922365189e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.4416018277406693e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 129,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 9.375042282044888e-06,
+        "shallow_bytes": 4688
+      },
+      "candidate": {
+        "seconds": 2.4875043891370296e-05,
+        "shallow_bytes": 4760
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 256,
+      "shape": "dense",
+      "dict": {
+        "seconds": 1.5041092410683632e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 5.9333979152143e-05,
+        "shallow_bytes": 4344
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 256,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 1.8125050701200962e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 5.3916010074317455e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 256,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 1.579197123646736e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 5.8124889619648457e-05,
+        "shallow_bytes": 4344
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 256,
+      "shape": "negative",
+      "dict": {
+        "seconds": 1.550000160932541e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 5.1958952099084854e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 256,
+      "shape": "huge",
+      "dict": {
+        "seconds": 1.837499439716339e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 5.516607780009508e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 256,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 1.8042046576738358e-05,
+        "shallow_bytes": 9304
+      },
+      "candidate": {
+        "seconds": 5.345896352082491e-05,
+        "shallow_bytes": 9376
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 1000,
+      "shape": "dense",
+      "dict": {
+        "seconds": 6.629095878452063e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.0004104169784113765,
+        "shallow_bytes": 16952
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 1000,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 7.033394649624825e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00021970795933157206,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 1000,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 5.9959013015031815e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.0003060409799218178,
+        "shallow_bytes": 16888
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 1000,
+      "shape": "negative",
+      "dict": {
+        "seconds": 5.99580816924572e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00020283297635614872,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 1000,
+      "shape": "huge",
+      "dict": {
+        "seconds": 6.949994713068008e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.00020995899103581905,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 1000,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 7.179100066423416e-05,
+        "shallow_bytes": 36952
+      },
+      "candidate": {
+        "seconds": 0.0002246249932795763,
+        "shallow_bytes": 37024
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 10000,
+      "shape": "dense",
+      "dict": {
+        "seconds": 0.0006059170700609684,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.004479125025682151,
+        "shallow_bytes": 162168
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 10000,
+      "shape": "gapped",
+      "dict": {
+        "seconds": 0.0007663329597562551,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.001724999980069697,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 10000,
+      "shape": "reverse",
+      "dict": {
+        "seconds": 0.0005913329077884555,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.0015824580332264304,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 10000,
+      "shape": "negative",
+      "dict": {
+        "seconds": 0.0006004159804433584,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.0016080000204965472,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 10000,
+      "shape": "huge",
+      "dict": {
+        "seconds": 0.000688083004206419,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.0017024170374497771,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "threshold": 256,
+      "size": 10000,
+      "shape": "mixed",
+      "dict": {
+        "seconds": 0.0006693750619888306,
+        "shallow_bytes": 294992
+      },
+      "candidate": {
+        "seconds": 0.001644417061470449,
+        "shallow_bytes": 295064
+      }
+    }
+  ],
+  "transitions": [
+    {
+      "shape": "threshold-128",
+      "before": {
+        "entries": 127,
+        "dense_length": 0,
+        "sparse_entries": 0,
+        "promoted": true,
+        "eligible": 128,
+        "shallow_bytes": 4760
+      },
+      "after": {
+        "entries": 128,
+        "dense_length": 128,
+        "sparse_entries": 0,
+        "promoted": false,
+        "eligible": false,
+        "shallow_bytes": 2296
+      },
+      "seconds": 1.9291997887194157e-05,
+      "new_retained_bytes": 2216,
+      "new_peak_bytes": 2304
+    },
+    {
+      "shape": "late-density-256",
+      "before": {
+        "entries": 128,
+        "dense_length": 0,
+        "sparse_entries": 0,
+        "promoted": true,
+        "eligible": 256,
+        "shallow_bytes": 4760
+      },
+      "after": {
+        "entries": 256,
+        "dense_length": 258,
+        "sparse_entries": 0,
+        "promoted": false,
+        "eligible": false,
+        "shallow_bytes": 4360
+      },
+      "seconds": 9.179103653877974e-05,
+      "new_retained_bytes": 4232,
+      "new_peak_bytes": 14608
+    },
+    {
+      "shape": "dense-to-sparse",
+      "before": {
+        "entries": 10000,
+        "dense_length": 10000,
+        "sparse_entries": 0,
+        "promoted": false,
+        "eligible": false,
+        "shallow_bytes": 170488
+      },
+      "after": {
+        "entries": 12000,
+        "dense_length": 0,
+        "sparse_entries": 0,
+        "promoted": true,
+        "eligible": false,
+        "shallow_bytes": 589984
+      },
+      "seconds": 0.009631625027395785,
+      "new_retained_bytes": 653808,
+      "new_peak_bytes": 1100296
+    },
+    {
+      "shape": "public-promotion",
+      "before": {
+        "entries": 10000,
+        "dense_length": 10000,
+        "sparse_entries": 0,
+        "promoted": false,
+        "eligible": false,
+        "shallow_bytes": 170488
+      },
+      "after": {
+        "entries": 10000,
+        "dense_length": 0,
+        "sparse_entries": 0,
+        "promoted": true,
+        "eligible": false,
+        "shallow_bytes": 295064
+      },
+      "seconds": 0.0016715420642867684,
+      "new_retained_bytes": 295016,
+      "new_peak_bytes": 442712
+    }
+  ],
+  "bounded_transitions": true,
+  "carrier_overhead_bytes": 72
+}

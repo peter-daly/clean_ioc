@@ -1,0 +1,334 @@
+"""Experimental, source-coupled persistence for the local memory fixtures.
+
+This is deliberately outside the public library. Artifacts are trusted local build
+outputs: loading imports their referenced Python modules. No live container,
+service instance, Python bytecode, or executable pickle is persisted.
+"""
+
+import dataclasses
+import gc
+import hashlib
+import importlib
+import json
+import sys
+from collections.abc import Mapping
+from enum import Enum
+from pathlib import Path
+from types import FunctionType, GenericAlias, MappingProxyType
+from typing import Any, TextIO, get_args, get_origin
+
+from clean_ioc import Container, arguments, component_filters, components, container, metadata, providers, tooling
+from clean_ioc import _decorator_templates as templates
+from clean_ioc import _legacy as legacy
+from clean_ioc import _legacy_configuration as configuration
+
+# Schema 6 belonged to the reverted subtree experiment; do not reuse it.
+SCHEMA = 7
+_REPO = Path(__file__).resolve().parents[1]
+_DATACLASSES = (
+    container._PlanSet,
+    container._RuntimeRegistration,
+    container._RootPlan,
+    container._CompiledDependency,
+    container._CleanupOwnerDescriptor,
+    container._TransientRegistrationStep,
+    container._PerResolutionRegistrationStep,
+    container._ScopedRegistrationStep,
+    container._SingletonRegistrationStep,
+    container._ValueStep,
+    container._ProviderStep,
+    container._ContextProviderStep,
+    container._ManagedProviderStep,
+    container._ProviderMapStep,
+    container._CompiledDecorator,
+    container._DecoratorActivation,
+    container._DecoratorDefinition,
+    container._OccurrenceLayers,
+    components._ComponentRecord,
+    components._ComponentDefinition,
+    components._ComponentViewContext,
+    tooling.CompiledGraph,
+    tooling.GraphRoot,
+    tooling.DefinitionOrigin,
+    tooling.SourceLocation,
+    tooling._CandidateRecord,
+    tooling.CandidateDecision,
+    tooling.CompilationExplanation,
+    tooling._RemappedDecoratorExplanation,
+    tooling.TemplateDecision,
+    tooling.TemplateSourceDecision,
+    tooling.BuildReport,
+    templates.RegistrationInfo,
+    configuration.DependencySettings,
+    arguments._FixedArgument,
+    arguments._SelectArgument,
+    metadata.Tag,
+)
+_SLOTTED = (components._ComponentGraph, components.Component, legacy._Registration, legacy.Dependency)
+_CLASSES = {f"{cls.__module__}:{cls.__qualname__}": cls for cls in (*_DATACLASSES, *_SLOTTED)}
+_FIELDS = {
+    cls: tuple(field.name for field in dataclasses.fields(cls)) if cls in _DATACLASSES else tuple(cls.__slots__)
+    for cls in _CLASSES.values()
+}
+_SPECIAL_SYMBOLS = {
+    id(legacy.default_parent_node_filter): ("clean_ioc._legacy", "default_parent_node_filter"),
+    id(configuration.EMPTY): ("clean_ioc._legacy_configuration", "EMPTY"),
+    id(configuration.UNKNOWN): ("clean_ioc._legacy_configuration", "UNKNOWN"),
+}
+_ALIAS_ORIGINS = (
+    providers.Provider,
+    providers.AsyncProvider,
+    providers.ManagedProvider,
+    providers.AsyncManagedProvider,
+    Mapping,
+)
+_FILTER_FACTORIES = {"with_id": component_filters.with_id, "with_name": component_filters.with_name}
+
+
+def _filter_spec(value):
+    """Recognize only two unchanged built-in predicates, never arbitrary closures."""
+    function = value.func
+    if not isinstance(function, FunctionType):
+        raise ValueError("Unsupported predicate callable in this experiment")
+    for name, factory in _FILTER_FACTORIES.items():
+        prototype = factory("")
+        if function.__code__ is not prototype.func.__code__ or not function.__closure__:
+            continue
+        if len(function.__closure__) != 1:
+            continue
+        argument = function.__closure__[0].cell_contents
+        if type(argument) not in (str, type(None)):
+            continue
+        reference = factory(argument)
+        fields = {key: item for key, item in vars(value).items() if key != "func"}
+        expected = {key: item for key, item in vars(reference).items() if key != "func"}
+        if fields == expected and function.__defaults__ == reference.func.__defaults__:
+            return name, argument
+    raise ValueError("Only unchanged with_id/with_name predicates are supported by this experiment")
+
+
+def _source_hash(module) -> str | None:
+    path = getattr(module, "__file__", None)
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest() if path else None
+
+
+def _compatibility() -> dict[str, Any]:
+    digest = hashlib.sha256()
+    paths = sorted((_REPO / "clean_ioc").rglob("*.py"))
+    paths += [Path(__file__), _REPO / "uv.lock"]
+    for path in paths:
+        digest.update(str(path.relative_to(_REPO)).encode())
+        digest.update(path.read_bytes())
+    return {
+        "schema": SCHEMA,
+        "python": list(sys.version_info[:3]),
+        "implementation": sys.implementation.name,
+        "source_sha256": digest.hexdigest(),
+    }
+
+
+def _symbol(module_name: str, qualname: str):
+    if module_name == "__main__" or "<" in qualname:
+        raise ValueError("Artifact symbols must be importable module-level objects")
+    module = importlib.import_module(module_name)
+    value = module
+    for part in qualname.split("."):
+        value = getattr(value, part)
+    return value, module
+
+
+class _Writer:
+    """Postorder object records preserve sharing, without a second full JSON tree."""
+
+    def __init__(self, stream: TextIO):
+        self.stream = stream
+        self.memo: dict[int, int] = {}
+        self.active: set[int] = set()
+        self.module_hashes: dict[str, str | None] = {}
+
+    def symbol(self, value, module_name: str, qualname: str):
+        imported, module = _symbol(module_name, qualname)
+        if imported is not value:
+            raise ValueError(f"Symbol does not round-trip: {module_name}:{qualname}")
+        if module_name not in self.module_hashes:
+            self.module_hashes[module_name] = _source_hash(module)
+        return [module_name, qualname, self.module_hashes[module_name]]
+
+    def ref(self, value):
+        if value is None or type(value) in (bool, float):
+            return value
+        identity = id(value)
+        if identity in self.active:
+            raise ValueError("Cyclic metadata is outside this experiment")
+        if identity in self.memo:
+            return [self.memo[identity]]
+        self.active.add(identity)
+        kind, payload = self.encode(value)
+        index = len(self.memo)
+        self.memo[identity] = index
+        self.active.remove(identity)
+        self.stream.write(json.dumps([index, kind, payload], separators=(",", ":"), allow_nan=False) + "\n")
+        return [index]
+
+    def encode(self, value):
+        cls = type(value)
+        if cls is str:
+            return "str", value
+        if cls is int:
+            return "int", value
+        if id(value) in _SPECIAL_SYMBOLS:
+            return "symbol", self.symbol(value, *_SPECIAL_SYMBOLS[id(value)])
+        if isinstance(value, Enum):
+            return "enum", [self.symbol(cls, cls.__module__, cls.__qualname__), value.name]
+        if isinstance(value, (type, FunctionType)):
+            return "symbol", self.symbol(value, value.__module__, value.__qualname__)
+        origin = get_origin(value)
+        if origin is not None and any(origin is allowed for allowed in _ALIAS_ORIGINS):
+            return "alias", [self.ref(origin), self.ref(get_args(value)), type(value) is GenericAlias]
+        if cls is component_filters._StructuredPredicate:
+            name, argument = _filter_spec(value)
+            return "filter", [name, self.ref(argument)]
+        if cls in _FIELDS:
+            if isinstance(value, legacy._Registration) and value.is_instance:
+                raise ValueError("Instance registrations are outside this experiment")
+            fields = [self.ref(getattr(value, name)) for name in _FIELDS[cls]]
+            return "record", [f"{cls.__module__}:{cls.__qualname__}", fields]
+        if cls is MappingProxyType:
+            # Separate read-only views can share one backing dictionary. Saving
+            # their items independently duplicates large metadata maps on load.
+            referents = gc.get_referents(value)
+            if len(referents) != 1 or not isinstance(referents[0], dict):
+                raise ValueError("Expected a mapping proxy backed by a dictionary")
+            return "mapping", self.ref(referents[0])
+        if cls is dict:
+            return "dict", [[self.ref(key), self.ref(item)] for key, item in value.items()]
+        if cls in (tuple, list, frozenset):
+            return cls.__name__, [self.ref(item) for item in value]
+        raise ValueError(f"Unsupported artifact value: {cls.__module__}.{cls.__qualname__}")
+
+
+class _Reader:
+    def __init__(self):
+        self.objects: list[Any] = []
+        self.module_hashes: dict[str, str | None] = {}
+
+    def deref(self, value):
+        if not isinstance(value, list):
+            if value is not None and type(value) not in (bool, int, float):
+                raise ValueError("Invalid artifact scalar")
+            return value
+        if (
+            len(value) != 1
+            or not isinstance(value[0], int)
+            or isinstance(value[0], bool)
+            or not 0 <= value[0] < len(self.objects)
+        ):
+            raise ValueError("Invalid artifact reference")
+        return self.objects[value[0]]
+
+    def symbol(self, specification):
+        module_name, qualname, expected_hash = specification
+        value, module = _symbol(module_name, qualname)
+        if module_name not in self.module_hashes:
+            self.module_hashes[module_name] = _source_hash(module)
+        if self.module_hashes[module_name] != expected_hash:
+            raise ValueError(f"Artifact source changed: {module_name}")
+        return value
+
+    def decode(self, kind, payload):
+        if kind in ("str", "int"):
+            return payload
+        if kind == "symbol":
+            return self.symbol(payload)
+        if kind == "enum":
+            return self.symbol(payload[0])[payload[1]]
+        if kind == "alias":
+            origin, args = self.deref(payload[0]), self.deref(payload[1])
+            if not any(origin is allowed for allowed in _ALIAS_ORIGINS):
+                raise ValueError("Unsupported artifact alias")
+            return GenericAlias(origin, args) if payload[2] else origin[args[0] if len(args) == 1 else args]
+        if kind == "filter":
+            factory = _FILTER_FACTORIES.get(payload[0])
+            if factory is None:
+                raise ValueError("Unsupported artifact filter")
+            return factory(self.deref(payload[1]))
+        if kind == "record":
+            name, values = payload
+            cls = _CLASSES.get(name)
+            if cls is None or len(values) != len(_FIELDS[cls]):
+                raise ValueError(f"Unsupported artifact record: {name}")
+            # Do not invoke compiler constructors or signature inspection.
+            obj = object.__new__(cls)
+            for field, value in zip(_FIELDS[cls], values):
+                object.__setattr__(obj, field, self.deref(value))
+            return obj
+        if kind == "mapping":
+            return MappingProxyType(self.deref(payload))
+        if kind == "dict":
+            return {self.deref(key): self.deref(value) for key, value in payload}
+        factories = {"tuple": tuple, "list": list, "frozenset": frozenset}
+        if kind in factories:
+            return factories[kind](self.deref(value) for value in payload)
+        raise ValueError(f"Unsupported artifact record kind: {kind}")
+
+
+def _check_plan(plan):
+    if not isinstance(plan, container._PlanSet):
+        raise ValueError("Artifact did not contain a compiled plan")
+    if plan._blueprint is not None or plan.diagnostics or plan.slots or plan.validation_rules:
+        raise ValueError("Use diagnostics=False, allow_scope_builders=False, with no slots or validation callbacks")
+    if plan.warmup_infos:
+        raise ValueError("Warmups are outside this experiment")
+    if plan.graph._records is None or plan.graph._drafts:
+        raise ValueError("The component graph must be frozen")
+    for record in plan.graph._records.values():
+        if record.boundary is not None:
+            raise ValueError("Boundaries are outside this experiment")
+        if record.activation not in (
+            components.ComponentActivation.constructor,
+            components.ComponentActivation.supplied,
+            components.ComponentActivation.collection,
+            components.ComponentActivation.deferred,
+        ):
+            raise ValueError("Unsupported activation; instances and factories are excluded")
+
+
+def dump_graph(runtime: Container, path: Path) -> dict[str, int]:
+    """Export an unresolved compiled plan, keeping its records and shared steps."""
+    _check_plan(runtime._plan)
+    if runtime._resolution_started or runtime._singletons or runtime._scoped:
+        raise ValueError("Export before resolving any services")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    try:
+        with temporary.open("w") as stream:
+            stream.write(json.dumps({"compatibility": _compatibility()}) + "\n")
+            writer = _Writer(stream)
+            plan = writer.ref(runtime._plan)
+            owner = writer.ref(runtime._owned_token)
+            stream.write(json.dumps({"plan": plan, "owner": owner}) + "\n")
+        temporary.replace(path)
+        return {"artifact_bytes": path.stat().st_size, "serialized_objects": len(writer.memo)}
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def load_graph(path: Path) -> Container:
+    """Import runtime symbols and rehydrate a plan; never build a registry."""
+    reader = _Reader()
+    with path.open() as stream:
+        if json.loads(next(stream))["compatibility"] != _compatibility():
+            raise ValueError("Artifact schema, Python version, or Clean IoC source does not match")
+        for line in stream:
+            record = json.loads(line)
+            if isinstance(record, dict):
+                plan, owner = reader.deref(record["plan"]), reader.deref(record["owner"])
+                if stream.read(1):
+                    raise ValueError("Unexpected content after artifact footer")
+                _check_plan(plan)
+                return Container(plan, owner)
+            index, kind, payload = record
+            if index != len(reader.objects):
+                raise ValueError("Invalid artifact record order")
+            reader.objects.append(reader.decode(kind, payload))
+    raise ValueError("Incomplete artifact: missing footer")

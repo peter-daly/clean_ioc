@@ -1,0 +1,47 @@
+{
+  "before_inspection": {
+    "decorator_explanations": {
+      "shallow_bytes": 2621528
+    },
+    "occurrence_origins": {
+      "shallow_bytes": 5242960
+    }
+  },
+  "compatibility": {
+    "hashes": {
+      "clean_ioc.container": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc"
+    },
+    "probe": "baseline",
+    "probe_sha256": "7f025feef3ab3c2ef7593ac8e9434ca06f4e24817935fcaad860221b9d802753"
+  },
+  "mode": "inventory",
+  "physical_records": 88558,
+  "primary_captures": [
+    {
+      "decorator_explanations": {
+        "capacity": {
+          "shallow_bytes": 2621528
+        },
+        "entries": 56522,
+        "max_id": 88507,
+        "min_id": 1,
+        "sorted_order": false,
+        "unique_values": 56522
+      },
+      "graph_records": 88558,
+      "origins": {
+        "capacity": {
+          "shallow_bytes": 5242960
+        },
+        "entries": 88558,
+        "max_id": 88558,
+        "min_id": 1,
+        "sorted_order": true,
+        "unique_values": 45
+      },
+      "phase": "primary compilation"
+    }
+  ],
+  "probe": "baseline",
+  "script_sha256": "45d69e4aa7399ccae060e51e447009da01ac59153f43d3b34160aa6b074ce94d"
+}

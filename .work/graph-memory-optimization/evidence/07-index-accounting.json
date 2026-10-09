@@ -1,0 +1,65 @@
+{
+  "origins": {
+    "entries": 88558,
+    "dense_length": 88559,
+    "sparse_entries": 0,
+    "dict_shallow_bytes": 5242960,
+    "indexed_total_shallow_bytes": 1424040,
+    "conversion_seconds_traced": 0.2582949579227716,
+    "conversion_retained_bytes": 1424424,
+    "conversion_peak_bytes": 1425088,
+    "lookup": {
+      "dict": {
+        "seconds": [
+          0.010359499952755868,
+          0.01030449999962002,
+          0.010302332928404212
+        ],
+        "median_seconds": 0.01030449999962002,
+        "lookups_per_sample": 442790
+      },
+      "indexed": {
+        "seconds": [
+          0.052561249933205545,
+          0.05244474997743964,
+          0.05237662501167506
+        ],
+        "median_seconds": 0.05244474997743964,
+        "lookups_per_sample": 442790
+      }
+    },
+    "borrowed_referents": "same value/key identities; not charged twice"
+  },
+  "decorator_explanations": {
+    "entries": 56522,
+    "dense_length": 88508,
+    "sparse_entries": 0,
+    "dict_shallow_bytes": 2621528,
+    "indexed_total_shallow_bytes": 1293704,
+    "conversion_seconds_traced": 0.16697074996773154,
+    "conversion_retained_bytes": 1294024,
+    "conversion_peak_bytes": 1294736,
+    "lookup": {
+      "dict": {
+        "seconds": [
+          0.008395416080020368,
+          0.008117333054542542,
+          0.007110042031854391
+        ],
+        "median_seconds": 0.008117333054542542,
+        "lookups_per_sample": 282610
+      },
+      "indexed": {
+        "seconds": [
+          0.034739958005957305,
+          0.03486037498805672,
+          0.034456875058822334
+        ],
+        "median_seconds": 0.034739958005957305,
+        "lookups_per_sample": 282610
+      }
+    },
+    "borrowed_referents": "same value/key identities; not charged twice"
+  },
+  "ownership": "original indexes and observer-only alternatives overlap; not a build-peak comparison"
+}

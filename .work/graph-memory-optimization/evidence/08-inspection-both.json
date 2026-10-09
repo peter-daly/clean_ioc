@@ -1,0 +1,110 @@
+{
+  "after_inspection": {
+    "decorator_explanations": {
+      "dense_length": 88508,
+      "entries": 56522,
+      "promoted": false,
+      "shallow_bytes": 1293712,
+      "sparse_entries": 0
+    },
+    "occurrence_origins": {
+      "dense_length": 88559,
+      "entries": 88558,
+      "promoted": false,
+      "shallow_bytes": 1424048,
+      "sparse_entries": 0
+    }
+  },
+  "before_inspection": {
+    "decorator_explanations": {
+      "dense_length": 88508,
+      "entries": 56522,
+      "promoted": false,
+      "shallow_bytes": 1293712,
+      "sparse_entries": 0
+    },
+    "occurrence_origins": {
+      "dense_length": 88559,
+      "entries": 88558,
+      "promoted": false,
+      "shallow_bytes": 1424048,
+      "sparse_entries": 0
+    }
+  },
+  "compatibility": {
+    "hashes": {
+      "clean_ioc.container": "c20311357fd7180a5a4cfecc7b26eb931c34072d6e01db4df192934d058a15dc"
+    },
+    "probe": "both",
+    "probe_sha256": "7f025feef3ab3c2ef7593ac8e9434ca06f4e24817935fcaad860221b9d802753"
+  },
+  "inspection": {
+    "before": {
+      "peak_rss_bytes": 130744320,
+      "rss_bytes": 130744320,
+      "traced_peak_bytes": 185526,
+      "traced_retained_bytes": 3167
+    },
+    "explanation_sample_size": 128,
+    "passes": [
+      {
+        "after_explanations": {
+          "peak_rss_bytes": 130809856,
+          "rss_bytes": 130809856,
+          "traced_peak_bytes": 710566,
+          "traced_retained_bytes": 528215
+        },
+        "after_manifest": {
+          "peak_rss_bytes": 154894336,
+          "rss_bytes": 154894336,
+          "traced_peak_bytes": 26876827,
+          "traced_retained_bytes": 14207902
+        },
+        "after_traversal": {
+          "peak_rss_bytes": 130809856,
+          "rss_bytes": 130809856,
+          "traced_peak_bytes": 711286,
+          "traced_retained_bytes": 528943
+        },
+        "explain_seconds": 0.09667258302215487,
+        "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+        "manifest_seconds": 0.5393419159809127,
+        "pass": "first",
+        "sample_decisions": 1280,
+        "traversal_seconds": 0.0883696669479832,
+        "traversal_visits": 8932
+      },
+      {
+        "after_explanations": {
+          "peak_rss_bytes": 154894336,
+          "rss_bytes": 154894336,
+          "traced_peak_bytes": 26876827,
+          "traced_retained_bytes": 14208486
+        },
+        "after_manifest": {
+          "peak_rss_bytes": 154959872,
+          "rss_bytes": 154959872,
+          "traced_peak_bytes": 26878140,
+          "traced_retained_bytes": 14209383
+        },
+        "after_traversal": {
+          "peak_rss_bytes": 154894336,
+          "rss_bytes": 154894336,
+          "traced_peak_bytes": 26876827,
+          "traced_retained_bytes": 14208942
+        },
+        "explain_seconds": 0.026398207992315292,
+        "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+        "manifest_seconds": 3.01670515909791e-05,
+        "pass": "repeated",
+        "sample_decisions": 1280,
+        "traversal_seconds": 0.08451275003608316,
+        "traversal_visits": 8932
+      }
+    ]
+  },
+  "mode": "inspection",
+  "physical_records": 88558,
+  "probe": "both",
+  "script_sha256": "45d69e4aa7399ccae060e51e447009da01ac59153f43d3b34160aa6b074ce94d"
+}

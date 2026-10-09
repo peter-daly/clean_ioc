@@ -1,4 +1,4 @@
-.PHONY: fixup lint format test docs-check ci typecheck pre-commit
+.PHONY: fixup lint format test docs-check benchmark benchmark-check ci typecheck pre-commit
 
 
 install-deps:
@@ -31,8 +31,8 @@ lint:
 	@uv run ruff check .
 
 format:
-	@echo "Formatting with Ruff..."
-	@uv run ruff format .
+	@echo "Checking formatting with Ruff..."
+	@uv run ruff format --check .
 
 test:
 	@echo "Running tests..."
@@ -42,7 +42,15 @@ docs-check:
 	@echo "Validating docs examples..."
 	@uv run python scripts/validate_docs_examples.py
 
-ci: lint format typecheck test docs-check
+benchmark:
+	@echo "Running BenchBro benchmarks..."
+	@uv run benchbro run
+
+benchmark-check:
+	@echo "Checking BenchBro discovery..."
+	@uv run benchbro list --verbose
+
+ci: lint format typecheck test docs-check benchmark-check
 
 publish:
 	@echo "Building the package..."

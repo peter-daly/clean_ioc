@@ -1,0 +1,67 @@
+{
+  "decision": "Decline production pruning; offline reachability audit retained",
+  "before": "03-before.json",
+  "after": "03-after.json",
+  "source": {
+    "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n M tests/test_graph_artifact_experiment.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_artifact_evidence.py\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? docs/graph-memory-fixture.md\n?? tests/test_graph_memory_fixture.py\n?? tests/test_shared_component_definitions.py\n",
+    "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "c8bc3c7b631241f256b0325d925bc21c4a80595d9e5b47460404af3c6cf5e6fa",
+      "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+      "clean_ioc/components.py": "1778cf2598e54d2f87f9dd271535e2f586893dec370ef3c2066f1d156696ce0d",
+      "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+    }
+  },
+  "all_twelve_samples_have_identical_measured_source_hashes": true,
+  "unchanged_runtime_observations": {
+    "graph": true,
+    "validated": true,
+    "activations": true,
+    "lazy_activations": true,
+    "template_calls": true
+  },
+  "before_medians": {
+    "build_seconds": 11.277662207954563,
+    "prepared": {
+      "peak_rss_bytes": 140328960,
+      "rss_bytes": 140328960,
+      "traced_peak_bytes": 77153301,
+      "traced_retained_bytes": 40297049
+    },
+    "resolve_seconds": 0.023902542074210942,
+    "resolved": {
+      "peak_rss_bytes": 140328960,
+      "rss_bytes": 140328960,
+      "traced_peak_bytes": 77153301,
+      "traced_retained_bytes": 41474157
+    }
+  },
+  "after_medians": {
+    "build_seconds": 11.404799874988385,
+    "prepared": {
+      "peak_rss_bytes": 139706368,
+      "rss_bytes": 139706368,
+      "traced_peak_bytes": 77153319,
+      "traced_retained_bytes": 40296986
+    },
+    "resolve_seconds": 0.023694499977864325,
+    "resolved": {
+      "peak_rss_bytes": 139706368,
+      "rss_bytes": 139706368,
+      "traced_peak_bytes": 77153319,
+      "traced_retained_bytes": 41474112
+    }
+  },
+  "additional_source_sha256": {
+    "benchmarks/graph_reachability_audit.py": "ab502b15062fcbc17d7e32177d1a9492f53a5cd08a277567de1773a6acdb2b28",
+    "tests/test_graph_reachability_audit.py": "07811c71cb37c5a143b741f64f25dd80b9298135e02e6a30057908e67935778e",
+    "benchmarks/graph_artifact.py": "59eb44ec7e281a73351f2f121295f5e24285eb15e32af3d92160ba59a0b99380",
+    "benchmarks/graph_memory_artifact_evidence.py": "ba6c0a06c74e1e193750a8d17bc454372d976a5ccb9962c979efdeec0a69ffbd",
+    "tests/test_graph_artifact_experiment.py": "fe68834f70dab0dc49b35fffa782dbd8b0328d9f7b4d469cc135fd0c03090905"
+  },
+  "final_audit_source_hash_matches_all_four_verified_processes": true,
+  "inspection_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+  "verification": "03-checks-final.json"
+}

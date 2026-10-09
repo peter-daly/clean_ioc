@@ -1,0 +1,36 @@
+{
+  "off": {
+    "diagnostics": false,
+    "fingerprint": "df57411564839e62857e17c24ebec42d368b0480d1929e1450c46a8e4437046f",
+    "generic_explanations": 0,
+    "instrumentation": "tracemalloc",
+    "occurrence_explanations": 0,
+    "parameter_explanations": 0,
+    "peak_rss_bytes": 71467008,
+    "physical_records": 9728,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_view_contexts": 4096,
+    "python": "3.14.4",
+    "routes": 256,
+    "seconds": 1.8505269999150187,
+    "traced_peak_bytes": 13977024,
+    "traced_retained_bytes": 12313991
+  },
+  "on": {
+    "diagnostics": true,
+    "fingerprint": "df57411564839e62857e17c24ebec42d368b0480d1929e1450c46a8e4437046f",
+    "generic_explanations": 0,
+    "instrumentation": "tracemalloc",
+    "occurrence_explanations": 6656,
+    "parameter_explanations": 2304,
+    "peak_rss_bytes": 76709888,
+    "physical_records": 9728,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_view_contexts": 4096,
+    "python": "3.14.4",
+    "routes": 256,
+    "seconds": 2.0726769999600947,
+    "traced_peak_bytes": 17176819,
+    "traced_retained_bytes": 15866968
+  }
+}

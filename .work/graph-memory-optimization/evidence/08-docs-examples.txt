@@ -1,0 +1,9 @@
+Container build failed with 1 error.
+- [factory-return-type-mismatch] Factory __main__.incorrect_factory declares result str, incompatible with registered service __main__.Repository (__main__.Repository)
+Graph-change policy passed: 0 violation(s).
+Dependency graph changes:
+- implementation-changed [high] root:__main__.Checkout:default:0/dependency:repository:0
+  Fields: implementation, implementation_type
+  Affected roots: root:__main__.Checkout:default:0
+  Affected entry points: root:__main__.Checkout:default:0
+documentation examples validated

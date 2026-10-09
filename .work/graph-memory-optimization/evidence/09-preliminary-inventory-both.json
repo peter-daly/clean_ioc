@@ -1,0 +1,67 @@
+{
+  "before_inspection": {
+    "decorator_explanations": {
+      "dense_length": 0,
+      "eligible": false,
+      "entries": 56522,
+      "promoted": true,
+      "shallow_bytes": 2621600,
+      "sparse_entries": 0
+    },
+    "occurrence_origins": {
+      "dense_length": 88559,
+      "eligible": false,
+      "entries": 88558,
+      "promoted": false,
+      "shallow_bytes": 1425368,
+      "sparse_entries": 0
+    }
+  },
+  "compatibility": {
+    "hashes": {
+      "clean_ioc.container": "bf0eb01858f391479b82858aa982df25ea5777675055c9c86587fd0f50c8dfa7"
+    },
+    "probe": "both",
+    "probe_sha256": "8fa24dda4634ad9ec99ae2e8755675d4f1368dcb09eaa8adf469be44d087f902"
+  },
+  "mode": "inventory",
+  "physical_records": 88558,
+  "primary_captures": [
+    {
+      "decorator_explanations": {
+        "capacity": {
+          "dense_length": 0,
+          "eligible": false,
+          "entries": 56522,
+          "promoted": true,
+          "shallow_bytes": 2621600,
+          "sparse_entries": 0
+        },
+        "entries": 56522,
+        "max_id": 88507,
+        "min_id": 1,
+        "sorted_order": false,
+        "unique_values": 56522
+      },
+      "graph_records": 88558,
+      "origins": {
+        "capacity": {
+          "dense_length": 88559,
+          "eligible": false,
+          "entries": 88558,
+          "promoted": false,
+          "shallow_bytes": 1425368,
+          "sparse_entries": 0
+        },
+        "entries": 88558,
+        "max_id": 88558,
+        "min_id": 1,
+        "sorted_order": true,
+        "unique_values": 45
+      },
+      "phase": "primary compilation"
+    }
+  ],
+  "probe": "both",
+  "script_sha256": "647df5645bcd597d098e77327d3b43e787f7b9308c05464f7e4a69008af31fbc"
+}

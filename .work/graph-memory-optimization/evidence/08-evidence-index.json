@@ -1,0 +1,402 @@
+{
+  "excluded_self": "08-evidence-index.json",
+  "files": {
+    ".work/README.md": {
+      "bytes": 20675,
+      "sha256": "a9002a698bd3df773ef23551666c16413c4931c2295798349db3f9b11770c639"
+    },
+    ".work/graph-memory-optimization/08-compact-indexes.md": {
+      "bytes": 10510,
+      "sha256": "34682e5ef0cc78b53cbc76f6496d6aabd23a7c691bc0ba455316464e82231dfb"
+    },
+    ".work/graph-memory-optimization/08-inventory.md": {
+      "bytes": 9586,
+      "sha256": "732fe69eaadd43e25f7e198db7eb4b74ac675f4c66bbfe86024fca8f0b3f9580"
+    },
+    ".work/graph-memory-optimization/08-result.md": {
+      "bytes": 20539,
+      "sha256": "3c072854ce4a4402845bce4e68267cceaa07a2d9fbbd34032ce70d1a53d723de"
+    },
+    ".work/graph-memory-optimization/README.md": {
+      "bytes": 15505,
+      "sha256": "e71b820a59932c0d3ad154e6f083c385d821c605046670ca663a89294d3de5e0"
+    },
+    ".work/graph-memory-optimization/evidence/08-artifact-checks.json": {
+      "bytes": 337,
+      "sha256": "1390dca561b770c493137ac25bef21724c834aac6ffd066573f538000c4d3651"
+    },
+    ".work/graph-memory-optimization/evidence/08-artifact-checks.py": {
+      "bytes": 2227,
+      "sha256": "f25ac44f270a72b17add7a2a8a0e4dc93b2dff056e17c5ed0b16d07ac4851560"
+    },
+    ".work/graph-memory-optimization/evidence/08-artifact-files.json": {
+      "bytes": 2591,
+      "sha256": "ca51d0ea1de3214c221f0bf0c579399e7c28b61e2f4b7c91ea5d471936336028"
+    },
+    ".work/graph-memory-optimization/evidence/08-artifact-runs.json": {
+      "bytes": 503320,
+      "sha256": "903d59c22b3db58e0cb140e04db281002a28ac486e813e1219dc22438da1050a"
+    },
+    ".work/graph-memory-optimization/evidence/08-artifact-tests.log": {
+      "bytes": 99,
+      "sha256": "e00367007634b0c63adabe3530cc46e9cdd194c2bede76653315d69bea6c9145"
+    },
+    ".work/graph-memory-optimization/evidence/08-artifact-tests.txt": {
+      "bytes": 99,
+      "sha256": "e00367007634b0c63adabe3530cc46e9cdd194c2bede76653315d69bea6c9145"
+    },
+    ".work/graph-memory-optimization/evidence/08-baseline-benchmarks-graph_artifact-cpython-314.bin": {
+      "bytes": 25664,
+      "sha256": "a9cc10ad05e327df7a109294998bf2845782aac0655bcd4cf4ed3e87ec625dd1"
+    },
+    ".work/graph-memory-optimization/evidence/08-baseline-benchmarks-graph_artifact.py.txt": {
+      "bytes": 14574,
+      "sha256": "b3ed4495a180f7288563911752be0baa6404d9e83f9b6db3e2cd928dc84a73c6"
+    },
+    ".work/graph-memory-optimization/evidence/08-baseline-clean_ioc-container-cpython-314.bin": {
+      "bytes": 935952,
+      "sha256": "cf49b41905e32667395ae32ee1b793fc6a944696e9736534589f087bd364b81c"
+    },
+    ".work/graph-memory-optimization/evidence/08-baseline-clean_ioc-container.py.txt": {
+      "bytes": 712049,
+      "sha256": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc"
+    },
+    ".work/graph-memory-optimization/evidence/08-benchmark-discovery.txt": {
+      "bytes": 53375,
+      "sha256": "603f7f3429ce9a7e12f9b7744e0ec365b6823787030fe06193f17519fdc72ab0"
+    },
+    ".work/graph-memory-optimization/evidence/08-both-benchmarks-graph_artifact-cpython-314.bin": {
+      "bytes": 26976,
+      "sha256": "66ed539be91b2c0e9a57b17786293d11ebd77afe6bcc660e55cbd40a04d640ea"
+    },
+    ".work/graph-memory-optimization/evidence/08-both-benchmarks-graph_artifact.py.txt": {
+      "bytes": 15502,
+      "sha256": "d1129ff34dbaeced6c96e022d2bc2d2ce3557c460577951c21f4254c87131777"
+    },
+    ".work/graph-memory-optimization/evidence/08-both-clean_ioc-container-cpython-314.bin": {
+      "bytes": 936007,
+      "sha256": "6a429bfe4c49ff415e481679231ffac67b7d9369a7cd1a92eeea299d0cb147d1"
+    },
+    ".work/graph-memory-optimization/evidence/08-both-clean_ioc-container.py.txt": {
+      "bytes": 712016,
+      "sha256": "c20311357fd7180a5a4cfecc7b26eb931c34072d6e01db4df192934d058a15dc"
+    },
+    ".work/graph-memory-optimization/evidence/08-build-driver.py.txt": {
+      "bytes": 2808,
+      "sha256": "e2f2c50309724b5c837b68bca331a8f62510d120f65e5389ac909a40a2f74785"
+    },
+    ".work/graph-memory-optimization/evidence/08-build-progress.log": {
+      "bytes": 1852,
+      "sha256": "e45096c69583de91b8bd83b88d479bd5d5b26b32e924ce6b73147b964d54cd77"
+    },
+    ".work/graph-memory-optimization/evidence/08-build-progress.txt": {
+      "bytes": 1852,
+      "sha256": "e45096c69583de91b8bd83b88d479bd5d5b26b32e924ce6b73147b964d54cd77"
+    },
+    ".work/graph-memory-optimization/evidence/08-build-runs.json": {
+      "bytes": 440658,
+      "sha256": "02811d517f16842a42732aaddf30f10c6c01310542ef3a2251cd855ff8c30e4c"
+    },
+    ".work/graph-memory-optimization/evidence/08-checks.sh": {
+      "bytes": 2819,
+      "sha256": "72678b86e9e387539886aa982f7d76d418f267ab40a4024a7aba74033b7d9e99"
+    },
+    ".work/graph-memory-optimization/evidence/08-concurrency-check.txt": {
+      "bytes": 1185,
+      "sha256": "0e3fa8b2eaa32b8e91d4cd3977cae6708e422e718069419eda7dcb17236dccfa"
+    },
+    ".work/graph-memory-optimization/evidence/08-decorators-benchmarks-graph_artifact-cpython-314.bin": {
+      "bytes": 26976,
+      "sha256": "66ed539be91b2c0e9a57b17786293d11ebd77afe6bcc660e55cbd40a04d640ea"
+    },
+    ".work/graph-memory-optimization/evidence/08-decorators-benchmarks-graph_artifact.py.txt": {
+      "bytes": 15502,
+      "sha256": "d1129ff34dbaeced6c96e022d2bc2d2ce3557c460577951c21f4254c87131777"
+    },
+    ".work/graph-memory-optimization/evidence/08-decorators-clean_ioc-container-cpython-314.bin": {
+      "bytes": 935988,
+      "sha256": "ae91b7d874eaf6c0bdcb7b16631e7595c22d64c3736bd4c41400377b485e7cfa"
+    },
+    ".work/graph-memory-optimization/evidence/08-decorators-clean_ioc-container.py.txt": {
+      "bytes": 712030,
+      "sha256": "e78df2da5c35ce3be720e4e2323a39328b4a83a13b3e4a26986bbba8ff873d93"
+    },
+    ".work/graph-memory-optimization/evidence/08-diagnostics-runs.json": {
+      "bytes": 200721,
+      "sha256": "ee96ce7982b25842bf6d984efb96601778bbce7a642c60972b4560aa7b17674d"
+    },
+    ".work/graph-memory-optimization/evidence/08-docs-examples.txt": {
+      "bytes": 552,
+      "sha256": "4944db83a351a554ac7bae049dd791687b449ccb188cf835fe0263787dfc4a6f"
+    },
+    ".work/graph-memory-optimization/evidence/08-driver-identity.json": {
+      "bytes": 572,
+      "sha256": "5395d61742bcc7d0e00980246858e0ae47f637ff61059d0d9a6ad7d0eae17b71"
+    },
+    ".work/graph-memory-optimization/evidence/08-failure-runs.json": {
+      "bytes": 17235,
+      "sha256": "df8a4203f15107fea2e6f24f573713b454abb69d09f3630df2327642e8d9d336"
+    },
+    ".work/graph-memory-optimization/evidence/08-failure.py": {
+      "bytes": 2495,
+      "sha256": "4884d6d5c1d1c6e0c6ffa5cde599d21ba945085cd5ecef2290e0a4753821ceb1"
+    },
+    ".work/graph-memory-optimization/evidence/08-final-checks-progress.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    ".work/graph-memory-optimization/evidence/08-final-checks.sh": {
+      "bytes": 1645,
+      "sha256": "0dc67b44043ded38f6d51b5ece068d1de50ae6472400b71271bf1b678496c864"
+    },
+    ".work/graph-memory-optimization/evidence/08-final-measurement-progress.log": {
+      "bytes": 4842,
+      "sha256": "10e1d3131783d613ad5542942ad6838de441e53c573b06b12804b3b419ebf370"
+    },
+    ".work/graph-memory-optimization/evidence/08-final-measurement-progress.txt": {
+      "bytes": 4842,
+      "sha256": "10e1d3131783d613ad5542942ad6838de441e53c573b06b12804b3b419ebf370"
+    },
+    ".work/graph-memory-optimization/evidence/08-format-final.txt": {
+      "bytes": 28,
+      "sha256": "34eedbe65445e7f6ccc1c0c018c97937c191b040532a97b36912e423fb30c028"
+    },
+    ".work/graph-memory-optimization/evidence/08-format.txt": {
+      "bytes": 28,
+      "sha256": "cbf25ae91c68d20f19db932f5e95f200d9f73887d65e4fe6713bac7860b15e79"
+    },
+    ".work/graph-memory-optimization/evidence/08-full-runs.json": {
+      "bytes": 203724,
+      "sha256": "16a89aebd730ee946fdc7c40749e9e58eedf61b088ce752d3fd97d3ad9a98b04"
+    },
+    ".work/graph-memory-optimization/evidence/08-hash-counterexamples-with-refinement.json": {
+      "bytes": 2074,
+      "sha256": "ad22eebc573d112f331deb4cc3c0ace342fdd29ac27bbb182689694542b60922"
+    },
+    ".work/graph-memory-optimization/evidence/08-hash-counterexamples.json": {
+      "bytes": 1261,
+      "sha256": "e7b0a9d7bade8baf5c12c13b93818ab22f1b26deb951040b3269ff89e5feec9c"
+    },
+    ".work/graph-memory-optimization/evidence/08-hash-counterexamples.py": {
+      "bytes": 3727,
+      "sha256": "57fff0e555103b9e58debbdf52ea9264de165c8b74f7f135cc00b46b49b6f7ed"
+    },
+    ".work/graph-memory-optimization/evidence/08-inspection-baseline.json": {
+      "bytes": 2890,
+      "sha256": "a9b63e29d5afa51bb15a2e89d632bcc17519686f3ec061a5ff4f000240ef0d8d"
+    },
+    ".work/graph-memory-optimization/evidence/08-inspection-both.json": {
+      "bytes": 3302,
+      "sha256": "5c5cc2a76f8bdd3d74d15a288c07eeedf75fafa4dd37e0872803a9a45bdd49d1"
+    },
+    ".work/graph-memory-optimization/evidence/08-inventory-baseline.json": {
+      "bytes": 1166,
+      "sha256": "0599cbc13a6c98713be8cf17450b35dc1a8099deb0c9553201d0bb7bed1247f7"
+    },
+    ".work/graph-memory-optimization/evidence/08-inventory-both.json": {
+      "bytes": 1610,
+      "sha256": "fffba352a61b0f2c4c8be4191705f06875b2dfcc08897b0ee61b4c59781f1558"
+    },
+    ".work/graph-memory-optimization/evidence/08-lifetimes.json": {
+      "bytes": 7525,
+      "sha256": "aedd4da317797b1c1dbfac6de5447792b67eff40efa90255c5ed2761dad97278"
+    },
+    ".work/graph-memory-optimization/evidence/08-lint-final.txt": {
+      "bytes": 123,
+      "sha256": "b2ce27f1957c7f92ca7c34145fa5c4a57eea8b3701e5349b0c2d8575e2458cce"
+    },
+    ".work/graph-memory-optimization/evidence/08-lint.txt": {
+      "bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    ".work/graph-memory-optimization/evidence/08-mapping-checks.json": {
+      "bytes": 2009,
+      "sha256": "7995215ad1d295f337d393c52efbe7d142934dc054226a48e147c3b6f5df422b"
+    },
+    ".work/graph-memory-optimization/evidence/08-mapping-checks.py": {
+      "bytes": 8031,
+      "sha256": "7271607a608b00798cd32457d5fd85e47ae2f84ee5f361af05f9c29312529a37"
+    },
+    ".work/graph-memory-optimization/evidence/08-origins-benchmarks-graph_artifact-cpython-314.bin": {
+      "bytes": 26976,
+      "sha256": "66ed539be91b2c0e9a57b17786293d11ebd77afe6bcc660e55cbd40a04d640ea"
+    },
+    ".work/graph-memory-optimization/evidence/08-origins-benchmarks-graph_artifact.py.txt": {
+      "bytes": 15502,
+      "sha256": "d1129ff34dbaeced6c96e022d2bc2d2ce3557c460577951c21f4254c87131777"
+    },
+    ".work/graph-memory-optimization/evidence/08-origins-clean_ioc-container-cpython-314.bin": {
+      "bytes": 935988,
+      "sha256": "6307072af091ec7b3bf539a89e75a93653fc69db9fddb509aac4f643df32779d"
+    },
+    ".work/graph-memory-optimization/evidence/08-origins-clean_ioc-container.py.txt": {
+      "bytes": 712035,
+      "sha256": "b992bccc24abe23c0d5468d8c44f08450382ca38db9729abed3d651c05288c1c"
+    },
+    ".work/graph-memory-optimization/evidence/08-pipeline-progress.log": {
+      "bytes": 806,
+      "sha256": "34d9a3876457ae70aa60e5c88ae3a890f555e3db2039b9e0aed06ca1db2428d3"
+    },
+    ".work/graph-memory-optimization/evidence/08-pipeline-progress.txt": {
+      "bytes": 806,
+      "sha256": "34d9a3876457ae70aa60e5c88ae3a890f555e3db2039b9e0aed06ca1db2428d3"
+    },
+    ".work/graph-memory-optimization/evidence/08-pipeline.py": {
+      "bytes": 867,
+      "sha256": "70b6d00c09d1f2b81a047699212dfe4b7175049f85169f80c9035dea948366d6"
+    },
+    ".work/graph-memory-optimization/evidence/08-preliminary-build-progress.log": {
+      "bytes": 1165,
+      "sha256": "6db9fc170e2fabcfb95c52870fedf8a2ccbb596c85edfa1b3c6d07a5090a8cfd"
+    },
+    ".work/graph-memory-optimization/evidence/08-preliminary-build-progress.txt": {
+      "bytes": 1165,
+      "sha256": "6db9fc170e2fabcfb95c52870fedf8a2ccbb596c85edfa1b3c6d07a5090a8cfd"
+    },
+    ".work/graph-memory-optimization/evidence/08-preliminary-build-runs.json": {
+      "bytes": 265482,
+      "sha256": "2418f162b52c5d4eca30b084d04b12b604f54bf314d90ea4c3648329b0925864"
+    },
+    ".work/graph-memory-optimization/evidence/08-prepared.json": {
+      "bytes": 2044,
+      "sha256": "bfb9229b33ea98a3b62b28fd6ad632e5938eccf5e91d7462606f74ce2c1ce10b"
+    },
+    ".work/graph-memory-optimization/evidence/08-probe-format-final.txt": {
+      "bytes": 27,
+      "sha256": "5b9f70ad96522f492ef846065642c069b5627379aff2ab3f74acd2e3b9ecfe34"
+    },
+    ".work/graph-memory-optimization/evidence/08-probe-format.txt": {
+      "bytes": 26,
+      "sha256": "8e93d18ae56550d4eef2feac77e6630617c7e169246e56e39c75d58b46167985"
+    },
+    ".work/graph-memory-optimization/evidence/08-probe-lint-final.txt": {
+      "bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    ".work/graph-memory-optimization/evidence/08-probe-lint.txt": {
+      "bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    ".work/graph-memory-optimization/evidence/08-probe-typecheck-final.txt": {
+      "bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    ".work/graph-memory-optimization/evidence/08-probe-typecheck.txt": {
+      "bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    ".work/graph-memory-optimization/evidence/08-probe-versions.json": {
+      "bytes": 611,
+      "sha256": "e881f4794eb15f583465615923de23b2aa70c2396cab2f5749244c94e686ba98"
+    },
+    ".work/graph-memory-optimization/evidence/08-probe.py": {
+      "bytes": 14787,
+      "sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+    },
+    ".work/graph-memory-optimization/evidence/08-python-3.11.13-mapping.json": {
+      "bytes": 2009,
+      "sha256": "5aba5ae825ddd50abc81f8145fb1ed30ae2f4f0631083f725c97e9846dc62095"
+    },
+    ".work/graph-memory-optimization/evidence/08-python-3.11.13-tests.txt": {
+      "bytes": 180,
+      "sha256": "7006ba0e2bb6683b1396c10c3d0506e3a7fc2ad7c7f821912194a70c484592ee"
+    },
+    ".work/graph-memory-optimization/evidence/08-python-3.12.11-mapping.json": {
+      "bytes": 2009,
+      "sha256": "876ab978398f27ad7f04156caee42e17c2d907d953c7f9001a1e4f04d4cd1905"
+    },
+    ".work/graph-memory-optimization/evidence/08-python-3.12.11-tests.txt": {
+      "bytes": 180,
+      "sha256": "5f869a8eb7aca44702f346281b9d7ce7cc224b2476d43f1c77f5c6f63a0044f9"
+    },
+    ".work/graph-memory-optimization/evidence/08-python-3.13.5-mapping.json": {
+      "bytes": 2008,
+      "sha256": "74afeae215ed8d3894547492d806eca88d45e44b877ddfd6cb32019483eaeb42"
+    },
+    ".work/graph-memory-optimization/evidence/08-python-3.13.5-tests.txt": {
+      "bytes": 180,
+      "sha256": "a084895bc40aae23c517a2b5c76e8994a4d10eae0b7aa9dd378694652f950eb4"
+    },
+    ".work/graph-memory-optimization/evidence/08-run.py": {
+      "bytes": 3805,
+      "sha256": "7635bc6be51c90b45bc7a9b3b5226cfdea9499dcd9ec0220cb88bc3b35ca99ac"
+    },
+    ".work/graph-memory-optimization/evidence/08-screens.py": {
+      "bytes": 5957,
+      "sha256": "bbc3938e6b4a22c0f7bf0d356e77994a7ef2a6640f110acb4eb1a7c0ae28d6cf"
+    },
+    ".work/graph-memory-optimization/evidence/08-semantics-full-baseline.json": {
+      "bytes": 11963,
+      "sha256": "58abc67012081f681d99cb732f706ecf4e705c9c5ae45e75a8c15e4e48135698"
+    },
+    ".work/graph-memory-optimization/evidence/08-semantics-full-both.json": {
+      "bytes": 12253,
+      "sha256": "088954f6fbe40c1f5c9c6692ff2dbd4d92ecf8ff76ecb89a851b0233827ae352"
+    },
+    ".work/graph-memory-optimization/evidence/08-semantics-reduced-baseline.json": {
+      "bytes": 56168,
+      "sha256": "50e5669e32e16bc3ed3a8cdf1aee7d2c581d4d4fd101eb94580b35f62538b2e6"
+    },
+    ".work/graph-memory-optimization/evidence/08-semantics-reduced-both.json": {
+      "bytes": 56454,
+      "sha256": "00db8305d59fbc176ea62959ab0b7586bb71c9d33a6b2b1650f1a037a2e7641f"
+    },
+    ".work/graph-memory-optimization/evidence/08-semantics.py": {
+      "bytes": 565,
+      "sha256": "846436f953693954fa5030f44aa728da5c249d738c0ebd6b562e65e535df9ccc"
+    },
+    ".work/graph-memory-optimization/evidence/08-source-verification.json": {
+      "bytes": 21349,
+      "sha256": "e2339391282c1bf7f05dc1872599798dabd318cd2fc8caec4023779845afcd39"
+    },
+    ".work/graph-memory-optimization/evidence/08-storage-extended.json": {
+      "bytes": 41658,
+      "sha256": "7f10b2bcbef74f38cfba1debe3b945d323506a7499b6899d8065d5fba9973b54"
+    },
+    ".work/graph-memory-optimization/evidence/08-storage.json": {
+      "bytes": 18022,
+      "sha256": "66093c5532bb55c0294bd716ac038933c1674d5611817773537fdaaac81b4e22"
+    },
+    ".work/graph-memory-optimization/evidence/08-summarize.py": {
+      "bytes": 3646,
+      "sha256": "6b19a0a673975cc07fc2c444e69e9491800a8bdf8318527f50ef266cd8b13682"
+    },
+    ".work/graph-memory-optimization/evidence/08-summary.json": {
+      "bytes": 32844,
+      "sha256": "83cdcacf5aee9ace7f0da0f01b3c8a292fd2cbc6a2bcbd52be6ed29838e7d9ca"
+    },
+    ".work/graph-memory-optimization/evidence/08-tests.log": {
+      "bytes": 2926,
+      "sha256": "757e57ffc6e2edd601025d329a9a77d9e2a83a7f3d0b48a0df57efcb06aaedc6"
+    },
+    ".work/graph-memory-optimization/evidence/08-tests.txt": {
+      "bytes": 2926,
+      "sha256": "757e57ffc6e2edd601025d329a9a77d9e2a83a7f3d0b48a0df57efcb06aaedc6"
+    },
+    ".work/graph-memory-optimization/evidence/08-typecheck-before.txt": {
+      "bytes": 10789,
+      "sha256": "e6b3807bd9bff7e67c9eaa027d0b810282c1794d2545990041e34afac0fde3d0"
+    },
+    ".work/graph-memory-optimization/evidence/08-typecheck-final.txt": {
+      "bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    ".work/graph-memory-optimization/evidence/08-typecheck.txt": {
+      "bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    ".work/graph-memory-optimization/evidence/08-v1-probe.py.txt": {
+      "bytes": 14570,
+      "sha256": "f0b742012736cc55f6735ebee4a89d523f05f4b67b11468a6ab2250b40755a04"
+    },
+    ".work/graph-memory-optimization/evidence/08-v2-probe.py.txt": {
+      "bytes": 14750,
+      "sha256": "7f025feef3ab3c2ef7593ac8e9434ca06f4e24817935fcaad860221b9d802753"
+    }
+  },
+  "generated_artifacts": "08-artifact-files.json",
+  "implementation_ready": false,
+  "measurement_processes": 116,
+  "recommendation": "REFINE",
+  "task": "08"
+}

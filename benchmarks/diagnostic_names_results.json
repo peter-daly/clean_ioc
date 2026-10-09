@@ -1,0 +1,151 @@
+{
+  "date": "2026-10-07",
+  "baseline": {
+    "revision": "3d576f10427d506b414889af21ad95291c39cccf plus uncommitted occurrence-path cache change1",
+    "sources": {
+      "clean_ioc/container.py": "04da206f18aaa3ddca4656dbfd7c3ecc15cd07988632f60a0d84d74a3fb5cdf6",
+      "clean_ioc/tooling.py": "519a1ae3555d12a21d26ebf8f378ca75f712cec3b2a4ca88dd4d101b8dda08c9"
+    }
+  },
+  "candidate": {
+    "revision": "same checkout plus compilation-owned diagnostic names change2",
+    "sources": {
+      "clean_ioc/container.py": "5de8ea10511fb2c675e16da7f93b939dc19f56ad429feddede0f60e5db7d2d89",
+      "clean_ioc/tooling.py": "64ccd1ef55212ec5eb7b396b74b3e602e22241513ec2664f19d1e61bfe299589"
+    }
+  },
+  "synthetic": {
+    "before": {
+      "distinct_diagnostic_strings": 17951,
+      "instrumentation": "none",
+      "peak_rss_bytes": 118996992,
+      "physical_records": 16384,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_view_contexts": 8192,
+      "python": "3.14.4",
+      "retained_diagnostic_string_bytes": 5349622,
+      "retained_diagnostic_string_objects": 51223,
+      "routes": 512,
+      "seconds": 1.227939415955916
+    },
+    "after": {
+      "distinct_diagnostic_strings": 17951,
+      "instrumentation": "none",
+      "peak_rss_bytes": 84492288,
+      "physical_records": 16384,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_view_contexts": 8192,
+      "python": "3.14.4",
+      "retained_diagnostic_string_bytes": 3023967,
+      "retained_diagnostic_string_objects": 27165,
+      "routes": 512,
+      "seconds": 0.6859399999957532
+    },
+    "before_heap": {
+      "distinct_diagnostic_strings": 17951,
+      "instrumentation": "tracemalloc",
+      "peak_rss_bytes": 115671040,
+      "physical_records": 16384,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_view_contexts": 8192,
+      "python": "3.14.4",
+      "retained_diagnostic_string_bytes": 5349622,
+      "retained_diagnostic_string_objects": 51223,
+      "routes": 512,
+      "seconds": 5.925246709026396,
+      "traced_peak_bytes": 44293005,
+      "traced_retained_bytes": 31576580
+    },
+    "after_heap": {
+      "distinct_diagnostic_strings": 17951,
+      "instrumentation": "tracemalloc",
+      "peak_rss_bytes": 115146752,
+      "physical_records": 16384,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_view_contexts": 8192,
+      "python": "3.14.4",
+      "retained_diagnostic_string_bytes": 3023967,
+      "retained_diagnostic_string_objects": 27165,
+      "routes": 512,
+      "seconds": 3.23576279100962,
+      "traced_peak_bytes": 40194885,
+      "traced_retained_bytes": 29277383
+    }
+  },
+  "isolated_cop": {
+    "unchanged_composition_before": {
+      "variant": "baseline",
+      "app": "worker",
+      "path_cache": false,
+      "label_cache": false,
+      "profile": false,
+      "seconds": 22.655227500014007,
+      "peak_mib": 1487.734375,
+      "physical_records": 151633,
+      "views": 4764,
+      "provider_roots": 3872,
+      "service_roots": 311,
+      "bark_source": "/tmp/bark-ioc-followup-mqchsx_3/baseline/bark/bark_core/__init__.py",
+      "ioc_source": "/tmp/ioc-diagnostic-names-before/clean_ioc/__init__.py"
+    },
+    "unchanged_composition_after": {
+      "variant": "baseline",
+      "app": "worker",
+      "path_cache": false,
+      "label_cache": false,
+      "profile": false,
+      "seconds": 13.176194416941144,
+      "peak_mib": 1455.765625,
+      "physical_records": 151633,
+      "views": 4764,
+      "provider_roots": 3872,
+      "service_roots": 311,
+      "bark_source": "/tmp/bark-ioc-followup-mqchsx_3/baseline/bark/bark_core/__init__.py",
+      "ioc_source": "/Users/peter.daly/WS/pete/clean_ioc/clean_ioc/__init__.py"
+    },
+    "experimental_narrow_composition_before": {
+      "variant": "narrow",
+      "app": "worker",
+      "path_cache": false,
+      "label_cache": false,
+      "profile": false,
+      "seconds": 10.123146792058833,
+      "peak_mib": 609.96875,
+      "physical_records": 79642,
+      "views": 3132,
+      "provider_roots": 3264,
+      "service_roots": 311,
+      "bark_source": "/tmp/bark-ioc-followup-mqchsx_3/narrow/bark/bark_core/__init__.py",
+      "ioc_source": "/tmp/ioc-diagnostic-names-before/clean_ioc/__init__.py"
+    },
+    "experimental_narrow_composition_after": {
+      "variant": "narrow",
+      "app": "worker",
+      "path_cache": false,
+      "label_cache": false,
+      "profile": false,
+      "seconds": 5.812288457993418,
+      "peak_mib": 450.109375,
+      "physical_records": 79642,
+      "views": 3132,
+      "provider_roots": 3264,
+      "service_roots": 311,
+      "bark_source": "/tmp/bark-ioc-followup-mqchsx_3/narrow/bark/bark_core/__init__.py",
+      "ioc_source": "/Users/peter.daly/WS/pete/clean_ioc/clean_ioc/__init__.py"
+    }
+  },
+  "limitations": [
+    "One fresh-process sample per configuration; macOS development measurements, not Linux acceptance.",
+    "Cop uses disposable copies from an earlier composition experiment and the existing isolated environment; only Clean IoC source selection changes in each pair.",
+    "Experimental narrow composition is not unchanged Cop composition and is not released application acceptance.",
+    "No monkeypatch, compilation profiler, package publication, version change, or shared Bark/Cop checkout modification.",
+    "Heap tracing is separate from uninstrumented elapsed and RSS measurements; no profiled timing comparison."
+  ],
+  "post_measurement_changes": [
+    "Failure reporting pre-renders labels before its recursive path helper to avoid retaining the compiler through a closure; successful measured build paths are unchanged."
+  ],
+  "final_review_sources": {
+    "clean_ioc/container.py": "1cd1b1e735d248dd8fad993750960d1d64bb34c319119bfe93efbb544390dd3c",
+    "clean_ioc/tooling.py": "64ccd1ef55212ec5eb7b396b74b3e602e22241513ec2664f19d1e61bfe299589"
+  }
+}

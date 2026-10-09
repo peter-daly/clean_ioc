@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-09",
+  "restored_files": {
+    "benchmarks/graph_memory_evidence.py": {
+      "expected": "c8bc3c7b631241f256b0325d925bc21c4a80595d9e5b47460404af3c6cf5e6fa",
+      "actual": "c8bc3c7b631241f256b0325d925bc21c4a80595d9e5b47460404af3c6cf5e6fa"
+    },
+    "benchmarks/graph_memory_fixture.py": {
+      "expected": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+      "actual": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1"
+    },
+    "clean_ioc/components.py": {
+      "expected": "1778cf2598e54d2f87f9dd271535e2f586893dec370ef3c2066f1d156696ce0d",
+      "actual": "1778cf2598e54d2f87f9dd271535e2f586893dec370ef3c2066f1d156696ce0d"
+    },
+    "clean_ioc/container.py": {
+      "expected": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+      "actual": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d"
+    },
+    "clean_ioc/selection_census.py": {
+      "expected": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "actual": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5"
+    },
+    "clean_ioc/tooling.py": {
+      "expected": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467",
+      "actual": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+    },
+    "benchmarks/graph_artifact.py": {
+      "expected": "59eb44ec7e281a73351f2f121295f5e24285eb15e32af3d92160ba59a0b99380",
+      "actual": "59eb44ec7e281a73351f2f121295f5e24285eb15e32af3d92160ba59a0b99380"
+    },
+    "benchmarks/graph_artifact_evidence.py": {
+      "expected": "436a405b2300315f5671cadee73bbde594abf30738b3752d5905b0a5a646b818",
+      "actual": "436a405b2300315f5671cadee73bbde594abf30738b3752d5905b0a5a646b818"
+    },
+    "benchmarks/graph_memory_artifact_evidence.py": {
+      "expected": "ba6c0a06c74e1e193750a8d17bc454372d976a5ccb9962c979efdeec0a69ffbd",
+      "actual": "ba6c0a06c74e1e193750a8d17bc454372d976a5ccb9962c979efdeec0a69ffbd"
+    }
+  },
+  "archive_verified": true
+}

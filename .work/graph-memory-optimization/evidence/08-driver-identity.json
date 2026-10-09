@@ -1,0 +1,6 @@
+{
+  "build_executed_driver_source": "08-build-driver.py.txt",
+  "build_executed_sha256": "e2f2c50309724b5c837b68bca331a8f62510d120f65e5389ac909a40a2f74785",
+  "build_reported_path_hash": "7635bc6be51c90b45bc7a9b3b5226cfdea9499dcd9ec0220cb88bc3b35ca99ac",
+  "note": "The initial driver remained running while the source file gained failure/artifact options and metadata. Its build branch was unchanged. The archived executed-source reconstruction matches the original preliminary SHA exactly; retain the reported path hash without silently treating it as executed code."
+}

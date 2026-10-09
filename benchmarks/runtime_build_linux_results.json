@@ -1,0 +1,375 @@
+{
+  "measured_on": "2026-10-08",
+  "method": {
+    "host": "macOS ARM64, Docker Linux ARM64",
+    "python": "3.14.4",
+    "runner": "gunicorn, actual application module entry points",
+    "memory_limit_bytes": 536870912,
+    "cpu_limit": 0.1,
+    "timeout_seconds": 120,
+    "memory_metric": "cgroup v2 memory.peak for the complete application container",
+    "readiness": "HTTP 200 from /health/ready",
+    "samples": "One fresh container per application/stage, run sequentially.",
+    "dependencies": "Frozen development wheels installed with --no-deps over fixed support dependencies; no source overrides.",
+    "scope": "Reference-image startup checks against local supporting services, not acceptance of the configured deployment image."
+  },
+  "configured_image_check": {
+    "image": "ghcr.io/bark-com/ubuntu:3.14.4",
+    "image_id": "sha256:b80e1db51da5cde244cb0aae087c7e6a992f8d691747a704630ab1a370ff6160",
+    "architecture": "arm64",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    from compression import zstd\n  File \"/usr/local/lib/python3.14/compression/zstd/__init__.py\", line 29, in <module>\n    import _zstd\nModuleNotFoundError: No module named '_zstd'\n"
+  },
+  "extended_memory_method": {
+    "maximum_observation_seconds": 600,
+    "application_or_deployment_settings_changed": false,
+    "purpose": "Memory through completed startup, after the user deferred build-time optimization.",
+    "boundary": "Observation stops at readiness; not a steady-state/load memory test or a relaxed deployment deadline."
+  },
+  "step8_reference_image": {
+    "tag": "cop-ioc-verification:runtime-step8-reference",
+    "image_id": "sha256:229dc33d171ce60cabb5a07449192f34021324cf5b20163e2993f4f6e140e1a5",
+    "os": "linux",
+    "architecture": "arm64",
+    "base": "Python 3.14.4 slim reference environment"
+  },
+  "step8_wheel_sha256": {
+    "clean_ioc": "2828273554efd910ef99ff8c008b58b42590aa7a8579b1206bda469a080f4b7a",
+    "bark_core": "e8290f94f4f0482d57633292b80d30fe87a327b4eef2d89e325129044d92e93c"
+  },
+  "earlier_reference_samples": [
+    {
+      "stage": "runtime-step2-reference",
+      "app": "api",
+      "runner": "gunicorn",
+      "image": "cop-ioc-verification:runtime-step2-reference",
+      "timeout_seconds": 120,
+      "memory_limit_bytes": 536870912,
+      "cpu_limit": 0.1,
+      "ready": true,
+      "readiness_seconds": 89.8011258339975,
+      "observed_seconds": 89.80119875003584,
+      "state": {
+        "Running": true,
+        "OOMKilled": false,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-10-08T08:54:21.140937177Z",
+        "FinishedAt": "0001-01-01T00:00:00Z"
+      },
+      "cgroup": {
+        "memory.peak": "335831040",
+        "memory.current": "332619776",
+        "memory.max": "536870912",
+        "memory.swap.max": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "cpu.max": "10000 100000",
+        "cpu.stat": "usage_usec 9068735\nuser_usec 7762435\nsystem_usec 1306299\nnice_usec 0\nnr_periods 906\nnr_throttled 906\nthrottled_usec 83843603\nnr_bursts 0\nburst_usec 0"
+      },
+      "peak_memory_mib": 320.2734375,
+      "peak_observation_boundary": "Readiness reached; later runtime peaks are not measured."
+    },
+    {
+      "stage": "runtime-step2-reference",
+      "app": "worker",
+      "runner": "gunicorn",
+      "image": "cop-ioc-verification:runtime-step2-reference",
+      "timeout_seconds": 120,
+      "memory_limit_bytes": 536870912,
+      "cpu_limit": 0.1,
+      "ready": false,
+      "observed_seconds": 121.2728178750258,
+      "state": {
+        "Running": true,
+        "OOMKilled": false,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-10-08T08:56:17.004262092Z",
+        "FinishedAt": "0001-01-01T00:00:00Z"
+      },
+      "cgroup": {
+        "memory.peak": "536870912",
+        "memory.current": "533553152",
+        "memory.max": "536870912",
+        "memory.swap.max": "0",
+        "memory.events": "low 0\nhigh 0\nmax 78\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "cpu.max": "10000 100000",
+        "cpu.stat": "usage_usec 12430546\nuser_usec 11010103\nsystem_usec 1420442\nnice_usec 0\nnr_periods 1243\nnr_throttled 1243\nthrottled_usec 119871928\nnr_bursts 0\nburst_usec 0"
+      },
+      "peak_memory_mib": 512.0,
+      "peak_observation_boundary": "Only observed until the readiness deadline; completed-startup peak is unknown."
+    },
+    {
+      "stage": "runtime-step7-reference",
+      "app": "api",
+      "runner": "gunicorn",
+      "image": "cop-ioc-verification:runtime-step7-reference",
+      "timeout_seconds": 120,
+      "memory_limit_bytes": 536870912,
+      "cpu_limit": 0.1,
+      "ready": true,
+      "readiness_seconds": 80.47791795898229,
+      "observed_seconds": 80.47798500000499,
+      "state": {
+        "Running": true,
+        "OOMKilled": false,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-10-08T10:45:47.95863805Z",
+        "FinishedAt": "0001-01-01T00:00:00Z"
+      },
+      "cgroup": {
+        "memory.peak": "310661120",
+        "memory.current": "307036160",
+        "memory.max": "536870912",
+        "memory.swap.max": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "cpu.max": "10000 100000",
+        "cpu.stat": "usage_usec 8145372\nuser_usec 7288915\nsystem_usec 856457\nnice_usec 0\nnr_periods 814\nnr_throttled 814\nthrottled_usec 76134346\nnr_bursts 0\nburst_usec 0"
+      },
+      "peak_memory_mib": 296.26953125,
+      "peak_observation_boundary": "Readiness reached; later runtime peaks are not measured."
+    },
+    {
+      "stage": "runtime-step7-reference",
+      "app": "worker",
+      "runner": "gunicorn",
+      "image": "cop-ioc-verification:runtime-step7-reference",
+      "timeout_seconds": 120,
+      "memory_limit_bytes": 536870912,
+      "cpu_limit": 0.1,
+      "ready": false,
+      "observed_seconds": 120.58472441707272,
+      "state": {
+        "Running": true,
+        "OOMKilled": false,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-10-08T10:43:25.574277304Z",
+        "FinishedAt": "0001-01-01T00:00:00Z"
+      },
+      "cgroup": {
+        "memory.peak": "386260992",
+        "memory.current": "383623168",
+        "memory.max": "536870912",
+        "memory.swap.max": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "cpu.max": "10000 100000",
+        "cpu.stat": "usage_usec 12299331\nuser_usec 11122782\nsystem_usec 1176549\nnice_usec 0\nnr_periods 1230\nnr_throttled 1230\nthrottled_usec 117679681\nnr_bursts 0\nburst_usec 0"
+      },
+      "peak_memory_mib": 368.3671875,
+      "peak_observation_boundary": "Only observed until the readiness deadline; completed-startup peak is unknown."
+    }
+  ],
+  "step8_reference_samples": [
+    {
+      "stage": "runtime-step8-reference",
+      "app": "api",
+      "runner": "gunicorn",
+      "image": "cop-ioc-verification:runtime-step8-reference",
+      "timeout_seconds": 120,
+      "memory_limit_bytes": 536870912,
+      "cpu_limit": 0.1,
+      "ready": true,
+      "readiness_seconds": 81.19356533396058,
+      "observed_seconds": 81.1936263339594,
+      "state": {
+        "Running": true,
+        "OOMKilled": false,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-10-08T11:13:28.672457513Z",
+        "FinishedAt": "0001-01-01T00:00:00Z"
+      },
+      "cgroup": {
+        "memory.peak": "329031680",
+        "memory.current": "325656576",
+        "memory.max": "536870912",
+        "memory.swap.max": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "cpu.max": "10000 100000",
+        "cpu.stat": "usage_usec 8217295\nuser_usec 7042279\nsystem_usec 1175016\nnice_usec 0\nnr_periods 821\nnr_throttled 821\nthrottled_usec 75859592\nnr_bursts 0\nburst_usec 0"
+      },
+      "peak_memory_mib": 313.7890625,
+      "peak_observation_boundary": "Readiness reached; later runtime peaks are not measured."
+    },
+    {
+      "stage": "runtime-step8-reference",
+      "app": "worker",
+      "runner": "gunicorn",
+      "image": "cop-ioc-verification:runtime-step8-reference",
+      "timeout_seconds": 120,
+      "memory_limit_bytes": 536870912,
+      "cpu_limit": 0.1,
+      "ready": false,
+      "observed_seconds": 121.4738517079968,
+      "state": {
+        "Running": true,
+        "OOMKilled": false,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-10-08T11:10:23.368316636Z",
+        "FinishedAt": "0001-01-01T00:00:00Z"
+      },
+      "cgroup": {
+        "memory.peak": "353525760",
+        "memory.current": "350216192",
+        "memory.max": "536870912",
+        "memory.swap.max": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "cpu.max": "10000 100000",
+        "cpu.stat": "usage_usec 12456851\nuser_usec 11117649\nsystem_usec 1339201\nnice_usec 0\nnr_periods 1245\nnr_throttled 1245\nthrottled_usec 120634211\nnr_bursts 0\nburst_usec 0"
+      },
+      "peak_memory_mib": 337.1484375,
+      "peak_observation_boundary": "Only observed until the readiness deadline; completed-startup peak is unknown."
+    },
+    {
+      "stage": "runtime-step8-reference",
+      "app": "reporting_worker",
+      "runner": "gunicorn",
+      "image": "cop-ioc-verification:runtime-step8-reference",
+      "timeout_seconds": 120,
+      "memory_limit_bytes": 536870912,
+      "cpu_limit": 0.1,
+      "ready": true,
+      "readiness_seconds": 75.13785929197911,
+      "observed_seconds": 75.13794354198035,
+      "state": {
+        "Running": true,
+        "OOMKilled": false,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-10-08T11:18:57.395172888Z",
+        "FinishedAt": "0001-01-01T00:00:00Z"
+      },
+      "cgroup": {
+        "memory.peak": "311910400",
+        "memory.current": "308604928",
+        "memory.max": "536870912",
+        "memory.swap.max": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "cpu.max": "10000 100000",
+        "cpu.stat": "usage_usec 7637080\nuser_usec 6310834\nsystem_usec 1326246\nnice_usec 0\nnr_periods 763\nnr_throttled 763\nthrottled_usec 70176304\nnr_bursts 0\nburst_usec 0"
+      },
+      "peak_memory_mib": 297.4609375,
+      "peak_observation_boundary": "Readiness reached; later runtime peaks are not measured."
+    },
+    {
+      "stage": "runtime-step8-reference",
+      "app": "response_processor",
+      "runner": "gunicorn",
+      "image": "cop-ioc-verification:runtime-step8-reference",
+      "timeout_seconds": 120,
+      "memory_limit_bytes": 536870912,
+      "cpu_limit": 0.1,
+      "ready": true,
+      "readiness_seconds": 79.24675816693343,
+      "observed_seconds": 79.2468002079986,
+      "state": {
+        "Running": true,
+        "OOMKilled": false,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-10-08T11:20:21.047831426Z",
+        "FinishedAt": "0001-01-01T00:00:00Z"
+      },
+      "cgroup": {
+        "memory.peak": "298123264",
+        "memory.current": "294903808",
+        "memory.max": "536870912",
+        "memory.swap.max": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "cpu.max": "10000 100000",
+        "cpu.stat": "usage_usec 8029148\nuser_usec 6809763\nsystem_usec 1219384\nnice_usec 0\nnr_periods 803\nnr_throttled 802\nthrottled_usec 75447207\nnr_bursts 0\nburst_usec 0"
+      },
+      "peak_memory_mib": 284.3125,
+      "peak_observation_boundary": "Readiness reached; later runtime peaks are not measured."
+    }
+  ],
+  "extended_memory_observations": [
+    {
+      "stage": "runtime-step8-reference",
+      "app": "worker",
+      "runner": "gunicorn",
+      "image": "cop-ioc-verification:runtime-step8-reference",
+      "timeout_seconds": 600,
+      "memory_limit_bytes": 536870912,
+      "cpu_limit": 0.1,
+      "ready": true,
+      "purpose": "Extended memory observation only; not acceptance of the original 120-second readiness check.",
+      "readiness_seconds": 150.0866884579882,
+      "observed_seconds": 150.08683074999135,
+      "cgroup": {
+        "memory.peak": "376631296",
+        "memory.current": "372727808",
+        "memory.max": "536870912",
+        "memory.swap.max": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "cpu.max": "10000 100000",
+        "cpu.stat": "usage_usec 15107538\nuser_usec 13609199\nsystem_usec 1498339\nnice_usec 0\nnr_periods 1510\nnr_throttled 1510\nthrottled_usec 144758842\nnr_bursts 0\nburst_usec 0"
+      },
+      "peak_memory_mib": 359.18359375,
+      "measurement_boundary": "Extended memory-only observation through readiness; not a 120-second readiness acceptance run."
+    },
+    {
+      "stage": "runtime-step9-reference",
+      "app": "api",
+      "runner": "gunicorn",
+      "image": "cop-ioc-verification:runtime-step9-reference",
+      "timeout_seconds": 600,
+      "memory_limit_bytes": 536870912,
+      "cpu_limit": 0.1,
+      "ready": true,
+      "purpose": "Extended memory observation only; not acceptance of the original 120-second readiness check.",
+      "readiness_seconds": 83.71110541711096,
+      "observed_seconds": 83.71119216701481,
+      "cgroup": {
+        "memory.peak": "324042752",
+        "memory.current": "320888832",
+        "memory.max": "536870912",
+        "memory.swap.max": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "cpu.max": "10000 100000",
+        "cpu.stat": "usage_usec 8461403\nuser_usec 7184228\nsystem_usec 1277174\nnice_usec 0\nnr_periods 846\nnr_throttled 846\nthrottled_usec 79006781\nnr_bursts 0\nburst_usec 0"
+      },
+      "peak_memory_mib": 309.03125,
+      "measurement_boundary": "Extended memory-only observation through readiness; not a 120-second readiness acceptance run."
+    },
+    {
+      "stage": "runtime-step9-reference",
+      "app": "worker",
+      "runner": "gunicorn",
+      "image": "cop-ioc-verification:runtime-step9-reference",
+      "timeout_seconds": 600,
+      "memory_limit_bytes": 536870912,
+      "cpu_limit": 0.1,
+      "ready": true,
+      "purpose": "Extended memory observation only; not acceptance of the original 120-second readiness check.",
+      "readiness_seconds": 148.17627879197244,
+      "observed_seconds": 148.17639933305327,
+      "cgroup": {
+        "memory.peak": "379981824",
+        "memory.current": "376864768",
+        "memory.max": "536870912",
+        "memory.swap.max": "0",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "cpu.max": "10000 100000",
+        "cpu.stat": "usage_usec 14892003\nuser_usec 13668624\nsystem_usec 1223378\nnice_usec 0\nnr_periods 1491\nnr_throttled 1489\nthrottled_usec 140422034\nnr_bursts 0\nburst_usec 0"
+      },
+      "peak_memory_mib": 362.37890625,
+      "measurement_boundary": "Extended memory-only observation through readiness; not a 120-second readiness acceptance run."
+    }
+  ],
+  "final_reference_image": {
+    "tag": "cop-ioc-verification:runtime-step9-reference",
+    "image_id": "sha256:9a70dd873b7789a2c96f0334dc9ad1a0a4d9a487605419ed21573f66b8627995",
+    "os": "linux",
+    "architecture": "arm64",
+    "base": "Python 3.14.4 slim reference environment"
+  },
+  "final_wheel_sha256": {
+    "clean_ioc": "c72e04bd8dc929b2e3ffe0c5d86dff9deab67f75aef602f4e104f0ad4efcb8b3",
+    "bark_core": "e8290f94f4f0482d57633292b80d30fe87a327b4eef2d89e325129044d92e93c"
+  }
+}

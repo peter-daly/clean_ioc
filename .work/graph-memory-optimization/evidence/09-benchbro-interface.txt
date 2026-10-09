@@ -1,0 +1,54 @@
+usage: benchbro [-h] [--config CONFIG] [--case CASE] [--tag TAG]
+                [--repeats REPEATS] [--warmup WARMUP]
+                [--min-iterations MIN_ITERATIONS] [--adaptive | --fixed]
+                [--min-repeats MIN_REPEATS] [--min-time MIN_TIME]
+                [--max-time MAX_TIME] [--target-margin TARGET_MARGIN]
+                [--noise-threshold NOISE_THRESHOLD]
+                [--stabilization-delay STABILIZATION_DELAY]
+                [--isolation {in_process,process}]
+                [--cpu-affinity CPU[,CPU...]] [--timeout TIMEOUT]
+                [--profile PROFILER] [--profile-output PROFILE_OUTPUT]
+                [--output-json OUTPUT_JSON] [--output-csv OUTPUT_CSV]
+                [--output-md OUTPUT_MD] [--baseline NAME] [--new-baseline]
+                [--save-history] [--histogram] [--no-compare] [--ci]
+                [--allow-environment-mismatch]
+                [target]
+
+Run benchmarks (legacy target-first syntax is supported).
+
+positional arguments:
+  target                Module, Python file, or directory
+
+options:
+  -h, --help            show this help message and exit
+  --config CONFIG
+  --case CASE
+  --tag TAG
+  --repeats REPEATS
+  --warmup WARMUP
+  --min-iterations MIN_ITERATIONS
+  --adaptive
+  --fixed
+  --min-repeats MIN_REPEATS
+  --min-time MIN_TIME
+  --max-time MAX_TIME
+  --target-margin TARGET_MARGIN
+  --noise-threshold NOISE_THRESHOLD
+  --stabilization-delay STABILIZATION_DELAY
+  --isolation {in_process,process}
+  --cpu-affinity CPU[,CPU...]
+  --timeout TIMEOUT
+  --profile PROFILER
+  --profile-output PROFILE_OUTPUT
+  --output-json OUTPUT_JSON
+  --output-csv OUTPUT_CSV
+  --output-md OUTPUT_MD
+  --baseline NAME
+  --new-baseline
+  --save-history
+  --histogram
+  --no-compare
+  --ci
+  --allow-environment-mismatch
+
+Commands: run, list, compare, baseline, history, init, completion
