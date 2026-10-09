@@ -1,0 +1,700 @@
+{
+  "medians": {
+    "build_seconds": 7.630249624955468,
+    "prepared": {
+      "peak_rss_bytes": 289636352,
+      "rss_bytes": 289619968,
+      "traced_peak_bytes": 233556656,
+      "traced_retained_bytes": 196290300
+    },
+    "resolve_seconds": 0.07965258311014622,
+    "resolved": {
+      "peak_rss_bytes": 289636352,
+      "rss_bytes": 289636352,
+      "traced_peak_bytes": 233556656,
+      "traced_retained_bytes": 197467875
+    }
+  },
+  "repeats": 3,
+  "routes": 8,
+  "runs": [
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42598400,
+        "rss_bytes": 42254336
+      },
+      "build_seconds": 7.630249624955468,
+      "diagnostics": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 22670848,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "none",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 85077,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 286326784,
+        "rss_bytes": 286326784
+      },
+      "python": "3.14.4",
+      "repeat": 1,
+      "resolve_seconds": 0.08107320801354945,
+      "resolved": {
+        "peak_rss_bytes": 286326784,
+        "rss_bytes": 286326784
+      },
+      "routes": 8,
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42663936,
+        "rss_bytes": 42303488
+      },
+      "build_seconds": 63.26904895808548,
+      "diagnostics": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 22670848,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "tracemalloc",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 85224,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 439697408,
+        "rss_bytes": 439697408,
+        "traced_peak_bytes": 233557638,
+        "traced_retained_bytes": 196291219
+      },
+      "python": "3.14.4",
+      "repeat": 1,
+      "resolve_seconds": 0.11057241598609835,
+      "resolved": {
+        "peak_rss_bytes": 439697408,
+        "rss_bytes": 439697408,
+        "traced_peak_bytes": 233557638,
+        "traced_retained_bytes": 197468788
+      },
+      "routes": 8,
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42663936,
+        "rss_bytes": 42319872
+      },
+      "build_seconds": 7.595540332957171,
+      "diagnostics": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 22670848,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "none",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 86144,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 289636352,
+        "rss_bytes": 289619968
+      },
+      "python": "3.14.4",
+      "repeat": 2,
+      "resolve_seconds": 0.07965258311014622,
+      "resolved": {
+        "peak_rss_bytes": 289636352,
+        "rss_bytes": 289636352
+      },
+      "routes": 8,
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42762240,
+        "rss_bytes": 42418176
+      },
+      "build_seconds": 63.37318650004454,
+      "diagnostics": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 22670848,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "tracemalloc",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 86265,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 442155008,
+        "rss_bytes": 442155008,
+        "traced_peak_bytes": 233556656,
+        "traced_retained_bytes": 196290300
+      },
+      "python": "3.14.4",
+      "repeat": 2,
+      "resolve_seconds": 0.11548099992796779,
+      "resolved": {
+        "peak_rss_bytes": 442171392,
+        "rss_bytes": 442171392,
+        "traced_peak_bytes": 233556656,
+        "traced_retained_bytes": 197467875
+      },
+      "routes": 8,
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42565632,
+        "rss_bytes": 42205184
+      },
+      "build_seconds": 7.643960791057907,
+      "diagnostics": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 22670848,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "none",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 87185,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 290242560,
+        "rss_bytes": 290242560
+      },
+      "python": "3.14.4",
+      "repeat": 3,
+      "resolve_seconds": 0.07828829204663634,
+      "resolved": {
+        "peak_rss_bytes": 290258944,
+        "rss_bytes": 290258944
+      },
+      "routes": 8,
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42713088,
+        "rss_bytes": 42352640
+      },
+      "build_seconds": 63.401924334000796,
+      "diagnostics": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 22670848,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "tracemalloc",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 87306,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 440025088,
+        "rss_bytes": 440025088,
+        "traced_peak_bytes": 233556152,
+        "traced_retained_bytes": 196289806
+      },
+      "python": "3.14.4",
+      "repeat": 3,
+      "resolve_seconds": 0.10712179192341864,
+      "resolved": {
+        "peak_rss_bytes": 440041472,
+        "rss_bytes": 440041472,
+        "traced_peak_bytes": 233556152,
+        "traced_retained_bytes": 197467208
+      },
+      "routes": 8,
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    }
+  ]
+}

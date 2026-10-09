@@ -419,3 +419,55 @@ def test_clone_explanations_follow_growing_and_sibling_occurrence_mappings():
         assert context.remap(other_explanation, mapping).subject == "other graph"
         ordinary = graph.explain(target)
         assert context.remap(ordinary, mapping) is ordinary
+
+
+def test_compact_decorator_clones_match_eager_facts_and_flatten_remappings():
+    from dataclasses import replace
+
+    from clean_ioc.container import _ExplanationCloneContext
+    from clean_ioc.tooling import CompilationExplanation, DecisionOutcome, _RemappedDecoratorExplanation
+
+    builder = ContainerBuilder()
+    builder.register(Source)
+    builder.register(Target)
+    builder.register_decorator_template(
+        for_each=Source,
+        template=lambda info: DecoratorTemplate(
+            DerivedServices(Target), Wrapper, arguments={"source": select(cf.with_id(info.id))}
+        ),
+    )
+    with builder.build(diagnostics=True) as container:
+        graph = container.graph
+        target = _roots(graph, Target)[0]
+        source = _roots(graph, Source)[0]
+        original = graph.explain_decorators(target)
+        # Include an ordinary decision and a rejection with the same target;
+        # preserve every captured field while remapping only the occurrence.
+        original = replace(
+            original,
+            rejected=(
+                replace(original.selected[0], outcome=DecisionOutcome.rejected, reason_codes=("captured-rejection",)),
+                replace(original.selected[0], template=None),
+            ),
+        )
+        context = _ExplanationCloneContext()
+        mapping = {target.occurrence_id: source}
+        eager = context.remap(original, mapping)
+        compact = context.remap_decorators(original, mapping)
+        assert isinstance(compact, _RemappedDecoratorExplanation)
+        assert compact.source is original
+        assert compact.materialize() == eager
+        assert compact.materialize().to_dict() == eager.to_dict()
+        assert compact.materialize().to_text() == eager.to_text()
+        assert compact.materialize() is not compact.materialize()
+        assert context.remap_decorators(original, mapping) is compact
+        assert context.remap_decorators(compact, {}) is compact
+        nested = context.remap_decorators(compact, {source.occurrence_id: target})
+        assert isinstance(nested, _RemappedDecoratorExplanation)
+        assert nested.source is original
+        assert nested.materialize() == original
+        assert compact.materialize() == eager
+        multiple_targets = replace(original, rejected=graph.explain_decorators(source).rejected)
+        fallback = context.remap_decorators(multiple_targets, mapping)
+        assert isinstance(fallback, CompilationExplanation)
+        assert fallback == context.remap(multiple_targets, mapping)

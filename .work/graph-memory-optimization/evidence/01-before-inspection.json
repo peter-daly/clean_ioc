@@ -1,0 +1,191 @@
+{
+  "activations": {
+    "branch": 682,
+    "endpoint": 2,
+    "endpoint_decorator": 2,
+    "leaf": 704,
+    "policy": 2,
+    "route_dependency": 10,
+    "route_source": 10,
+    "state": 9,
+    "worker": 22,
+    "worker_decorator": 44
+  },
+  "before": {
+    "peak_rss_bytes": 43155456,
+    "rss_bytes": 42795008
+  },
+  "build_seconds": 0.2624950830359012,
+  "diagnostics": true,
+  "graph": {
+    "activation_kinds": {
+      "collection": 4,
+      "constructor": 2038,
+      "deferred": 32,
+      "supplied": 294
+    },
+    "decorator_objects": {
+      "outcomes": {
+        "rejected": 7898,
+        "selected": 54
+      },
+      "reason_codes": {
+        "decorator-filter-matched": 54,
+        "decorator-filter-rejected": 2,
+        "template-target-not-selected": 7896
+      },
+      "shallow_storage_bytes": {
+        "decision_tuples": 160432,
+        "decisions": 763392,
+        "explanations": 127232,
+        "template_facts": 1145088
+      },
+      "unique_objects": {
+        "decision_tuples": 2017,
+        "decisions": 7952,
+        "explanations": 1988,
+        "template_facts": 7952
+      }
+    },
+    "executable_helpers": {
+      "_CompiledDecorator": 36,
+      "_CompiledDependency": 240
+    },
+    "execution_step_kinds": {
+      "_ContextProviderStep": 14,
+      "_ManagedProviderStep": 14,
+      "_ProviderMapStep": 8,
+      "_ProviderStep": 18,
+      "_ScopedRegistrationStep": 25,
+      "_SingletonRegistrationStep": 34,
+      "_TransientRegistrationStep": 50,
+      "_ValueStep": 84
+    },
+    "metadata_entries": {
+      "census_definitions": 27,
+      "census_sources": 0,
+      "decorator_explanations": 1988,
+      "generic_explanations": 0,
+      "occurrence_explanations": 2216,
+      "parameter_explanations": 1180,
+      "root_candidates": 18
+    },
+    "physical_records": 2368,
+    "provider_view_contexts": 14,
+    "record_kinds": {
+      "decorator": 54,
+      "managed_provider": 14,
+      "provider": 18,
+      "provider_map": 4,
+      "registration": 1984,
+      "value": 294
+    },
+    "selected_registrations": 21,
+    "shallow_storage_bytes": {
+      "component_records": 606208,
+      "execution_steps": 22600,
+      "link_tuples": 77424,
+      "occurrence_integers": 66808,
+      "origin_indexes": 73808,
+      "record_index": 73808,
+      "registration_objects": 3192
+    },
+    "unique_execution_steps": 247,
+    "unique_origins": 21,
+    "unique_registration_objects": 19
+  },
+  "inspection": {
+    "before": {
+      "peak_rss_bytes": 51462144,
+      "rss_bytes": 51462144,
+      "traced_peak_bytes": 184815,
+      "traced_retained_bytes": 2456
+    },
+    "explanation_sample_size": 128,
+    "passes": [
+      {
+        "after_census": {
+          "peak_rss_bytes": 58146816,
+          "rss_bytes": 57098240,
+          "traced_peak_bytes": 4411393,
+          "traced_retained_bytes": 1252200
+        },
+        "after_explanations": {
+          "peak_rss_bytes": 51658752,
+          "rss_bytes": 51658752,
+          "traced_peak_bytes": 506583,
+          "traced_retained_bytes": 324224
+        },
+        "census_seconds": 0.13522550009656698,
+        "explain_seconds": 0.011713332962244749,
+        "pass": "first",
+        "sample_decisions": 512
+      },
+      {
+        "after_census": {
+          "peak_rss_bytes": 58146816,
+          "rss_bytes": 57376768,
+          "traced_peak_bytes": 4411393,
+          "traced_retained_bytes": 1253208
+        },
+        "after_explanations": {
+          "peak_rss_bytes": 58146816,
+          "rss_bytes": 57098240,
+          "traced_peak_bytes": 4411393,
+          "traced_retained_bytes": 1252872
+        },
+        "census_seconds": 0.08634470903780311,
+        "explain_seconds": 0.0013927079271525145,
+        "pass": "repeated",
+        "sample_decisions": 512
+      }
+    ]
+  },
+  "instrumentation": "none",
+  "lazy_activations": {
+    "endpoint": 2,
+    "endpoint_decorator": 2,
+    "route_dependency": 2,
+    "route_source": 2
+  },
+  "machine": "arm64",
+  "pid": 11714,
+  "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "prepared": {
+    "peak_rss_bytes": 50102272,
+    "rss_bytes": 50102272
+  },
+  "python": "3.14.4",
+  "resolve_seconds": 0.0025327919283881783,
+  "resolved": {
+    "peak_rss_bytes": 50102272,
+    "rss_bytes": 50102272
+  },
+  "routes": 2,
+  "source": {
+    "local_changes": " M .work/README.md\n M benchmarks/README.md\n M docs/graph-artifact-experiment.md\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? docs/graph-memory-fixture.md\n?? tests/test_graph_memory_fixture.py\n",
+    "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "ba99ef5c8354fd0a6a30d865e3398cc457da6ac6a6bffe86340f3384d230cd21",
+      "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+      "clean_ioc/container.py": "bec3656bc278e5dff775f453f428f451ff0db3f3eb1b141f076e4d031af43195",
+      "clean_ioc/selection_census.py": "bc2537527620e3a07b399282296fdf6158cdaccbee4e99d1bee46f9f9e115015",
+      "clean_ioc/tooling.py": "ffcb155b0e7787dc1015fec06f12d26fab5359e9aaf31a6b5959e265f0438446"
+    }
+  },
+  "template_calls": {
+    "generated_worker_to_endpoint_decorator": 2,
+    "generated_worker_to_source": 2,
+    "policy_to_worker_decorator": 2,
+    "source_to_generated_dependency": 2
+  },
+  "validated": {
+    "leaves": 704,
+    "managed_scopes": 8,
+    "ordinary_scopes": 1,
+    "payload_bytes": 90112,
+    "source_map_calls": 4,
+    "tree_objects": 1386,
+    "workers": 22
+  }
+}

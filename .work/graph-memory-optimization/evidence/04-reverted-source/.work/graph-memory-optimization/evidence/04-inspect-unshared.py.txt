@@ -1,0 +1,14 @@
+"""Fresh-process inspection reference, disabling only subtree sharing."""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+from unittest.mock import patch
+
+from benchmarks.graph_memory_evidence import measure
+
+with patch("clean_ioc._component_subtrees.share_subtrees", lambda records: None):
+    result = asyncio.run(measure(8, False, False, True))
+result["subtree_sharing_enabled"] = False
+Path(sys.argv[1]).write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")

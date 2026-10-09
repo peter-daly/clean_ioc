@@ -2,7 +2,20 @@
 
 The suite uses [BenchBro](https://github.com/peter-daly/benchbro) to measure repeat-level samples, report noise and confidence, and keep comparisons environment-aware.
 
+### Large graph memory fixture
+
+`graph_memory_evidence.py` measures a larger composition with registration templates
+in both dependency directions, decorator templates, all four provider forms, and
+sync/async provider maps. It checks exact bindings, lazy activation and lifetime
+identity, and reports retained graph storage alongside process memory. See the
+[workload and reproduction instructions](../docs/graph-memory-fixture.md).
+
 ### Compiled graph artifact experiment: not ready
+
+`graph_memory_artifact_evidence.py` repeats compilation/export/loading in separate
+processes for the richer template/provider/map fixture after graph-memory tasks
+01 and 02. The private codec includes only the additional shapes needed by this
+fixture. See the [retest record](../.work/graph-memory-optimization/artifact-retest.md).
 
 `graph_artifact_evidence.py` is an unfinished local experiment that **may be
 dropped**. It is not a supported feature or production-ready artifact format.
@@ -246,3 +259,34 @@ disposable environments for a candidate wheel; preserve the shared lock and envi
 Normal timing covers the actual `get_container` call after constructing Config.
 Treat wheel substitution as development evidence and perform released Linux readiness
 acceptance separately. See `docs/compiler-memory-evidence.md` for the recorded runs.
+
+### Decorator fact inspection
+
+The evidence runner reports identity-deduplicated retained decorator objects and
+logical decision counts separately. Use `--inspection` for first/repeated public
+explanation access (128 components) and, with `--diagnostics`, full selection census.
+These operations occur after measured build/resolution intervals.
+`--eager-decorator-facts` recreates the eager evidence representation solely inside
+the evidence process, for inspection comparisons. Save new results under
+`.work/graph-memory-optimization/evidence/` to preserve the original baseline.
+
+The task-03 [reachability audit](graph_reachability_audit.py) is an offline
+inspection utility, not a compiler pruning pass. It accounts for graph-qualified
+execution references, public/provider/managed/architecture/warmup roots,
+candidates, explanation sidecars, contextual views and explicitly supplied escaped
+callback components. Run it separately from other measurements:
+
+```sh
+.venv/bin/python -m benchmarks.graph_reachability_audit --routes 8 --output .cache/graph-reachability.json
+```
+
+Its conservative retained set is evidence, not a proof that sidecar-only records
+are individually necessary. The [task result](../.work/graph-memory-optimization/03-result.md)
+records why ordinary runtime-root reachability is insufficient to authorize
+pruning and measures the offline audit's temporary allocation cost.
+
+Task 04's subtree-sharing implementation was reverted on 2026-10-09: retained
+Python allocations fell, but process RSS increased and graph inspection slowed.
+The [task result](../.work/graph-memory-optimization/04-result.md) preserves those
+measurements; the [rollback record](../.work/graph-memory-optimization/04-rollback.md)
+documents the restored pre-task-04 runtime, measurement runner and artifact codec.

@@ -1,0 +1,136 @@
+"""Build-local sharing of already captured, disjoint immutable dependency trees."""
+
+from collections import Counter
+from types import MappingProxyType
+
+from .components import (
+    ComponentActivation,
+    ComponentKind,
+    _ComponentRecord,
+    _ComponentSubtreeContext,
+    _ComponentSubtreeRecord,
+)
+
+
+def share_subtrees(records: dict[int, _ComponentRecord | _ComponentSubtreeRecord]) -> None:
+    """Preserve every positive occurrence key, replacing only equivalent metadata.
+
+    No selection/activation code runs here. Origins and explanation sidecars stay
+    contextual. Captured scalar referents and ordered child selections must match
+    exactly. Ownership/decorated links, attached pipelines, provider views and
+    repeated/non-tree children are excluded. Source projections never nest.
+    """
+    shapes: dict[int, int] = {}
+    sizes: dict[int, int] = {}
+    keys: dict[tuple, int] = {}
+    active: set[int] = set()
+    # A unique captured ID cannot occur in two equivalent disjoint trees.
+    # Reject it before constructing scalar keys, and propagate rejection to
+    # enclosing trees. This avoids indexing unique contextual value evidence.
+    counts = Counter(id(record.id) for record in records.values())
+    repeated_ids = {identity for identity, count in counts.items() if count > 1}
+    counts.clear()
+
+    def finish(occurrence: int) -> None:
+        record = records.get(occurrence)
+        if not isinstance(record, _ComponentRecord):
+            shapes[occurrence] = 0
+            return
+        children = record.dependency_ids
+        if (
+            occurrence <= 0
+            or id(record.id) not in repeated_ids
+            or record.kind not in (ComponentKind.registration, ComponentKind.value)
+            or record.activation not in (ComponentActivation.constructor, ComponentActivation.supplied)
+            or record.owner_id is not None
+            or record.decorated_id is not None
+            or record.decorator_ids
+            or record.pre_configuration_ids
+            or len(set(children)) != len(children)
+            or any(shapes.get(child, 0) == 0 for child in children)
+            or any(records[child].parent_id != occurrence for child in children)
+        ):
+            shapes[occurrence] = 0
+            return
+        scalar = tuple(
+            id(getattr(record, name))
+            for name in (
+                "_definition",
+                "id",
+                "requires_async",
+                "manages_cleanup",
+                "cache_owner",
+                "cleanup_owner",
+                "ownership_reason",
+                "provider_mode",
+                "position",
+                "argument",
+            )
+        )
+        key = (scalar, tuple(shapes[child] for child in children))
+        if key not in keys:
+            keys[key] = len(keys) + 1
+        shapes[occurrence] = keys[key]
+        sizes[occurrence] = 1 + sum(sizes[child] for child in children)
+
+    # Iterative postorder avoids adding a recursion limit to frozen inspection
+    # graphs. Cycles remain concrete, as do their enclosing candidate trees.
+    for root in records:
+        pending = [(root, False)]
+        while pending:
+            occurrence, leaving = pending.pop()
+            if leaving:
+                if occurrence not in shapes:
+                    finish(occurrence)
+                active.discard(occurrence)
+            elif occurrence not in shapes:
+                if occurrence in active:
+                    shapes[occurrence] = 0
+                    continue
+                active.add(occurrence)
+                pending.append((occurrence, True))
+                record = records.get(occurrence)
+                if isinstance(record, _ComponentRecord):
+                    pending.extend((child, False) for child in reversed(record.dependency_ids))
+
+    groups: dict[int, list[int]] = {}
+    for occurrence, shape in shapes.items():
+        if shape and sizes[occurrence] >= 4:
+            groups.setdefault(shape, []).append(occurrence)
+    keys.clear()
+    repeated_ids.clear()
+    occupied: set[int] = set()
+
+    def nodes(root: int) -> list[int] | None:
+        result, pending = [], [root]
+        while pending:
+            occurrence = pending.pop()
+            record = records[occurrence]
+            if not isinstance(record, _ComponentRecord):
+                return None
+            result.append(occurrence)
+            pending.extend(reversed(record.dependency_ids))
+        return result
+
+    for group in sorted(groups.values(), key=lambda items: sizes[items[0]], reverse=True):
+        if len(group) < 2:
+            continue
+        source_nodes = None
+        for root in group:
+            if root in occupied:
+                continue
+            candidate = nodes(root)
+            if candidate is None or len(set(candidate)) != len(candidate) or occupied.intersection(candidate):
+                continue
+            if source_nodes is None:
+                source_nodes = candidate
+                occupied.update(candidate)
+                continue
+            remapping = dict(zip(source_nodes, candidate, strict=True))
+            context = _ComponentSubtreeContext(source_nodes[0], records[root].parent_id, MappingProxyType(remapping))
+            for source, target in remapping.items():
+                source_record = records[source]
+                if not isinstance(source_record, _ComponentRecord):
+                    raise RuntimeError("Subtree canonical source must be concrete")
+                records[target] = _ComponentSubtreeRecord(source_record, context, records[target]._generic_mapping)
+            occupied.update(candidate)

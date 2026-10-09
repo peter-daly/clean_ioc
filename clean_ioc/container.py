@@ -131,8 +131,10 @@ from .tooling import (
     ValidationContext,
     ValidationRule,
     _CandidateRecord,
+    _DecoratorExplanation,
     _DiagnosticNames,
     _issue_path_name,
+    _RemappedDecoratorExplanation,
     qualified_name,
 )
 from .type_aliases import TypeAliasNormalizationError, alias_label, is_new_type, normalize_type_alias
@@ -4871,7 +4873,7 @@ class _PlanSet:
     root_candidates: Mapping[Any, tuple[_CandidateRecord, ...]] = field(default_factory=dict)
     occurrence_explanations: Mapping[int, CompilationExplanation] = field(default_factory=dict)
     occurrence_origins: Mapping[int, DefinitionOrigin] = field(default_factory=dict)
-    decorator_explanations: Mapping[int, CompilationExplanation] = field(default_factory=dict)
+    decorator_explanations: Mapping[int, _DecoratorExplanation] = field(default_factory=dict)
     parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = field(default_factory=dict)
     generic_explanations: Mapping[int, GenericBindingExplanation] = field(default_factory=dict)
     occurrence_layers: Mapping[int, str] = field(default_factory=dict)
@@ -4903,7 +4905,7 @@ class _GraphExplanationSidecars:
     """Frozen explanation records indexed by their owning component graph."""
 
     occurrence: Mapping[int, CompilationExplanation]
-    decorators: Mapping[int, CompilationExplanation]
+    decorators: Mapping[int, _DecoratorExplanation]
     origins: Mapping[int, DefinitionOrigin]
     parameters: Mapping[int, Mapping[str, ParameterExplanation]]
     generics: Mapping[int, GenericBindingExplanation]
@@ -4916,6 +4918,7 @@ class _ExplanationCloneContext:
     def __init__(self) -> None:
         self.targets: dict[int, tuple[CompilationExplanation, tuple[int, ...]]] = {}
         self.remapped: dict[tuple[int, tuple[int, ...]], CompilationExplanation] = {}
+        self.decorator_remapped: dict[tuple[int, int, tuple[str, ...]], _RemappedDecoratorExplanation] = {}
 
     def remap(self, explanation: CompilationExplanation, mapping: Mapping[int, Component]) -> CompilationExplanation:
         identity = id(explanation)
@@ -4958,6 +4961,43 @@ class _ExplanationCloneContext:
         )
         self.remapped[key] = result
         return result
+
+    def remap_decorators(
+        self, explanation: _DecoratorExplanation, mapping: Mapping[int, Component]
+    ) -> _DecoratorExplanation:
+        if isinstance(explanation, _RemappedDecoratorExplanation):
+            source = explanation.source
+            current_target = explanation.target_occurrence_id
+        else:
+            source = explanation
+            identity = id(source)
+            captured = self.targets.get(identity)
+            if captured is None:
+                targets = tuple(
+                    sorted(
+                        {
+                            decision.template.target_occurrence_id
+                            for decision in (*source.selected, *source.rejected)
+                            if decision.template is not None
+                        }
+                    )
+                )
+                self.targets[identity] = source, targets
+            else:
+                _, targets = captured
+            # Other evidence can have several targets; retain its eager semantics.
+            if len(targets) != 1:
+                return self.remap(source, mapping)
+            current_target = targets[0]
+        target = mapping.get(current_target)
+        if target is None or target.occurrence_id == current_target:
+            return explanation
+        key = id(source), target.occurrence_id, explanation.path
+        cached = self.decorator_remapped.get(key)
+        if cached is None:
+            cached = _RemappedDecoratorExplanation(source, target.occurrence_id, explanation.path)
+            self.decorator_remapped[key] = cached
+        return cached
 
 
 def _graph_explanation_sidecars(plan: _PlanSet) -> _GraphExplanationSidecars:
@@ -5182,7 +5222,10 @@ class _Compiler:
         # collection providers, even when no rejected occurrence is allocated.
         self._early_rejected_root_services: set[Any] = set()
         self.occurrence_explanations: dict[int, CompilationExplanation] = {}
-        self.decorator_explanations: dict[int, CompilationExplanation] = {}
+        self.decorator_explanations: dict[int, _DecoratorExplanation] = {}
+        self._decorator_patterns: dict[
+            tuple[str, tuple[CandidateDecision, ...], tuple[CandidateDecision, ...]], CompilationExplanation
+        ] = {}
         self.parameter_explanations: dict[int, dict[str, ParameterExplanation]] = {}
         self.generic_explanations: dict[int, GenericBindingExplanation] = {}
         self._factory_pattern_bindings: dict[str, tuple[tuple[str, str], ...]] = {}
@@ -8628,7 +8671,17 @@ class _Compiler:
             else inherited_sidecars.decorators.get(source.occurrence_id)
         )
         if decorator_explanation is not None:
-            self.decorator_explanations[component.occurrence_id] = explanations.remap(decorator_explanation, mapping)
+            if self._diagnostics:
+                materialized = (
+                    decorator_explanation.materialize()
+                    if isinstance(decorator_explanation, _RemappedDecoratorExplanation)
+                    else decorator_explanation
+                )
+                self.decorator_explanations[component.occurrence_id] = explanations.remap(materialized, mapping)
+            else:
+                self.decorator_explanations[component.occurrence_id] = explanations.remap_decorators(
+                    decorator_explanation, mapping
+                )
         parameters = (
             None
             if not self._diagnostics
@@ -9714,6 +9767,35 @@ class _Compiler:
                     self.occurrence_explanations[item.component.occurrence_id] = explanation
         return tuple(items)
 
+    def _capture_decorator_pattern(self, explanation: CompilationExplanation) -> _DecoratorExplanation:
+        # Diagnostic history and census deduplicate by captured explanation
+        # identity. Keep that existing representation when diagnostics are on.
+        if self._diagnostics:
+            return explanation
+        targets = {
+            decision.template.target_occurrence_id
+            for decision in (*explanation.selected, *explanation.rejected)
+            if decision.template is not None
+        }
+        if len(targets) != 1:
+            return explanation
+
+        def normalize(decisions: tuple[CandidateDecision, ...]) -> tuple[CandidateDecision, ...]:
+            return tuple(
+                decision
+                if decision.template is None
+                else replace(decision, template=replace(decision.template, target_occurrence_id=0))
+                for decision in decisions
+            )
+
+        selected, rejected = normalize(explanation.selected), normalize(explanation.rejected)
+        key = explanation.subject, selected, rejected
+        pattern = self._decorator_patterns.get(key)
+        if pattern is None:
+            pattern = CompilationExplanation(explanation.subject, (), selected, rejected)
+            self._decorator_patterns[key] = pattern
+        return _RemappedDecoratorExplanation(pattern, next(iter(targets)), explanation.path)
+
     def _compile_decorators(
         self,
         registration: legacy._Registration,
@@ -9935,22 +10017,25 @@ class _Compiler:
                             )
                         preview_record = replace(
                             target_record,
+                            _definition=replace(
+                                target_record._definition,
+                                implementation=definition.decorator_type,
+                                implementation_type=normalize_implementation_type(
+                                    definition.decorator_type, core.service_type
+                                ),
+                                kind=ComponentKind.decorator,
+                                activation=_callable_activation(definition.decorator_type),
+                                name=definition.name,
+                                tags=definition.tags,
+                                boundary=definition.origin.boundary,
+                            ),
                             id=definition.id,
                             occurrence_id=-1,
-                            implementation=definition.decorator_type,
-                            implementation_type=normalize_implementation_type(
-                                definition.decorator_type, core.service_type
-                            ),
-                            kind=ComponentKind.decorator,
-                            activation=_callable_activation(definition.decorator_type),
-                            name=definition.name,
-                            tags=definition.tags,
                             position=None,
                             dependency_ids=(),
                             decorator_ids=(),
                             decorated_id=core.occurrence_id,
                             pre_configuration_ids=(),
-                            boundary=definition.origin.boundary,
                         )
                         preview_graph = _ComponentGraph()
                         records = cast(dict[int, _ComponentRecord], decorated_view._graph._records)
@@ -10111,7 +10196,7 @@ class _Compiler:
             if decisions:
                 if self._diagnostics:
                     self.decision_history.append(explanation)
-                self.decorator_explanations[core.occurrence_id] = explanation
+                self.decorator_explanations[core.occurrence_id] = self._capture_decorator_pattern(explanation)
             for item in items:
                 if self._diagnostics:
                     self.occurrence_explanations[item.component.occurrence_id] = explanation

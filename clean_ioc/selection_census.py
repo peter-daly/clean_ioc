@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Mapping
 from .tooling import DecisionOutcome, SourceLocation, qualified_name
 
 if TYPE_CHECKING:
-    from .tooling import CompilationExplanation, CompiledGraph
+    from .tooling import CompiledGraph, _DecoratorExplanation
 
 
 _EXAMPLE_LIMIT = 8
@@ -568,7 +568,7 @@ def selection_census(
 
 def _record_explanation(
     observations: list[tuple[str, SelectionUse, str | None]],
-    explanation: CompilationExplanation,
+    explanation: _DecoratorExplanation,
     path: str,
     relationship: str,
     phase: str,

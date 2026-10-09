@@ -156,3 +156,96 @@ def test_export_and_load_in_independent_processes(tmp_path):
     assert exported["resolved_graph"] == loaded["resolved_graph"]
     assert loaded["compilation_disabled"]
     assert loaded["activations"] == 512
+
+
+async def test_rich_graph_roundtrip_preserves_facts_sharing_and_provider_lifetimes(tmp_path, monkeypatch):
+    from benchmarks import graph_memory_fixture as rich
+    from benchmarks.graph_memory_evidence import census
+    from clean_ioc.components import Component
+
+    case = rich.build(2)
+    artifact = tmp_path / "rich.jsonl"
+    dump_graph(case.runtime, artifact)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Loading/inspection must not compile or rerun templates")
+
+    monkeypatch.setattr(ContainerBuilder, "build", forbidden)
+    monkeypatch.setattr(container._Compiler, "__init__", forbidden)
+    monkeypatch.setattr(_legacy, "_set_up_dependencies", forbidden)
+    monkeypatch.setattr(_legacy._Registration, "__init__", forbidden)
+    for name in ("dependency_for", "worker_for", "worker_decorator_for", "endpoint_decorator_for"):
+        monkeypatch.setattr(rich, name, forbidden)
+    held = None
+    loaded = load_graph(artifact)
+    with case.runtime, loaded:
+        assert not rich.ACTIVATIONS
+        original_counts, loaded_counts = census(case.runtime), census(loaded)
+        assert loaded_counts["physical_records"] == original_counts["physical_records"]
+        assert loaded_counts["unique_execution_steps"] == original_counts["unique_execution_steps"]
+        assert loaded_counts["decorator_objects"] == original_counts["decorator_objects"]
+        assert (
+            loaded_counts["component_metadata"]["shared_definition_objects"]
+            == original_counts["component_metadata"]["shared_definition_objects"]
+        )
+        assert loaded.graph.manifest(all_roots=True).to_dict() == case.runtime.graph.manifest(all_roots=True).to_dict()
+        for occurrence, original in case.runtime._plan.decorator_explanations.items():
+            restored = loaded._plan.decorator_explanations[occurrence]
+            assert (restored.subject, restored.path, restored.selected, restored.rejected) == (
+                original.subject,
+                original.path,
+                original.selected,
+                original.rejected,
+            )
+        for visit in case.runtime.graph.walk():
+            component = visit.component
+            if component.kind.value != "registration":
+                continue
+            expected = case.runtime.graph.explain_decorators(component)
+            restored = loaded.graph.explain_decorators(Component(loaded._plan.graph, component.occurrence_id))
+            assert restored.selected == expected.selected
+            assert restored.rejected == expected.rejected
+        restored_case = rich.Fixture(loaded, case.source_ids, case.template_ids, case.callbacks_after_build)
+        try:
+            held = await rich.resolve_workload(restored_case)
+            assert rich.validate(restored_case, held)["workers"] == 22
+        finally:
+            if held is not None:
+                await held.scope.__aexit__(None, None, None)
+
+
+def test_rich_export_and_load_in_independent_processes(tmp_path):
+    results = []
+    for mode in ("export", "load"):
+        command = [
+            sys.executable,
+            "-m",
+            "benchmarks.graph_memory_artifact_evidence",
+            mode,
+            "--routes",
+            "2",
+            "--artifact",
+            str(tmp_path / "rich.jsonl"),
+        ]
+        results.append(
+            json.loads(subprocess.check_output(command, cwd=Path(__file__).resolve().parents[1], text=True))  # noqa: S603
+        )
+    exported, loaded = results
+    assert exported["pid"] != loaded["pid"]
+    assert exported["artifact_sha256"] == loaded["artifact_sha256"]
+    assert exported["graph_fingerprint"] == loaded["graph_fingerprint"]
+    assert exported["validated"] == loaded["validated"]
+    assert loaded["compilation_disabled"]
+    assert loaded["template_calls"] == {}
+    assert exported["template_calls"]["source_to_generated_dependency"] == 2
+    assert loaded["activations"]["worker"] == 22
+
+
+def test_codec_rejects_arbitrary_predicate_closures(tmp_path):
+    from benchmarks.graph_artifact import _Writer
+    from clean_ioc import component_filters as cf
+
+    with (tmp_path / "unsupported.jsonl").open("w") as stream:
+        writer = _Writer(stream)
+        with pytest.raises(ValueError, match="with_id/with_name"):
+            writer.ref(cf.create_filter(lambda component: component.name == "x"))

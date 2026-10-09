@@ -45,6 +45,18 @@ allowances for matrix variants. Sol High implemented and a separate Sol High age
 CI, Python 3.11–3.14, executable docs and strict documentation checks pass. Measurements establish exact work limits;
 machine noise prevents a reliable small overhead estimate. Runtime execution gains no budget work.
 
+## Graph memory optimization
+
+The separate [graph memory optimization plan](graph-memory-optimization/README.md),
+created on 2026-10-08, tracks four completed experiments: compact decorator-selection
+facts, shared component definitions, discarded-record pruning, and contextual
+subtree sharing. Tasks 01 and 02 retain scoped implementations; task 04 was
+reverted at the maintainer's request on 2026-10-09 because process RSS increased;
+its measurements are preserved. Task 03
+declines production pruning. Task 04 ran as GPT-6.1 Sol at medium reasoning.
+See that plan for task status,
+baseline evidence and acceptance criteria.
+
 ## Work items
 
 | ID | Item | Priority | Prerequisites |

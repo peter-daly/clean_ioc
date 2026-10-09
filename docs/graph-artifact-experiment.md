@@ -2,12 +2,17 @@
 
 **Status: unfinished experiment, not ready for production; may be dropped.**
 
-Retained as a local proof of concept and benchmark only. The measured saving of
-about 0.62 seconds, similar retained memory, and higher startup peak memory do not
-currently justify expanding this into a supported feature. There is no commitment
-to shipping an artifact-loading API or maintaining this artifact format. Revisit
-only if further evidence demonstrates a meaningful benefit on a representative
-application workload.
+Retained as a local proof of concept and benchmark only. The initial constructor-only
+experiment saved about 0.62 seconds, with similar retained memory and higher startup
+peak memory. A subsequent retest after graph-memory tasks 01 and 02 includes the
+richer template/provider workload; see `.work/graph-memory-optimization/artifact-retest.md`
+in the repository. There is no commitment to shipping an artifact-loading API or
+maintaining this artifact format.
+
+For the subsequent memory investigation with decorator/registration templates,
+providers and maps, see the [richer graph fixture](graph-memory-fixture.md).
+The historical measurements below remain specific to the original constructor-only
+fixture before those optimizations.
 
 This prototype exports an unresolved Clean IoC compiled plan, then loads it into a
 real `Container` in a fresh Python process. It lives under `benchmarks/`; it adds
@@ -136,10 +141,31 @@ referenced modules runs normal Python import code. The artifact and these checks
 are not a security boundary or a complete transitive dependency fingerprint.
 
 The first supported subset is constructor registrations with the four ordinary
-lifetimes. Instance registrations and slots are excluded. So are providers,
-warmups, boundaries, decorators, pre-configurations, generic aliases, and arbitrary callbacks
-or closures. Unsupported values fail export rather than falling back to rebuilding
-a registry. Do not generalize the prototype's success to those features yet.
+lifetimes. The schema-5 local retest extends this to the richer fixture's compiled
+decorator pipelines, captured template decisions, literal value steps, four provider
+forms, provider-map steps, provider view contexts and shared component definitions.
+Provider and `Mapping` type aliases reconnect through their imported origins and
+arguments. The two built-in `with_id`/`with_name` predicates used by retained
+metadata have explicit data encodings; arbitrary closures remain unsupported.
+Template factories do not run on load, and no executable closure or bytecode is saved.
+
+Instance registrations, slots, warmups, boundaries, pre-configurations, arbitrary
+factories/callbacks and general generic-alias support remain outside this experiment.
+Unsupported values fail export rather than falling back to rebuilding a registry.
+The extension is scoped to these local fixtures, not a general persistence contract.
+
+The richer fixture can be compiled/exported and loaded in separate processes:
+
+```sh
+.venv/bin/python -m benchmarks.graph_memory_artifact_evidence export --routes 8 --artifact .cache/graph-artifact/rich-graph.jsonl
+.venv/bin/python -m benchmarks.graph_memory_artifact_evidence load --routes 8 --artifact .cache/graph-artifact/rich-graph.jsonl
+```
+
+Its `compare` mode performs three repetitions of compile/export/load in fresh
+processes, then repeats separately with allocation tracing. It verifies matching
+artifact hashes for every export/load pair, graph fingerprints, metadata-sharing
+counts and the complete provider/map resolution workload. Compilation and dependency
+inspection are disabled during loading; template callback counts must remain zero.
 
 ## What is measured
 
@@ -175,3 +201,9 @@ that raise if called. The evidence runner applies the same guard to its load pat
 
 Repository validation: all 2,043 tests pass, along with Ruff lint/format checks,
 type checking, documentation example validation, and existing benchmark discovery.
+
+Task 04 advances the private codec to schema 6 for frozen contextual subtree
+records and their explicit positive-ID remappings. This is a representation
+adaptation, with the same experimental exclusions and source compatibility
+checks. The earlier schema-5 retest evidence remains historical evidence of the
+pre-task-04 representation.

@@ -89,9 +89,9 @@ class ComponentActivation(str, Enum):
 
 
 @dataclass(frozen=True, slots=True)
-class _ComponentRecord:
-    id: str
-    occurrence_id: int
+class _ComponentDefinition:
+    """Captured referents shared only by identity; never runtime products or owners."""
+
     service_type: Any
     implementation: Any
     implementation_type: type
@@ -101,6 +101,15 @@ class _ComponentRecord:
     build_args: Mapping[str, Any]
     kind: ComponentKind
     activation: ComponentActivation
+    boundary: str | None
+    declared_service_type: Any | None
+
+
+@dataclass(frozen=True, slots=True)
+class _ComponentRecord:
+    _definition: _ComponentDefinition
+    id: str
+    occurrence_id: int
     requires_async: bool
     manages_cleanup: bool
     cache_owner: RuntimeOwnerKind
@@ -115,9 +124,51 @@ class _ComponentRecord:
     decorator_ids: tuple[int, ...]
     decorated_id: int | None
     pre_configuration_ids: tuple[int, ...]
-    boundary: str | None
-    declared_service_type: Any | None
     _generic_mapping: GenericTypeMap | None = field(default=None, compare=False, repr=False)
+
+    @property
+    def service_type(self) -> Any:
+        return self._definition.service_type
+
+    @property
+    def implementation(self) -> Any:
+        return self._definition.implementation
+
+    @property
+    def implementation_type(self) -> type:
+        return self._definition.implementation_type
+
+    @property
+    def lifespan(self) -> Lifespan:
+        return self._definition.lifespan
+
+    @property
+    def name(self) -> str | None:
+        return self._definition.name
+
+    @property
+    def tags(self) -> tuple[Tag, ...]:
+        return self._definition.tags
+
+    @property
+    def build_args(self) -> Mapping[str, Any]:
+        return self._definition.build_args
+
+    @property
+    def kind(self) -> ComponentKind:
+        return self._definition.kind
+
+    @property
+    def activation(self) -> ComponentActivation:
+        return self._definition.activation
+
+    @property
+    def boundary(self) -> str | None:
+        return self._definition.boundary
+
+    @property
+    def declared_service_type(self) -> Any | None:
+        return self._definition.declared_service_type
 
     @property
     def generic_mapping(self) -> GenericTypeMap:
@@ -158,19 +209,45 @@ class _ComponentDraft:
     boundary: str | None = None
     declared_service_type: Any | None = None
 
-    def freeze(self) -> _ComponentRecord:
+    def freeze(self, definitions: dict[tuple[Any, ...], _ComponentDefinition] | None = None) -> _ComponentRecord:
+        # All key members are built-in integers/tuples. Identity equivalence is
+        # intentionally stricter than equality, including specialized types and
+        # build-argument mappings. Retained definitions keep referents alive,
+        # preventing identity reuse while the build-local index exists.
+        key = (
+            id(self.service_type),
+            id(self.implementation),
+            id(self.implementation_type),
+            id(self.lifespan),
+            id(self.name),
+            tuple(id(tag) for tag in self.tags),
+            id(self.build_args),
+            id(self.kind),
+            id(self.activation),
+            id(self.boundary),
+            id(self.declared_service_type),
+        )
+        definition = None if definitions is None else definitions.get(key)
+        if definition is None:
+            definition = _ComponentDefinition(
+                service_type=self.service_type,
+                implementation=self.implementation,
+                implementation_type=self.implementation_type,
+                lifespan=self.lifespan,
+                name=self.name,
+                tags=self.tags,
+                build_args=self.build_args,
+                kind=self.kind,
+                activation=self.activation,
+                boundary=self.boundary,
+                declared_service_type=self.declared_service_type,
+            )
+            if definitions is not None:
+                definitions[key] = definition
         return _ComponentRecord(
+            _definition=definition,
             id=self.id,
             occurrence_id=self.occurrence_id,
-            service_type=self.service_type,
-            implementation=self.implementation,
-            implementation_type=self.implementation_type,
-            lifespan=self.lifespan,
-            name=self.name,
-            tags=self.tags,
-            build_args=self.build_args,
-            kind=self.kind,
-            activation=self.activation,
             requires_async=self.requires_async,
             manages_cleanup=self.manages_cleanup,
             cache_owner=self.cache_owner,
@@ -185,8 +262,6 @@ class _ComponentDraft:
             decorator_ids=self.decorator_ids,
             decorated_id=self.decorated_id,
             pre_configuration_ids=self.pre_configuration_ids,
-            boundary=self.boundary,
-            declared_service_type=self.declared_service_type,
         )
 
 
@@ -250,13 +325,16 @@ class _ComponentGraph:
 
     def freeze(self) -> None:
         records: dict[int, _ComponentRecord] = {}
+        definitions: dict[tuple[Any, ...], _ComponentDefinition] = {}
         # Release each draft as its frozen replacement is created.
         for key in tuple(self._drafts):
-            records[key] = self._drafts.pop(key).freeze()
+            records[key] = self._drafts.pop(key).freeze(definitions)
         # Popping entries leaves the draft dictionary's allocated table behind.
         # Frozen graphs need none of that capacity; clear the now-empty table.
         self._drafts.clear()
         self._records = records
+        # Only records retain definitions; release interning keys after freezing.
+        definitions.clear()
 
 
 @dataclass(frozen=True, slots=True)

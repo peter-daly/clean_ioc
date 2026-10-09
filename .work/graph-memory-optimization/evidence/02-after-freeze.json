@@ -1,0 +1,90 @@
+{
+  "source": {
+    "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+    "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? docs/graph-memory-fixture.md\n?? tests/test_graph_memory_fixture.py\n?? tests/test_shared_component_definitions.py\n",
+    "source_sha256": {
+      "clean_ioc/components.py": "1778cf2598e54d2f87f9dd271535e2f586893dec370ef3c2066f1d156696ce0d",
+      "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+      "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+      "benchmarks/graph_memory_evidence.py": "c8bc3c7b631241f256b0325d925bc21c4a80595d9e5b47460404af3c6cf5e6fa"
+    }
+  },
+  "routes": 2,
+  "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+  "samples": [
+    {
+      "records": 1,
+      "seconds": 5.587493069469929e-05,
+      "before_bytes": 240572,
+      "after_bytes": 241204,
+      "freeze_peak_bytes": 242628,
+      "earlier_build_peak_bytes": 251716
+    },
+    {
+      "records": 1,
+      "seconds": 3.374996595084667e-05,
+      "before_bytes": 282420,
+      "after_bytes": 282468,
+      "freeze_peak_bytes": 283892,
+      "earlier_build_peak_bytes": 296354
+    },
+    {
+      "records": 1,
+      "seconds": 3.075005952268839e-05,
+      "before_bytes": 300700,
+      "after_bytes": 300748,
+      "freeze_peak_bytes": 302172,
+      "earlier_build_peak_bytes": 332130
+    },
+    {
+      "records": 1,
+      "seconds": 3.062502946704626e-05,
+      "before_bytes": 320964,
+      "after_bytes": 321012,
+      "freeze_peak_bytes": 322436,
+      "earlier_build_peak_bytes": 352874
+    },
+    {
+      "records": 2,
+      "seconds": 5.9542013332247734e-05,
+      "before_bytes": 334682,
+      "after_bytes": 335162,
+      "freeze_peak_bytes": 337066,
+      "earlier_build_peak_bytes": 372058
+    },
+    {
+      "records": 2,
+      "seconds": 5.5875047110021114e-05,
+      "before_bytes": 339121,
+      "after_bytes": 339465,
+      "freeze_peak_bytes": 341369,
+      "earlier_build_peak_bytes": 341787
+    },
+    {
+      "records": 77,
+      "seconds": 0.001510416972450912,
+      "before_bytes": 391455,
+      "after_bytes": 389215,
+      "freeze_peak_bytes": 400863,
+      "earlier_build_peak_bytes": 398551
+    },
+    {
+      "records": 77,
+      "seconds": 0.00146100006531924,
+      "before_bytes": 417873,
+      "after_bytes": 414137,
+      "freeze_peak_bytes": 425785,
+      "earlier_build_peak_bytes": 425185
+    },
+    {
+      "records": 2368,
+      "seconds": 0.04722275002859533,
+      "before_bytes": 2401629,
+      "after_bytes": 2240693,
+      "freeze_peak_bytes": 2447853,
+      "earlier_build_peak_bytes": 2542117
+    }
+  ]
+}

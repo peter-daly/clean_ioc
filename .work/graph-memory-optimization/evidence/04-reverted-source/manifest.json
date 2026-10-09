@@ -1,0 +1,38 @@
+{
+  "clean_ioc/components.py": {
+    "sha256": "81a54da74f53539dcbe33de050737bb6ff72b21c1675ff1bd137e3a387d5e88f",
+    "archive": ".work/graph-memory-optimization/evidence/04-reverted-source/clean_ioc/components.py.txt"
+  },
+  "clean_ioc/_component_subtrees.py": {
+    "sha256": "4e083e821d84a6ac37cfa62e7f6a3c8bd244ce35e0d412c4dc8fc49a72eb1346",
+    "archive": ".work/graph-memory-optimization/evidence/04-reverted-source/clean_ioc/_component_subtrees.py.txt"
+  },
+  "benchmarks/graph_artifact.py": {
+    "sha256": "17a7bb9a5f741f6f8878494feffa9802603ce63dbcfbfa6ebed5d763a1dad315",
+    "archive": ".work/graph-memory-optimization/evidence/04-reverted-source/benchmarks/graph_artifact.py.txt"
+  },
+  "benchmarks/graph_memory_evidence.py": {
+    "sha256": "6a4b40b37a61aba503382526c99b244e56278532774b7d6ddce59a4d155894a5",
+    "archive": ".work/graph-memory-optimization/evidence/04-reverted-source/benchmarks/graph_memory_evidence.py.txt"
+  },
+  "benchmarks/graph_subtree_experiment.py": {
+    "sha256": "305eba56e96db265b3171d1495cfed3d9aa018035fb27263cf198d73e9cbc700",
+    "archive": ".work/graph-memory-optimization/evidence/04-reverted-source/benchmarks/graph_subtree_experiment.py.txt"
+  },
+  "tests/test_contextual_subtrees.py": {
+    "sha256": "3a7ebcb677b17a36b204b03c7aca30945cd8ce1fbfed09d4de1305438044b7d8",
+    "archive": ".work/graph-memory-optimization/evidence/04-reverted-source/tests/test_contextual_subtrees.py.txt"
+  },
+  ".work/graph-memory-optimization/evidence/04-audit-only.py": {
+    "sha256": "401704ccd1b9529a5be4072d11457aca77dd8bde09ec2d11b3f98e1b0b144261",
+    "archive": ".work/graph-memory-optimization/evidence/04-reverted-source/.work/graph-memory-optimization/evidence/04-audit-only.py.txt"
+  },
+  ".work/graph-memory-optimization/evidence/04-generic-inspection.py": {
+    "sha256": "8861c6a37eccd842e7ccb922de74d0c0c0254ecda476f487c50b9fc0ab096e66",
+    "archive": ".work/graph-memory-optimization/evidence/04-reverted-source/.work/graph-memory-optimization/evidence/04-generic-inspection.py.txt"
+  },
+  ".work/graph-memory-optimization/evidence/04-inspect-unshared.py": {
+    "sha256": "c1052db56f78eeeeec52f3b40cc5d4686346291e1147f6d1e2cfaa7758e65eb4",
+    "archive": ".work/graph-memory-optimization/evidence/04-reverted-source/.work/graph-memory-optimization/evidence/04-inspect-unshared.py.txt"
+  }
+}

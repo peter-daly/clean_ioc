@@ -1,4 +1,4 @@
-"""Experimental, source-coupled persistence of a constructor-only compiled plan.
+"""Experimental, source-coupled persistence for the local memory fixtures.
 
 This is deliberately outside the public library. Artifacts are trusted local build
 outputs: loading imports their referenced Python modules. No live container,
@@ -11,17 +11,18 @@ import hashlib
 import importlib
 import json
 import sys
+from collections.abc import Mapping
 from enum import Enum
 from pathlib import Path
-from types import FunctionType, MappingProxyType
-from typing import Any, TextIO
+from types import FunctionType, GenericAlias, MappingProxyType
+from typing import Any, TextIO, get_args, get_origin
 
-from clean_ioc import Container, components, container, metadata, tooling
+from clean_ioc import Container, arguments, component_filters, components, container, metadata, providers, tooling
 from clean_ioc import _decorator_templates as templates
 from clean_ioc import _legacy as legacy
 from clean_ioc import _legacy_configuration as configuration
 
-SCHEMA = 3
+SCHEMA = 5
 _REPO = Path(__file__).resolve().parents[1]
 _DATACLASSES = (
     container._PlanSet,
@@ -32,17 +33,33 @@ _DATACLASSES = (
     container._PerResolutionRegistrationStep,
     container._ScopedRegistrationStep,
     container._SingletonRegistrationStep,
+    container._ValueStep,
+    container._ProviderStep,
+    container._ContextProviderStep,
+    container._ManagedProviderStep,
+    container._ProviderMapStep,
+    container._CompiledDecorator,
+    container._DecoratorActivation,
+    container._DecoratorDefinition,
     container._OccurrenceLayers,
     components._ComponentRecord,
+    components._ComponentDefinition,
+    components._ComponentViewContext,
     tooling.CompiledGraph,
     tooling.GraphRoot,
     tooling.DefinitionOrigin,
     tooling.SourceLocation,
     tooling._CandidateRecord,
     tooling.CandidateDecision,
+    tooling.CompilationExplanation,
+    tooling._RemappedDecoratorExplanation,
+    tooling.TemplateDecision,
+    tooling.TemplateSourceDecision,
     tooling.BuildReport,
     templates.RegistrationInfo,
     configuration.DependencySettings,
+    arguments._FixedArgument,
+    arguments._SelectArgument,
     metadata.Tag,
 )
 _SLOTTED = (components._ComponentGraph, components.Component, legacy._Registration, legacy.Dependency)
@@ -56,6 +73,36 @@ _SPECIAL_SYMBOLS = {
     id(configuration.EMPTY): ("clean_ioc._legacy_configuration", "EMPTY"),
     id(configuration.UNKNOWN): ("clean_ioc._legacy_configuration", "UNKNOWN"),
 }
+_ALIAS_ORIGINS = (
+    providers.Provider,
+    providers.AsyncProvider,
+    providers.ManagedProvider,
+    providers.AsyncManagedProvider,
+    Mapping,
+)
+_FILTER_FACTORIES = {"with_id": component_filters.with_id, "with_name": component_filters.with_name}
+
+
+def _filter_spec(value):
+    """Recognize only two unchanged built-in predicates, never arbitrary closures."""
+    function = value.func
+    if not isinstance(function, FunctionType):
+        raise ValueError("Unsupported predicate callable in this experiment")
+    for name, factory in _FILTER_FACTORIES.items():
+        prototype = factory("")
+        if function.__code__ is not prototype.func.__code__ or not function.__closure__:
+            continue
+        if len(function.__closure__) != 1:
+            continue
+        argument = function.__closure__[0].cell_contents
+        if type(argument) not in (str, type(None)):
+            continue
+        reference = factory(argument)
+        fields = {key: item for key, item in vars(value).items() if key != "func"}
+        expected = {key: item for key, item in vars(reference).items() if key != "func"}
+        if fields == expected and function.__defaults__ == reference.func.__defaults__:
+            return name, argument
+    raise ValueError("Only unchanged with_id/with_name predicates are supported by this experiment")
 
 
 def _source_hash(module) -> str | None:
@@ -133,6 +180,12 @@ class _Writer:
             return "enum", [self.symbol(cls, cls.__module__, cls.__qualname__), value.name]
         if isinstance(value, (type, FunctionType)):
             return "symbol", self.symbol(value, value.__module__, value.__qualname__)
+        origin = get_origin(value)
+        if origin is not None and any(origin is allowed for allowed in _ALIAS_ORIGINS):
+            return "alias", [self.ref(origin), self.ref(get_args(value)), type(value) is GenericAlias]
+        if cls is component_filters._StructuredPredicate:
+            name, argument = _filter_spec(value)
+            return "filter", [name, self.ref(argument)]
         if cls in _FIELDS:
             if isinstance(value, legacy._Registration) and value.is_instance:
                 raise ValueError("Instance registrations are outside this experiment")
@@ -187,6 +240,16 @@ class _Reader:
             return self.symbol(payload)
         if kind == "enum":
             return self.symbol(payload[0])[payload[1]]
+        if kind == "alias":
+            origin, args = self.deref(payload[0]), self.deref(payload[1])
+            if not any(origin is allowed for allowed in _ALIAS_ORIGINS):
+                raise ValueError("Unsupported artifact alias")
+            return GenericAlias(origin, args) if payload[2] else origin[args[0] if len(args) == 1 else args]
+        if kind == "filter":
+            factory = _FILTER_FACTORIES.get(payload[0])
+            if factory is None:
+                raise ValueError("Unsupported artifact filter")
+            return factory(self.deref(payload[1]))
         if kind == "record":
             name, values = payload
             cls = _CLASSES.get(name)
@@ -212,15 +275,20 @@ def _check_plan(plan):
         raise ValueError("Artifact did not contain a compiled plan")
     if plan._blueprint is not None or plan.diagnostics or plan.slots or plan.validation_rules:
         raise ValueError("Use diagnostics=False, allow_scope_builders=False, with no slots or validation callbacks")
-    if plan.provider_roots or plan.managed_provider_roots or plan.warmup_infos or plan.graph._views:
-        raise ValueError("Providers and warmups are outside this experiment; build with provider_roots=()")
+    if plan.warmup_infos:
+        raise ValueError("Warmups are outside this experiment")
     if plan.graph._records is None or plan.graph._drafts:
         raise ValueError("The component graph must be frozen")
     for record in plan.graph._records.values():
         if record.boundary is not None:
             raise ValueError("Boundaries are outside this experiment")
-        if record.activation != components.ComponentActivation.constructor:
-            raise ValueError("Only constructor registrations are supported; instances and factories are excluded")
+        if record.activation not in (
+            components.ComponentActivation.constructor,
+            components.ComponentActivation.supplied,
+            components.ComponentActivation.collection,
+            components.ComponentActivation.deferred,
+        ):
+            raise ValueError("Unsupported activation; instances and factories are excluded")
 
 
 def dump_graph(runtime: Container, path: Path) -> dict[str, int]:

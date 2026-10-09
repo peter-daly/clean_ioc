@@ -328,6 +328,50 @@ class CompilationExplanation:
 
 
 @dataclass(frozen=True, slots=True)
+class _RemappedDecoratorExplanation:
+    """A captured decision pattern and its clone's sole template target.
+
+    Original facts remain immutable and strongly held. Public views are rebuilt
+    without callbacks or retained caches; each template field other than the
+    occurrence identity is copied verbatim.
+    """
+
+    source: CompilationExplanation
+    target_occurrence_id: int
+    captured_path: tuple[str, ...] = ()
+
+    @property
+    def subject(self) -> str:
+        return self.source.subject
+
+    @property
+    def path(self) -> tuple[str, ...]:
+        return self.captured_path
+
+    def _decisions(self, decisions: tuple[CandidateDecision, ...]) -> tuple[CandidateDecision, ...]:
+        return tuple(
+            decision
+            if decision.template is None
+            else replace(decision, template=replace(decision.template, target_occurrence_id=self.target_occurrence_id))
+            for decision in decisions
+        )
+
+    @property
+    def selected(self) -> tuple[CandidateDecision, ...]:
+        return self._decisions(self.source.selected)
+
+    @property
+    def rejected(self) -> tuple[CandidateDecision, ...]:
+        return self._decisions(self.source.rejected)
+
+    def materialize(self) -> CompilationExplanation:
+        return replace(self.source, path=self.path, selected=self.selected, rejected=self.rejected)
+
+
+_DecoratorExplanation: TypeAlias = CompilationExplanation | _RemappedDecoratorExplanation
+
+
+@dataclass(frozen=True, slots=True)
 class ParameterExplanation:
     """Frozen, redacted account of one compiled callable parameter."""
 
@@ -1861,7 +1905,7 @@ class CompiledGraph:
         default_factory=lambda: MappingProxyType({}), compare=False, repr=False
     )
     _template_source_decisions: tuple[TemplateSourceDecision, ...] = field(default=(), compare=False, repr=False)
-    _decorator_explanations: Mapping[int, CompilationExplanation] = field(
+    _decorator_explanations: Mapping[int, _DecoratorExplanation] = field(
         default_factory=lambda: MappingProxyType({}), compare=False, repr=False
     )
     _census_definitions: tuple[Any, ...] = field(default=(), compare=False, repr=False)
@@ -2270,6 +2314,8 @@ class CompiledGraph:
             return None
         context, source = view
         value = records.get(source)
+        if isinstance(value, _RemappedDecoratorExplanation):
+            return replace(value, target_occurrence_id=context.remap(value.target_occurrence_id))
         if isinstance(value, CompilationExplanation):
 
             def decision(item):
@@ -2335,6 +2381,8 @@ class CompiledGraph:
         explanation = self._component_evidence(self._decorator_explanations, component)
         if explanation is None:
             raise ValueError("explain-decorators-not-recorded: no decorator decision exists for this occurrence")
+        if isinstance(explanation, _RemappedDecoratorExplanation):
+            explanation = explanation.materialize()
         if not self.diagnostics_enabled:
             return _CapturedSelectionFacts(explanation.subject, (), explanation.selected, explanation.rejected)
         return replace(explanation, path=path)
