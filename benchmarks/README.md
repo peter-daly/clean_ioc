@@ -290,3 +290,8 @@ Python allocations fell, but process RSS increased and graph inspection slowed.
 The [task result](../.work/graph-memory-optimization/04-result.md) preserves those
 measurements; the [rollback record](../.work/graph-memory-optimization/04-rollback.md)
 documents the restored pre-task-04 runtime, measurement runner and artifact codec.
+
+The [artifact retest after task 05](../.work/graph-memory-optimization/artifact-retest-post05.md)
+compares compilation and separate-process loading with explanation metadata on
+and off. The private schema-7 codec accepts the reduced fixture runtime; add
+`--no-explain-metadata` to `benchmarks.graph_memory_artifact_evidence` to select it.

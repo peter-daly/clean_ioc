@@ -33,8 +33,9 @@ def audit(plan, *, external_components=()):
     started = time.perf_counter()
     graphs = {id(plan.graph): plan.graph}
     missing = set()
+    expired = set()
 
-    def closure(seeds):
+    def closure(seeds, *, allow_expired=False):
         physical, logical = set(), set()
         pending = list(seeds)
         while pending:
@@ -52,6 +53,15 @@ def audit(plan, *, external_components=()):
                 physical.add(key)
             try:
                 record = graph.record(occurrence)
+            except RuntimeError as error:
+                if "explain-metadata-disabled" not in str(error):
+                    raise
+                if allow_expired:
+                    expired.add(key)
+                else:
+                    missing.add(key)
+                physical.discard(key)
+                continue
             except KeyError:
                 missing.add(key)
                 continue
@@ -133,9 +143,12 @@ def audit(plan, *, external_components=()):
     # as captured provenance, and must not be interpreted as remapped live links.
     groups["evidence_index_owners"] = closure(evidence_seeds)
     groups["contextual_view_sources_and_parents"] = closure(
-        [seed for context in plan.graph._views for seed in ((plan.graph, context.root), (plan.graph, context.parent))]
+        [seed for context in plan.graph._views for seed in ((plan.graph, context.root), (plan.graph, context.parent))],
+        allow_expired=not plan.explain_metadata,
     )
-    groups["externally_retained_components"] = closure(components(external_components))
+    groups["externally_retained_components"] = closure(
+        components(external_components), allow_expired=not plan.explain_metadata
+    )
     groups["captured_template_source_graphs"] = closure(
         components(plan._blueprint.template_selections if plan._blueprint is not None else ())
     )
@@ -163,6 +176,8 @@ def audit(plan, *, external_components=()):
     }
     return {
         "audit_seconds": time.perf_counter() - started,
+        "explain_metadata": plan.explain_metadata,
+        "expired_external_or_inspection_ids": len(expired),
         "physical_records": len(main),
         "graph_count_including_inherited_execution_graphs": len(graphs),
         "all_graph_physical_records": len(all_records),
@@ -186,6 +201,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--routes", type=int, default=8)
     parser.add_argument("--diagnostics", action="store_true")
+    parser.add_argument("--no-explain-metadata", action="store_true")
+    parser.add_argument("--allow-scope-builders", action="store_true")
     parser.add_argument("--trace-audit", action="store_true")
     parser.add_argument("--capture-selection-views", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
@@ -208,9 +225,19 @@ def main():
             return capture
 
         with patch.object(cf, "with_name", recording_with_name):
-            fixture = build(args.routes, diagnostics=args.diagnostics)
+            fixture = build(
+                args.routes,
+                diagnostics=args.diagnostics,
+                explain_metadata=not args.no_explain_metadata,
+                allow_scope_builders=args.allow_scope_builders,
+            )
     else:
-        fixture = build(args.routes, diagnostics=args.diagnostics)
+        fixture = build(
+            args.routes,
+            diagnostics=args.diagnostics,
+            explain_metadata=not args.no_explain_metadata,
+            allow_scope_builders=args.allow_scope_builders,
+        )
     if args.trace_audit:
         gc.collect()
         tracemalloc.start()

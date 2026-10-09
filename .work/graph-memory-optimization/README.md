@@ -4,14 +4,23 @@ The [artifact retest](artifact-retest.md) compares compilation/export and fresh-
 loading after tasks 01 and 02, using the richer fixture. It is a separate local
 experiment and does not implement tasks 03 or 04.
 
+The [retest after task 05](artifact-retest-post05.md) compares full and reduced
+artifacts using the same current runtime in separate compile/export/load processes.
+
 Created: 2026-10-08\
-Status: Tasks 01 and 02 retained; 03 pruning declined; 04 reverted on 2026-10-09.
+Status: Tasks 01 and 02 retained; 03 pruning declined; 04 reverted; 05 implemented and retained on 2026-10-09.
 
 Reduce the memory retained by the compiled output graph while preserving
 resolution, ownership, filtering, inspection and diagnostic behaviour. Measure
-compilation peak memory and build time alongside retained memory. These four
+compilation peak memory and build time alongside retained memory. These five
 tasks follow the investigation using the large graph fixture with registration
 templates, decorator templates, providers and maps.
+
+Task 05 adds a different, explicit build mode: `explain_metadata=False` removes
+metadata unnecessary for resolution and enabled runtime capabilities. It permits
+reduced inspection in that mode, addressing the compatibility constraint that
+blocked task 03. GPT-6.1 Sol with high reasoning implemented and verified the option; its
+[result](05-result.md) records the capability limits and measured tradeoffs.
 
 ## Tasks and recommended order
 
@@ -21,6 +30,7 @@ templates, decorator templates, providers and maps.
 | 02 | [Separate component definitions from occurrences](02-share-component-definitions.md) | Complete | GPT-6.1 Sol (`gpt-6.1-sol`), medium reasoning; [result](02-result.md) |
 | 03 | [Audit and prune discarded compilation records](03-prune-discarded-records.md) | Complete — pruning declined | GPT-6.1 Sol (`gpt-6.1-sol`), medium reasoning; [result](03-result.md) |
 | 04 | [Share repeated subtrees through contextual views](04-share-contextual-subtrees.md) | Reverted — dropped | GPT-6.1 Sol (`gpt-6.1-sol`), medium reasoning; [result](04-result.md), [rollback](04-rollback.md) |
+| 05 | [Make explanation metadata optional and minimize the runtime container](05-optional-explanation-metadata.md) | Complete — retained | GPT-6.1 Sol (`gpt-6.1-sol`), high reasoning; [result](05-result.md), [inventory](05-inventory.md) |
 
 Start with 01 and record its result before continuing. The remaining order is a
 recommendation; reassess it against the measured graph after each task. A task
@@ -77,6 +87,9 @@ The baseline is synthetic and does not establish production memory use.
   and reports. Construct optional inspection views from captured immutable facts;
   never rerun application constructors, template factories or selection callbacks
   to recover omitted evidence.
+  Task 05 explicitly relaxes inspection compatibility when `explain_metadata=False`;
+  its documented capability boundary applies in that mode. Preserve resolution
+  and full-mode inspection, and never reconstruct omitted facts by callback replay.
 - Check diagnostics on and off, ordinary and managed providers, maps, scope
   builders/overlays, boundaries and profiling where the change touches them.
   The richer fixture does not cover every library feature by itself.
@@ -148,3 +161,17 @@ The [rollback](04-rollback.md) restores the exact pre-task-04 runtime, memory
 runner and schema-5 artifact codec. Tasks 01 and 02, task 03's offline audit and
 the richer artifact experiment remain. Task 04's raw measurements are unchanged;
 its implementation, tests and probes are archived as inert text for reference.
+
+## Task 05 result — retained
+
+[Recorded implementation and evidence](05-result.md): both builders accept
+`explain_metadata=True` by default. Opting out releases explanation/inspection
+metadata and 79,576 of 88,558 records while preserving runtime relationships.
+Final same-source eight-route Python retention falls 38.43→3.10 MiB, RSS
+134.16→129.45 MiB, and allocation peak 73.57→72.84 MiB. Diagnostics-enabled
+builds retain the same reduced Python total but still use about 350.84 MiB RSS;
+their build allocation peak rises about 3.20 MiB. Future overlays cost about
+0.18 MiB; caller-retained snapshots are measured separately. All 2,127 tests,
+222 reused reduced-mode execution checks and required CI checks pass, except
+strict MkDocs' same eight existing external-file link warnings. Inspection limits,
+escaped views, scope modes, ownership and failure evidence are documented.

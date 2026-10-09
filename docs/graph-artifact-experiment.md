@@ -9,6 +9,11 @@ richer template/provider workload; see `.work/graph-memory-optimization/artifact
 in the repository. There is no commitment to shipping an artifact-loading API or
 maintaining this artifact format.
 
+The retest after task 05 adds reduced-metadata artifacts. Its results are recorded
+in `.work/graph-memory-optimization/artifact-retest-post05.md`. The local schema-7
+codec supports both full and reduced fixture plans; it does not change production
+compiler or runtime code.
+
 For the subsequent memory investigation with decorator/registration templates,
 providers and maps, see the [richer graph fixture](graph-memory-fixture.md).
 The historical measurements below remain specific to the original constructor-only
@@ -202,8 +207,23 @@ that raise if called. The evidence runner applies the same guard to its load pat
 Repository validation: all 2,043 tests pass, along with Ruff lint/format checks,
 type checking, documentation example validation, and existing benchmark discovery.
 
-Task 04 advances the private codec to schema 6 for frozen contextual subtree
-records and their explicit positive-ID remappings. This is a representation
-adaptation, with the same experimental exclusions and source compatibility
-checks. The earlier schema-5 retest evidence remains historical evidence of the
-pre-task-04 representation.
+Task 04's schema-6 subtree representation was reverted. Schema 7 extends the
+restored schema-5 codec with task 05's compact runtime registration carriers and
+permits `explain_metadata=False`. Reduced graphs are pruned during compilation
+before export; loading reconstructs that smaller plan directly. Compilation,
+dependency inspection and runtime-pruning entry points are disabled in the
+fresh-process load checks. Existing exclusions remain, including diagnostics,
+future scope builders, slots and warmups.
+
+Run the reduced eight-route comparison with:
+
+```sh
+.venv/bin/python -m benchmarks.graph_memory_artifact_evidence compare --routes 8 --repeats 3 --no-explain-metadata --artifact .cache/graph-artifact/post-task05-reduced.jsonl --output .work/graph-memory-optimization/evidence/artifact-post05-reduced.json
+```
+
+Use `export` and then `load` instead of `compare` for the two independent steps;
+pass `--no-explain-metadata` to both. Omit the flag for the full-metadata control.
+Reduced mode has no public graph manifest. The runner verifies the stored runtime
+links, sharing/census counts and complete resolution workload instead, and checks
+that inspection remains disabled without reconstructing metadata. It verifies
+the exported artifact hash in every separate loader process.

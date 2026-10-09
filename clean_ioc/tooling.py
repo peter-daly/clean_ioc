@@ -1875,6 +1875,7 @@ class CompiledGraph:
     """Read-only view and renderer for compiled root component plans."""
 
     roots: tuple[GraphRoot, ...]
+    explain_metadata_enabled: bool = field(default=True, compare=False, kw_only=True)
     diagnostics_enabled: bool = field(default=True, compare=False, kw_only=True)
     _fallback_ids: frozenset[str] = field(default=frozenset(), compare=False, repr=False, kw_only=True)
     _occurrence_origins: Mapping[int, DefinitionOrigin] = field(
@@ -1919,6 +1920,12 @@ class CompiledGraph:
     _ownership_report_cache: list[OwnershipReport] = field(default_factory=list, compare=False, repr=False)
     _occurrence_paths_cache: dict[bool, _OccurrencePaths] = field(default_factory=dict, compare=False, repr=False)
     _analysis_index_cache: Any | None = field(default=None, compare=False, repr=False)
+
+    def __getattribute__(self, name: str) -> Any:
+        if not name.startswith("_") and name != "explain_metadata_enabled":
+            if not object.__getattribute__(self, "explain_metadata_enabled"):
+                raise RuntimeError("explain-metadata-disabled: this build-time inspection graph has expired")
+        return object.__getattribute__(self, name)
 
     def selection_census(self, *, all_roots: bool = False, include_deferred: bool = True):
         """Summarize recorded declaration selections in the chosen compiled view."""
@@ -2368,6 +2375,8 @@ class CompiledGraph:
         return explanation
 
     def explain_template_sources(self, template_id: str | None = None) -> tuple[TemplateSourceDecision, ...]:
+        if not self.explain_metadata_enabled:
+            raise RuntimeError("explain-metadata-disabled: this build-time inspection graph has expired")
         """Return captured source-filter decisions; no filter or factory is invoked."""
         if template_id is None:
             return self._template_source_decisions

@@ -22,10 +22,12 @@ from clean_ioc import _decorator_templates as templates
 from clean_ioc import _legacy as legacy
 from clean_ioc import _legacy_configuration as configuration
 
-SCHEMA = 5
+# Schema 6 belonged to the reverted subtree experiment; do not reuse it.
+SCHEMA = 7
 _REPO = Path(__file__).resolve().parents[1]
 _DATACLASSES = (
     container._PlanSet,
+    container._RuntimeRegistration,
     container._RootPlan,
     container._CompiledDependency,
     container._CleanupOwnerDescriptor,

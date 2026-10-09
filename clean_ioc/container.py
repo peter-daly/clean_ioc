@@ -1627,6 +1627,7 @@ def _compiled_boundary_component(
         budget_state=inputs.get("budget_state"),
         profile_phase="boundary preparation",
         diagnostics=inputs.get("diagnostics", False),
+        explain_metadata=inputs.get("explain_metadata", True),
         provider_roots=inputs.get("provider_roots"),
     )
     compiler._area = blueprint.registration_area(layer)
@@ -3672,7 +3673,7 @@ class _PreConfigurationState:
 
 @dataclass(slots=True)
 class _CompiledPreConfiguration:
-    definition: _PreConfigurationDefinition
+    definition: _PreConfigurationDefinition | _RuntimePreConfigurationDefinition
     activator_class: type[legacy.Activator]
     dependencies: tuple[_CompiledDependency, ...]
     component: Component
@@ -3758,7 +3759,7 @@ class _CompiledPreConfiguration:
 
 @dataclass(frozen=True, slots=True)
 class _DecoratorActivation:
-    definition: _DecoratorDefinition
+    definition: _DecoratorDefinition | None
     implementation: type | Callable[..., Any]
     activator_class: type[legacy.Activator]
     decorated_arg: str
@@ -4166,7 +4167,7 @@ class _CompiledDecorator:
 
 @dataclass(frozen=True, slots=True)
 class _RegistrationStep(_Step):
-    registration: legacy._Registration
+    registration: legacy._Registration | _RuntimeRegistration
     source_service_type: Any
     owner_token: str
     component: Component
@@ -4864,6 +4865,7 @@ class _PlanSet:
     _blueprint: _Blueprint | None
     build_args: Mapping[str, Any]
     diagnostics: bool = False
+    explain_metadata: bool = True
     unreachable_checked: bool = True
     unreachable_issue_offset: int = 0
     fallback_ids: frozenset[str] = frozenset()
@@ -5011,6 +5013,223 @@ def _graph_explanation_sidecars(plan: _PlanSet) -> _GraphExplanationSidecars:
     )
 
 
+@dataclass(frozen=True, slots=True, eq=False)
+class _RuntimeRegistration:
+    id: str
+    service_type: Any
+    implementation: Any
+    activator_class: type[legacy.Activator]
+    lifespan: legacy.Lifespan
+
+
+@dataclass(frozen=True, slots=True)
+class _RuntimePreConfigurationDefinition:
+    id: str
+    configuration_fn: Callable[..., Any]
+    continue_on_failure: bool
+
+
+def _release_execution_composition(plan: _PlanSet) -> None:
+    """Trim fresh executable carriers without changing steps or ancestor plans.
+
+    Carrier identity is not cache identity; IDs and owner tokens are unchanged.
+    Keeping each step itself also preserves instrumentation's calling-edge IDs.
+    Composition retained for overlays has its original, separate definitions.
+    """
+    pending: list[Any] = [
+        plan.roots,
+        plan.provider_roots,
+        plan.managed_provider_roots,
+        plan.warmup_steps,
+        plan.architecture_roots if plan._blueprint is not None else (),
+    ]
+    seen: set[int] = set()
+    registrations: dict[int, _RuntimeRegistration] = {}
+    configurations: dict[int, _RuntimePreConfigurationDefinition] = {}
+    executable = (
+        _RootPlan,
+        _Step,
+        _CompiledDependency,
+        _CompiledDecorator,
+        _CompiledPreConfiguration,
+        _CompiledResolutionRequest,
+    )
+    while pending:
+        value = pending.pop()
+        identity = id(value)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        if type(value) in (tuple, list):
+            pending.extend(value)
+        elif type(value) in (dict, types.MappingProxyType):
+            pending.extend(value.values())
+        elif issubclass(type(value), executable):
+            component = getattr(value, "component", None)
+            if component is not None and component._graph is plan.graph:
+                if isinstance(value, _RegistrationStep) and isinstance(value.registration, legacy._Registration):
+                    source = value.registration
+                    reduced = registrations.get(id(source))
+                    if reduced is None:
+                        reduced = _RuntimeRegistration(
+                            source.id,
+                            source.service_type,
+                            source.implementation,
+                            source.activator_class,
+                            source.lifespan,
+                        )
+                        registrations[id(source)] = reduced
+                    object.__setattr__(value, "registration", reduced)
+                elif isinstance(value, _CompiledDecorator):
+                    object.__setattr__(value, "source", replace(value.source, definition=None, dependencies={}))
+                elif isinstance(value, _CompiledPreConfiguration):
+                    definition = value.definition
+                    reduced_configuration = configurations.get(id(definition))
+                    if reduced_configuration is None:
+                        reduced_configuration = _RuntimePreConfigurationDefinition(
+                            definition.id, definition.configuration_fn, definition.continue_on_failure
+                        )
+                        configurations[id(definition)] = reduced_configuration
+                    value.definition = reduced_configuration
+            pending.extend(
+                getattr(value, item.name)
+                for item in fields(value)
+                if not (isinstance(value, _ValueStep) and item.name == "value")
+            )
+
+
+def _retain_runtime_graph(plan: _PlanSet, *, include_architecture: bool = False) -> None:
+    """Freeze only the successful plan's required runtime records."""
+    if plan.graph._reduced:
+        return
+    architecture = plan.architecture_roots if include_architecture or plan._blueprint is not None else ()
+    pending: list[Any] = [plan.roots, plan.provider_roots, plan.managed_provider_roots, plan.warmup_steps, architecture]
+    seen_objects: set[int] = set()
+    seeds: list[int] = []
+    executable = (
+        _RootPlan,
+        _Step,
+        _CompiledDependency,
+        _CompiledDecorator,
+        _CompiledPreConfiguration,
+        _CompiledResolutionRequest,
+    )
+    while pending:
+        value = pending.pop()
+        identity = id(value)
+        if identity in seen_objects:
+            continue
+        seen_objects.add(identity)
+        if type(value) is Component:
+            if value._graph is plan.graph:
+                seeds.append(value.occurrence_id)
+        elif type(value) in (tuple, list):
+            pending.extend(value)
+        elif type(value) in (dict, types.MappingProxyType):
+            pending.extend(value.values())
+        elif issubclass(type(value), executable):
+            pending.extend(
+                getattr(value, item.name)
+                for item in fields(value)
+                if not (isinstance(value, _ValueStep) and item.name == "value")
+            )
+
+    # Filters may inspect ancestors and siblings as well as descendants. Follow
+    # every captured relationship, including provider projections' physical
+    # sources and their contextual parent. No callback or application value is
+    # evaluated by this pass.
+    live: set[int] = set()
+    seen_occurrences: set[int] = set()
+    while seeds:
+        occurrence = seeds.pop()
+        if occurrence in seen_occurrences:
+            continue
+        seen_occurrences.add(occurrence)
+        view = plan.graph.view_source(occurrence)
+        if view is None:
+            live.add(occurrence)
+        else:
+            context, source = view
+            seeds.extend((source, context.parent))
+        record = plan.graph.record(occurrence)
+        seeds.extend((*record.dependency_ids, *record.decorator_ids, *record.pre_configuration_ids))
+        seeds.extend(
+            target for target in (record.parent_id, record.owner_id, record.decorated_id) if target is not None
+        )
+    if plan.graph._records is None:
+        drafts = plan.graph._drafts
+        plan.graph._drafts = {occurrence: drafts[occurrence] for occurrence in live}
+        plan.graph.freeze()
+    else:
+        records = plan.graph._records
+        plan.graph._records = {occurrence: records[occurrence] for occurrence in live}
+    plan.graph._reduced = not include_architecture
+
+
+def _reduce_explanation_metadata(plan: _PlanSet) -> _PlanSet:
+    """Release successful-build evidence, retaining all executable relationships.
+
+    Run once, after validation, warmup planning and observation. Only the new
+    plan's primary graph is changed; inherited execution graphs belong to their
+    ancestors. Application-owned callback snapshots are outside this ownership.
+    """
+    if plan.explain_metadata:
+        return plan
+    architecture = plan.architecture_roots if plan._blueprint is not None else ()
+    _retain_runtime_graph(plan)
+    _release_execution_composition(plan)
+
+    graph = plan.compiled_graph
+    if graph is not None:
+        # A validation callback may have saved this temporary inspection view.
+        # Expire it clearly and release its context rather than leaving it
+        # apparently complete over a pruned graph. This graph is build-local.
+        object.__setattr__(graph, "explain_metadata_enabled", False)
+        for item in fields(graph):
+            if item.name in ("explain_metadata_enabled", "diagnostics_enabled", "build_args"):
+                continue
+            value = object.__getattribute__(graph, item.name)
+            if isinstance(value, Mapping):
+                object.__setattr__(graph, item.name, types.MappingProxyType({}))
+            elif isinstance(value, tuple):
+                object.__setattr__(graph, item.name, ())
+            elif isinstance(value, frozenset):
+                object.__setattr__(graph, item.name, frozenset())
+            elif isinstance(value, list):
+                value.clear()
+            else:
+                object.__setattr__(graph, item.name, None)
+    empty = types.MappingProxyType({})
+    blueprint = plan._blueprint
+    # Overlays start from layers and re-expand templates. The completed
+    # expansion's source-inspection graphs and generated decorator candidates
+    # are not composition inputs for that next build.
+    if blueprint is not None:
+        blueprint = replace(blueprint, template_selections=(), generated_decorators=())
+    return replace(
+        plan,
+        _blueprint=blueprint,
+        compiled_graph=None,
+        build_report=replace(plan.build_report, _graph=None, _explanations=(), _evidence=()),
+        compiler_issues=(),
+        root_candidates=empty,
+        area_root_candidates=empty,
+        occurrence_explanations=empty,
+        occurrence_origins=empty,
+        occurrence_layers=empty,
+        decorator_explanations=empty,
+        parameter_explanations=empty,
+        generic_explanations=empty,
+        census_sources=empty,
+        census_definitions=(),
+        census_ids=empty,
+        selected_registrations=(),
+        validation_rules=(),
+        architecture_roots=architecture,
+        fallback_ids=plan.fallback_ids if blueprint is not None else frozenset(),
+    )
+
+
 def _requires_async(activator_class: type, implementation: Any) -> bool:
     if activator_class in (legacy.AsyncFactoryActivator, legacy.AsyncGeneratorActivator):
         return True
@@ -5152,9 +5371,11 @@ class _Compiler:
         profile_attempt: str | None = "primary",
         budget_state: _BudgetState | None = None,
         diagnostics: bool = False,
+        explain_metadata: bool = True,
         provider_roots: tuple[Any, ...] | None = None,
     ):
         self._diagnostics = diagnostics
+        self._explain_metadata = explain_metadata
         self._requested_provider_roots = provider_roots
         self._managed_provider_roots: dict[Any, tuple[_RootPlan, ...]] = {}
         self.blueprint = blueprint
@@ -6224,10 +6445,17 @@ class _Compiler:
                         if candidate.eligible
                     )
             self._area = area
-        if self._profile is None:
-            self.graph.freeze()
-        else:
-            self._profile.call(self._profile_phase, "graph freezing", self.graph.freeze, attempt=self._profile_attempt)
+        # Reduced builds validate and plan warmups against drafts, then freeze
+        # only the successful runtime closure. Failed finalization freezes all
+        # records before publishing its evidence. Source/retry graphs keep the
+        # ordinary freeze boundary.
+        if self._explain_metadata or self._profile_phase != "primary compilation":
+            if self._profile is None:
+                self.graph.freeze()
+            else:
+                self._profile.call(
+                    self._profile_phase, "graph freezing", self.graph.freeze, attempt=self._profile_attempt
+                )
         default_root_groups = {
             service_type: _preferred_root_plans(plan for plan in plans if plan.component.name is None)
             for service_type, plans in roots.items()
@@ -10707,6 +10935,7 @@ def _error_report(
     budget_state: _BudgetState | None = None,
     clean_orphans: bool = True,
     diagnostics: bool = False,
+    explain_metadata: bool = True,
     provider_roots: tuple[Any, ...] | None = None,
 ) -> tuple[
     BuildReport,
@@ -10754,6 +10983,7 @@ def _error_report(
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
                 diagnostics=diagnostics,
+                explain_metadata=explain_metadata,
                 provider_roots=provider_roots,
                 budget_state=budget_state,
                 profile=profile,
@@ -11557,6 +11787,7 @@ def _registration_template_source(
             profile_phase="registration-template expansion",
             profile_attempt="template source inspection",
             diagnostics=inputs.get("diagnostics", False),
+            explain_metadata=inputs.get("explain_metadata", True),
             provider_roots=inputs.get("provider_roots"),
         )
         try:
@@ -11799,6 +12030,7 @@ def _expand_decorator_templates(
     profile: CompilationProfiler | None = None,
     budget_state: _BudgetState | None = None,
     diagnostics: bool = False,
+    explain_metadata: bool = True,
     provider_roots: tuple[Any, ...] | None = None,
 ) -> _TemplateExpansion:
     """Expand a normalized, visibility-prepared snapshot once, without target activation.
@@ -11853,6 +12085,7 @@ def _expand_decorator_templates(
                         profile_phase="decorator-template expansion",
                         profile_attempt="template source inspection",
                         diagnostics=diagnostics,
+                        explain_metadata=explain_metadata,
                         provider_roots=provider_roots,
                     )
                     if profile is None:
@@ -12221,6 +12454,7 @@ def _compile_with_report(
     budget_state: _BudgetState | None = None,
     clean_orphans: bool = True,
     diagnostics: bool = False,
+    explain_metadata: bool = True,
     provider_roots: tuple[Any, ...] | None = None,
     check_unreachable: bool = True,
     aggregate_errors: bool = True,
@@ -12231,6 +12465,7 @@ def _compile_with_report(
         "anchored_owner_tokens": anchored_owner_tokens,
         "inherited_graph_sidecars": inherited_graph_sidecars,
         "diagnostics": diagnostics,
+        "explain_metadata": explain_metadata,
         "provider_roots": provider_roots,
     }
     if anchored_singleton_steps is not None:
@@ -12302,6 +12537,7 @@ def _compile_with_report(
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
                 diagnostics=diagnostics,
+                explain_metadata=explain_metadata,
                 provider_roots=provider_roots,
                 budget_state=budget_state,
             )
@@ -12317,6 +12553,7 @@ def _compile_with_report(
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
                 diagnostics=diagnostics,
+                explain_metadata=explain_metadata,
                 provider_roots=provider_roots,
                 budget_state=budget_state,
                 profile=profile,
@@ -12398,9 +12635,11 @@ def _compile_with_report(
         budget_state=budget_state,
         profile=profile,
         diagnostics=diagnostics,
+        explain_metadata=explain_metadata,
         provider_roots=provider_roots,
     )
     census_definitions, census_ids = _census_inventory(blueprint) if diagnostics else ((), types.MappingProxyType({}))
+    compiled: _PlanSet | None = None
     try:
         if preview_request is not None:
             area, service_type = preview_request
@@ -12420,8 +12659,13 @@ def _compile_with_report(
             _finalize_plan(plan, profile, budget_state, check_unreachable=check_unreachable), budget_state
         )
         retained = _prune_orphan_registrations(finalized) if clean_orphans else finalized
-        return replace(retained, selected_registrations=_selected_registration_catalogue(retained))
+        return replace(
+            retained,
+            selected_registrations=_selected_registration_catalogue(retained) if explain_metadata else (),
+        )
     except Exception as error:
+        if compiled is not None and compiler.graph._records is None:
+            compiler.graph.freeze()
         if isinstance(error, ContainerBuildError) and error.report is not None:
             raise ContainerBuildError(
                 report=error.report,
@@ -12452,6 +12696,7 @@ def _compile_with_report(
                 anchored_owner_tokens=anchored_owner_tokens,
                 inherited_graph_sidecars=inherited_graph_sidecars,
                 diagnostics=diagnostics,
+                explain_metadata=explain_metadata,
                 provider_roots=provider_roots,
                 budget_state=budget_state,
                 profile=profile,
@@ -12832,6 +13077,11 @@ class Scope(_RuntimeOwner):
         return identifier
 
     @property
+    def explain_metadata_enabled(self) -> bool:
+        """Whether this plan retains complete graph inspection metadata."""
+        return self._plan.explain_metadata
+
+    @property
     def components(self) -> tuple[Component, ...]:
         return tuple(plan.component for plans in self._plan.roots.values() for plan in plans)
 
@@ -12845,10 +13095,14 @@ class Scope(_RuntimeOwner):
         deduplicated by registration ID and visible canonical service type in
         root/dependency traversal order. Reading never resolves or compiles.
         """
+        if not self._plan.explain_metadata:
+            raise RuntimeError("explain-metadata-disabled: selected_registrations requires explain_metadata=True")
         return self._plan.selected_registrations
 
     @property
     def graph(self) -> CompiledGraph:
+        if not self._plan.explain_metadata:
+            raise RuntimeError("explain-metadata-disabled: graph inspection requires explain_metadata=True")
         graph = self._plan.compiled_graph
         if graph is None:
             raise RuntimeError("Compiled graph metadata is unavailable")
@@ -13918,6 +14172,7 @@ def _observe_plan(
 
 class _CompilationInputs(typing.TypedDict, total=False):
     diagnostics: bool
+    explain_metadata: bool
     provider_roots: tuple[Any, ...] | None
     budget_state: _BudgetState | None
     build_args: Mapping[str, Any]
@@ -14005,6 +14260,7 @@ class _BuilderBase:
         clean_orphans: bool,
         budget: CompilationBudget | None,
         diagnostics: bool,
+        explain_metadata: bool,
         provider_roots: Iterable[Any] | None,
         allow_scope_builders: bool,
         check_unreachable: bool,
@@ -14031,6 +14287,9 @@ class _BuilderBase:
                     "discovery and blueprint preparation", "phase", self._compilation_snapshot, build_args, state
                 )
             inputs["diagnostics"] = diagnostics
+            inputs["explain_metadata"] = explain_metadata
+            if not explain_metadata and any(rule.mode == "validation" for rule in blueprint.validation_rules):
+                raise ValueError("explain-metadata-disabled: validation-only rules require explain_metadata=True")
             inputs["provider_roots"] = requested_providers
             result = _compile_with_report(
                 blueprint,
@@ -14044,8 +14303,9 @@ class _BuilderBase:
                 state.check()
             runtime_blueprint = result.blueprint
             layers = (*runtime_blueprint.layers, *(boundary.layer for boundary in runtime_blueprint.boundaries))
-            return replace(
+            retained = replace(
                 result,
+                explain_metadata=explain_metadata,
                 slots=runtime_blueprint.slots,
                 ensured_import_modules=tuple(
                     dict.fromkeys(module_name for layer in layers for module_name in layer.ensured_import_modules)
@@ -14055,6 +14315,18 @@ class _BuilderBase:
                 ),
                 _blueprint=runtime_blueprint if allow_scope_builders else None,
             )
+            if not explain_metadata:
+                if profile is None:
+                    _retain_runtime_graph(retained, include_architecture=True)
+                else:
+                    profile.call(
+                        "runtime graph finalization",
+                        "graph freezing",
+                        _retain_runtime_graph,
+                        retained,
+                        include_architecture=True,
+                    )
+            return retained
         except _BudgetStop as stop:
             raise _budget_build_error(stop, state, blueprint, diagnostics) from None
         except Exception as error:
@@ -15172,6 +15444,7 @@ class ContainerBuilder(_WarmupBuilder):
         instrumentation: Instrumentation | None = None,
         clean_orphans: bool = True,
         diagnostics: bool = False,
+        explain_metadata: bool = True,
         provider_roots: Iterable[Any] | None = None,
         allow_scope_builders: bool = True,
         check_unreachable: bool = True,
@@ -15193,6 +15466,14 @@ class ContainerBuilder(_WarmupBuilder):
         to validation_report(), using the immutable compiled graph. Structural
         checks, entrypoint validation and build-mode rules always run.
 
+        ``explain_metadata=False`` releases full graph inspection metadata after
+        validation, warmup planning and optional instrumentation. Runtime root
+        Components and their relationships remain usable by filters. Discarded
+        build-time views expire; graph reports, selected_registrations and
+        validation-only rules require metadata. Deferred unreachable warnings
+        cannot be requested later in this mode. Reduced parents require reduced
+        overlays. Diagnostics still capture truthful failed-build evidence.
+
         ``allow_scope_builders=False`` releases composition after validation.
         The runtime and ordinary descendants still resolve, inspect, warm up,
         and clean up normally, but cannot create or compile scope builders.
@@ -15203,6 +15484,8 @@ class ContainerBuilder(_WarmupBuilder):
             raise TypeError("check_unreachable must be a bool")
         if not isinstance(allow_scope_builders, bool):
             raise TypeError("allow_scope_builders must be a bool")
+        if not isinstance(explain_metadata, bool):
+            raise TypeError("explain_metadata must be a bool")
         if not isinstance(diagnostics, bool):
             raise TypeError("diagnostics must be a bool")
         if not isinstance(clean_orphans, bool):
@@ -15216,16 +15499,17 @@ class ContainerBuilder(_WarmupBuilder):
                 clean_orphans,
                 budget,
                 diagnostics,
+                explain_metadata,
                 provider_roots,
                 allow_scope_builders,
                 check_unreachable,
                 aggregate_errors,
             )
             if instrumentation is None:
-                container = Container(plan, self._owner_token)
+                container = Container(_reduce_explanation_metadata(plan), self._owner_token)
             else:
                 plan, fingerprint, labels, paths = _observe_plan(plan, instrumentation, self._owner_token)
-                container = _ObservedContainer(plan, self._owner_token)
+                container = _ObservedContainer(_reduce_explanation_metadata(plan), self._owner_token)
                 container._install_observation(instrumentation.profiler, fingerprint, labels, paths)
             self._built = True
             return container
@@ -15238,16 +15522,17 @@ class ContainerBuilder(_WarmupBuilder):
                 clean_orphans,
                 budget,
                 diagnostics,
+                explain_metadata,
                 provider_roots,
                 allow_scope_builders,
                 check_unreachable,
                 aggregate_errors,
             )
             if instrumentation is None:
-                container = Container(plan, self._owner_token)
+                container = Container(_reduce_explanation_metadata(plan), self._owner_token)
             else:
                 plan, fingerprint, labels, paths = _observe_plan(plan, instrumentation, self._owner_token)
-                container = _ObservedContainer(plan, self._owner_token)
+                container = _ObservedContainer(_reduce_explanation_metadata(plan), self._owner_token)
                 container._install_observation(instrumentation.profiler, fingerprint, labels, paths)
             self._built = True
             state = "completed"
@@ -15281,6 +15566,7 @@ class ScopeBuilder(_WarmupBuilder):
         instrumentation: Instrumentation | None = None,
         clean_orphans: bool = True,
         diagnostics: bool = False,
+        explain_metadata: bool = True,
         provider_roots: Iterable[Any] | None = None,
         allow_scope_builders: bool = True,
         check_unreachable: bool = True,
@@ -15302,6 +15588,14 @@ class ScopeBuilder(_WarmupBuilder):
         to validation_report(), using the immutable compiled graph. Structural
         checks, entrypoint validation and build-mode rules always run.
 
+        ``explain_metadata=False`` releases full graph inspection metadata after
+        validation, warmup planning and optional instrumentation. Runtime root
+        Components and their relationships remain usable by filters. Discarded
+        build-time views expire; graph reports, selected_registrations and
+        validation-only rules require metadata. Deferred unreachable warnings
+        cannot be requested later in this mode. Reduced parents require reduced
+        overlays. Diagnostics still capture truthful failed-build evidence.
+
         ``allow_scope_builders=False`` releases composition after validation.
         The runtime and ordinary descendants still resolve, inspect, warm up,
         and clean up normally, but cannot create or compile scope builders.
@@ -15312,10 +15606,16 @@ class ScopeBuilder(_WarmupBuilder):
             raise TypeError("check_unreachable must be a bool")
         if not isinstance(allow_scope_builders, bool):
             raise TypeError("allow_scope_builders must be a bool")
+        if not isinstance(explain_metadata, bool):
+            raise TypeError("explain_metadata must be a bool")
         if not isinstance(diagnostics, bool):
             raise TypeError("diagnostics must be a bool")
         if not isinstance(clean_orphans, bool):
             raise TypeError("clean_orphans must be a bool")
+        if explain_metadata and not self._parent._plan.explain_metadata:
+            raise ValueError(
+                "explain-metadata-disabled: an overlay of a reduced parent requires explain_metadata=False"
+            )
         parent_profiler = getattr(self._parent, "_profiler", None)
         if instrumentation is None and parent_profiler is not None:
             instrumentation = Instrumentation(parent_profiler)
@@ -15330,6 +15630,7 @@ class ScopeBuilder(_WarmupBuilder):
                 clean_orphans,
                 budget,
                 diagnostics,
+                explain_metadata,
                 provider_roots,
                 allow_scope_builders,
                 check_unreachable,
@@ -15341,7 +15642,7 @@ class ScopeBuilder(_WarmupBuilder):
                 )
             scope_class = _ObservedScope if instrumentation is not None else Scope
             scope = scope_class(
-                plan,
+                _reduce_explanation_metadata(plan),
                 container=self._parent.container,
                 parent=self._parent,
                 owners=self._parent._owners,
@@ -15361,6 +15662,7 @@ class ScopeBuilder(_WarmupBuilder):
                 clean_orphans,
                 budget,
                 diagnostics,
+                explain_metadata,
                 provider_roots,
                 allow_scope_builders,
                 check_unreachable,
@@ -15372,7 +15674,7 @@ class ScopeBuilder(_WarmupBuilder):
                 )
             scope_class = _ObservedScope if instrumentation is not None else Scope
             scope = scope_class(
-                plan,
+                _reduce_explanation_metadata(plan),
                 container=self._parent.container,
                 parent=self._parent,
                 owners=self._parent._owners,

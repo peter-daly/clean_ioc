@@ -54,6 +54,13 @@ subtree sharing. Tasks 01 and 02 retain scoped implementations; task 04 was
 reverted at the maintainer's request on 2026-10-09 because process RSS increased;
 its measurements are preserved. Task 03
 declines production pruning. Task 04 ran as GPT-6.1 Sol at medium reasoning.
+Task 05, implemented by GPT-6.1 Sol at high reasoning on 2026-10-09, is retained:
+`explain_metadata=False` releases unnecessary successful-build metadata and graph
+records with explicit inspection limits while preserving resolution. The
+[result](graph-memory-optimization/05-result.md) records same-source eight-route
+Python retention 38.43→3.10 MiB and RSS 134.16→129.45 MiB, diagnostics' larger
+compilation floor, ownership costs, all 2,127 passing tests and the existing strict
+documentation-link limitation.
 See that plan for task status,
 baseline evidence and acceptance criteria.
 

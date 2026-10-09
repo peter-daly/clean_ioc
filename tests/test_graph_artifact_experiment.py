@@ -13,8 +13,9 @@ from benchmarks.graph_artifact import dump_graph, load_graph
 from clean_ioc import ContainerBuilder, _legacy, container
 
 
-def _build(builder):
+def _build(builder, *, explain_metadata=True):
     return builder.build(
+        explain_metadata=explain_metadata,
         diagnostics=False,
         provider_roots=(),
         allow_scope_builders=False,
@@ -24,11 +25,12 @@ def _build(builder):
 
 
 @pytest.mark.parametrize("lifespan", ["transient", "per_resolution", "scoped", "singleton"])
-async def test_lifetime_and_identity_survive_roundtrip(tmp_path, monkeypatch, lifespan):
+@pytest.mark.parametrize("explain_metadata", [True, False])
+async def test_lifetime_and_identity_survive_roundtrip(tmp_path, monkeypatch, lifespan, explain_metadata):
     builder = ContainerBuilder()
     builder.register(fixture.Leaf, lifespan=lifespan, root_policy="dependency_only")
     builder.register(fixture.Pair, lifespan="transient")
-    original = _build(builder)
+    original = _build(builder, explain_metadata=explain_metadata)
     artifact = tmp_path / "graph.jsonl"
     dump_graph(original, artifact)
 
@@ -42,7 +44,14 @@ async def test_lifetime_and_identity_survive_roundtrip(tmp_path, monkeypatch, li
     monkeypatch.setattr(fixture, "ACTIVATIONS", 0)
     with load_graph(artifact) as loaded:
         assert fixture.ACTIVATIONS == 0
-        assert loaded.graph.manifest(all_roots=True).to_dict() == original.graph.manifest(all_roots=True).to_dict()
+        assert loaded.explain_metadata_enabled is explain_metadata
+        if explain_metadata:
+            assert loaded.graph.manifest(all_roots=True).to_dict() == original.graph.manifest(all_roots=True).to_dict()
+        else:
+            with pytest.raises(RuntimeError, match="explain-metadata-disabled"):
+                _ = loaded.graph
+            assert loaded._plan.compiled_graph is None
+            assert loaded._plan.graph._reduced
         plan = loaded._plan
         root = plan.default_roots[fixture.Pair]
         assert root is plan.roots[fixture.Pair][0]
@@ -214,7 +223,8 @@ async def test_rich_graph_roundtrip_preserves_facts_sharing_and_provider_lifetim
                 await held.scope.__aexit__(None, None, None)
 
 
-def test_rich_export_and_load_in_independent_processes(tmp_path):
+@pytest.mark.parametrize("explain_metadata", [True, False])
+def test_rich_export_and_load_in_independent_processes(tmp_path, explain_metadata):
     results = []
     for mode in ("export", "load"):
         command = [
@@ -227,6 +237,8 @@ def test_rich_export_and_load_in_independent_processes(tmp_path):
             "--artifact",
             str(tmp_path / "rich.jsonl"),
         ]
+        if not explain_metadata:
+            command.append("--no-explain-metadata")
         results.append(
             json.loads(subprocess.check_output(command, cwd=Path(__file__).resolve().parents[1], text=True))  # noqa: S603
         )
@@ -234,11 +246,18 @@ def test_rich_export_and_load_in_independent_processes(tmp_path):
     assert exported["pid"] != loaded["pid"]
     assert exported["artifact_sha256"] == loaded["artifact_sha256"]
     assert exported["graph_fingerprint"] == loaded["graph_fingerprint"]
+    assert exported["runtime_link_fingerprint"] == loaded["runtime_link_fingerprint"]
+    assert exported["graph"]["physical_records"] == loaded["graph"]["physical_records"]
+    assert loaded["explain_metadata"] is explain_metadata
     assert exported["validated"] == loaded["validated"]
     assert loaded["compilation_disabled"]
     assert loaded["template_calls"] == {}
     assert exported["template_calls"]["source_to_generated_dependency"] == 2
     assert loaded["activations"]["worker"] == 22
+    if not explain_metadata:
+        assert not any(loaded["graph"]["metadata_entries"].values())
+        assert loaded["graph"]["registration_carrier_kinds"] == exported["graph"]["registration_carrier_kinds"]
+        assert set(loaded["graph"]["registration_carrier_kinds"]) == {"_RuntimeRegistration"}
 
 
 def test_codec_rejects_arbitrary_predicate_closures(tmp_path):

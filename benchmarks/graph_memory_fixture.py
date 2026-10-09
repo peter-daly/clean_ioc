@@ -178,9 +178,17 @@ class Fixture:
     source_ids: dict[str, str]
     template_ids: dict[str, str]
     callbacks_after_build: dict[str, int]
+    retained_builder: ContainerBuilder | None = None
 
 
-def build(routes: int, *, diagnostics: bool = False) -> Fixture:
+def build(
+    routes: int,
+    *,
+    diagnostics: bool = False,
+    explain_metadata: bool = True,
+    allow_scope_builders: bool = False,
+    retain_builder: bool = False,
+) -> Fixture:
     if not 1 <= routes <= 128:
         raise ValueError("routes must be between 1 and 128")
     ACTIVATIONS.clear()
@@ -220,8 +228,9 @@ def build(routes: int, *, diagnostics: bool = False) -> Fixture:
     )
     runtime = builder.build(
         diagnostics=diagnostics,
+        explain_metadata=explain_metadata,
         provider_roots=(Provider[Worker], AsyncProvider[Worker], ManagedProvider[Worker], AsyncManagedProvider[Worker]),
-        allow_scope_builders=False,
+        allow_scope_builders=allow_scope_builders,
         check_unreachable=False,
         aggregate_errors=False,
     )
@@ -236,7 +245,7 @@ def build(routes: int, *, diagnostics: bool = False) -> Fixture:
         },
         "Unexpected template expansion counts",
     )
-    return Fixture(runtime, source_ids, template_ids, dict(TEMPLATE_CALLS))
+    return Fixture(runtime, source_ids, template_ids, dict(TEMPLATE_CALLS), builder if retain_builder else None)
 
 
 def unwrap_worker(value: Worker) -> tuple[Worker, list[Policy]]:

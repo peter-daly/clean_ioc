@@ -290,9 +290,10 @@ def normalize_implementation_type(implementation: Any, service_type: Any) -> typ
 
 
 class _ComponentGraph:
-    __slots__ = ("_drafts", "_records", "_views")
+    __slots__ = ("_drafts", "_records", "_views", "_reduced")
 
     def __init__(self) -> None:
+        self._reduced = False
         self._views: list[_ComponentViewContext] = []
         self._drafts: dict[int, _ComponentDraft] = {}
         self._records: dict[int, _ComponentRecord] | None = None
@@ -319,8 +320,10 @@ class _ComponentGraph:
         if occurrence_id in records:
             return records[occurrence_id]
         view = self.view_source(occurrence_id)
-        if view is not None:
+        if view is not None and (not self._reduced or view[1] in records):
             return _ComponentViewRecord(self, *view)
+        if self._reduced:
+            raise RuntimeError("explain-metadata-disabled: this discarded build-time Component view has expired")
         raise KeyError(occurrence_id)
 
     def freeze(self) -> None:

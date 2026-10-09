@@ -35,12 +35,36 @@ def provenance():
     return result
 
 
-async def measure(mode: str, artifact: Path, routes: int, heap: bool):
+def runtime_link_fingerprint(runtime):
+    """Compare stored runtime links without requesting a public inspection graph."""
+    rows = [
+        (
+            occurrence,
+            record.parent_id,
+            record.owner_id,
+            record.decorated_id,
+            record.dependency_ids,
+            record.decorator_ids,
+            record.pre_configuration_ids,
+        )
+        for occurrence, record in sorted(runtime._plan.graph._records.items())
+    ]
+    payload = {
+        "records": rows,
+        "contexts": [(view.index, view.root, view.parent) for view in runtime._plan.graph._views],
+    }
+    return hashlib.sha256(json.dumps(payload, separators=(",", ":")).encode()).hexdigest()
+
+
+async def measure(mode: str, artifact: Path, routes: int, heap: bool, explain_metadata: bool = True):
     if "benchmarks.graph_memory_fixture" in sys.modules:
         raise AssertionError("Run each observation in a fresh process")
     result = {
         "mode": mode,
         "routes": routes,
+        "explain_metadata": explain_metadata,
+        "diagnostics": False,
+        "allow_scope_builders": False,
         "artifact_schema": SCHEMA,
         "source": provenance(),
         "python": platform.python_version(),
@@ -54,7 +78,10 @@ async def measure(mode: str, artifact: Path, routes: int, heap: bool):
         from clean_ioc import _legacy, container
 
         container.ContainerBuilder.build = _forbid_compilation
+        container.ScopeBuilder.build = _forbid_compilation
         container._Compiler.__init__ = _forbid_compilation
+        setattr(container, "_retain_runtime_graph", _forbid_compilation)
+        setattr(container, "_release_execution_composition", _forbid_compilation)
         _legacy._Registration.__init__ = _forbid_compilation
         setattr(_legacy, "_set_up_dependencies", _forbid_compilation)
     if heap:
@@ -76,12 +103,14 @@ async def measure(mode: str, artifact: Path, routes: int, heap: bool):
             raise AssertionError("Loading invoked template callbacks")
     else:
         fixture = importlib.import_module("benchmarks.graph_memory_fixture")
-        case = fixture.build(routes)
+        case = fixture.build(routes, explain_metadata=explain_metadata)
         runtime = case.runtime
         result["prepare_seconds"] = time.perf_counter() - started
         result["prepared"] = _memory(heap)
     held = None
     try:
+        if runtime.explain_metadata_enabled is not explain_metadata:
+            raise AssertionError("Artifact metadata mode differs from the requested mode")
         if len(case.source_ids) != routes or fixture.ACTIVATIONS:
             raise AssertionError("Wrong fixture size or preparation activated application objects")
         result["template_calls"] = dict(fixture.TEMPLATE_CALLS)
@@ -104,7 +133,23 @@ async def measure(mode: str, artifact: Path, routes: int, heap: bool):
         result["activations"] = dict(fixture.ACTIVATIONS)
         result["lazy_activations"] = held.lazy_counts
         result["graph"] = census(runtime)
-        result["graph_fingerprint"] = runtime.graph.manifest(all_roots=True).fingerprint
+        result["runtime_link_fingerprint"] = runtime_link_fingerprint(runtime)
+        if explain_metadata:
+            result["graph_fingerprint"] = runtime.graph.manifest(all_roots=True).fingerprint
+        else:
+            result["graph_fingerprint"] = None
+            if any(result["graph"]["metadata_entries"].values()):
+                raise AssertionError("Reduced artifact retained explanation metadata")
+            for _ in range(2):
+                try:
+                    _ = runtime.graph
+                except RuntimeError as error:
+                    if "explain-metadata-disabled" not in str(error):
+                        raise
+                else:
+                    raise AssertionError("Reduced artifact exposes a complete inspection graph")
+            if runtime._plan.compiled_graph is not None:
+                raise AssertionError("Reduced inspection reconstructed a graph")
         if mode in ("export", "load"):
             with artifact.open("rb") as stream:
                 result["artifact_sha256"] = hashlib.file_digest(stream, "sha256").hexdigest()
@@ -122,7 +167,9 @@ async def measure(mode: str, artifact: Path, routes: int, heap: bool):
 def _equivalence(run):
     graph = run["graph"]
     return {
+        "explain_metadata": run["explain_metadata"],
         "fingerprint": run["graph_fingerprint"],
+        "runtime_links": run["runtime_link_fingerprint"],
         "validated": run["validated"],
         "activations": run["activations"],
         "lazy_activations": run["lazy_activations"],
@@ -140,6 +187,9 @@ def _equivalence(run):
         "definitions": graph["component_metadata"]["shared_definition_objects"],
         "decorator_objects": graph["decorator_objects"]["unique_objects"],
         "decorator_outcomes": graph["decorator_objects"]["logical_outcomes_by_entry"],
+        "registration_carrier_kinds": graph["registration_carrier_kinds"],
+        "metadata_entries": graph["metadata_entries"],
+        "retained_execution_composition": graph["retained_execution_composition"],
     }
 
 
@@ -161,6 +211,8 @@ def compare(arguments):
                 ]
                 if heap:
                     command.append("--heap")
+                if arguments.no_explain_metadata:
+                    command.append("--no-explain-metadata")
                 run = json.loads(subprocess.check_output(command, text=True))  # noqa: S603
                 run["repeat"] = repeat + 1
                 runs.append(run)
@@ -172,6 +224,8 @@ def compare(arguments):
                 raise AssertionError("Loader did not read the exported artifact")
     if any(run["source"] != runs[0]["source"] for run in runs[1:]):
         raise AssertionError("Sources changed during the comparison")
+    if any(_equivalence(run) != _equivalence(runs[0]) for run in runs[1:]):
+        raise AssertionError("Structure or resolution differs across repetitions")
     medians = {}
     for mode in ("compile", "export", "load"):
         normal = [run for run in runs if run["mode"] == mode and run["instrumentation"] == "none"]
@@ -194,7 +248,13 @@ def compare(arguments):
                     for key in ("traced_retained_bytes", "traced_peak_bytes")
                 },
             }
-    return {"routes": arguments.routes, "repeats": arguments.repeats, "medians": medians, "runs": runs}
+    return {
+        "routes": arguments.routes,
+        "repeats": arguments.repeats,
+        "explain_metadata": not arguments.no_explain_metadata,
+        "medians": medians,
+        "runs": runs,
+    }
 
 
 def main():
@@ -203,6 +263,7 @@ def main():
     parser.add_argument("--routes", type=int, default=8)
     parser.add_argument("--artifact", type=Path, default=Path(".cache/graph-artifact/rich-graph.jsonl"))
     parser.add_argument("--heap", action="store_true")
+    parser.add_argument("--no-explain-metadata", action="store_true")
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--output", type=Path)
     arguments = parser.parse_args()
@@ -213,7 +274,11 @@ def main():
     result = (
         compare(arguments)
         if arguments.mode == "compare"
-        else asyncio.run(measure(arguments.mode, arguments.artifact, arguments.routes, arguments.heap))
+        else asyncio.run(
+            measure(
+                arguments.mode, arguments.artifact, arguments.routes, arguments.heap, not arguments.no_explain_metadata
+            )
+        )
     )
     encoded = json.dumps(result, indent=2, sort_keys=True) + "\n"
     if arguments.output:

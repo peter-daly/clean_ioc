@@ -191,3 +191,7 @@ admission and progress queries. Clean IoC's full CI passed 1,956 tests. These
 checks used installed wheels with no dependency source overrides, but the
 released dependency pins have not yet been updated. Linux budget verification
 remains separate from these macOS results.
+
+For an additional resolution-focused mode, combine this option with
+`explain_metadata=False`. See [optional explanation metadata](compiler-tooling.md#optional-explanation-metadata)
+for the explicit inspection limits and independent ownership rules.

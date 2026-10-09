@@ -140,7 +140,7 @@ continues to expose public root occurrences; applications that resolve returned 
 
 `ContainerBuilder.build()` and `ScopeBuilder.build()` use `diagnostics=False` by default. Ordinary builds still compile
 all visible roots, check missing dependencies, cycles, retaining lifespans, ownership, aliases and decorator safety,
-and run build validation rules. Runtime resolution, component discovery, graph traversal, manifests, ownership
+and run build validation rules. With the default `explain_metadata=True`, runtime resolution, component discovery, graph traversal, manifests, ownership
 reports, source-linked findings and compilation/runtime profilers remain available.
 
 Use `builder.build(diagnostics=True)` for recorded candidate history, occurrence explanation paths, argument and
@@ -168,6 +168,85 @@ CLI validation/inspection commands enable diagnostics when they build a supplied
 variant builds before running validation. Calling `validation_report()` on an existing scope runs its validation
 rules against the existing graph; it does not recompile or enable previously omitted history. Supply an unbuilt
 builder to the CLI or build a scope with `diagnostics=True` when a validation rule needs rich evidence.
+
+## Optional explanation metadata
+
+Both build entry points accept `explain_metadata=True` by default. Set it to
+`False` to release successful-build explanation indexes, origins, candidates,
+inspection caches and records outside the required runtime relationships.
+
+```python
+from clean_ioc import ContainerBuilder
+
+class Service:
+    pass
+
+builder = ContainerBuilder()
+builder.register(Service)
+with builder.build(explain_metadata=False, allow_scope_builders=False) as container:
+    assert isinstance(container.resolve(Service), Service)
+    assert not container.explain_metadata_enabled
+    with container.new_scope() as scope:
+        assert isinstance(scope.resolve(Service), Service)
+```
+
+The runtime keeps resolvable root Components and every relationship required by
+runtime filters, providers, maps, resolution contexts, ownership and cleanup.
+`components`, `has_component`, filtered resolution, ordinary scopes, provisions,
+warmups and instrumentation still work. Components retain generic bindings,
+build arguments, names, tags, aliases and ownership facts needed by filters.
+No inspection callback is replayed and no inspection cache reconstructs discarded
+facts after resolution.
+
+`graph`, its traversal/explanation/manifest/census/architecture APIs,
+`selected_registrations` and `validation_report()` raise `RuntimeError` containing
+`explain-metadata-disabled`. The scalar `build_report` remains available, including
+its checked-root count and captured issues; its SARIF output has no retained graph
+context. Build validation and build-mode rules always run before metadata is
+released. Validation-only rules are incompatible with this option and cause a
+clear `ValueError` before compilation. With `check_unreachable=False`, unreachable
+warnings stay unchecked and cannot be requested later through `validation_report()`.
+Use `check_unreachable=True` when those warnings are needed in the stored report.
+
+| diagnostics | explain_metadata | Successful runtime | Failed build |
+| --- | --- | --- | --- |
+| False | True | Existing inspection and safety facts | Existing minimal failure evidence |
+| True | True | Existing full diagnostic inspection | Full requested diagnostic evidence |
+| False | False | Runtime relationships and scalar build report | Existing minimal failure evidence |
+| True | False | Runtime relationships and scalar build report | Full requested diagnostic evidence |
+
+Diagnostics control failure/build capture independently of successful runtime
+retention. Temporary compilation facts needed for validation and failure evidence
+may still be captured, then released after success. Warmup planning and optional
+instrumentation capture their small runtime descriptors before graph inspection
+is disabled. Resolution profiling remains usable; graph-dependent analyses of a
+profile require an independently retained full graph.
+
+`allow_scope_builders` remains independent. Keeping it enabled retains declaration
+layers and private architecture anchors for future overlays, while completed
+source-inspection graphs and template expansion evidence are released. A reduced
+parent requires `scope_builder.build(explain_metadata=False)`; requesting full
+metadata from that parent raises `ValueError`, because inherited facts cannot be
+recovered. A full parent can create either kind of overlay. Ordinary descendants
+inherit their existing plan's metadata mode. Reducing a child never changes an
+ancestor's graph or releases memory still owned by that ancestor.
+
+Build callbacks receive valid Components while running. After a successful reduced
+build, Components from discarded compilation paths raise `RuntimeError` containing
+`explain-metadata-disabled` when their metadata is accessed; their occurrence IDs
+remain available for logging. Saved Components in the retained runtime closure
+remain usable, including all their relationships. Separate source-inspection
+snapshots remain caller-owned and usable; retaining them keeps their own graphs
+alive. Saved inspection graphs supplied to build validation rules explicitly
+expire and release their context. These limits apply only to the explicit reduced
+mode; full builds keep existing escaped-view behaviour.
+
+Retaining a builder, a callback closure, a source snapshot or a full ancestor can
+keep application-owned data alive. Release those owners when their work is done.
+The private schema-7 artifact experiment supports the reduced local fixture;
+it remains an unfinished experiment with no public persistence API.
+Build matrices continue to use full metadata because their contract includes
+manifests and graph comparisons; this option does not add a reduced matrix mode.
 
 ## Deferred reachability advisories
 

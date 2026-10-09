@@ -20,6 +20,7 @@ import time
 import tracemalloc
 from collections import Counter
 from pathlib import Path
+from unittest.mock import patch
 
 from clean_ioc import container as runtime_code
 
@@ -144,6 +145,7 @@ def census(runtime):
     pending = [root.step for root in root_plans]
     seen, steps, registrations = set(), {}, {}
     helpers = Counter()
+    retained_composition = Counter()
     executable_types = (
         runtime_code._Step,
         runtime_code._CompiledDependency,
@@ -165,6 +167,13 @@ def census(runtime):
                 helpers[type(value).__name__] += 1
             if isinstance(value, runtime_code._RegistrationStep):
                 registrations[id(value.registration)] = value.registration
+            if isinstance(value, runtime_code._CompiledDecorator):
+                retained_composition["decorator_definitions"] += value.source.definition is not None
+                retained_composition["decorator_dependency_settings"] += len(value.source.dependencies)
+            if isinstance(value, runtime_code._CompiledPreConfiguration):
+                retained_composition["preconfiguration_definitions"] += isinstance(
+                    value.definition, runtime_code._PreConfigurationDefinition
+                )
             pending.extend(getattr(value, field.name) for field in dataclasses.fields(value))
     records = plan.graph._records or {}
     links, occurrence_ids = {}, {}
@@ -178,20 +187,44 @@ def census(runtime):
             for value in values:
                 occurrence_ids[id(value)] = value
     origin_maps = {}
-    for mapping in (plan.occurrence_origins, plan.compiled_graph._occurrence_origins, plan.occurrence_layers.origins):
-        backing = gc.get_referents(mapping)[0]
+    for mapping in (
+        plan.occurrence_origins,
+        (plan.compiled_graph._occurrence_origins if plan.compiled_graph else {}),
+        getattr(plan.occurrence_layers, "origins", plan.occurrence_layers),
+    ):
+        backing = gc.get_referents(mapping)[0] if type(mapping).__name__ == "mappingproxy" else mapping
         origin_maps[id(backing)] = backing
     return {
         "decorator_objects": decorator_census(runtime),
         "component_metadata": component_census(records),
         "physical_records": len(records),
-        "logical_graph_visits": sum(1 for _ in runtime.graph.walk()),
+        "logical_graph_visits": sum(1 for _ in runtime.graph.walk()) if plan.explain_metadata else None,
         "provider_view_contexts": len(plan.graph._views),
         "record_kinds": dict(Counter(record.kind.value for record in records.values())),
         "activation_kinds": dict(Counter(record.activation.value for record in records.values())),
         "unique_execution_steps": len(steps),
         "execution_step_kinds": dict(Counter(type(step).__name__ for step in steps.values())),
         "unique_registration_objects": len(registrations),
+        "registration_carrier_kinds": dict(Counter(type(value).__name__ for value in registrations.values())),
+        "retained_execution_composition": {
+            **dict(retained_composition),
+            "registration_dependency_settings": sum(
+                len(getattr(value, "dependencies", ())) for value in registrations.values()
+            ),
+        },
+        "retained_plan_fields": {
+            item.name: {
+                "type": type(value).__name__,
+                "entries": len(value)
+                if isinstance(value, (tuple, dict, list, frozenset, runtime_code.Mapping))
+                else None,
+                "shallow_bytes": sys.getsizeof(gc.get_referents(value)[0])
+                if type(value).__name__ == "mappingproxy"
+                else sys.getsizeof(value),
+            }
+            for item in dataclasses.fields(plan)
+            for value in (getattr(plan, item.name),)
+        },
         "executable_helpers": dict(helpers),
         "selected_registrations": len(plan.selected_registrations),
         "unique_origins": len({id(origin) for origin in plan.occurrence_origins.values()}),
@@ -288,13 +321,25 @@ def inspect_graph(runtime):
         tracemalloc.stop()
 
 
-async def measure(routes: int, heap: bool, diagnostics: bool, inspection: bool = False):
+async def measure(
+    routes: int,
+    heap: bool,
+    diagnostics: bool,
+    inspection: bool = False,
+    explain_metadata: bool = True,
+    allow_scope_builders: bool = False,
+    retain_builder: bool = False,
+    capture_selection_views: bool = False,
+):
     if "benchmarks.graph_memory_fixture" in sys.modules:
         raise RuntimeError("Run each sample in a fresh process")
     result = {
         "source": source_provenance(),
         "routes": routes,
         "diagnostics": diagnostics,
+        "explain_metadata": explain_metadata,
+        "allow_scope_builders": allow_scope_builders,
+        "ownership": {"retained_builder": retain_builder, "captured_selection_views": capture_selection_views},
         "instrumentation": "tracemalloc" if heap else "none",
         "python": platform.python_version(),
         "platform": platform.platform(),
@@ -306,7 +351,28 @@ async def measure(routes: int, heap: bool, diagnostics: bool, inspection: bool =
         tracemalloc.start()
     started = time.perf_counter()
     fixture_module = importlib.import_module("benchmarks.graph_memory_fixture")
-    fixture = fixture_module.build(routes, diagnostics=diagnostics)
+    captured = []
+    from clean_ioc import component_filters as cf
+
+    original = cf.with_name
+
+    def recording_with_name(name):
+        predicate = original(name)
+
+        def capture(component):
+            captured.append(component)
+            return predicate(component)
+
+        return capture
+
+    with patch.object(cf, "with_name", recording_with_name if capture_selection_views else original):
+        fixture = fixture_module.build(
+            routes,
+            diagnostics=diagnostics,
+            explain_metadata=explain_metadata,
+            allow_scope_builders=allow_scope_builders,
+            retain_builder=retain_builder,
+        )
     result["build_seconds"] = time.perf_counter() - started
     held = None
     try:
@@ -324,11 +390,42 @@ async def measure(routes: int, heap: bool, diagnostics: bool, inspection: bool =
         result["lazy_activations"] = held.lazy_counts
         result["activations"] = dict(fixture_module.ACTIVATIONS)
         result["graph"] = census(fixture.runtime)
-        if inspection:
+        from clean_ioc.components import _ComponentGraph
+
+        graphs = [value for value in gc.get_objects() if type(value) is _ComponentGraph]
+        result["retained_graph_inventory"] = {
+            "graphs": len(graphs),
+            "records": sum(len(value._records or value._drafts) for value in graphs),
+            "captured_views": len(captured),
+            "saved_views_in_primary_graph": sum(value._graph is fixture.runtime._plan.graph for value in captured),
+            "saved_views_in_separate_snapshots": sum(
+                value._graph is not fixture.runtime._plan.graph for value in captured
+            ),
+        }
+        del graphs
+        if inspection and explain_metadata:
             result["inspection"] = inspect_graph(fixture.runtime)
             fixture_module.require(
                 fixture_module.TEMPLATE_CALLS == fixture.callbacks_after_build, "Inspection reran callbacks"
             )
+        if inspection and not explain_metadata:
+            before = census(fixture.runtime)
+            errors = []
+            for _ in range(2):
+                for operation in (
+                    lambda: fixture.runtime.graph,
+                    lambda: fixture.runtime.selected_registrations,
+                    fixture.runtime.validation_report,
+                ):
+                    try:
+                        operation()
+                    except RuntimeError as error:
+                        errors.append(str(error))
+                    else:
+                        raise AssertionError("Reduced inspection unexpectedly succeeded")
+            if census(fixture.runtime) != before:
+                raise AssertionError("Reduced inspection retained new metadata")
+            result["disabled_inspection"] = errors
         return result
     finally:
         if tracemalloc.is_tracing():
@@ -358,6 +455,9 @@ def repeat(arguments):
                 command.append("--inspection")
             if arguments.diagnostics:
                 command.append("--diagnostics")
+            for option in ("no_explain_metadata", "allow_scope_builders", "retain_builder", "capture_selection_views"):
+                if getattr(arguments, option):
+                    command.append("--" + option.replace("_", "-"))
             run = json.loads(subprocess.check_output(command, text=True))  # noqa: S603
             run["repeat"] = index + 1
             runs.append(run)
@@ -392,6 +492,10 @@ def main():
         help="Evidence-only eager reference: disable compact patterns and compact clone remapping",
     )
     parser.add_argument("--diagnostics", action="store_true")
+    parser.add_argument("--no-explain-metadata", action="store_true")
+    parser.add_argument("--allow-scope-builders", action="store_true")
+    parser.add_argument("--retain-builder", action="store_true")
+    parser.add_argument("--capture-selection-views", action="store_true")
     parser.add_argument("--output", type=Path)
     arguments = parser.parse_args()
     if not 1 <= arguments.routes <= 128 or arguments.repeats < 1:
@@ -404,7 +508,18 @@ def main():
     result = (
         repeat(arguments)
         if arguments.mode == "repeat"
-        else asyncio.run(measure(arguments.routes, arguments.heap, arguments.diagnostics, arguments.inspection))
+        else asyncio.run(
+            measure(
+                arguments.routes,
+                arguments.heap,
+                arguments.diagnostics,
+                arguments.inspection,
+                not arguments.no_explain_metadata,
+                arguments.allow_scope_builders,
+                arguments.retain_builder,
+                arguments.capture_selection_views,
+            )
+        )
     )
     result["eager_decorator_facts"] = arguments.eager_decorator_facts
     encoded = json.dumps(result, indent=2, sort_keys=True) + "\n"
