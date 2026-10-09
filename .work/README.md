@@ -79,6 +79,28 @@ speed benefit. All 2,132 tests pass for slots/pre-lookup, lifetime/attribution/f
 checks match and slots checks pass Python 3.11–3.14. These are investigation
 artifacts; production sources remain unchanged.
 
+[Task 08](graph-memory-optimization/08-result.md) was completed as an investigation
+by GPT-6.1 Sol with high reasoning. Bounded compact indexes lower reduced build
+peak 72.844→67.851 MiB and RSS 130.438→119.734 MiB, with full retention
+38.432→33.523 MiB. All eight artifact failures and ordinary mapping/view cases are
+resolved; 2,132 tests and focused Python 3.11–3.13 checks pass. Six stronger custom-
+hash counterexamples remain, including read-only proxy equality; a separate native-
+delegation feasibility refinement passes them but is unintegrated/unmeasured.
+Sparse-only storage and full artifact loading have measured costs. **REFINE; not
+ready for implementation**, with a bounded adapter/fallback and remeasurement plan.
+Production sources, earlier evidence and parked pre-compilation work are unchanged.
+
+[Task 09](graph-memory-optimization/09-result.md) is complete: GPT-6.1 Sol with
+medium reasoning integrated native delegation and bounded small/sparse fallback
+in an isolated prototype. All six hash counterexamples, 103 operation/codec checks,
+2,132 tests, 16 lifetime cases and focused Python 3.11–3.13 checks pass. The final
+104-process matrix retains ~4.96 MiB reduced-peak/full-retention savings; sparse
+maps pay only 72-byte carrier overhead. Full artifact export/load medians rise
+~13%, and dense sidecar lookup remains ~3× native. **RETAIN the prototype for
+implementation review; production adoption is not approved.** Shared sources,
+prior evidence and parked pre-compilation work are unchanged. Repository checks
+pass with one narrowly documented prior Task 08 evidence E501 exception.
+
 ## Pre-compilation
 
 The [pre-compilation plan](pre-compilation/README.md), created on 2026-10-09,

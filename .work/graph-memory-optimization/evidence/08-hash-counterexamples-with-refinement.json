@@ -1,0 +1,95 @@
+{
+  "counterexamples": [
+    {
+      "operation": "setdefault",
+      "dict": {
+        "outcome": "success",
+        "hash_calls": 1
+      },
+      "measured_compact": {
+        "outcome": "extra user hashing",
+        "hash_calls": 2
+      },
+      "native_delegation": {
+        "outcome": "success",
+        "hash_calls": 1
+      }
+    },
+    {
+      "operation": "pop",
+      "dict": {
+        "outcome": "success",
+        "hash_calls": 1
+      },
+      "measured_compact": {
+        "outcome": "extra user hashing",
+        "hash_calls": 2
+      },
+      "native_delegation": {
+        "outcome": "success",
+        "hash_calls": 1
+      }
+    },
+    {
+      "operation": "copy",
+      "dict": {
+        "outcome": "success",
+        "hash_calls": 0
+      },
+      "measured_compact": {
+        "outcome": "extra user hashing",
+        "hash_calls": 1
+      },
+      "native_delegation": {
+        "outcome": "success",
+        "hash_calls": 0
+      }
+    },
+    {
+      "operation": "equality",
+      "dict": {
+        "outcome": "success",
+        "hash_calls": 0
+      },
+      "measured_compact": {
+        "outcome": "extra user hashing",
+        "hash_calls": 1
+      },
+      "native_delegation": {
+        "outcome": "success",
+        "hash_calls": 0
+      }
+    },
+    {
+      "operation": "update",
+      "dict": {
+        "outcome": "success",
+        "hash_calls": 0
+      },
+      "measured_compact": {
+        "outcome": "extra user hashing",
+        "hash_calls": 1
+      },
+      "native_delegation": {
+        "outcome": "success",
+        "hash_calls": 0
+      }
+    },
+    {
+      "operation": "public-proxy-equality-with-int-equivalent-key",
+      "dict": {
+        "outcome": "success",
+        "hash_calls": 0
+      },
+      "measured_compact": {
+        "outcome": "extra user hashing",
+        "hash_calls": 1
+      },
+      "native_delegation": {
+        "outcome": "success",
+        "hash_calls": 0
+      }
+    }
+  ],
+  "implication": "Measured candidate needs native dictionary delegation for general operations before implementation."
+}

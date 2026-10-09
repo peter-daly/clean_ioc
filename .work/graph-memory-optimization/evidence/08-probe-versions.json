@@ -1,0 +1,14 @@
+{
+  "08-v1-probe.py.txt": {
+    "source_sha256": "f0b742012736cc55f6735ebee4a89d523f05f4b67b11468a6ab2250b40755a04",
+    "ast_sha256": "69f6ffe20f1990ea3ffc42c0bed20122fc1e45886b384b6fd2649baeb0e4ffbb"
+  },
+  "08-v2-probe.py.txt": {
+    "source_sha256": "7f025feef3ab3c2ef7593ac8e9434ca06f4e24817935fcaad860221b9d802753",
+    "ast_sha256": "28e2bfb66aea46da0464035407e27e73978f61c46008eaab3cf8d9a8a98710f0"
+  },
+  "08-probe.py": {
+    "source_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567",
+    "ast_sha256": "28e2bfb66aea46da0464035407e27e73978f61c46008eaab3cf8d9a8a98710f0"
+  }
+}

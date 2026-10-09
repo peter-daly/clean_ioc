@@ -8,11 +8,11 @@ The [retest after task 05](artifact-retest-post05.md) compares full and reduced
 artifacts using the same current runtime in separate compile/export/load processes.
 
 Created: 2026-10-08\
-Status: Tasks 01 and 02 retained; 03 pruning declined; 04 reverted; 05 retained; 06 investigation complete; 07 investigation complete.
+Status: Tasks 01 and 02 retained; 03 pruning declined; 04 reverted; 05 retained; 06, 07 and 08 investigations complete; 09 refinement complete; isolated prototype retained.
 
 Reduce the memory retained by the compiled output graph while preserving
 resolution, ownership, filtering, inspection and diagnostic behaviour. Measure
-compilation peak memory and build time alongside retained memory. These seven
+compilation peak memory and build time alongside retained memory. These nine
 tasks follow the investigation using the large graph fixture with registration
 templates, decorator templates, providers and maps.
 
@@ -30,6 +30,14 @@ Task 07 investigates object layout and avoidable construction: effective slots
 across inheritance, smaller drafts, graph indexes, and cache lookup before step
 allocation. It builds on task 06's findings without implementing its proposals.
 
+Task 08 follows up the compact-index probe from task 07, investigating mapping
+semantics, artifact compatibility, sparse storage and lookup costs before an
+implementation can be recommended.
+
+Task 09 integrates task 08's native dictionary-delegation fixes in an isolated
+candidate, selects a small/sparse fallback policy and repeats compatibility and
+memory measurements before deciding production readiness.
+
 ## Tasks and recommended order
 
 | ID | Task | Status | Starting point |
@@ -41,12 +49,19 @@ allocation. It builds on task 06's findings without implementing its proposals.
 | 05 | [Make explanation metadata optional and minimize the runtime container](05-optional-explanation-metadata.md) | Complete — retained | GPT-6.1 Sol (`gpt-6.1-sol`), high reasoning; [result](05-result.md), [inventory](05-inventory.md) |
 | 06 | [Investigate avoiding metadata creation during compilation](06-avoid-metadata-creation.md) | Complete — investigation only | GPT-6 Astra (`gpt-6-astra`), high reasoning; [result](06-result.md), [inventory](06-inventory.md) |
 | 07 | [Investigate object layout and avoidable allocation](07-object-layout-and-allocation.md) | Complete — investigation only | GPT-6.1 Sol (`gpt-6.1-sol`), medium reasoning; [result](07-result.md), [inventory](07-inventory.md) |
+| 08 | [Investigate compact indexes](08-compact-indexes.md) | Complete — investigation only; refine | GPT-6.1 Sol (`gpt-6.1-sol`), high reasoning; [result](08-result.md), [inventory](08-inventory.md) |
+| 09 | [Refine compact indexes and verify dictionary compatibility](09-refine-compact-indexes.md) | Complete — isolated prototype retained; not production adopted | GPT-6.1 Sol (`gpt-6.1-sol`), medium reasoning; [result](09-result.md), [inventory](09-inventory.md) |
 
-Tasks 01–07 have recorded outcomes. Task 06 was completed by Astra with high
+Tasks 01–08 have recorded outcomes. Task 06 was completed by Astra with high
 reasoning on 2026-10-09; production optimization remains unimplemented. Task 07
 was completed by GPT-6.1 Sol with medium reasoning on 2026-10-09; its proposals
-remain unimplemented. Reassess
-recommendations against the measured compiler.
+remain unimplemented. Task 08 was completed by GPT-6.1 Sol with high reasoning on 2026-10-09;
+its then-measured index remained not ready pending native-delegation integration
+and remeasurement. Task 09 was completed by GPT-6.1 Sol with medium reasoning: integrated native
+delegation, bounded small/sparse fallback and final measurements address those
+blockers. Its isolated prototype is retained for implementation review; production
+adoption is not approved. Reassess recommendations against
+the measured compiler.
 A task may conclude that a proposed optimization is unsafe
 or not worthwhile; record that outcome and its evidence instead of forcing an
 implementation.
@@ -220,3 +235,33 @@ semantics, not an achieved saving. Slots/pre-lookup pass all 2,132 existing test
 full/reduced attribution/facts and 16 lifetime cases match, and slots checks pass
 Python 3.11–3.14. No production/test/benchmark source, commit, push or pre-compilation
 implementation is changed.
+
+
+## Task 08 result — investigation only; refine
+
+The [result](08-result.md) and [inventory](08-inventory.md) record bounded compact
+indexes and a direct experimental codec. Reduced peak/RSS decrease
+72.844→67.851 MiB / 130.438→119.734 MiB with no established build-time change;
+full retention decreases 38.432→33.523 MiB. All eight prior artifact failures are
+resolved, all 2,132 tests and focused Python 3.11–3.13 checks pass, and provenance,
+callback and lifetime evidence matches. Six stronger custom-hash counterexamples
+still fail the measured mapping, including read-only proxy equality. A separate native-
+delegation feasibility subclass resolves those cases but is unintegrated/unmeasured.
+Sparse-only shallow storage rises 15.3%; full artifact load median rises 8.0% while
+load peak/RSS decrease. **REFINE; not ready for implementation** until the complete
+adapter and fallback policy are integrated, checked and remeasured. Production,
+Task 06 caches, Task 07 layouts and pre-compilation work remain unchanged.
+
+## Task 09 result
+
+[Corrected prototype and final evidence](09-result.md): all six custom-hash
+counterexamples, 103 operation/codec-state checks, 2,132 tests and 16 lifetime
+cases pass. Focused Python 3.11–3.13 checks pass. The 104-process same-source
+matrix shows reduced traced peak 72.844→67.887 MiB and full retained Python
+38.431→33.474 MiB; current RSS falls about 9.6–9.7 MiB during compilation.
+A bounded fallback keeps sparse/tiny storage at native dictionary plus 72 bytes.
+Full artifact load retains 38.060→33.103 MiB and peaks 66.535→60.619 MiB, but
+full export/load medians rise ~13% and narrow dense lookup remains ~3× native.
+RETAIN the isolated prototype for implementation review; production adoption is
+not approved. Production sources and prior evidence are unchanged. Raw repository
+lint retains one prior Task 08 E501; a narrowly exempted rerun and other checks pass.
