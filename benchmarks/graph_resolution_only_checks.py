@@ -28,8 +28,7 @@ class ExecutionOnly:
         for item in items:
             source = ast.parse(textwrap.dedent(inspect.getsource(item.obj)))
             if any(
-                isinstance(node, ast.Attribute)
-                and node.attr in ("graph", "validation_report", "selected_registrations")
+                isinstance(node, ast.Attribute) and node.attr in ("graph", "validation_report")
                 for node in ast.walk(source)
             ):
                 inspection.append(item)

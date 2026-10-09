@@ -33,6 +33,12 @@ Ordinary scopes share their parent's tuple; compiled overlays capture their own
 selections, including anchored parent singleton dependencies. Capture works with
 `diagnostics=False` and does not rerun eligibility callbacks or activate factories.
 
+The catalogue also remains available with `explain_metadata=False`, independently
+of `allow_scope_builders`. This corrects the RC3 restriction: successful reduction
+keeps the frozen discovery tuple while still releasing explanation indexes and
+unneeded occurrence records. The historical measurements below predate that fix;
+they do not establish downstream application verification of reduced-metadata mode.
+
 ## Verification
 
 - Clean IoC `make ci`: **1,930 tests passed**, including ten new catalogue cases;

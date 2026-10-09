@@ -5223,7 +5223,6 @@ def _reduce_explanation_metadata(plan: _PlanSet) -> _PlanSet:
         census_sources=empty,
         census_definitions=(),
         census_ids=empty,
-        selected_registrations=(),
         validation_rules=(),
         architecture_roots=architecture,
         fallback_ids=plan.fallback_ids if blueprint is not None else frozenset(),
@@ -12661,7 +12660,9 @@ def _compile_with_report(
         retained = _prune_orphan_registrations(finalized) if clean_orphans else finalized
         return replace(
             retained,
-            selected_registrations=_selected_registration_catalogue(retained) if explain_metadata else (),
+            # Runtime discovery is captured before graph reduction and owns no
+            # occurrences, explanation indexes or composition blueprints.
+            selected_registrations=_selected_registration_catalogue(retained),
         )
     except Exception as error:
         if compiled is not None and compiler.graph._records is None:
@@ -13093,10 +13094,9 @@ class Scope(_RuntimeOwner):
         closed constructor types. Excludes synthetic components, rejected
         candidates, and unexposed architecture-only boundary roots. Entries are
         deduplicated by registration ID and visible canonical service type in
-        root/dependency traversal order. Reading never resolves or compiles.
+        root/dependency traversal order. Available independently of explanation
+        metadata and scope-builder support. Reading never resolves or compiles.
         """
-        if not self._plan.explain_metadata:
-            raise RuntimeError("explain-metadata-disabled: selected_registrations requires explain_metadata=True")
         return self._plan.selected_registrations
 
     @property
@@ -15469,8 +15469,9 @@ class ContainerBuilder(_WarmupBuilder):
         ``explain_metadata=False`` releases full graph inspection metadata after
         validation, warmup planning and optional instrumentation. Runtime root
         Components and their relationships remain usable by filters. Discarded
-        build-time views expire; graph reports, selected_registrations and
-        validation-only rules require metadata. Deferred unreachable warnings
+        build-time views expire; the frozen selected_registrations catalogue
+        remains available. Graph reports and validation-only rules require
+        metadata. Deferred unreachable warnings
         cannot be requested later in this mode. Reduced parents require reduced
         overlays. Diagnostics still capture truthful failed-build evidence.
 
@@ -15591,8 +15592,9 @@ class ScopeBuilder(_WarmupBuilder):
         ``explain_metadata=False`` releases full graph inspection metadata after
         validation, warmup planning and optional instrumentation. Runtime root
         Components and their relationships remain usable by filters. Discarded
-        build-time views expire; graph reports, selected_registrations and
-        validation-only rules require metadata. Deferred unreachable warnings
+        build-time views expire; the frozen selected_registrations catalogue
+        remains available. Graph reports and validation-only rules require
+        metadata. Deferred unreachable warnings
         cannot be requested later in this mode. Reduced parents require reduced
         overlays. Diagnostics still capture truthful failed-build evidence.
 

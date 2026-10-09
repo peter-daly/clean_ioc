@@ -45,6 +45,8 @@ async def test_lifetime_and_identity_survive_roundtrip(tmp_path, monkeypatch, li
     with load_graph(artifact) as loaded:
         assert fixture.ACTIVATIONS == 0
         assert loaded.explain_metadata_enabled is explain_metadata
+        assert loaded.selected_registrations == original.selected_registrations
+        assert {item.implementation_type for item in loaded.selected_registrations} == {fixture.Pair, fixture.Leaf}
         if explain_metadata:
             assert loaded.graph.manifest(all_roots=True).to_dict() == original.graph.manifest(all_roots=True).to_dict()
         else:
@@ -63,6 +65,8 @@ async def test_lifetime_and_identity_survive_roundtrip(tmp_path, monkeypatch, li
         assert isinstance(dependencies[1].step, container._RegistrationStep)
         assert dependencies[0].step.registration is dependencies[1].step.registration
         with loaded.new_scope() as first_scope, loaded.new_scope() as second_scope:
+            assert first_scope.selected_registrations is loaded.selected_registrations
+            assert second_scope.selected_registrations is loaded.selected_registrations
             first = first_scope.resolve(fixture.Pair)
             repeated = await first_scope.resolve_async(fixture.Pair)
             second = second_scope.resolve(fixture.Pair)
@@ -248,6 +252,7 @@ def test_rich_export_and_load_in_independent_processes(tmp_path, explain_metadat
     assert exported["graph_fingerprint"] == loaded["graph_fingerprint"]
     assert exported["runtime_link_fingerprint"] == loaded["runtime_link_fingerprint"]
     assert exported["graph"]["physical_records"] == loaded["graph"]["physical_records"]
+    assert exported["graph"]["selected_registrations"] == loaded["graph"]["selected_registrations"] > 0
     assert loaded["explain_metadata"] is explain_metadata
     assert exported["validated"] == loaded["validated"]
     assert loaded["compilation_disabled"]

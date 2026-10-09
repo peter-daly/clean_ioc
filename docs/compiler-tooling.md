@@ -131,7 +131,10 @@ the actual selected target, including targets inside an exposed boundary plan.
 Entries are deduplicated by registration ID and visible canonical service type, in deterministic depth-first
 root/dependency traversal order. Multiple closed requests or visible service aliases of one registration may
 produce multiple entries. The tuple retains metadata and type references, without `Component`, graph or builder
-blueprint references, and remains available with `diagnostics=False`.
+blueprint references. Discovery remains available with `diagnostics=False`,
+`explain_metadata=False` and `allow_scope_builders=False`, including when all three
+are combined. The catalogue is captured before explanation metadata is discarded;
+reading it never reconstructs that metadata.
 
 Use this catalogue for static type discovery that does not need public component resolution. `scope.components`
 continues to expose public root occurrences; applications that resolve returned component IDs should keep using it.
@@ -186,20 +189,28 @@ builder.register(Service)
 with builder.build(explain_metadata=False, allow_scope_builders=False) as container:
     assert isinstance(container.resolve(Service), Service)
     assert not container.explain_metadata_enabled
+    assert container.selected_registrations[0].implementation_type is Service
     with container.new_scope() as scope:
         assert isinstance(scope.resolve(Service), Service)
+        assert scope.selected_registrations is container.selected_registrations
 ```
 
 The runtime keeps resolvable root Components and every relationship required by
 runtime filters, providers, maps, resolution contexts, ownership and cleanup.
-`components`, `has_component`, filtered resolution, ordinary scopes, provisions,
+`components`, `selected_registrations`, `has_component`, filtered resolution, ordinary scopes, provisions,
 warmups and instrumentation still work. Components retain generic bindings,
 build arguments, names, tags, aliases and ownership facts needed by filters.
 No inspection callback is replayed and no inspection cache reconstructs discarded
 facts after resolution.
 
-`graph`, its traversal/explanation/manifest/census/architecture APIs,
-`selected_registrations` and `validation_report()` raise `RuntimeError` containing
+The frozen discovery catalogue retains selected dependency-only/deferred
+registrations and decorators, with the same IDs, types, names and tags as a full
+build. It owns no occurrence graphs, explanation indexes, candidate histories or
+composition blueprints. Applications can discover handler implementation types
+without exposing extra public resolution roots.
+
+`graph`, its traversal/explanation/manifest/census/architecture APIs
+and `validation_report()` raise `RuntimeError` containing
 `explain-metadata-disabled`. The scalar `build_report` remains available, including
 its checked-root count and captured issues; its SARIF output has no retained graph
 context. Build validation and build-mode rules always run before metadata is
@@ -212,8 +223,8 @@ Use `check_unreachable=True` when those warnings are needed in the stored report
 | --- | --- | --- | --- |
 | False | True | Existing inspection and safety facts | Existing minimal failure evidence |
 | True | True | Existing full diagnostic inspection | Full requested diagnostic evidence |
-| False | False | Runtime relationships and scalar build report | Existing minimal failure evidence |
-| True | False | Runtime relationships and scalar build report | Full requested diagnostic evidence |
+| False | False | Runtime relationships, discovery catalogue and scalar build report | Existing minimal failure evidence |
+| True | False | Runtime relationships, discovery catalogue and scalar build report | Full requested diagnostic evidence |
 
 Diagnostics control failure/build capture independently of successful runtime
 retention. Temporary compilation facts needed for validation and failure evidence

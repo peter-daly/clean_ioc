@@ -67,7 +67,8 @@ async def test_rich_runtime_preserves_templates_providers_maps_identity_and_clea
                 assert not plan.decorator_explanations
                 assert not plan.root_candidates
                 assert not plan.census_definitions
-                assert not plan.selected_registrations
+                assert plan.selected_registrations is fixture.runtime.selected_registrations
+                assert plan.selected_registrations
                 assert not plan.architecture_roots
                 assert len(plan.graph._records or {}) == 1278
         finally:
@@ -104,7 +105,7 @@ def test_disabled_apis_raise_without_reconstruction_or_new_caches():
     with composition().build(explain_metadata=False, check_unreachable=False) as runtime:
         before = (len(runtime._plan.graph._records), len(gc.get_objects()))
         for _ in range(2):
-            for operation in (lambda: runtime.graph, lambda: runtime.selected_registrations, runtime.validation_report):
+            for operation in (lambda: runtime.graph, runtime.validation_report):
                 with pytest.raises(RuntimeError, match="explain-metadata-disabled"):
                     operation()
         assert len(runtime._plan.graph._records) == before[0]

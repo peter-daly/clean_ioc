@@ -414,7 +414,6 @@ async def measure(
             for _ in range(2):
                 for operation in (
                     lambda: fixture.runtime.graph,
-                    lambda: fixture.runtime.selected_registrations,
                     fixture.runtime.validation_report,
                 ):
                     try:

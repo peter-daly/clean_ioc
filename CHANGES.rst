@@ -2,6 +2,15 @@ Unreleased
 ----------
 
 
+2.0.0rc4
+--------
+
+    Preserve selected_registrations with explain_metadata=False, independently
+    of allow_scope_builders. Runtime discovery keeps selected dependency-only
+    and deferred registrations and decorators without retaining explanation
+    graphs, replaying selection callbacks or creating extra public roots.
+
+
 2.0.0rc3
 --------
 
