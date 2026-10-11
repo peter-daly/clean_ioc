@@ -1,5 +1,5 @@
-Unreleased
-----------
+2.0.0rc5
+--------
 
     Separate build() execution from analyse() validation. Production builds run
     no policy or validation callbacks. Impossible binding still fails locally;
