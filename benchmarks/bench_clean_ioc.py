@@ -1,4 +1,10 @@
-"""BenchBro experiments for Clean IoC 2 build and runtime boundaries."""
+"""BenchBro experiments for explicit build, analysis and runtime boundaries.
+
+Analysis cases measure a fresh analyse call; rule execution is never a deferred
+report read. Their renamed IDs must not compare against old validation baselines.
+Rule declarations in build-feature cases intentionally remain unexecuted. Analysis
+iteration fixtures exclude declarations/cleanup and include compilation plus rules.
+"""
 
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
@@ -7,8 +13,8 @@ from typing import Any, Generic, TypeVar
 from benchbro import Case, system
 
 from clean_ioc import (
+    AnalysisReport,
     BuildIssue,
-    BuildReport,
     CompiledGraph,
     ComponentBuilder,
     Container,
@@ -19,6 +25,7 @@ from clean_ioc import (
     OwnershipReport,
     Provider,
     Scope,
+    ScopeBuilder,
     Use,
     ValidationContext,
 )
@@ -131,27 +138,27 @@ def build_graph_builder(*, mark_entrypoint: bool = False) -> ContainerBuilder:
     return builder
 
 
-def build_feature_graph(scenario: str) -> Container:
-    if scenario in {"core", "build-validation", "validation-only"}:
+def feature_graph_builder(scenario: str) -> ContainerBuilder:
+    if scenario in {"core", "registered-graph-rule", "registered-ast-rule"}:
         builder = build_graph_builder()
-        if scenario == "build-validation":
+        if scenario == "registered-graph-rule":
             builder.add_validation_rule(validate_graph_walk)
-        elif scenario == "validation-only":
-            builder.add_validation_rule(validate_implementation_asts, mode="validation")
-        return builder.build()
+        elif scenario == "registered-ast-rule":
+            builder.add_validation_rule(validate_implementation_asts)
+        return builder
 
     if scenario == "resource-ownership":
         builder = ContainerBuilder()
         builder.register(Leaf, factory=create_managed_leaf, lifespan="transient")
         for service_type in (LevelFour, LevelThree, LevelTwo, LevelOne):
             builder.register(service_type, lifespan="singleton")
-        return builder.build()
+        return builder
 
     if scenario == "typed-provider":
         builder = ContainerBuilder()
         for service_type in (Leaf, LevelFour, LevelThree, LevelTwo, ProviderLevelOne):
             builder.register(service_type)
-        return builder.build()
+        return builder
 
     if scenario == "boundary-visibility":
         builder = ContainerBuilder()
@@ -159,7 +166,7 @@ def build_feature_graph(scenario: str) -> Container:
         builder.create_boundary(
             "application", uses=(Use("foundation", LevelThree),), exposes=(Expose(LevelOne),)
         ).apply_bundle(application_bundle)
-        return builder.build()
+        return builder
 
     raise ValueError(f"Unknown compiler feature scenario: {scenario}")
 
@@ -206,8 +213,17 @@ def transient_container() -> Container:
 
 
 @system(scope="session")
-def graph_container() -> Container:
-    return build_graph_builder().build()
+def graph_container():
+    with build_graph_builder().build() as container:
+        yield container
+
+
+@system(scope="session")
+def overlay_parent():
+    builder = build_graph_builder()
+    composition = builder.retain_composition()
+    with builder.build() as parent:
+        yield parent, composition
 
 
 @system(scope="session")
@@ -224,8 +240,11 @@ def scaled_transient_containers() -> dict[int, tuple[Container, type]]:
 
 
 @system(scope="session")
-def tooling_graph(graph_container: Container) -> CompiledGraph:
-    return graph_container.graph
+def tooling_graph():
+    with build_graph_builder().analyse() as analysis:
+        if analysis.graph is None:
+            raise RuntimeError("Benchmark fixture analysis did not emit an inspection graph")
+        yield analysis.graph
 
 
 @system(scope="session")
@@ -242,26 +261,39 @@ def changed_tooling_manifest() -> GraphManifest:
     builder.register(Leaf, AlternateLeaf)
     for service_type in (LevelFour, LevelThree, LevelTwo, LevelOne):
         builder.register(service_type)
-    return builder.build().graph.manifest(all_roots=True)
+    with builder.analyse() as analysis:
+        if analysis.graph is None:
+            raise RuntimeError("Benchmark fixture analysis did not emit an inspection graph")
+        return analysis.graph.manifest(all_roots=True)
 
 
-@system(scope="session")
-def validation_only_graph_container() -> Container:
+def prepared_rule_analysis(rule):
     builder = build_graph_builder()
-    builder.add_validation_rule(validate_graph_walk, mode="validation")
-    return builder.build()
+    builder.add_validation_rule(rule)
+    state = {"builder": builder, "result": None}
+    try:
+        yield state
+    finally:
+        if state["result"] is not None:
+            state["result"].close()
+
+
+@system(scope="iteration")
+def graph_rule_analysis_input():
+    yield from prepared_rule_analysis(validate_graph_walk)
+
+
+@system(scope="iteration")
+def ast_rule_analysis_input():
+    yield from prepared_rule_analysis(validate_implementation_asts)
 
 
 @system(scope="session")
-def validation_only_ast_container() -> Container:
-    builder = build_graph_builder()
-    builder.add_validation_rule(validate_implementation_asts, mode="validation")
-    return builder.build()
-
-
-@system(scope="session")
-def ownership_graph() -> CompiledGraph:
-    return build_feature_graph("resource-ownership").graph
+def ownership_graph():
+    with feature_graph_builder("resource-ownership").analyse() as analysis:
+        if analysis.graph is None:
+            raise RuntimeError("Benchmark fixture analysis did not emit an inspection graph")
+        yield analysis.graph
 
 
 runtime = Case(
@@ -338,14 +370,16 @@ def build_five_component_container() -> Container:
     return build_graph_builder().build()
 
 
-@build.benchmark(name="build-five-component-container-with-entrypoint-diagnostics")
-def build_five_component_container_with_entrypoint_diagnostics() -> Container:
-    return build_graph_builder(mark_entrypoint=True).build()
+@build.benchmark(name="analyse-five-component-entrypoints")
+def analyse_five_component_entrypoints() -> AnalysisReport:
+    with build_graph_builder(mark_entrypoint=True).analyse() as analysis:
+        return analysis.report
 
 
 @build.benchmark(name="build-scope-overlay")
-def build_scope_overlay(graph_container: Container) -> Scope:
-    builder = graph_container.new_scope_builder()
+def build_scope_overlay(overlay_parent) -> Scope:
+    parent, composition = overlay_parent
+    builder = ScopeBuilder(parent, composition=composition)
     builder.register(Leaf, lifespan="singleton")
     return builder.build()
 
@@ -373,27 +407,27 @@ build_features = Case(
     "scenario",
     [
         "core",
-        "build-validation",
-        "validation-only",
+        "registered-graph-rule",
+        "registered-ast-rule",
         "resource-ownership",
         "typed-provider",
         "boundary-visibility",
     ],
     ids=[
         "core",
-        "build-validation",
-        "validation-only",
+        "registered-graph-rule",
+        "registered-ast-rule",
         "resource-ownership",
         "typed-provider",
         "boundary-visibility",
     ],
 )
 def build_five_component_feature_graph(scenario: str) -> Container:
-    return build_feature_graph(scenario)
+    return feature_graph_builder(scenario).build()
 
 
 validation = Case(
-    name="compiler-validation",
+    name="compiler-analysis",
     tags=["core", "tooling", "compiler-features", "validation"],
     min_iterations=500,
     setup_timing="exclude",
@@ -401,14 +435,18 @@ validation = Case(
 )
 
 
-@validation.benchmark(name="run-deferred-graph-walk")
-def run_deferred_graph_walk(validation_only_graph_container: Container) -> BuildReport:
-    return validation_only_graph_container.validation_report()
+@validation.benchmark(name="analyse-graph-walk")
+def analyse_graph_walk(graph_rule_analysis_input) -> AnalysisReport:
+    result = graph_rule_analysis_input["builder"].analyse()
+    graph_rule_analysis_input["result"] = result
+    return result.report
 
 
-@validation.benchmark(name="run-deferred-type-ast-inspection")
-def run_deferred_type_ast_inspection(validation_only_ast_container: Container) -> BuildReport:
-    return validation_only_ast_container.validation_report()
+@validation.benchmark(name="analyse-type-ast-inspection")
+def analyse_type_ast_inspection(ast_rule_analysis_input) -> AnalysisReport:
+    result = ast_rule_analysis_input["builder"].analyse()
+    ast_rule_analysis_input["result"] = result
+    return result.report
 
 
 tooling = Case(

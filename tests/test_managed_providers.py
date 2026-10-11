@@ -13,12 +13,12 @@ from clean_ioc import (
     AsyncManagedProvider,
     ComponentKind,
     ContainerBuilder,
-    ContainerBuildError,
     Instrumentation,
     ManagedProvider,
     Provider,
     ProviderScopeClosedError,
     ResolutionProfiler,
+    ScopeBuilder,
     ScopeProvisionError,
     select,
 )
@@ -242,9 +242,9 @@ def test_ordinary_provider_retention_restriction_is_preserved(provider, composit
 
     builder.register(Consumer, lifespan="singleton")
     if provider is Provider:
-        with pytest.raises(ContainerBuildError) as caught:
-            builder.build()
-        assert "provider-captive-scope" in codes(caught.value)
+        caught = builder.analyse()
+        assert not caught.report.is_valid
+        assert "provider-captive-scope" in codes(caught)
     else:
         with builder.build() as container:
             with container.resolve(Consumer).resource() as resource:
@@ -256,9 +256,9 @@ def test_target_internal_captive_dependency_still_fails():
     builder.register(Resource, lifespan="scoped")
     builder.register(Product, lifespan="singleton")
     builder.register(Runner, lifespan="singleton")
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert "captive-dependency" in codes(caught.value)
+    caught = builder.analyse()
+    assert not caught.report.is_valid
+    assert "captive-dependency" in codes(caught)
 
 
 @pytest.mark.parametrize("mode", ["constructor", "factory", "generator", "contextmanager"])
@@ -307,10 +307,10 @@ async def test_async_plans_rejected_for_sync_and_supported_for_async(kind):
             pass
 
     builder.register(Consumer)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert "managed-provider-requires-async" in codes(caught.value)
-    assert "use AsyncManagedProvider[" in str(caught.value)
+    caught = builder.analyse()
+    assert not caught.report.is_valid
+    assert "managed-provider-requires-async" in codes(caught)
+    assert "use AsyncManagedProvider[" in caught.report.to_text()
     builder = ContainerBuilder()
     builder.register(Resource, factory=create, lifespan="scoped")
     async with builder.build() as container:
@@ -419,15 +419,15 @@ def test_closed_generic_pattern_and_decorator(pattern):
 def test_managed_marked_entrypoint_and_deferred_graph(composition):
     builder, _ = composition
     builder.mark_entrypoint(ManagedProvider[Product])
-    with builder.build() as container:
-        root = container.graph.entrypoints[0].component
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
+        root = container_analysis.graph.entrypoints[0].component
         assert root.kind is ComponentKind.managed_provider
-        manifest = container.graph.manifest().to_json()
+        manifest = container_analysis.graph.manifest().to_json()
         assert '"scope_policy": "per_call"' in manifest
-        analysis = container.graph.activation_report(ManagedProvider[Product])
+        analysis = container_analysis.graph.activation_report(ManagedProvider[Product])
         assert not any(item.service.endswith("Resource") for item in analysis.immediate_obligations)
         assert any(item.service.endswith("Resource") for item in analysis.deferred_obligations)
-        assert manifest == container.graph.manifest().to_json()
+        assert manifest == container_analysis.graph.manifest().to_json()
 
 
 def test_profile_counts_acquisition_cleanup_and_excludes_body_time(composition, monkeypatch):
@@ -467,8 +467,9 @@ def test_overlay_singleton_handles_keep_their_declaring_composition(composition)
         finally:
             resource.closed = True
 
+    container_composition = builder.retain_composition()
     with builder.build() as container:
-        overlay_builder = container.new_scope_builder()
+        overlay_builder = ScopeBuilder(container, composition=container_composition)
         overlay_builder.register(Resource, factory=overlay_resource, lifespan="scoped")
         overlay_builder.register(OverlayRunner, lifespan="singleton")
         with overlay_builder.build() as overlay:
@@ -533,9 +534,9 @@ def test_boundary_exposure_and_private_target_diagnostics():
     builder = ContainerBuilder()
     builder.create_boundary("resources").register(Resource)
     builder.register(Consumer)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert "boundary-private-component" in codes(caught.value)
+    caught = builder.analyse()
+    assert not caught.report.is_valid
+    assert "boundary-private-component" in codes(caught)
 
 
 def test_real_target_cycle_is_rejected():
@@ -552,17 +553,17 @@ def test_real_target_cycle_is_rejected():
     builder = ContainerBuilder()
     builder.register(Cyclic)
     builder.register(Consumer)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert "circular-dependency" in codes(caught.value)
+    caught = builder.analyse()
+    assert not caught.report.is_valid
+    assert "circular-dependency" in codes(caught)
 
 
 def test_scoped_target_sharing_groups_are_separate_from_ordinary_scope(composition):
     builder, _ = composition
     builder.mark_entrypoint(Runner)
     builder.mark_entrypoint(Product)
-    with builder.build() as container:
-        report = container.graph.sharing_report()
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
+        report = container_analysis.graph.sharing_report()
         scoped = [group for group in report.groups if group.service.endswith("Resource")]
         assert any("managed acquisition" in " ".join(group.conditions) for group in scoped)
         assert any("inherited scoped values" in " ".join(group.conditions) for group in scoped)
@@ -580,11 +581,11 @@ def test_direct_policy_sarif_and_semantic_diff_traverse_managed_boundary(composi
 
     builder, _ = composition
     builder.add_validation_rule(forbid_dependency(cf.service_type_is(Runner), cf.service_type_is(Product)))
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert "policy-forbidden-dependency" in codes(caught.value)
-    assert caught.value.report is not None
-    sarif = caught.value.report.to_sarif()
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert "policy-forbidden-dependency" in codes(caught_analysis)
+    assert caught_analysis.report is not None
+    sarif = caught_analysis.report.to_sarif()
     assert "Product" in sarif and "Runner" in sarif
 
     class Consumer:
@@ -599,8 +600,13 @@ def test_direct_policy_sarif_and_semantic_diff_traverse_managed_boundary(composi
         result.mark_entrypoint(Consumer)
         return result
 
-    with build(Provider).build() as ordinary, build(ManagedProvider).build() as managed:
-        diff = managed.graph.manifest().diff(ordinary.graph.manifest())
+    with (
+        build(Provider).analyse() as ordinary_analysis,
+        ordinary_analysis.create_runtime() as _ordinary,
+        build(ManagedProvider).analyse() as managed_analysis,
+        managed_analysis.create_runtime() as _managed,
+    ):
+        diff = managed_analysis.graph.manifest().diff(ordinary_analysis.graph.manifest())
         assert not diff.is_empty
         assert any("activation" in str(change.kind) for change in diff.semantic_changes)
 
@@ -620,15 +626,21 @@ def test_matrix_and_public_reports_do_not_activate_or_expose_values():
     assert report.is_valid
     assert report.to_json() == report.to_json()
     assert "managed_provider" in report.to_json()
-    with definition().build(build_args={"secret-input-name": "secret-input-value"}) as container:
-        public = container.graph.manifest().to_json() + container.graph.ownership_report().to_json()
-        public += container.graph.sharing_report().to_json() + container.graph.activation_report(Runner).to_json()
+    with (
+        definition().analyse(build_args={"secret-input-name": "secret-input-value"}) as container_analysis,
+        container_analysis.create_runtime() as _container,
+    ):
+        public = container_analysis.graph.manifest().to_json() + container_analysis.graph.ownership_report().to_json()
+        public += (
+            container_analysis.graph.sharing_report().to_json()
+            + container_analysis.graph.activation_report(Runner).to_json()
+        )
         assert "secret-input" not in public
         assert public == (
-            container.graph.manifest().to_json()
-            + container.graph.ownership_report().to_json()
-            + container.graph.sharing_report().to_json()
-            + container.graph.activation_report(Runner).to_json()
+            container_analysis.graph.manifest().to_json()
+            + container_analysis.graph.ownership_report().to_json()
+            + container_analysis.graph.sharing_report().to_json()
+            + container_analysis.graph.activation_report(Runner).to_json()
         )
 
 
@@ -646,21 +658,21 @@ async def test_async_manager_rejects_sync_protocol(composition):
 def test_managed_root_explanations_and_census_match_provider_semantics(composition):
     builder, _ = composition
     builder.mark_entrypoint(Runner)
-    with builder.build(diagnostics=True) as container:
-        assert container.graph.explain(ManagedProvider[Resource]).selected
-        arguments = container.graph.explain_arguments(container.graph.entrypoints[0].component)
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
+        assert container_analysis.graph.explain(ManagedProvider[Resource]).selected
+        arguments = container_analysis.graph.explain_arguments(container_analysis.graph.entrypoints[0].component)
         assert arguments[0].result_category == "managed_provider"
-        census = container.graph.selection_census()
+        census = container_analysis.graph.selection_census()
         resource = next(item for item in census.definitions if item.definition.implementation.endswith(".Product"))
         assert resource.deferred_target_uses > 0
         assert resource.dependency_requests == 0
     builder = ContainerBuilder()
     builder.register(Resource)
     builder.mark_entrypoint(ManagedProvider[Resource])
-    with builder.build(diagnostics=True) as container:
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
         resource = next(
             item
-            for item in container.graph.selection_census().definitions
+            for item in container_analysis.graph.selection_census().definitions
             if item.definition.implementation.endswith(".Resource")
         )
         assert resource.root_requests == 1
@@ -956,13 +968,17 @@ def test_nested_isolated_boundaries_use_nearest_scope_for_sharing_and_ownership(
     builder.register(Operation, Implementation, scope="per_call")
     builder.register(Target)
     builder.mark_entrypoint(ManagedProvider[Target])
-    with builder.build() as container:
-        groups = [group for group in container.graph.sharing_report().groups if group.service.endswith(".Resource")]
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
+        groups = [
+            group for group in container_analysis.graph.sharing_report().groups if group.service.endswith(".Resource")
+        ]
         groups = [group for group in groups if any("ManagedProvider[" in path for path in group.occurrence_paths)]
         assert len(groups) == 2
         assert all("method invocation" in " ".join(group.conditions) for group in groups)
         records = [
-            record for record in container.graph.ownership_report().records if record.component.service_type is Resource
+            record
+            for record in container_analysis.graph.ownership_report().records
+            if record.component.service_type is Resource
         ]
         assert all("managed acquisition" not in record.reason for record in records)
 
@@ -1014,9 +1030,11 @@ def test_sync_managed_plan_rejects_scoped_async_cleanup_behind_ordinary_provider
     else:
         builder.mark_entrypoint(ManagedProvider[Target])
     instrumentation = Instrumentation(ResolutionProfiler()) if observed else None
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build(instrumentation=instrumentation)
-    assert "managed-provider-requires-async" in codes(caught.value)
+    caught = builder.analyse()
+    with caught.create_runtime(instrumentation=instrumentation):
+        pass
+    assert not caught.report.is_valid
+    assert "managed-provider-requires-async" in codes(caught)
 
 
 @pytest.mark.parametrize("observed", [False, True])

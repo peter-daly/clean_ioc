@@ -1,0 +1,151 @@
+{
+  "policy": "after",
+  "variant": "rich-run",
+  "source": {
+    "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+    "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+    "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+    "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+    "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+  },
+  "phases": [
+    {
+      "phase": "fixture:imported",
+      "elapsed_seconds": 0.008457083022221923,
+      "current_bytes": 1100159,
+      "preceding_segment_peak_bytes": 2130880
+    },
+    {
+      "phase": "build:begin",
+      "elapsed_seconds": 0.01858458307106048,
+      "current_bytes": 1223008,
+      "preceding_segment_peak_bytes": 1249125
+    },
+    {
+      "phase": "_expand_registration_templates:begin",
+      "elapsed_seconds": 0.019256792031228542,
+      "current_bytes": 1247953,
+      "preceding_segment_peak_bytes": 1250316
+    },
+    {
+      "phase": "_expand_registration_templates:end",
+      "elapsed_seconds": 0.03681441699154675,
+      "current_bytes": 1539277,
+      "preceding_segment_peak_bytes": 1621835
+    },
+    {
+      "phase": "_expand_decorator_templates:begin",
+      "elapsed_seconds": 0.03871370805427432,
+      "current_bytes": 1581871,
+      "preceding_segment_peak_bytes": 1609365
+    },
+    {
+      "phase": "_expand_decorator_templates:end",
+      "elapsed_seconds": 0.5407842500135303,
+      "current_bytes": 2131431,
+      "preceding_segment_peak_bytes": 2274369
+    },
+    {
+      "phase": "compile:begin",
+      "elapsed_seconds": 0.5443489999743178,
+      "current_bytes": 2211254,
+      "preceding_segment_peak_bytes": 2216352
+    },
+    {
+      "phase": "compile:end",
+      "elapsed_seconds": 66.1092690830119,
+      "current_bytes": 265131366,
+      "preceding_segment_peak_bytes": 266416986
+    },
+    {
+      "phase": "_finalize_plan:begin",
+      "elapsed_seconds": 66.10931783297565,
+      "current_bytes": 265131739,
+      "preceding_segment_peak_bytes": 265134246
+    },
+    {
+      "phase": "_finalize_plan:end",
+      "elapsed_seconds": 66.11026300000958,
+      "current_bytes": 265143486,
+      "preceding_segment_peak_bytes": 265146035
+    },
+    {
+      "phase": "_compile_warmup_plans:begin",
+      "elapsed_seconds": 66.11026729200967,
+      "current_bytes": 265143618,
+      "preceding_segment_peak_bytes": 265143618
+    },
+    {
+      "phase": "_compile_warmup_plans:end",
+      "elapsed_seconds": 66.11027166701388,
+      "current_bytes": 265143748,
+      "preceding_segment_peak_bytes": 265144130
+    },
+    {
+      "phase": "_retain_runtime_graph:begin",
+      "elapsed_seconds": 66.24895870801993,
+      "current_bytes": 260307407,
+      "preceding_segment_peak_bytes": 266518001
+    },
+    {
+      "phase": "freeze:begin",
+      "elapsed_seconds": 66.52886620804202,
+      "current_bytes": 264351723,
+      "preceding_segment_peak_bytes": 264588246
+    },
+    {
+      "phase": "freeze:end",
+      "elapsed_seconds": 66.69884349999484,
+      "current_bytes": 264316510,
+      "preceding_segment_peak_bytes": 264891491
+    },
+    {
+      "phase": "_retain_runtime_graph:end",
+      "elapsed_seconds": 66.72071458306164,
+      "current_bytes": 239076224,
+      "preceding_segment_peak_bytes": 264316510
+    },
+    {
+      "phase": "_reduce_explanation_metadata:begin",
+      "elapsed_seconds": 66.72112408303656,
+      "current_bytes": 238524175,
+      "preceding_segment_peak_bytes": 239076224
+    },
+    {
+      "phase": "_retain_runtime_graph:begin",
+      "elapsed_seconds": 66.72112954198383,
+      "current_bytes": 238524307,
+      "preceding_segment_peak_bytes": 238524307
+    },
+    {
+      "phase": "_retain_runtime_graph:end",
+      "elapsed_seconds": 67.02446729200892,
+      "current_bytes": 238524661,
+      "preceding_segment_peak_bytes": 242794459
+    },
+    {
+      "phase": "_reduce_explanation_metadata:end",
+      "elapsed_seconds": 67.06323475006502,
+      "current_bytes": 238379425,
+      "preceding_segment_peak_bytes": 239262134
+    },
+    {
+      "phase": "build:end",
+      "elapsed_seconds": 67.26447087503038,
+      "current_bytes": 6739509,
+      "preceding_segment_peak_bytes": 238380897
+    },
+    {
+      "phase": "build:return",
+      "elapsed_seconds": 67.26451583299786,
+      "current_bytes": 6715823,
+      "preceding_segment_peak_bytes": 6740085
+    },
+    {
+      "phase": "build:collected",
+      "elapsed_seconds": 67.27675979200285,
+      "current_bytes": 4235025,
+      "preceding_segment_peak_bytes": 6715823
+    }
+  ]
+}

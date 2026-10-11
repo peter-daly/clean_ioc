@@ -1,5 +1,11 @@
 # Declared provider root preparation evidence
 
+> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/analyse API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-analyse).
+
+> Historical comparison: these measurements use the former fine-grained build policies.
+> Their reproduction scripts use the private compiler harness; current public applications
+> use [run or analysis mode](compiler-tooling.md#run-and-analysis-modes).
+
 Step 2 makes automatic public provider forms an explicit application capability when
 `build(provider_roots=...)` is supplied. `None` retains every existing family/form.
 The worker, API, response processor, reporting worker and example-service Cop

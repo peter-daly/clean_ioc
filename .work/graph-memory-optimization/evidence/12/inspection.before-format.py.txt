@@ -1,0 +1,56 @@
+"""Bounded rich-rule public inspection cost, separate from build samples."""
+import gc
+import json
+import sys
+import time
+import tracemalloc
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+from benchmarks.graph_memory_evidence import source_provenance
+from benchmarks import graph_memory_fixture as fixture
+from clean_ioc import ContainerBuilder
+
+results = []
+original = ContainerBuilder.build
+
+
+def rule(context):
+    graph = context.graph
+    components = []
+    for visit in graph.walk():
+        if graph._component_evidence(graph._decorator_explanations, visit.component) is not None:
+            components.append(visit.component)
+            if len(components) == 64:
+                break
+    calls = dict(fixture.TEMPLATE_CALLS)
+    tracemalloc.start()
+    gc.collect()
+    start_current, _ = tracemalloc.get_traced_memory()
+    passes = []
+    for label in ("first", "repeated"):
+        started = time.perf_counter()
+        decisions = 0
+        for component in components:
+            explanation = graph.explain_decorators(component)
+            decisions += len(explanation.selected) + len(explanation.rejected)
+        del explanation
+        seconds = time.perf_counter() - started
+        gc.collect()
+        current, peak = tracemalloc.get_traced_memory()
+        passes.append({"label": label, "seconds": seconds, "decisions": decisions, "retained_bytes": current, "peak_bytes": peak})
+    tracemalloc.stop()
+    assert fixture.TEMPLATE_CALLS == calls
+    results.append({"components": len(components), "start_retained_bytes": start_current, "passes": passes})
+    return ()
+
+
+def build(builder, **kwargs):
+    builder.add_validation_rule(rule)
+    return original(builder, **kwargs)
+
+
+ContainerBuilder.build = build
+runtime = fixture.build(2, mode="run").runtime
+runtime.__exit__(None, None, None)
+print(json.dumps({"source": source_provenance(), "inspection": results}, indent=2))

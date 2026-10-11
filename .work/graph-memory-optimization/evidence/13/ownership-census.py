@@ -1,0 +1,117 @@
+# ruff: noqa: E402, S101, S603
+"""Intrusive exact carrier/cache census; not memory or timing evidence."""
+
+import gc
+import json
+import sys
+import weakref
+from collections import Counter
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "12"))
+from measure import sample  # ty: ignore[unresolved-import]
+
+from clean_ioc import ContainerBuilder
+from clean_ioc import container as code
+
+policy, variant = sys.argv[1:]
+counts, caches, after_build = {}, [], []
+
+
+def observe(cls, destructor=True):
+    original = cls.__init__
+
+    def init(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        count = counts.setdefault(type(self).__name__, Counter())
+        count["constructed"] += 1
+        count["live"] += 1
+        count["maximum_live"] = max(count["maximum_live"], count["live"])
+
+    def delete(self):
+        counts[type(self).__name__]["live"] -= 1
+
+    cls.__init__ = init
+    if destructor:
+        cls.__del__ = delete
+
+
+for cls in (code._RegistrationStep, code._ValueStep, code._CompiledDependency):
+    observe(cls)
+observe(code._ProviderMapStep, False)
+original_cache = code._ActivationTemplateCache
+
+
+class Cache(original_cache):
+    def __init__(self):
+        super().__init__()
+        self.counts = Counter()
+        self.phase = "unassigned"
+
+    def get(self, key):
+        value = super().get(key)
+        self.counts["hits" if value is not None else "misses"] += 1
+        return value
+
+    def __setitem__(self, key, step):
+        if policy == "before":
+            self._entries[key] = step
+        else:
+            super().__setitem__(key, step)
+        self.counts["insertions"] += 1
+        weak = type(self._entries[key]) is weakref.ReferenceType
+        self.counts["weak_insertions" if weak else "strong_insertions"] += 1
+        self.counts["maximum_live_entries"] = max(self.counts["maximum_live_entries"], len(self._entries))
+
+    def __del__(self):
+        weak = sum(type(entry) is weakref.ReferenceType for entry in self._entries.values())
+        caches.append(
+            {
+                "phase": self.phase,
+                **self.counts,
+                "live_entries_at_release": len(self._entries),
+                "weak_entries_at_release": weak,
+                "strong_entries_at_release": len(self._entries) - weak,
+            }
+        )
+
+
+code._ActivationTemplateCache = Cache  # ty: ignore[invalid-assignment]
+original_init = code._Compiler.__init__
+
+
+def compiler_init(self, *args, **kwargs):
+    original_init(self, *args, **kwargs)
+    self._activation_templates.phase = self._profile_phase
+
+
+code._Compiler.__init__ = compiler_init
+original_build = ContainerBuilder.build
+
+
+def build(self, **kwargs):
+    result = original_build(self, **kwargs)
+    gc.collect()
+    after_build.append({name: dict(count) for name, count in counts.items()})
+    return result
+
+
+ContainerBuilder.build = build
+result = sample(variant, False)
+gc.collect()
+print(
+    json.dumps(
+        {
+            "policy": policy,
+            "variant": variant,
+            "source": result["source"],
+            "counts": counts,
+            "after_build": after_build,
+            "caches": caches,
+            "graph": result["graph"],
+        },
+        indent=2,
+    )
+)

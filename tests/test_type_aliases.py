@@ -11,7 +11,7 @@ from typing import Any, Callable, Generic, NewType, ParamSpec, cast
 import pytest
 from typing_extensions import TypeAliasType, TypeVar
 
-from clean_ioc import ContainerBuilder, ContainerBuildError, Expose, Provider, Use
+from clean_ioc import ContainerBuilder, Expose, Provider, Use
 from clean_ioc import component_filters as cf
 
 T = TypeVar("T")
@@ -41,7 +41,7 @@ def test_alias_and_target_are_interchangeable_and_share_singleton(registered, re
 
     assert builder.has_component(requested)
     assert builder.get_component_id(IntRepository) == component_id
-    with builder.build(diagnostics=True) as container:
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
         value = container.resolve(requested)
         checkout = container.resolve(Checkout)
         assert checkout.repository is value
@@ -51,11 +51,13 @@ def test_alias_and_target_are_interchangeable_and_share_singleton(registered, re
         assert cf.service_type_is(IntRepository)(
             next(component for component in container.components if component.id == component_id)
         )
-        checkout_component = next(component for component in container.components if component.service_type is Checkout)
+        checkout_component = next(
+            root.component for root in container_analysis.graph.roots if root.requested_type is Checkout
+        )
         repository_dependency = next(
             dependency for dependency in checkout_component.dependencies if dependency.argument == "repository"
         )
-        assert "IntRepository ->" in container.graph.explain(repository_dependency).subject
+        assert "IntRepository ->" in container_analysis.graph.explain(repository_dependency).subject
 
 
 def test_nested_and_reordered_generic_alias_parameters_use_identity_bindings():
@@ -191,7 +193,7 @@ def test_alias_and_canonical_compositions_have_identical_semantic_manifests():
         builder = ContainerBuilder()
         builder.register(key)
         builder.mark_entrypoint(key)
-        return builder.build(diagnostics=True).graph.manifest()
+        return builder.analyse().graph.manifest()
 
     canonical = manifest(Service)
     aliased = manifest(Alias)
@@ -200,7 +202,7 @@ def test_alias_and_canonical_compositions_have_identical_semantic_manifests():
 
     builder = ContainerBuilder()
     builder.register(Service)
-    explanation = builder.build(diagnostics=True).graph.explain(Alias)
+    explanation = builder.analyse().graph.explain(Alias)
     assert "Alias ->" in explanation.subject
     assert explanation.subject.endswith("Service")
 
@@ -244,8 +246,10 @@ def test_new_type_is_nominal_and_alias_of_new_type_keeps_that_identity():
     DatabaseAlias = TypeAliasType("DatabaseAlias", DatabaseUrl)  # noqa: N806
 
     builder = ContainerBuilder()
-    with pytest.raises(TypeError, match="NewType service .* requires"):
-        builder.register(DatabaseAlias)
+    builder.register(DatabaseAlias)
+    result = builder.analyse()
+    assert any(issue.code == "missing-activation-source" for issue in result.report.errors)
+    builder = ContainerBuilder()
     database = DatabaseUrl("database")
     api = ApiUrl("api")
     builder.register(DatabaseUrl, instance=database)
@@ -267,10 +271,10 @@ def test_invalid_and_unresolved_aliases_have_classified_repairable_build_errors(
     alias = TypeAliasType("alias", target)
     builder = ContainerBuilder()
     builder.register(alias, instance=object())
-    with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
-    assert raised.value.report is not None
-    assert [issue.code for issue in raised.value.report.issues] == [code]
+    raised_analysis = builder.analyse()
+    assert not raised_analysis.report.is_valid
+    assert raised_analysis.report is not None
+    assert [issue.code for issue in raised_analysis.report.issues] == [code]
 
 
 def test_recursive_alias_has_a_finite_classified_error():
@@ -283,10 +287,10 @@ def test_recursive_alias_has_a_finite_classified_error():
         )
         builder = ContainerBuilder()
         builder.register(module.Recursive, instance=[])
-        with pytest.raises(ContainerBuildError) as raised:
-            builder.build()
-        assert raised.value.report is not None
-        assert raised.value.report.issues[0].code == "type-alias-recursive"
+        raised_analysis = builder.analyse()
+        assert not raised_analysis.report.is_valid
+        assert raised_analysis.report is not None
+        assert raised_analysis.report.issues[0].code == "type-alias-recursive"
     finally:
         sys.modules.pop(module.__name__, None)
 
@@ -297,10 +301,10 @@ def test_independent_alias_errors_are_aggregated():
     builder = ContainerBuilder()
     builder.register(first, instance=object())
     builder.register(second, instance=object())
-    with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
-    assert raised.value.report is not None
-    assert {issue.code for issue in raised.value.report.issues} == {
+    raised_analysis = builder.analyse()
+    assert not raised_analysis.report.is_valid
+    assert raised_analysis.report is not None
+    assert {issue.code for issue in raised_analysis.report.issues} == {
         "type-alias-invalid",
         "type-alias-unresolved",
     }
@@ -318,10 +322,10 @@ def test_wrong_arity_and_unsupported_alias_parameters_are_classified():
     ):
         builder = ContainerBuilder()
         builder.register(alias, instance=object())
-        with pytest.raises(ContainerBuildError) as raised:
-            builder.build()
-        assert raised.value.report is not None
-        assert raised.value.report.issues[0].code == code
+        raised_analysis = builder.analyse()
+        assert not raised_analysis.report.is_valid
+        assert raised_analysis.report is not None
+        assert raised_analysis.report.issues[0].code == code
 
 
 def test_late_forward_alias_binding_and_failed_build_retry():
@@ -334,10 +338,12 @@ def test_late_forward_alias_binding_and_failed_build_retry():
         )
         builder = ContainerBuilder()
         builder.register(module.Late)
-        with pytest.raises(ContainerBuildError) as raised:
-            builder.build()
-        assert raised.value.report is not None
-        assert raised.value.report.issues[0].code == "type-alias-unresolved"
+        raised_analysis = builder.analyse()
+        assert not raised_analysis.report.is_valid
+        assert raised_analysis.report is not None
+        assert raised_analysis.report.issues[0].code == "type-alias-unresolved"
+        builder = ContainerBuilder()
+        builder.register(module.Late)
         exec("class Service: pass", module.__dict__)  # noqa: S102 - repairs the fixture namespace
         preview_type = module.Service
         assert builder.has_component(module.Late)

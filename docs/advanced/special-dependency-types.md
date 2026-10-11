@@ -23,7 +23,7 @@ class BatchRunner:
             self.units().process(item)
 ```
 
-The compiler unwraps `T`, applies any `select(...)` policy once, validates the complete target graph, and stores a direct
+The compiler unwraps `T`, applies any `select(...)` policy once, binds the complete target graph, and stores a direct
 reference to its frozen activation step. A provider call starts a fresh top-level resolution in the scope where the
 handle was obtained. Transients are therefore new per call, `per_resolution` values are shared only inside one call,
 and scoped and singleton targets retain their normal caches.
@@ -148,7 +148,8 @@ targets and keys retain their nominal type identity.
 
 For async targets, declare `asynchronous=True`, inject `Mapping[str, AsyncProvider[PaymentGateway]]`, and call
 `await gateways["stripe"]()`. Acquiring either kind of map is synchronous; `resolve_async()` is also supported.
-Every selected target graph is validated during build, so a sync map containing an async target fails immediately.
+Build binds selected target graphs. Analysis reports incompatible sync/async map policy; actual sync activation of an
+async-only target still raises at runtime.
 
 The target filter includes all visible eligible registrations by default, including named registrations. Use
 `component_filter=cf.with_name("stripe")` to narrow entries. Entry iteration follows the existing candidate order:
@@ -173,7 +174,7 @@ key-to-entry index and creates scope-bound provider handles without activating t
 Duplicate keys use Python dictionary equality semantics. Invalid or async callbacks/results, unhashable keys, and
 callback/hash/equality failures produce structured build errors with `provider-map-invalid-key`,
 `provider-map-unhashable-key`, `provider-map-duplicate-key`, or `provider-map-key-evaluation`. Errors omit computed
-keys and callback exception text. Failed builds remain repairable.
+keys and callback exception text. Retry with a fresh builder.
 
 Each provider call starts a fresh resolution and preserves the target's normal lifespan, decorators, and cleanup owner.
 Singleton capture has the same restrictions and owner binding as an individual provider. Escaped handles fail with
@@ -382,6 +383,6 @@ Both forms of `register_provider_map` accept `root_policy`, defaulting to
 internal contributions dependency-only separately. An unused map creates no public
 root or automatic provider family. When a constructor consumes the map, its selected
 contributions, keys, generic bindings, visibility and dependency graphs still compile
-and validate during build. Named maps, boundaries and overlay contribution ordering
+and bind during build; policy checks run during analysis. Named maps, boundaries and overlay contribution ordering
 use the same rules as public maps. `"entrypoint"` and invalid-value validation also
 follow ordinary registration semantics.

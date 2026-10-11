@@ -1,11 +1,12 @@
 """Repeated parameterless infrastructure must not repeatedly parse builtin signatures."""
 
 import inspect
+import re
 from typing import Any, Generic, TypeVar, cast
 
 import pytest
 
-from clean_ioc import ContainerBuilder, ContainerBuildError
+from clean_ioc import BuilderAlreadyBuiltError, ContainerBuilder, ContainerBuildError, ScopeBuilder
 from clean_ioc.container import _validate_dependency_names
 
 
@@ -71,7 +72,8 @@ def test_contextual_multi_route_infrastructure_bounds_builtin_signature_parsing(
     # Registration must still inspect each builtin constructor once to extract
     # its dependencies. Build need not inspect it again for name validation.
     assert len(parses) == 3
-    with builder.build(provider_roots=(), diagnostics=diagnostics, allow_scope_builders=False) as owner:
+    builder.set_provider_roots(())
+    with builder.build() as owner:
         assert len(parses) == 3
         assert activated == []
         assert selected == [
@@ -85,7 +87,7 @@ def test_contextual_multi_route_infrastructure_bounds_builtin_signature_parsing(
             assert value.left.clock is not value.right.clock
         assert activated == route_types
         assert len(parses) == 3
-        assert owner.graph.manifest(all_roots=True).to_json()
+        assert all(owner.has_component(route) for route in route_types)
 
 
 @pytest.mark.parametrize("kind", ["constructor", "generic", "factory"])
@@ -100,15 +102,22 @@ def test_invalid_configured_argument_is_rejected_and_builder_can_be_repaired(kin
 
     options = {"factory": factory} if kind == "factory" else {}
     component_id = builder.register(service, arguments={"typo": 1}, **options)
-    with pytest.raises(ContainerBuildError, match="no argument named 'typo'") as raised:
-        builder.build(provider_roots=(), aggregate_errors=False)
-    assert raised.value.report is not None
-    assert raised.value.report.errors[0].code == "invalid-argument"
+    builder.set_provider_roots(())
+    raised_analysis = builder.analyse()
+    assert not raised_analysis.report.is_valid
+    assert re.search("no argument named 'typo'", raised_analysis.report.to_text())
+    assert raised_analysis.report is not None
+    assert raised_analysis.report.errors[0].code == "invalid-argument"
     assert activated == []
     from clean_ioc import REMOVE
 
+    with pytest.raises(BuilderAlreadyBuiltError):
+        builder.patch_component(service, component_id, arguments={"typo": REMOVE})
+    builder = ContainerBuilder()
+    component_id = builder.register(service, arguments={"typo": 1}, **options)
     builder.patch_component(service, component_id, arguments={"typo": REMOVE})
-    with builder.build(provider_roots=()) as owner:
+    builder.set_provider_roots(())
+    with builder.build() as owner:
         assert activated == []
         assert isinstance(owner.resolve(service), GenericLeaf if kind == "generic" else Clock)
         assert activated == ([True] if kind == "factory" else [])
@@ -149,10 +158,25 @@ def test_required_dependencies_still_fail_build_without_activation(kind):
         else:
             builder.register_decorator(Clock, Decorator, decorated_arg="inner")
     with pytest.raises(ContainerBuildError, match="Missing"):
-        builder.build(provider_roots=(), aggregate_errors=False)
+        builder.set_provider_roots(())
+        builder.build()
     assert activated == []
+    with pytest.raises(BuilderAlreadyBuiltError):
+        builder.register(Missing)
+    builder = ContainerBuilder()
+    if kind == "constructor":
+        builder.register(Required)
+    elif kind == "factory":
+        builder.register(Clock, factory=factory)
+    else:
+        builder.register(Clock)
+        if kind == "pre-configuration":
+            builder.pre_configure(Clock, configure)
+        else:
+            builder.register_decorator(Clock, Decorator, decorated_arg="inner")
     builder.register(Missing, lifespan="singleton")
-    with builder.build(provider_roots=()) as owner:
+    builder.set_provider_roots(())
+    with builder.build() as owner:
         assert activated == []
         owner.resolve(Required if kind == "constructor" else Clock)
         assert activated == [True]
@@ -171,11 +195,14 @@ def test_parameterless_factory_and_pre_configuration_stay_dormant_through_scope_
     builder = ContainerBuilder()
     builder.register(Clock, factory=factory, lifespan="transient")
     builder.pre_configure(Clock, configure)
-    with builder.build(provider_roots=()) as owner:
+    builder.set_provider_roots(())
+    owner_composition = builder.retain_composition()
+    with builder.build() as owner:
         assert activated == []
-        overlay_builder = owner.new_scope_builder()
+        overlay_builder = ScopeBuilder(owner, composition=owner_composition)
         overlay_builder.register(Prefix)
-        with overlay_builder.build(provider_roots=()) as overlay:
+        overlay_builder.set_provider_roots(())
+        with overlay_builder.build() as overlay:
             assert activated == []
             assert isinstance(overlay.resolve(Clock), Clock)
         assert activated == ["configure", "factory"]
@@ -201,7 +228,8 @@ def test_configured_extra_arguments_still_work_with_kwargs(kind):
         builder.register(Clock, factory=factory, arguments={"extra": 7})
     else:
         builder.register(Flexible[str], arguments={"extra": 7})
-    with builder.build(provider_roots=()) as owner:
+    builder.set_provider_roots(())
+    with builder.build() as owner:
         assert activated == []
         owner.resolve(Clock if kind == "factory" else Flexible[str])
         assert activated == [{"extra": 7}]

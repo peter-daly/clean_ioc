@@ -3,7 +3,7 @@ from unittest.mock import Mock
 import pytest
 from assertive import was_called, was_called_once, was_called_once_with, was_not_called
 
-from clean_ioc import ComponentBuilder, ContainerBuilder
+from clean_ioc import ComponentBuilder, ContainerBuilder, ScopeBuilder
 from clean_ioc.bundles import (
     BaseBundle,
     OnlyRunOncePerClassBundle,
@@ -192,14 +192,15 @@ def test_run_once_bundle_uniqueness_across_boundaries_and_scope_overlays(per, ex
     root.apply_bundle(Once())
     root.apply_bundle(Once())
     root.create_boundary("first").apply_bundle(Once())
+    container_composition = root.retain_composition()
     container = root.build()
 
-    overlay = container.new_scope_builder()
+    overlay = ScopeBuilder(container, composition=container_composition)
     overlay.apply_bundle(Once())
     overlay.create_boundary("second").apply_bundle(Once())
     overlay.build()
 
-    another_overlay = container.new_scope_builder()
+    another_overlay = ScopeBuilder(container, composition=container_composition)
     another_overlay.create_boundary("third").apply_bundle(Once())
     another_overlay.build()
 

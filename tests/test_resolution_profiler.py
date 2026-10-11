@@ -17,6 +17,7 @@ from clean_ioc import (
     ResolutionContext,
     ResolutionProfiler,
     Scope,
+    ScopeBuilder,
 )
 from clean_ioc import component_filters as cf
 from clean_ioc.container import _ResolutionRequest, default_component_filter
@@ -34,13 +35,13 @@ def test_exact_singleton_cache_counts_and_sampled_request_time():
     builder.register(Service, lifespan="singleton")
     profiler = ResolutionProfiler(sample_durations=0.5)
     container = builder.build(instrumentation=Instrumentation(profiler))
-    fingerprint = container.graph.manifest(all_roots=True).fingerprint
+    fingerprint = container._profile_fingerprint
     first = container.resolve(Service)
     assert container.resolve(Service) is first
     assert container.new_scope().resolve(Service) is first
 
     report = profiler.report()
-    assert report.graphs == (fingerprint,)
+    assert report.executions == (fingerprint,)
     assert report.in_flight == 0 and not report.incomplete
     request = _record(report, "request", "Service")
     registration = next(record for record in report.records if record.registration and record.attempts)
@@ -66,18 +67,20 @@ def test_runtime_instrumentation_is_independent_of_compilation_profile_and_finge
     container = builder.build(profile=compiler, instrumentation=Instrumentation(profiler))
     assert compiler.report().state == "completed"
     assert isinstance(container.resolve(Service), Service)
-    assert profiler.report().graphs == (container.graph.manifest(all_roots=True).fingerprint,)
+    assert profiler.report().executions == (container._profile_fingerprint,)
     plain_builder = ContainerBuilder()
     plain_builder.register(Service)
     plain = plain_builder.build()
-    assert plain.graph.manifest(all_roots=True).to_json() == container.graph.manifest(all_roots=True).to_json()
+    assert isinstance(plain.resolve(Service), Service)
+    assert isinstance(container.resolve(Service), Service)
+    assert plain._plan.identity != container._plan.identity
     assert not hasattr(plain._plan.default_roots[Service].step, "_profile_key")
     assert "_profiler" not in Scope.resolve.__code__.co_names
     assert "_profiler" not in Scope.resolve_async.__code__.co_names
     assert "_profiler" not in Scope.new_scope.__code__.co_names
 
 
-def test_profiler_rejects_equivalent_second_runtime_without_mixing_catalogs():
+def test_profiler_separates_equivalent_second_runtime_without_mixing_catalogs():
     class Service:
         pass
 
@@ -89,23 +92,29 @@ def test_profiler_rejects_equivalent_second_runtime_without_mixing_catalogs():
     baseline = profiler.report()
     second_builder = ContainerBuilder()
     second_builder.register(Service, lifespan="singleton")
-    with pytest.raises(ValueError, match="already bound to a different runtime"):
-        second_builder.build(instrumentation=Instrumentation(profiler))
-    assert profiler.report().records == baseline.records
+    second = second_builder.build(instrumentation=Instrumentation(profiler))
+    assert first._profile_fingerprint != second._profile_fingerprint
+    assert second.resolve(Service) is not first.resolve(Service)
+    report = profiler.report()
+    records = report.records
+    assert all(record.execution_id in report.executions for record in records)
+    assert sum(record.attempts for record in records if record.kind == "registration") == 2
+    assert len(baseline.executions) == 1 and len(profiler.report().executions) == 2
 
 
-def test_same_fingerprint_overlay_reuses_parent_profiler_and_catalog():
+def test_overlay_has_distinct_execution_identity_and_reuses_parent_profiler():
     class Service:
         pass
 
     builder = ContainerBuilder()
     builder.register(Service, lifespan="singleton")
     profiler = ResolutionProfiler()
+    composition = builder.retain_composition()
     container = builder.build(instrumentation=Instrumentation(profiler))
-    overlay = container.new_scope_builder().build()
+    overlay = ScopeBuilder(container, composition=composition).build()
     assert overlay.resolve(Service) is container.resolve(Service)
     report = profiler.report()
-    assert len(report.graphs) == 1
+    assert len(report.executions) == 2
     assert not report.incomplete
 
 
@@ -126,7 +135,9 @@ def test_declared_resolution_context_request_has_graph_activation_owner_and_call
     assert isinstance(container.resolve(Root).shared, Shared)
     records = profiler.report().records
     edge = next(
-        record for record in records if record.kind == "registration" and "dependency:resolution" in record.path
+        record
+        for record in records
+        if record.kind == "registration" and "argument:resolution" in record.label and record.attempts
     )
     assert (edge.attempts, edge.cache_misses) == (1, 1)
     assert not any(
@@ -153,9 +164,7 @@ def test_nested_factory_time_excludes_dependency_and_provider_calls():
     assert isinstance(provider(), Service)
     report = profiler.report()
     service = next(
-        record
-        for record in report.records
-        if record.registration and record.path.endswith("Service:default:0") and record.attempts
+        record for record in report.records if record.registration and "Service" in record.label and record.attempts
     )
     assert service.attempts == 2
     durations = dict(service.durations)
@@ -244,12 +253,18 @@ def test_concurrent_parents_keep_cache_wait_on_actual_call_edge():
     first_edge = next(
         record
         for record in report.records
-        if record.kind == "registration" and "First:default" in record.path and "dependency:shared" in record.path
+        if record.kind == "registration"
+        and "First" in record.label
+        and "argument:shared" in record.label
+        and (record.cache_hits or record.cache_misses)
     )
     second_edge = next(
         record
         for record in report.records
-        if record.kind == "registration" and "Second:default" in record.path and "dependency:shared" in record.path
+        if record.kind == "registration"
+        and "Second" in record.label
+        and "argument:shared" in record.label
+        and (record.cache_hits or record.cache_misses)
     )
     assert (first_edge.cache_misses, first_edge.cache_waits) == (1, 0)
     assert (second_edge.cache_misses, second_edge.cache_waits) == (1, 1)
@@ -325,8 +340,9 @@ def test_provider_map_and_overlay_use_same_profiler():
     builder.register(Service, contributes={group: "private-key"})
     builder.register_provider_map(group)
     profiler = ResolutionProfiler()
+    composition = builder.retain_composition()
     container = builder.build(instrumentation=Instrumentation(profiler))
-    overlay_builder = container.new_scope_builder()
+    overlay_builder = ScopeBuilder(container, composition=composition)
 
     class Extra:
         pass
@@ -337,7 +353,7 @@ def test_provider_map_and_overlay_use_same_profiler():
     assert isinstance(mapping["private-key"](), Service)
     assert isinstance(overlay.resolve(Extra), Extra)
     report = profiler.report()
-    assert len(report.graphs) == 2
+    assert len(report.executions) == 2
     assert "private-key" not in report.to_json()
     assert any(
         record.kind == "request" and record.path.startswith("provider request ") and record.attempts
@@ -351,9 +367,10 @@ def test_overlay_rejects_different_profiler_before_build():
 
     builder = ContainerBuilder()
     builder.register(Service)
+    composition = builder.retain_composition()
     container = builder.build(instrumentation=Instrumentation(ResolutionProfiler()))
     with pytest.raises(ValueError, match="must match"):
-        container.new_scope_builder().build(instrumentation=Instrumentation(ResolutionProfiler()))
+        ScopeBuilder(container, composition=composition).build(instrumentation=Instrumentation(ResolutionProfiler()))
 
 
 def test_anchored_singleton_activation_stays_with_parent_and_hit_uses_overlay_path():
@@ -366,22 +383,23 @@ def test_anchored_singleton_activation_stays_with_parent_and_hit_uses_overlay_pa
     builder = ContainerBuilder()
     builder.register(Service, lifespan="singleton")
     profiler = ResolutionProfiler()
+    composition = builder.retain_composition()
     container = builder.build(instrumentation=Instrumentation(profiler))
     instance = container.resolve(Service)
-    overlay_builder = container.new_scope_builder()
+    overlay_builder = ScopeBuilder(container, composition=composition)
     overlay_builder.register(Extra)
     overlay = overlay_builder.build()
     assert overlay.resolve(Service) is instance
     report = profiler.report()
-    parent_fingerprint = container.graph.manifest(all_roots=True).fingerprint
-    overlay_fingerprint = overlay.graph.manifest(all_roots=True).fingerprint
+    parent_fingerprint = container._profile_fingerprint
+    overlay_fingerprint = overlay._profile_fingerprint
     assert parent_fingerprint != overlay_fingerprint
     assert any(
-        record.graph_fingerprint == parent_fingerprint and record.registration and record.attempts == 1
+        record.execution_id == parent_fingerprint and record.registration and record.attempts == 1
         for record in report.records
     )
     assert any(
-        record.graph_fingerprint == overlay_fingerprint and record.registration and record.cache_hits == 1
+        record.execution_id == overlay_fingerprint and record.registration and record.cache_hits == 1
         for record in report.records
     )
 
@@ -402,40 +420,39 @@ def test_overlay_first_activation_keeps_parent_owner_and_overlay_cache_edge():
     builder.register(Service, lifespan="singleton")
     builder.pre_configure(Service, configure)
     profiler = ResolutionProfiler()
+    composition = builder.retain_composition()
     container = builder.build(instrumentation=Instrumentation(profiler))
-    overlay_builder = container.new_scope_builder()
+    overlay_builder = ScopeBuilder(container, composition=composition)
     overlay_builder.register(Extra)
     overlay = overlay_builder.build()
     assert isinstance(overlay.resolve(Service), Service)
     assert configured == [True]
-    parent_graph = container.graph.manifest(all_roots=True).fingerprint
-    overlay_graph = overlay.graph.manifest(all_roots=True).fingerprint
+    parent_graph = container._profile_fingerprint
+    overlay_graph = overlay._profile_fingerprint
     records = profiler.report().records
     assert any(
-        record.graph_fingerprint == parent_graph
+        record.execution_id == parent_graph
         and record.kind == "registration"
-        and "Service:default" in record.path
+        and "Service" in record.label
         and record.attempts == 1
         for record in records
     )
     assert any(
-        record.graph_fingerprint == parent_graph and record.kind == "pre_configuration" and record.attempts == 1
+        record.execution_id == parent_graph and record.kind == "pre_configuration" and record.attempts == 1
         for record in records
     )
     assert any(
-        record.graph_fingerprint == overlay_graph
+        record.execution_id == overlay_graph
         and record.kind == "registration"
-        and "Service:default" in record.path
+        and "Service" in record.label
         and record.cache_misses == 1
         for record in records
     )
     assert any(
-        record.graph_fingerprint == overlay_graph and record.kind == "pre_configuration" and record.cache_misses == 1
+        record.execution_id == overlay_graph and record.kind == "pre_configuration" and record.cache_misses == 1
         for record in records
     )
-    assert not any(
-        record.kind == "registration" and "Extra:default" in record.path and record.attempts for record in records
-    )
+    assert not any(record.kind == "registration" and "Extra" in record.label and record.attempts for record in records)
 
 
 def test_named_registrations_and_closed_generic_have_separate_paths():
@@ -493,12 +510,18 @@ def test_shared_nested_cache_consumer_uses_exact_parent_occurrence():
     first_edge = next(
         record
         for record in report.records
-        if record.kind == "registration" and "First:default" in record.path and "dependency:shared" in record.path
+        if record.kind == "registration"
+        and "First" in record.label
+        and "argument:shared" in record.label
+        and (record.cache_hits or record.cache_misses)
     )
     second_edge = next(
         record
         for record in report.records
-        if record.kind == "registration" and "Second:default" in record.path and "dependency:shared" in record.path
+        if record.kind == "registration"
+        and "Second" in record.label
+        and "argument:shared" in record.label
+        and (record.cache_hits or record.cache_misses)
     )
     assert (first_edge.cache_misses, first_edge.cache_hits) == (1, 0)
     assert (second_edge.cache_misses, second_edge.cache_hits) == (0, 1)
@@ -510,7 +533,7 @@ def test_shared_nested_cache_consumer_uses_exact_parent_occurrence():
         )
         == 1
     )
-    assert any(group.cache_hits == 1 and group.cache_misses == 1 for group in report.sharing_groups)
+    assert any(group.cache_hits == 1 and group.cache_misses == 1 for group in report.cache_groups)
 
 
 def test_collection_and_deferred_provider_cache_edges_keep_compiled_paths():
@@ -534,15 +557,12 @@ def test_collection_and_deferred_provider_cache_edges_keep_compiled_paths():
     collection_edge = next(
         record
         for record in records
-        if record.kind == "registration" and "dependency:items" in record.path and record.cache_misses
+        if record.kind == "registration" and "argument:items" in record.label and record.cache_misses
     )
     provider_edge = next(
         record
         for record in records
-        if record.kind == "registration"
-        and "Holder:default" in record.path
-        and "dependency:deferred" in record.path
-        and record.cache_hits
+        if record.kind == "registration" and "argument:deferred" in record.label and record.cache_hits
     )
     assert collection_edge.cache_misses == 1
     assert provider_edge.cache_hits == 2
@@ -594,10 +614,9 @@ def test_pre_configuration_and_decorator_are_distinct_activations():
     assert isinstance(container.resolve(Service), Decorator)
     assert calls == ["configured"]
     report = profiler.report()
-    assert any(
-        record.kind == "pre_configuration" and record.attempts == 1 and record.cache_hits == 1
-        for record in report.records
-    )
+    configuration_records = [record for record in report.records if record.kind == "pre_configuration"]
+    assert sum(record.attempts for record in configuration_records) == 1
+    assert sum(record.cache_hits for record in configuration_records) == 1
     assert any(
         record.kind == "decorator" and record.attempts == 2 and dict(record.durations)["body"].samples == 2
         for record in report.records
@@ -626,8 +645,10 @@ def test_shared_pre_configuration_cache_outcomes_use_triggering_paths():
     container.resolve(First)
     assert calls == [True]
     records = [record for record in profiler.report().records if record.kind == "pre_configuration"]
-    first = next(record for record in records if "First:default" in record.path)
-    second = next(record for record in records if "Second:default" in record.path)
+    first = next(record for record in records if "First" in record.label and (record.cache_hits or record.cache_misses))
+    second = next(
+        record for record in records if "Second" in record.label and (record.cache_hits or record.cache_misses)
+    )
     assert (first.cache_hits, first.cache_misses) == (1, 0)
     assert (second.cache_hits, second.cache_misses) == (0, 1)
     assert sum(record.attempts for record in records) == 1
@@ -663,8 +684,10 @@ def test_concurrent_shared_pre_configuration_wait_is_a_miss_on_waiting_path():
         return profiler.report()
 
     records = [record for record in asyncio.run(exercise()).records if record.kind == "pre_configuration"]
-    first = next(record for record in records if "First:default" in record.path)
-    second = next(record for record in records if "Second:default" in record.path)
+    first = next(record for record in records if "First" in record.label and (record.cache_hits or record.cache_misses))
+    second = next(
+        record for record in records if "Second" in record.label and (record.cache_hits or record.cache_misses)
+    )
     assert (first.cache_misses, first.cache_waits) == (1, 0)
     assert (second.cache_misses, second.cache_waits) == (1, 1)
     assert sum(record.attempts for record in records) == 1
@@ -691,7 +714,7 @@ def test_per_call_profiles_di_work_but_excludes_service_method():
     )
     assert any(record.kind == "registration" and record.attempts == 2 for record in report.records)
     assert any(
-        record.kind == "registration" and "dependency:per_call_target" in record.path and record.attempts == 2
+        record.kind == "registration" and "argument:per_call_target" in record.label and record.attempts == 2
         for record in report.records
     )
     assert not any(

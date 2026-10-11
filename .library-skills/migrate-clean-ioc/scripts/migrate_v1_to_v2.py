@@ -264,12 +264,33 @@ def transform(value: str) -> tuple[str, list[Finding]]:
             if isinstance(node.func, ast.Attribute) and node.func.attr in LEGACY_METHODS:
                 findings.append(Finding(node.lineno, f"review removed V1 method {node.func.attr}()"))
             method = node.func.attr if isinstance(node.func, ast.Attribute) else None
+            if method in {"new_scope_builder", "validation_report"}:
+                findings.append(
+                    Finding(
+                        node.lineno, f"replace removed runtime {method}() with explicit analysis/composition ownership"
+                    )
+                )
             receiver_known = (
                 isinstance(node.func, ast.Attribute)
                 and isinstance(node.func.value, ast.Name)
                 and node.func.value.id in receivers
             )
             for keyword in node.keywords:
+                if (
+                    receiver_known
+                    and method == "build"
+                    and keyword.arg
+                    in {"mode", "explain_metadata", "allow_scope_builders", "diagnostics", "validate_unreachable"}
+                ):
+                    findings.append(
+                        Finding(
+                            keyword.lineno, "choose execution-only build() or separate analyse(); remove build switches"
+                        )
+                    )
+                if receiver_known and method == "add_validation_rule" and keyword.arg == "mode":
+                    findings.append(
+                        Finding(keyword.lineno, "remove the rule phase; all validation rules run only during analyse()")
+                    )
                 if keyword.arg == "lifespan" and receiver_known and method in COMPOSITION_METHODS:
                     member = keyword.value
                     if (
@@ -302,6 +323,15 @@ def transform(value: str) -> tuple[str, list[Finding]]:
                     Finding(node.lineno, "review V1 Lifespan member outside a supported lifespan= argument")
                 )
         elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            if isinstance(node, ast.ImportFrom) and node.module == "clean_ioc":
+                for alias in node.names:
+                    if alias.name in {"BuildReport", "BuildMode", "ValidationRuleMode"}:
+                        findings.append(
+                            Finding(
+                                node.lineno,
+                                f"replace removed {alias.name}; use AnalysisResult/AnalysisReport and named operations",
+                            )
+                        )
             modules = [alias.name for alias in node.names] if isinstance(node, ast.Import) else [node.module or ""]
             if any(
                 name.startswith(

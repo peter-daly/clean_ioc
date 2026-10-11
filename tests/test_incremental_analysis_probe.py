@@ -10,7 +10,7 @@ import pytest
 
 from benchmarks import bench_compiler_optimization as fixtures
 from benchmarks.incremental_analysis_probe import ORIGINAL, ParameterShapeProbe, investigation
-from clean_ioc import ContainerBuilder, ContainerBuildError
+from clean_ioc import ContainerBuilder, ContainerBuildError, ScopeBuilder
 
 
 def plain(value=1, *, setting=2):
@@ -204,8 +204,13 @@ def test_fresh_builds_keep_graphs_counts_and_owners(shape):
     for mode in ("full", "candidate", "candidate"):
         profiler = CompilationProfiler()
         with investigation(mode, probe):
-            with fixtures.make_builder(shape).build(**fixtures.build_inputs(shape), profile=profiler) as owner:
-                manifests.append(owner.graph.manifest(all_roots=True).fingerprint)
+            with (
+                fixtures.make_builder(shape).analyse(
+                    **fixtures.build_inputs(shape), profile=profiler
+                ) as owner_analysis,
+                owner_analysis.create_runtime() as _owner,
+            ):
+                manifests.append(owner_analysis.graph.manifest(all_roots=True).fingerprint)
                 profiles.append(profiler.report().counters.values)
     assert fixtures.ACTIVATIONS == starting_activations
     assert len(set(manifests)) == 1
@@ -239,13 +244,17 @@ def test_callbacks_mutable_closure_failed_builder_repair_and_fresh_singletons():
             with pytest.raises(ContainerBuildError):
                 builder.build()
             state["accept"] = True
+            builder = ContainerBuilder()
+            builder.register(Root, lifespan="singleton", when=predicate)
+            builder.register(Consumer)
+            first_composition = builder.retain_composition()
             with builder.build() as first:
                 other = ContainerBuilder()
                 other.register(Root, lifespan="singleton", when=predicate)
                 other.register(Consumer)
                 with other.build() as second:
                     assert first.resolve(Root) is not second.resolve(Root)
-                    overlay_builder = first.new_scope_builder()
+                    overlay_builder = ScopeBuilder(first, composition=first_composition)
                     with overlay_builder.build() as overlay:
                         assert overlay.resolve(Root) is first.resolve(Root)
         histories.append(calls)

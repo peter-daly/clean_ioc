@@ -12,11 +12,13 @@ from typing_extensions import TypeAliasType
 from clean_ioc import (
     AsyncProvider,
     BoundaryAlias,
+    BuilderAlreadyBuiltError,
     CannotResolveError,
     ContainerBuilder,
     ContainerBuildError,
     Expose,
     Provider,
+    ScopeBuilder,
     Tag,
     Use,
     generic_arg,
@@ -61,7 +63,7 @@ def request(builder, annotation, *, arguments=None):
 
 
 def error_codes(error):
-    return {issue.code for issue in error.value.report.errors}
+    return {issue.code for issue in error.report.errors}
 
 
 def test_real_nested_list_example_and_frozen_public_closed_roots(monkeypatch):
@@ -156,9 +158,9 @@ def test_incomparable_patterns_fail_independently_of_order_and_filters(reverse):
     for template in reversed(templates) if reverse else templates:
         builder.register_pattern(template, factory=Serializer, when=lambda component: False)
     request(builder, Serializer[tuple[int, str]])
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "pattern-ambiguous" in error_codes(error)
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "pattern-ambiguous" in error_codes(error_analysis)
 
 
 def test_specificity_relation_includes_nested_structure_repetition_and_domains():
@@ -195,9 +197,9 @@ def test_unsupported_typevar_bounds_are_diagnosed_at_build_even_unused(kind):
     variable = TypeVar("variable", bound=bound)
     builder = ContainerBuilder()
     builder.register_pattern(Serializer[variable], factory=Serializer)
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "pattern-unsupported-form" in error_codes(error)
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "pattern-unsupported-form" in error_codes(error_analysis)
 
 
 @pytest.mark.parametrize(
@@ -215,9 +217,9 @@ def test_unsupported_typevar_bounds_are_diagnosed_at_build_even_unused(kind):
 def test_invalid_or_unsupported_templates(template):
     builder = ContainerBuilder()
     builder.register_pattern(template, factory=Serializer)
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert error_codes(error) & {"pattern-invalid", "pattern-unsupported-form"}
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert error_codes(error_analysis) & {"pattern-invalid", "pattern-unsupported-form"}
 
 
 def test_aliases_and_nominal_newtypes():
@@ -243,9 +245,9 @@ def test_same_named_variables_and_unbound_factory_variables_are_rejected():
         builder = ContainerBuilder()
         builder.register_pattern(template, factory=factory)
         request(builder, Serializer[int] if template == Serializer[T] else Serializer[tuple[int, int]])
-        with pytest.raises(ContainerBuildError) as error:
-            builder.build()
-        assert "pattern-incompatible-binding" in error_codes(error)
+        error_analysis = builder.analyse()
+        assert not error_analysis.report.is_valid
+        assert "pattern-incompatible-binding" in error_codes(error_analysis)
 
     def unbound(child: Serializer[U]):
         return child
@@ -253,9 +255,9 @@ def test_same_named_variables_and_unbound_factory_variables_are_rejected():
     builder = ContainerBuilder()
     builder.register_pattern(Serializer[T], factory=unbound)
     request(builder, Serializer[int])
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "pattern-incompatible-binding" in error_codes(error)
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "pattern-incompatible-binding" in error_codes(error_analysis)
 
 
 def test_conflicting_factory_result_is_rejected():
@@ -265,9 +267,9 @@ def test_conflicting_factory_result_is_rejected():
     builder = ContainerBuilder()
     builder.register_pattern(Serializer[list[T]], factory=bad)
     request(builder, Serializer[list[int]])
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "pattern-incompatible-binding" in error_codes(error)
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "pattern-incompatible-binding" in error_codes(error_analysis)
 
 
 def test_canonical_multibindings_names_order_tags_and_conditions():
@@ -380,6 +382,11 @@ def test_missing_provider_map_pattern_dependency_fails_even_if_never_called():
     builder.register_provider_map(Serializer[list[int]], key=lambda c: "a")
     with pytest.raises(ContainerBuildError):
         builder.build()
+    with pytest.raises(BuilderAlreadyBuiltError):
+        builder.register(Serializer[int], factory=Serializer)
+    builder = ContainerBuilder()
+    builder.register_pattern(Serializer[list[T]], factory=make_list_serializer)
+    builder.register_provider_map(Serializer[list[int]], key=lambda c: "a")
     builder.register(Serializer[int], factory=Serializer)
     assert builder.build().resolve(Mapping[str, Provider[Serializer[list[int]]]])["a"]().serialize([1]) == "[1]"
 
@@ -395,10 +402,10 @@ def test_growing_and_ordinary_cycles_have_different_codes():
         builder = ContainerBuilder()
         builder.register_pattern(Serializer[T], factory=factory)
         request(builder, Serializer[int])
-        with pytest.raises(ContainerBuildError) as error:
-            builder.build()
-        assert code in error_codes(error)
-        assert "RecursionError" not in str(error.value)
+        error_analysis = builder.analyse()
+        assert not error_analysis.report.is_valid
+        assert code in error_codes(error_analysis)
+        assert "RecursionError" not in str(error_analysis.report)
 
 
 def test_closed_and_open_aliased_boundary_pattern_exposures_compile_source_specializations():
@@ -533,19 +540,20 @@ def test_overlay_patterns_and_anchored_parent_singletons():
     builder = ContainerBuilder()
     builder.register_pattern(Serializer[T], factory=lambda: Serializer("parent"), lifespan="singleton")
     builder.register(Parent, lifespan="singleton")
+    container_composition = builder.retain_composition()
     with builder.build() as container:
-        overlay_builder = container.new_scope_builder()
+        overlay_builder = ScopeBuilder(container, composition=container_composition)
         overlay_builder.register_pattern(Serializer[T], factory=lambda: Serializer("child"), lifespan="singleton")
         root = request(overlay_builder, Serializer[int])
         with overlay_builder.build() as overlay:
             assert overlay.resolve(root).value.label == "child"
             assert overlay.resolve(Parent).value.label == "parent"
 
-        invalid = container.new_scope_builder()
+        invalid = ScopeBuilder(container, composition=container_composition)
         request(invalid, Serializer[str])
-        with pytest.raises(ContainerBuildError) as error:
-            invalid.build()
-        assert "overlay-singleton" in error_codes(error)
+        error_analysis = invalid.analyse()
+        assert not error_analysis.report.is_valid
+        assert "overlay-singleton" in error_codes(error_analysis)
 
 
 def test_graph_explain_redaction_fingerprints_and_original_factory():
@@ -556,7 +564,7 @@ def test_graph_explain_redaction_fingerprints_and_original_factory():
         builder.register_pattern(Serializer[dict[str, T]], factory=Serializer)
         builder.register_pattern(Serializer[list[T]], factory=make_list_serializer)
         root = request(builder, Serializer[list[int]])
-        return builder.build(build_args={"secret": secret}, diagnostics=True), root
+        return builder.analyse(build_args={"secret": secret}), root
 
     first, root = build("private-one")
     second, _ = build("private-two")
@@ -567,18 +575,20 @@ def test_graph_explain_redaction_fingerprints_and_original_factory():
     codes = {code for decision in explanation.rejected for code in decision.reason_codes}
     assert {"pattern-mismatch", "pattern-less-specific"} <= codes
     assert "selected-registration-pattern" in explanation.selected[0].reason_codes
-    components = [component for component in first.components if component.service_type == Serializer[list[int]]]
+    components = [root.component for root in first.graph.roots if root.requested_type == Serializer[list[int]]]
     assert components[0].implementation is make_list_serializer
     assert components[0].generic_mapping[T] == list[int]
-    assert first.resolve(root).value.child is not None
+    assert first.create_runtime().resolve(root).value.child is not None
 
 
 def test_entrypoint_marks_existing_pattern_request_without_granting_new_roots():
     builder = ContainerBuilder()
     builder.register_pattern(Serializer[T], factory=Serializer)
     builder.mark_entrypoint(Serializer[int])
-    with pytest.raises(ContainerBuildError):
-        builder.build()
+    assert not builder.analyse().report.is_valid
+    builder = ContainerBuilder()
+    builder.register_pattern(Serializer[T], factory=Serializer)
+    builder.mark_entrypoint(Serializer[int])
     request(builder, Serializer[int])
     assert isinstance(builder.build().resolve(Serializer[int]), Serializer)
 
@@ -596,9 +606,9 @@ def test_unsupported_closed_annotation_is_rejected_even_at_variable_position():
     builder = ContainerBuilder()
     builder.register_pattern(Serializer[T], factory=Serializer)
     request(builder, Serializer[int | str])
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "pattern-unsupported-form" in error_codes(error)
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "pattern-unsupported-form" in error_codes(error_analysis)
 
 
 def test_unexported_private_template_is_diagnosed():
@@ -608,9 +618,9 @@ def test_unexported_private_template_is_diagnosed():
     builder = ContainerBuilder()
     builder.create_boundary("source").apply_bundle(source)
     request(builder, Serializer[int])
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "boundary-private-component" in error_codes(error)
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "boundary-private-component" in error_codes(error_analysis)
 
 
 def test_decorators_wrap_pattern_specializations():
@@ -632,9 +642,9 @@ def test_pattern_lifetime_validation_rejects_scoped_dependency_below_singleton()
     builder.register(Serializer[int], factory=Serializer, lifespan="scoped")
     builder.register_pattern(Serializer[list[T]], factory=make_list_serializer, lifespan="singleton")
     request(builder, Provider[Serializer[list[int]]])
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "captive-dependency" in error_codes(error)
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "captive-dependency" in error_codes(error_analysis)
 
 
 def test_transient_resource_pattern_cleanup_is_promoted_to_parent_singleton():
@@ -706,9 +716,9 @@ def test_mutual_pattern_growth_is_bounded():
     builder.register_pattern(Serializer[T], factory=left)
     builder.register_pattern(Other[T], factory=right)
     request(builder, Serializer[int])
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "pattern-non-terminating-expansion" in error_codes(error)
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "pattern-non-terminating-expansion" in error_codes(error_analysis)
 
 
 @pytest.mark.skipif(sys.version_info < (3, 12), reason="native type syntax requires Python 3.12")
@@ -729,9 +739,9 @@ def test_unused_factory_binding_error_is_diagnosed_and_template_id_is_patchable(
 
     builder = ContainerBuilder()
     builder.register_pattern(Serializer[T], factory=unbound)
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "pattern-incompatible-binding" in error_codes(error)
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "pattern-incompatible-binding" in error_codes(error_analysis)
 
     builder = ContainerBuilder()
     component_id = builder.register_pattern(Serializer[T], factory=Serializer)
@@ -762,21 +772,21 @@ def test_custom_bound_errors_are_redacted():
     builder = ContainerBuilder()
     builder.register_pattern(Serializer[variable], factory=Serializer)
     request(builder, Serializer[int])
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "pattern-unsupported-form" in error_codes(error)
-    assert "private-bound-secret" not in str(error.value)
-    assert error.value.report is not None
-    assert "private-bound-secret" not in error.value.report.to_json()
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "pattern-unsupported-form" in error_codes(error_analysis)
+    assert "private-bound-secret" not in str(error_analysis.report)
+    assert error_analysis.report is not None
+    assert "private-bound-secret" not in error_analysis.report.to_json()
 
 
 @pytest.mark.parametrize("template", [list[T], tuple[T], Provider[T], AsyncProvider[T]])
 def test_synthetic_outer_patterns_are_explicitly_rejected(template):
     builder = ContainerBuilder()
     builder.register_pattern(template, factory=Serializer)
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "pattern-unsupported-form" in error_codes(error)
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "pattern-unsupported-form" in error_codes(error_analysis)
 
 
 def test_growth_through_many_distinct_templates_is_bounded():
@@ -791,6 +801,6 @@ def test_growth_through_many_distinct_templates_is_bounded():
         factory.__annotations__ = {"child": services[(index + 1) % len(services)][list[T]]}
         builder.register_pattern(service[T], factory=factory)
     request(builder, services[0][int])
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "pattern-non-terminating-expansion" in error_codes(error)
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "pattern-non-terminating-expansion" in error_codes(error_analysis)

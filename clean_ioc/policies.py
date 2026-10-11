@@ -6,11 +6,11 @@ import inspect
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, replace
 from functools import wraps
-from typing import Any, TypeAlias, cast, get_origin
+from typing import Any, TypeAlias, get_origin
 
 from typing_extensions import TypeForm
 
-from .components import Component, ComponentBuilder, ComponentFilter, ComponentKind, Lifespan, ValidationRuleMode
+from .components import Component, ComponentBuilder, ComponentFilter, ComponentKind, Lifespan
 from .generic_utils import constructor_type
 from .metadata import Tag
 from .tooling import BuildIssue, GraphVisit, ValidationContext, ValidationRule, qualified_name
@@ -29,7 +29,7 @@ __all__ = [
     "require_tags",
 ]
 
-PolicyPackEntry: TypeAlias = ValidationRule | tuple[ValidationRule, ValidationRuleMode]
+PolicyPackEntry: TypeAlias = ValidationRule
 
 _IMPLEMENTATION_KINDS = frozenset(
     (ComponentKind.registration, ComponentKind.decorator, ComponentKind.pre_configuration)
@@ -70,11 +70,6 @@ def _matches(predicate: ComponentFilter, component: Component) -> bool:
     return result
 
 
-def _validate_mode(mode: ValidationRuleMode) -> None:
-    if mode not in ("build", "validation"):
-        raise ValueError("mode must be 'build' or 'validation'")
-
-
 def _compiled_decorator_type(component: Component) -> Any:
     implementation = normalize_type_alias(component.implementation)
     if isinstance(implementation, type):
@@ -103,45 +98,23 @@ def _packed_rule(name: str, rule: ValidationRule) -> ValidationRule:
 
 @dataclass(frozen=True, slots=True, init=False)
 class PolicyPack:
-    """Install a frozen list of rules, optionally choosing a mode per rule.
-
-    Plain rules use ``mode`` (``"build"`` by default). Entries of the form
-    ``(rule, "validation")`` or ``(rule, "build")`` override that default.
-    Arbitrary custom validation callbacks are accepted alongside policy helpers.
-    """
+    """Install one ordered set of rules evaluated only during analyse()."""
 
     name: str
-    rules: tuple[tuple[ValidationRule, ValidationRuleMode], ...]
-    mode: ValidationRuleMode
+    rules: tuple[ValidationRule, ...]
 
-    def __init__(
-        self,
-        name: str,
-        rules: Iterable[PolicyPackEntry],
-        *,
-        mode: ValidationRuleMode = "build",
-    ) -> None:
+    def __init__(self, name: str, rules: Iterable[PolicyPackEntry]) -> None:
         if not isinstance(name, str) or not name.strip():
             raise ValueError("A policy pack requires a nonempty name")
-        _validate_mode(mode)
-        entries: list[tuple[ValidationRule, ValidationRuleMode]] = []
-        for entry in rules:
-            if isinstance(entry, tuple):
-                if len(entry) != 2:
-                    raise TypeError("A policy pack entry must be a rule or a (rule, mode) pair")
-                rule, rule_mode = cast(tuple[ValidationRule, ValidationRuleMode], entry)
-            else:
-                rule, rule_mode = entry, mode
+        entries = tuple(rules)
+        for rule in entries:
             _validate_callback(rule)
-            _validate_mode(rule_mode)
-            entries.append((rule, rule_mode))
         object.__setattr__(self, "name", name)
-        object.__setattr__(self, "rules", tuple(entries))
-        object.__setattr__(self, "mode", mode)
+        object.__setattr__(self, "rules", entries)
 
     def __call__(self, builder: ComponentBuilder) -> None:
-        for rule, mode in self.rules:
-            builder.add_validation_rule(_packed_rule(self.name, rule), mode=mode)
+        for rule in self.rules:
+            builder.add_validation_rule(_packed_rule(self.name, rule))
 
 
 @dataclass(frozen=True, slots=True)

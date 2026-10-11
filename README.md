@@ -9,7 +9,7 @@ Clean IoC is a typed dependency-injection container for Python 3.11+. Version 2 
 immutable runtime execution:
 
 1. Register components with `ContainerBuilder`.
-2. Call `build()` to validate and compile every visible dependency plan.
+2. Call `build()` to compile the executable dependency plan; use a separate fresh builder’s `analyse()` for CI checks.
 3. Resolve from the immutable `Container` or a lightweight `Scope`.
 
 Constructors, factories, generators, and context managers do not run during the build. Explicit `derive(...)` argument
@@ -76,15 +76,27 @@ and activation returns ordinary Python objects rather than generated proxies.
 
 ## Build and runtime model
 
-`ContainerBuilder.build()` performs registration discovery, contextual selection, structural validation, and activation-plan
-compilation at an explicit application boundary.
+`ContainerBuilder.build()` discovers registrations, binds dependencies and emits an ordinary execution runtime.
+It runs no validation rules or policy audits. Impossible wiring fails locally; actual runtime ownership, async,
+resolution and cleanup guards remain enforced.
+
+Use a fresh builder's `analyse()` for a completed `AnalysisResult` containing an `AnalysisReport`, graph or partial
+analysis, coverage and rule outcomes. Every available rule finishes before return. Reports never replay callbacks.
+Tests may call `result.create_runtime()` to execute the already emitted plan without recompilation.
+Production separately uses a fresh composition factory's `build()`.
+
+Every admitted attempt consumes its builder, including failures, cancellation and budget refusal. Retry with a fresh
+builder. Runtimes retain no graph, report or composition handle. For future overlays, call `retain_composition()` before
+compiling and pass the external handle to `ScopeBuilder(parent, composition=handle)`. Analysis captures this handle
+automatically. Ordinary scopes need no handle; composition handles have no cleanup lifecycle.
+See the [migration guide](V1_TO_V2_UPGRADE.md).
 
 | Build time | Runtime |
 | --- | --- |
 | Specialize generic types | Select a frozen root plan |
 | Build occurrence-specific component trees | Execute precompiled activation steps |
 | Evaluate filters and explicit `build_args` | Cache plain instances by lifespan |
-| Detect missing, circular, and captive dependencies | Coordinate concurrent scoped/singleton builds |
+| Bind dependencies; analyse policy separately | Coordinate concurrent scoped/singleton builds |
 | Freeze decorators, pre-configurations, and argument policies | Track only activation and teardown state |
 
 Application-defined build arguments make environment-dependent composition explicit without turning those inputs into
@@ -99,10 +111,9 @@ container = builder.build(
 Derived argument policies and component filters can inspect the immutable mapping during compilation. The chosen wiring
 is frozen, while graph manifests and reports omit build-argument names and values.
 
-`build()` raises `ContainerBuildError` if a graph is incomplete, a singleton captures scoped state, or a singleton or
-scoped component captures `per_resolution` state. Lifespan checks are transitive, including dependencies reached through
-transient components. A failed build leaves the builder reusable. A builder becomes immutable and single-use after a
-successful build.
+`build()` raises a local `ContainerBuildError` when binding is impossible. `analyse()` additionally reports policy
+findings such as captive lifespans and incompatible annotations, with full or partial diagnostic evidence.
+Every admitted attempt consumes its builder. Retry with a fresh composition factory.
 
 ## Make architecture executable
 
@@ -137,45 +148,27 @@ def enforce_architecture(context: ValidationContext) -> Iterable[BuildIssue]:
 builder.add_validation_rule(enforce_architecture)
 ```
 
-Build-mode custom errors fail `build()` alongside Clean IoC's built-in missing, circular, and captive-dependency checks.
-Custom warnings flow into the same `BuildReport`. Rules can inspect service and implementation types, names, tags,
-lifespans, decorators, scope slots, configured values, build arguments, and complete root-to-occurrence paths.
-
-Expensive rules can be kept out of application startup:
+Custom rules and built-in checks run only during `analyse()`. Register all policies with the same API:
 
 ```python
-builder.add_validation_rule(forbid_direct_environment_access, mode="validation")
+builder.add_validation_rule(forbid_direct_environment_access)
+with builder.analyse() as result:
+    result.report.assert_valid()
 ```
 
-This is recommended for source inspection, AST parsing, and other expensive analysis, provided the full validation
-suite is mandatory in tests or CI. Build rules protect every startup; validate-only rules trade that startup guarantee
-for lower application-build cost. A CLI check runs each set once: build rules while constructing the container, then
-validate-only rules while creating the complete report.
+Errors and incomplete coverage make the report invalid. Warnings remain available for CI policy. Analysis of one
+configuration does not validate every future input; use the same composition factory and inputs for a separate CI check:
 
-Validate-only rules still run under the CLI check, making source and architecture analysis practical in CI:
-
-```bash
+```console
 clean-ioc check my_app.composition:application_builder
 ```
-
-Unit tests can run the same complete rule suite without activating application components:
-
-```python
-container = builder.build()
-report = container.validation_report()
-assert report.is_valid, report.to_text()
-```
-
-Build rules are not rerun in this validation pass. Their stored findings remain in the complete report, followed
-by fresh findings from validate-only rules.
 
 See the [custom graph validation guide](docs/custom-validation.md) for recipes covering duplicate registrations,
 architecture layers, metadata and lifespan conventions, required decorators, AST inspection, environment-specific
 composition, reusable rule factories, bundles, overlays, warnings, and CI policy.
 
 [Policy helpers and packs](docs/policies.md) supply standard validation rules for layers, dependencies, decorators,
-lifespans, runtime access, tags, and capabilities. `PolicyPack("architecture", [rule, (expensive_rule, "validation")])`
-groups ordinary callbacks and chooses a phase per rule while preserving the existing validation execution model.
+lifespans, runtime access, tags, and capabilities. `PolicyPack("architecture", [rule, expensive_rule])` groups ordinary callbacks for analysis.
 
 ## Graph inspection
 
@@ -183,16 +176,16 @@ Mark application entry points to focus graph output and reachability analysis:
 
 ```python
 builder.register(Checkout, root_policy="entrypoint")
-container = builder.build()
+analysis = builder.analyse()
 
-print(container.build_report.to_text())
-print(container.graph.to_mermaid())
-container.graph.manifest().to_json()
-container.graph.ownership_report().to_json()
-container.graph.sharing_report().to_json()
+print(analysis.report.to_text())
+print(analysis.graph.to_mermaid())
+analysis.graph.manifest().to_json()
+analysis.graph.ownership_report().to_json()
+analysis.graph.sharing_report().to_json()
 ```
 
-Use `root_policy="dependency_only"` for a helper that should be retained only when another root needs it. By default, `build(clean_orphans=True)` discards unused dependency-only registrations. Pass `clean_orphans=False` to retain and validate their graphs for inspection. `mark_entrypoint()` still marks collection and filtered requests.
+Use `root_policy="dependency_only"` for a helper that should be retained only when another root needs it. `build()` omits unused dependency-only registrations from execution. `analyse()` inspects and validates them without exposing runtime roots. `mark_entrypoint()` still marks collection and filtered requests.
 
 ```bash
 clean-ioc check my_app.composition:application_builder
@@ -206,22 +199,24 @@ clean-ioc matrix my_app.composition:deployment_matrix --format json
 clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGateway
 ```
 
-Each target can be a builder, a built container or scope, or a zero-argument factory function returning one.
+Each target can be a builder, an analysis-built container or scope, or a zero-argument factory returning one.
+The CLI builds builder targets in analysis mode. A run runtime cannot recover discarded inspection evidence;
+point the CLI at a fresh composition factory instead.
 
 [Graph-change policies](docs/graph-change-policies.md) classify wiring changes by meaning, risk, and affected entry
-point. Use `container.graph.diff(baseline).evaluate(DiffPolicy(...))` in tests, or `diff --classify`, `--fail-on`, and
+point. Use `analysis.graph.diff(baseline).evaluate(DiffPolicy(...))` in tests, or `diff --classify`, `--fail-on`, and
 `--policy` in CI. Risk thresholds, denied change kinds, and path allowances permit expected changes while flagging
 architectural drift.
 
 [Build-variant matrices](docs/build-matrices.md) check supported environments, tenants, or feature configurations from
-fresh builders. They aggregate build and validation findings, compare each valid variant with a named reference, and
+fresh builders. They aggregate completed analysis findings, compare each valid variant with a named reference, and
 support entry-point and graph-drift policies. Use `BuildMatrix(...).check().assert_valid()` in tests or the `matrix`
 command for text, JSON, and SARIF reports.
 
 [SARIF reporting](docs/sarif.md) exports validation findings with registration sources and dependency code flows for
 CI review. Structural failures also produce a report; text and JSON retain their existing shapes.
 
-Build errors are aggregated across independent roots. Deterministic JSON manifests omit configured values and runtime
+Analysis builds aggregate errors across independent roots; run builds preserve the original failure. Deterministic JSON manifests omit configured values and runtime
 identities, allowing wiring changes to be reviewed without serializing secrets. Entry points focus the default graph and
 enable warnings for unreachable registrations; every visible root is still compiled, validated, and resolvable.
 Manifests record the compiled cache and cleanup owner for every occurrence. Tooling JSON formats remain unversioned
@@ -232,10 +227,9 @@ ownership reports explain that decision without exposing runtime tokens or value
 Sharing reports are static eligibility reports: they group occurrences by their compiled cache identity without
 activating them or claiming factory results are distinct. They explain per-resolution, scope, singleton, transient,
 and supplied-instance semantics, and identify occurrence plans that can compete to initialize one cache.
-Expensive custom rules can be registered with `mode="validation"`, keeping their graph or source-AST inspection out
-of application startup while still running under `clean-ioc check` in CI. CLI strictness only controls whether warnings
+All custom rules use `add_validation_rule(rule)` and run during `analyse()` or `clean-ioc check`, never production build. CLI strictness only controls whether warnings
 produce a failing exit code; errors fail in strict and non-strict modes.
-`container.graph.explain(...)` and `clean-ioc explain` show the recorded selected and rejected candidates, stable reason
+`analysis.graph.explain(...)` and `clean-ioc explain` show the recorded selected and rejected candidates, stable reason
 codes, bundle paths, and best-effort declaration locations without adding provenance to manifests or fingerprints.
 
 ## Component model
@@ -294,15 +288,22 @@ Slots represent values that are unavailable during root compilation, such as req
 slots may be provided. Duplicate provisions are rejected, and provisions lock when resolution starts. Nested scopes
 inherit provided values and may override them before their first resolve.
 
-Use `ScopeBuilder` when a child scope requires different registrations or decorators:
+Use `ScopeBuilder` when a child scope requires different registrations or decorators.
+Retain composition explicitly before building the parent:
 
 ```python
-tenant_builder = container.new_scope_builder()
-tenant_builder.register(PaymentGateway, TenantGateway)
+from clean_ioc import ScopeBuilder
 
-with tenant_builder.build() as tenant_scope:
-    tenant_scope.resolve(Checkout)
+builder = application_builder()
+composition = builder.retain_composition()
+with builder.build() as parent:
+    tenant_builder = ScopeBuilder(parent, composition=composition)
+    tenant_builder.register(PaymentGateway, TenantGateway)
+    with tenant_builder.build() as tenant_scope:
+        tenant_scope.resolve(Checkout)
 ```
+
+The handle retains declaration values by identity, so keep it only when further composition is needed.
 
 Singletons introduced by a `ScopeBuilder` belong to its built scope and descendants. Existing root singletons remain
 anchored to the root container and cannot be rewired by overlay dependencies or decorators. A built overlay starts a
@@ -392,13 +393,13 @@ compiled container during application startup.
 
 - Sync and async factories, generators, context managers, and deterministic cleanup.
 - Named, tagged, parent-aware, and descendant-aware component filters.
-- Z-indexed decorators with stable IDs, builder patch/removal, owned metadata, and build-time validation.
+- Z-indexed decorators with stable IDs, builder patch/removal, owned metadata, and analysis policy checks.
 - Build-time generic discovery, generic factory specialization, open-generic fallback, and plan-driven decorator policies.
 - Immutable build inputs with explicit `build_arg(...)`, `generic_arg(...)`, and `inject()` argument policies.
 - Coordinated first activation across threads and event loops.
 - Bundles targeting one shared `ComponentBuilder` composition protocol.
 - Synchronous custom graph rules with structured findings, path-aware traversal, lazy type-AST inspection, and
-  separate build and validation execution.
+  separate production build and completed analysis.
 - BenchBro experiments separating build cost, runtime latency, and Python allocations.
 
 ## Project links

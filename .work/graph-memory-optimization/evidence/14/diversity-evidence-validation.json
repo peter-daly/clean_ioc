@@ -1,0 +1,8 @@
+{
+  "source_hashes_actual_loaded_modules": "Match saved accepted-task13 baseline and current candidate for all 36 processes",
+  "processes_per_policy_per_control": "3 normal plus 3 traced",
+  "trace_boundary": "After library import; classes/composition/build included",
+  "loader": "Both policies compile same two modules using SourceLoader and original filenames before tracing",
+  "validated_resolutions_per_sample": 2000,
+  "valid": true
+}

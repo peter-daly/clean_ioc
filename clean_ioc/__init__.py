@@ -25,14 +25,16 @@ from .components import (
     RootPolicy,
     RuntimeOwnerKind,
     ScopePolicy,
-    ValidationRuleMode,
     all_components,
     default_component_filter,
 )
 from .container import (
+    AnalysisResult,
+    AnalysisRuntimeUnavailableError,
     BoundaryBuilder,
     BuilderAlreadyBuiltError,
     CannotResolveError,
+    Composition,
     Container,
     ContainerBuilder,
     ContainerBuildError,
@@ -94,8 +96,10 @@ from .selection_census import DefinitionCensus, DefinitionReference, SelectionCe
 from .sentinels import Undefined
 from .service_groups import DerivedServices, ServiceGroup
 from .tooling import (
+    AnalysisReport,
+    AnalysisRuleOutcome,
+    AnalysisStageOutcome,
     BuildIssue,
-    BuildReport,
     BuildTriage,
     CandidateDecision,
     ChangeAllowance,
@@ -135,6 +139,11 @@ from .tooling import (
 from .warmup import WarmupError, WarmupPlan, WarmupPlanInfo, WarmupReport, WarmupResult, WarmupTarget, WarmupTargetInfo
 
 __all__ = [
+    "AnalysisResult",
+    "AnalysisRuntimeUnavailableError",
+    "AnalysisReport",
+    "AnalysisRuleOutcome",
+    "AnalysisStageOutcome",
     "WarmupError",
     "WarmupPlan",
     "WarmupPlanInfo",
@@ -183,11 +192,12 @@ __all__ = [
     "ComponentKind",
     "ComponentSelector",
     "Undefined",
+    "Composition",
     "Container",
     "ContainerBuildError",
     "ContainerBuilder",
     "BuildIssue",
-    "BuildReport",
+    "AnalysisReport",
     "BuildTriage",
     "FailureEvidence",
     "TriageGroup",
@@ -264,7 +274,6 @@ __all__ = [
     "Use",
     "ValidationContext",
     "ValidationRule",
-    "ValidationRuleMode",
     "Layer",
     "PolicyPack",
     "PolicyPackEntry",

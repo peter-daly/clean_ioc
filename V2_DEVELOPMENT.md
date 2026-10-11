@@ -57,8 +57,8 @@ Container/Scope
 
 - `ContainerBuilder` and `ScopeBuilder` are the only mutable composition APIs.
 - `Container` and `Scope` contain frozen `_PlanSet` instances and expose no registration APIs.
-- A failed build leaves its builder reusable. A successful build makes the builder single-use.
-- Registrations default to `root_policy="resolvable"`, preserving whole-root compilation and validation. `"entrypoint"` also marks a root for tooling; `"dependency_only"` removes its direct root and keeps it only when another root needs it. `build(clean_orphans=True)` prunes unused dependency-only definitions from the frozen blueprint. With `clean_orphans=False`, they remain inspectable and validated as graph roots but cannot be directly resolved. `mark_entrypoint()` continues to mark synthetic or filtered requests without changing root eligibility.
+- Every admitted build or analysis attempt consumes its builder.
+- Registrations default to `root_policy="resolvable"`, preserving whole-root compilation and validation. `"entrypoint"` also marks a root for tooling; `"dependency_only"` removes its direct root and keeps it only when another root needs it. `build()` omits unused dependency-only definitions from execution. `analyse()` inspects their graphs without making them public resolution roots. `mark_entrypoint()` continues to mark synthetic or filtered requests without changing root eligibility.
 - Building never invokes user constructors, factories, generators, or context managers. Explicit `derive(...)`
   argument policies run during compilation and their concrete results become value nodes.
 - Runtime resolution executes `_Step` objects. It does not allocate legacy `DependencyNode`/object-graph structures.
@@ -178,11 +178,13 @@ Draft records are mutable only while `_Compiler` is building the graph. `_Compon
 
 ## Build and validation invariants
 
-`ContainerBuilder.build()` materializes pending discovery rules, specializes generics, compiles all roots, evaluates composition filters, builds structured diagnostics, and freezes the result.
+`ContainerBuilder.build()` materializes discovery, specializes generics, binds execution roots and freezes execution.
+`analyse()` additionally captures diagnostics and performs built-in and custom validation.
 
-Current hard failures include missing components, circular paths, invalid generic specialization, invalid parent singleton specialization in an overlay, missing marked entry points, and captive lifespans.
+Impossible binding includes missing required components, cycles and absent parent singleton specializations. Missing
+marked entry points, captive lifespans and annotation policies are analysis findings.
 
-Factory return annotations are also checked automatically during compilation. Definite declaration mismatches use
+Factory return annotations are checked automatically during analysis. Definite declaration mismatches use
 `factory-return-type-mismatch`, aggregate with the normal built-in findings, and carry occurrence paths for SARIF.
 `_factory_validation.py` performs conservative annotation assignability: aliases, nominal classes, unions, NewType,
 and supported closed generic variance/projection. Unknown annotations and structural protocols are not guessed.
@@ -207,54 +209,22 @@ per_resolution -> scoped/singleton           valid
 
 Invalid lifespan paths use the `captive-dependency` issue code and retain the complete semantic path. A transient is allowed beneath a long-lived component but cannot hide an invalid descendant.
 
-Independent root failures are aggregated in `BuildReport`. `ContainerBuildError.report` carries the report after failure; successful runtimes expose it as `build_report`. Warnings are nonfatal in Python and may be promoted to failures by CLI policy. Current warnings include ambiguous selection and registrations unreachable from marked entry points.
+Analysis returns `AnalysisReport` findings and coverage through `AnalysisResult`. Production `build()` emits execution
+only: no built-in policy audit, custom rules, rich diagnostic capture or retries. Impossible binding remains a local
+error. Every admitted operation consumes its builder; pre-admission invalid inputs remain editable.
 
-When changing validation:
+Custom synchronous rules use `add_validation_rule(rule)` with no mode or phase. Analysis completes each available
+rule once, parent-first for overlays. Rule exceptions become findings and later rules continue; missing full graphs,
+budget refusal and cancellation have explicit unavailable/interrupted outcomes. Equal text from separate boundaries
+or occurrences must retain exact attribution. Use report completeness as well as findings when deciding validity.
 
-1. Validate the whole dependency path, not only direct constructor parameters.
-2. Preserve the error code and semantic component path.
-3. Keep a failed builder repairable.
-4. Test all compiled edge types when the rule is meant to be graph-wide.
+`ValidationContext.type_ast(type)` lazily parses source once per concrete type in that analysis context. Results keep
+source positions; unavailable source is `None`. Treat shared ASTs as read-only. Source locations never enter semantic
+manifests. Report/graph reads and `create_runtime()` never replay callbacks. The test runtime uses the emitted plan;
+a fresh production builder executes independently.
 
-Custom validation rules are synchronous `ValidationRule` callbacks registered with
-`ComponentBuilder.add_validation_rule()`. Rules included in build mode receive one ephemeral `ValidationContext` shared
-by every included rule after structural compilation and built-in complete-graph checks, then yield zero or more
-`BuildIssue` values. The context exposes the complete immutable `CompiledGraph`; custom errors fail the build and
-warnings remain nonfatal. `CompiledGraph.walk()` always traverses every root and yields path-aware `GraphVisit` values;
-it is not focused by entry-point markers.
-
-`ValidationContext.type_ast(type)` lazily parses an inspectable Python class definition and caches the `TypeAst` result
-once per concrete type for that validation pass. Original filename and line positions are preserved. Missing source is
-represented by `None`; callers decide whether that is acceptable. AST nodes are shared and must be treated as read-only.
-The context and cache are discarded after validation rather than stored in `_PlanSet`, `CompiledGraph`, or the runtime,
-and source information must never enter graph manifests or fingerprints.
-
-Rules and their `mode` metadata are frozen in builder layers. `mode="build"`—the default—makes a rule a build rule so
-applications do not silently miss validation when they never invoke the tooling. Setting `mode="validation"` makes the
-rule validate-only and keeps its work off the application startup path. The two phases are disjoint:
-a successfully built container has already passed its build-rule errors, so explicit validation does not rerun them.
-Scope overlays inherit parent rules and run each phase parent-first against the complete overlay graph, followed by
-locally declared rules from the same phase. Ordinary scopes do not rerun validation. `Scope.validation_report()`
-retains the complete stored build report and adds one fresh execution of every validate-only rule, returning an
-independent complete report without mutating the stored build report or raising for its errors. Exact duplicates are
-removed within the newly constructed report. `clean-ioc check` builds its target and then requests that complete report,
-so both rule sets run once. Its `--strict`/`--no-strict` policy controls only whether unsuppressed warnings produce a
-failing exit code; errors fail in either mode. Each phase gets its own shared `ValidationContext`, so deferred AST work
-is absent from startup.
-
-`clean_ioc.policies` factories return ordinary `ValidationRule` callbacks; keep phase execution in the existing engine.
-`PolicyPack(name, rules, mode="build")` snapshots an iterable of callbacks or `(callback, mode)` entries, validates the
-complete pack before application, and registers rules through `ComponentBuilder.add_validation_rule()`. Individual
-entries override the default mode. Policy names belong in reports, never manifests or fingerprints. Dependency checks
-must traverse collection/provider/per-call bridges and retain occurrence-specific shortest witness paths. Layer checks
-classify compiled implementation modules, not source imports; pre-configurations use their callback modules. Generic
-decorator matching uses the exact closed alias captured by the generated runtime class, not generated class names.
-
-Preview queries and failed structural compilations do not run custom rules because no final graph exists. A callback
-exception, non-iterable return, or malformed issue becomes `validation-rule-error`, and subsequent rules still run.
-Keep rules synchronous, deterministic, and side-effect-free; repeated validation reports rerun validate-only callbacks,
-while retries and overlay builds may rerun build callbacks. Build inputs are available through the graph, but custom
-issue authors must not copy secrets into diagnostic fields.
+CLI checks and matrix variants call `analyse()` once and inspect the completed result. Strictness controls warnings;
+errors and incomplete analysis fail. The CLI compilation profiler selects the explicit public operation.
 
 ## Pre-configuration compilation and ownership
 
@@ -305,7 +275,9 @@ synchronous cleanup. Do not restore lifespan- or stack-based finalizer routing: 
 
 Ordinary `new_scope()` is cheap and never recompiles. It reuses the parent's plan, inherits provided slot values, and may inherit already-created scoped values. Runtime UUID strings are created lazily on first ``id`` access so unused diagnostic identity is not part of the scope-creation hot path. Declared slots are supplied with `scope.provide()` before the first resolution; undeclared, duplicate, late, or missing provisions fail.
 
-`new_scope_builder()` is the explicit child-composition boundary:
+`ScopeBuilder(parent, composition=handle)` is the explicit child-composition boundary. Capture the external handle with
+`builder.retain_composition()` before compiling, or use `AnalysisResult.composition`. A handle has no close lifecycle
+and retains opaque application values by identity. Runtimes hold no back-reference to it. The child builder:
 
 - it layers new composition over the frozen parent blueprint and recompiles visible overlay roots;
 - it starts a fresh scoped cache boundary so inherited scoped registrations may use overlay dependencies;
@@ -368,9 +340,9 @@ complete supported matching, filtering, exposure, and public-root rules.
 
 `clean_ioc/tooling.py` exposes read-only tooling over the exact compiled component plans:
 
-- `BuildIssue` and `BuildReport` for structured validation;
-- `BuildReport.to_sarif()` and `ContainerBuildError.to_sarif()` for captured source-linked CI findings;
-- `BuildReport.assert_valid()` for assertions over existing reports, raising with SARIF only when errors exist;
+- `BuildIssue` and `AnalysisReport` for structured validation;
+- `AnalysisReport.to_sarif()` and `ContainerBuildError.to_sarif()` for captured source-linked CI findings;
+- `AnalysisReport.assert_valid()` for assertions over existing reports, raising with SARIF only when errors exist;
 - `CompiledGraph` with text and Mermaid renderers;
 - immutable compilation explanations with selected/rejected candidates, stable reason codes, and best-effort origins;
 - unversioned `GraphManifest` with deterministic fingerprints;

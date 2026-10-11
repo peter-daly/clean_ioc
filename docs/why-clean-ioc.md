@@ -63,17 +63,14 @@ Responsibility is divided as follows:
 
 ```mermaid
 flowchart LR
-    declare["Declare composition"]
-    compile["Compile and validate"]
-    inspect["Inspect report or manifest"]
-    resolve["Execute compiled plan"]
-    cleanup["Close the owning scope"]
-    declare --> compile --> inspect --> resolve --> cleanup
+    declare["Fresh composition"] --> build["Build execution plan"] --> resolve["Resolve and close runtime"]
+    declare --> analyse["Analyse graph and policies"] --> report["Read completed report"]
+    analyse --> test["Create test runtime from emitted plan"]
 ```
 
-The builder validates all visible roots and produces immutable activation plans. The runtime container executes those
-plans and maintains only lifespan caches and cleanup state. Registration discovery and graph construction do not occur
-during resolution.
+Production `build()` binds an immutable executable plan. A separate fresh builder's `analyse()` captures the graph,
+policy findings and coverage for CI. The runtime executes its plan and maintains lifespan caches and cleanup state.
+Registration discovery and graph construction do not occur during resolution.
 
 ## When direct composition is preferable
 

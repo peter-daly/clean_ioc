@@ -10,7 +10,7 @@ import pytest
 from typing_extensions import TypeAliasType
 
 import clean_ioc.cli as cli
-from clean_ioc import AsyncProvider, ContainerBuilder, ContainerBuildError, Expose, Provider, ScopeBuilder
+from clean_ioc import AsyncProvider, ContainerBuilder, Expose, Provider, ScopeBuilder
 from clean_ioc.tooling import qualified_name
 
 T = TypeVar("T")
@@ -65,9 +65,11 @@ def factory_with_annotation(annotation: Any) -> Callable[..., Any]:
 
 
 def rejected(builder: ContainerBuilder | ScopeBuilder):
-    with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
-    return raised.value
+    result = builder.analyse()
+    assert result.emission_complete
+    assert result.report.complete
+    assert not result.report.is_valid
+    return result
 
 
 @pytest.mark.parametrize(
@@ -97,7 +99,7 @@ def rejected(builder: ContainerBuilder | ScopeBuilder):
         (Service, Annotated[str, "description"]),
     ],
 )
-def test_definite_annotation_mismatches_fail_build_without_activation(service, result):
+def test_definite_annotation_mismatches_are_analysis_findings_without_activation(service, result):
     builder = ContainerBuilder()
     builder.register(service, factory=factory_with_annotation(result))
     error = rejected(builder)
@@ -109,7 +111,7 @@ def test_definite_annotation_mismatches_fail_build_without_activation(service, r
     assert qualified_name(canonical_service) in issue.message
     assert issue.root == qualified_name(canonical_service)
     assert issue.path == (qualified_name(canonical_service),)
-    assert error.compiled_graph is not None
+    assert error.graph is not None
 
 
 @pytest.mark.parametrize(
@@ -152,9 +154,9 @@ def test_definite_annotation_mismatches_fail_build_without_activation(service, r
 def test_compatible_and_unknown_annotations_remain_accepted(service, result):
     builder = ContainerBuilder()
     builder.register(service, factory=factory_with_annotation(result))
-    with builder.build() as container:
-        assert container.build_report.is_valid
-        assert container.validation_report().is_valid
+    with builder.analyse() as container:
+        assert container.report.is_valid
+        assert container.report.is_valid
 
 
 def test_unannotated_factories_and_constructor_or_instance_registrations_are_unaffected():
@@ -165,7 +167,7 @@ def test_unannotated_factories_and_constructor_or_instance_registrations_are_una
     builder.register(Service, factory=factory)
     builder.register(Implementation)
     builder.register(str, instance="value")
-    assert builder.build().build_report.is_valid
+    assert builder.analyse().report.is_valid
 
 
 def test_return_rule_does_not_reject_an_unresolved_annotation():
@@ -175,7 +177,7 @@ def test_return_rule_does_not_reject_an_unresolved_annotation():
     # Registration already resolves signatures and may reject unresolved names.
     # This checks the return rule's fallback when metadata later becomes unknown.
     factory.__annotations__["return"] = "UnresolvableType"
-    assert builder.build().build_report.is_valid
+    assert builder.analyse().report.is_valid
 
 
 @pytest.mark.parametrize("kind", ["async", "generator", "async_generator", "context_manager", "async_context_manager"])
@@ -209,7 +211,7 @@ def test_a_sync_factory_returning_an_iterator_is_checked_as_an_iterator_product(
 
     builder = ContainerBuilder()
     builder.register(Iterator[str], factory=iterator_factory)
-    assert builder.build().build_report.is_valid
+    assert builder.analyse().report.is_valid
 
 
 @pytest.mark.parametrize("kind", ["callable", "partial", "wrapped"])
@@ -228,7 +230,7 @@ def test_callable_objects_partials_and_wrapped_functions_resolve_forward_annotat
     factory = {"callable": Factory(), "partial": partial(function), "wrapped": wrapper}[kind]
     builder = ContainerBuilder()
     builder.register(Service, factory=factory)
-    assert builder.build().build_report.is_valid
+    assert builder.analyse().report.is_valid
     invalid = ContainerBuilder()
     invalid.register(str, factory=factory)
     assert rejected(invalid).report.errors[0].code == "factory-return-type-mismatch"
@@ -242,7 +244,7 @@ def test_closed_generic_factory_uses_the_compilers_resolved_result_binding():
     builder.register(Repository, factory=factory)
     builder.mark_entrypoint(Repository[int])
     builder.mark_entrypoint(Repository[str])
-    assert builder.build().build_report.is_valid
+    assert builder.analyse().report.is_valid
 
 
 def test_explicit_hidden_generic_binding_is_used_by_return_check():
@@ -251,7 +253,7 @@ def test_explicit_hidden_generic_binding_is_used_by_return_check():
 
     builder = ContainerBuilder()
     builder.register(object, factory=factory, factory_specialization=Repository[int])
-    assert builder.build().build_report.is_valid
+    assert builder.analyse().report.is_valid
 
 
 def test_closed_factory_result_mismatch_is_reported_beneath_a_provider():
@@ -277,7 +279,7 @@ def test_async_provider_targets_are_checked_too():
     assert any(issue.root == qualified_name(Handler) for issue in rejected(builder).report.errors)
 
 
-def test_multiple_mismatches_are_aggregated_and_failed_builder_can_be_repaired():
+def test_multiple_mismatches_are_aggregated_and_new_builder_uses_corrected_declarations():
     first = factory_with_annotation(str)
     second = factory_with_annotation(int)
     builder = ContainerBuilder()
@@ -287,7 +289,10 @@ def test_multiple_mismatches_are_aggregated_and_failed_builder_can_be_repaired()
     assert len(report.errors) == 2
     first.__annotations__["return"] = Service
     second.__annotations__["return"] = Implementation
-    assert builder.build().build_report.is_valid
+    builder = ContainerBuilder()
+    builder.register(Service, factory=first)
+    builder.register(Implementation, factory=second)
+    assert builder.analyse().report.is_valid
 
 
 def test_build_rule_applies_to_boundaries_and_overlays():
@@ -298,8 +303,8 @@ def test_build_rule_applies_to_boundaries_and_overlays():
 
     parent = ContainerBuilder()
     parent.register(Service, lifespan="singleton")
-    with parent.build() as container:
-        overlay = container.new_scope_builder()
+    with parent.analyse() as analysis:
+        overlay = ScopeBuilder(analysis.create_runtime(), composition=analysis.composition)
         overlay.register(Service, factory=factory_with_annotation(str), lifespan="singleton")
         assert rejected(overlay).report.errors[0].code == "factory-return-type-mismatch"
 
@@ -310,14 +315,14 @@ def test_annotation_check_does_not_verify_actual_factory_returns():
 
     builder = ContainerBuilder()
     builder.register(Service, factory=factory)
-    assert builder.build().build_report.is_valid
+    assert builder.analyse().report.is_valid
 
 
 def test_source_linked_sarif_and_assertions_include_the_build_finding():
     builder = ContainerBuilder()
     builder.register(Service, factory=factory_with_annotation(str))
     error = rejected(builder)
-    run = json.loads(error.to_sarif())["runs"][0]
+    run = json.loads(error.report.to_sarif())["runs"][0]
     result = run["results"][0]
     assert result["ruleId"] == "factory-return-type-mismatch"
     assert result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "tests/test_factory_return_types.py"
@@ -327,10 +332,10 @@ def test_source_linked_sarif_and_assertions_include_the_build_finding():
 
 
 @pytest.mark.parametrize("format_name", ["text", "json", "sarif"])
-def test_cli_reports_factory_return_mismatches_as_build_failures(monkeypatch, capsys, format_name):
+def test_cli_reports_factory_return_mismatches_as_analysis_findings(monkeypatch, capsys, format_name):
     builder = ContainerBuilder()
     builder.register(Service, factory=factory_with_annotation(str))
     monkeypatch.setattr(cli, "_load_object", lambda _: builder)
-    assert cli.main(["check", "app:builder", "--format", format_name, "--ignore", "factory-return-type-mismatch"]) == 1
+    assert cli.main(["check", "app:builder", "--format", format_name, "--ignore", "unrelated-code"]) == 1
     output = capsys.readouterr()
     assert "factory-return-type-mismatch" in output.out + output.err

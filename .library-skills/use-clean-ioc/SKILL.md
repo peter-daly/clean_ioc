@@ -20,13 +20,17 @@ container = builder.build()
 service = container.resolve(Service)
 ```
 
-Treat the installed package as the source of truth. Inspect public signatures when the task depends on an unfamiliar alpha API.
+Treat the installed package as the source of truth. Inspect public signatures when the task depends on an unfamiliar API.
 
 ## Respect the build boundary
 
 Perform registration, decoration, pre-configuration, slot declaration, bundle application, component queries, and patches on a builder. Call `build()` only after composition is complete.
 
-`build()` strictly compiles every visible root without invoking constructors, factories, generators, context managers, or parameter value providers. A failed build leaves the builder reusable. A successful build makes it single-use.
+`build()` emits only the execution plan. It runs no validation rules or safety-policy audits. Missing dependencies or cycles can still prevent instruction emission. Constructors and activation factories remain lazy; selection, derivation and template callbacks run during compilation.
+
+Use a fresh composition factory's `analyse()` for complete diagnostics, architectural checks and every custom rule. It returns an `AnalysisResult` with a completed `report`, a full or partial inspection graph, and an optional executable test plan. Use `result.create_runtime()` to test that plan without recompilation. Reading the report or creating test runtimes does not replay callbacks.
+
+Every admitted build or analysis attempt consumes its builder, including failed or interrupted attempts. Repair declarations in a fresh builder. Invalid inputs rejected before admission leave the builder mutable.
 
 Do not attempt to mutate a `Container` or `Scope`.
 
@@ -34,7 +38,7 @@ Do not attempt to mutate a `Container` or `Scope`.
 
 - `new_scope()` reuses the frozen plan and creates a cache/cleanup boundary. It never compiles.
 - Declare framework/request holes with `builder.declare_scope_slot(Type, name=None)`, then call `scope.provide(Type, value, name=None)` before resolution.
-- Use `new_scope_builder()` only when child registrations, decorators, or pre-configurations genuinely differ. `ScopeBuilder.build()` recompiles the visible plan.
+- Use `ScopeBuilder(parent, composition=handle)` when child declarations differ. Request the external handle with `builder.retain_composition()` before building, or use `result.composition` from analysis with a runtime created from that result. A matching live parent is required. The handle retains declaration memory, has no close lifecycle, and is not retained by the runtime. Request a handle for each overlay that must support further composition.
 
 Slots must be declared, cannot be provided twice in one scope, and lock after resolution begins. Nested scopes inherit provisions and can override them before their own first resolve.
 
@@ -50,7 +54,7 @@ import clean_ioc.component_filters as cf
 
 Use them for:
 
-- `resolve(..., filter=...)` and `DependencySettings(filter=...)`;
+- `resolve(..., filter=...)` and `select(...)` argument policies;
 - `register(..., when=...)` for occurrence eligibility;
 - `register_decorator(..., when=...)`;
 - `pre_configure(..., when=...)`;
@@ -70,11 +74,11 @@ Keep `clean_ioc.type_filters` separate for Python subclass/generic discovery.
 ## Lifespans and execution
 
 - `transient`: every dependency edge;
-- `once_per_graph`: one top-level resolve;
+- `per_resolution`: one top-level resolve;
 - `scoped`: runtime scope cache;
 - `singleton`: root container or owning compiled overlay scope.
 
-Scoped and singleton components must not directly or transitively depend on `once_per_graph`; a transient wrapper does not make that capture valid. A singleton must not depend on scoped state. These invalid paths fail `build()` with `captive-dependency`.
+Scoped and singleton components must not directly or transitively depend on `per_resolution`; a transient wrapper does not make that capture valid. A singleton must not depend on scoped state. `analyse()` reports these invalid paths as `captive-dependency`; `build()` does not audit them.
 
 Use `resolve_async()` whenever an activation path may contain async functions, generators, context managers, or cleanup. Always exit the owning scope/container so cleanup runs.
 

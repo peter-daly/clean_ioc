@@ -8,6 +8,7 @@ Example: .venv/bin/python -m benchmarks.graph_artifact_evidence compare --roots 
 
 import argparse
 import gc
+import hashlib
 import importlib
 import json
 import os
@@ -49,6 +50,27 @@ def _memory(heap: bool) -> dict[str, int]:
 
 def _forbid_compilation(*args, **kwargs) -> NoReturn:
     raise AssertionError("The artifact loader attempted compilation or dependency inspection")
+
+
+def runtime_link_fingerprint(runtime):
+    """Compare stored runtime links without requesting a public inspection graph."""
+    rows = [
+        (
+            occurrence,
+            record.parent_id,
+            record.owner_id,
+            record.decorated_id,
+            record.dependency_ids,
+            record.decorator_ids,
+            record.pre_configuration_ids,
+        )
+        for occurrence, record in sorted(runtime._plan.graph._records.items())
+    ]
+    payload = {
+        "records": rows,
+        "contexts": [(view.index, view.root, view.parent) for view in runtime._plan.graph._views],
+    }
+    return hashlib.sha256(json.dumps(payload, separators=(",", ":")).encode()).hexdigest()
 
 
 def measure(mode: str, artifact: Path, roots: int, heap: bool) -> dict[str, Any]:
@@ -107,7 +129,7 @@ def measure(mode: str, artifact: Path, roots: int, heap: bool) -> dict[str, Any]
     result["activations"] = fixture.ACTIVATIONS
     if result["activations"] != roots * 256:
         raise AssertionError("Unexpected activation count")
-    result["graph_fingerprint"] = runtime.graph.manifest(all_roots=True).fingerprint
+    result["runtime_link_fingerprint"] = runtime_link_fingerprint(runtime)
     result["compilation_disabled"] = mode == "load"
     runtime.__exit__()
     return result
@@ -136,7 +158,7 @@ def compare(arguments) -> dict[str, Any]:
                 runs.append(run)
                 triplet.append(run)
                 print(f"{mode}, {'heap' if heap else 'RSS'}, repeat {repeat + 1}: done", file=sys.stderr)
-            if len({run["graph_fingerprint"] for run in triplet}) != 1:
+            if len({run["runtime_link_fingerprint"] for run in triplet}) != 1:
                 raise AssertionError("Compilation and artifact loading produced different graphs")
     medians = {}
     for mode in ("compile", "export", "load"):

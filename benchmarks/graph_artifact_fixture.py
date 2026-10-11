@@ -73,13 +73,7 @@ def build(root_count: int):
         builder.register(node, lifespan="transient", root_policy="dependency_only")
     for root in ROOTS[:root_count]:
         builder.register(root, lifespan="transient")
-    return builder.build(
-        diagnostics=False,
-        provider_roots=(),
-        allow_scope_builders=False,
-        check_unreachable=False,
-        aggregate_errors=False,
-    )
+    return builder.set_provider_roots(()).build()
 
 
 def inspect_instances(roots: list[Any]) -> dict[str, int]:

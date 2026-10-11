@@ -52,6 +52,6 @@ builder.register(BatchSender, factory=use_component(MySender))
 
 ## Validation limits
 
-The compiler validates component selection, dependency cycles, generic specialization, decorator and pre-configuration
-edges, and lifespan ownership. It cannot validate domain behavior, interface cohesion, or substitutability. Those remain
+Build binds component selection, dependencies and generic specialization. Separate analysis audits decorator and
+pre-configuration policies and lifespan ownership. It cannot validate domain behavior, interface cohesion, or substitutability. Those remain
 properties of the application and its tests.

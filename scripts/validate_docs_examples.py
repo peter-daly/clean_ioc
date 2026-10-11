@@ -12,6 +12,7 @@ import clean_ioc.component_filters as cf
 from clean_ioc import (
     INJECT,
     AsyncProvider,
+    BuilderAlreadyBuiltError,
     BuildIssue,
     Component,
     ContainerBuilder,
@@ -20,6 +21,7 @@ from clean_ioc import (
     IssueSeverity,
     Provider,
     ProviderMapGroup,
+    ScopeBuilder,
     Use,
     ValidationContext,
     build_arg,
@@ -45,7 +47,7 @@ def validate_build_and_resolution() -> None:
     assert isinstance(container.resolve(Service).repository, Repository)  # noqa: S101
 
 
-def validate_failed_builder_is_reusable() -> None:
+def validate_failed_builder_requires_fresh_composition() -> None:
     class Missing:
         pass
 
@@ -58,6 +60,14 @@ def validate_failed_builder_is_reusable() -> None:
     try:
         builder.build()
     except ContainerBuildError:
+        try:
+            builder.register(Missing)
+        except BuilderAlreadyBuiltError:
+            pass
+        else:
+            raise AssertionError("failed builder remained mutable")
+        builder = ContainerBuilder()
+        builder.register(Service)
         builder.register(Missing)
     else:
         raise AssertionError("missing dependency did not fail build")
@@ -96,6 +106,7 @@ def validate_lifespans_slots_and_overlays() -> None:
     builder = ContainerBuilder()
     builder.declare_scope_slot(Request)
     builder.register(Handler)
+    composition = builder.retain_composition()
     container = builder.build()
 
     request = Request()
@@ -108,7 +119,7 @@ def validate_lifespans_slots_and_overlays() -> None:
     class Overlay(Root):
         pass
 
-    overlay_builder = container.new_scope_builder()
+    overlay_builder = ScopeBuilder(container, composition=composition)
     overlay_builder.register(Root, Overlay, lifespan="singleton")
     with overlay_builder.build() as overlay:
         assert isinstance(overlay.resolve(Root), Overlay)  # noqa: S101
@@ -307,14 +318,9 @@ def validate_custom_graph_rules() -> None:
     invalid_builder.register(DomainService)
     invalid_builder.add_validation_rule(enforce_architecture)
 
-    try:
-        invalid_builder.build()
-    except ContainerBuildError as error:
-        assert error.report is not None  # noqa: S101
-        assert error.report.errors[0].code == "example-layer-boundary"  # noqa: S101
-        assert error.report.errors[0].path[-1].endswith("InfrastructureRepository")  # noqa: S101
-    else:
-        raise AssertionError("custom architecture rule did not fail the build")
+    invalid = invalid_builder.analyse()
+    assert invalid.report.errors[0].code == "example-layer-boundary"  # noqa: S101
+    assert invalid.report.errors[0].path[-1].endswith("InfrastructureRepository")  # noqa: S101
 
     class InspectedService:
         pass
@@ -335,15 +341,12 @@ def validate_custom_graph_rules() -> None:
 
     validation_builder = ContainerBuilder()
     validation_builder.register(InspectedService)
-    validation_builder.add_validation_rule(expensive_rule, mode="validation")
-    container = validation_builder.build()
-
-    assert validation_calls == 0  # noqa: S101
-    assert not container.build_report.issues  # noqa: S101
-    report = container.validation_report()
+    validation_builder.add_validation_rule(expensive_rule)
+    result = validation_builder.analyse()
     assert validation_calls == 1  # noqa: S101
+    report = result.report
     assert report.warnings[0].code == "example-expensive-warning"  # noqa: S101
-    assert not container.build_report.issues  # noqa: S101
+    assert result.report is report and validation_calls == 1  # noqa: S101
 
 
 def validate_boundaries() -> None:
@@ -577,7 +580,7 @@ def validate_compilation_budget_guide() -> None:
 
 def main() -> None:
     validate_build_and_resolution()
-    validate_failed_builder_is_reusable()
+    validate_failed_builder_requires_fresh_composition()
     validate_components_and_filters()
     validate_lifespans_slots_and_overlays()
     validate_generics_and_decorators()

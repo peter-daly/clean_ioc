@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .components import ComponentFilter, default_component_filter
-from .tooling import BuildIssue, BuildReport, FailureEvidence, IssueSeverity, SourceLocation
+from .tooling import AnalysisReport, BuildIssue, FailureEvidence, IssueSeverity, SourceLocation
 
 __all__ = [
     "WarmupTarget",
@@ -88,8 +88,10 @@ class WarmupResult:
 
 @dataclass(frozen=True, slots=True)
 class WarmupReport:
+    """Explicit activation outcomes identified by a process-local execution plan."""
+
     name: str
-    graph_fingerprint: str
+    plan_id: str
     results: tuple[WarmupResult, ...]
 
     @property
@@ -99,7 +101,7 @@ class WarmupReport:
     def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
-            "graph_fingerprint": self.graph_fingerprint,
+            "plan_id": self.plan_id,
             "valid": self.is_valid,
             "targets": [result.to_dict() for result in self.results],
         }
@@ -120,7 +122,7 @@ class WarmupReport:
 
     def to_sarif(self, *, indent: int | None = 2) -> str:
         failures = tuple(result for result in self.results if result.code is not None)
-        report = BuildReport(
+        report = AnalysisReport(
             tuple(
                 BuildIssue(
                     result.code or "warmup-activation-failed",
@@ -142,7 +144,7 @@ class WarmupReport:
             for result in failures
         )
         document = json.loads(report.to_sarif(evidence=evidence))
-        document["runs"][0]["properties"]["graphFingerprint"] = self.graph_fingerprint
+        document["runs"][0]["properties"]["executionPlanId"] = self.plan_id
         document["runs"][0]["properties"]["warmupPlan"] = self.name
         for finding, result in zip(document["runs"][0]["results"], failures, strict=True):
             finding["properties"]["exceptionType"] = result.exception_type

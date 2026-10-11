@@ -37,21 +37,22 @@ assert events == ["open", "close"]
 `WarmupTarget` requires a closed service key and an optional synchronous `filter`.
 The default filter selects unnamed registrations. Use
 `WarmupTarget(Client, filter=cf.with_name("primary"))` or an ID filter for named
-selection. Each target must select exactly one visible resolvable singleton after
+selection. Each target must bind exactly one visible resolvable registration after
 normal fallback and nearest overlay-layer selection. Multiple matching registrations
 in that layer are ambiguous. Collections, slots, dependency-only registrations,
-provider handles and non-singleton targets cannot be warmed directly.
+and provider handles are not direct warmup targets. Analysis reports non-singleton warmup policy violations; build emits
+ordered executable transient targets and repeated targets without performing that audit.
 
 Closed generic requests create explicit compilation demand, including structural
 patterns. Aliases, exposures, decorators, pre-configurations, return annotations and
 ordinary ownership rules apply. Targets are captured once; runtime never invokes
-selection filters. Repeated requests selecting the same singleton in one plan fail
-build. Sharing a target between distinct plans is legal.
+selection filters. Analysis reports repeated singleton targets within one plan; build preserves declaration order,
+including duplicates. Sharing a target between distinct plans is legal.
 
 `ContainerBuilder` and `ScopeBuilder` support declarations. Visible names must be
-nonempty and unique across inherited layers. After a failed build,
-`remove_warmup_plan(name)` removes local declarations before repairing the builder;
-it cannot remove inherited plans. Successful builders remain single use.
+nonempty and unique across inherited layers in analysis policy. `remove_warmup_plan(name)` removes local declarations
+before compilation; it cannot remove inherited plans. Every admitted attempt consumes its builder. Use a fresh factory
+to repair failed composition.
 An overlay recompiles inherited intent against its visible composition. Parent
 singletons retain parent ownership; overlay replacements belong to the overlay.
 Ordinary child scopes reuse the frozen selections.
@@ -129,7 +130,7 @@ later attempts. Keep the relevant owners open while warming and using services;
 warm-up does not extend their lifetime. Unknown plan names raise `KeyError`; closed
 scopes raise `ScopeClosedError` before execution.
 
-`container.warmup_plans` and `container.graph.warmup_plans` expose immutable intent
+`container.warmup_plans` and `result.graph.warmup_plans` expose immutable intent
 records, selected semantic paths, sources and async requirements without activation.
 Default manifests and fingerprints exclude this declaration sidecar. A closed
 request that adds a specialization may change the compiled graph.
@@ -139,7 +140,7 @@ matrices never execute plans. Warm-up intent does not mark entry points, so exis
 reachability. Static activation scenarios remain hypothetical.
 
 `WarmupReport` is a detached immutable observation with plan name, matching full
-graph fingerprint, ordered target identities, paths, sources and outcomes.
+execution plan ID, ordered target identities, paths, sources and outcomes.
 `to_text()`, `to_json()` and `to_sarif()` render deterministically. `assert_valid()`
 raises an assertion containing SARIF findings; `raise_for_errors()` raises
 `WarmupError` containing the safe report. Neither helper retries or closes owners.

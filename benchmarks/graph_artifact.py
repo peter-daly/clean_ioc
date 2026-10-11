@@ -15,18 +15,19 @@ from collections.abc import Mapping
 from enum import Enum
 from pathlib import Path
 from types import FunctionType, GenericAlias, MappingProxyType
-from typing import Any, TextIO, get_args, get_origin
+from typing import Any, TextIO, cast, get_args, get_origin
 
 from clean_ioc import Container, arguments, component_filters, components, container, metadata, providers, tooling
 from clean_ioc import _decorator_templates as templates
 from clean_ioc import _legacy as legacy
 from clean_ioc import _legacy_configuration as configuration
+from clean_ioc._compact_index import _CompactIndex
 
 # Schema 6 belonged to the reverted subtree experiment; do not reuse it.
-SCHEMA = 7
+SCHEMA = 9
 _REPO = Path(__file__).resolve().parents[1]
 _DATACLASSES = (
-    container._PlanSet,
+    container._ExecutionPlan,
     container._RuntimeRegistration,
     container._RootPlan,
     container._CompiledDependency,
@@ -57,7 +58,7 @@ _DATACLASSES = (
     tooling._RemappedDecoratorExplanation,
     tooling.TemplateDecision,
     tooling.TemplateSourceDecision,
-    tooling.BuildReport,
+    tooling.AnalysisReport,
     templates.RegistrationInfo,
     configuration.DependencySettings,
     arguments._FixedArgument,
@@ -67,7 +68,9 @@ _DATACLASSES = (
 _SLOTTED = (components._ComponentGraph, components.Component, legacy._Registration, legacy.Dependency)
 _CLASSES = {f"{cls.__module__}:{cls.__qualname__}": cls for cls in (*_DATACLASSES, *_SLOTTED)}
 _FIELDS = {
-    cls: tuple(field.name for field in dataclasses.fields(cls)) if cls in _DATACLASSES else tuple(cls.__slots__)
+    cls: tuple(field.name for field in dataclasses.fields(cls) if field.name != "_inspection_lifetime")
+    if cls in _DATACLASSES
+    else tuple(name for name in cls.__slots__ if name != "_definitions")
     for cls in _CLASSES.values()
 }
 _SPECIAL_SYMBOLS = {
@@ -197,9 +200,13 @@ class _Writer:
             # Separate read-only views can share one backing dictionary. Saving
             # their items independently duplicates large metadata maps on load.
             referents = gc.get_referents(value)
-            if len(referents) != 1 or not isinstance(referents[0], dict):
+            if len(referents) != 1 or not (type(referents[0]) is dict or type(referents[0]) is _CompactIndex):  # noqa: E721
                 raise ValueError("Expected a mapping proxy backed by a dictionary")
             return "mapping", self.ref(referents[0])
+        if cls is _CompactIndex:
+            if value._dict is not None:
+                return "dict", [[self.ref(key), self.ref(item)] for key, item in value.raw_items()]
+            return "compact-index", [[self.ref(key), self.ref(item)] for key, item in value.raw_items()]
         if cls is dict:
             return "dict", [[self.ref(key), self.ref(item)] for key, item in value.items()]
         if cls in (tuple, list, frozenset):
@@ -259,9 +266,29 @@ class _Reader:
                 raise ValueError(f"Unsupported artifact record: {name}")
             # Do not invoke compiler constructors or signature inspection.
             obj = object.__new__(cls)
+            if cls is components._ComponentGraph:
+                object.__setattr__(obj, "_definitions", components._DraftDefinitionPool())
             for field, value in zip(_FIELDS[cls], values):
                 object.__setattr__(obj, field, self.deref(value))
+            if cls is tooling.CompiledGraph:
+                # Build-local weak ownership is never serialized. A loaded
+                # inspection graph starts its own independent lifetime.
+                lifetime = tooling._InspectionLifetime()
+                object.__setattr__(obj, "_inspection_lifetime", lifetime)
+                lifetime.track(cast(tooling.CompiledGraph, obj))
             return obj
+        if kind == "compact-index":
+            result = _CompactIndex()
+            if not isinstance(payload, list):
+                raise ValueError("Invalid compact index payload")
+            for pair in payload:
+                if not isinstance(pair, list) or len(pair) != 2:
+                    raise ValueError("Invalid compact index pair")
+                key, value = self.deref(pair[0]), self.deref(pair[1])
+                if type(key) is not int or key in result:  # noqa: E721
+                    raise ValueError("Invalid compact index key")
+                result[key] = value
+            return result
         if kind == "mapping":
             return MappingProxyType(self.deref(payload))
         if kind == "dict":
@@ -273,10 +300,10 @@ class _Reader:
 
 
 def _check_plan(plan):
-    if not isinstance(plan, container._PlanSet):
+    if not isinstance(plan, container._ExecutionPlan):
         raise ValueError("Artifact did not contain a compiled plan")
-    if plan._blueprint is not None or plan.diagnostics or plan.slots or plan.validation_rules:
-        raise ValueError("Use diagnostics=False, allow_scope_builders=False, with no slots or validation callbacks")
+    if plan.slots:
+        raise ValueError("Scope slots are outside this experiment")
     if plan.warmup_infos:
         raise ValueError("Warmups are outside this experiment")
     if plan.graph._records is None or plan.graph._drafts:

@@ -1,219 +1,69 @@
-# The build boundary
+# Build and analysis boundaries
 
-`ContainerBuilder.build()` is the validation and compilation boundary. It first materializes queued subclass and generic discovery rules from the currently live Python classes. It then walks every visible root, specializes generic dependencies, constructs occurrence-specific component trees, evaluates filters, and freezes runtime instructions.
+`ContainerBuilder.build()` discovers registrations, binds dependencies and emits execution instructions. It runs no
+built-in policy audit or custom validation rules. Impossible binding, such as a missing required dependency or a cycle,
+still raises a local `ContainerBuildError`. Actual runtime ownership, async, scope and cleanup guards remain enforced.
+Compilation does not activate constructors, resource factories or application context managers. Explicit composition
+callbacks, including filters, templates and `derive(...)`, can run while wiring the plan.
 
-```python
-from clean_ioc import ContainerBuilder
-
-builder = ContainerBuilder()
-builder.register(Repository, SqlRepository)
-builder.register(CreateOrder)
-
-container = builder.build()
-```
-
-No user constructor, factory, generator, or context manager runs during this work. Functions passed explicitly to
-`derive(...)` do run because their concrete values are compiled into the plan.
-
-A successful build therefore establishes the runtime invariant: the `Container` contains one complete, immutable, structurally valid component plan. Later Python subclasses do not join or invalidate that plan.
-
-For the implementation walkthrough, see [How compilation works](compilation-process.md): blueprint inputs, candidate
-selection, occurrence-specific graph construction, executable steps, and the final `_PlanSet`.
-
-## Strict failures
-
-Build fails when a visible plan contains:
-
-- a missing component or scope-slot declaration;
-- a circular component path;
-- a singleton that captures a scoped component;
-- a singleton or scoped component that directly or transitively captures `per_resolution` state;
-- an invalid decorator or pre-configuration dependency;
-- a factory result annotation that is definitely incompatible with its registered service.
-
-The automatic [factory return annotation check](factories.md#factory-return-annotations) reports
-`factory-return-type-mismatch`. It inspects declarations without running factories or analysing their bodies;
-missing or indeterminate return-type information does not fail this check.
+`ContainerBuilder.analyse()` runs the complete available validation workflow and returns an `AnalysisResult`.
+`result.report` is a completed `AnalysisReport` with findings, root coverage, stage outcomes, rule outcomes and
+`complete`. It is invalid if it contains errors or the analysis is incomplete. A policy failure can coexist with an
+emitted test plan. A binding failure can leave a partial diagnostic graph and no executable plan.
 
 ```python
-from clean_ioc import ContainerBuildError
-
-try:
-    container = builder.build()
-except ContainerBuildError as error:
-    print(error.report.to_text())
+with application_builder().analyse() as result:
+    result.report.assert_valid()
+    with result.create_runtime() as runtime:
+        runtime.resolve(Application)
 ```
 
-The compiler aggregates failures from independent roots into a structured `BuildReport`. Each issue has a stable code, severity, message, and semantic path. A failed builder remains reusable after the complete report is produced.
-
-A successful runtime exposes the same report as `container.build_report`. Mark public resolution requests with `builder.mark_entrypoint(...)` to add reachability warnings and focus graph renderers without weakening whole-container validation. See [Compiler tooling](compiler-tooling.md) for graph manifests, semantic diffs, and CI commands.
+`create_runtime()` uses the emitted plan without recompilation. Each test runtime gets independent singleton and
+pre-configuration state, except real parent anchors borrowed by an overlay. Closing the result closes owned test
+runtimes in reverse order. It never closes a borrowed parent or a composition handle. Production separately uses
+`application_builder().build()` with the same intended inputs.
 
 ## Custom graph rules
 
-Use `add_validation_rule()` to enforce application or organization policy against the complete immutable graph. A rule
-is synchronous, receives a per-pass `ValidationContext`, and returns or yields zero or more `BuildIssue` values. The
-context's `graph` is the complete `CompiledGraph`; `graph.walk()` visits every occurrence with its root and complete
-semantic path, including decorators, pre-configurations, collections, configured values, runtime contexts, and scope
-slots.
-
-The examples below introduce the core API. See the dedicated [custom graph validation cookbook](custom-validation.md)
-for registration-uniqueness, architecture, metadata, lifespan, decorator, build-argument, AST, bundle, overlay, testing,
-and CI recipes.
-
-For standard checks, [policy helpers and packs](policies.md) create ordinary rules for layers, dependencies, decorators,
-lifespans, runtime access, tags, and capabilities. A pack accepts a list of rules and per-rule build/validation modes.
-
-This example prevents a domain-layer component from depending directly on infrastructure:
+Register every rule with `add_validation_rule(rule)`. There is no mode or phase. A synchronous rule receives a
+`ValidationContext` and returns or yields `BuildIssue` values. `context.graph.walk()` visits full occurrence paths,
+including providers, decorators, pre-configurations and boundary roots. `visit.issue(...)` supplies exact provenance.
+`context.type_ast(type)` lazily parses available source once per type in the analysis context.
 
 ```python
-from collections.abc import Iterable
-
-from clean_ioc import BuildIssue, ValidationContext
-
-
-def enforce_architecture(context: ValidationContext) -> Iterable[BuildIssue]:
-    graph = context.graph
-    for visit in graph.walk():
-        if len(visit.components) < 2:
-            continue
-        parent, dependency = visit.components[-2:]
-        if (
-            parent.implementation_type.__module__.startswith("my_app.domain")
-            and dependency.implementation_type.__module__.startswith("my_app.infrastructure")
-        ):
-            yield visit.issue(
-                "my-app-domain-depends-on-infrastructure",
-                "Domain components cannot depend directly on infrastructure components",
-            )
-
-
-builder.add_validation_rule(enforce_architecture)
-```
-
-`visit.issue()` creates an error by default and fills in the matching root and path. Pass
-`severity=IssueSeverity.warning` for an advisory finding. Errors from build rules fail `build()`; their warnings
-appear on the successful runtime's report. All findings participate in the strict-by-default `clean-ioc check` and
-`--ignore CODE` policies. Prefer an application or organization prefix for custom codes.
-
-Rules that are too expensive for application startup can be limited to validation mode:
-
-```python
-builder.add_validation_rule(enforce_architecture, mode="validation")
-```
-
-The `mode` argument is typed by the public `ValidationRuleMode = Literal["build", "validation"]` alias and defaults to
-`"build"`. A validation-mode rule is frozen into the graph policy but skipped by `build()`. `clean-ioc check ...`
-executes build and validate-only rules in their respective phases, which is suitable for CI. The default strict mode
-makes every unsuppressed warning fatal. `--ignore CODE` can suppress warnings from either build or validate-only rules,
-but never errors. Pass `--no-strict` to leave warnings informational without skipping any rules.
-
-For programmatic tooling, request a fresh aggregate report from an already-built container or scope:
-
-```python
-report = container.validation_report()
-```
-
-This retains the complete stored `container.build_report`, including build-rule warnings, and adds one fresh execution
-of every rule registered with `mode="validation"`. Build rules are not rerun. The method does not mutate the stored
-report or raise for a validation error. Exact duplicate findings are removed within the new complete report. Calling it
-again performs another pass of validate-only rules.
-
-In a unit test, call `report.assert_valid()`. It passes valid reports, including warnings alone, and raises
-`AssertionError` with [SARIF findings](sarif.md#assert-validity-in-tests) when errors remain. The report automatically
-uses the graph it was validated against for source locations and the graph fingerprint.
-
-### Inspecting implementation source
-
-`context.type_ast(type)` lazily extracts and parses an inspectable Python class definition. Results are cached within
-the validation context, so every selected rule in one pass shares one parse per concrete type. The returned `TypeAst`
-includes the source filename, original first line, dedented source, and an `ast.ClassDef` whose line numbers match the
-original file.
-
-```python
-import ast
-
-from clean_ioc import ValidationContext
-
-
-def forbid_direct_environment_access(context: ValidationContext):
+def require_owner(context):
     for visit in context.graph.walk():
-        inspected = context.type_ast(visit.component.implementation_type)
-        if inspected is None:
-            continue
+        if not any(tag.name == "owner" for tag in visit.component.tags):
+            yield visit.issue("application-owner", "Every component needs an owner tag")
 
-        for node in ast.walk(inspected.node):
-            if (
-                isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute)
-                and isinstance(node.func.value, ast.Name)
-                and node.func.value.id == "os"
-                and node.func.attr == "getenv"
-            ):
-                yield visit.issue(
-                    "my-app-direct-environment-access",
-                    f"Direct os.getenv() call at {inspected.filename}:{node.lineno}",
-                )
-
-
-builder.add_validation_rule(forbid_direct_environment_access, mode="validation")
+builder.add_validation_rule(require_owner)
+result = builder.analyse()
+print(result.report.to_text())
 ```
 
-Source inspection returns `None` for built-in, extension, dynamically generated, and otherwise unavailable class
-definitions. Each rule decides whether that should be ignored or reported. Treat the returned AST as read-only; copy it
-before using a mutating `ast.NodeTransformer`. The context and its cache are not stored on the resulting container or
-graph, and source data never enters manifests or fingerprints. Excluding a source-inspection rule from build mode also
-defers its inspection and parsing cost until an explicit validation pass.
+Every available rule completes once before `analyse()` returns. Rule errors become `validation-rule-error` findings;
+prior yielded findings remain and later rules continue. Missing full graphs, cancellation and budgets produce explicit
+unavailable or interrupted outcomes. Report and graph reads never rerun rules. See the
+[custom validation cookbook](custom-validation.md) for policy examples and [tooling](compiler-tooling.md) for CLI usage.
 
-Build rules execute only after structural compilation produces a complete graph. They therefore do not run
-during builder preview queries or when missing dependencies, cycles, or another structural failure prevent that graph
-from existing. They do run alongside complete-graph findings such as a missing marked entry point. Validate-only rules
-require a successfully built graph and run only when `validation_report()` or `clean-ioc check` is requested. A rule
-that raises, returns a non-iterable value, or yields a malformed issue produces `validation-rule-error`; later rules
-still run so the report remains useful.
+## Findings and attempts
 
-Rules should be deterministic, side-effect-free, and safe to run again after a failed build. They may inspect
-`context.graph.build_args`, but Clean IoC does not automatically copy those inputs into a report: do not include secrets
-in a custom issue's code, message, root, or path.
+Analysis checks captive lifespans, decorator and argument policies, factory return annotations, reachability and custom
+application rules. `result.graph` holds full inspection when available; `result.partial_graph` contains bounded,
+non-executable evidence after a binding failure. `result.selection_census()` and `result.triage_report()` read captured
+facts. Independent diagnostic root attempts may repeat wiring callbacks and retain inconsistency evidence, but never
+rerun validation declarations. Production build has no such retries or rich error report.
 
-## Builder state after build
+Every admitted build or analysis attempt consumes its builder, whether it succeeds, fails, is cancelled or exhausts a
+budget. Correct the composition factory and obtain a fresh builder to retry. Invalid arguments rejected before
+admission leave the builder editable. Do not catch a failure and mutate the consumed builder.
 
-A failed build leaves the builder reusable:
+## CI and scopes
 
-```python
-try:
-    builder.build()
-except ContainerBuildError:
-    builder.register(MissingDependency)
+Use `clean-ioc check my_app.composition:application_builder` for one complete analysis. Errors and incomplete analysis
+fail; strict mode also fails on unsuppressed warnings. One configuration's analysis does not approve different future
+build inputs. Keep separate CI coverage for each supported composition variant.
 
-container = builder.build()
-```
-
-After a successful build, the builder rejects registration, decoration, pre-configuration, patching, slot declaration,
-validation-rule registration, bundle application, and a second `build()` call. The resulting `Container` has no
-mutation APIs.
-
-## Inspecting the static plan
-
-Runtime containers expose their compiled root components:
-
-```python
-for component in container.components:
-    print(component.service_type, component.implementation_type, component.lifespan)
-
-    for dependency in component.dependencies:
-        print("  ", dependency.argument, dependency.service_type)
-```
-
-`Component` objects are immutable views of static occurrences. A stable component ID identifies its registration; `occurrence_id` distinguishes the same registration under different parents.
-
-`container.graph` adds a complete, read-only view that also models configured/default values, runtime contexts,
-declared slots, decorators, and pre-configurations. It can render text or Mermaid and produce deterministic, redacted
-JSON manifests.
-
-## Child composition
-
-`new_scope()` never validates or compiles because it reuses its parent's frozen plan. `new_scope_builder().build()` is a
-separate strict build boundary for a child overlay. It runs only discovery rules declared on that `ScopeBuilder`;
-inherited root discovery is already frozen and is never rescanned. Custom validation rules are different: an overlay
-inherits its parent's policy rules, applies them to the complete recompiled overlay graph, and then runs rules declared
-on the `ScopeBuilder`.
+Ordinary `new_scope()` reuses execution and runs no analysis. For different registrations, retain external composition
+before building and pass it to `ScopeBuilder(parent, composition=handle)`. Analysis captures a handle automatically.
+The child can build execution or analyse its own graph; inherited rules run only in the latter operation.

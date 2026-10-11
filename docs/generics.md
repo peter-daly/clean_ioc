@@ -57,7 +57,7 @@ assert "my_app.command_handlers.create_order" in container.ensured_import_module
 
 `container.ensured_import_modules` returns the concrete module names ensured by the compiled plan, including recursively imported children. Built overlay scopes expose the combined modules from their inherited and local plans.
 
-The build then creates the closed registrations, validates them, and freezes them into the runtime plan. Open generic registrations act as reusable activation templates; only closed occurrences are runtime roots. `register_subclasses(...)` supports the same `ensure_import_modules=` declaration for non-generic bases.
+The build then creates closed registrations, binds their executable dependencies, and freezes the runtime plan. Analysis also audits their policies. Open generic registrations act as reusable activation templates; only closed occurrences are runtime roots. `register_subclasses(...)` supports the same `ensure_import_modules=` declaration for non-generic bases.
 
 This means a class created after the rule is declared but before `build()` is included:
 
@@ -76,7 +76,7 @@ container = builder.build()
 
 Use `types.new_class()` for a dynamic parameterized base. A direct `type(..., (CommandHandler[CreateOrder],), ...)` call does not resolve generic MRO entries. Candidate modules not named by `ensure_import_modules=` must already be imported, and dynamic class objects must still be alive when `build()` starts.
 
-Classes created after a successful build do not alter the immutable container. A failed build leaves the builder reusable and the next build rescans its own discovery rules.
+Classes created after a successful build do not alter the immutable container. Every admitted attempt consumes its builder; a fresh builder rescans its own discovery rules.
 
 [Decorator templates](decorator-templates.md#generic-identities-and-projection) use an exact closed source key and project eligible target requests independently. Discovery rules can pass `groups=` to make their materialized registrations members of an explicit `ServiceGroup`.
 
@@ -136,8 +136,7 @@ is specialised before the policy runs. Unknown argument names are checked agains
 constructor, including whether it accepts `**kwargs`; patching arguments uses the same rules.
 
 Missing required dependencies fail during `build()` with the closed dependency, constructor
-argument, and owning component in the diagnostic. Register the missing dependency and retry
-the same builder. Unresolved required TypeVars also fail, including inside collections, rather
+argument, and owning component in the diagnostic. Register the missing dependency on a fresh builder and retry the operation. Unresolved required TypeVars also fail, including inside collections, rather
 than producing an empty collection. Explicit values and defaults may satisfy an argument without
 requiring a concrete dependency binding. Constructors are never invoked during build, and
 both sync and async resolution execute the already compiled plan.
@@ -361,7 +360,7 @@ the compiler rejects a non-shrinking request after 16 active specializations of 
 templates. This is a bounded
 guard, not a general termination proof; unusually deep finite growing constructions must use explicit registrations.
 Shrinking list nesting works normally. Invalid declarations use `pattern-invalid`; unsupported forms use
-`pattern-unsupported-form`. Errors include the closed request and compilation path. Failed builders remain repairable.
+`pattern-unsupported-form`. Errors include the closed request and compilation path. Retry with a fresh builder.
 Graph explanations identify winning, mismatched, shadowed, and less-specific templates without activating factories.
 Template origins stay out of semantic fingerprints, and programs without patterns retain their existing manifests.
 
@@ -488,7 +487,7 @@ assert container.resolve(Repo[Order]) is container.resolve(Repository[Order])
 Alias parameters are bound before generic specialization, so nested aliases and reordered parameters retain their
 declared meaning. Open aliases expose only the template behavior already supported by their canonical generic target;
 `ParamSpec` and `TypeVarTuple` alias expansion is not supported. Alias forward references are evaluated from their
-defining module during preview/build and may be repaired before retrying a failed builder.
+defining module during preview/build and may be corrected before creating a fresh builder for another attempt.
 
 `NewType` is different: it remains a nominal service key and never falls back to its supertype. Register a `NewType`
 with an explicit `instance=`, `factory=`, or `implementation_type`; a bare declaration is not treated as a constructor.

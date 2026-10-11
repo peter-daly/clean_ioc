@@ -1,5 +1,3 @@
-import gc
-import tracemalloc
 from collections.abc import Mapping
 from typing import Any, Generic, TypeVar, cast
 
@@ -16,6 +14,7 @@ from clean_ioc import (
     ManagedProvider,
     Provider,
     ProviderMapGroup,
+    ScopeBuilder,
     Use,
     select,
 )
@@ -52,7 +51,8 @@ def test_automatic_provider_views_keep_target_parent_and_do_not_copy_records(fam
     annotation = family[target]
     builder = chain_builder()
     builder.mark_entrypoint(annotation)
-    owner = builder.build(diagnostics=True)
+    owner_analysis = builder.analyse()
+    owner = owner_analysis.create_runtime()
     graph = owner._plan.graph
     records_before = len(graph._records)
     provider = owner._plan.provider_roots[annotation][0].component
@@ -62,6 +62,11 @@ def test_automatic_provider_views_keep_target_parent_and_do_not_copy_records(fam
     assert member.dependencies[0].parent.occurrence_id == member.occurrence_id
     assert member.dependencies[0].dependencies[0].parent.occurrence_id == member.dependencies[0].occurrence_id
     assert member.implementation_type is Root
+    inspected_provider = next(
+        root.component for root in owner_analysis.graph.roots if root.requested_type == annotation
+    )
+    inspected_target = inspected_provider.dependencies[0]
+    inspected_member = inspected_target if form is None else inspected_target.dependencies[0]
     calls = []
     original = CompiledGraph._component_paths
 
@@ -71,15 +76,15 @@ def test_automatic_provider_views_keep_target_parent_and_do_not_copy_records(fam
 
     monkeypatch.setattr(CompiledGraph, "_component_paths", record)
     for _ in range(3):
-        explanation = owner.graph.explain(member)
+        explanation = owner_analysis.graph.explain(inspected_member)
         assert explanation.selected
         assert explanation.path[0].startswith(f"root:{family.__module__}.{family.__qualname__}[")
-        arguments = owner.graph.explain_arguments(member)
+        arguments = owner_analysis.graph.explain_arguments(inspected_member)
         assert "dependency:middle" in arguments[0].selected_components[0]
-        assert owner.graph.explain(member.dependencies[0]).path[:-1] == explanation.path
+        assert owner_analysis.graph.explain(inspected_member.dependencies[0]).path[:-1] == explanation.path
     assert calls == [False, True]
-    assert owner.graph.ownership_report().records
-    assert owner.graph.manifest(all_roots=True).to_json()
+    assert owner_analysis.graph.ownership_report().records
+    assert owner_analysis.graph.manifest(all_roots=True).to_json()
     assert len(graph._records) == records_before == 90
     assert len(graph._views) == 48
     assert len(owner._plan.provider_roots) == 48
@@ -130,9 +135,9 @@ def test_dependency_only_provider_map_is_compiled_only_when_consumed(name):
     builder = ContainerBuilder()
     builder.register(Leaf, contributes={group: "leaf"}, root_policy="dependency_only")
     builder.register_provider_map(group, name=name, root_policy="dependency_only")
-    with builder.build() as unused:
+    with builder.analyse() as unused_analysis, unused_analysis.create_runtime() as unused:
         assert not unused._plan.provider_roots
-        assert not unused.graph.roots
+        assert not any(root.resolvable for root in unused_analysis.graph.roots)
 
     class Consumer:
         def __init__(self, entries: Mapping[str, Provider[Leaf]]):
@@ -142,11 +147,11 @@ def test_dependency_only_provider_map_is_compiled_only_when_consumed(name):
     builder.register(Leaf, contributes={group: "leaf"}, root_policy="dependency_only")
     builder.register_provider_map(group, name=name, root_policy="dependency_only")
     builder.register(Consumer, arguments={"entries": select(cf.with_name(name))})
-    with builder.build() as used:
+    with builder.analyse() as used_analysis, used_analysis.create_runtime() as used:
         assert isinstance(used.resolve(Consumer).entries["leaf"](), Leaf)
         assert annotation not in used._plan.provider_roots
         assert Provider[annotation] not in used._plan.provider_roots
-        assert all(root.component.service_type != annotation for root in used.graph.roots)
+        assert all(root.component.service_type != annotation for root in used_analysis.graph.roots if root.resolvable)
 
 
 def test_dependency_only_provider_map_still_validates_selected_contribution():
@@ -165,8 +170,10 @@ def test_dependency_only_provider_map_still_validates_selected_contribution():
     builder = ContainerBuilder()
     builder.register(Broken, contributes={group: "broken"}, root_policy="dependency_only")
     builder.register_provider_map(group, root_policy="dependency_only")
-    with builder.build() as unused:
-        assert not unused.graph.roots
+    with builder.analyse() as unused_analysis, unused_analysis.create_runtime() as unused:
+        assert not unused.has_component(Broken)
+        assert not unused_analysis.report.is_valid
+        assert unused_analysis.partial_graph is not None
     builder = ContainerBuilder()
     builder.register(Broken, contributes={group: "broken"}, root_policy="dependency_only")
     builder.register_provider_map(group, root_policy="dependency_only")
@@ -182,15 +189,15 @@ def test_provider_map_root_policy_default_entrypoint_and_invalid():
     builder = ContainerBuilder()
     builder.register(Leaf, contributes={group: "leaf"}, root_policy="dependency_only")
     builder.register_provider_map(group)
-    with builder.build() as owner:
+    with builder.analyse() as owner_analysis, owner_analysis.create_runtime() as owner:
         assert isinstance(owner.resolve(Mapping[str, Provider[Leaf]])["leaf"](), Leaf)
     with pytest.raises(ValueError, match="root_policy"):
         ContainerBuilder().register_provider_map(group, root_policy=cast(Any, "invalid"))
     builder = ContainerBuilder()
     builder.register(Leaf, contributes={group: "leaf"}, root_policy="dependency_only")
     builder.register_provider_map(group, root_policy="entrypoint")
-    with builder.build() as owner:
-        assert owner.graph.entrypoints
+    with builder.analyse() as owner_analysis, owner_analysis.create_runtime() as owner:
+        assert owner_analysis.graph.entrypoints
 
 
 def test_dependency_only_provider_maps_across_boundary_and_nested_overlay():
@@ -214,12 +221,14 @@ def test_dependency_only_provider_maps_across_boundary_and_nested_overlay():
     builder.register(Leaf, contributes={group: "first"}, root_policy="dependency_only")
     builder.register_provider_map(group, root_policy="dependency_only")
     builder.register(Consumer)
+    parent_composition = builder.retain_composition()
     with builder.build() as parent:
-        overlay = parent.new_scope_builder()
+        overlay = ScopeBuilder(parent, composition=parent_composition)
         overlay.register(Leaf, name="second", contributes={group: "second"}, root_policy="dependency_only")
+        child_composition = overlay.retain_composition()
         with overlay.build() as child:
             assert list(child.resolve(Consumer).entries) == ["second", "first"]
-            with child.new_scope_builder().build() as nested:
+            with ScopeBuilder(child, composition=child_composition).build() as nested:
                 assert list(nested.resolve(Consumer).entries) == ["second", "first"]
 
 
@@ -272,18 +281,18 @@ def test_many_sender_transport_eligibility_avoids_unrelated_subtree_compilation(
         return result
 
     monkeypatch.setattr(_Compiler, "_draft", draft)
-    with builder.build(profile=profile, diagnostics=diagnostics) as owner:
+    with builder.build(profile=profile) as owner:
         records = len(owner._plan.graph._records or ())
         assert records == len(allocated)
-        # Only the diagnostic mode physically retains the excluded cross-product.
-        assert records == count * 32 + (count * (count - 1) if diagnostics else 0)
+        # Execution never retains the excluded cross-product.
+        assert records == count * 32
         assert [type(owner.resolve(route).transport).__name__ for route in routes] == [
             f"Transport{index}" for index in range(count)
         ]
     counters = profile.report().counters.to_dict()
     assert counters["candidate compilation attempts"] == count * 3 + 1
     assert counters["early excluded candidates"] == count * (count - 1)
-    assert counters.get("retained early rejection records", 0) == (count * (count - 1) if diagnostics else 0)
+    assert counters.get("retained early rejection records", 0) == 0
     assert counters["physical component records"] == records
     assert counters["unique activation templates"] == count * 2 + 2
     assert counters.get("reused activation templates", 0) == 0
@@ -296,27 +305,18 @@ def test_many_sender_transport_eligibility_avoids_unrelated_subtree_compilation(
     assert not profile.report().spans
 
 
-def test_early_exclusion_saves_retained_and_peak_allocations_with_equal_runtime_graphs():
-    def measure(diagnostics):
-        builder, _ = transport_builder(32, early=True)
-        gc.collect()
-        tracemalloc.start()
-        try:
-            with builder.build(diagnostics=diagnostics) as owner:
-                gc.collect()
-                retained, peak = tracemalloc.get_traced_memory()
-                tracemalloc.stop()
-                return retained, peak, owner.graph.manifest(all_roots=True).fingerprint
-        finally:
-            tracemalloc.stop()
-
-    # Reflection warmup is outside both measurements; builder composition is
-    # also excluded. Physical allocation is independently bounded above.
-    transport_builder(32, early=True)[0].build().__exit__()
-    plain, rich = measure(False), measure(True)
-    assert plain[2] == rich[2]
-    assert rich[0] - plain[0] > 32 * 31 * 200
-    assert rich[1] - plain[1] > 32 * 31 * 200
+def test_early_exclusion_retains_execution_only_records_and_analysis_explains_rejections():
+    # Relative allocation acceptance is deferred to task25.
+    builder, _ = transport_builder(32, early=True)
+    with builder.build() as runtime:
+        assert not hasattr(runtime._plan, "occurrence_explanations")
+        assert not hasattr(runtime._plan, "compiled_graph")
+        execution = [(item.service_type.__qualname__, item.name) for item in runtime.selected_registrations]
+    builder, _ = transport_builder(32, early=True)
+    with builder.analyse() as result:
+        assert result.graph.manifest(all_roots=True).fingerprint
+        assert [(item.service_type.__qualname__, item.name) for item in result.selected_registrations] == execution
+        assert result.graph.selection_census(all_roots=True)
 
 
 def test_occurrence_budget_counts_only_physically_allocated_early_rejections():
@@ -329,9 +329,9 @@ def test_occurrence_budget_counts_only_physically_allocated_early_rejections():
     assert usage is not None
     assert dict(usage)["graph_occurrences"] == 192
     builder, _ = transport_builder(4, early=True)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build(budget=CompilationBudget(graph_occurrences=192), diagnostics=True)
-    assert caught.value.code == "compilation-budget-exceeded"
+    caught_analysis = builder.analyse(budget=CompilationBudget(graph_occurrences=192))
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report.errors[0].code == "compilation-budget-exceeded"
 
 
 def test_legacy_when_preserves_full_subtree_validation_and_early_policy_is_opt_in():
@@ -405,8 +405,8 @@ def test_known_false_and_unknown_excludes_without_running_callback():
 
     builder = chain_builder()
     builder.register(Root, name="extra", candidate_when=cf.with_name("different") & cf.create_filter(fail))
-    with builder.build(diagnostics=True) as owner:
-        explanation = owner.graph.explain(Root)
+    with builder.analyse() as owner_analysis, owner_analysis.create_runtime() as _owner:
+        explanation = owner_analysis.graph.explain(Root)
         assert any("rejected-candidate-when" in item.reason_codes for item in explanation.rejected)
 
 
@@ -419,11 +419,12 @@ def test_shared_activation_templates_preserve_runtime_lifespan_identity(lifespan
     builder = ContainerBuilder()
     builder.register(Leaf, lifespan=lifespan, root_policy="dependency_only")
     builder.register(Pair)
+    parent_composition = builder.retain_composition()
     with builder.build() as parent:
         first, second = parent.resolve(Pair), parent.resolve(Pair)
         assert (first.left is first.right) is (lifespan != "transient")
         assert (first.left is second.left) is (lifespan in ("scoped", "singleton"))
-        with parent.new_scope_builder().build() as child:
+        with ScopeBuilder(parent, composition=parent_composition).build() as child:
             third = child.resolve(Pair)
             assert (first.left is third.left) is (lifespan == "singleton")
 
@@ -443,12 +444,15 @@ def test_closed_generic_templates_keep_separate_bindings_and_provider_explanatio
     builder.register(Consumer[int])
     builder.register(Consumer[str])
     builder.mark_entrypoint(Provider[Consumer[int]])
-    with builder.build(diagnostics=True) as owner:
+    with builder.analyse() as owner_analysis, owner_analysis.create_runtime() as owner:
         assert owner._plan.roots[Consumer[int]][0].step is not owner._plan.roots[Consumer[str]][0].step
         component = owner._plan.provider_roots[Provider[Consumer[int]]][0].component.dependencies[0]
         assert component.generic_mapping[T] is int
         assert component.dependencies[0].generic_mapping[T] is int
-        assert owner.graph.explain_specialization(component).to_dict()
+        inspected = next(
+            root.component for root in owner_analysis.graph.roots if root.requested_type == Provider[Consumer[int]]
+        ).dependencies[0]
+        assert owner_analysis.graph.explain_specialization(inspected).to_dict()
         source = owner._plan.roots[Consumer[int]][0].component
         assert dict(component.generic_mapping.items()) == dict(source.generic_mapping.items())
         with pytest.raises(ValueError, match="Cannot set"):
@@ -503,12 +507,12 @@ def test_early_parent_eligibility_hides_external_boundary_consumer():
     consumer_id = builder.register(Consumer)
     boundary = builder.create_boundary("service", exposes=(Expose(Service),))
     boundary.register(Service, candidate_when=cf.parent(cf.with_id(consumer_id)), root_policy="dependency_only")
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build(diagnostics=True)
-    assert "Service" in str(error.value)
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "Service" in str(error_analysis.report)
     assert any(
         "rejected-candidate-when" in decision.reason_codes
-        for explanation in error.value.explanations
+        for explanation in error_analysis.report._explanations
         for decision in explanation.rejected
     )
 

@@ -1,6 +1,6 @@
 # Pre-configurations
 
-A pre-configuration is a lazy, container-owned initializer. `build()` compiles its dependencies, validates them as a singleton path, and adds the initializer to the static component graph. The function itself does not run until the first applicable component is activated.
+A pre-configuration is a lazy, container-owned initializer. `build()` binds its dependencies and adds the initializer to the execution plan. `analyse()` also audits the dependency path as singleton-owned. The function itself does not run until the first applicable component is activated.
 
 ```python
 import logging
@@ -49,7 +49,7 @@ Applicable initializers run in declaration order. In an overlay, inherited paren
 
 ## Lifespans and cleanup
 
-An initializer is effectively singleton even when the component that triggers it is transient. Its complete dependency path is therefore validated as singleton-owned:
+An initializer is effectively singleton even when the component that triggers it is transient. Analysis audits its complete dependency path as singleton-owned:
 
 ```text
 pre-configuration -> scoped          invalid
@@ -58,7 +58,7 @@ pre-configuration -> transient       valid when its descendants are valid
 pre-configuration -> singleton       valid
 ```
 
-This validation is transitive, so a transient dependency cannot hide scoped or `per_resolution` state. An inherited initializer keeps its frozen parent dependency plan; an overlay cannot rewire it by overriding one of those dependencies.
+This analysis check is transitive, so a transient dependency cannot hide scoped or `per_resolution` state. An inherited initializer keeps its frozen parent dependency plan; an overlay cannot rewire it by overriding one of those dependencies.
 
 A parent definition that had no applicable component, and therefore no compiled parent plan, cannot become newly applicable to an overlay registration. Declare that initializer on the `ScopeBuilder` instead.
 

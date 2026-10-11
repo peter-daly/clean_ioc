@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Hashable, Iterable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ._decorator_templates import RegistrationInfo
 from .components import Component, ComponentFilter, LifespanPolicy, RootPolicy, ScopePolicy, all_components
@@ -13,7 +13,9 @@ from .metadata import Tag
 from .preferences import ComponentPreference
 from .provider_maps import ProviderMapGroup
 from .service_groups import ServiceGroup
-from .tooling import DefinitionOrigin
+
+if TYPE_CHECKING:
+    from .container import _Origin
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,7 +52,7 @@ class _RegistrationTemplateDefinition:
     template: Callable[[RegistrationInfo], RegistrationTemplate]
     source_filter: ComponentFilter
     order: int
-    origin: DefinitionOrigin
+    origin: _Origin
 
 
 @dataclass(frozen=True, slots=True)

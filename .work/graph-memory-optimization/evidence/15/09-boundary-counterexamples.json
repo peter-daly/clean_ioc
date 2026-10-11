@@ -1,0 +1,18 @@
+{
+  "eq": {
+    "dict": "False",
+    "CompactIndex": "RuntimeError: application __class__ callback"
+  },
+  "update": {
+    "dict": "TypeError: 'Operand' object is not iterable",
+    "CompactIndex": "RuntimeError: application __class__ callback"
+  },
+  "union": {
+    "dict": "TypeError: unsupported operand type(s) for |: 'dict' and 'Operand'",
+    "CompactIndex": "RuntimeError: application __class__ callback"
+  },
+  "getitem-keyword": {
+    "dict": "TypeError: dict.__getitem__() takes no keyword arguments",
+    "CompactIndex": "1"
+  }
+}

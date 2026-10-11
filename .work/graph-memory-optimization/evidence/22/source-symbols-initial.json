@@ -1,0 +1,122 @@
+[
+  {
+    "name": "_SourceReference",
+    "line": 245,
+    "end_line": 262
+  },
+  {
+    "name": "_DeclarationOrigin",
+    "line": 266,
+    "end_line": 272
+  },
+  {
+    "name": "_origin_evidence",
+    "line": 279,
+    "end_line": 289
+  },
+  {
+    "name": "_source_evidence",
+    "line": 292,
+    "end_line": 293
+  },
+  {
+    "name": "_source_reference",
+    "line": 296,
+    "end_line": 327
+  },
+  {
+    "name": "_specialized_factory_dependencies",
+    "line": 2531,
+    "end_line": 2692
+  },
+  {
+    "name": "_specialized_fallback_dependencies",
+    "line": 2695,
+    "end_line": 2727
+  },
+  {
+    "name": "_located_rule_issue",
+    "line": 11621,
+    "end_line": 11630
+  },
+  {
+    "name": "_materialize_registration_template",
+    "line": 12626,
+    "end_line": 12681
+  },
+  {
+    "name": "_expand_registration_templates",
+    "line": 12747,
+    "end_line": 12945
+  },
+  {
+    "name": "_expand_decorator_templates",
+    "line": 12973,
+    "end_line": 13166
+  },
+  {
+    "name": "_compile_warmup_plans",
+    "line": 13302,
+    "end_line": 13382
+  },
+  {
+    "name": "_materialize_blueprint_origins",
+    "line": 13413,
+    "end_line": 13439
+  },
+  {
+    "name": "_GeneratedRegistrationBuilder",
+    "line": 17039,
+    "end_line": 17048
+  },
+  {
+    "name": "_compile_execution_roots",
+    "line": 6854,
+    "end_line": 7011
+  },
+  {
+    "name": "_compile_provider_roots",
+    "line": 7301,
+    "end_line": 7464
+  },
+  {
+    "name": "_draft",
+    "line": 7794,
+    "end_line": 7878
+  },
+  {
+    "name": "_compile_candidates",
+    "line": 7889,
+    "end_line": 8426
+  },
+  {
+    "name": "_select_without_diagnostics",
+    "line": 8666,
+    "end_line": 8805
+  },
+  {
+    "name": "_clone_component_tree",
+    "line": 9595,
+    "end_line": 9768
+  },
+  {
+    "name": "_compile_decorators",
+    "line": 10843,
+    "end_line": 11264
+  },
+  {
+    "name": "_definition_origin",
+    "line": 15912,
+    "end_line": 15920
+  },
+  {
+    "name": "_expand_decorator_templates",
+    "line": 16600,
+    "end_line": 16608
+  },
+  {
+    "name": "_definition_origin",
+    "line": 17046,
+    "end_line": 17048
+  }
+]

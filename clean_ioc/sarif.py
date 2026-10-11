@@ -9,7 +9,7 @@ from pathlib import Path, PureWindowsPath
 from typing import Any, Iterable
 from urllib.parse import quote
 
-from .tooling import BuildIssue, BuildReport, CompilationExplanation, CompiledGraph, FailureEvidence, SourceLocation
+from .tooling import AnalysisReport, BuildIssue, CompilationExplanation, CompiledGraph, FailureEvidence, SourceLocation
 
 _SCHEMA = "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json"
 
@@ -42,6 +42,7 @@ class _Sources:
     """Index exact visits and captured decisions without re-running selection."""
 
     def __init__(self, graph: CompiledGraph | None, explanations: Iterable[CompilationExplanation]):
+        self.graph_identity = None if graph is None else graph._inspection_lifetime
         self.visits: dict[tuple[str, ...], list[tuple[str, tuple[int, ...], tuple[SourceLocation | None, ...]]]] = (
             defaultdict(list)
         )
@@ -51,7 +52,7 @@ class _Sources:
                 sources: list[SourceLocation | None] = []
                 for component in visit.components:
                     explanation = graph._occurrence_explanations.get(component.occurrence_id)
-                    if explanation is None and not graph.diagnostics_enabled:
+                    if explanation is None:
                         origin = graph._component_evidence(graph._occurrence_origins, component)
                         sources.append(None if origin is None else origin.location)
                         continue
@@ -68,6 +69,8 @@ class _Sources:
             self.decisions[explanation.path].extend(decision.origin.location for decision in explanation.selected)
 
     def path_sources(self, issue: BuildIssue) -> tuple[SourceLocation | None, ...]:
+        if issue._graph_identity is not None and issue._graph_identity is not self.graph_identity:
+            return (None,) * len(issue.path)
         matches = [
             sources
             for root, occurrences, sources in self.visits.get(issue.path, ())
@@ -90,7 +93,7 @@ def _location(label: str, source: SourceLocation | None) -> dict[str, Any]:
 
 
 def report_to_sarif(
-    report: BuildReport,
+    report: AnalysisReport,
     *,
     graph: CompiledGraph | None = None,
     explanations: Iterable[CompilationExplanation] = (),

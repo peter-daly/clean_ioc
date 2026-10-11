@@ -48,15 +48,14 @@ along with its registrations:
 class ArchitecturePolicyBundle(BaseBundle):
     def apply(self, builder: ComponentBuilder):
         builder.add_validation_rule(enforce_architecture)
-        builder.add_validation_rule(inspect_all_source, mode="validation")
+        builder.add_validation_rule(inspect_all_source)
 ```
 
-Rules installed on a root builder are inherited by scope overlays and validate each overlay's complete compiled graph.
-The `mode="validation"` form lets a bundle install an expensive CI policy without adding it to application startup.
+Rules installed on a root builder are inherited by scope overlay compositions and run when that overlay is analysed.
+All bundled rules run only during analysis. Production build skips them.
 See [Custom graph validation](custom-validation.md#package-rules-in-bundles) for a complete policy-bundle example.
 
-Use a [PolicyPack](policies.md) to install a list of existing callbacks or built-in policy helpers together. Plain rules
-use the pack's default phase, and `(rule, "validation")` or `(rule, "build")` entries choose a phase per rule.
+Use a [PolicyPack](policies.md) to install a list of existing callbacks or built-in policy helpers together. Every entry is an ordinary callback and runs during analysis.
 
 ## Run-once policies
 

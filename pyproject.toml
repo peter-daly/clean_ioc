@@ -114,7 +114,8 @@ tests = ["tests"]
 profile = "black"
 
 [tool.ruff]
-extend-exclude = ["docs", ".tox"]
+# Hash-verified historical evidence is immutable, not live package/test source.
+extend-exclude = ["docs", ".tox", ".work/graph-memory-optimization/evidence"]
 target-version = "py311"
 line-length = 120
 
@@ -160,3 +161,7 @@ asyncio_mode = "auto"
 [tool.coverage.run]
 branch = true
 source = ["clean_ioc", "tests"]
+
+[tool.ty.src]
+# Preserve historical evidence and investigation probes at their recorded revision.
+exclude = [".work/**"]

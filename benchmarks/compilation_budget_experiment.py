@@ -12,7 +12,7 @@ from collections.abc import Iterator
 from benchbro import Case, system
 
 from benchmarks import bench_compiler_optimization as fixtures
-from clean_ioc import CompilationBudget, ContainerBuildError
+from clean_ioc import CompilationBudget, ContainerBuildError, ScopeBuilder
 
 MODES = ("none", "unlimited", "generous", "bounded")
 BUDGETS = {
@@ -42,7 +42,7 @@ def compile_prepared(prepared: dict, mode: str) -> None:
     try:
         prepared["owner"] = prepared["builder"].build(budget=BUDGETS[mode], **prepared["inputs"])
     except ContainerBuildError as error:
-        if mode != "bounded" or error.report is None or error.report.errors[-1].code != "compilation-budget-exceeded":
+        if mode != "bounded" or error.code != "compilation-budget-exceeded":
             raise
         if error.compiled_graph is not None:
             raise AssertionError("Exhaustion exposed a compiled graph")
@@ -96,8 +96,9 @@ def template(budget_template, mode: str):
 def budget_overlay() -> Iterator[dict]:
     builder = fixtures.make_builder("managed-warmup")
     # Parent ownership and compilation are outside the measured overlay build.
+    composition = builder.retain_composition()
     parent = builder.build()
-    prepared = {"builder": parent.new_scope_builder(), "inputs": {}, "owner": None}
+    prepared = {"builder": ScopeBuilder(parent, composition=composition), "inputs": {}, "owner": None}
     try:
         yield prepared
     finally:

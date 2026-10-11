@@ -14,8 +14,8 @@ from .compilation_budget import CompilationBudget
 from .container import ContainerBuilder, ContainerBuildError, ScopeBuilder, _valid_build_issue
 from .sarif import _location, _unique_source
 from .tooling import (
+    AnalysisReport,
     BuildIssue,
-    BuildReport,
     CompiledGraph,
     DiffPolicy,
     GraphDiff,
@@ -77,7 +77,7 @@ class BuildVariant:
 @dataclass(frozen=True, slots=True)
 class VariantReport:
     name: str
-    build_report: BuildReport
+    build_report: AnalysisReport
     fingerprint: str | None = None
     difference: GraphDiff | None = None
     entrypoints: tuple[tuple[str, str | None], ...] = ()
@@ -247,7 +247,7 @@ class MatrixReport:
 
     def to_sarif(self, *, indent: int | None = 2) -> str:
         # Captured SARIF documents contain sources, never live graphs or inputs.
-        document = json.loads(BuildReport(self.issues).to_sarif())
+        document = json.loads(AnalysisReport(self.issues).to_sarif())
         policy_run = document["runs"][0]
         policy_run["properties"]["reference"] = self.reference
         policy_run["properties"]["matrixPolicies"] = True
@@ -303,7 +303,7 @@ def _redacted_manifest(graph: CompiledGraph) -> GraphManifest:
 
 def _capture(
     name: str,
-    report: BuildReport,
+    report: AnalysisReport,
     graph: CompiledGraph | None = None,
 ) -> tuple[VariantReport, str, dict[str, str], str | None]:
     # Ordinary validation callback errors may contain arbitrary exception text.
@@ -332,9 +332,24 @@ def _capture(
             )
         )
     )
-    safe_report = BuildReport(
-        tuple(replace(issue, _occurrence_path=()) for issue in report.issues),
-        checked_roots=report.checked_roots,
+    safe_report = replace(
+        report,
+        issues=tuple(replace(issue, _occurrence_path=()) for issue in report.issues),
+        rule_outcomes=tuple(
+            replace(
+                outcome,
+                issues=tuple(
+                    replace(issue, message="A validation callback failed.", _occurrence_path=())
+                    if issue.code == "validation-rule-error"
+                    else replace(issue, _occurrence_path=())
+                    for issue in outcome.issues
+                ),
+            )
+            for outcome in report.rule_outcomes
+        ),
+        _graph=None,
+        _explanations=(),
+        _evidence=(),
     )
     locations: dict[str, str] = {}
     if graph is not None:
@@ -362,26 +377,25 @@ def _build_variant(
         if not isinstance(builder, (ContainerBuilder, ScopeBuilder)):
             raise TypeError
     except Exception:
-        report = BuildReport((_issue("matrix-factory-error", "Factory did not return an unbuilt builder."),))
+        report = AnalysisReport((_issue("matrix-factory-error", "Factory did not return an unbuilt builder."),))
     else:
         if any(builder is previous for previous in used):
-            report = BuildReport(
+            report = AnalysisReport(
                 (_issue("matrix-reused-builder", "A builder was already returned by another variant."),)
             )
         elif builder._built:
-            report = BuildReport((_issue("matrix-factory-error", "Factory returned an already built builder."),))
+            report = AnalysisReport((_issue("matrix-factory-error", "Factory returned an already built builder."),))
             used.append(builder)
         else:
             used.append(builder)
             try:
-                with builder.build(build_args=variant.build_args, budget=variant.budget, diagnostics=True) as scope:
-                    graph = scope.graph
-                    captured = _capture(variant.name, scope.validation_report(), graph)
+                with builder.analyse(build_args=variant.build_args, budget=variant.budget) as analysis:
+                    captured = _capture(variant.name, analysis.report, analysis.graph)
                 return captured
             except ContainerBuildError as error:
-                report = error.report or BuildReport((_issue("matrix-build-failed", "Variant compilation failed."),))
+                report = error.report or AnalysisReport((_issue("matrix-build-failed", "Variant compilation failed."),))
             except Exception:
-                report = BuildReport(
+                report = AnalysisReport(
                     (_issue("matrix-build-failed", "Variant compilation, validation, or cleanup failed."),)
                 )
     return _capture(variant.name, report)

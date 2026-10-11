@@ -1,0 +1,94 @@
+{
+  "base_compiler_sha256": "502988d4c3af9faa33577e82e7bd8bde53a7b55c639a6dca01acee43806051d8",
+  "changed": [
+    {
+      "path": "clean_ioc/container.py",
+      "before_sha256": "502988d4c3af9faa33577e82e7bd8bde53a7b55c639a6dca01acee43806051d8",
+      "after_sha256": "d99aa4edbd26d70b908dec17632d0353e66df62c763695a3941f5e5d2a641760",
+      "snapshot": ".work/graph-memory-optimization/evidence/21/after/clean_ioc/container.py.txt"
+    },
+    {
+      "path": "tests/test_analysis_pipeline.py",
+      "before_sha256": "0cbc14d5c17b4f92e4d8791c913055a9ecf8a68bcd132849b13e7a8cbc847799",
+      "after_sha256": "e4afe5aa13f307a6661eb1debcd0df6e88f002a2caf0c3631ed5532a175af574",
+      "snapshot": ".work/graph-memory-optimization/evidence/21/after/tests/test_analysis_pipeline.py.txt"
+    },
+    {
+      "path": "tests/test_policies.py",
+      "before_sha256": "25d072d9a4ce39d49d2a94d0546e74632932b20ec1f0142773c3df34882c0cef",
+      "after_sha256": "24af841f2afa485354acddb6dd503bd986fc99de44de7b44e3c642893a852e5d",
+      "snapshot": ".work/graph-memory-optimization/evidence/21/after/tests/test_policies.py.txt"
+    },
+    {
+      "path": "tests/test_factory_return_types.py",
+      "before_sha256": "b086c7b8048220cdb34671be1ac624734f7a2b7a8e3aefc2c5c4ab0697031d32",
+      "after_sha256": "fed69edee19ebe125bd66f9c368a30813dfa99dc4f25f9f646333f34086f3c9a",
+      "snapshot": ".work/graph-memory-optimization/evidence/21/after/tests/test_factory_return_types.py.txt"
+    },
+    {
+      "path": "tests/test_build_matrix.py",
+      "before_sha256": "62bed996b7b50a8ddebcf6146b2330437835cf9a81c93c70f224135418fb49d2",
+      "after_sha256": "4afbd4ac808626ccc36d094a957fe4810b2a4ebd92c6995992f6506db6b63c4e",
+      "snapshot": ".work/graph-memory-optimization/evidence/21/after/tests/test_build_matrix.py.txt"
+    },
+    {
+      "path": "tests/test_execution_plan.py",
+      "before_sha256": null,
+      "after_sha256": "1f20f03af77b595633ad9c5ffa41149ab2ef72d52aaab7fc6177f9a76a1fc2f3",
+      "snapshot": ".work/graph-memory-optimization/evidence/21/after/tests/test_execution_plan.py.txt"
+    }
+  ],
+  "supporting_package_sha256": {
+    "clean_ioc/__init__.py": "f02251386f27f2fb2e9cd1f3239d8f8a4df5fb1574f0d7ebe7a5abc7feddf583",
+    "clean_ioc/_compact_index.py": "15ac9a0881546c380e6c0bad7bdf74b6ac14cd2943f47c2eee640cd61d307aaa",
+    "clean_ioc/_decorator_templates.py": "880061f94c9c1740eafac748a4386025e46d750a6ff23c2f7101ce5a5c9fe7c8",
+    "clean_ioc/_factory_validation.py": "49d807f7ab22bd78c3a1d7c0765cbeebbda1459242e9360bbaf11364fac51442",
+    "clean_ioc/_legacy.py": "c7d5106ee64f5af0f672b647f72c52e2a05b01270a943d46a0f38d7f4e339856",
+    "clean_ioc/_legacy_configuration.py": "c9ba9e99ccbd049fab2524d756c152eec348aec21ab301e628a04795c0fa7145",
+    "clean_ioc/_legacy_diagnostics.py": "5b47e7ce956a27edd4b20bb5830b298654a775139ed1d1d1ccd94c94e6783644",
+    "clean_ioc/_legacy_registration_filters.py": "2cd7d68e3fb7fc1bf172070ccd435af21f0ad69c0c1ce662730f9fb5f25e8ad5",
+    "clean_ioc/_registration_templates.py": "72347f09c015eda319a312e50b2c18916ebe23da715acb169ffa821ec6be078b",
+    "clean_ioc/_service_targets.py": "c4a90c18f7995441443c1d5a2bb697dd88fa13568967e27380a834a25dda9f72",
+    "clean_ioc/arguments.py": "e1f1023d11a2bbf2d738b441e553b9074e7d3a632f98fa86f2fd20cb2db9b1b9",
+    "clean_ioc/boundaries.py": "a500d6cf7895c08c9764f00b8891fd01c5adca023b4161b1cb29ad44084205fa",
+    "clean_ioc/bundles.py": "837a8f7f964a558e28797c34711d9ca7bfc3639dc10a6530a62bf9ca0065c599",
+    "clean_ioc/cli.py": "d87f9d5b34357daed50bed3e8bc5ee74275c5f60b873dd2fd1f97ff50f8480a2",
+    "clean_ioc/compilation_budget.py": "9ef7cc44a25197005ba32302ff9a1ebfcce1152245e01834d9b7673c8eabf12c",
+    "clean_ioc/compilation_profile.py": "72b4090e1e685c1b0ee53646cfa5ef60f9c686c5cff3ab74e395e88d08d9da52",
+    "clean_ioc/component_filters.py": "c19e5e9ea30ed2650ee6b9663fc083425e66d1e0447aef3040f6378a3f76e8b0",
+    "clean_ioc/components.py": "e5a5486d2b2b8565eb3cf26821f0d296233f71b24302a981e692934eb200baca",
+    "clean_ioc/container.py": "d99aa4edbd26d70b908dec17632d0353e66df62c763695a3941f5e5d2a641760",
+    "clean_ioc/ext/asgi/__init__.py": "c62dd1ed0c77ddf412c74036bcacd6aeef2bcef1601e505cdfb043756cade5ca",
+    "clean_ioc/ext/asgi/core.py": "033abe04547338b4434e0d4d2256d1f38296d14522aacdab8686b1c6deba34df",
+    "clean_ioc/ext/asgi/dependencies.py": "af0a14d828413cf09da1b8695e44ce3c64d0a1fad5bf3ed5a1eaf4ad8f9b1fa0",
+    "clean_ioc/ext/fastapi/__init__.py": "0464d76df5b8d22ae51e8ff99a021462dd64f69b85b0ad3573add352f879f999",
+    "clean_ioc/ext/fastapi/core.py": "fe2089d528c6c09453a24a2017577d941d21611dee7455d9d83c50a54daba053",
+    "clean_ioc/ext/fastapi/dependencies.py": "a39ddcf61f8ba03a679f7f6c54b4a44dfdb1107eeee5230a96844845b7ed4f05",
+    "clean_ioc/factories.py": "fb8a43bf56d846c7c471dbdf082f1f1ccf0adaf6949e76d55de0fd765914655d",
+    "clean_ioc/functional_utils.py": "4e16a05695f9103ff9d690c2e1b8299e6b9539960d909f137ed68d17c192b35b",
+    "clean_ioc/generic_utils.py": "18281440b6202aa920494169aa29d36ab61ddf5781ff46de54ae6d983b67aee6",
+    "clean_ioc/graph_analysis.py": "f2dd636a57537a617ba7a562b6137be4c301deeade7f880363b93b3c8e4bb135",
+    "clean_ioc/instrumentation.py": "8f14936d4b94194a34fe403c199180f3358d52edae19dd9faadde71d6e247a7c",
+    "clean_ioc/matrix.py": "ba73c324c70ee8aee04ff90aebc0bc2e5bfc6e236e3def791284e2fc3ca8b424",
+    "clean_ioc/metadata.py": "351c73c70075e3bc72cf28576dbfb5856879ac9f627091201a2badccbbc82c6c",
+    "clean_ioc/policies.py": "0426bc0c4baa54754f9f9ea311cfe499e1d92a60bccfbfefc42d737e261b67b0",
+    "clean_ioc/preferences.py": "a0e936b52d963501f2995a28a894205f6ed7211e138ffe6ccb91317aa9607996",
+    "clean_ioc/provider_maps.py": "37cdeeab0668581c1d4a5d35bea6a10b40af05c8c06c759296be4663f5707b0e",
+    "clean_ioc/providers.py": "8101f7e1c261f93c6a2d16ae0a0b5ca3f3af4cb2a57a05faa549d7560b2c22cf",
+    "clean_ioc/registration_patterns.py": "5d5ea8896fbd3fc2595e15572668df50c4c88a4edc9208c38449f5afc5c9d727",
+    "clean_ioc/sarif.py": "ceb70a672d9bc4009dfb96e537820a2e56d43ec1199d9e9319738761cb15dc88",
+    "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+    "clean_ioc/semantic_diff.py": "7e66819a50852d1ca1f8f2f92e2ed21f8db27127f0b2612d00558d384328ee16",
+    "clean_ioc/sentinels.py": "dce3757f1f21104e9440d3712db9dd08acbac4d576cfd9c93dc40df0bd697e86",
+    "clean_ioc/service_groups.py": "0b79f6bfe547e92844a044776f7c1eff1ed3b37d8eece34573550465eaedcaa1",
+    "clean_ioc/tooling.py": "0f8ff83b3a32037b208bdd916353f560ef4472ebec8710b4ee609bd87c8aaa44",
+    "clean_ioc/type_aliases.py": "f89562ca002ae094620efe4fa4c281af28d2569288d812164cbbcf4104c98d00",
+    "clean_ioc/type_filters.py": "766879b05079ac9b226f9f29688ffb006970790418f64eec6ff481442befeb98",
+    "clean_ioc/utils.py": "cedbe3ebf034ffdcd0749c5def10a96e7e6148fbb7e2c26a402ccfdfb4ffee6a",
+    "clean_ioc/warmup.py": "725f01c41830f4aea5dac8009778e090d8eee982bfa339d720f3f1b5670371e6"
+  },
+  "patch_sha256": "4e81cc692fd980720c3c7b1a0df36f0cf49152622956e1559b512e1d994fd8a7",
+  "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+  "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "performance_measurements": false
+}

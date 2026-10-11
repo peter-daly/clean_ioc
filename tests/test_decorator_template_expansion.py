@@ -7,10 +7,22 @@ from uuid import UUID, uuid5
 import pytest
 from typing_extensions import TypeAliasType
 
-from clean_ioc import ContainerBuilder, ContainerBuildError, DerivedServices, Expose, ServiceGroup, Tag, Use, select
+from clean_ioc import (
+    ContainerBuilder,
+    ContainerBuildError,
+    DerivedServices,
+    Expose,
+    ScopeBuilder,
+    ServiceGroup,
+    Tag,
+    Use,
+    select,
+)
 from clean_ioc import component_filters as cf
 from clean_ioc._decorator_templates import DecoratorTemplate, RegistrationInfo
 from clean_ioc.container import (
+    _ANALYSIS_STATE,
+    _AnalysisState,
     _check_template_boundary_visibility,
     _Compiler,
     _normalize_blueprint_aliases,
@@ -452,9 +464,10 @@ def test_overlay_expansion_preserves_anchored_source_resources_and_original_argu
     source_id = builder.register(
         Source, lifespan="singleton", arguments={"resource": select(cf.with_id(parent_resource))}
     )
+    parent_composition = builder.retain_composition()
     parent = builder.build()
     existing = parent.resolve(Source)
-    overlay = parent.new_scope_builder()
+    overlay = ScopeBuilder(parent, composition=parent_composition)
     overlay.register(Resource, lifespan="singleton", name="overlay")
     overlay._register_decorator_template(for_each=Source, template=specification)
     expanded = overlay._expand_decorator_templates()
@@ -504,16 +517,15 @@ def test_visibility_consistency_primitive_stable_changed_and_newly_invalid():
                 ),
             ),
         )
-        with pytest.raises(ContainerBuildError) as caught:
+        state = _AnalysisState()
+        token = _ANALYSIS_STATE.set(state)
+        try:
             _check_template_boundary_visibility(initial.blueprint, expanded, candidates=initial.candidates)
-        assert caught.value.code == "template-visibility-cycle"
-        assert "provider" in caught.value.path
-        assert f"{initial.candidates[0].declaration.id}:{initial.candidates[0].source.id}" in caught.value.path
-        if ambiguous:
-            assert isinstance(caught.value.__cause__, ContainerBuildError)
-            assert caught.value.__cause__.code == "boundary-expose-ambiguous"
-        else:
-            assert caught.value.__cause__ is None
+        finally:
+            _ANALYSIS_STATE.reset(token)
+        issue = next(issue for issue in state.issues if issue.code == "template-visibility-cycle")
+        assert "provider" in issue.path
+        assert f"{initial.candidates[0].declaration.id}:{initial.candidates[0].source.id}" in issue.path
 
 
 def test_source_condition_still_enforced_by_exact_generated_equivalent_dependency():
@@ -559,9 +571,12 @@ def test_instance_family_filter_uses_static_class_without_changing_ordinary_comp
     assert expansion.candidates[0].source.id == source_id
     assert expansion.selections[0].component.implementation_type is Backend
     builder._remove_decorator_template(template_id)
-    runtime = builder.build()
+    runtime_analysis = builder.analyse()
+    runtime = runtime_analysis.create_runtime()
     assert (
-        next(root.component for root in runtime.graph.roots if root.component.id == source_id).implementation_type
+        next(
+            root.component for root in runtime_analysis.graph.roots if root.component.id == source_id
+        ).implementation_type
         is Source
     )
     assert runtime.resolve(Source) is instance
@@ -650,14 +665,17 @@ def test_use_visibility_recheck_is_one_shot_and_never_replays_template_callbacks
     synthetic = ContainerBuilder()
     synthetic.register_decorator(Source, Added, decorated_arg="inner")
     expanded = replace(normalized, layers=(replace(normalized.layers[0], decorators=synthetic._layer().decorators),))
-    with pytest.raises(ContainerBuildError) as caught:
+    state = _AnalysisState()
+    token = _ANALYSIS_STATE.set(state)
+    try:
         _check_template_boundary_visibility(expansion.blueprint, expanded, candidates=expansion.candidates)
-    assert caught.value.code == "template-visibility-cycle"
+    finally:
+        _ANALYSIS_STATE.reset(token)
+    assert any(issue.code == "template-visibility-cycle" for issue in state.issues)
     assert len(calls) == 2
     assert len(predicate_calls) == 4  # One initial preparation, exactly one recheck.
     if ambiguous:
-        assert isinstance(caught.value.__cause__, ContainerBuildError)
-        assert caught.value.__cause__.code == "boundary-use-ambiguous"
+        assert any("matches multiple components" in issue.message for issue in state.issues)
 
 
 def test_failed_source_dependency_does_not_call_filter_or_factory_or_leave_guard_active():
@@ -694,8 +712,9 @@ def test_internal_overlay_edit_shadows_declaration_and_reexpands_new_sources():
         for_each=Target, template=lambda source: replace(specification(source), when=lambda _: False)
     )
     # M04 stores original declarations in plans; this is not an activation test.
+    parent_composition = builder.retain_composition()
     parent = builder.build()
-    overlay = parent.new_scope_builder()
+    overlay = ScopeBuilder(parent, composition=parent_composition)
     local_source = overlay.register(Target)
     overlay._patch_decorator_template(inherited_id, source_filter=cf.with_id(local_source))
     expansion = overlay._expand_decorator_templates()
@@ -704,7 +723,7 @@ def test_internal_overlay_edit_shadows_declaration_and_reexpands_new_sources():
         local_source,
         parent_source,
     ]
-    assert parent._plan.blueprint.layers[0].decorator_templates[0].source_filter is cf.all_components
+    assert parent_composition._for_parent(parent).layers[0].decorator_templates[0].source_filter is cf.all_components
     overlay._remove_decorator_template(inherited_id)
     assert {item.declaration.id for item in overlay._expand_decorator_templates().candidates} == {retained_id}
 
@@ -785,5 +804,6 @@ def test_factory_source_family_filters_use_declared_alias_without_activation_or_
     assert views[broad_id].implementation_type is Source
     assert views[unknown_id].implementation_type is Source
     builder._remove_decorator_template(template_id)
-    runtime = builder.build()
-    assert all(root.component.implementation_type is Source for root in runtime.graph.roots)
+    runtime_analysis = builder.analyse()
+    _runtime = runtime_analysis.create_runtime()
+    assert all(root.component.implementation_type is Source for root in runtime_analysis.graph.roots)

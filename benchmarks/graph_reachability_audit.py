@@ -88,13 +88,14 @@ def audit(plan, *, external_components=()):
                 pending.extend(getattr(value, field.name) for field in dataclasses.fields(value))
         return seeds
 
+    compiled_graph = getattr(plan, "compiled_graph", None)
     roots: dict[str, Any] = {
         "public_roots": plan.roots,
         "provider_roots": plan.provider_roots,
         "managed_provider_roots": plan.managed_provider_roots,
         "warmup_roots": plan.warmup_steps,
-        "architecture_roots": plan.architecture_roots,
-        "public_graph_roots": plan.compiled_graph.roots if plan.compiled_graph else (),
+        "architecture_roots": getattr(plan, "architecture_roots", ()),
+        "public_graph_roots": compiled_graph.roots if compiled_graph is not None else (),
     }
     groups = {}
     for name, values in roots.items():
@@ -112,13 +113,16 @@ def audit(plan, *, external_components=()):
         for group in mapping.values()
         for root in group
     ]
-    all_roots.extend(root for _, _, root in plan.architecture_roots)
+    all_roots.extend(root for _, _, root in getattr(plan, "architecture_roots", ()))
     groups["execution_components_including_map_targets"] = closure(components([root.step for root in all_roots]))
     groups["eligible_root_candidates"] = closure(
         components(
             [
                 candidate
-                for mapping in (plan.root_candidates, *plan.area_root_candidates.values())
+                for mapping in (
+                    getattr(plan, "root_candidates", {}),
+                    *getattr(plan, "area_root_candidates", {}).values(),
+                )
                 for group in mapping.values()
                 for candidate in group
                 if candidate.eligible
@@ -129,7 +133,10 @@ def audit(plan, *, external_components=()):
         components(
             [
                 candidate
-                for mapping in (plan.root_candidates, *plan.area_root_candidates.values())
+                for mapping in (
+                    getattr(plan, "root_candidates", {}),
+                    *getattr(plan, "area_root_candidates", {}).values(),
+                )
                 for group in mapping.values()
                 for candidate in group
                 if not candidate.eligible
@@ -138,19 +145,20 @@ def audit(plan, *, external_components=()):
     )
     evidence_seeds = []
     for name in ("occurrence_explanations", "decorator_explanations", "parameter_explanations", "generic_explanations"):
-        evidence_seeds.extend((plan.graph, occurrence) for occurrence in getattr(plan, name))
+        evidence_seeds.extend((plan.graph, occurrence) for occurrence in getattr(plan, name, {}))
     # Compact wrappers are authoritative; source patterns retain original IDs
     # as captured provenance, and must not be interpreted as remapped live links.
     groups["evidence_index_owners"] = closure(evidence_seeds)
     groups["contextual_view_sources_and_parents"] = closure(
         [seed for context in plan.graph._views for seed in ((plan.graph, context.root), (plan.graph, context.parent))],
-        allow_expired=not plan.explain_metadata,
+        allow_expired=not getattr(plan, "explain_metadata", False),
     )
     groups["externally_retained_components"] = closure(
-        components(external_components), allow_expired=not plan.explain_metadata
+        components(external_components), allow_expired=not getattr(plan, "explain_metadata", False)
     )
+    blueprint = getattr(plan, "_blueprint", None)
     groups["captured_template_source_graphs"] = closure(
-        components(plan._blueprint.template_selections if plan._blueprint is not None else ())
+        components(blueprint.template_selections if blueprint is not None else ())
     )
     live = set().union(*(physical for physical, _ in groups.values()))
     all_records = {
@@ -176,7 +184,7 @@ def audit(plan, *, external_components=()):
     }
     return {
         "audit_seconds": time.perf_counter() - started,
-        "explain_metadata": plan.explain_metadata,
+        "explain_metadata": getattr(plan, "explain_metadata", False),
         "expired_external_or_inspection_ids": len(expired),
         "physical_records": len(main),
         "graph_count_including_inherited_execution_graphs": len(graphs),
@@ -200,9 +208,7 @@ def audit(plan, *, external_components=()):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--routes", type=int, default=8)
-    parser.add_argument("--diagnostics", action="store_true")
-    parser.add_argument("--no-explain-metadata", action="store_true")
-    parser.add_argument("--allow-scope-builders", action="store_true")
+    parser.add_argument("--operation", choices=("build", "analyse"), default="build")
     parser.add_argument("--trace-audit", action="store_true")
     parser.add_argument("--capture-selection-views", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
@@ -227,16 +233,12 @@ def main():
         with patch.object(cf, "with_name", recording_with_name):
             fixture = build(
                 args.routes,
-                diagnostics=args.diagnostics,
-                explain_metadata=not args.no_explain_metadata,
-                allow_scope_builders=args.allow_scope_builders,
+                operation=args.operation,
             )
     else:
         fixture = build(
             args.routes,
-            diagnostics=args.diagnostics,
-            explain_metadata=not args.no_explain_metadata,
-            allow_scope_builders=args.allow_scope_builders,
+            operation=args.operation,
         )
     if args.trace_audit:
         gc.collect()
@@ -252,12 +254,16 @@ def main():
     result = {
         "source": source_provenance(),
         "routes": args.routes,
-        "diagnostics": args.diagnostics,
+        "operation": args.operation,
+        "audit_target": "runtime execution plan",
         "audit_source_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "audit": observed,
     }
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result["audit"], indent=2))
+    fixture.runtime.__exit__()
+    if fixture.analysis is not None:
+        fixture.analysis.close()
 
 
 if __name__ == "__main__":

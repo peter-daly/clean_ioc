@@ -1,0 +1,884 @@
+[
+  {
+    "policy": "before",
+    "variant": "run",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.010006457916460931,
+      0.010585792013444006,
+      0.010668542003259063,
+      0.009805666049942374,
+      0.009770583012141287,
+      0.009752292069606483,
+      0.009771417011506855,
+      0.009786125039681792
+    ],
+    "cpu_seconds": [
+      0.010010000000000296,
+      0.010578000000000642,
+      0.010674000000000738,
+      0.009807999999999595,
+      0.00977100000000064,
+      0.009755999999999432,
+      0.009776000000000451,
+      0.009786000000000072
+    ],
+    "cold_seconds": 0.010006457916460931,
+    "steady_median_seconds": 0.009786125039681792,
+    "cold_cpu_seconds": 0.010010000000000296,
+    "steady_median_cpu_seconds": 0.009786000000000072,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    }
+  },
+  {
+    "policy": "after",
+    "variant": "run",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.009978416957892478,
+      0.009771416080184281,
+      0.009784208959899843,
+      0.00975591700989753,
+      0.009759292006492615,
+      0.009768041083589196,
+      0.009736332925967872,
+      0.009762207977473736
+    ],
+    "cpu_seconds": [
+      0.009983000000000075,
+      0.009773000000000032,
+      0.009789000000000492,
+      0.009759999999999991,
+      0.009763999999999662,
+      0.009771999999999892,
+      0.009739000000000608,
+      0.00976200000000027
+    ],
+    "cold_seconds": 0.009978416957892478,
+    "steady_median_seconds": 0.009762207977473736,
+    "cold_cpu_seconds": 0.009983000000000075,
+    "steady_median_cpu_seconds": 0.009763999999999662,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    }
+  },
+  {
+    "policy": "before",
+    "variant": "run",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.010009458987042308,
+      0.009773333906196058,
+      0.009726542048156261,
+      0.009722583927214146,
+      0.009728458942845464,
+      0.00973408401478082,
+      0.009753833059221506,
+      0.009728666977025568
+    ],
+    "cpu_seconds": [
+      0.010014999999999219,
+      0.009776000000000451,
+      0.009726999999999819,
+      0.009723000000000148,
+      0.00973299999999977,
+      0.00973399999999991,
+      0.00975600000000032,
+      0.00973199999999963
+    ],
+    "cold_seconds": 0.010009458987042308,
+    "steady_median_seconds": 0.009728666977025568,
+    "cold_cpu_seconds": 0.010014999999999219,
+    "steady_median_cpu_seconds": 0.00973299999999977,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    }
+  },
+  {
+    "policy": "after",
+    "variant": "run",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.010490041924640536,
+      0.009839417063631117,
+      0.009794709039852023,
+      0.009761332999914885,
+      0.009766957955434918,
+      0.009824124979786575,
+      0.009756957995705307,
+      0.00975608394946903
+    ],
+    "cpu_seconds": [
+      0.010486000000000217,
+      0.009845000000000326,
+      0.009792000000000023,
+      0.009758999999999851,
+      0.009763999999999662,
+      0.009821999999999775,
+      0.009760999999999243,
+      0.009759999999999991
+    ],
+    "cold_seconds": 0.010490041924640536,
+    "steady_median_seconds": 0.009766957955434918,
+    "cold_cpu_seconds": 0.010486000000000217,
+    "steady_median_cpu_seconds": 0.009763999999999662,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    }
+  },
+  {
+    "policy": "before",
+    "variant": "run",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.009980415925383568,
+      0.009748291922733188,
+      0.009744541952386498,
+      0.009739874978549778,
+      0.009705167030915618,
+      0.009746875031851232,
+      0.009728583041578531,
+      0.00971795804798603
+    ],
+    "cpu_seconds": [
+      0.009984999999999467,
+      0.009749999999999481,
+      0.00974499999999967,
+      0.00973999999999986,
+      0.009708999999999968,
+      0.009750999999999621,
+      0.009730000000000238,
+      0.009722000000000008
+    ],
+    "cold_seconds": 0.009980415925383568,
+    "steady_median_seconds": 0.009739874978549778,
+    "cold_cpu_seconds": 0.009984999999999467,
+    "steady_median_cpu_seconds": 0.00973999999999986,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    }
+  },
+  {
+    "policy": "after",
+    "variant": "run",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.010040541994385421,
+      0.009880875004455447,
+      0.009815083001740277,
+      0.009793541044928133,
+      0.00978695903904736,
+      0.009739667060784996,
+      0.009735208004713058,
+      0.009741749963723123
+    ],
+    "cpu_seconds": [
+      0.010046,
+      0.009878999999999749,
+      0.009816999999999965,
+      0.009789999999999743,
+      0.009789000000000492,
+      0.00973999999999986,
+      0.00973899999999972,
+      0.00974200000000014
+    ],
+    "cold_seconds": 0.010040541994385421,
+    "steady_median_seconds": 0.00978695903904736,
+    "cold_cpu_seconds": 0.010046,
+    "steady_median_cpu_seconds": 0.009789000000000492,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    }
+  },
+  {
+    "policy": "before",
+    "variant": "rich-run",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.010281500057317317,
+      0.00984775007236749,
+      0.009791749995201826,
+      0.009759000036865473,
+      0.009733624989166856,
+      0.009756583021953702,
+      0.009744291892275214,
+      0.009733750019222498
+    ],
+    "cpu_seconds": [
+      0.010286999999999935,
+      0.009853000000001444,
+      0.009795999999999694,
+      0.009761000000001019,
+      0.00973399999999991,
+      0.009757999999999711,
+      0.009745000000000559,
+      0.009734999999999161
+    ],
+    "cold_seconds": 0.010281500057317317,
+    "steady_median_seconds": 0.009756583021953702,
+    "cold_cpu_seconds": 0.010286999999999935,
+    "steady_median_cpu_seconds": 0.009757999999999711,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    }
+  },
+  {
+    "policy": "after",
+    "variant": "rich-run",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.010073374956846237,
+      0.00972583401016891,
+      0.009713166975416243,
+      0.009759915992617607,
+      0.009740708046592772,
+      0.009772999910637736,
+      0.0097685829969123,
+      0.00969404203351587
+    ],
+    "cpu_seconds": [
+      0.01007700000000078,
+      0.00972799999999907,
+      0.009717000000000198,
+      0.009759999999999991,
+      0.009744000000001307,
+      0.009774000000000171,
+      0.00977100000000064,
+      0.009695000000000675
+    ],
+    "cold_seconds": 0.010073374956846237,
+    "steady_median_seconds": 0.009740708046592772,
+    "cold_cpu_seconds": 0.01007700000000078,
+    "steady_median_cpu_seconds": 0.009744000000001307,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    }
+  },
+  {
+    "policy": "before",
+    "variant": "rich-run",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.010150332935154438,
+      0.009756374987773597,
+      0.009737750049680471,
+      0.009736458072438836,
+      0.00974841695278883,
+      0.009705457952804863,
+      0.00970120809506625,
+      0.009714375017210841
+    ],
+    "cpu_seconds": [
+      0.010157999999998779,
+      0.009757999999999711,
+      0.00973899999999972,
+      0.009741,
+      0.009748999999999342,
+      0.00970899999999908,
+      0.009705000000000297,
+      0.00971799999999945
+    ],
+    "cold_seconds": 0.010150332935154438,
+    "steady_median_seconds": 0.009736458072438836,
+    "cold_cpu_seconds": 0.010157999999998779,
+    "steady_median_cpu_seconds": 0.00973899999999972,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    }
+  },
+  {
+    "policy": "after",
+    "variant": "rich-run",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/13-result.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.010356124956160784,
+      0.010004749987274408,
+      0.009919749922119081,
+      0.009921791963279247,
+      0.00990212510805577,
+      0.009920958080329001,
+      0.009884374914690852,
+      0.0098998750327155
+    ],
+    "cpu_seconds": [
+      0.0103629999999999,
+      0.010009000000000157,
+      0.009923999999999822,
+      0.009921999999999542,
+      0.009902999999999551,
+      0.009920999999998514,
+      0.009885000000000588,
+      0.009901000000001048
+    ],
+    "cold_seconds": 0.010356124956160784,
+    "steady_median_seconds": 0.009919749922119081,
+    "cold_cpu_seconds": 0.0103629999999999,
+    "steady_median_cpu_seconds": 0.009920999999998514,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    }
+  },
+  {
+    "policy": "before",
+    "variant": "rich-run",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/13-result.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.010155999916605651,
+      0.009774332982487977,
+      0.009730707970447838,
+      0.009707957971841097,
+      0.009698666050098836,
+      0.00971875002142042,
+      0.009780916036106646,
+      0.009731874917633832
+    ],
+    "cpu_seconds": [
+      0.010165000000000646,
+      0.009778999999999982,
+      0.009731000000000378,
+      0.009712000000000387,
+      0.009703000000000017,
+      0.009722000000000008,
+      0.009781999999999513,
+      0.00973199999999963
+    ],
+    "cold_seconds": 0.010155999916605651,
+    "steady_median_seconds": 0.009730707970447838,
+    "cold_cpu_seconds": 0.010165000000000646,
+    "steady_median_cpu_seconds": 0.009731000000000378,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    }
+  },
+  {
+    "policy": "after",
+    "variant": "rich-run",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/13-result.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.010273666004650295,
+      0.009769959026016295,
+      0.009763374924659729,
+      0.00974820798728615,
+      0.00977174995932728,
+      0.009755125036463141,
+      0.009741540998220444,
+      0.009752667043358088
+    ],
+    "cpu_seconds": [
+      0.010278999999998817,
+      0.009770999999998864,
+      0.00976400000000055,
+      0.009749000000001118,
+      0.00977300000000092,
+      0.00975900000000074,
+      0.009745000000000559,
+      0.009756999999998683
+    ],
+    "cold_seconds": 0.010273666004650295,
+    "steady_median_seconds": 0.009755125036463141,
+    "cold_cpu_seconds": 0.010278999999998817,
+    "steady_median_cpu_seconds": 0.00975900000000074,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    }
+  },
+  {
+    "policy": "before",
+    "variant": "analysis",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/13-result.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.0020557499956339598,
+      0.001918416004627943,
+      0.0018930830992758274,
+      0.001889374922029674,
+      0.0018942090682685375,
+      0.0018938329303637147,
+      0.0018906659679487348,
+      0.0019125411054119468
+    ],
+    "cpu_seconds": [
+      0.0020589999999999775,
+      0.0019220000000000348,
+      0.0018940000000000068,
+      0.001890999999999976,
+      0.00189499999999998,
+      0.0018950000000000355,
+      0.001890999999999976,
+      0.001912999999999998
+    ],
+    "cold_seconds": 0.0020557499956339598,
+    "steady_median_seconds": 0.0018938329303637147,
+    "cold_cpu_seconds": 0.0020589999999999775,
+    "steady_median_cpu_seconds": 0.00189499999999998,
+    "validated": {
+      "workers": 22,
+      "tree_objects": 1386,
+      "leaves": 704,
+      "payload_bytes": 90112,
+      "ordinary_scopes": 1,
+      "managed_scopes": 8,
+      "source_map_calls": 4
+    }
+  },
+  {
+    "policy": "after",
+    "variant": "analysis",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/13-result.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.002080832957290113,
+      0.0019132080487906933,
+      0.0019169170409440994,
+      0.0019010830437764525,
+      0.001887958962470293,
+      0.001886082929559052,
+      0.0018896670080721378,
+      0.0018959579756483436
+    ],
+    "cpu_seconds": [
+      0.0020850000000000035,
+      0.0019130000000000535,
+      0.0019180000000000308,
+      0.001900999999999986,
+      0.0018890000000000295,
+      0.0018859999999999988,
+      0.0018900000000000028,
+      0.0018960000000000088
+    ],
+    "cold_seconds": 0.002080832957290113,
+    "steady_median_seconds": 0.0018959579756483436,
+    "cold_cpu_seconds": 0.0020850000000000035,
+    "steady_median_cpu_seconds": 0.0018960000000000088,
+    "validated": {
+      "workers": 22,
+      "tree_objects": 1386,
+      "leaves": 704,
+      "payload_bytes": 90112,
+      "ordinary_scopes": 1,
+      "managed_scopes": 8,
+      "source_map_calls": 4
+    }
+  },
+  {
+    "policy": "before",
+    "variant": "analysis",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/13-result.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.002551708952523768,
+      0.002105874940752983,
+      0.002153625013306737,
+      0.002054832992143929,
+      0.0022084169322624803,
+      0.0019986670231446624,
+      0.0018881249707192183,
+      0.0020803340012207627
+    ],
+    "cpu_seconds": [
+      0.0025479999999999947,
+      0.0021079999999999988,
+      0.002137,
+      0.0020560000000000023,
+      0.0022000000000000353,
+      0.0019999999999999463,
+      0.0018900000000000028,
+      0.0020809999999999995
+    ],
+    "cold_seconds": 0.002551708952523768,
+    "steady_median_seconds": 0.0020803340012207627,
+    "cold_cpu_seconds": 0.0025479999999999947,
+    "steady_median_cpu_seconds": 0.0020809999999999995,
+    "validated": {
+      "workers": 22,
+      "tree_objects": 1386,
+      "leaves": 704,
+      "payload_bytes": 90112,
+      "ordinary_scopes": 1,
+      "managed_scopes": 8,
+      "source_map_calls": 4
+    }
+  },
+  {
+    "policy": "after",
+    "variant": "analysis",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/13-result.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.002072167000733316,
+      0.001901624957099557,
+      0.0018953749677166343,
+      0.0018873750232160091,
+      0.0018902500160038471,
+      0.0018845420563593507,
+      0.0018937080167233944,
+      0.0018875420792028308
+    ],
+    "cpu_seconds": [
+      0.0020749999999999935,
+      0.0019030000000000435,
+      0.0018960000000000088,
+      0.0018880000000000008,
+      0.0018910000000000315,
+      0.0018859999999999988,
+      0.00189499999999998,
+      0.0018920000000000048
+    ],
+    "cold_seconds": 0.002072167000733316,
+    "steady_median_seconds": 0.0018902500160038471,
+    "cold_cpu_seconds": 0.0020749999999999935,
+    "steady_median_cpu_seconds": 0.0018920000000000048,
+    "validated": {
+      "workers": 22,
+      "tree_objects": 1386,
+      "leaves": 704,
+      "payload_bytes": 90112,
+      "ordinary_scopes": 1,
+      "managed_scopes": 8,
+      "source_map_calls": 4
+    }
+  },
+  {
+    "policy": "before",
+    "variant": "analysis",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/13-result.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.0020957919768989086,
+      0.0019160000374540687,
+      0.0019068330293521285,
+      0.0018943750765174627,
+      0.001899917027913034,
+      0.0018937080167233944,
+      0.001897167065180838,
+      0.0019206249853596091
+    ],
+    "cpu_seconds": [
+      0.0021030000000000215,
+      0.0019160000000000288,
+      0.0019079999999999653,
+      0.0018940000000000068,
+      0.0019000000000000128,
+      0.0018939999999999513,
+      0.0018980000000000108,
+      0.0019219999999999793
+    ],
+    "cold_seconds": 0.0020957919768989086,
+    "steady_median_seconds": 0.001899917027913034,
+    "cold_cpu_seconds": 0.0021030000000000215,
+    "steady_median_cpu_seconds": 0.0019000000000000128,
+    "validated": {
+      "workers": 22,
+      "tree_objects": 1386,
+      "leaves": 704,
+      "payload_bytes": 90112,
+      "ordinary_scopes": 1,
+      "managed_scopes": 8,
+      "source_map_calls": 4
+    }
+  },
+  {
+    "policy": "after",
+    "variant": "analysis",
+    "source": {
+      "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+      "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_memory_fixture.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/12-result.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/13-inventory.md\n?? .work/graph-memory-optimization/13-result.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? .work/graph-memory-optimization/evidence/13/\n?? tests/test_activation_cache_lifetimes.py\n?? tests/test_build_modes.py\n?? tests/test_direct_selection_facts.py\n?? tests/test_validation_evidence_lifetime.py\n",
+      "source_sha256": {
+        "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc/container.py": "22b89c8b0eb32178a2c5538353ff92c99292665afe4b728b3f98ca791ae8981e",
+        "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+        "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+      }
+    },
+    "wall_seconds": [
+      0.0020694159902632236,
+      0.001904916949570179,
+      0.001983541063964367,
+      0.0019398750737309456,
+      0.0018903750460594893,
+      0.0018797500524669886,
+      0.0019690420012921095,
+      0.002000959008000791
+    ],
+    "cpu_seconds": [
+      0.0020729999999999915,
+      0.0019060000000000188,
+      0.001982999999999957,
+      0.001941000000000026,
+      0.001890999999999976,
+      0.0018799999999999928,
+      0.0019700000000000273,
+      0.0020030000000000325
+    ],
+    "cold_seconds": 0.0020694159902632236,
+    "steady_median_seconds": 0.0019398750737309456,
+    "cold_cpu_seconds": 0.0020729999999999915,
+    "steady_median_cpu_seconds": 0.001941000000000026,
+    "validated": {
+      "workers": 22,
+      "tree_objects": 1386,
+      "leaves": 704,
+      "payload_bytes": 90112,
+      "ordinary_scopes": 1,
+      "managed_scopes": 8,
+      "source_map_calls": 4
+    }
+  }
+]

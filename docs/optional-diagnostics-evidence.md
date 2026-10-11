@@ -1,5 +1,11 @@
 # Optional compiler diagnostics evidence
 
+> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/analyse API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-analyse).
+
+> Historical comparison: these measurements use the former fine-grained build policies.
+> Their reproduction scripts use the private compiler harness; current public applications
+> use [run or analysis mode](compiler-tooling.md#run-and-analysis-modes).
+
 Normal `ContainerBuilder.build()` and `ScopeBuilder.build()` now use `diagnostics=False`. Validation/inspection CLI
 commands and matrix checks request full capture. CLI profiling follows the normal default, with `--diagnostics`
 for an explicit comparison. An existing scope is never recompiled by validation or inspection.

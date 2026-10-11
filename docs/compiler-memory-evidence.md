@@ -1,5 +1,7 @@
 # Compiler memory evidence — 7 October 2026
 
+> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/analyse API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-analyse).
+
 For the latest measured state, see
 [the sequential runtime-build evidence](runtime-build-series-evidence.md).
 It includes the subsequent production options, signature-parser fix, actual-host

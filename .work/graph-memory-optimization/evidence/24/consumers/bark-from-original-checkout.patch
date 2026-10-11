@@ -1,0 +1,2850 @@
+--- a/bark_core/bootstrapping/build.py
++++ b/bark_core/bootstrapping/build.py
+@@ -1,35 +1,26 @@
+ from dataclasses import dataclass
+ 
+-from clean_ioc import Container, ContainerBuilder
++from clean_ioc import AnalysisResult, Container, ContainerBuilder
+ 
+ 
+ @dataclass(frozen=True, slots=True)
+ class ContainerBuildOptions:
+-    """Compile choices shared by container and process composition roots.
++    """Provider declarations shared by host composition roots.
+ 
+-    Defaults preserve Clean IoC's ordinary build behaviour. Restricting provider
+-    roots affects public provider handles; injected providers still compile.
+-    Disabling scope builders retains ordinary scopes and their cleanup.
+-    Deferred unreachable warnings remain available through validation_report()
+-    while explain metadata is enabled. Disabling explain metadata retains the
+-    runtime catalogue and structural validation, but disables graph inspection
+-    and validation_report(), and is incompatible with validation-only rules.
++    Build emits an execution runtime; analyse runs the complete validation workflow.
++    Each operation consumes its own fresh builder.
+     """
+ 
+-    diagnostics: bool = False
+     provider_roots: tuple[object, ...] | None = None
+-    allow_scope_builders: bool = True
+-    check_unreachable: bool = True
+-    aggregate_errors: bool = True
+-    explain_metadata: bool = True
++
++    def _prepare(self, builder: ContainerBuilder) -> None:
++        if self.provider_roots is not None:
++            builder.set_provider_roots(self.provider_roots)
+ 
+     def build(self, builder: ContainerBuilder) -> Container:
+-        """Compile once, after the caller has finished registering components."""
+-        return builder.build(
+-            diagnostics=self.diagnostics,
+-            provider_roots=self.provider_roots,
+-            allow_scope_builders=self.allow_scope_builders,
+-            check_unreachable=self.check_unreachable,
+-            aggregate_errors=self.aggregate_errors,
+-            explain_metadata=self.explain_metadata,
+-        )
++        self._prepare(builder)
++        return builder.build()
++
++    def analyse(self, builder: ContainerBuilder) -> AnalysisResult:
++        self._prepare(builder)
++        return builder.analyse()
+--- a/bark_core/unit_of_work/bundles.py
++++ b/bark_core/unit_of_work/bundles.py
+@@ -1016,7 +1016,7 @@
+ class RegisterUnitOfWorkValidationBundle(OnlyRunOncePerClassBundle):
+     def apply(self, builder: ComponentBuilder) -> None:
+         builder.add_validation_rule(validate_unit_of_work_graph)
+-        builder.add_validation_rule(validate_unit_of_work_graph_on_validation, mode="validation")
++        builder.add_validation_rule(validate_unit_of_work_graph_on_validation)
+ 
+ 
+ def _unit_of_work_applicability_filter(
+--- a/tests/unit/application/commands/test_clean_ioc.py
++++ b/tests/unit/application/commands/test_clean_ioc.py
+@@ -25,12 +25,8 @@
+     builder.register(CommandHandler[TestCommand], SecondTestCommandHandler)
+     RegisterCommandDispatcherBundle()(builder)
+ 
+-    try:
+-        builder.build()
+-    except Exception as error:
+-        assert "command-handler-cardinality" in str(error)
+-    else:
+-        raise AssertionError("duplicate command handlers unexpectedly built")
++    with builder.analyse() as analysis:
++        assert "command-handler-cardinality" in {issue.code for issue in analysis.report.errors}
+ 
+ 
+ async def test_compiled_command_dispatcher():
+--- a/tests/unit/application/events/test_clean_ioc.py
++++ b/tests/unit/application/events/test_clean_ioc.py
+@@ -1,8 +1,9 @@
++import re
+ from unittest.mock import AsyncMock
+ 
+ import pytest
+ from assertive import was_called_once_with, was_not_called
+-from clean_ioc import ContainerBuilder, ContainerBuildError
++from clean_ioc import ContainerBuilder
+ 
+ from bark_core.application import EventDispatcher, EventHandler
+ from bark_core.bundles import RegisterEventDispatcherBundle, RegisterEventsBundle
+@@ -127,8 +128,11 @@
+ 
+     builder.apply_bundle(RegisterEventsBundle(handler_types=[BaseEventHandler, TestEventHandler]))
+ 
+-    with pytest.raises(ContainerBuildError, match="event-handler-cardinality"):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "event-handler-cardinality", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+     assert test_event_mock == was_not_called()
+     assert base_event_mock == was_not_called()
+ 
+@@ -152,8 +156,11 @@
+ 
+     builder.apply_bundle(RegisterEventsBundle(handler_types=[FirstEventHandler, SecondEventHandler]))
+ 
+-    with pytest.raises(ContainerBuildError, match="event-handler-cardinality"):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "event-handler-cardinality", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+     assert first_mock == was_not_called()
+     assert second_mock == was_not_called()
+--- a/tests/unit/bootstrapping/test_build.py
++++ b/tests/unit/bootstrapping/test_build.py
+@@ -1,5 +1,14 @@
+ import pytest
+-from clean_ioc import Container, ContainerBuilder, ContainerBuildError, Provider
++from clean_ioc import (
++    BuildIssue,
++    Container,
++    ContainerBuilder,
++    ContainerBuildError,
++    IssueSeverity,
++    Provider,
++    WarmupPlan,
++    WarmupTarget,
++)
+ from clean_ioc.ext.asgi import CleanIocMiddleware
+ from fastapi import FastAPI
+ 
+@@ -7,15 +16,6 @@
+ from bark_core.bundles import RegisterDaemonBundle, RegisterDaemonHostBundle
+ from bark_core.daemon import DaemonHealthRegistry, ScopedMultiDaemonRunner
+ from tests.unit.bootstrapping.test_fastapi import LifecycleRecorder, WaitingExecutable
+-
+-LEAN = ContainerBuildOptions(
+-    diagnostics=True,
+-    provider_roots=(Provider[LifecycleRecorder],),
+-    allow_scope_builders=False,
+-    check_unreachable=False,
+-    aggregate_errors=False,
+-    explain_metadata=False,
+-)
+ 
+ 
+ def build_host(host, builder, options):
+@@ -30,37 +30,25 @@
+ 
+ 
+ @pytest.mark.parametrize("host", ["asgi", "fastapi", "job"])
+-@pytest.mark.parametrize("options", [ContainerBuildOptions(), LEAN])
+-def test_host_build_options__reach_the_actual_compiled_runtime(host, options):
++@pytest.mark.parametrize("provider_roots", [None, (), (Provider[LifecycleRecorder],)])
++def test_host_build_options__reach_the_actual_compiled_runtime(host, provider_roots):
+     recorder = LifecycleRecorder()
+     builder = ContainerBuilder()
+     builder.register(LifecycleRecorder, instance=recorder, lifespan="singleton")
+     RegisterDaemonBundle(WaitingExecutable, name="waiting")(builder)
+     if host != "job":
+-        # The helper still applies this bundle, exactly once in the final plan.
+         RegisterDaemonHostBundle()(builder)
+ 
+-    container = build_host(host, builder, options)
++    container = build_host(host, builder, ContainerBuildOptions(provider_roots=provider_roots))
+ 
+     assert isinstance(container, Container)
+     assert recorder.events == []
+-    assert container._plan.diagnostics is options.diagnostics
+-    assert container.explain_metadata_enabled is options.explain_metadata
+     assert any(item.service_type is LifecycleRecorder for item in container.selected_registrations)
+-    if not options.explain_metadata:
+-        with pytest.raises(RuntimeError, match="explain-metadata-disabled"):
+-            _ = container.graph
+-        with pytest.raises(RuntimeError, match="explain-metadata-disabled"):
+-            container.validation_report()
+-    assert container._plan.unreachable_checked is options.check_unreachable
+-    assert (container._plan._blueprint is not None) is options.allow_scope_builders
+-    if options.provider_roots is None:
+-        assert len(container._plan.provider_roots) > 1
+-        assert container.new_scope_builder().build().resolve(LifecycleRecorder) is recorder
+-    else:
+-        assert tuple(container._plan.provider_roots) == options.provider_roots
+-        with pytest.raises(RuntimeError, match="Scope builders are disabled"):
+-            container.new_scope_builder()
++    for name in ("graph", "validation_report", "new_scope_builder", "build_report"):
++        assert not hasattr(container, name)
++    assert container.has_component(Provider[LifecycleRecorder]) is (provider_roots != ())
++    if provider_roots != ():
++        assert container.resolve(Provider[LifecycleRecorder])() is recorder
+     with container.new_scope() as scope:
+         assert scope.resolve(LifecycleRecorder) is recorder
+     if host != "job":
+@@ -68,7 +56,7 @@
+             assert (
+                 len({component.id for component in container.components if component.service_type == service_type}) == 1
+             )
+-    with pytest.raises(RuntimeError, match="already.*built|already.*build|single.use"):
++    with pytest.raises(RuntimeError, match="already.*built|already.*build|single.use|consumed"):
+         builder.build()
+ 
+ 
+@@ -91,30 +79,21 @@
+ 
+ 
+ @pytest.mark.parametrize("host", ["asgi", "fastapi", "job"])
+-@pytest.mark.parametrize("aggregate_errors", [True, False])
+-@pytest.mark.parametrize("explain_metadata", [True, False])
+-def test_host_build_options__still_reject_invalid_roots(host, aggregate_errors, explain_metadata):
++def test_host_build_options__still_reject_invalid_roots(host):
+     builder = ContainerBuilder()
+     builder.register(InvalidFirst)
+     builder.register(InvalidSecond)
+-    options = ContainerBuildOptions(
+-        provider_roots=(),
+-        allow_scope_builders=False,
+-        check_unreachable=False,
+-        aggregate_errors=aggregate_errors,
+-        explain_metadata=explain_metadata,
+-    )
+ 
+     with pytest.raises(ContainerBuildError) as error:
+-        build_host(host, builder, options)
++        build_host(host, builder, ContainerBuildOptions(provider_roots=()))
+ 
+-    assert error.value.report is not None
+-    assert len(error.value.report.errors) == (2 if aggregate_errors else 1)
++    assert error.value.report is None
++    assert error.value.code == "missing-component"
+ 
+ 
+ @pytest.mark.parametrize("host", ["asgi", "fastapi"])
+ def test_host_build_options__still_require_daemons_when_requested(host):
+-    options = ContainerBuildOptions(provider_roots=(), allow_scope_builders=False)
++    options = ContainerBuildOptions(provider_roots=())
+     with pytest.raises(ValueError, match="requires at least one matching Daemon"):
+         if host == "asgi":
+             build_daemon_app(ContainerBuilder(), build_options=options)
+@@ -122,20 +101,65 @@
+             build_fastapi_app(FastAPI(), ContainerBuilder(), require_daemon=True, build_options=options)
+ 
+ 
+-def test_container_build_options__retain_positional_field_order():
+-    options = ContainerBuildOptions(True, (), False, False, False)
+-
+-    assert options.diagnostics is True
+-    assert options.provider_roots == ()
+-    assert options.allow_scope_builders is False
+-    assert options.check_unreachable is False
+-    assert options.aggregate_errors is False
+-    assert options.explain_metadata is True
++def test_container_build_options__default_to_run_and_preserve_builder_provider_declarations():
++    recorder = LifecycleRecorder()
++    builder = ContainerBuilder()
++    builder.register(LifecycleRecorder, instance=recorder)
++    builder.set_provider_roots(())
++    with ContainerBuildOptions().build(builder) as container:
++        assert not hasattr(container, "graph")
++        assert not container.has_component(Provider[LifecycleRecorder])
++        assert container.resolve(LifecycleRecorder) is recorder
+ 
+ 
+-def test_container_build_options__reject_validation_only_rules_without_metadata():
++@pytest.mark.parametrize("operation", ["build", "analyse"])
++def test_container_build_options__separate_execution_and_completed_analysis(operation):
++    calls = []
+     builder = ContainerBuilder()
+-    builder.add_validation_rule(lambda graph: (), mode="validation")
+ 
+-    with pytest.raises(ValueError, match="validation-only rules require explain_metadata=True"):
+-        ContainerBuildOptions(explain_metadata=False).build(builder)
++    def required(context):
++        calls.append("first")
++        return ()
++
++    def deferred(context):
++        calls.append("second")
++        return (BuildIssue("deferred-test", IssueSeverity.error, "analysis finding"),)
++
++    builder.add_validation_rule(required)
++    builder.add_validation_rule(deferred)
++    options = ContainerBuildOptions()
++    with getattr(options, operation)(builder) as result:
++        if operation == "build":
++            assert calls == []
++            assert not hasattr(result, "validation_report")
++        else:
++            assert calls == ["first", "second"]
++            assert {issue.code for issue in result.report.errors} == {"deferred-test"}
++            assert result.report is result.report
++            with result.create_runtime() as runtime:
++                assert runtime.selected_registrations == ()
++            assert calls == ["first", "second"]
++
++
++def test_container_build_options__retain_lazy_warmup_and_resource_cleanup():
++    events = []
++
++    class Resource:
++        pass
++
++    def resource():
++        events.append("start")
++        yield Resource()
++        events.append("close")
++
++    builder = ContainerBuilder()
++    builder.register(Resource, factory=resource, lifespan="singleton")
++    builder.add_warmup_plan(WarmupPlan("startup", [WarmupTarget(Resource)]))
++    with ContainerBuildOptions(provider_roots=(Provider[Resource],)).build(builder) as container:
++        assert events == []
++        assert len(container.warmup_plans) == 1
++        report = container.warmup("startup")
++        assert all(result.status == "succeeded" for result in report.results)
++        assert events == ["start"]
++        assert container.resolve(Provider[Resource])() is container.resolve(Resource)
++    assert events == ["start", "close"]
+--- a/tests/unit/bootstrapping/test_fastapi.py
++++ b/tests/unit/bootstrapping/test_fastapi.py
+@@ -155,10 +155,6 @@
+         ContainerBuildOptions(),
+         ContainerBuildOptions(
+             provider_roots=(),
+-            allow_scope_builders=False,
+-            check_unreachable=False,
+-            aggregate_errors=False,
+-            explain_metadata=False,
+         ),
+     ],
+ )
+@@ -301,10 +297,6 @@
+         ContainerBuildOptions(),
+         ContainerBuildOptions(
+             provider_roots=(),
+-            allow_scope_builders=False,
+-            check_unreachable=False,
+-            aggregate_errors=False,
+-            explain_metadata=False,
+         ),
+     ],
+ )
+--- a/tests/unit/bootstrapping/test_job.py
++++ b/tests/unit/bootstrapping/test_job.py
+@@ -170,10 +170,6 @@
+         ContainerBuildOptions(),
+         ContainerBuildOptions(
+             provider_roots=(),
+-            allow_scope_builders=False,
+-            check_unreachable=False,
+-            aggregate_errors=False,
+-            explain_metadata=False,
+         ),
+     ],
+ )
+--- a/tests/unit/bundles/test_application.py
++++ b/tests/unit/bundles/test_application.py
+@@ -1,4 +1,5 @@
+ import inspect
++import re
+ import sys
+ import types
+ from dataclasses import replace
+@@ -7,7 +8,7 @@
+ 
+ import clean_ioc.component_filters as cf
+ import pytest
+-from clean_ioc import CannotResolveError, ComponentSelector, ContainerBuilder, ContainerBuildError
++from clean_ioc import CannotResolveError, ComponentSelector, ContainerBuilder, ScopeBuilder
+ from theutilitybelt.functional.predicate import predicate
+ 
+ from bark_core.application import (
+@@ -483,11 +484,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"uow-missing-policy"}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"uow-missing-policy"}
+ 
+ 
+ def test_query_handler_with_a_raw_tagged_unit_of_work_requires_a_policy():
+@@ -508,11 +509,11 @@
+     builder.register(UnitOfWork, MockResourceUnitOfWork, name="query", lifespan="scoped")
+     builder.apply_bundle(RegisterQueriesBundle(handler_types=[TransactionalQueryHandler]))
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"uow-missing-policy"}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"uow-missing-policy"}
+ 
+ 
+ def test_matching_resource_without_unit_of_work_registration_fails_the_build():
+@@ -534,8 +535,8 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
+ 
+ 
+ def test_resource_added_by_another_decorator_does_not_enable_unit_of_work():
+@@ -656,11 +657,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    issues = [issue for issue in exception.value.report.errors if issue.code == "event-handler-cardinality"]
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    issues = [issue for issue in exception.report.errors if issue.code == "event-handler-cardinality"]
+     assert len(issues) == 1
+     assert "MockEvent activates 2 handlers" in issues[0].message
+ 
+@@ -706,11 +707,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    issues = [issue for issue in exception.value.report.errors if issue.code == "event-handler-cardinality"]
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    issues = [issue for issue in exception.report.errors if issue.code == "event-handler-cardinality"]
+     assert len(issues) == 1
+     assert "CardUpdatedEvent activates 2 handlers" in issues[0].message
+ 
+@@ -737,11 +738,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    issues = [issue for issue in exception.value.report.errors if issue.code == "event-handler-cardinality"]
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    issues = [issue for issue in exception.report.errors if issue.code == "event-handler-cardinality"]
+     assert len(issues) == 1
+     assert "CardUpdatedEvent activates 2 handlers" in issues[0].message
+ 
+@@ -765,11 +766,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert any(issue.code == "command-handler-cardinality" for issue in exception.value.report.errors)
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert any(issue.code == "command-handler-cardinality" for issue in exception.report.errors)
+ 
+ 
+ def test_operation_validation_reports_query_contract_and_placeholder_errors():
+@@ -797,11 +798,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    codes = {issue.code for issue in exception.value.report.errors}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    codes = {issue.code for issue in exception.report.errors}
+     assert {"query-result-mismatch", "handler-placeholder-handle"} <= codes
+ 
+ 
+@@ -830,8 +831,11 @@
+     builder = ContainerBuilder()
+     builder.apply_bundle(RegisterCommandsBundle(handler_types=[MockCommandHandler]))
+     builder.register(CommandHandler[MockCommand], MockCommandHandler)
+-    with pytest.raises(ContainerBuildError, match="command-handler-cardinality"):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "command-handler-cardinality", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+ 
+ @pytest.mark.parametrize("registration", ["factory", "instance"])
+@@ -861,7 +865,7 @@
+     builder.register(str, instance="dependency")
+     builder.apply_bundle(RegisterCommandsBundle(handler_modules=["tests.unit.bundles.mock_handlers_module"]))
+     builder.apply_bundle(RegisterEventsBundle(handler_modules=["tests.unit.bundles.mock_handlers_module"]))
+-    graph = builder.build().graph
++    graph = builder.analyse().graph
+     requested = {root.requested_type for root in graph.entrypoints}
+     assert CommandHandler[MockCommand] in requested
+     assert EventHandler[MockEvent] in requested
+@@ -885,13 +889,16 @@
+ 
+     builder = ContainerBuilder()
+     builder.apply_bundle(RegisterCommandsBundle(handler_types=[RootHandler]))
+-    container = builder.build()
+-    first = container.new_scope_builder()
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
++    first = ScopeBuilder(container, composition=container_analysis.composition)
+     first.register(CommandHandler[ScopedCommand], FirstOverride)
+-    first_scope = first.build()
+-    nested = first_scope.new_scope_builder()
++    first_scope_analysis = first.analyse()
++    first_scope = first_scope_analysis.create_runtime()
++    nested = ScopeBuilder(first_scope, composition=first_scope_analysis.composition)
+     nested.register(CommandHandler[ScopedCommand], LastOverride)
+-    nested_scope = nested.build()
++    nested_scope_analysis = nested.analyse()
++    nested_scope = nested_scope_analysis.create_runtime()
+     assert isinstance(nested_scope.resolve(CommandHandler[ScopedCommand]), LastOverride)
+ 
+ 
+@@ -909,11 +916,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert any(issue.code == "handler-placeholder-handle" for issue in exception.value.report.errors)
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert any(issue.code == "handler-placeholder-handle" for issue in exception.report.errors)
+ 
+ 
+ def test_open_event_handler_specializations_for_base_and_derived_are_rejected():
+@@ -934,8 +941,11 @@
+     builder.mark_entrypoint(EventHandler[BaseEvent])
+     builder.mark_entrypoint(EventHandler[DerivedEvent])
+     builder.apply_bundle(RegisterEventDispatcherBundle())
+-    with pytest.raises(ContainerBuildError, match="event-handler-cardinality"):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "event-handler-cardinality", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+ 
+ def test_registering_both_handler_modules_and_types_raises_error():
+--- a/tests/unit/bundles/test_compiled_dispatcher_routes.py
++++ b/tests/unit/bundles/test_compiled_dispatcher_routes.py
+@@ -1,3 +1,4 @@
++from contextlib import nullcontext
+ from datetime import UTC, datetime
+ from functools import partial
+ from typing import Any
+@@ -81,22 +82,22 @@
+     return partial(_register_query_result_routes, result_types=tuple(result_types))
+ 
+ 
+-def _error_codes(exception: pytest.ExceptionInfo[ContainerBuildError]) -> set[str]:
+-    assert exception.value.report is not None
+-    return {issue.code for issue in exception.value.report.errors}
++def _error_codes(exception) -> set[str]:
++    assert exception.report is not None
++    return {issue.code for issue in exception.report.errors}
+ 
+ 
+ def _assert_build_has_code(builder: ContainerBuilder, code: str) -> None:
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+     assert code in _error_codes(exception)
+ 
+ 
+ @pytest.mark.parametrize("family", ["command", "query", "reply", "query_result", "event"])
+ @pytest.mark.parametrize("missing_dependency", [False, True])
+-@pytest.mark.parametrize("explain_metadata", [True, False])
++@pytest.mark.parametrize("mode", ["run", "analysis"])
+ async def test_internal_routes_are_private_but_discoverable_and_validate_deferred_dependencies(
+-    family, missing_dependency, explain_metadata
++    family, missing_dependency, mode
+ ):
+     class C(Command):
+         pass
+@@ -142,28 +143,38 @@
+     if not missing_dependency:
+         builder.register(Dependency)
+     register_routes(builder, (type(message),))
++    builder.set_provider_roots(())
+     if missing_dependency:
+-        with pytest.raises(ContainerBuildError) as error:
+-            builder.build(explain_metadata=explain_metadata, allow_scope_builders=False)
+-        assert error.value.report is not None
+-        # Deferred maps must validate the whole route even before dispatch.
+-        assert any(
+-            issue.code == "missing-component" and dispatcher_type.__qualname__ in (issue.root or "")
+-            for issue in error.value.report.errors
+-        )
++        if mode == "run":
++            with pytest.raises(ContainerBuildError) as error:
++                builder.build()
++            assert error.value.code == "missing-component"
++            assert "Dependency" in str(error.value)
++            assert error.value.report is None
++        else:
++            with builder.analyse() as analysis:
++                assert any(
++                    issue.code == "missing-component" and "Dependency" in issue.message
++                    for issue in analysis.report.errors
++                )
++                assert any(dispatcher_type.__qualname__ in (issue.root or "") for issue in analysis.report.errors)
+         assert activated == []
+         return
+ 
+-    async with builder.build(explain_metadata=explain_metadata, allow_scope_builders=False) as container:
++    async with (
++        builder.analyse() if mode == "analysis" else nullcontext(None) as container_analysis,
++        container_analysis.create_runtime() if container_analysis is not None else builder.build() as container,
++    ):
+         assert activated == []
+-        if explain_metadata:
++        if mode == "analysis":
+             assert all(
+                 root.component.kind not in (ComponentKind.provider_map, ComponentKind.provider)
+-                for root in container.graph.roots
++                for root in container_analysis.graph.roots
++                if root.resolvable
+             )
+             maps = [
+                 visit.component
+-                for visit in container.graph.walk()
++                for visit in container_analysis.graph.walk()
+                 if visit.root.requested_type is dispatcher_type and visit.component.kind is ComponentKind.provider_map
+             ]
+             assert len(maps) == 1
+@@ -178,7 +189,7 @@
+             assert provider.kind is ComponentKind.provider
+             assert provider.activation is ComponentActivation.deferred
+             (route,) = provider.dependencies
+-            assert not any(root.component.id == route.id for root in container.graph.roots)
++            assert not any(root.resolvable and root.component.id == route.id for root in container_analysis.graph.roots)
+             assert not any(component.id == route.id for component in container.components)
+             registrations = [item for item in container.selected_registrations if item.id == route.id]
+             assert len(registrations) == 1
+@@ -294,10 +305,10 @@
+     message = {Command: C, Query: Q, Event: E}[message_type]
+     builder = ContainerBuilder()
+     builder.apply_bundle(bundle_type([message]))
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-    assert exception.value.report is not None
+-    assert code in {issue.code for issue in exception.value.report.errors}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++    assert exception.report is not None
++    assert code in {issue.code for issue in exception.report.errors}
+ 
+ 
+ @pytest.mark.asyncio
+@@ -563,15 +574,15 @@
+ 
+     builder = ContainerBuilder()
+     builder.apply_bundle(bundle_type([Message]))
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-    assert exception.value.report is not None
+-    assert "missing-component" in {issue.code for issue in exception.value.report.errors}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++    assert exception.report is not None
++    assert "missing-component" in {issue.code for issue in exception.report.errors}
+ 
+ 
+ @pytest.mark.parametrize("dispatcher_first", [True, False])
+-@pytest.mark.parametrize("explain_metadata", [True, False])
+-async def test_separate_command_groups_share_one_dispatcher(dispatcher_first, explain_metadata):
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++async def test_separate_command_groups_share_one_dispatcher(dispatcher_first, mode):
+     class FirstCommand(Command):
+         pass
+ 
+@@ -599,15 +610,10 @@
+     builder.apply_bundle(first_group)
+     builder.apply_bundle(RegisterCommandDispatcherBundle())
+ 
+-    if not explain_metadata:
+-        # Operation groups install deferred UoW heuristics; RC4 requires their
+-        # graph metadata instead of silently discarding validation-only rules.
+-        with pytest.raises(ValueError, match="validation-only rules require explain_metadata=True"):
+-            builder.build(explain_metadata=False, allow_scope_builders=False)
+-        assert calls == []
+-        return
+-
+-    async with builder.build(explain_metadata=explain_metadata, allow_scope_builders=False) as container:
++    async with (
++        builder.analyse() if mode == "analysis" else nullcontext(None) as container_analysis,
++        container_analysis.create_runtime() if container_analysis is not None else builder.build() as container,
++    ):
+         async with container.new_scope() as scope:
+             dispatchers = await scope.resolve_async(list[CommandDispatcher])
+             assert len(dispatchers) == 1
+@@ -619,8 +625,8 @@
+ 
+ @pytest.mark.parametrize("family", ["query", "event", "reply", "query_result"])
+ @pytest.mark.parametrize("dispatcher_first", [True, False])
+-@pytest.mark.parametrize("explain_metadata", [True, False])
+-async def test_separate_operation_groups_share_one_dispatcher(family, dispatcher_first, explain_metadata):
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++async def test_separate_operation_groups_share_one_dispatcher(family, dispatcher_first, mode):
+     class R(QueryResult):
+         value: str
+ 
+@@ -743,15 +749,10 @@
+     builder.apply_bundle(first_group)
+     builder.apply_bundle(dispatcher_bundle())
+ 
+-    if not explain_metadata:
+-        # Operation groups install deferred UoW heuristics; RC4 requires their
+-        # graph metadata instead of silently discarding validation-only rules.
+-        with pytest.raises(ValueError, match="validation-only rules require explain_metadata=True"):
+-            builder.build(explain_metadata=False, allow_scope_builders=False)
+-        assert calls == []
+-        return
+-
+-    async with builder.build(explain_metadata=explain_metadata, allow_scope_builders=False) as container:
++    async with (
++        builder.analyse() if mode == "analysis" else nullcontext(None) as container_analysis,
++        container_analysis.create_runtime() if container_analysis is not None else builder.build() as container,
++    ):
+         async with container.new_scope() as scope:
+             dispatchers = await scope.resolve_async(list[dispatcher_type])
+             assert len(dispatchers) == 1
+@@ -766,12 +767,8 @@
+ 
+ 
+ @pytest.mark.parametrize("family", ["command", "reply"])
+-@pytest.mark.parametrize("diagnostics", [False, True])
+-@pytest.mark.parametrize("explain_metadata", [True, False])
+-@pytest.mark.parametrize("allow_scope_builders", [True, False])
+-async def test_consumer_registry_discovers_only_selected_closed_private_routes(
+-    family, diagnostics, explain_metadata, allow_scope_builders
+-):
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++async def test_consumer_registry_discovers_only_selected_closed_private_routes(family, mode):
+     from bark_core.application.commands.messaging import (
+         create_command_consumer_registry,
+         create_reply_consumer_registry,
+@@ -819,12 +816,12 @@
+     builder.register(handler[Inbound], Handler)
+     routes(builder, (Inbound,))
+     dead = builder.register(route, typed_route[ProducerOnly], root_policy="dependency_only")
+-    async with builder.build(
+-        provider_roots=(),
+-        diagnostics=diagnostics,
+-        explain_metadata=explain_metadata,
+-        allow_scope_builders=allow_scope_builders,
+-    ) as container:
++    builder.register(handler[ProducerOnly], Handler, root_policy="dependency_only")
++    builder.set_provider_roots(())
++    async with (
++        builder.analyse() if mode == "analysis" else nullcontext(None) as container_analysis,
++        container_analysis.create_runtime() if container_analysis is not None else builder.build() as container,
++    ):
+         assert not container.has_component(route)
+         assert dead not in {item.id for item in container.selected_registrations}
+         selected_routes = [item for item in container.selected_registrations if item.service_type is route]
+@@ -837,3 +834,51 @@
+             message = Inbound()
+             await (await scope.resolve_async(dispatcher)).dispatch(message)
+     assert calls == [message]
++
++
++@pytest.mark.parametrize("family", ["command", "reply"])
++async def test_consumer_catalogue_has_the_same_semantic_entries_in_run_and_analysis(family):
++    from bark_core.application.commands.messaging import (
++        create_command_consumer_registry,
++        create_reply_consumer_registry,
++    )
++    from bark_core.messaging import messaging_type
++
++    base = Command if family == "command" else Reply
++    Inbound = messaging_type(name_override=f"{family}-equivalent")(type("Inbound", (base,), {}))
++    calls = []
++
++    class Handler:
++        async def handle(self, message):
++            calls.append(message)
++            if family == "command":
++                return CommandResult.from_command(message)
++
++    handler, routes, dispatcher, registry = {
++        "command": (CommandHandler, _register_command_routes, CommandDispatcher, create_command_consumer_registry),
++        "reply": (ReplyHandler, _register_reply_routes, ReplyDispatcher, create_reply_consumer_registry),
++    }[family]
++    catalogues = []
++    for mode in ("run", "analysis"):
++        builder = ContainerBuilder()
++        handler_id = builder.register(handler[Inbound], Handler)
++        routes(builder, (Inbound,))
++        builder.set_provider_roots(())
++        async with (
++            builder.analyse() if mode == "analysis" else nullcontext(None) as container_analysis,
++            container_analysis.create_runtime() if container_analysis is not None else builder.build() as container,
++            container.new_scope() as scope,
++        ):
++            entries = container.selected_registrations
++            assert any(entry.id == handler_id and entry.service_type == handler[Inbound] for entry in entries)
++            catalogues.append(
++                {(entry.service_type, entry.implementation_type, entry.name, entry.tags) for entry in entries}
++            )
++            contract = registry(scope)
++            assert getattr(contract, f"{family}_types") == (Inbound,)
++            contract.validate()
++            message = Inbound()
++            await (await scope.resolve_async(dispatcher)).dispatch(message)
++            assert calls[-1] is message
++    assert catalogues[0] == catalogues[1]
++    assert len(calls) == 2
+--- a/tests/unit/bundles/test_compiled_dispatchers.py
++++ b/tests/unit/bundles/test_compiled_dispatchers.py
+@@ -1,3 +1,4 @@
++import re
+ from contextlib import asynccontextmanager
+ from datetime import UTC, datetime
+ from functools import partial
+@@ -9,8 +10,8 @@
+     ComponentActivation,
+     ComponentKind,
+     ContainerBuilder,
+-    ContainerBuildError,
+     ProviderScopeClosedError,
++    ScopeBuilder,
+ )
+ 
+ from bark_core.application import (
+@@ -155,8 +156,11 @@
+ 
+     builder = ContainerBuilder()
+     builder.apply_bundle(RegisterCommandsBundle(handler_types=[OuterHandler, InnerHandler]))
+-    with pytest.raises(ContainerBuildError, match="circular-dependency"):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "circular-dependency", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+ 
+ @pytest.mark.asyncio
+@@ -279,8 +283,8 @@
+ 
+     missing = ContainerBuilder()
+     _command_routes([C])(missing)
+-    with pytest.raises(ContainerBuildError):
+-        missing.build()
++    analysis = missing.analyse()
++    assert not analysis.report.is_valid
+ 
+     duplicate = ContainerBuilder()
+     duplicate.register(CommandHandler[C], H)
+@@ -373,12 +377,13 @@
+     builder = ContainerBuilder()
+     builder.register(CommandHandler[C], H)
+     _command_routes([C])(builder)
+-    container = builder.build()
+-    visits = tuple(container.graph.walk())
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
++    visits = tuple(container_analysis.graph.walk())
+     dispatcher_visit = next(visit for visit in visits if visit.root.requested_type is CommandDispatcher)
+     path_visits = [
+         visit
+-        for visit in container.graph.walk()
++        for visit in container_analysis.graph.walk()
+         if visit.root.requested_type is CommandDispatcher and visit.components[-1].service_type == CommandHandler[C]
+     ]
+     assert path_visits
+@@ -452,13 +457,14 @@
+     _command_routes([C])(builder)
+     _query_routes([Q])(builder)
+     _event_routes([E])(builder)
+-    container = builder.build()
+-    child = container.new_scope_builder()
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
++    child = ScopeBuilder(container, composition=container_analysis.composition)
+     child.register(CommandHandler[D], AddedCommandHandler)
+     child.apply_bundle(RegisterCommandsBundle(handler_types=[ChildCommandHandler]))
+     child.apply_bundle(RegisterQueriesBundle(handler_types=[ChildQueryHandler]))
+     child.apply_bundle(RegisterEventsBundle(handler_types=[ExtraEventImpl]))
+-    async with child.build() as scope:
++    async with child.analyse() as scope_analysis, scope_analysis.create_runtime() as scope:
+         command_dispatcher = await scope.resolve_async(CommandDispatcher)
+         query_dispatcher = await scope.resolve_async(QueryDispatcher)
+         event_dispatcher = await scope.resolve_async(EventDispatcher)
+@@ -471,10 +477,10 @@
+         await event_dispatcher.dispatch(E(created_at=datetime.now(UTC)))
+         assert result.value == 2
+         assert result.query_id == query.query_id
+-        nested = scope.new_scope_builder()
++        nested = ScopeBuilder(scope, composition=scope_analysis.composition)
+         nested.register(CommandHandler[D], AddedCommandHandler)
+         nested.apply_bundle(_command_routes([D]))
+-        async with nested.build() as nested_scope:
++        async with nested.analyse() as nested_scope_analysis, nested_scope_analysis.create_runtime() as nested_scope:
+             dispatcher = await nested_scope.resolve_async(CommandDispatcher)
+             await dispatcher.dispatch(C())
+             await dispatcher.dispatch(D())
+--- a/tests/unit/bundles/test_component_selectors.py
++++ b/tests/unit/bundles/test_component_selectors.py
+@@ -1,10 +1,12 @@
++import re
++
+ """Bundle selectors compose criteria and retain exact dependency identities."""
+ 
+ from unittest.mock import create_autospec, patch
+ 
+ import clean_ioc.component_filters as cf
+ import pytest
+-from clean_ioc import ComponentSelector, ContainerBuilder, ContainerBuildError, Tag
++from clean_ioc import ComponentSelector, ContainerBuilder, Tag
+ 
+ from bark_core.application import (
+     DynamoDbSagaStorage,
+@@ -124,8 +126,11 @@
+             session_selector=ComponentSelector(tags=[Tag("missing")]),
+         )
+     )
+-    with pytest.raises(ContainerBuildError, match="missing-component"):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "missing-component", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+ 
+ def test_lock_policy_selects_locker_and_handler_by_tags():
+@@ -321,10 +326,10 @@
+             handler_selector=ComponentSelector(predicate=lambda _: False),
+         )
+     )
+-    with pytest.raises(ContainerBuildError) as error:
+-        builder.build()
+-    assert error.value.report is not None
+-    assert "uow-policy-conflict" in {issue.code for issue in error.value.report.errors}
++    error = builder.analyse()
++    assert not error.report.is_valid
++    assert error.report is not None
++    assert "uow-policy-conflict" in {issue.code for issue in error.report.errors}
+ 
+ 
+ def test_reusing_same_predicate_policy_installs_one_transaction_boundary():
+--- a/tests/unit/bundles/test_datadog.py
++++ b/tests/unit/bundles/test_datadog.py
+@@ -1,3 +1,4 @@
++import re
+ from collections.abc import Sequence
+ from contextlib import asynccontextmanager
+ from datetime import datetime, timedelta
+@@ -6,7 +7,7 @@
+ import clean_ioc.component_filters as cf
+ import pytest
+ from assertive import was_called_with
+-from clean_ioc import CannotResolveError, ContainerBuilder, ContainerBuildError
++from clean_ioc import CannotResolveError, ContainerBuilder
+ from ddtrace.trace import tracer
+ from pydantic import BaseModel
+ 
+@@ -564,8 +565,12 @@
+     builder.register(Tracer, instance=RecordingTracer())
+     builder.register(Tracer, instance=RecordingTracer())
+ 
+-    with pytest.raises(ContainerBuildError, match="operation-handler-tracer-cardinality"):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "operation-handler-tracer-cardinality",
++        "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors),
++    )
+ 
+ 
+ async def test_tracing_policy_uses_factory_metadata_without_activating_during_build():
+--- a/tests/unit/bundles/test_decorator_templates.py
++++ b/tests/unit/bundles/test_decorator_templates.py
+@@ -7,7 +7,7 @@
+ import clean_ioc.component_filters as cf
+ import pytest
+ from assertive import was_awaited_once, was_not_awaited
+-from clean_ioc import ComponentSelector, ContainerBuilder, ContainerBuildError, DerivedServices, select
++from clean_ioc import ComponentSelector, ContainerBuilder, DerivedServices, select
+ from pydantic import BaseModel
+ from sqlalchemy import column, insert, table, text
+ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+@@ -110,10 +110,10 @@
+             "second": select(cf.with_name("second")),
+         },
+     )
+-    async with builder.build() as container:
++    async with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
+         # Database bundles installed exactly one SQL family policy even when
+         # another caller declared it before any sources existed.
+-        decisions = container.graph.explain_template_sources()
++        decisions = container_analysis.graph.explain_template_sources()
+         chosen = [decision for decision in decisions if decision.selected]
+         sql_chosen = [decision for decision in chosen if decision.source_registration_id != dynamo_source]
+         assert len(chosen) == 3
+@@ -213,7 +213,8 @@
+         pass
+ 
+     builder.register(service, Disabled, name="disabled", groups=[operation_handlers])
+-    container = builder.build()
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
+     member = container.resolve(service, filter=cf.with_name("member"))
+     nonmember = container.resolve(service, filter=cf.with_name("nonmember"))
+     disabled = container.resolve(service, filter=cf.with_name("disabled"))
+@@ -221,8 +222,8 @@
+     assert isinstance(nonmember, UnitOfWorkOperationHandlerDecorator) is derived
+     assert isinstance(disabled, Disabled)
+     # Inspection captures deliberate exclusions without replaying callbacks.
+-    roots = [root for root in container.graph.roots if root.requested_type == service]
+-    decision = container.graph.explain_decorators(
++    roots = [root for root in container_analysis.graph.roots if root.requested_type == service]
++    decision = container_analysis.graph.explain_decorators(
+         next(root.component for root in roots if root.component.name == "nonmember")
+     )
+     if not derived:
+@@ -238,10 +239,10 @@
+         builder.remove_decorator_template(policy.template_registration.template_id)
+     else:
+         builder.patch_decorator_template(policy.template_registration.template_id, source_filter=lambda _: False)
+-    with pytest.raises(ContainerBuildError) as error:
+-        builder.build()
+-    assert error.value.report is not None
+-    assert "uow-missing-policy" in {issue.code for issue in error.value.report.errors}
++    error = builder.analyse()
++    assert not error.report.is_valid
++    assert error.report is not None
++    assert "uow-missing-policy" in {issue.code for issue in error.report.errors}
+ 
+ 
+ def test_deferred_data_protection_discovery_contributes_after_policy_declaration():
+@@ -288,9 +289,10 @@
+         Writer,
+         groups=[] if exclusion == "nonmember" else [operation_handlers],
+     )
+-    container = builder.build()
+-    assert not any(issue.code == "uow-missing-policy" for issue in container.build_report.errors)
+-    assert "uow-sqlalchemy-write-without-boundary" in {issue.code for issue in container.validation_report().errors}
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
++    assert not any(issue.code == "uow-missing-policy" for issue in container_analysis.report.errors)
++    assert "uow-sqlalchemy-write-without-boundary" in {issue.code for issue in container_analysis.report.errors}
+ 
+ 
+ def test_template_handle_preserves_position_and_can_intentionally_exclude_a_member():
+--- a/tests/unit/bundles/test_dispatcher_compilation_budget.py
++++ b/tests/unit/bundles/test_dispatcher_compilation_budget.py
+@@ -3,8 +3,7 @@
+ from types import new_class
+ from unittest.mock import create_autospec
+ 
+-import pytest
+-from clean_ioc import CompilationBudget, ContainerBuilder, ContainerBuildError
++from clean_ioc import CompilationBudget, ContainerBuilder
+ 
+ from bark_core.application import (
+     CommandDispatcher,
+@@ -67,9 +66,9 @@
+ 
+ 
+ def test_missing_saga_dependency_retains_diagnostics_with_bounded_compilation():
+-    with pytest.raises(ContainerBuildError) as error:
+-        _builder(missing_storage=True).build(budget=CompilationBudget(graph_occurrences=100_000))
+-    assert error.value.report is not None
+-    codes = {issue.code for issue in error.value.report.errors}
++    error = _builder(missing_storage=True).analyse(budget=CompilationBudget(graph_occurrences=100_000))
++    assert not error.report.is_valid
++    assert error.report is not None
++    codes = {issue.code for issue in error.report.errors}
+     assert "compilation-budget-exceeded" not in codes
+     assert "missing-component" in codes
+--- a/tests/unit/bundles/test_event_sourcing.py
++++ b/tests/unit/bundles/test_event_sourcing.py
+@@ -1,8 +1,9 @@
++import re
+ from unittest.mock import create_autospec
+ 
+ import clean_ioc.component_filters as cf
+ import pytest
+-from clean_ioc import ComponentSelector, ContainerBuilder, ContainerBuildError
++from clean_ioc import ComponentSelector, ContainerBuilder
+ 
+ from bark_core.aws.dynamodb import DynamoDbSession, DynamoDbTableNameResolver
+ from bark_core.bark_environment import DeploymentConfig
+@@ -145,8 +146,12 @@
+     builder.apply_bundle(RegisterDynamoDbSnapshotStore(DynamoSnapshotStoreConfig(name="first")))
+     builder.apply_bundle(RegisterDynamoDbSnapshotStore(DynamoSnapshotStoreConfig(name="second")))
+ 
+-    with pytest.raises(ContainerBuildError, match="event-storage-registration-conflict"):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "event-storage-registration-conflict",
++        "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors),
++    )
+ 
+ 
+ def test_repository_consumes_selected_stores_without_creating_session():
+@@ -217,10 +222,10 @@
+     conflicting.register(SnapshotStore, instance=create_autospec(SnapshotStore, instance=True))
+     conflicting.apply_bundle(RegisterEventSourcingRepositoryBundle(repository_type=DemoRepository))
+     conflicting.apply_bundle(RegisterEventSourcingRepositoryBundle(repository_type=DemoRepository, auto_snapshot=True))
+-    with pytest.raises(ContainerBuildError) as exception:
+-        conflicting.build()
+-    assert exception.value.report is not None
+-    assert "event-repository-registration-conflict" in {issue.code for issue in exception.value.report.errors}
++    exception = conflicting.analyse()
++    assert not exception.report.is_valid
++    assert exception.report is not None
++    assert "event-repository-registration-conflict" in {issue.code for issue in exception.report.errors}
+ 
+ 
+ @pytest.mark.parametrize("session_name", [None, "business"])
+@@ -255,8 +260,11 @@
+         )
+     missing_session = ContainerBuilder()
+     missing_session.apply_bundle(bundle)
+-    with pytest.raises(ContainerBuildError, match="missing-component"):
+-        missing_session.build()
++    analysis = missing_session.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "missing-component", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+     builder = ContainerBuilder()
+     selected = create_autospec(DynamoDbSession, instance=True)
+--- a/tests/unit/bundles/test_event_store.py
++++ b/tests/unit/bundles/test_event_store.py
+@@ -3,7 +3,7 @@
+ 
+ import clean_ioc.component_filters as cf
+ import pytest
+-from clean_ioc import ComponentSelector, ContainerBuilder, ContainerBuildError, select
++from clean_ioc import ComponentSelector, ContainerBuilder, select
+ from redis.asyncio import Redis as AsyncRedis
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+@@ -759,10 +759,10 @@
+     conflicting.register(DynamoDbSession, instance=create_autospec(DynamoDbSession, instance=True))
+     conflicting.apply_bundle(RegisterDynamoDbEventStore(config))
+     conflicting.apply_bundle(RegisterDynamoDbEventStore(DynamoEventStoreConfig(name="other")))
+-    with pytest.raises(ContainerBuildError) as exception:
+-        conflicting.build()
+-    assert exception.value.report is not None
+-    assert "event-storage-registration-conflict" in {issue.code for issue in exception.value.report.errors}
++    exception = conflicting.analyse()
++    assert not exception.report.is_valid
++    assert exception.report is not None
++    assert "event-storage-registration-conflict" in {issue.code for issue in exception.report.errors}
+ 
+ 
+ def test_conflicting_default_iterators_fail_validation():
+@@ -773,10 +773,10 @@
+     builder.apply_bundle(RegisterEventStreamIterator())
+     builder.apply_bundle(RegisterEventStreamIterator(checkpoint_store_selector=ComponentSelector(name="other")))
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-    assert exception.value.report is not None
+-    assert "event-storage-registration-conflict" in {issue.code for issue in exception.value.report.errors}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++    assert exception.report is not None
++    assert "event-storage-registration-conflict" in {issue.code for issue in exception.report.errors}
+ 
+ 
+ def test_sqlalchemy_checkpoints_can_follow_dynamodb_event_store_at_default_name():
+--- a/tests/unit/bundles/test_fastapi.py
++++ b/tests/unit/bundles/test_fastapi.py
+@@ -1,9 +1,10 @@
+ import asyncio
++import re
+ from unittest.mock import create_autospec, patch
+ 
+ import clean_ioc.component_filters as cf
+ import pytest
+-from clean_ioc import ComponentSelector, ContainerBuilder, ContainerBuildError
++from clean_ioc import ComponentSelector, ContainerBuilder
+ from clean_ioc.ext.fastapi import Resolve, install_fastapi
+ from fastapi import FastAPI, WebSocket
+ from fastapi.testclient import TestClient
+@@ -544,8 +545,12 @@
+     for bundle in (websocket_bundle, http_bundle) if websocket_first else (http_bundle, websocket_bundle):
+         builder.apply_bundle(bundle)
+ 
+-    with pytest.raises(ContainerBuildError, match="websocket-command-handler-transport-overlap"):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "websocket-command-handler-transport-overlap",
++        "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors),
++    )
+ 
+ 
+ def test_websocket_composition_rejects_multiple_handlers_for_one_command():
+@@ -564,8 +569,12 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError, match="websocket-command-handler-cardinality"):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "websocket-command-handler-cardinality",
++        "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors),
++    )
+ 
+ 
+ def test_websocket_session_opens_fresh_command_scopes_and_reuses_its_connection_writer(monkeypatch):
+--- a/tests/unit/bundles/test_http.py
++++ b/tests/unit/bundles/test_http.py
+@@ -4,7 +4,7 @@
+ import clean_ioc.component_filters as cf
+ import httpx2
+ import pytest
+-from clean_ioc import ContainerBuilder
++from clean_ioc import ContainerBuilder, ScopeBuilder
+ 
+ from bark_core.auth import FusionauthGatewayClientConfig, FusionauthGatewayJwtTokenIssuer, JwtTokenIssuer
+ from bark_core.bark_metadata import BarkMetadata
+@@ -209,22 +209,25 @@
+     builder = ContainerBuilder()
+     builder.apply_bundle(RegisterScopedAsyncHttpClientBundle(client_name="root"))
+ 
+-    async with builder.build() as container:
++    async with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
+         transport = await container.resolve_async(httpx2.AsyncBaseTransport)
+         async with container.new_scope() as root_scope:
+             root_client = await root_scope.resolve_async(httpx2.AsyncClient, filter=cf.with_name("root"))
+             root_client.headers["X-Owner"] = "root"
+             for _ in range(2):
+-                child_builder = container.new_scope_builder()
++                child_builder = ScopeBuilder(container, composition=container_analysis.composition)
+                 child_builder.apply_bundle(RegisterSimpleHttpClientBundle(client_name="child", use_bark_metadata=False))
+-                async with child_builder.build() as child:
++                async with child_builder.analyse() as child_analysis, child_analysis.create_runtime() as child:
+                     assert await child.resolve_async(httpx2.AsyncBaseTransport) is transport
+                     client = await child.resolve_async(httpx2.AsyncClient, filter=cf.with_name("child"))
+                     assert (await client.get("https://example.test/state")).json() == {"cookie": None, "owner": None}
+                     client.headers["X-Owner"] = "child"
+-                    grandchild_builder = child.new_scope_builder()
++                    grandchild_builder = ScopeBuilder(child, composition=child_analysis.composition)
+                     grandchild_builder.apply_bundle(RegisterScopedAsyncHttpClientBundle(client_name="grandchild"))
+-                    async with grandchild_builder.build() as grandchild:
++                    async with (
++                        grandchild_builder.analyse() as grandchild_analysis,
++                        grandchild_analysis.create_runtime() as grandchild,
++                    ):
+                         assert await grandchild.resolve_async(httpx2.AsyncBaseTransport) is transport
+                         grandchild_client = await grandchild.resolve_async(
+                             httpx2.AsyncClient, filter=cf.with_name("grandchild")
+@@ -261,7 +264,7 @@
+ 
+     async def check(builder):
+         configure(builder)
+-        async with builder.build() as scope:
++        async with builder.analyse() as scope_analysis, scope_analysis.create_runtime() as scope:
+             assert await scope.resolve_async(httpx2.AsyncBaseTransport) is custom
+             client = await scope.resolve_async(httpx2.AsyncClient, filter=cf.with_name("custom"))
+             assert (await client.get("https://example.test/state")).status_code == 200
+@@ -272,8 +275,8 @@
+     root_builder = ContainerBuilder()
+     if in_child:
+         root_builder.apply_bundle(RegisterScopedAsyncHttpClientBundle(client_name="root"))
+-        async with root_builder.build() as container:
+-            await check(container.new_scope_builder())
++        async with root_builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
++            await check(ScopeBuilder(container, composition=container_analysis.composition))
+     else:
+         await check(root_builder)
+ 
+@@ -294,16 +297,19 @@
+ 
+ 
+ async def test_http_first_introduced_in_sibling_child_builders_owns_each_transport(transports):
+-    async with ContainerBuilder().build() as container:
++    async with ContainerBuilder().analyse() as container_analysis, container_analysis.create_runtime() as container:
+         for index in range(2):
+-            child_builder = container.new_scope_builder()
++            child_builder = ScopeBuilder(container, composition=container_analysis.composition)
+             child_builder.apply_bundle(RegisterScopedAsyncHttpClientBundle())
+-            async with child_builder.build() as child:
++            async with child_builder.analyse() as child_analysis, child_analysis.create_runtime() as child:
+                 transport = await child.resolve_async(httpx2.AsyncBaseTransport)
+                 client = await child.resolve_async(httpx2.AsyncClient)
+-                grandchild_builder = child.new_scope_builder()
++                grandchild_builder = ScopeBuilder(child, composition=child_analysis.composition)
+                 grandchild_builder.apply_bundle(RegisterScopedAsyncHttpClientBundle(client_name="nested"))
+-                async with grandchild_builder.build() as grandchild:
++                async with (
++                    grandchild_builder.analyse() as grandchild_analysis,
++                    grandchild_analysis.create_runtime() as grandchild,
++                ):
+                     assert await grandchild.resolve_async(httpx2.AsyncBaseTransport) is transport
+                     nested = await grandchild.resolve_async(httpx2.AsyncClient, filter=cf.with_name("nested"))
+                     assert (await nested.get("https://example.test/state")).status_code == 200
+@@ -328,7 +334,7 @@
+         builder.apply_bundle(RegisterScopedAsyncHttpClientBundle(client_name="new"))
+         config = Config()
+         builder.register(Config, instance=config)
+-        async with builder.build() as scope:
++        async with builder.analyse() as scope_analysis, scope_analysis.create_runtime() as scope:
+             assert scope.resolve(Consumer).config is config
+             client = await scope.resolve_async(httpx2.AsyncClient, filter=cf.with_name("new"))
+             assert (await client.get("https://example.test/state")).status_code == 200
+@@ -336,8 +342,8 @@
+     builder = ContainerBuilder()
+     if in_child:
+         builder.apply_bundle(RegisterScopedAsyncHttpClientBundle(client_name="root"))
+-        async with builder.build() as container:
+-            await check(container.new_scope_builder())
++        async with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
++            await check(ScopeBuilder(container, composition=container_analysis.composition))
+             assert transports[0].close_count == 0
+     else:
+         await check(builder)
+@@ -354,11 +360,11 @@
+     builder = ContainerBuilder()
+     builder.register(httpx2.AsyncBaseTransport, factory=custom_transport, lifespan="singleton")
+     builder.apply_bundle(RegisterScopedAsyncHttpClientBundle(client_name="root"))
+-    async with builder.build() as container:
++    async with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
+         assert await container.resolve_async(httpx2.AsyncBaseTransport) is custom
+-        child_builder = container.new_scope_builder()
++        child_builder = ScopeBuilder(container, composition=container_analysis.composition)
+         child_builder.apply_bundle(RegisterScopedAsyncHttpClientBundle(client_name="child"))
+-        async with child_builder.build() as child:
++        async with child_builder.analyse() as child_analysis, child_analysis.create_runtime() as child:
+             assert await child.resolve_async(httpx2.AsyncBaseTransport) is custom
+             client = await child.resolve_async(httpx2.AsyncClient, filter=cf.with_name("child"))
+             assert (await client.get("https://example.test/state")).status_code == 200
+--- a/tests/unit/bundles/test_locking_policy.py
++++ b/tests/unit/bundles/test_locking_policy.py
+@@ -1,3 +1,5 @@
++import re
++
+ """Explicit, source-bound operation-handler locking policy."""
+ 
+ import asyncio
+@@ -9,7 +11,7 @@
+ 
+ import clean_ioc.component_filters as cf
+ import pytest
+-from clean_ioc import ComponentSelector, ContainerBuilder, ContainerBuildError
++from clean_ioc import ComponentSelector, ContainerBuilder
+ 
+ from bark_core.application import (
+     LockParameters,
+@@ -58,7 +60,8 @@
+     builder, policy, locker = _builder(policy_first=policy_first, locker_name=locker_name)
+     unrelated = create_autospec(DistributedLocker, instance=True)
+     builder.register(DistributedLocker, instance=unrelated, name="unrelated")
+-    container = builder.build()
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
+ 
+     selected = container.resolve(EventHandler[MockLockableEvent])
+     unselected = container.resolve(EventHandler[MockEvent])
+@@ -68,13 +71,13 @@
+     assert policy.template_registration is not None
+     selected_decisions = [
+         decision
+-        for decision in container.graph.explain_template_sources()
++        for decision in container_analysis.graph.explain_template_sources()
+         if decision.template_id == policy.template_registration.template_id and decision.selected
+     ]
+     assert len(selected_decisions) == 1
+     assert selected_decisions[0].source_registration_id == next(
+         root.component.id
+-        for root in container.graph.roots
++        for root in container_analysis.graph.roots
+         if root.requested_type is DistributedLocker and root.component.name == locker_name
+     )
+ 
+@@ -144,8 +147,11 @@
+     )
+     missing.apply_bundle(RegisterEventsBundle(handler_types=[MockEventHandler]))
+     missing.register(DistributedLocker, instance=create_autospec(DistributedLocker, instance=True), name="other")
+-    with pytest.raises(ContainerBuildError, match="missing-entrypoint"):
+-        missing.build()
++    analysis = missing.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "missing-entrypoint", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+     duplicate = ContainerBuilder()
+     duplicate.apply_bundle(
+@@ -156,8 +162,12 @@
+     duplicate.apply_bundle(RegisterEventsBundle(handler_types=[MockEventHandler]))
+     for _ in range(2):
+         duplicate.register(DistributedLocker, instance=create_autospec(DistributedLocker, instance=True))
+-    with pytest.raises(ContainerBuildError, match="ambiguous-selection|operation-handler-locker-cardinality"):
+-        duplicate.build()
++    analysis = duplicate.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "ambiguous-selection|operation-handler-locker-cardinality",
++        "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors),
++    )
+ 
+ 
+ def test_overlapping_policies_reject_double_acquisition():
+@@ -171,8 +181,12 @@
+                 locker_selector=ComponentSelector(name=name),
+             )
+         )
+-    with pytest.raises(ContainerBuildError, match="operation-handler-lock-cardinality"):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "operation-handler-lock-cardinality",
++        "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors),
++    )
+ 
+ 
+ def test_non_command_event_handlers_cannot_be_opted_in():
+@@ -191,8 +205,12 @@
+         )
+     )
+     builder.register(EventHandler[MockEvent], instance=MockEventHandler(), groups=[operation_handlers])
+-    with pytest.raises(ContainerBuildError, match="operation-handler-lock-target-missing"):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "operation-handler-lock-target-missing",
++        "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors),
++    )
+ 
+     builder = ContainerBuilder()
+     builder.register(DistributedLocker, instance=create_autospec(DistributedLocker, instance=True))
+--- a/tests/unit/bundles/test_messaging.py
++++ b/tests/unit/bundles/test_messaging.py
+@@ -1,3 +1,5 @@
++import re
++from contextlib import nullcontext
+ from datetime import datetime
+ from typing import cast
+ from unittest.mock import AsyncMock, create_autospec, patch
+@@ -5,7 +7,7 @@
+ import clean_ioc.component_filters as cf
+ import pytest
+ from assertive import contains, has_length, is_exact_type, was_awaited_once_with
+-from clean_ioc import CompilationProfiler, ContainerBuilder, ContainerBuildError
++from clean_ioc import CompilationProfiler, ContainerBuilder, ContainerBuildError, ScopeBuilder
+ from redis.asyncio import Redis as AsyncRedis
+ 
+ from bark_core.application import (
+@@ -318,20 +320,29 @@
+ 
+ 
+ def test_command_receiver_rejects_explicit_empty_command_set_at_build():
+-    with pytest.raises(Exception, match="empty-command-consumer"):
+-        _command_receiver_builder(accepted_command_types=()).build()
++    analysis = _command_receiver_builder(accepted_command_types=()).analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "empty-command-consumer", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+ 
+ def test_command_receiver_rejects_declared_command_without_handler_at_build():
+-    with pytest.raises(Exception, match="missing-component"):
+-        _command_receiver_builder(accepted_command_types=(RegistryInboundCommand,)).build()
++    analysis = _command_receiver_builder(accepted_command_types=(RegistryInboundCommand,)).analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "missing-component", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+ 
+ def test_command_receiver_rejects_duplicate_wire_identity_at_build():
+-    with pytest.raises(Exception, match="duplicate-command-wire-type"):
+-        _command_receiver_builder(
+-            handlers=(DuplicateInboundHandlerA, DuplicateInboundHandlerB),
+-        ).build()
++    analysis = _command_receiver_builder(
++        handlers=(DuplicateInboundHandlerA, DuplicateInboundHandlerB),
++    ).analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "duplicate-command-wire-type", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+ 
+ async def test_command_receiver_builds_registry_and_dispatch_route_from_direct_handler_registration():
+@@ -349,8 +360,11 @@
+     builder = _command_receiver_builder()
+     builder.register(CommandHandler[RegistryInboundCommand], RegistryInboundHandler)
+ 
+-    with pytest.raises(Exception, match="empty-command-consumer"):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "empty-command-consumer", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+ 
+ def test_command_receiver_registry_uses_discovered_handlers():
+@@ -368,18 +382,29 @@
+ def test_command_receiver_rejects_named_only_handler_at_build():
+     container = _command_receiver_builder(accepted_command_types=(RegistryInboundCommand,))
+     container.register(CommandHandler[RegistryInboundCommand], RegistryInboundHandler, name="named")
+-    with pytest.raises(Exception, match="missing-component"):
+-        container.build()
++    analysis = container.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "missing-component", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+ 
+ def test_reply_receiver_rejects_explicit_empty_reply_set_at_build():
+-    with pytest.raises(Exception, match="empty-reply-consumer"):
+-        _reply_receiver_builder(accepted_reply_types=()).build()
++    analysis = _reply_receiver_builder(accepted_reply_types=()).analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "empty-reply-consumer", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+ 
+ def test_reply_receiver_rejects_duplicate_wire_identity_at_build():
+-    with pytest.raises(Exception, match="duplicate-reply-wire-type"):
+-        _reply_receiver_builder(handlers=(DuplicateInboundReplyHandlerA, DuplicateInboundReplyHandlerB)).build()
++    analysis = _reply_receiver_builder(
++        handlers=(DuplicateInboundReplyHandlerA, DuplicateInboundReplyHandlerB)
++    ).analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "duplicate-reply-wire-type", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+ 
+ def test_reply_receiver_rejects_undecorated_explicit_type_at_build():
+@@ -390,8 +415,13 @@
+         async def handle(self, reply: UndecoratedReply) -> None:
+             pass
+ 
+-    with pytest.raises(Exception, match="missing-reply-wire-identity"):
+-        _reply_receiver_builder(handlers=(UndecoratedHandler,), accepted_reply_types=(UndecoratedReply,)).build()
++    analysis = _reply_receiver_builder(
++        handlers=(UndecoratedHandler,), accepted_reply_types=(UndecoratedReply,)
++    ).analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "missing-reply-wire-identity", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+ 
+ async def test_reply_receiver_builds_registry_and_dispatch_route_from_direct_handler_registration():
+@@ -441,10 +471,12 @@
+             calls.append("child")
+ 
+     builder = _reply_receiver_builder(handlers=(ParentHandler,))
+-    container = builder.build()
+-    child_builder = container.new_scope_builder()
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
++    child_builder = ScopeBuilder(container, composition=container_analysis.composition)
+     child_builder.apply_bundle(RegisterRepliesBundle(handler_types=[ChildHandler]))
+-    child = child_builder.build()
++    child_analysis = child_builder.analyse()
++    child = child_analysis.create_runtime()
+ 
+     dispatcher = await child.resolve_async(ReplyDispatcher)
+     await dispatcher.dispatch(RegistryInboundReply(value="overridden"))
+@@ -467,10 +499,12 @@
+             calls.append("child")
+ 
+     builder = _reply_receiver_builder(handlers=(ParentHandler,))
+-    container = builder.build()
+-    child_builder = container.new_scope_builder()
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
++    child_builder = ScopeBuilder(container, composition=container_analysis.composition)
+     child_builder.apply_bundle(RegisterRepliesBundle(handler_types=[ChildHandler]))
+-    child = child_builder.build()
++    child_analysis = child_builder.analyse()
++    child = child_analysis.create_runtime()
+ 
+     registry = child.resolve(ReplyConsumerRegistry, filter=cf.with_name("REPLY_CONSUMER_REGISTRY"))
+     assert registry.reply_types == (ChildReply, RegistryInboundReply)
+@@ -719,25 +753,30 @@
+     return builder
+ 
+ 
+-@pytest.mark.parametrize("explain_metadata", [True, False])
+-async def test_contextual_sender_stacks_compile_only_their_own_transport_dependencies(explain_metadata):
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++async def test_contextual_sender_stacks_compile_only_their_own_transport_dependencies(mode):
+     compiled_dependencies = set()
+ 
+     def record_dependency(component):
+         # An opaque late predicate observes actual compilation, including work
+         # later discarded by the transport's own eligibility predicate.
+         transport = component.parent
+-        assert transport is not None
++        if transport is None:
++            return False  # Analysis also checks unused dependency-only declarations.
+         sender = transport.parent
+-        assert sender is not None
++        if sender is None:
++            return False
+         compiled_dependencies.add((component.service_type, transport.tags, sender.tags))
+         return True
+ 
+     builder = _contextual_sender_builder(dependency_when=record_dependency)
+     profile = CompilationProfiler()
+-    async with builder.build(
+-        profile=profile, explain_metadata=explain_metadata, allow_scope_builders=False
+-    ) as container:
++    async with (
++        builder.analyse(profile=profile) if mode == "analysis" else nullcontext(None) as container_analysis,
++        (
++            container_analysis.create_runtime() if container_analysis is not None else builder.build(profile=profile)
++        ) as container,
++    ):
+         assert len(compiled_dependencies) == 8
+         selected_types = {item.service_type for item in container.selected_registrations}
+         dependency_types = {
+@@ -812,12 +851,17 @@
+ 
+ 
+ @pytest.mark.parametrize("missing_service", [SqsSender, SnsPublisher, EventBridgeSqsScheduleWriterOperations])
+-@pytest.mark.parametrize("explain_metadata", [True, False])
+-def test_contextual_sender_stacks_validate_selected_transport_dependencies(missing_service, explain_metadata):
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++def test_contextual_sender_stacks_validate_selected_transport_dependencies(missing_service, mode):
+     builder = _contextual_sender_builder(missing_service=missing_service)
+ 
+-    with pytest.raises(ContainerBuildError, match=missing_service.__name__):
+-        builder.build(explain_metadata=explain_metadata, allow_scope_builders=False)
++    if mode == "run":
++        with pytest.raises(ContainerBuildError, match=missing_service.__name__):
++            builder.build()
++    else:
++        with builder.analyse() as analysis:
++            assert not analysis.report.is_valid
++            assert any(missing_service.__name__ in issue.message for issue in analysis.report.errors)
+ 
+ 
+ @pytest.mark.parametrize(
+@@ -827,25 +871,36 @@
+     builder = ContainerBuilder()
+     builder.apply_bundle(MessageSendingViaAwsStackBundle(use_commands=use_commands, use_events=use_events))
+ 
+-    with pytest.raises(ContainerBuildError, match=missing_service):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(missing_service, "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors))
+ 
+ 
+ async def test_message_scheduling_uses_caller_supplied_infrastructure():
+-    builder = ContainerBuilder()
+     writer = create_autospec(EventBridgeSqsScheduleWriterOperations, instance=True, spec_set=True)
+     queue_urls = create_autospec(SqsQueueUrlResolver, instance=True, spec_set=True)
+     queue_arns = create_autospec(SqsQueueArnResolver, instance=True, spec_set=True)
+-    builder.register(SqsSender, instance=create_autospec(SqsSender, instance=True, spec_set=True))
+-    builder.register(SqsQueueUrlResolver, instance=queue_urls)
+-    builder.register(SqsQueueArnResolver, instance=queue_arns)
+-    builder.apply_bundle(
+-        MessageSendingViaAwsStackBundle(use_commands=True, use_scheduling=True, enable_datadog_tracing=False)
+-    )
+-
+-    with pytest.raises(ContainerBuildError, match="EventBridgeSqsScheduleWriterOperations"):
+-        builder.build()
+-
++
++    def fresh_builder():
++        builder = ContainerBuilder()
++        builder.register(SqsSender, instance=create_autospec(SqsSender, instance=True, spec_set=True))
++        builder.register(SqsQueueUrlResolver, instance=queue_urls)
++        builder.register(SqsQueueArnResolver, instance=queue_arns)
++        builder.apply_bundle(
++            MessageSendingViaAwsStackBundle(use_commands=True, use_scheduling=True, enable_datadog_tracing=False)
++        )
++
++        return builder
++
++    builder = fresh_builder()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "EventBridgeSqsScheduleWriterOperations",
++        "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors),
++    )
++
++    builder = fresh_builder()
+     builder.register(EventBridgeSqsScheduleWriterOperations, instance=writer)
+     async with builder.build() as container:
+         async with container.new_scope() as scope:
+@@ -1438,8 +1493,11 @@
+     builder.apply_bundle(RegisterMessageOperationDispatcherBundle("custom", FirstDispatcher))
+     builder.apply_bundle(RegisterMessageOperationDispatcherBundle("custom", SecondDispatcher))
+ 
+-    with pytest.raises(ContainerBuildError, match="provider-map-duplicate-key"):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        "provider-map-duplicate-key", "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors)
++    )
+ 
+ 
+ async def test_operation_receiver_dispatches_public_dispatcher_contribution():
+--- a/tests/unit/bundles/test_outbox.py
++++ b/tests/unit/bundles/test_outbox.py
+@@ -8,7 +8,7 @@
+ import clean_ioc.component_filters as cf
+ import pytest
+ from assertive import was_awaited, was_awaited_once_with
+-from clean_ioc import ComponentBuilder, ComponentSelector, ContainerBuilder, ContainerBuildError
++from clean_ioc import ComponentBuilder, ComponentSelector, ContainerBuilder, ScopeBuilder
+ from clean_ioc.bundles import BaseBundle
+ 
+ from bark_core.application import AsyncScheduleCanceller
+@@ -322,11 +322,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"uow-resource-instance-mismatch"}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"uow-resource-instance-mismatch"}
+ 
+ 
+ async def test_daemon_boundary_keeps_real_transports_private_and_does_not_repeat_root_name_decorators():
+@@ -382,7 +382,7 @@
+         == daemon_name
+     )
+ 
+-    async with builder.build() as container:
++    async with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
+         with container.new_scope() as scope:
+             sender = await scope.resolve_async(SqsSender)
+             publisher = await scope.resolve_async(SnsPublisher)
+@@ -406,7 +406,7 @@
+     assert type(daemon.executable._delivery._sns_publisher) is SnsTopicPublisher
+     boundary_manifest = next(
+         boundary
+-        for boundary in container.graph.manifest().data["boundaries"]
++        for boundary in container_analysis.graph.manifest().data["boundaries"]
+         if boundary["name"] == "payments-outbox-daemon"
+     )
+     assert boundary_manifest["uses"] == []
+@@ -487,11 +487,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"outbox-delivery-registration-conflict"}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"outbox-delivery-registration-conflict"}
+ 
+ 
+ def test_duplicate_worker_service_registrations_fail_build_validation():
+@@ -522,11 +522,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"outbox-worker-registration-conflict"}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"outbox-worker-registration-conflict"}
+ 
+ 
+ def test_scope_overlay_duplicate_worker_service_fails_build_validation():
+@@ -546,8 +546,9 @@
+             delivery_selector=ComponentSelector(name="payments"),
+         )
+     )
+-    root_container = root_builder.build()
+-    scope_builder = root_container.new_scope_builder()
++    root_container_analysis = root_builder.analyse()
++    root_container = root_container_analysis.create_runtime()
++    scope_builder = ScopeBuilder(root_container, composition=root_container_analysis.composition)
+     scope_builder.apply_bundle(
+         OutboxWorkerBundle(
+             service="payments",
+@@ -558,11 +559,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        scope_builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"outbox-worker-registration-conflict"}
++    exception = scope_builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"outbox-worker-registration-conflict"}
+ 
+ 
+ def test_scope_overlay_allows_one_worker_for_each_service():
+@@ -582,8 +583,9 @@
+             delivery_selector=ComponentSelector(name="payments"),
+         )
+     )
+-    root_container = root_builder.build()
+-    scope_builder = root_container.new_scope_builder()
++    root_container_analysis = root_builder.analyse()
++    root_container = root_container_analysis.create_runtime()
++    scope_builder = ScopeBuilder(root_container, composition=root_container_analysis.composition)
+     scope_builder.register(OutboxConfig, instance=OutboxConfig(service="search"), name="search")
+     scope_builder.register(
+         OutboxForwardingStore,
+@@ -600,7 +602,7 @@
+         )
+     )
+ 
+-    scope_builder.build()
++    scope_builder.analyse()
+ 
+ 
+ def test_scope_overlay_workers_for_distinct_services_cannot_share_daemon_name():
+@@ -621,8 +623,9 @@
+             daemon_name="outbox-delivery",
+         )
+     )
+-    root_container = root_builder.build()
+-    scope_builder = root_container.new_scope_builder()
++    root_container_analysis = root_builder.analyse()
++    root_container = root_container_analysis.create_runtime()
++    scope_builder = ScopeBuilder(root_container, composition=root_container_analysis.composition)
+     scope_builder.register(OutboxConfig, instance=OutboxConfig(service="search"), name="search")
+     scope_builder.register(
+         OutboxForwardingStore,
+@@ -640,11 +643,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        scope_builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"outbox-worker-daemon-name-conflict"}
++    exception = scope_builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"outbox-worker-daemon-name-conflict"}
+ 
+ 
+ def test_worker_bundle_identifier_keeps_delimiter_containing_services_distinct():
+@@ -734,11 +737,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"outbox-backend-registration-conflict"}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"outbox-backend-registration-conflict"}
+ 
+ 
+ def test_services_with_an_explicit_shared_dynamodb_table_fail_build_validation():
+@@ -753,11 +756,11 @@
+             )
+         )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"outbox-dynamodb-table-assignment-conflict"}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"outbox-dynamodb-table-assignment-conflict"}
+ 
+ 
+ def test_dynamodb_bundle_rejects_a_sqlalchemy_config_during_composition():
+@@ -778,8 +781,9 @@
+             session_selector=ComponentSelector(name="payments"),
+         )
+     )
+-    root_container = root_builder.build()
+-    scope_builder = root_container.new_scope_builder()
++    root_container_analysis = root_builder.analyse()
++    root_container = root_container_analysis.create_runtime()
++    scope_builder = ScopeBuilder(root_container, composition=root_container_analysis.composition)
+     scope_builder.apply_bundle(DynamoDbSessionBundle(connection_name="search", unit_of_work=False))
+     scope_builder.apply_bundle(
+         DynamoDbOutboxWriterBundle(
+@@ -788,11 +792,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        scope_builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"outbox-dynamodb-table-assignment-conflict"}
++    exception = scope_builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"outbox-dynamodb-table-assignment-conflict"}
+ 
+ 
+ @pytest.mark.parametrize("first_service", ["payments", "search"])
+@@ -810,11 +814,11 @@
+         )
+     builder.apply_bundle(AwsOutboxTransportBundle(writer_selector=ComponentSelector(name=first_service)))
+     builder.apply_bundle(AwsOutboxTransportBundle(writer_selector=ComponentSelector(name=second_service)))
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"outbox-transport-service-conflict"}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"outbox-transport-service-conflict"}
+ 
+ 
+ async def test_repeated_same_service_outbox_transport_is_complete_for_all_root_senders():
+@@ -854,11 +858,11 @@
+         builder.apply_bundle(outbox_bundle(writer_selector=ComponentSelector(name="payments")))
+         builder.apply_bundle(direct_bundle())
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"outbox-transport-direct-conflict"}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"outbox-transport-direct-conflict"}
+ 
+ 
+ @pytest.mark.parametrize("scheduler_first", [False, True])
+@@ -915,11 +919,11 @@
+     builder.apply_bundle(EventBridgeSchedulerWriterBundle())
+     builder.register(_SchedulerTransportProbe)
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {
+         "scheduler-transport-conflict",
+         "scheduler-canceller-conflict",
+     }
+--- a/tests/unit/bundles/test_outbox_daemon.py
++++ b/tests/unit/bundles/test_outbox_daemon.py
+@@ -1,3 +1,5 @@
++from clean_ioc import ScopeBuilder
++
+ """Outbox daemon composition and real host lifecycle integration."""
+ 
+ import asyncio
+@@ -9,7 +11,7 @@
+ import clean_ioc.component_filters as cf
+ import pytest
+ from assertive import was_awaited
+-from clean_ioc import ComponentBuilder, ComponentSelector, ContainerBuilder, ContainerBuildError
++from clean_ioc import ComponentBuilder, ComponentSelector, ContainerBuilder
+ from clean_ioc.bundles import BaseBundle
+ from fastapi import FastAPI
+ from fastapi.testclient import TestClient
+@@ -126,7 +128,7 @@
+ @pytest.mark.parametrize("enable_scheduler", [True, False])
+ async def test_bundle_registers_daemon_and_dependencies_on_the_supplied_builder(enable_scheduler):
+     builder, bundle, store, *_ = _composition(enable_scheduler=enable_scheduler)
+-    async with builder.build() as container:
++    async with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
+         daemon = await container.resolve_async(Daemon[ExecutionResult], filter=cf.with_name(bundle.daemon_name))
+         policy = container.resolve(DaemonHealthPolicy[ExecutionResult], filter=cf.with_name(bundle.daemon_name))
+         assert isinstance(policy, DaemonHealthPolicy)
+@@ -140,7 +142,7 @@
+         assert container.has_component(OutboxLeaseManager, filter=cf.with_name("orders"))
+         assert container.has_component(OutboxDelivery, filter=cf.with_name("orders"))
+         assert container.has_component(DaemonHealthReporter[ExecutionResult], filter=cf.with_name(bundle.daemon_name))
+-        assert container.graph.manifest().data["boundaries"] == []
++        assert container_analysis.graph.manifest().data["boundaries"] == []
+ 
+ 
+ @pytest.mark.parametrize("producer_first", [True, False])
+@@ -318,11 +320,11 @@
+         health_policy=policy,
+     )
+     builder.apply_bundle(bundle)
+-    with builder.build() as container:
++    with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
+         assert container.has_component(Daemon[ExecutionResult], filter=cf.with_name(bundle.daemon_name))
+         assert container.resolve(DaemonHealthPolicy[ExecutionResult], filter=cf.with_name(bundle.daemon_name)) is policy
+         assert container.resolve(OutboxForwardingStore, filter=cf.with_name("orders")) is store
+-        assert container.graph.manifest().data["boundaries"] == []
++        assert container_analysis.graph.manifest().data["boundaries"] == []
+ 
+ 
+ @dataclass(frozen=True)
+@@ -376,18 +378,29 @@
+ @pytest.mark.parametrize("owner", ["container", "scope"])
+ async def test_policy_bundles_can_extend_and_repair_the_same_builder_before_build(owner):
+     async with AsyncExitStack() as stack:
+-        builder = ContainerBuilder()
++        parent_analysis = None
++        parent = None
+         if owner == "scope":
+-            parent = await stack.enter_async_context(builder.build())
+-            builder = parent.new_scope_builder()
+-        builder, bundle, *_ = _composition(builder=builder)
+-        builder.apply_bundle(PollingPolicyBundle(bundle.daemon_name))
+-        with pytest.raises(ContainerBuildError, match="PollingSettings"):
+-            builder.build()
+-
++            parent_analysis = await stack.enter_async_context(ContainerBuilder().analyse())
++            parent = await stack.enter_async_context(parent_analysis.create_runtime())
++
++        def fresh_builder():
++            initial = (
++                ContainerBuilder() if parent is None else ScopeBuilder(parent, composition=parent_analysis.composition)
++            )
++            builder, bundle, *_ = _composition(builder=initial)
++            builder.apply_bundle(PollingPolicyBundle(bundle.daemon_name))
++            return builder, bundle
++
++        builder, bundle = fresh_builder()
++        with builder.analyse() as analysis:
++            assert not analysis.report.is_valid
++            assert any("PollingSettings" in issue.message for issue in analysis.report.errors)
++        builder, bundle = fresh_builder()
+         settings = PollingSettings(timedelta(seconds=5), timedelta(seconds=90))
+         builder.apply_bundle(PollingSettingsBundle(settings))
+-        container = await stack.enter_async_context(builder.build())
++        container_analysis = await stack.enter_async_context(builder.analyse())
++        container = await stack.enter_async_context(container_analysis.create_runtime())
+         daemon = await container.resolve_async(Daemon[ExecutionResult], filter=cf.with_name(bundle.daemon_name))
+         assert isinstance(daemon.wait_policy, MinimumWaitPolicy)
+         assert daemon.wait_policy.settings is settings
+@@ -396,7 +409,7 @@
+         policy = container.resolve(DaemonHealthPolicy[ExecutionResult], filter=cf.with_name(bundle.daemon_name))
+         assert policy.startup_timeout == settings.startup_timeout
+         assert container.resolve(PollingSettings) is settings
+-        assert container.graph.manifest().data["boundaries"] == []
++        assert container_analysis.graph.manifest().data["boundaries"] == []
+ 
+ 
+ @pytest.mark.parametrize("backend", ["dynamodb", "sqlalchemy"])
+@@ -438,7 +451,7 @@
+     builder, *_ = _composition(outbox_config=config)
+     builder.register(AsyncSession, instance=create_autospec(AsyncSession, instance=True))
+     builder.apply_bundle(SqlAlchemyOutboxWriterBundle(config=config.model_copy(update={"concurrency": 1})))
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-    assert exception.value.report is not None
+-    assert "outbox-backend-registration-conflict" in {issue.code for issue in exception.value.report.errors}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++    assert exception.report is not None
++    assert "outbox-backend-registration-conflict" in {issue.code for issue in exception.report.errors}
+--- a/tests/unit/bundles/test_outbox_dynamodb.py
++++ b/tests/unit/bundles/test_outbox_dynamodb.py
+@@ -4,7 +4,7 @@
+ 
+ import clean_ioc.component_filters as cf
+ import pytest
+-from clean_ioc import ComponentSelector, ContainerBuilder, ContainerBuildError, Tag
++from clean_ioc import ComponentSelector, ContainerBuilder, Tag
+ 
+ from bark_core.aws.dynamodb import (
+     DynamoDbClient,
+@@ -128,10 +128,10 @@
+             session_selector=selector,
+         )
+     )
+-    with pytest.raises(ContainerBuildError) as error:
+-        builder.build()
+-    assert error.value.report is not None
+-    assert "missing-component" in {issue.code for issue in error.value.report.errors}
++    error = builder.analyse()
++    assert not error.report.is_valid
++    assert error.report is not None
++    assert "missing-component" in {issue.code for issue in error.report.errors}
+ 
+ 
+ @pytest.mark.parametrize("selector", [None, "business"])
+--- a/tests/unit/bundles/test_outbox_sqlalchemy.py
++++ b/tests/unit/bundles/test_outbox_sqlalchemy.py
+@@ -9,7 +9,7 @@
+ 
+ import clean_ioc.component_filters as cf
+ import pytest
+-from clean_ioc import ComponentSelector, ContainerBuilder, ContainerBuildError, Lifespan, Tag, Undefined
++from clean_ioc import ComponentSelector, ContainerBuilder, Lifespan, Tag, Undefined
+ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+ 
+ from bark_core.application.commands import CommandHandler
+@@ -203,11 +203,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert "missing-component" in {issue.code for issue in exception.value.report.errors}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert "missing-component" in {issue.code for issue in exception.report.errors}
+ 
+ 
+ async def test_sqlalchemy_forwarding_bundle_uses_a_fresh_selected_session_per_operation() -> None:
+@@ -351,11 +351,11 @@
+             )
+         )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"outbox-backend-registration-conflict"}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"outbox-backend-registration-conflict"}
+ 
+ 
+ async def test_sqlalchemy_staging_does_not_activate_sqs_sns_or_sts_clients():
+@@ -426,11 +426,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"uow-resource-instance-mismatch"}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"uow-resource-instance-mismatch"}
+ 
+ 
+ def test_sqlalchemy_and_dynamodb_backends_for_one_service_fail_graph_validation():
+@@ -457,11 +457,11 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"outbox-backend-registration-conflict"}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"outbox-backend-registration-conflict"}
+ 
+ 
+ def test_sqlalchemy_bundle_rejects_a_non_sqlalchemy_config() -> None:
+@@ -597,10 +597,10 @@
+     builder.apply_bundle(
+         SqlAlchemyOutboxWriterBundle(config=SqlAlchemyOutboxConfig(service="payments"), session_selector=selector)
+     )
+-    with pytest.raises(ContainerBuildError) as error:
+-        builder.build()
+-    assert error.value.report is not None
+-    assert "missing-component" in {issue.code for issue in error.value.report.errors}
++    error = builder.analyse()
++    assert not error.report.is_valid
++    assert error.report is not None
++    assert "missing-component" in {issue.code for issue in error.report.errors}
+ 
+ 
+ def test_sqlalchemy_outbox_selector_without_a_match_fails_at_build():
+@@ -612,10 +612,10 @@
+             session_selector=ComponentSelector(name="business"),
+         )
+     )
+-    with pytest.raises(ContainerBuildError) as error:
+-        builder.build()
+-    assert error.value.report is not None
+-    assert "missing-component" in {issue.code for issue in error.value.report.errors}
++    error = builder.analyse()
++    assert not error.report.is_valid
++    assert error.report is not None
++    assert "missing-component" in {issue.code for issue in error.report.errors}
+ 
+ 
+ @pytest.mark.parametrize("selector", [None, "business"])
+--- a/tests/unit/bundles/test_redis_composition.py
++++ b/tests/unit/bundles/test_redis_composition.py
+@@ -1,9 +1,10 @@
++import re
+ from itertools import product
+ from unittest.mock import MagicMock, patch
+ 
+ import clean_ioc.component_filters as cf
+ import pytest
+-from clean_ioc import ContainerBuilder, ContainerBuildError
++from clean_ioc import ContainerBuilder, ScopeBuilder
+ from redis.asyncio import Redis as AsyncRedis
+ 
+ from bark_core.bundles import (
+@@ -75,11 +76,12 @@
+     builder.apply_bundle(_bundle(first_bundle, _redis_config("first")))
+     builder.apply_bundle(_bundle(second_bundle, _redis_config("second")))
+ 
+-    with pytest.raises(
+-        ContainerBuildError,
+-        match=r"Redis connection None has 2 RedisClientConnectionConfig registrations",
+-    ):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        r"Redis connection None has 2 RedisClientConnectionConfig registrations",
++        "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors),
++    )
+ 
+ 
+ def test_async_redis_client_bundle__named_connections_are_independent():
+@@ -133,11 +135,12 @@
+     builder.apply_bundle(RedisClientBundle(_redis_config("first"), connection_name="shared"))
+     builder.apply_bundle(RedisClientBundle(_redis_config("second"), connection_name="shared"))
+ 
+-    with pytest.raises(
+-        ContainerBuildError,
+-        match=r"Redis connection 'shared' has 2 RedisClientConnectionConfig registrations",
+-    ):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        r"Redis connection 'shared' has 2 RedisClientConnectionConfig registrations",
++        "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors),
++    )
+ 
+ 
+ def test_async_redis_client_bundle__rejects_pre_registered_conflicting_config():
+@@ -145,11 +148,12 @@
+     builder.register(RedisClientConnectionConfig, instance=_redis_config("direct"))
+     builder.apply_bundle(RedisClientBundle(_redis_config("bundle")))
+ 
+-    with pytest.raises(
+-        ContainerBuildError,
+-        match=r"Redis connection None has 2 RedisClientConnectionConfig registrations",
+-    ):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        r"Redis connection None has 2 RedisClientConnectionConfig registrations",
++        "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors),
++    )
+ 
+ 
+ def test_redis_bundles__reject_pre_registered_client():
+@@ -160,22 +164,25 @@
+     )
+     builder.apply_bundle(_bundle("async-lock", _redis_config("bundle")))
+ 
+-    with pytest.raises(
+-        ContainerBuildError,
+-        match=r"Redis connection None has 2 RedisClient registrations",
+-    ):
+-        builder.build()
++    analysis = builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        r"Redis connection None has 2 RedisClient registrations",
++        "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors),
++    )
+ 
+ 
+ def test_async_redis_client_bundle__rejects_conflicting_inherited_config():
+     root_builder = ContainerBuilder()
+     root_builder.apply_bundle(RedisClientBundle(_redis_config("root")))
+-    root_container = root_builder.build()
+-    scope_builder = root_container.new_scope_builder()
++    root_container_analysis = root_builder.analyse()
++    root_container = root_container_analysis.create_runtime()
++    scope_builder = ScopeBuilder(root_container, composition=root_container_analysis.composition)
+     scope_builder.apply_bundle(RedisClientBundle(_redis_config("scope")))
+ 
+-    with pytest.raises(
+-        ContainerBuildError,
+-        match=r"Redis connection None has 2 RedisClientConnectionConfig registrations",
+-    ):
+-        scope_builder.build()
++    analysis = scope_builder.analyse()
++    assert not analysis.report.is_valid
++    assert re.search(
++        r"Redis connection None has 2 RedisClientConnectionConfig registrations",
++        "\n".join(f"{issue.code}: {issue.message}" for issue in analysis.report.errors),
++    )
+--- a/tests/unit/bundles/test_sagas.py
++++ b/tests/unit/bundles/test_sagas.py
+@@ -1,4 +1,4 @@
+-from contextlib import asynccontextmanager
++from contextlib import asynccontextmanager, nullcontext
+ from dataclasses import replace
+ from typing import Protocol, get_origin
+ from unittest.mock import create_autospec
+@@ -7,7 +7,7 @@
+ import clean_ioc.component_filters as cf
+ import pytest
+ from assertive import was_awaited
+-from clean_ioc import CannotResolveError, ComponentSelector, ContainerBuilder, ContainerBuildError
++from clean_ioc import CannotResolveError, ComponentSelector, ContainerBuilder
+ from pydantic import BaseModel
+ 
+ from bark_core.application import (
+@@ -573,11 +573,11 @@
+     builder.apply_bundle(RegisterSagaBundle(DemoSaga))
+     builder.apply_bundle(RegisterSagaHandlerBundle(CommandHandler))
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
+-
+-    assert exception.value.report is not None
+-    assert {issue.code for issue in exception.value.report.errors} >= {"uow-missing-policy"}
++    exception = builder.analyse()
++    assert not exception.report.is_valid
++
++    assert exception.report is not None
++    assert {issue.code for issue in exception.report.errors} >= {"uow-missing-policy"}
+ 
+ 
+ async def test_saga_operation_decorators_share_custom_injected_tracer():
+@@ -725,8 +725,8 @@
+     assert storage.create == was_awaited().never()
+ 
+ 
+-@pytest.mark.parametrize("explain_metadata", [True, False])
+-async def test_private_route_catalogue_and_graph_grow_linearly_for_multiple_routes_and_sagas(explain_metadata):
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++async def test_private_route_catalogue_and_graph_grow_linearly_for_multiple_routes_and_sagas(mode):
+     from bark_core.application.compiled_dispatchers import _CommandRoute, _EventRoute
+ 
+     samples = []
+@@ -765,18 +765,10 @@
+                 builder.apply_bundle(
+                     RegisterSagaBundle(saga_for(command_type, event_type, label), autoregister_storage=False)
+                 )
+-        if not explain_metadata:
+-            # Saga composition installs deferred UoW heuristics; they require
+-            # retained graph metadata even when runtime catalogue retention works.
+-            with pytest.raises(ValueError, match="validation-only rules require explain_metadata=True"):
+-                builder.build(provider_roots=(), explain_metadata=False, allow_scope_builders=False)
+-            assert calls == []
+-            continue
+-
++        builder.set_provider_roots(())
+         async with (
+-            builder.build(
+-                provider_roots=(), explain_metadata=explain_metadata, allow_scope_builders=False
+-            ) as container,
++            builder.analyse() if mode == "analysis" else nullcontext(None) as container_analysis,
++            container_analysis.create_runtime() if container_analysis is not None else builder.build() as container,
+             container.new_scope() as scope,
+         ):
+             route_types = (_CommandRoute, _EventRoute)
+@@ -785,10 +777,9 @@
+                 len([item for item in scope.selected_registrations if item.service_type in route_types])
+                 == 2 * route_count
+             )
+-            if explain_metadata:
+-                records = container._plan.graph._records
+-                assert records is not None
+-                samples.append(len(records))
++            records = container._plan.graph._records
++            assert records is not None
++            samples.append(len(records))
+             for index, (command_type, event_type) in enumerate(zip(commands, events, strict=True)):
+                 command = command_type(demo_id=uuid4())
+                 event = event_type(demo_id=uuid4(), created_at=utcnow())
+@@ -803,7 +794,9 @@
+         assert len(calls) == 4 * route_count
+     # Every doubling adds at most twice the physical selected-plan records;
+     # no public route/provider expansion multiplies the dispatch trees.
+-    if explain_metadata:
+-        assert samples[1] <= 2 * samples[0]
+-        assert samples[2] <= 2 * samples[1]
++    assert samples[1] <= 2 * samples[0]
++    assert samples[2] <= 2 * samples[1]
++    if mode == "run":
++        # Preserve the production cap. Analysis also retains rejected selection
++        # evidence and architecture-only inspection roots.
+         assert samples[2] <= 16 * 160
+--- a/tests/unit/bundles/test_unit_of_work.py
++++ b/tests/unit/bundles/test_unit_of_work.py
+@@ -1,6 +1,8 @@
++from contextlib import nullcontext
++
+ import clean_ioc.component_filters as cf
+ import pytest
+-from clean_ioc import ComponentSelector, ContainerBuilder, ContainerBuildError, Tag, select
++from clean_ioc import ComponentSelector, ContainerBuilder, Tag, select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+ from bark_core.application import UnitOfWorkOperationHandlerDecorator, WrapOperationHandlerWithDistributedLockDecorator
+@@ -348,9 +350,9 @@
+         self.unit_of_work = unit_of_work
+ 
+ 
+-def _error_codes(exception: pytest.ExceptionInfo[ContainerBuildError]) -> set[str]:
+-    assert exception.value.report is not None
+-    return {issue.code for issue in exception.value.report.errors}
++def _error_codes(exception) -> set[str]:
++    assert exception.report is not None
++    return {issue.code for issue in exception.report.errors}
+ 
+ 
+ def _sqlalchemy_repository_builder(
+@@ -402,8 +404,8 @@
+         tags=[Tag(UNIT_OF_WORK_RESOURCE_TAG_NAME)],
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-invalid-resource-tag"}
+ 
+@@ -427,8 +429,8 @@
+     builder.apply_bundle(RegisterUnitOfWorkValidationBundle())
+     register_component(builder)
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-scope-mismatch"}
+ 
+@@ -439,8 +441,8 @@
+     builder.register(UnitOfWork, MockUnitOfWork, lifespan="scoped")
+     builder.register(UnitOfWork, MockUnitOfWork, lifespan="scoped")
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-ambiguous-registration"}
+ 
+@@ -451,8 +453,8 @@
+     builder.register(UnitOfWorkCoordinator, lifespan="scoped")
+     builder.register(UnitOfWorkCoordinator, lifespan="scoped")
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-ambiguous-registration"}
+ 
+@@ -468,8 +470,8 @@
+         decorated_arg="handler",
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-ambiguous-registration"}
+ 
+@@ -491,8 +493,8 @@
+         unit_of_work_selectors=(ComponentSelector.default(),),
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-missing-boundary"}
+ 
+@@ -507,9 +509,9 @@
+     )
+     builder.register(UnitOfWork, MockUnitOfWork, lifespan="scoped")
+ 
+-    container = builder.build()
+-
+-    orphan_warnings = [issue for issue in container.build_report.warnings if issue.code == "uow-orphan-association"]
++    container_analysis = builder.analyse()
++
++    orphan_warnings = [issue for issue in container_analysis.report.warnings if issue.code == "uow-orphan-association"]
+     assert len(orphan_warnings) == 2
+ 
+ 
+@@ -540,8 +542,8 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-partial-resource-coverage"}
+ 
+@@ -582,8 +584,8 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-resource-instance-mismatch"}
+ 
+@@ -609,8 +611,8 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-resource-instance-mismatch"}
+ 
+@@ -688,8 +690,8 @@
+         )
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-overlapping-resource-coverage"}
+ 
+@@ -747,8 +749,8 @@
+         arguments={"unit_of_work": select(cf.with_name("other"))},
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-inconsistent-boundary-order"}
+ 
+@@ -800,8 +802,8 @@
+     register_boundary(QueryHandler[MockQuery, MockQueryResult], "third", 10)
+     register_boundary(QueryHandler[MockQuery, MockQueryResult], None, 0)
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-inconsistent-boundary-order"}
+ 
+@@ -833,8 +835,8 @@
+         arguments={"unit_of_work": select(cf.with_name(None))},
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-duplicate-boundary"}
+ 
+@@ -864,8 +866,8 @@
+         arguments={"unit_of_work": select(cf.with_id(second_unit_of_work_id))},
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-ambiguous-registration", "uow-duplicate-boundary"}
+ 
+@@ -897,8 +899,8 @@
+         position=-100,
+     )
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-boundary-order"}
+ 
+@@ -925,13 +927,13 @@
+ ):
+     builder = _sqlalchemy_repository_builder(handler_type, repository_type)
+ 
+-    with pytest.raises(ContainerBuildError) as exception:
+-        builder.build()
++    exception = builder.analyse()
++    assert not exception.report.is_valid
+ 
+     assert _error_codes(exception) >= {"uow-sqlalchemy-transaction-control"}
+-    assert exception.value.report is not None
++    assert exception.report is not None
+     ownership_issues = [
+-        issue for issue in exception.value.report.errors if issue.code == "uow-sqlalchemy-transaction-control"
++        issue for issue in exception.report.errors if issue.code == "uow-sqlalchemy-transaction-control"
+     ]
+     assert len(ownership_issues) == 2  # Registered service and concrete alias both receive the group policy.
+     assert f"calls {operation}()" in ownership_issues[0].message
+@@ -941,20 +943,20 @@
+ def test_validation_allows_flush_and_unrelated_commit_methods():
+     builder = _sqlalchemy_repository_builder(SafeRepositoryCommandHandler, SafeSqlAlchemyRepository)
+ 
+-    container = builder.build()
+-
+-    assert not [issue for issue in container.build_report.issues if issue.code == "uow-sqlalchemy-transaction-control"]
++    container_analysis = builder.analyse()
++
++    assert not [
++        issue for issue in container_analysis.report.issues if issue.code == "uow-sqlalchemy-transaction-control"
++    ]
+ 
+ 
+ def test_validation_report_rejects_sqlalchemy_begin_inside_an_owned_unit_of_work_boundary():
+     builder = _sqlalchemy_repository_builder(BeginningRepositoryCommandHandler, SqlAlchemyBeginningRepository)
+ 
+-    container = builder.build()
+-
+-    assert not [
+-        issue for issue in container.build_report.issues if issue.code == "uow-sqlalchemy-begin-inside-boundary"
+-    ]
+-    validation_report = container.validation_report()
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
++
++    validation_report = container_analysis.report
+ 
+     assert {issue.code for issue in validation_report.errors} >= {"uow-sqlalchemy-begin-inside-boundary"}
+ 
+@@ -982,8 +984,9 @@
+     builder.register(SqlAlchemyWritingRepository)
+     builder.register(handler_service_type, WritingOperationHandler)
+ 
+-    container = builder.build()
+-    validation_report = container.validation_report()
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
++    validation_report = container_analysis.report
+ 
+     assert {issue.code for issue in validation_report.errors} >= {"uow-sqlalchemy-write-without-boundary"}
+ 
+@@ -1002,12 +1005,10 @@
+ ):
+     builder = _sqlalchemy_repository_builder(handler_type, repository_type, unit_of_work=False)
+ 
+-    container = builder.build()
+-
+-    assert not [
+-        issue for issue in container.build_report.issues if issue.code == "uow-sqlalchemy-write-without-boundary"
+-    ]
+-    validation_report = container.validation_report()
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
++
++    validation_report = container_analysis.report
+     write_issues = [
+         issue for issue in validation_report.errors if issue.code == "uow-sqlalchemy-write-without-boundary"
+     ]
+@@ -1028,8 +1029,9 @@
+ ):
+     builder = _sqlalchemy_repository_builder(handler_type, repository_type, unit_of_work=False)
+ 
+-    container = builder.build()
+-    validation_report = container.validation_report()
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
++    validation_report = container_analysis.report
+ 
+     assert {issue.code for issue in validation_report.errors} >= {"uow-sqlalchemy-write-without-boundary"}
+ 
+@@ -1048,8 +1050,9 @@
+ ):
+     builder = _sqlalchemy_repository_builder(handler_type, repository_type, unit_of_work=False)
+ 
+-    container = builder.build()
+-    validation_report = container.validation_report()
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
++    validation_report = container_analysis.report
+ 
+     assert not [issue for issue in validation_report.issues if issue.code == "uow-sqlalchemy-write-without-boundary"]
+ 
+@@ -1074,12 +1077,10 @@
+         )
+     )
+ 
+-    container = builder.build()
+-
+-    assert not [
+-        issue for issue in container.build_report.issues if issue.code == "uow-sqlalchemy-write-without-boundary"
+-    ]
+-    validation_report = container.validation_report()
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
++
++    validation_report = container_analysis.report
+     write_issues = [
+         issue for issue in validation_report.errors if issue.code == "uow-sqlalchemy-write-without-boundary"
+     ]
+@@ -1114,11 +1115,44 @@
+         )
+     )
+ 
+-    container = builder.build()
+-    validation_report = container.validation_report()
++    container_analysis = builder.analyse()
++    container = container_analysis.create_runtime()
++    validation_report = container_analysis.report
+     write_issues = [
+         issue for issue in validation_report.errors if issue.code == "uow-sqlalchemy-write-without-boundary"
+     ]
+ 
+     assert len(write_issues) == 2  # Validate both the service and its concrete handler alias.
+     assert "SecondaryRepositorySession" in write_issues[0].message
++
++
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++def test_unit_of_work_build_modes_preserve_both_validation_rules(monkeypatch, mode):
++    import bark_core.unit_of_work.bundles as uow_bundles
++
++    calls = []
++    mandatory = uow_bundles.validate_unit_of_work_graph
++    deferred = uow_bundles.validate_unit_of_work_graph_on_validation
++
++    def record_mandatory(context):
++        calls.append("mandatory")
++        yield from mandatory(context)
++
++    def record_deferred(context):
++        calls.append("deferred")
++        yield from deferred(context)
++
++    monkeypatch.setattr(uow_bundles, "validate_unit_of_work_graph", record_mandatory)
++    monkeypatch.setattr(uow_bundles, "validate_unit_of_work_graph_on_validation", record_deferred)
++    builder = _sqlalchemy_repository_builder(
++        WritingRepositoryCommandHandler, SqlAlchemyWritingRepository, unit_of_work=False
++    )
++    with (
++        builder.analyse() if mode == "analysis" else nullcontext(None) as container_analysis,
++        container_analysis.create_runtime() if container_analysis is not None else builder.build() as container,
++    ):
++        assert calls == (["mandatory", "deferred"] if mode == "analysis" else [])
++        if mode == "analysis":
++            report = container_analysis.report
++            assert calls == ["mandatory", "deferred"]
++            assert "uow-sqlalchemy-write-without-boundary" in {issue.code for issue in report.errors}

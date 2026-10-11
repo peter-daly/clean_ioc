@@ -1,5 +1,11 @@
 # Early rejection record allocation evidence — 8 October 2026
 
+> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/analyse API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-analyse).
+
+> Historical comparison: these measurements use the former fine-grained build policies.
+> Their reproduction scripts use the private compiler harness; current public applications
+> use [run or analysis mode](compiler-tooling.md#run-and-analysis-modes).
+
 This is the first sequential runtime-memory change after optional compiler diagnostics.
 Ordinary `build(diagnostics=False)` now allocates no component draft, frozen record, origin
 sidecar or candidate wrapper for a definition whose structured `candidate_when` policy

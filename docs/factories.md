@@ -20,8 +20,8 @@ Factory parameters become compiled dependency edges. The factory itself does not
 
 ## Factory return annotations
 
-Build automatically checks a factory's declared result against its registered service. A definite incompatibility
-fails with `factory-return-type-mismatch`; no additional validation rule or policy pack is required:
+Analysis checks a factory's declared result against its registered service. A definite incompatibility
+produces `factory-return-type-mismatch`; no additional validation rule or policy pack is required:
 
 ```python
 from clean_ioc import ContainerBuilder, ContainerBuildError
@@ -37,13 +37,10 @@ def incorrect_factory() -> str:
 
 builder = ContainerBuilder()
 builder.register(Repository, factory=incorrect_factory)
-try:
-    builder.build()
-except ContainerBuildError as error:
-    assert any(issue.code == "factory-return-type-mismatch" for issue in error.report.errors)
-    print(error.report.to_text())
-else:
-    raise AssertionError("The incompatible factory annotation should fail build")
+result = builder.analyse()
+assert any(issue.code == "factory-return-type-mismatch" for issue in result.report.errors)
+print(result.report.to_text())
+
 ```
 
 The check reads annotations, not function bodies or ASTs, and never activates the factory. It compares an async
@@ -59,7 +56,7 @@ prove that an implementation returns what its annotation promises; application t
 
 Findings include the compiled dependency path and available registration sources in SARIF. Boundaries, overlays,
 deferred provider targets, and ordinary registered factories use the same automatic check. Constructor and instance
-registrations are unaffected. Explicit validation reports retain the stored build findings without repeating the check.
+registrations are unaffected. Completed analysis reports retain these findings without repeating the check.
 
 ## Union service types
 
@@ -173,7 +170,7 @@ builder.register(Sender, factory=use_component(SenderImpl))
 builder.register(BatchSender, factory=use_component(SenderImpl))
 ```
 
-`use_component()` and `use_component_async()` attach their target and filter as compiler metadata. The referenced root therefore appears as a dependency edge in the compiled graph and participates in missing-component, circular-dependency, captive-lifespan, and sync/async validation. Runtime use still resolves through the current context to preserve `per_resolution` identity; it does not trigger registration discovery or graph compilation.
+`use_component()` and `use_component_async()` attach their target and filter as compiler metadata. The referenced root therefore appears as a dependency edge in the compiled graph and participates in binding and cycle detection. Analysis additionally audits captive lifespans and sync/async compatibility. Runtime use still resolves through the current context to preserve `per_resolution` identity; it does not trigger registration discovery or graph compilation.
 
 Direct calls made through an injected `ResolutionContext` remain dynamic because the compiler cannot inspect arbitrary
 function bodies. Use the helpers when the target is known during composition and should appear in the compiled graph.

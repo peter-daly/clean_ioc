@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from clean_ioc import (
+    AnalysisResult,
     AsyncManagedProvider,
     AsyncProvider,
     Container,
@@ -179,14 +180,13 @@ class Fixture:
     template_ids: dict[str, str]
     callbacks_after_build: dict[str, int]
     retained_builder: ContainerBuilder | None = None
+    analysis: AnalysisResult[Container] | None = None
 
 
 def build(
     routes: int,
     *,
-    diagnostics: bool = False,
-    explain_metadata: bool = True,
-    allow_scope_builders: bool = False,
+    operation: str = "build",
     retain_builder: bool = False,
 ) -> Fixture:
     if not 1 <= routes <= 128:
@@ -226,14 +226,17 @@ def build(
     builder.register_provider_map(
         RouteSource, key=lambda component: component.name, asynchronous=True, root_policy="dependency_only"
     )
-    runtime = builder.build(
-        diagnostics=diagnostics,
-        explain_metadata=explain_metadata,
-        provider_roots=(Provider[Worker], AsyncProvider[Worker], ManagedProvider[Worker], AsyncManagedProvider[Worker]),
-        allow_scope_builders=allow_scope_builders,
-        check_unreachable=False,
-        aggregate_errors=False,
-    )
+    provider_roots = (Provider[Worker], AsyncProvider[Worker], ManagedProvider[Worker], AsyncManagedProvider[Worker])
+    builder.set_provider_roots(provider_roots)
+    if operation == "analyse":
+        analysis = builder.analyse()
+        analysis.report.assert_valid()
+        runtime = analysis.create_runtime()
+    elif operation == "build":
+        analysis = None
+        runtime = builder.build()
+    else:
+        raise ValueError("operation must be build or analyse")
     require(not ACTIVATIONS, "Compilation activated application constructors")
     require(
         dict(TEMPLATE_CALLS)
@@ -245,7 +248,9 @@ def build(
         },
         "Unexpected template expansion counts",
     )
-    return Fixture(runtime, source_ids, template_ids, dict(TEMPLATE_CALLS), builder if retain_builder else None)
+    return Fixture(
+        runtime, source_ids, template_ids, dict(TEMPLATE_CALLS), builder if retain_builder else None, analysis
+    )
 
 
 def unwrap_worker(value: Worker) -> tuple[Worker, list[Policy]]:

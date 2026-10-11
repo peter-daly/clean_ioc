@@ -1,0 +1,170 @@
+{
+  "run": [
+    {
+      "kind": "normal",
+      "build_seconds": 0.5683280419325456,
+      "traced_retained_bytes": null,
+      "traced_peak_bytes": null,
+      "peak_rss_bytes": 82804736,
+      "services": 2000,
+      "resolve_seconds": 0.005312874913215637
+    },
+    {
+      "kind": "heap",
+      "build_seconds": 6.429570459062234,
+      "traced_retained_bytes": 21503732,
+      "traced_peak_bytes": 39792725,
+      "peak_rss_bytes": 103530496,
+      "services": 2000,
+      "resolve_seconds": 0.01189633400645107
+    },
+    {
+      "kind": "normal",
+      "build_seconds": 0.5686186250532046,
+      "traced_retained_bytes": null,
+      "traced_peak_bytes": null,
+      "peak_rss_bytes": 82952192,
+      "services": 2000,
+      "resolve_seconds": 0.005274959024973214
+    },
+    {
+      "kind": "heap",
+      "build_seconds": 6.474189041997306,
+      "traced_retained_bytes": 21500640,
+      "traced_peak_bytes": 39793559,
+      "peak_rss_bytes": 102793216,
+      "services": 2000,
+      "resolve_seconds": 0.011999874957837164
+    },
+    {
+      "kind": "normal",
+      "build_seconds": 0.6045200420776382,
+      "traced_retained_bytes": null,
+      "traced_peak_bytes": null,
+      "peak_rss_bytes": 82329600,
+      "services": 2000,
+      "resolve_seconds": 0.005440416047349572
+    },
+    {
+      "kind": "heap",
+      "build_seconds": 6.591442666947842,
+      "traced_retained_bytes": 21500893,
+      "traced_peak_bytes": 39793678,
+      "peak_rss_bytes": 102219776,
+      "services": 2000,
+      "resolve_seconds": 0.011653374996967614
+    }
+  ],
+  "rich-run": [
+    {
+      "kind": "normal",
+      "build_seconds": 0.6233461659867316,
+      "traced_retained_bytes": null,
+      "traced_peak_bytes": null,
+      "peak_rss_bytes": 85131264,
+      "services": 2000,
+      "resolve_seconds": 0.0052325420547276735
+    },
+    {
+      "kind": "heap",
+      "build_seconds": 6.7084945410024375,
+      "traced_retained_bytes": 22065525,
+      "traced_peak_bytes": 39792509,
+      "peak_rss_bytes": 115130368,
+      "services": 2000,
+      "resolve_seconds": 0.01169058308005333
+    },
+    {
+      "kind": "normal",
+      "build_seconds": 0.616606792085804,
+      "traced_retained_bytes": null,
+      "traced_peak_bytes": null,
+      "peak_rss_bytes": 85180416,
+      "services": 2000,
+      "resolve_seconds": 0.005248333094641566
+    },
+    {
+      "kind": "heap",
+      "build_seconds": 6.6272130840225145,
+      "traced_retained_bytes": 22065100,
+      "traced_peak_bytes": 39792509,
+      "peak_rss_bytes": 115703808,
+      "services": 2000,
+      "resolve_seconds": 0.011580083053559065
+    },
+    {
+      "kind": "normal",
+      "build_seconds": 0.6128808750072494,
+      "traced_retained_bytes": null,
+      "traced_peak_bytes": null,
+      "peak_rss_bytes": 85164032,
+      "services": 2000,
+      "resolve_seconds": 0.005187332979403436
+    },
+    {
+      "kind": "heap",
+      "build_seconds": 6.64048983308021,
+      "traced_retained_bytes": 22065651,
+      "traced_peak_bytes": 39792462,
+      "peak_rss_bytes": 116736000,
+      "services": 2000,
+      "resolve_seconds": 0.012243208009749651
+    }
+  ],
+  "analysis": [
+    {
+      "kind": "normal",
+      "build_seconds": 0.5744842919521034,
+      "traced_retained_bytes": null,
+      "traced_peak_bytes": null,
+      "peak_rss_bytes": 84344832,
+      "services": 2000,
+      "resolve_seconds": 0.006185292033478618
+    },
+    {
+      "kind": "heap",
+      "build_seconds": 6.5197222920833156,
+      "traced_retained_bytes": 30636454,
+      "traced_peak_bytes": 39792454,
+      "peak_rss_bytes": 116080640,
+      "services": 2000,
+      "resolve_seconds": 0.012782083009369671
+    },
+    {
+      "kind": "normal",
+      "build_seconds": 0.577995583997108,
+      "traced_retained_bytes": null,
+      "traced_peak_bytes": null,
+      "peak_rss_bytes": 84705280,
+      "services": 2000,
+      "resolve_seconds": 0.0062324999598786235
+    },
+    {
+      "kind": "heap",
+      "build_seconds": 6.540178874973208,
+      "traced_retained_bytes": 30636391,
+      "traced_peak_bytes": 39792499,
+      "peak_rss_bytes": 116097024,
+      "services": 2000,
+      "resolve_seconds": 0.012826999998651445
+    },
+    {
+      "kind": "normal",
+      "build_seconds": 0.5781231250148267,
+      "traced_retained_bytes": null,
+      "traced_peak_bytes": null,
+      "peak_rss_bytes": 85016576,
+      "services": 2000,
+      "resolve_seconds": 0.0062133329920470715
+    },
+    {
+      "kind": "heap",
+      "build_seconds": 6.523827874916606,
+      "traced_retained_bytes": 30642056,
+      "traced_peak_bytes": 39796519,
+      "peak_rss_bytes": 113885184,
+      "services": 2000,
+      "resolve_seconds": 0.013620167039334774
+    }
+  ]
+}

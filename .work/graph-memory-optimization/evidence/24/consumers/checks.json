@@ -1,0 +1,84 @@
+[
+  {
+    "name": "imports",
+    "returncode": 0,
+    "command": [
+      "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/cop-env/bin/python",
+      "-c",
+      "import clean_ioc,bark_core,data_protection_cop,json,sys; print(json.dumps({'python':sys.version,'imports':{m.__name__:m.__file__ for m in (clean_ioc,bark_core,data_protection_cop)}},indent=2))"
+    ],
+    "cwd": "/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24"
+  },
+  {
+    "name": "bark-unit",
+    "returncode": 0,
+    "command": [
+      "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/bark-env/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit",
+      "-q",
+      "-o",
+      "addopts=",
+      "--tb=short",
+      "--junitxml=/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/final-stable/bark-unit.xml"
+    ],
+    "cwd": "/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/bark-source"
+  },
+  {
+    "name": "cop-unit",
+    "returncode": 0,
+    "command": [
+      "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/cop-env/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit",
+      "-q",
+      "-o",
+      "addopts=",
+      "--tb=short",
+      "--junitxml=/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/final-stable/cop-unit.xml"
+    ],
+    "cwd": "/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/cop-source"
+  },
+  {
+    "name": "bark-rules",
+    "returncode": 0,
+    "command": [
+      "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/bark-env/bin/python",
+      "/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/bark_rules_correctness.py"
+    ],
+    "cwd": "/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24"
+  },
+  {
+    "name": "api-discovery",
+    "returncode": 0,
+    "command": [
+      "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/cop-env/bin/python",
+      "-m",
+      "tests.compiled_modes_probe",
+      "api"
+    ],
+    "cwd": "/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/cop-source"
+  },
+  {
+    "name": "worker-discovery",
+    "returncode": 0,
+    "command": [
+      "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/cop-env/bin/python",
+      "-m",
+      "tests.compiled_modes_probe",
+      "worker"
+    ],
+    "cwd": "/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/cop-source"
+  },
+  {
+    "name": "cop-integration-driver",
+    "returncode": 0,
+    "command": [
+      "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/cop-env/bin/python",
+      "/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/run_integration_stable.py"
+    ],
+    "cwd": "/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24"
+  }
+]

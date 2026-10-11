@@ -1,5 +1,8 @@
 """Measure a pinned Cop builder using the selected interpreter's installed library.
 
+Uses the explicit execution build() API. Analysis measurements use
+graph_memory_evidence --operation analyse.
+
 Run with the Cop environment's Python and --project pointing at its source checkout.
 A candidate wheel must be installed in a disposable environment. --settings-json
 loads environment strings without displaying configured values. Normal elapsed time

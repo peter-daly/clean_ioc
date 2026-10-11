@@ -1,10 +1,8 @@
 """Contract checks for the local prototype, not a public persistence API."""
 
-import gc
 import json
 import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 
@@ -13,24 +11,22 @@ from benchmarks.graph_artifact import dump_graph, load_graph
 from clean_ioc import ContainerBuilder, _legacy, container
 
 
-def _build(builder, *, explain_metadata=True):
-    return builder.build(
-        explain_metadata=explain_metadata,
-        diagnostics=False,
-        provider_roots=(),
-        allow_scope_builders=False,
-        check_unreachable=False,
-        aggregate_errors=False,
-    )
+def _build(builder, *, operation="build"):
+    builder.set_provider_roots(())
+    if operation == "analyse":
+        result = builder.analyse()
+        result.report.assert_valid()
+        return result.create_runtime()
+    return builder.build()
 
 
 @pytest.mark.parametrize("lifespan", ["transient", "per_resolution", "scoped", "singleton"])
-@pytest.mark.parametrize("explain_metadata", [True, False])
-async def test_lifetime_and_identity_survive_roundtrip(tmp_path, monkeypatch, lifespan, explain_metadata):
+@pytest.mark.parametrize("operation", ["build", "analyse"])
+async def test_lifetime_and_identity_survive_roundtrip(tmp_path, monkeypatch, lifespan, operation):
     builder = ContainerBuilder()
     builder.register(fixture.Leaf, lifespan=lifespan, root_policy="dependency_only")
     builder.register(fixture.Pair, lifespan="transient")
-    original = _build(builder, explain_metadata=explain_metadata)
+    original = _build(builder, operation=operation)
     artifact = tmp_path / "graph.jsonl"
     dump_graph(original, artifact)
 
@@ -44,16 +40,11 @@ async def test_lifetime_and_identity_survive_roundtrip(tmp_path, monkeypatch, li
     monkeypatch.setattr(fixture, "ACTIVATIONS", 0)
     with load_graph(artifact) as loaded:
         assert fixture.ACTIVATIONS == 0
-        assert loaded.explain_metadata_enabled is explain_metadata
+        assert not hasattr(loaded, "graph")
+        assert not hasattr(loaded._plan, "compiled_graph")
         assert loaded.selected_registrations == original.selected_registrations
         assert {item.implementation_type for item in loaded.selected_registrations} == {fixture.Pair, fixture.Leaf}
-        if explain_metadata:
-            assert loaded.graph.manifest(all_roots=True).to_dict() == original.graph.manifest(all_roots=True).to_dict()
-        else:
-            with pytest.raises(RuntimeError, match="explain-metadata-disabled"):
-                _ = loaded.graph
-            assert loaded._plan.compiled_graph is None
-            assert loaded._plan.graph._reduced
+        assert loaded._plan.graph._reduced
         plan = loaded._plan
         root = plan.default_roots[fixture.Pair]
         assert root is plan.roots[fixture.Pair][0]
@@ -86,10 +77,9 @@ def test_large_topology_and_runtime_instances(tmp_path):
         assert records is not None
         occurrence_id = max(records)
         assert occurrence_id is records[occurrence_id].occurrence_id
-        graph = loaded.graph
-        assert isinstance(graph._occurrence_layers, container._OccurrenceLayers)
-        origins = gc.get_referents(graph._occurrence_origins)[0]
-        assert origins is gc.get_referents(graph._occurrence_layers.origins)[0]
+        assert not hasattr(loaded, "graph")
+        assert not hasattr(loaded._plan, "occurrence_origins")
+        assert len(loaded.selected_registrations) == len(original.selected_registrations)
         instances = [loaded.resolve(root) for root in fixture.ROOTS[:4]]
         assert fixture.inspect_instances(instances) == {"objects": 1024, "leaves": 512, "payload_bytes": 65536}
 
@@ -147,26 +137,15 @@ def test_rejects_changed_imported_module(tmp_path):
 
 
 def test_export_and_load_in_independent_processes(tmp_path):
-    artifact = tmp_path / "graph.jsonl"
     results = []
     for mode in ("export", "load"):
-        command = [
-            sys.executable,
-            "-m",
-            "benchmarks.graph_artifact_evidence",
-            mode,
-            "--roots",
-            "2",
-            "--artifact",
-            str(artifact),
-        ]
-        results.append(
-            json.loads(subprocess.check_output(command, cwd=Path(__file__).resolve().parents[1], text=True))  # noqa: S603
-        )
+        command = [sys.executable, "-m", "tests.artifact_process", mode, "simple", str(tmp_path / "simple.jsonl")]
+        results.append(json.loads(subprocess.check_output(command, text=True)))  # noqa: S603
     exported, loaded = results
     assert exported["pid"] != loaded["pid"]
-    assert exported["graph_fingerprint"] == loaded["graph_fingerprint"]
-    assert exported["resolved_graph"] == loaded["resolved_graph"]
+    assert exported["artifact_sha256"] == loaded["artifact_sha256"]
+    assert exported["catalogue"] == loaded["catalogue"]
+    assert exported["validated"] == loaded["validated"]
     assert loaded["compilation_disabled"]
     assert loaded["activations"] == 512
 
@@ -174,7 +153,6 @@ def test_export_and_load_in_independent_processes(tmp_path):
 async def test_rich_graph_roundtrip_preserves_facts_sharing_and_provider_lifetimes(tmp_path, monkeypatch):
     from benchmarks import graph_memory_fixture as rich
     from benchmarks.graph_memory_evidence import census
-    from clean_ioc.components import Component
 
     case = rich.build(2)
     artifact = tmp_path / "rich.jsonl"
@@ -201,23 +179,9 @@ async def test_rich_graph_roundtrip_preserves_facts_sharing_and_provider_lifetim
             loaded_counts["component_metadata"]["shared_definition_objects"]
             == original_counts["component_metadata"]["shared_definition_objects"]
         )
-        assert loaded.graph.manifest(all_roots=True).to_dict() == case.runtime.graph.manifest(all_roots=True).to_dict()
-        for occurrence, original in case.runtime._plan.decorator_explanations.items():
-            restored = loaded._plan.decorator_explanations[occurrence]
-            assert (restored.subject, restored.path, restored.selected, restored.rejected) == (
-                original.subject,
-                original.path,
-                original.selected,
-                original.rejected,
-            )
-        for visit in case.runtime.graph.walk():
-            component = visit.component
-            if component.kind.value != "registration":
-                continue
-            expected = case.runtime.graph.explain_decorators(component)
-            restored = loaded.graph.explain_decorators(Component(loaded._plan.graph, component.occurrence_id))
-            assert restored.selected == expected.selected
-            assert restored.rejected == expected.rejected
+        assert loaded.selected_registrations == case.runtime.selected_registrations
+        assert loaded._plan.graph._records == case.runtime._plan.graph._records
+        assert not hasattr(loaded._plan, "decorator_explanations")
         restored_case = rich.Fixture(loaded, case.source_ids, case.template_ids, case.callbacks_after_build)
         try:
             held = await rich.resolve_workload(restored_case)
@@ -227,42 +191,21 @@ async def test_rich_graph_roundtrip_preserves_facts_sharing_and_provider_lifetim
                 await held.scope.__aexit__(None, None, None)
 
 
-@pytest.mark.parametrize("explain_metadata", [True, False])
-def test_rich_export_and_load_in_independent_processes(tmp_path, explain_metadata):
+def test_rich_export_and_load_in_independent_processes(tmp_path):
     results = []
     for mode in ("export", "load"):
-        command = [
-            sys.executable,
-            "-m",
-            "benchmarks.graph_memory_artifact_evidence",
-            mode,
-            "--routes",
-            "2",
-            "--artifact",
-            str(tmp_path / "rich.jsonl"),
-        ]
-        if not explain_metadata:
-            command.append("--no-explain-metadata")
-        results.append(
-            json.loads(subprocess.check_output(command, cwd=Path(__file__).resolve().parents[1], text=True))  # noqa: S603
-        )
+        command = [sys.executable, "-m", "tests.artifact_process", mode, "rich", str(tmp_path / "rich.jsonl")]
+        results.append(json.loads(subprocess.check_output(command, text=True)))  # noqa: S603
     exported, loaded = results
     assert exported["pid"] != loaded["pid"]
     assert exported["artifact_sha256"] == loaded["artifact_sha256"]
-    assert exported["graph_fingerprint"] == loaded["graph_fingerprint"]
-    assert exported["runtime_link_fingerprint"] == loaded["runtime_link_fingerprint"]
-    assert exported["graph"]["physical_records"] == loaded["graph"]["physical_records"]
-    assert exported["graph"]["selected_registrations"] == loaded["graph"]["selected_registrations"] > 0
-    assert loaded["explain_metadata"] is explain_metadata
+    assert exported["records"] == loaded["records"]
+    assert exported["catalogue"] == loaded["catalogue"]
     assert exported["validated"] == loaded["validated"]
     assert loaded["compilation_disabled"]
     assert loaded["template_calls"] == {}
     assert exported["template_calls"]["source_to_generated_dependency"] == 2
     assert loaded["activations"]["worker"] == 22
-    if not explain_metadata:
-        assert not any(loaded["graph"]["metadata_entries"].values())
-        assert loaded["graph"]["registration_carrier_kinds"] == exported["graph"]["registration_carrier_kinds"]
-        assert set(loaded["graph"]["registration_carrier_kinds"]) == {"_RuntimeRegistration"}
 
 
 def test_codec_rejects_arbitrary_predicate_closures(tmp_path):

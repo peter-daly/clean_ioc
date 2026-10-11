@@ -30,7 +30,7 @@ logging_id = builder.register_decorator(MessageSender, LoggingMessageSender)
 container = builder.build()
 ```
 
-The returned ID identifies the decorator definition across every compiled occurrence. The decorated argument is inferred from its service annotation. Missing, ambiguous, and invalid explicit arguments are reported during `build()`; set `decorated_arg="child"` to select one explicitly. Typed callable return annotations are also checked against the decorated service when compatibility can be determined.
+The returned ID identifies the decorator definition across every compiled occurrence. The decorated argument is inferred from its service annotation. Set `decorated_arg="child"` to select the wrapped argument explicitly. Impossible binding still fails locally during `build()`. Use `analyse()` to audit invalid explicit argument names and compatible wrapped/return annotations before production execution.
 
 For policies generated from registered source components, see [decorator templates](decorator-templates.md).
 

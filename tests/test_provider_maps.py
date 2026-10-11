@@ -22,13 +22,14 @@ from clean_ioc import (
     ProviderScopeClosedError,
     ResolutionContext,
     Scope,
+    ScopeBuilder,
     Use,
     select,
 )
 
 
 def codes(error):
-    return {issue.code for issue in error.value.report.errors}
+    return {issue.code for issue in error.report.errors}
 
 
 def test_provider_map_group_selects_contributors_before_compiling_delegator():
@@ -90,9 +91,9 @@ def test_provider_map_group_duplicate_contribution_keys_fail():
     builder.register(Service, name="second", contributes={group: "same"})
     builder.register_provider_map(group)
 
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "provider-map-duplicate-key" in codes(error)
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "provider-map-duplicate-key" in codes(error_analysis)
 
 
 def test_provider_map_groups_are_identity_tokens_and_one_registration_can_contribute_to_many():
@@ -122,8 +123,11 @@ def test_provider_map_group_rejects_incompatible_contributions_transactionally()
 
     group = ProviderMapGroup("services", str, Service)
     builder = ContainerBuilder()
-    with pytest.raises(TypeError, match="incompatible"):
-        builder.register(Other, contributes={group: "wrong"})
+    builder.register(Other, contributes={group: "wrong"})
+    report = builder.analyse().report
+    assert not report.is_valid
+    assert "incompatible" in report.to_text()
+    builder = ContainerBuilder()
     builder.register(Service, contributes={group: "right"})
     builder.register_provider_map(group)
     assert list(builder.build().resolve(Mapping[str, Provider[Service]])) == ["right"]
@@ -152,9 +156,9 @@ def test_provider_map_group_filters_before_component_filter_and_keeps_contributi
     recursive = ContainerBuilder()
     recursive.register(Recursive, factory=recursive_factory, contributes={recursive_group: "recursive"})
     recursive.register_provider_map(recursive_group)
-    with pytest.raises(ContainerBuildError) as error:
-        recursive.build()
-    assert "circular-dependency" in codes(error)
+    error_analysis = recursive.analyse()
+    assert not error_analysis.report.is_valid
+    assert "circular-dependency" in codes(error_analysis)
 
 
 def test_named_ordered_read_only_map_is_lazy_and_compilation_stays_frozen(monkeypatch):
@@ -346,9 +350,9 @@ def test_sync_map_rejects_async_target():
     builder = ContainerBuilder()
     builder.register(Service, factory=factory)
     builder.register_provider_map(Service, key=lambda c: "service")
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert "provider-requires-async" in codes(caught)
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert "provider-requires-async" in codes(caught_analysis)
 
 
 @pytest.mark.parametrize("edge", ["scoped", "slot", "scope", "context"])
@@ -374,9 +378,9 @@ def test_singleton_capture_rejects_scope_state_transitively(edge):
     builder.register(Service, lifespan="transient")
     builder.register_provider_map(Service, key=lambda c: "s")
     builder.register(Consumer, lifespan="singleton")
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert "provider-captive-scope" in codes(caught)
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert "provider-captive-scope" in codes(caught_analysis)
 
 
 def test_singleton_handles_bind_owner_and_overlay_maps_use_new_targets():
@@ -397,8 +401,9 @@ def test_singleton_handles_bind_owner_and_overlay_maps_use_new_targets():
     builder.register(Service, Original, name="a", lifespan="transient")
     builder.register_provider_map(Service, key=lambda c: c.name)
     builder.register(Consumer, lifespan="singleton")
+    container_composition = builder.retain_composition()
     with builder.build() as container:
-        overlay_builder = container.new_scope_builder()
+        overlay_builder = ScopeBuilder(container, composition=container_composition)
         overlay_builder.register(Service, Replacement, name="b", lifespan="transient")
         with overlay_builder.build() as overlay:
             with overlay.new_scope() as nested:
@@ -475,8 +480,8 @@ def test_key_failures_are_structured_redacted_and_repairable(failure):
     builder.register(Service, name="b")
     callback: Any = async_key if failure == "async" else "name" if failure == "invalid" else key
     builder.register_provider_map(Service, key=callback)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
     expected = {
         "duplicate": "provider-map-duplicate-key",
         "unhashable": "provider-map-unhashable-key",
@@ -484,12 +489,16 @@ def test_key_failures_are_structured_redacted_and_repairable(failure):
         "async-result": "provider-map-invalid-key",
         "invalid": "provider-map-invalid-key",
     }.get(failure, "provider-map-key-evaluation")
-    assert expected in codes(caught)
-    assert secret not in str(caught.value)
-    assert caught.value.report is not None
-    assert secret not in str(caught.value.report.to_dict())
+    assert expected in codes(caught_analysis)
+    assert secret not in str(caught_analysis.report)
+    assert caught_analysis.report is not None
+    assert secret not in str(caught_analysis.report.to_dict())
     if failure not in ("async", "invalid"):
         repaired = True
+        builder = ContainerBuilder()
+        builder.register(Service, name="a")
+        builder.register(Service, name="b")
+        builder.register_provider_map(Service, key=callback)
         assert list(builder.build().resolve(Mapping[str, Provider[Service]])) == ["b", "a"]
 
 
@@ -602,12 +611,13 @@ def test_boundary_alias_projects_provider_map_only_after_source_plan_compilation
     builder.create_boundary("source", exposes=(Expose(source_map, alias=BoundaryAlias(PublicProviders)),)).apply_bundle(
         source
     )
-    container = builder.build()
+    container_analysis = builder.analyse()
+    container = container_analysis.create_runtime()
 
     providers = cast(Any, container.resolve(PublicProviders))
     assert list(providers) == ["service"]
     assert isinstance(providers["service"](), Service)
-    public_root = next(root for root in container.graph.roots if root.requested_type is PublicProviders)
+    public_root = next(root for root in container_analysis.graph.roots if root.requested_type is PublicProviders)
     assert public_root.component.service_type is PublicProviders
     assert public_root.component.kind is ComponentKind.provider_map
 
@@ -625,6 +635,9 @@ def test_uncalled_missing_target_and_recursive_maps_fail_build():
     builder.register_provider_map(Service, key=lambda c: "s")
     with pytest.raises(ContainerBuildError):
         builder.build()
+    builder = ContainerBuilder()
+    builder.register(Service)
+    builder.register_provider_map(Service, key=lambda c: "s")
     builder.register(Missing)
     assert isinstance(builder.build().resolve(Mapping[str, Provider[Service]])["s"](), Service)
 
@@ -637,9 +650,9 @@ def test_uncalled_missing_target_and_recursive_maps_fail_build():
     builder = ContainerBuilder()
     builder.register(Recursive, factory=factory)
     builder.register_provider_map(Recursive, key=lambda c: "recursive")
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert "circular-dependency" in codes(caught)
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert "circular-dependency" in codes(caught_analysis)
 
 
 def test_graph_explain_fingerprints_are_deterministic_and_keys_redacted():
@@ -651,7 +664,7 @@ def test_graph_explain_fingerprints_are_deterministic_and_keys_redacted():
         builder.register(Service, name="a")
         builder.register(Service, name="b")
         builder.register_provider_map(Service, key=lambda c: secret + c.name)
-        return builder.build(diagnostics=True)
+        return builder.analyse()
 
     first, second = build("private-one"), build("private-two")
     assert first.graph.manifest().fingerprint == second.graph.manifest().fingerprint
@@ -682,9 +695,9 @@ def test_dictionary_equality_collisions_and_nested_unhashable_keys():
         builder.register(Service, name="a")
         builder.register(Service, name="b")
         builder.register_provider_map(Service, key=key)
-        with pytest.raises(ContainerBuildError) as caught:
-            builder.build()
-        assert expected in codes(caught)
+        caught_analysis = builder.analyse()
+        assert not caught_analysis.report.is_valid
+        assert expected in codes(caught_analysis)
 
 
 def test_async_callable_objects_and_async_generator_results_are_rejected():
@@ -702,9 +715,9 @@ def test_async_callable_objects_and_async_generator_results_are_rejected():
         builder = ContainerBuilder()
         builder.register(Service)
         builder.register_provider_map(Service, key=key)
-        with pytest.raises(ContainerBuildError) as caught:
-            builder.build()
-        assert "provider-map-invalid-key" in codes(caught)
+        caught_analysis = builder.analyse()
+        assert not caught_analysis.report.is_valid
+        assert "provider-map-invalid-key" in codes(caught_analysis)
 
 
 def test_provider_maps_require_closed_declarations_and_cannot_be_patched_to_cached_lifespans():
@@ -716,15 +729,17 @@ def test_provider_maps_require_closed_declarations_and_cannot_be_patched_to_cach
     for target, key_type in ((Service, str), (Service[int], parameter)):
         builder = ContainerBuilder()
         builder.register_provider_map(target, key=lambda c: "s", key_type=key_type)
-        with pytest.raises(ContainerBuildError) as caught:
-            builder.build()
-        assert "provider-map-invalid-declaration" in codes(caught)
+        caught_analysis = builder.analyse()
+        assert not caught_analysis.report.is_valid
+        assert "provider-map-invalid-declaration" in codes(caught_analysis)
     builder = ContainerBuilder()
     map_id = builder.register_provider_map(Service[int], key=lambda c: "s")
     builder.patch_component(Mapping[str, Provider[Service[int]]], map_id, lifespan="singleton")
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert "provider-map-invalid-declaration" in codes(caught)
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert "provider-map-invalid-declaration" in codes(caught_analysis)
+    builder = ContainerBuilder()
+    map_id = builder.register_provider_map(Service[int], key=lambda c: "s")
     builder.patch_component(Mapping[str, Provider[Service[int]]], map_id, lifespan="transient")
     assert not builder.build().resolve(Mapping[str, Provider[Service[int]]])
 
@@ -779,9 +794,10 @@ def test_scope_builder_declarations_and_boundary_use_of_an_exposed_map():
     builder.create_boundary("destination", uses=(Use("source", map_type),), exposes=(Expose(Consumer),)).apply_bundle(
         destination
     )
+    container_composition = builder.retain_composition()
     with builder.build() as container:
         assert list(container.resolve(Consumer).values) == ["private"]
-        overlay_builder = container.new_scope_builder()
+        overlay_builder = ScopeBuilder(container, composition=container_composition)
         overlay_builder.register(Service, name="local")
         overlay_builder.register_provider_map(Service, key=lambda c: c.name, name="overlay")
         with overlay_builder.build() as overlay:
@@ -803,10 +819,11 @@ def test_group_provider_maps_see_overlay_contributions_but_anchored_singletons_s
     builder.register(Service, name="parent", contributes={group: "parent"})
     builder.register_provider_map(group)
     builder.register(Consumer, lifespan="singleton")
+    container_composition = builder.retain_composition()
     with builder.build() as container:
         parent_consumer = container.resolve(Consumer)
         assert list(parent_consumer.values) == ["parent"]
-        overlay_builder = container.new_scope_builder()
+        overlay_builder = ScopeBuilder(container, composition=container_composition)
         overlay_builder.register(Service, name="overlay", contributes={group: "overlay"})
         overlay_builder.register_provider_map(group, name="overlay-map")
         with overlay_builder.build() as overlay:
@@ -829,12 +846,12 @@ def test_provider_map_group_key_failures_are_structured_and_redacted():
     builder = ContainerBuilder()
     builder.register(Service, contributes={group: BrokenKey()})
     builder.register_provider_map(group)
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert "provider-map-key-evaluation" in codes(error)
-    assert secret not in str(error.value)
-    assert error.value.report is not None
-    assert secret not in json.dumps(error.value.report.to_dict())
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert "provider-map-key-evaluation" in codes(error_analysis)
+    assert secret not in str(error_analysis.report)
+    assert error_analysis.report is not None
+    assert secret not in json.dumps(error_analysis.report.to_dict())
 
 
 def test_newtype_key_identity_is_not_its_supertype():
@@ -877,7 +894,7 @@ def test_callback_inspection_and_invalid_coroutine_cleanup_cannot_leak_errors():
         builder = ContainerBuilder()
         builder.register(Service)
         builder.register_provider_map(Service, key=callback)
-        with pytest.raises(ContainerBuildError) as caught:
-            builder.build()
-        assert "provider-map-invalid-key" in codes(caught)
-        assert "private-" not in str(caught.value)
+        caught_analysis = builder.analyse()
+        assert not caught_analysis.report.is_valid
+        assert "provider-map-invalid-key" in codes(caught_analysis)
+        assert "private-" not in str(caught_analysis.report)

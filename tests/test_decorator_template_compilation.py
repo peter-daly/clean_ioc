@@ -112,6 +112,7 @@ def test_two_families_exact_instances_resource_filters_membership_and_order(reve
 
     install(FirstSource, FirstResource)
     install(SecondSource, SecondResource)
+    container_composition = builder.retain_composition()
     container = builder.build()
     assert len(calls) == 2
     for name, expected in [
@@ -126,8 +127,9 @@ def test_two_families_exact_instances_resource_filters_membership_and_order(reve
         assert actual == expected
         assert isinstance(core, Target)
     assert len(calls) == 2
-    assert len(container._plan.blueprint.generated_decorators) == 2
-    assert len(container._plan.blueprint.template_selections) == 4
+    assert container_composition._for_parent(container).generated_decorators == ()
+    assert container_composition._for_parent(container).template_selections == ()
+    assert len({decorator.id for component in container.components for decorator in component.decorators}) == 2
 
 
 @pytest.mark.parametrize("reverse_policies", [False, True])
@@ -365,17 +367,16 @@ def test_actual_generated_boundary_effect_rejected_once_with_cause(declaration, 
         builder.create_boundary("consumer", uses=(Use(None, Target, filter=selection),)).apply_bundle(lambda _: None)
     else:
         builder.create_boundary("provider", exposes=(Expose(Target, filter=selection),)).apply_bundle(compose)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    error = caught.value
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    error = caught_analysis
     assert error.report is not None
     assert error.report.errors[0].code == "template-visibility-cycle"
     assert len(calls) == 1
     assert any(calls[0] in piece for piece in error.report.errors[0].path)
     if ambiguous:
-        assert isinstance(error.__cause__, ContainerBuildError)
-        assert isinstance(error.__cause__.__cause__, ContainerBuildError)
-        assert error.__cause__.__cause__.code == f"boundary-{declaration}-ambiguous"
+        assert "matches" in error.report.errors[0].message and "components" in error.report.errors[0].message
+    assert not hasattr(error, "__cause__")
 
 
 def test_exact_source_condition_has_no_fallback_and_runtime_callbacks_do_not_replay():
@@ -417,10 +418,10 @@ def test_generated_activation_cycle_retains_code_and_provenance():
             arguments={"source": select(cf.with_id(info.id))},
         ),
     )
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert caught.value.report is not None
-    errors = caught.value.report.errors
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    errors = caught_analysis.report.errors
     assert any(error.code == "circular-dependency" for error in errors)
     assert any(template in error.path and source in error.path for error in errors)
 
@@ -574,7 +575,8 @@ def test_when_snapshot_reused_recursive_undecoration_parent_context_and_scale(mo
         arguments={"source": Source()},
         when=lambda core: ordinary_saw.append(core.has_dependant_service_type(SecondResource)) or False,
     )
-    container = builder.build()
+    container_analysis = builder.analyse()
+    container = container_analysis.create_runtime()
     assert snapshots
     assert len(views) == 2 * len(snapshots)
     assert all(views[index] is views[index + 1] for index in range(0, len(views), 2))
@@ -582,7 +584,7 @@ def test_when_snapshot_reused_recursive_undecoration_parent_context_and_scale(mo
     assert all(ordinary_saw)
     before = len(views)
     container.resolve(Consumer)
-    _ = container.graph.roots
+    _ = container_analysis.graph.roots
     assert len(views) == before
 
 
@@ -684,10 +686,10 @@ def test_generated_argument_validation_and_provenance(invalid):
             **options[invalid],
         ),
     )
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert caught.value.report is not None
-    issue = caught.value.report.errors[0]
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    issue = caught_analysis.report.errors[0]
     assert issue.code == "invalid-decorator"
     assert source_id in issue.path and template_id in issue.path
 
@@ -706,10 +708,10 @@ def test_callable_decorator_rejects_conflicting_generic_result():
             wrapper,
         ),
     )
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert caught.value.report is not None
-    assert caught.value.report.errors[0].code == "invalid-decorator"
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert caught_analysis.report.errors[0].code == "invalid-decorator"
 
 
 def test_nested_resource_matching_produces_one_layer_and_preserves_position():
@@ -776,7 +778,8 @@ def test_template_position_can_depend_on_decorator_and_target_components():
         ),
     )
 
-    container = builder.build()
+    container_analysis = builder.analyse()
+    container = container_analysis.create_runtime()
     assert sorted(calls) == ["inside", "outside"]
     for name, expected_sources, expected_positions in (
         ("outside", [source, ordinary], [15, 10]),
@@ -785,7 +788,7 @@ def test_template_position_can_depend_on_decorator_and_target_components():
     ):
         value = container.resolve(Target, filter=cf.with_name(name))
         assert unwrap(value)[0] == expected_sources
-        core = next(root.component for root in container.graph.roots if root.component.name == name)
+        core = next(root.component for root in container_analysis.graph.roots if root.component.name == name)
         assert [component.position for component in core.decorators] == expected_positions
 
 
@@ -803,10 +806,10 @@ def test_template_position_callback_must_return_an_integer(result):
             position=lambda _decorator, _decorated: result,
         ),
     )
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert caught.value.report is not None
-    issue = caught.value.report.errors[0]
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    issue = caught_analysis.report.errors[0]
     assert issue.code == "decorator-position-failed"
     assert all(item in issue.path for item in (template_id, source_id, target_id))
 
@@ -906,11 +909,11 @@ def test_cyclic_default_fails_clearly_before_activation():
     builder.register_decorator_template(
         for_each=Source, template=lambda _: DecoratorTemplate(DerivedServices(Target), wrapper)
     )
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert caught.value.report is not None
-    assert caught.value.report.errors[0].code == "invalid-decorator"
-    assert "Cyclic decorator TypeVar default" in str(caught.value)
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert caught_analysis.report.errors[0].code == "invalid-decorator"
+    assert "Cyclic decorator TypeVar default" in str(caught_analysis.report)
 
 
 def test_generated_predicate_failure_preserves_safe_provenance_and_original_cause():
@@ -932,22 +935,20 @@ def test_generated_predicate_failure_preserves_safe_provenance_and_original_caus
         return DecoratorTemplate(DerivedServices(Target), Wrapper, when=predicate)
 
     template_id = builder.register_decorator_template(for_each=Source, source_filter=source_filter, template=template)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build(diagnostics=True)
-    assert caught.value.report is not None
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
     assert source_calls == factory_calls == [source_id]
-    issues = caught.value.report.errors
+    issues = caught_analysis.report.errors
     assert all(issue.code == "decorator-filter-failed" for issue in issues)
     assert all(template_id in issue.path and source_id in issue.path and target_id in issue.path for issue in issues)
-    assert "private failure details" not in str(caught.value)
-    cause = caught.value.__cause__
-    while cause is not None and cause is not original:
-        cause = cause.__cause__
-    assert cause is original
-    assert caught.value.partial_graph is not None
+    assert "private failure details" not in str(caught_analysis.report)
+    assert not hasattr(caught_analysis, "__cause__")
+    assert all("RuntimeError" in issue.message for issue in issues)
+    assert caught_analysis.partial_graph is not None
     assert all(
         template_id in attempt.witness_path and source_id in attempt.witness_path and target_id in attempt.witness_path
-        for attempt in caught.value.partial_graph.attempts
+        for attempt in caught_analysis.partial_graph.attempts
         if not attempt.succeeded
     )
 
@@ -964,8 +965,8 @@ def test_extensions_typevar_without_default_remains_unresolved():
     builder.register_decorator_template(
         for_each=Source, template=lambda _: DecoratorTemplate(DerivedServices(Target), wrapper)
     )
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert caught.value.report is not None
-    assert caught.value.report.errors[0].code == "invalid-decorator"
-    assert "Unresolved decorator TypeVar(s): ExternalT" in str(caught.value)
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert caught_analysis.report.errors[0].code == "invalid-decorator"
+    assert "Unresolved decorator TypeVar(s): ExternalT" in str(caught_analysis.report)

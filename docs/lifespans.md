@@ -81,7 +81,7 @@ A singleton registered on `ScopeBuilder` instead belongs to the built overlay sc
 
 ## Captive dependencies
 
-`per_resolution` is resolution-local state. A scoped or singleton component cannot retain it because the cached owner would carry that instance into later top-level resolves. `build()` rejects both direct and transitive captures:
+`per_resolution` is resolution-local state. A scoped or singleton component cannot retain it because the cached owner would carry that instance into later top-level resolves. `analyse()` reports both direct and transitive captures as policy findings:
 
 ```text
 singleton -> per_resolution                invalid
@@ -92,9 +92,9 @@ scoped -> transient -> per_resolution       invalid
 
 A plain transient dependency remains valid beneath a scoped or singleton owner. A transient does not, however, hide an invalid lifespan deeper in its dependency tree.
 
-The compiler also rejects a singleton plan that retains a scoped component. Shorter-lived components may depend on longer-lived components, so `per_resolution -> scoped` and `per_resolution -> singleton` are valid.
+Analysis also reports a singleton plan that retains a scoped component. Shorter-lived components may depend on longer-lived components, so `per_resolution -> scoped` and `per_resolution -> singleton` are valid.
 
-These checks happen before user activation and cover constructors, factories, decorators, collections, component edges
+These analysis-only checks happen before user activation and cover constructors, factories, decorators, collections, component edges
 selected by argument policies, pre-configuration dependencies, and supplied scope slots. A singleton therefore cannot
 capture a late-bound request value declared with `declare_scope_slot()`. Captive paths are reported with the
 `captive-runtime-scope` issue code; ordinary lifespan violations retain `captive-dependency`.
@@ -106,7 +106,8 @@ resolution context also stops accepting calls when its top-level resolution fini
 
 ## Cleanup ownership
 
-Ownership is compiled for every occurrence and is available from `container.graph.ownership_report()`. Generator and
+Ownership is compiled for every occurrence. Its inspection report is available after `result = builder.analyse()` from
+`result.graph.ownership_report()`. Production build skips policy audits while enforcing actual runtime cleanup and owner guards. Generator and
 context-manager cleanup follows that frozen decision:
 
 - scoped value → scope exit;

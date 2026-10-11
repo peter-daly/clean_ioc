@@ -1,0 +1,88 @@
+# ruff: noqa: E402, S101, S603
+"""Matched unique-definition controls; import library before tracing compiler work."""
+import gc
+import hashlib
+import importlib.abc
+import importlib.util
+import json
+import os
+import resource
+import subprocess
+import sys
+import time
+import tracemalloc
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[4]
+HERE = Path(__file__).parent
+sys.path.insert(0, str(ROOT))
+
+
+class BaselineLoader(importlib.abc.SourceLoader):
+    def __init__(self, name):
+        self.path = ROOT / (name.replace('.', '/') + '.py')
+
+    def get_filename(self, fullname):
+        return str(self.path)
+
+    def get_data(self, path):
+        return (HERE / (self.path.name + '.before.txt')).read_bytes()
+
+
+class BaselineFinder(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname in ('clean_ioc.components', 'clean_ioc.container'):
+            return importlib.util.spec_from_loader(fullname, BaselineLoader(fullname))
+        return None
+
+
+if os.environ.get('TASK14_BASELINE') == '1':
+    sys.meta_path.insert(0, BaselineFinder())
+
+from clean_ioc import ContainerBuilder, components, container
+
+
+def sample(mode, traced):
+    if traced:
+        tracemalloc.start()
+    started = time.perf_counter()
+    builder = ContainerBuilder()
+    services = [type(f'Service{index}', (), {}) for index in range(2000)]
+    for service in services:
+        builder.register(service)
+    builder.set_provider_roots(())
+    if mode == 'rich-run':
+        builder.add_validation_rule(
+            lambda context: () if context.graph.diagnostics_enabled else (_ for _ in ()).throw(AssertionError())
+        )
+    runtime = builder.build(mode='analysis' if mode == 'analysis' else 'run')
+    seconds = time.perf_counter() - started
+    del builder
+    gc.collect()
+    memory = tracemalloc.get_traced_memory() if traced else (None, None)
+    result = {'build_seconds': seconds, 'traced_retained_bytes': memory[0], 'traced_peak_bytes': memory[1],
+              'peak_rss_bytes': resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+              'rss_bytes': int(subprocess.check_output(['/bin/ps', '-o', 'rss=', '-p', str(os.getpid())])) * 1024,
+              'services': len(services)}
+    started = time.perf_counter()
+    for service in services:
+        assert type(runtime.resolve(service)) is service
+    result['resolve_seconds'] = time.perf_counter() - started
+    result['source_sha256'] = {module.__name__: hashlib.sha256(module.__loader__.get_source(module.__name__).encode()).hexdigest() for module in (components, container)}
+    runtime.__exit__(None, None, None)
+    return result
+
+
+if __name__ == '__main__':
+    if sys.argv[1] == 'sample':
+        print(json.dumps(sample(sys.argv[2], sys.argv[3] == 'heap')))
+    else:
+        output = {}
+        for mode in ('run', 'rich-run', 'analysis'):
+            output[mode] = []
+            for repeat in range(3):
+                for kind in ('normal', 'heap'):
+                    result = json.loads(subprocess.check_output([sys.executable, __file__, 'sample', mode, kind], text=True))
+                    output[mode].append({'kind': kind, **result})
+                    print(mode, repeat + 1, kind, result['build_seconds'], flush=True)
+            Path(sys.argv[2]).write_text(json.dumps(output, indent=2)+'\n')

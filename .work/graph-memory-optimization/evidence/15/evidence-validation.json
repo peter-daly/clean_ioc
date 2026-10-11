@@ -1,0 +1,10 @@
+{
+  "source_identity": true,
+  "public_outputs": [
+    "run",
+    "rich-run",
+    "analysis"
+  ],
+  "processes": 18,
+  "baseline": "Verified task14 AFTER"
+}

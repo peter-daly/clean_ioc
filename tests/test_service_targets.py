@@ -1,5 +1,6 @@
 """Concrete registered-service selection without decorator-template activation."""
 
+import re
 import sys
 import types
 from collections.abc import Callable
@@ -88,9 +89,10 @@ def test_generated_subclass_and_alias_preserve_original_request_key():
         assert target.requested_service_type is alias
         assert target.projected_contract == Contract[int, str]
         assert target.bindings == {T: int, U: str}
+    container_composition = builder.retain_composition()
     container = builder.build()
     assert type(container.resolve(alias)) is generated
-    assert Contract[int, str] not in container._plan.blueprint.service_types()
+    assert Contract[int, str] not in container_composition._for_parent(container).service_types()
 
 
 def test_actual_typevar_identity_is_retained_in_both_scopes_and_decorator_binding():
@@ -230,10 +232,11 @@ def test_open_registration_constraints_validate_actual_closed_requests(factory):
     builder = ContainerBuilder()
     builder.register(Service, groups=[group], **({"factory": make} if factory else {}))
     builder.mark_entrypoint(Service[str])
-    with pytest.raises(ContainerBuildError, match="integers") as error:
-        builder.build()
-    assert error.value.report is not None
-    assert any(issue.code == "service-group-incompatible" for issue in error.value.report.errors)
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert re.search("integers", error_analysis.report.to_text())
+    assert error_analysis.report is not None
+    assert any(issue.code == "service-group-incompatible" for issue in error_analysis.report.errors)
 
 
 def test_pattern_request_retains_original_registration_id_and_enforces_fixed_contract():
@@ -266,8 +269,8 @@ def test_pattern_request_retains_original_registration_id_and_enforces_fixed_con
             self.value = value
 
     builder.register(BadConsumer)
-    with pytest.raises(ContainerBuildError, match="lists"):
-        builder.build()
+    with pytest.raises(AssertionError, match="lists"):
+        builder.analyse().report.assert_valid()
 
 
 @pytest.mark.parametrize(
@@ -290,8 +293,8 @@ def test_deferred_nested_callable_and_union_group_constraints(contract_arg, good
     builder = ContainerBuilder()
     builder.register(Service, groups=[group])
     builder.mark_entrypoint(Service[bad_arg])
-    with pytest.raises(ContainerBuildError, match="constrained"):
-        builder.build()
+    with pytest.raises(AssertionError, match="constrained"):
+        builder.analyse().report.assert_valid()
 
 
 def test_union_variable_matching_is_order_independent_and_rejects_ambiguity():
@@ -313,8 +316,8 @@ def test_open_targets_fail_clearly_and_closed_repeated_registration_constraints_
     with pytest.raises(ContainerBuildError, match="Unresolved"):
         selected(compiler, group, registration_id, Contract)
     builder.mark_entrypoint(Contract[int, str])
-    with pytest.raises(ContainerBuildError, match="repeated"):
-        builder.build()
+    with pytest.raises(AssertionError, match="repeated"):
+        builder.analyse().report.assert_valid()
 
 
 def test_deferred_discovery_and_fallback_are_selected_using_current_snapshot():
@@ -345,8 +348,8 @@ def test_deferred_discovery_and_fallback_are_selected_using_current_snapshot():
     fallback_builder.register_subclasses(Service, subclass_type_filter=lambda cls: False, groups=[group])
     fallback_builder.register_fallback(Service, Fallback, groups=[group])
     fallback_builder.mark_entrypoint(Service[str])
-    with pytest.raises(ContainerBuildError, match="discovered"):
-        fallback_builder.build()
+    with pytest.raises(AssertionError, match="discovered"):
+        fallback_builder.analyse().report.assert_valid()
 
 
 def test_existing_ordinary_decorator_does_not_gain_derived_matching():
@@ -440,8 +443,8 @@ def test_alias_closed_request_completes_deferred_group_constraint_at_build():
     builder = ContainerBuilder()
     builder.register(Service, groups=[group])
     builder.mark_entrypoint(closed_alias)
-    with pytest.raises(ContainerBuildError, match="alias-constraint"):
-        builder.build()
+    with pytest.raises(AssertionError, match="alias-constraint"):
+        builder.analyse().report.assert_valid()
 
 
 def test_closed_typevar_domain_constraints_and_decorator_expression_rejection():

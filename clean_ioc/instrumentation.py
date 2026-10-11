@@ -1,4 +1,12 @@
-"""Opt-in, bounded measurements of compiled runtime resolution."""
+"""Opt-in, bounded measurements of emitted runtime resolution.
+
+Execution IDs combine a process-local plan identity and an observation-instance
+identity. Occurrence paths are compact IDs, accompanied by display labels. They
+are not graph paths or semantic manifest fingerprints and cannot compare wiring
+across processes. Cache groups aggregate executable owner/cache keys within one
+observed execution; ordinary child scopes share that execution's observations.
+The optional catalog, labels, caller mappings and counters have their own cost.
+"""
 
 from __future__ import annotations
 
@@ -46,10 +54,11 @@ class DurationSummary:
 
 @dataclass(frozen=True, slots=True)
 class ProfileRecord:
-    graph_fingerprint: str
+    execution_id: str
     path: str
+    label: str
     registration: str | None
-    sharing_group: str | None
+    cache_group: str | None
     kind: str
     attempts: int
     completed: int
@@ -62,10 +71,11 @@ class ProfileRecord:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "graph_fingerprint": self.graph_fingerprint,
+            "execution_id": self.execution_id,
             "path": self.path,
+            "label": self.label,
             "registration": self.registration,
-            "sharing_group": self.sharing_group,
+            "cache_group": self.cache_group,
             "kind": self.kind,
             "attempts": self.attempts,
             "completed": self.completed,
@@ -82,7 +92,7 @@ class ProfileRecord:
 class ResolutionProfile:
     """Immutable, deterministic view of completed operations at snapshot time."""
 
-    graphs: tuple[str, ...]
+    executions: tuple[str, ...]
     started_ns: int
     captured_ns: int
     sample_durations: float
@@ -91,12 +101,12 @@ class ResolutionProfile:
     in_flight: int
     records: tuple[ProfileRecord, ...]
     groups: tuple[ProfileRecord, ...]
-    sharing_groups: tuple[ProfileRecord, ...]
+    cache_groups: tuple[ProfileRecord, ...]
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "evidence": "runtime observations",
-            "graphs": list(self.graphs),
+            "executions": list(self.executions),
             "started_ns": self.started_ns,
             "captured_ns": self.captured_ns,
             "sample_durations": self.sample_durations,
@@ -105,7 +115,7 @@ class ResolutionProfile:
             "in_flight": self.in_flight,
             "records": [record.to_dict() for record in self.records],
             "registration_groups": [record.to_dict() for record in self.groups],
-            "sharing_groups": [record.to_dict() for record in self.sharing_groups],
+            "cache_groups": [record.to_dict() for record in self.cache_groups],
         }
 
     def to_json(self, *, indent: int | None = 2) -> str:
@@ -114,7 +124,7 @@ class ResolutionProfile:
     def to_text(self) -> str:
         lines = [
             "Runtime resolution profile (observations)",
-            f"Graphs: {', '.join(self.graphs)}",
+            f"Executions: {', '.join(self.executions)}",
             f"Duration sampling: {self.sample_durations:g}; in flight: {self.in_flight}; "
             f"incomplete: {self.incomplete}; dropped updates: {self.dropped_updates}",
         ]
@@ -124,12 +134,12 @@ class ResolutionProfile:
             if record.registration is not None
             and record.attempts == record.cache_hits == record.cache_misses == record.cache_waits == 0
         )
-        lines.append(f"Compiled component paths not observed: {unobserved}")
+        lines.append(f"Emitted component occurrences not observed: {unobserved}")
         for record in self.records:
             if record.attempts == record.cache_hits == record.cache_misses == record.cache_waits == 0:
                 continue
             lines.append(
-                f"{record.path} [{record.kind}]: {record.attempts} attempts, "
+                f"{record.label} ({record.path}) [{record.kind}]: {record.attempts} attempts, "
                 f"{record.completed} completed, {record.failed} failed, "
                 f"{record.cache_hits} hits, {record.cache_misses} misses, {record.cache_waits} waits"
             )
@@ -205,7 +215,7 @@ class ResolutionProfile:
                 return record.cache_waits
             return record.failed
 
-        return tuple(sorted(self.records, key=lambda record: (-score(record), record.graph_fingerprint, record.path)))
+        return tuple(sorted(self.records, key=lambda record: (-score(record), record.execution_id, record.path)))
 
 
 class _MutableRecord:
@@ -240,6 +250,8 @@ class ResolutionProfiler:
         self._lock = threading.Lock()
         self._started_ns = time.time_ns()
         self._catalog: dict[tuple[str, str], tuple[str | None, str]] = {}
+        self._labels: dict[tuple[str, str], str] = {}
+        self._pre_configuration_callers: dict[tuple[str, str, int], tuple[str, str]] = {}
         self._sharing: dict[tuple[str, str], str] = {}
         self._ambiguous: dict[str, frozenset[str]] = {}
         self._bindings: dict[str, str] = {}
@@ -257,11 +269,13 @@ class ResolutionProfiler:
         sharing: dict[str, str],
         ambiguous: frozenset[str],
         binding_token: str,
+        labels: dict[str, str] | None = None,
+        configuration_callers: dict[tuple[str, str, int], tuple[str, str]] | None = None,
     ) -> None:
         with self._lock:
             bound = self._bindings.get(fingerprint)
             if bound is not None and bound != binding_token:
-                raise ValueError("resolution profiler is already bound to a different runtime with this graph")
+                raise ValueError("resolution profiler is already bound to a different runtime with this execution")
             if bound is not None:
                 existing_catalog = {
                     path: detail for (graph, path), detail in self._catalog.items() if graph == fingerprint
@@ -274,13 +288,15 @@ class ResolutionProfiler:
                     or existing_sharing != sharing
                     or self._ambiguous[fingerprint] != ambiguous
                 ):
-                    raise ValueError("resolution profiler has conflicting catalogs for the same graph")
+                    raise ValueError("resolution profiler has conflicting catalogs for the same execution")
             for path, detail in catalog.items():
                 key = (fingerprint, path)
                 self._catalog.setdefault(key, detail)
+                self._labels.setdefault(key, (labels or {}).get(path, path))
                 self._records.setdefault(key, _MutableRecord())
                 if path in sharing:
                     self._sharing[key] = sharing[path]
+            self._pre_configuration_callers.update(configuration_callers or {})
             self._graphs.add(fingerprint)
             self._ambiguous[fingerprint] = ambiguous
             self._bindings[fingerprint] = binding_token
@@ -380,12 +396,12 @@ class ResolutionProfiler:
                 raise RuntimeError("resolution profiler is not bound to a successfully built runtime")
             records: list[ProfileRecord] = []
             groups: dict[tuple[str, str], _MutableRecord] = {}
-            sharing_groups: dict[tuple[str, str], _MutableRecord] = {}
+            cache_groups: dict[tuple[str, str], _MutableRecord] = {}
 
             def snapshot(
                 key: tuple[str, str],
                 registration: str | None,
-                sharing_group: str | None,
+                cache_group: str | None,
                 kind: str,
                 item: _MutableRecord,
             ) -> ProfileRecord:
@@ -404,8 +420,9 @@ class ResolutionProfiler:
                 return ProfileRecord(
                     key[0],
                     key[1],
+                    self._labels.get(key, key[1]),
                     registration,
-                    sharing_group,
+                    cache_group,
                     kind,
                     item.attempts,
                     item.completed,
@@ -440,21 +457,21 @@ class ResolutionProfiler:
             for key in sorted(self._catalog):
                 registration, kind = self._catalog[key]
                 item = self._records[key]
-                sharing_group = self._sharing.get(key)
-                records.append(snapshot(key, registration, sharing_group, kind, item))
+                cache_group = self._sharing.get(key)
+                records.append(snapshot(key, registration, cache_group, kind, item))
                 if registration is not None and kind != "cleanup":
                     group = groups.setdefault((key[0], registration), _MutableRecord())
                     merge(group, item)
-                if sharing_group is not None:
-                    group = sharing_groups.setdefault((key[0], sharing_group), _MutableRecord())
+                if cache_group is not None:
+                    group = cache_groups.setdefault((key[0], cache_group), _MutableRecord())
                     merge(group, item)
             group_records = tuple(
                 snapshot((graph, "registration " + registration), registration, None, "registration group", item)
                 for (graph, registration), item in sorted(groups.items())
             )
             sharing_records = tuple(
-                snapshot((graph, "sharing " + reference), None, reference, "sharing group", item)
-                for (graph, reference), item in sorted(sharing_groups.items())
+                snapshot((graph, "cache " + reference), None, reference, "cache group", item)
+                for (graph, reference), item in sorted(cache_groups.items())
             )
             return ResolutionProfile(
                 tuple(sorted(self._graphs)),

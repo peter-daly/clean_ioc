@@ -5,7 +5,7 @@ description: Build and validate every supported composition, then compare varian
 # Build-variant matrices
 
 A `BuildMatrix` checks an explicit list of supported environments, tenants, or feature configurations. Each variant
-gets a fresh builder, runs ordinary build and validation rules, and is compared with a named reference. One failing
+gets a fresh builder, completes `analyse()` once, and is compared with a named reference. One failing
 variant does not stop the remaining variants. The matrix produces one report for unit tests or CI without activating
 application components.
 
@@ -99,9 +99,9 @@ components, or test external services.
 
 ## Validation and comparison policies
 
-Each build runs the normal compiler and build-mode validation rules. After a successful build, the matrix runs the
-validation-only rules once and retains the earlier build findings without rerunning build rules. Every successfully
-built scope is closed after its report and graph snapshots are captured, including when validation fails.
+Each variant uses a fresh builder and completes `analyse()` once. Its report includes compiler findings and all
+available validation rules without replaying callbacks when the matrix reads the result. Analysis results are closed
+after the matrix captures their report and graph snapshots, including when validation fails.
 
 | Policy | Meaning |
 | --- | --- |

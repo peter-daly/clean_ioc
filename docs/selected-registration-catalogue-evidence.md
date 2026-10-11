@@ -1,5 +1,11 @@
 # Selected registration catalogue evidence
 
+> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/analyse API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-analyse).
+
+> Historical comparison: these measurements use the former fine-grained build policies.
+> Their reproduction scripts use the private compiler harness; current public applications
+> use [run or analysis mode](compiler-tooling.md#run-and-analysis-modes).
+
 Actual application verification for the frozen step 3 wheels: Bark 5,946 unit
 tests pass (26 skips); Cop 494 unit tests and all 64 integration tests pass
 (373.88 seconds). All four shared-process catalogue memory assertions remain

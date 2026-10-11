@@ -1,5 +1,8 @@
 """Separate allocation/count/cProfile probes; never latency baselines.
 
+Uses execution build() for allocation probes; the failure probe uses analyse()
+to capture diagnostic retries. These are separate operations, not mode switches.
+
 Run from repo root with `uv run python -m benchmarks.compiler_optimization_evidence`.
 Writes /tmp outputs by default. Private plan inspection emits aggregate counts and
 shallow executable storage only, never values, identities, callback state or owners.
@@ -18,7 +21,7 @@ from dataclasses import fields, is_dataclass
 from pathlib import Path
 from typing import Any, cast
 
-from clean_ioc import CompilationProfiler, ContainerBuildError
+from clean_ioc import CompilationProfiler
 from clean_ioc.container import _Step
 
 from . import bench_compiler_optimization as workloads
@@ -49,6 +52,7 @@ def executable_inventory(owner) -> dict:
     plan = owner._plan
     pending = [root for roots in plan.roots.values() for root in roots]
     pending += [root for roots in plan.provider_roots.values() for root in roots]
+    pending += [root for roots in plan.managed_provider_roots.values() for root in roots]
     pending += [root for roots in plan.warmup_steps.values() for root in roots]
     seen = set()
     counts = Counter()
@@ -74,16 +78,14 @@ def executable_inventory(owner) -> dict:
             for item in fields(value):
                 if item.name in _LINK_FIELDS:
                     pending.append(getattr(value, item.name))
-    visits = list(owner.graph.walk())
     return {
         "retained_unique_steps": sum(counts.values()),
         "step_classes": dict(sorted(counts.items())),
         "executable_shallow_bytes_lower_bound": bytes_total,
         "root_and_edge_records": edge_records,
         "executable_tuple_count": tuple_count,
-        "graph_walk_visits": len(visits),
-        "unique_graph_occurrences": len({visit.component.occurrence_id for visit in visits}),
-        "maximum_graph_path_components": max((len(visit.components) for visit in visits), default=0),
+        "physical_component_records": len(plan.graph._records or ()),
+        "operation": "build",
     }
 
 
@@ -212,12 +214,9 @@ def main() -> None:
     builder = workloads.ContainerBuilder()
     builder.register(Broken)
     profile = CompilationProfiler(max_records=50_000)
-    try:
-        builder.build(profile=profile)
-    except ContainerBuildError:
-        pass
-    else:
-        raise AssertionError("Broken compiler workload unexpectedly succeeded")
+    with builder.analyse(profile=profile) as analysis:
+        if not analysis.report.errors:
+            raise AssertionError("Broken compiler workload unexpectedly succeeded")
     report = profile.report()
     Path(f"{prefix}-failed-compilation-profile.json").write_text(report.to_json())
     rows["failed-one-root"] = {

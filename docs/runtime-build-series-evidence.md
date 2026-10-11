@@ -1,5 +1,11 @@
 # Sequential runtime-build optimization evidence
 
+> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/analyse API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-analyse).
+
+> Historical comparison: these measurements use the former fine-grained build policies.
+> Their reproduction scripts use the private compiler harness; current public applications
+> use [run or analysis mode](compiler-tooling.md#run-and-analysis-modes).
+
 Measured 8 October 2026. All six proposed changes were assigned to separate
 GPT-6.1-Sol High agents and implemented sequentially, with an installed-wheel
 Cop comparison after each. A seventh separately measured change addresses a

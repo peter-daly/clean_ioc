@@ -1,16 +1,13 @@
 # Policy helpers and packs
 
 A policy helper creates an ordinary `ValidationRule`: a synchronous callback that checks the compiled graph and yields
-`BuildIssue` findings. Register it with `add_validation_rule()` or group rules in a `PolicyPack`. Both use the existing
-[build and explicit-validation phases](validation.md#custom-graph-rules).
+`BuildIssue` findings. Register it with `add_validation_rule()` or group rules in a `PolicyPack`. Both run only during
+[`analyse()`](validation.md#custom-graph-rules).
 
-## A pack with build and validation rules
+## A pack of analysis rules
 
-Pass a list of callbacks to `PolicyPack(name, rules)`. Plain callbacks use the pack's default `mode="build"`. A
-`(callback, "build")` or `(callback, "validation")` entry selects the phase for that individual rule. The list is copied
-to an immutable tuple when the pack is created.
-
-This complete example requires tracing during startup and checks ownership during explicit validation:
+Pass callbacks to `PolicyPack(name, rules)`. The list is copied to an immutable tuple. Packs have no mode or per-rule
+phase. This example checks tracing and ownership in one completed analysis:
 
 ```python
 import clean_ioc.component_filters as cf
@@ -32,7 +29,7 @@ policies = PolicyPack(
     "payments",
     [
         require_decorator(gateways, decorator_type=TracedGateway),
-        (require_tags(gateways, Tag("owner", "payments")), "validation"),
+        require_tags(gateways, Tag("owner", "payments")),
     ],
 )
 
@@ -45,18 +42,14 @@ builder.register_decorator(
     tags=(Tag("owner", "payments"),),
 )
 builder.apply_bundle(policies)
-container = builder.build()
-report = container.validation_report()
+result = builder.analyse()
+report = result.report
 report.assert_valid()
 ```
 
-Custom callbacks work in the same list. Use `(inspect_implementation_source, "validation")` for an expensive AST rule.
-Set `PolicyPack(..., mode="validation")` to make plain callbacks validate-only, and use `(rule, "build")` for any startup
-check in that pack.
-
-`build()` runs build rules and fails on their errors. `validation_report()` retains the stored build findings and runs
-validate-only rules once per call; it does not rerun build rules. The strict-by-default `clean-ioc check` command uses
-the same complete report. Custom warnings retain their severity, and `--ignore CODE` suppresses warnings only.
+Custom callbacks work in the same list. `build()` runs none of these rules. `analyse()` completes every available rule
+once and returns findings and outcomes. Reading the report does not replay rules. The strict CLI check inspects that
+completed report; `--ignore CODE` suppresses warnings only, and incomplete analysis always fails.
 
 Packs are callable bundles for root, scope, and boundary builders. Existing rule inheritance and boundary visibility
 apply: scope overlays inherit parent rules and run local rules afterward, while boundary-local rules inspect the graph

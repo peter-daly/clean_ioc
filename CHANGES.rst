@@ -1,6 +1,26 @@
 Unreleased
 ----------
 
+    Separate build() execution from analyse() validation. Production builds run
+    no policy or validation callbacks. Impossible binding still fails locally;
+    runtime ownership, cleanup, async and resolution guards remain enforced.
+
+    Return completed AnalysisResult/AnalysisReport findings, coverage, stage and
+    rule outcomes, full or partial graphs and optional test runtimes from
+    analyse(). Result reads never replay callbacks. create_runtime() uses the
+    emitted plan without recompiling. Every admitted attempt consumes its builder.
+
+    Remove BuildMode, ValidationRuleMode, BuildReport, build mode/fine flags,
+    rule phases and runtime graph/report/composition inspection. Keep one
+    add_validation_rule(rule) API. Retain Composition explicitly for overlays;
+    ScopeBuilder(parent, composition=handle) requires a matching live parent.
+    Ordinary scopes need no handle; handles have no cleanup lifecycle.
+
+    Migrate CLI inspection, matrices, examples and consumer workflows to one
+    analyse() call. Compilation profiling selects --operation build|analyse.
+    Runtime profiling and warmup records use execution identities, independent
+    of rich graph manifests. Performance comparisons remain deferred.
+
 
 2.0.0rc4
 --------

@@ -101,6 +101,59 @@ implementation review; production adoption is not approved.** Shared sources,
 prior evidence and parked pre-compilation work are unchanged. Repository checks
 pass with one narrowly documented prior Task 08 evidence E501 exception.
 
+The graph-memory plan also tracks [tasks 10–18](graph-memory-optimization/README.md),
+added on 2026-10-10. The agreed target is exactly two build modes, **run** and
+**analysis**, replacing fine-grained build policy switches. New work covers the
+mode/migration contract, mandatory validation and failure evidence, direct compact
+selection facts, activation-cache lifetimes, shared drafts, compact tables,
+snapshot sharing, intermediate-occurrence release and combined acceptance tests.
+The maintainer has authorized sequential subagent execution at the recorded
+reasoning efforts; tasks 10–18 are complete with accepted scoped outcomes.
+Task 12 retains a scoped CPU/churn improvement with no memory reduction
+claim. Task 13’s [accepted cache ownership change](graph-memory-optimization/13-result.md)
+reduces ordinary/rich run traced peaks by 28.72%/8.52%, with build medians
+2.96%/1.78% slower and unchanged retained runtime memory. Full CI and supported
+Python lifetime checks pass. Task 15's [result](graph-memory-optimization/15-result.md)
+retains compact origin/decorator indexes (about 4.96 MiB lower peak, 3.2–3.4% build
+cost), independently declines wider tables, and carried resolution timing into
+final combined acceptance. Its 2,386 tests and strict docs passed.
+Task 18's [accepted combined result](graph-memory-optimization/18-result.md) records
+ordinary-run traced peak 72.848→39.416 MiB and build workload 10.992→5.764 seconds,
+with nearly unchanged retention. Rich-rule peak falls 290.183→254.089 MiB with
+a 1.53% build-time cost. Low-reuse peak/build regressions and bounded resolution
+costs remain explicit tradeoffs. Final CI passes 2,409 tests, strict docs and
+supported-Python focused checks. Downstream Bark/Cop and production measurements
+were not run; all work remains local and uncommitted.
+Design gates are resolved as part of that work. The current uncommitted consumer
+validation fix is separate and must be preserved.
+
+On 2026-10-10, subsequent consumer verification reported higher worker memory and
+startup time despite functional compatibility. Task 18's synthetic baseline was
+after the task 10/11 automatic diagnostic-capture policy, so it did not measure
+that policy's cost against the previous consumer compiler. The maintainer now
+requests explicit `build()` and `analyse()` methods: execution-only build runs no
+validation rules or safety-policy checks; analyse performs all validation.
+Breaking changes are allowed. This supersedes the mandatory-build-validation
+contract above, without changing the historical evidence.
+The agreed rule API has one category, `add_validation_rule(rule)`, with no
+build/validation phase argument; all rules run only in `analyse()`. Task 20 has a
+completed scoped implementation review; sequential work on 21–24 is authorized.
+
+The [investigation and new tasks 19–25](graph-memory-optimization/README.md#current-direction-execution-only-build-and-complete-analyse)
+cover the new contract, validation separation, direct execution finalization,
+avoided evidence allocation, warmup/profiling dependencies, consumer/tooling
+migration and whole-upgrade memory acceptance. They include reasoning efforts
+and readiness gates. Task 19's high-reasoning contract design and review are
+complete. The maintainer accepted single-attempt builders, including failed
+compilation, and optional external composition with immutable declaration
+structure and ordinary reference ownership, without a separate close lifecycle.
+Tasks 20–24 are implemented and reviewed; task 23 closes task 21's feature gate.
+[Task 24](graph-memory-optimization/24-result.md) completes the API/tooling/docs
+migration with full Python 3.11–3.14 CI and actual Bark/Cop unit/integration checks.
+Source/environment baselines and completed samples remain preserved. Task 25 is
+ready for assignment and remains unassigned; no new memory/startup comparison
+has been run. Correctness acceptance is not measured memory savings.
+
 ## Pre-compilation
 
 The [pre-compilation plan](pre-compilation/README.md), created on 2026-10-09,

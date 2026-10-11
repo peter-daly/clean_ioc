@@ -1,0 +1,134 @@
+error[invalid-argument-type]: Argument to bound method `list.append` is incorrect
+  --> .work/graph-memory-optimization/evidence/17/ownership-proof.py:29:13
+   |
+29 | /             {
+30 | |                 "event": "discarded opaque released",
+31 | |                 "graph_frozen": graph._records is not None,
+32 | |                 "selected_tags_normalized": second.tags is first_tags,
+33 | |                 "selected_dependency": selected.dependencies[0].occurrence_id,
+34 | |             }
+   | |_____________^ Expected `dict[str, str | list[Unknown]]`, found `dict[str, str | list[Unknown] | int]`
+info: element `int` of union `str | list[Unknown] | int` is not assignable to `str | list[Unknown]`
+info: Method defined here
+    --> stdlib/builtins.pyi:2981:9
+     |
+2981 |     def append(self, object: _T, /) -> None:
+     |         ^^^^^^       ---------- Parameter declared here
+
+error[unresolved-attribute]: Unresolved attribute `__del__` on type `<class '_ComponentDraft'>`.
+  --> .work/graph-memory-optimization/evidence/17/ownership-proof.py:43:1
+   |
+43 | components._ComponentDraft.__del__ = lambda self: released_drafts.append(self.occurrence_id)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[invalid-argument-type]: Argument to bound method `list.append` is incorrect
+  --> .work/graph-memory-optimization/evidence/17/ownership-proof.py:48:19
+   |
+48 |     events.append({"event": "freeze begin", "opaque_alive": reference() is not None})
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected `dict[str, str | list[Unknown]]`, found `dict[str, str | list[Unknown] | bool]`
+info: element `bool` of union `str | list[Unknown] | bool` is not assignable to `str | list[Unknown]`
+info: Method defined here
+    --> stdlib/builtins.pyi:2981:9
+     |
+2981 |     def append(self, object: _T, /) -> None:
+     |         ^^^^^^       ---------- Parameter declared here
+
+error[invalid-argument-type]: Argument to bound method `list.append` is incorrect
+  --> .work/graph-memory-optimization/evidence/17/ownership-proof.py:51:9
+   |
+51 | /         {
+52 | |             "event": "freeze end",
+53 | |             "opaque_alive": reference() is not None,
+54 | |             "released_drafts": list(released_drafts),
+55 | |         }
+   | |_________^ Expected `dict[str, str | list[Unknown]]`, found `dict[str, str | list[Unknown] | bool]`
+info: element `bool` of union `str | list[Unknown] | bool` is not assignable to `str | list[Unknown]`
+info: Method defined here
+    --> stdlib/builtins.pyi:2981:9
+     |
+2981 |     def append(self, object: _T, /) -> None:
+     |         ^^^^^^       ---------- Parameter declared here
+
+error[invalid-argument-type]: Argument to function `_retain_runtime_graph` is incorrect
+  --> .work/graph-memory-optimization/evidence/17/ownership-proof.py:69:33
+   |
+69 | container._retain_runtime_graph(plan)
+   |                                 ^^^^ Expected `_PlanSet`, found `SimpleNamespace`
+info: Function defined here
+    --> clean_ioc/container.py:5110:5
+     |
+5110 | def _retain_runtime_graph(plan: _PlanSet, *, include_architecture: bool = False) -> None:
+     |     ^^^^^^^^^^^^^^^^^^^^^ -------------- Parameter declared here
+
+error[invalid-argument-type]: Argument to class `tuple` is incorrect
+  --> .work/graph-memory-optimization/evidence/17/ownership-proof.py:72:14
+   |
+72 | assert tuple(graph._records) == (1, 2)
+   |              ^^^^^^^^^^^^^^ Expected `Iterable[int]`, found `dict[int, _ComponentRecord] | None`
+info: element `None` of union `dict[int, _ComponentRecord] | None` is not assignable to `Iterable[int]`
+info: └── type `None` is not assignable to protocol `Iterable[int]`
+info:     └── protocol member `__iter__` is not defined on type `None`
+
+error[unresolved-attribute]: Attribute `occurrence_id` is not defined on `None` in union `Component | None`
+  --> .work/graph-memory-optimization/evidence/17/ownership-proof.py:74:8
+   |
+74 | assert selected.dependencies[0].parent.occurrence_id == selected.occurrence_id
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[unresolved-import]: Cannot resolve imported module `measure`
+  --> .work/graph-memory-optimization/evidence/17/screen.py:17:10
+   |
+17 |     from measure import sample
+   |          ^^^^^^^
+info: Searched in the following paths during module resolution:
+info:   1. /Users/peter.daly/WS/pete/clean_ioc (first-party code)
+info:   2. vendored://stdlib (stdlib typeshed stubs vendored by ty)
+info:   3. /Users/peter.daly/WS/pete/clean_ioc/.venv/lib/python3.14/site-packages (site-packages)
+info: make sure your Python environment is properly configured: https://docs.astral.sh/ty/modules/#python-environment
+
+error[unresolved-attribute]: Attribute `occurrence_id` is not defined on `None` in union `Component | None`
+  --> tests/test_intermediate_occurrence_lifetimes.py:39:73
+   |
+39 |                 (graph._records is not None, second.tags is first_tags, first.dependencies[0].parent.occurrence_id)
+   |                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[invalid-argument-type]: Argument to class `tuple` is incorrect
+  --> tests/test_intermediate_occurrence_lifetimes.py:49:18
+   |
+49 |     assert tuple(graph._records) == (1, 2)
+   |                  ^^^^^^^^^^^^^^ Expected `Iterable[int]`, found `dict[int, _ComponentRecord] | None`
+info: element `None` of union `dict[int, _ComponentRecord] | None` is not assignable to `Iterable[int]`
+info: └── type `None` is not assignable to protocol `Iterable[int]`
+info:     └── protocol member `__iter__` is not defined on type `None`
+
+error[unresolved-attribute]: Attribute `errors` is not defined on `None` in union `None | BuildReport`
+   --> tests/test_intermediate_occurrence_lifetimes.py:140:16
+    |
+140 |         assert caught.value.report.errors[0].code == "late-owner-witness"
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `errors` is not defined on `None` in union `None | BuildReport`
+   --> tests/test_intermediate_occurrence_lifetimes.py:141:16
+    |
+141 |         assert caught.value.report.errors[0].path
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `endswith` is not defined on `None` in union `str | None`
+   --> tests/test_intermediate_occurrence_lifetimes.py:142:16
+    |
+142 |         assert caught.value.evidence[0].source_location.path.endswith("test_intermediate_occurrence_lifetimes.py")
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `path` is not defined on `None` in union `SourceLocation | None`
+   --> tests/test_intermediate_occurrence_lifetimes.py:142:16
+    |
+142 |         assert caught.value.evidence[0].source_location.path.endswith("test_intermediate_occurrence_lifetimes.py")
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `source_location` is not defined on `None` in union `FailureEvidence | None`
+   --> tests/test_intermediate_occurrence_lifetimes.py:142:16
+    |
+142 |         assert caught.value.evidence[0].source_location.path.endswith("test_intermediate_occurrence_lifetimes.py")
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Found 15 diagnostics

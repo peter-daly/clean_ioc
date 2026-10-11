@@ -1,0 +1,424 @@
+--- a/clean_ioc/container.py
++++ b/clean_ioc/container.py
+@@ -5438,6 +5438,12 @@
+         self._decorator_patterns: dict[
+             tuple[str, tuple[CandidateDecision, ...], tuple[CandidateDecision, ...]], CompilationExplanation
+         ] = {}
++        # Compiler-local, identity-keyed facts. Owners prevent identity reuse;
++        # neither pool is copied into a compiled graph or execution plan.
++        self._decorator_template_facts: dict[
++            tuple[int, int, int, int, int], tuple[tuple[Any, ...], TemplateDecision]
++        ] = {}
++        self._decorator_rejections: dict[int, CandidateDecision] = {}
+         self.parameter_explanations: dict[int, dict[str, ParameterExplanation]] = {}
+         self.generic_explanations: dict[int, GenericBindingExplanation] = {}
+         self._factory_pattern_bindings: dict[str, tuple[tuple[str, str], ...]] = {}
+@@ -10042,34 +10048,22 @@
+                     self.occurrence_explanations[item.component.occurrence_id] = explanation
+         return tuple(items)
+ 
+-    def _capture_decorator_pattern(self, explanation: CompilationExplanation) -> _DecoratorExplanation:
+-        # Diagnostic history and census deduplicate by captured explanation
+-        # identity. Keep that existing representation when diagnostics are on.
++    def _capture_decorator_pattern(
++        self, explanation: CompilationExplanation, target_occurrence_id: int
++    ) -> _DecoratorExplanation:
++        # Rich history retains original occurrence facts and explanation identity.
+         if self._diagnostics:
+             return explanation
+-        targets = {
+-            decision.template.target_occurrence_id
+-            for decision in (*explanation.selected, *explanation.rejected)
+-            if decision.template is not None
+-        }
+-        if len(targets) != 1:
++        if not any(decision.template is not None for decision in (*explanation.selected, *explanation.rejected)):
+             return explanation
+-
+-        def normalize(decisions: tuple[CandidateDecision, ...]) -> tuple[CandidateDecision, ...]:
+-            return tuple(
+-                decision
+-                if decision.template is None
+-                else replace(decision, template=replace(decision.template, target_occurrence_id=0))
+-                for decision in decisions
+-            )
+-
+-        selected, rejected = normalize(explanation.selected), normalize(explanation.rejected)
+-        key = explanation.subject, selected, rejected
++        # Template facts are already captured without occurrence context. Do not
++        # allocate rich facts only to normalize and discard them here.
++        key = explanation.subject, explanation.selected, explanation.rejected
+         pattern = self._decorator_patterns.get(key)
+         if pattern is None:
+-            pattern = CompilationExplanation(explanation.subject, (), selected, rejected)
++            pattern = CompilationExplanation(explanation.subject, (), explanation.selected, explanation.rejected)
+             self._decorator_patterns[key] = pattern
+-        return _RemappedDecoratorExplanation(pattern, next(iter(targets)), explanation.path)
++        return _RemappedDecoratorExplanation(pattern, target_occurrence_id, explanation.path)
+ 
+     def _compile_decorators(
+         self,
+@@ -10093,13 +10087,21 @@
+         target_registration = self._specialized_registration_sources.get(registration.id, registration)
+ 
+         def template_fact(candidate: _GeneratedDecoratorDefinition, target: _ServiceTarget | None) -> TemplateDecision:
++            # Check identities before formatting labels or binding tuples. The
++            # cached owners keep every identity input alive for this compiler.
++            key = None
++            if not self._diagnostics:
++                key = id(candidate), id(target), id(core.service_type), id(target_registration), id(self._area)
++                cached = self._decorator_template_facts.get(key)
++                if cached is not None:
++                    return cached[1]
+             selector = candidate.specification.services
+-            return TemplateDecision(
++            fact = TemplateDecision(
+                 template_id=candidate.declaration.id,
+                 source_registration_id=candidate.source.id,
+                 generated_definition_id=candidate.id,
+                 target_registration_id=target_registration.id,
+-                target_occurrence_id=core.occurrence_id,
++                target_occurrence_id=core.occurrence_id if self._diagnostics else 0,
+                 selector_kind="service-group" if isinstance(selector, ServiceGroup) else "derived-services",
+                 selector_contract=self._template_label(selector.service_type),
+                 source_service=self._template_label(candidate.source.service_type),
+@@ -10121,6 +10123,12 @@
+                 ),
+                 boundary=self._area,
+             )
++            if key is not None:
++                self._decorator_template_facts[key] = (
++                    (candidate, target, core.service_type, target_registration, self._area),
++                    fact,
++                )
++            return fact
+ 
+         for candidate in self.blueprint.generated_decorators:
+             if candidate.declaration_area != self._area:
+@@ -10143,16 +10151,20 @@
+                     ),
+                 ) from error
+             if target is None:
+-                decisions.append(
+-                    CandidateDecision(
++                fact = template_fact(candidate, None)
++                decision = self._decorator_rejections.get(id(fact)) if not self._diagnostics else None
++                if decision is None:
++                    decision = CandidateDecision(
+                         candidate.id,
+                         DecisionOutcome.rejected,
+                         ("template-target-not-selected",),
+                         "The target registration did not satisfy the template's service selector",
+                         candidate.declaration.origin,
+-                        template_fact(candidate, None),
++                        fact,
+                     )
+-                )
++                    if not self._diagnostics:
++                        self._decorator_rejections[id(fact)] = decision
++                decisions.append(decision)
+                 continue
+             declaration_layer = next(
+                 (item for item in area_layers if item.owner_token == candidate.declaration_owner_token), None
+@@ -10471,7 +10483,9 @@
+             if decisions:
+                 if self._diagnostics:
+                     self.decision_history.append(explanation)
+-                self.decorator_explanations[core.occurrence_id] = self._capture_decorator_pattern(explanation)
++                self.decorator_explanations[core.occurrence_id] = self._capture_decorator_pattern(
++                    explanation, core.occurrence_id
++                )
+             for item in items:
+                 if self._diagnostics:
+                     self.occurrence_explanations[item.component.occurrence_id] = explanation
+--- a/benchmarks/graph_memory_evidence.py
++++ b/benchmarks/graph_memory_evidence.py
+@@ -512,7 +512,13 @@
+     if arguments.mode == "repeat" and arguments.heap:
+         parser.error("repeat already runs separate normal and traced samples")
+     if arguments.eager_decorator_facts:
+-        setattr(runtime_code._Compiler, "_capture_decorator_pattern", lambda _self, explanation: explanation)
++        setattr(
++            runtime_code._Compiler,
++            "_capture_decorator_pattern",
++            lambda _self, explanation, occurrence: runtime_code._RemappedDecoratorExplanation(
++                explanation, occurrence, explanation.path
++            ).materialize(),
++        )
+         setattr(runtime_code._ExplanationCloneContext, "remap_decorators", runtime_code._ExplanationCloneContext.remap)
+     result = (
+         repeat(arguments)
+--- a/tests/test_graph_memory_fixture.py
++++ b/tests/test_graph_memory_fixture.py
+@@ -184,6 +184,14 @@
+             return graph.manifest(all_roots=True).to_json(), facts
+ 
+     compact = snapshot()
+-    monkeypatch.setattr(_Compiler, "_capture_decorator_pattern", lambda _self, explanation: explanation)
++    from clean_ioc.tooling import _RemappedDecoratorExplanation
++
++    monkeypatch.setattr(
++        _Compiler,
++        "_capture_decorator_pattern",
++        lambda _self, explanation, occurrence: _RemappedDecoratorExplanation(
++            explanation, occurrence, explanation.path
++        ).materialize(),
++    )
+     monkeypatch.setattr(_ExplanationCloneContext, "remap_decorators", _ExplanationCloneContext.remap)
+     assert snapshot() == compact
+--- /dev/null
++++ b/tests/test_direct_selection_facts.py
+@@ -0,0 +1,253 @@
++"""Direct fact capture preserves public mode execution and captured evidence."""
++
++import gc
++import weakref
++from collections import defaultdict
++
++import pytest
++
++from clean_ioc import ContainerBuilder, ContainerBuildError, DecoratorTemplate, DerivedServices, Expose, ServiceGroup
++from clean_ioc.container import _Compiler
++from clean_ioc.tooling import _RemappedDecoratorExplanation
++
++
++class Source:
++    pass
++
++
++class Target:
++    pass
++
++
++class Wrapper(Target):
++    def __init__(self, inner: Target):
++        self.inner = inner
++
++
++class Consumer:
++    def __init__(self, first: Target, second: Target, source: Source, other_source: Source):
++        self.first, self.second = first, second
++
++
++@pytest.mark.parametrize("mode,rich", [("run", False), ("run", True), ("analysis", False)])
++@pytest.mark.parametrize("boundary", [False, True])
++@pytest.mark.parametrize("derived", [False, True])
++def test_direct_facts_preserve_occurrences_callbacks_and_escaped_snapshots(mode, rich, boundary, derived, monkeypatch):
++    captured, compiler_refs, saved, calls = [], [], [], defaultdict(int)
++    original = _Compiler._capture_decorator_pattern
++
++    def capture(compiler, explanation, target_occurrence_id):
++        compiler_refs.append(weakref.ref(compiler))
++        result = original(compiler, explanation, target_occurrence_id)
++        materialized = result.materialize() if isinstance(result, _RemappedDecoratorExplanation) else result
++        for decision in (*materialized.selected, *materialized.rejected):
++            if decision.template is not None:
++                assert decision.template.target_occurrence_id == target_occurrence_id
++        captured.append((id(compiler_refs[-1]), compiler._diagnostics, explanation, materialized))
++        return result
++
++    monkeypatch.setattr(_Compiler, "_capture_decorator_pattern", capture)
++    builder = ContainerBuilder().set_provider_roots(())
++    declaration = builder.create_boundary("private", exposes=(Expose(Consumer),)) if boundary else builder
++    source_id = declaration.register(Source, lifespan="transient")
++    group = ServiceGroup("target", service_type=Target)
++    target_id = declaration.register(Target, groups=[group], lifespan="transient")
++    declaration.register(Consumer)
++
++    def when(component):
++        calls["when"] += 1
++        return True
++
++    def position(decorator, target):
++        calls["position"] += 1
++        assert decorator.implementation is Wrapper
++        assert target.service_type is Target
++        return 4
++
++    def template(source):
++        calls["factory"] += 1
++        assert source.id == source_id
++        return DecoratorTemplate(DerivedServices(Target) if derived else group, Wrapper, when=when, position=position)
++
++    template_id = declaration.register_decorator_template(for_each=Source, template=template)
++
++    def rule(context):
++        graph = context.graph
++        assert graph.diagnostics_enabled
++        saved.append(graph)
++        before = dict(calls)
++        for visit in graph.walk():
++            if graph._component_evidence(graph._decorator_explanations, visit.component) is None:
++                continue
++            first = graph.explain_decorators(visit.component)
++            assert graph.explain_decorators(visit.component) == first
++        assert dict(calls) == before
++        return ()
++
++    if rich:
++        declaration.add_validation_rule(rule)
++    runtime = builder.build(mode=mode)
++    before = dict(calls)
++    resolved = runtime.resolve(Consumer)
++    assert isinstance(resolved.first, Wrapper)
++    assert isinstance(resolved.second, Wrapper)
++    assert resolved.first is not resolved.second
++    assert dict(calls) == before
++    assert calls["factory"] == 1
++    assert calls["when"] == calls["position"] > 0
++    facts = [
++        decision.template for _, _, _, explanation in captured for decision in explanation.selected if decision.template
++    ]
++    assert facts
++    assert all(fact.source_registration_id == source_id and fact.target_registration_id == target_id for fact in facts)
++    assert all(fact.template_id == template_id and fact.boundary == ("private" if boundary else None) for fact in facts)
++    if not rich and mode == "run":
++        rejects = defaultdict(list)
++        for compiler_identity, diagnostic, raw, _ in captured:
++            assert not diagnostic
++            for decision in raw.rejected:
++                if decision.template is not None:
++                    assert decision.template.target_occurrence_id == 0
++                    rejects[
++                        (compiler_identity, decision.component_id, decision.template.target_registration_id)
++                    ].append(decision)
++        repeated = [items for items in rejects.values() if len(items) > 1]
++        assert repeated
++        assert all(all(item is items[0] for item in items) for items in repeated)
++    if rich:
++        assert all(not graph.explain_metadata_enabled for graph in saved)
++    gc.collect()
++    assert all(reference() is None for reference in compiler_refs)
++    runtime.__exit__(None, None, None)
++
++
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++def test_template_callback_failure_keeps_original_identity_and_safe_path(mode):
++    builder = ContainerBuilder().set_provider_roots(())
++    source_id = builder.register(Source)
++    target_id = builder.register(Target)
++    calls = []
++
++    def fail(component):
++        calls.append(component.id)
++        raise RuntimeError("private-callback-text")
++
++    template_id = builder.register_decorator_template(
++        for_each=Source,
++        template=lambda _: DecoratorTemplate(DerivedServices(Target), Wrapper, when=fail),
++    )
++    with pytest.raises(ContainerBuildError) as caught:
++        builder.build(mode=mode)
++    assert calls
++    if mode == "run":
++        issue = caught.value
++    else:
++        assert caught.value.report is not None
++        issue = caught.value.report.errors[0]
++    assert issue.code == "decorator-filter-failed"
++    assert all(identity in issue.path for identity in (template_id, source_id, target_id))
++    assert "private-callback-text" not in str(caught.value)
++    if mode == "run":
++        assert calls == [target_id]
++        assert caught.value.compiled_graph is None
++
++
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++def test_stateful_filter_results_and_descriptions_are_captured_each_time(mode, monkeypatch):
++    class Filter:
++        def __init__(self):
++            self.calls = 0
++            self.__clean_ioc_description__ = "initial"
++
++        def __call__(self, component):
++            self.calls += 1
++            self.__clean_ioc_description__ = f"pass-{self.calls}"
++            return bool(self.calls % 2)
++
++        def __hash__(self):
++            pytest.fail("Fact interning hashed an application callback")
++
++        def __eq__(self, other):
++            pytest.fail("Fact interning compared an application callback")
++
++    predicate = Filter()
++    reasons = []
++    original = _Compiler._capture_decorator_pattern
++
++    def capture(compiler, explanation, target_occurrence_id):
++        for decision in (*explanation.selected, *explanation.rejected):
++            if decision.reason_codes in (("decorator-filter-matched",), ("decorator-filter-rejected",)):
++                reasons.append(decision.reason)
++        return original(compiler, explanation, target_occurrence_id)
++
++    monkeypatch.setattr(_Compiler, "_capture_decorator_pattern", capture)
++    builder = ContainerBuilder().set_provider_roots(())
++    builder.register(Source)
++    builder.register(Target)
++    builder.register(Consumer)
++    builder.register_decorator_template(
++        for_each=Source,
++        template=lambda _: DecoratorTemplate(DerivedServices(Target), Wrapper, when=predicate),
++    )
++    with builder.build(mode=mode):
++        assert predicate.calls > 1
++        assert reasons == [
++            f"Decorator filter pass-{number} returned {'true' if number % 2 else 'false'}"
++            for number in range(1, predicate.calls + 1)
++        ]
++
++
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++def test_direct_facts_keep_independent_generic_source_and_target_bindings(mode, monkeypatch):
++    from typing import Generic, TypeVar
++
++    SourceT = TypeVar("SourceT")
++    TargetT = TypeVar("TargetT")
++
++    class Backend(Source, Generic[SourceT]):
++        pass
++
++    class Operation(Generic[TargetT]):
++        pass
++
++    class Handler(Operation[int]):
++        pass
++
++    class GenericWrapper(Operation[TargetT], Generic[TargetT]):
++        def __init__(self, inner: Operation[TargetT], source: Source):
++            self.inner, self.source = inner, source
++
++    facts = []
++    original = _Compiler._capture_decorator_pattern
++
++    def capture(compiler, explanation, target_occurrence_id):
++        result = original(compiler, explanation, target_occurrence_id)
++        view = result.materialize() if isinstance(result, _RemappedDecoratorExplanation) else result
++        facts.extend(decision.template for decision in view.selected if decision.template)
++        return result
++
++    monkeypatch.setattr(_Compiler, "_capture_decorator_pattern", capture)
++    builder = ContainerBuilder().set_provider_roots(())
++    backend = Backend[str]()
++    builder.register(Source, instance=backend)
++    builder.register(Handler)
++    builder.register_decorator_template(
++        for_each=Source,
++        template=lambda _: DecoratorTemplate(DerivedServices(Operation), GenericWrapper),
++    )
++    with builder.build(mode=mode) as runtime:
++        resolved = runtime.resolve(Handler)
++        assert isinstance(resolved, GenericWrapper)
++        assert resolved.source is backend
++        assert facts
++        assert all(
++            any(key.endswith("Backend.SourceT") and value == "str" for key, value in fact.source_bindings)
++            for fact in facts
++        )
++        assert all(
++            any(key.endswith("Operation.TargetT") and value == "int" for key, value in fact.target_bindings)
++            for fact in facts
++        )
++        assert all(
++            fact.projected_contract is not None and fact.projected_contract.endswith("Operation[int]") for fact in facts
++        )

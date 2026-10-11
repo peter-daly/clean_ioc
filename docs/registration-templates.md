@@ -146,15 +146,15 @@ the frozen plan and never calls template factories or source filters.
 
 ## Edits, scopes, and boundaries
 
-`register_registration_template(...)` returns the declaration ID. Before build succeeds, use
+`register_registration_template(...)` returns the declaration ID. Before an operation is admitted, use
 `patch_registration_template(template_id, for_each=..., template=..., source_filter=...)` to replace specified fields,
 or `remove_registration_template(template_id)` to remove the declaration. Unknown and removed IDs raise `KeyError`.
-A failed build leaves the builder repairable; a successful build freezes it. Callbacks must not mutate or reenter
+Every admitted attempt consumes its builder. Retry using a fresh composition factory. Callbacks must not mutate or reenter
 composition. Keep them pure: previews and failed-build retries may run them again.
 
-An overlay inherits existing generated registrations with their original owners. Their source selection and
-registration specification remain frozen; the overlay does not rerun their filters or factories. An inherited template
-can generate additional overlay-owned registrations for newly selected sources. A parent singleton retains its parent
+An overlay inherits existing generated registrations with their original owners. Their parent execution plans remain frozen. The external composition retains source declarations; a new overlay
+compilation may run template filters and factories again and generate additional overlay-owned registrations.
+Reading a runtime, analysis result or composition handle never replays these callbacks. A parent singleton retains its parent
 activation plan.
 
 Patching an inherited template replaces its generated registrations in the overlay with new overlay-owned definitions.
@@ -169,7 +169,7 @@ template's source visibility, build fails rather than applying the template to a
 
 ## Inspection
 
-`container.graph.explain_template_sources(template_id)` returns captured source decisions, including the source
+`result.graph.explain_template_sources(template_id)` returns captured source decisions, including the source
 registration ID and generated registration ID. Generated registrations appear in the ordinary graph and selection
 census, with their declaration origin and source/template references. Inspection does not replay callbacks.
 Build errors identify the template and source when expansion fails; ordinary graph validation checks generated edges.

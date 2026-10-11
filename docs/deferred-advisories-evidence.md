@@ -1,5 +1,11 @@
 # Minimal entrypoint histories and deferred reachability advisories
 
+> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/analyse API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-analyse).
+
+> Historical comparison: these measurements use the former fine-grained build policies.
+> Their reproduction scripts use the private compiler harness; current public applications
+> use [run or analysis mode](compiler-tooling.md#run-and-analysis-modes).
+
 Ordinary builds now select marked entrypoints without creating diagnostic-only
 `CompilationExplanation` and `CandidateDecision` histories. With
 `diagnostics=False`, the graph retains no known-selection or census-entrypoint

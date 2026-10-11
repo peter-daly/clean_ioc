@@ -1,6 +1,5 @@
 import importlib.util
 import inspect
-from typing import Literal
 
 import pytest
 
@@ -72,12 +71,11 @@ def test_package_root_has_one_compiled_container_surface():
     assert "create_boundary" in builder_methods
     assert "create_boundary" in set(dir(ScopeBuilder))
     assert "create_boundary" in set(dir(clean_ioc.ComponentBuilder))
-    assert inspect.signature(ContainerBuilder.add_validation_rule).parameters["mode"].kind is (
-        inspect.Parameter.KEYWORD_ONLY
-    )
-    assert inspect.signature(ScopeBuilder.add_validation_rule).parameters["mode"].default == "build"
-    assert clean_ioc.ValidationRuleMode == Literal["build", "validation"]
-    assert tuple(inspect.signature(clean_ioc.Scope.validation_report).parameters) == ("self",)
+    assert tuple(inspect.signature(ContainerBuilder.add_validation_rule).parameters) == ("self", "rule")
+    assert tuple(inspect.signature(ScopeBuilder.add_validation_rule).parameters) == ("self", "rule")
+    assert not {"BuildMode", "ValidationRuleMode", "BuildReport"}.intersection(clean_ioc.__all__)
+    assert not {"graph", "build_report", "validation_report", "new_scope_builder"}.intersection(dir(clean_ioc.Scope))
+    assert {"AnalysisReport", "AnalysisResult", "Composition"}.issubset(clean_ioc.__all__)
     assert {
         "AsyncProvider",
         "BoundaryBuilder",
@@ -91,7 +89,6 @@ def test_package_root_has_one_compiled_container_surface():
         "TypeAst",
         "ValidationContext",
         "ValidationRule",
-        "ValidationRuleMode",
         "Use",
         "build_arg",
         "derive",

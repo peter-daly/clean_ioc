@@ -5,7 +5,7 @@ from typing import Generic, TypeVar
 import pytest
 
 import clean_ioc.component_filters as cf
-from clean_ioc import ContainerBuilder, ContainerBuildError, Provider, Tag, select
+from clean_ioc import ContainerBuilder, ContainerBuildError, Provider, ScopeBuilder, Tag, select
 
 T = TypeVar("T")
 
@@ -261,9 +261,10 @@ def test_generic_fallback_keeps_singleton_ownership_in_overlay():
     builder = ContainerBuilder()
     builder.register_fallback(Service, Default, lifespan="singleton")
     builder.mark_entrypoint(Service[int])
+    container_composition = builder.retain_composition()
     container = builder.build()
     value = container.resolve(Service[int])
-    overlay = container.new_scope_builder().build()
+    overlay = ScopeBuilder(container, composition=container_composition).build()
     assert overlay.resolve(Service[int]) is value
 
 
@@ -382,7 +383,7 @@ def test_generic_fallback_does_not_bypass_dependency_filter(predicate):
     builder = ContainerBuilder()
     builder.register_fallback(Service, Default, name="namedx", tags=[Tag("Y", "Z")])
     builder.register(Consumer, arguments={"value": select(predicate)})
-    with pytest.raises(ContainerBuildError, match="missing-component"):
+    with pytest.raises(ContainerBuildError, match="No component"):
         builder.build()
 
 
@@ -423,8 +424,11 @@ def test_fallback_explanation_retains_rejected_ordinary_candidate():
     ordinary = builder.register(Service[int], name="other")
     builder.register_fallback(Service, Default)
     builder.register(Consumer)
-    container = builder.build(diagnostics=True)
-    consumer = next(root.component for root in container.graph.roots if root.component.service_type is Consumer)
-    explanation = container.graph.explain(consumer.dependencies[0])
+    container_analysis = builder.analyse()
+    _container = container_analysis.create_runtime()
+    consumer = next(
+        root.component for root in container_analysis.graph.roots if root.component.service_type is Consumer
+    )
+    explanation = container_analysis.graph.explain(consumer.dependencies[0])
     assert "selected-fallback" in explanation.selected[0].reason_codes
     assert any(item.component_id == ordinary and "rejected-name" in item.reason_codes for item in explanation.rejected)

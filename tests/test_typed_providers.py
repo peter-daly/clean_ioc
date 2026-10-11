@@ -8,19 +8,20 @@ import pytest
 
 import clean_ioc.component_filters as cf
 from clean_ioc import (
+    AnalysisResult,
     AsyncProvider,
     ComponentActivation,
     ComponentKind,
     ContainerBuilder,
-    ContainerBuildError,
     Provider,
     ProviderScopeClosedError,
+    ScopeBuilder,
     build_arg,
     select,
 )
 
 
-def issue_codes(error: ContainerBuildError) -> set[str]:
+def issue_codes(error: AnalysisResult) -> set[str]:
     assert error.report is not None
     return {issue.code for issue in error.report.errors}
 
@@ -96,9 +97,9 @@ def test_sync_provider_rejects_an_async_target_at_build_time():
     builder.register(Service, factory=create_service)
     builder.register(Consumer)
 
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert "provider-requires-async" in issue_codes(caught.value)
+    caught = builder.analyse()
+    assert not caught.report.is_valid
+    assert "provider-requires-async" in issue_codes(caught)
 
 
 def test_provider_collection_and_named_selection_are_frozen_during_build():
@@ -189,9 +190,9 @@ def test_provider_rejects_invalid_target_policy_missing_and_ambiguity():
     policy_builder = ContainerBuilder()
     policy_builder.register(Service)
     policy_builder.register(InvalidPolicy, arguments={"service": build_arg("service")})
-    with pytest.raises(ContainerBuildError) as policy_error:
-        policy_builder.build(build_args={"service": object()})
-    assert "provider-invalid-argument-policy" in issue_codes(policy_error.value)
+    policy_error = policy_builder.analyse(build_args={"service": object()})
+    assert not policy_error.report.is_valid
+    assert "provider-invalid-argument-policy" in issue_codes(policy_error)
 
     class Missing:
         def __init__(self, service: Provider[Service]):
@@ -199,17 +200,17 @@ def test_provider_rejects_invalid_target_policy_missing_and_ambiguity():
 
     missing_builder = ContainerBuilder()
     missing_builder.register(Missing)
-    with pytest.raises(ContainerBuildError) as missing_error:
-        missing_builder.build()
-    assert "provider-missing-component" in issue_codes(missing_error.value)
+    missing_error = missing_builder.analyse()
+    assert not missing_error.report.is_valid
+    assert "provider-missing-component" in issue_codes(missing_error)
 
     ambiguous_builder = ContainerBuilder()
     ambiguous_builder.register(Service)
     ambiguous_builder.register(Service)
     ambiguous_builder.register(InvalidPolicy)
-    with pytest.raises(ContainerBuildError) as ambiguous_error:
-        ambiguous_builder.build()
-    assert "provider-ambiguous-component" in issue_codes(ambiguous_error.value)
+    ambiguous_error = ambiguous_builder.analyse()
+    assert not ambiguous_error.report.is_valid
+    assert "provider-ambiguous-component" in issue_codes(ambiguous_error)
 
 
 def test_bare_nested_open_and_unsupported_collection_provider_targets_are_invalid():
@@ -232,9 +233,9 @@ def test_bare_nested_open_and_unsupported_collection_provider_targets_are_invali
         create.__annotations__ = {"value": annotation, "return": object}
         builder = ContainerBuilder()
         builder.register(object, factory=create)
-        with pytest.raises(ContainerBuildError) as caught:
-            builder.build()
-        assert "provider-invalid-target" in issue_codes(caught.value)
+        caught = builder.analyse()
+        assert not caught.report.is_valid
+        assert "provider-invalid-target" in issue_codes(caught)
 
 
 def test_singleton_provider_rejects_scope_state_but_binds_safe_provider_to_singleton_owner():
@@ -248,9 +249,9 @@ def test_singleton_provider_rejects_scope_state_but_binds_safe_provider_to_singl
     unsafe = ContainerBuilder()
     unsafe.register(Scoped, lifespan="scoped")
     unsafe.register(UnsafeConsumer, lifespan="singleton")
-    with pytest.raises(ContainerBuildError) as caught:
-        unsafe.build()
-    assert "provider-captive-scope" in issue_codes(caught.value)
+    caught = unsafe.analyse()
+    assert not caught.report.is_valid
+    assert "provider-captive-scope" in issue_codes(caught)
 
     class Transient:
         pass
@@ -286,9 +287,9 @@ def test_singleton_provider_rejects_transient_target_that_reaches_scope_slot():
     builder.register(Target, lifespan="transient")
     builder.register(Consumer, lifespan="singleton")
 
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert "provider-captive-scope" in issue_codes(caught.value)
+    caught = builder.analyse()
+    assert not caught.report.is_valid
+    assert "provider-captive-scope" in issue_codes(caught)
 
 
 def test_overlay_singleton_provider_uses_overlay_plan_and_inherited_singleton_keeps_parent_plan():
@@ -309,9 +310,10 @@ def test_overlay_singleton_provider_uses_overlay_plan_and_inherited_singleton_ke
     builder = ContainerBuilder()
     builder.register(Service, factory=lambda: parent_service, lifespan="transient")
     builder.register(ParentConsumer, lifespan="singleton")
+    container_composition = builder.retain_composition()
     container = builder.build()
 
-    overlay_builder = container.new_scope_builder()
+    overlay_builder = ScopeBuilder(container, composition=container_composition)
     overlay_builder.register(
         Service,
         factory=lambda: overlay_service,
@@ -473,7 +475,7 @@ def test_provider_graph_metadata_explanations_manifest_and_diff_show_deferred_ta
         builder.register(Service, implementation)
         builder.register(Consumer)
         builder.mark_entrypoint(Consumer)
-        return builder.build()
+        return builder.analyse()
 
     original = build()
     provider = original.graph.entrypoints[0].component.dependencies[0]

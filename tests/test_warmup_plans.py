@@ -12,12 +12,13 @@ from typing_extensions import TypeAliasType
 
 from clean_ioc import (
     AsyncManagedProvider,
+    BuilderAlreadyBuiltError,
     ContainerBuilder,
-    ContainerBuildError,
     Instrumentation,
     ManagedProvider,
     Provider,
     ResolutionProfiler,
+    ScopeBuilder,
     ScopeClosedError,
     WarmupError,
     WarmupPlan,
@@ -56,9 +57,9 @@ def test_immutable_capture_lazy_order_cache_and_inspection(monkeypatch):
     with pytest.raises(FrozenInstanceError):
         setattr(declaration, "name", "changed")
     builder.add_warmup_plan(declaration)
-    with builder.build() as container:
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
         assert calls == []
-        assert container.warmup_plans == container.graph.warmup_plans
+        assert container.warmup_plans == container_analysis.graph.warmup_plans
         assert [t.service for t in container.warmup_plans[0].targets] == [f"{__name__}.Other", f"{__name__}.Resource"]
         monkeypatch.setattr(ContainerBuilder, "build", lambda *a, **kw: pytest.fail("runtime compiled"))
         report = container.warmup("startup")
@@ -71,17 +72,22 @@ def test_immutable_capture_lazy_order_cache_and_inspection(monkeypatch):
         assert report.to_json() == report.to_json()
         report.assert_valid()
         report.raise_for_errors()
-        assert report.graph_fingerprint == container.graph.manifest(all_roots=True).fingerprint
+        assert report.plan_id
+        assert report.plan_id == container.warmup("startup").plan_id
 
 
 @pytest.mark.parametrize("lifespan", ["transient", "scoped", "per_resolution"])
 def test_reject_non_singleton_and_repair(lifespan):
     builder = plan(ContainerBuilder(), Resource)
     builder.register(Resource, lifespan=lifespan)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert caught.value.report is not None
-    assert caught.value.report.errors[0].code == "warmup-non-singleton-target"
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert caught_analysis.report.errors[0].code == "warmup-non-singleton-target"
+    with pytest.raises(BuilderAlreadyBuiltError):
+        builder.remove_warmup_plan("startup")
+    builder = plan(ContainerBuilder(), Resource)
+    builder.register(Resource, lifespan=lifespan)
     builder.remove_warmup_plan("startup")
     plan(builder, Other)
     builder.register(Other, lifespan="singleton")
@@ -103,11 +109,14 @@ def test_reject_non_singleton_and_repair(lifespan):
 )
 def test_invalid_target_keys_are_structured(key):
     builder = plan(ContainerBuilder(), key)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert caught.value.report is not None
-    assert caught.value.report.errors[0].code == "warmup-invalid-target"
-    assert "test_warmup_plans.py" in caught.value.report.to_sarif()
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert caught_analysis.report.errors[0].code == "warmup-invalid-target"
+    assert "test_warmup_plans.py" in caught_analysis.report.to_sarif()
+    with pytest.raises(BuilderAlreadyBuiltError):
+        builder.remove_warmup_plan("startup")
+    builder = plan(ContainerBuilder(), key)
     builder.remove_warmup_plan("startup")
     builder.build()
 
@@ -115,10 +124,13 @@ def test_invalid_target_keys_are_structured(key):
 @pytest.mark.parametrize("name", ["", "   ", None, 42])
 def test_invalid_names_fail_build_and_can_be_removed(name):
     builder = plan(ContainerBuilder(), name=name)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert caught.value.report is not None
-    assert caught.value.report.errors[0].code == "warmup-invalid-target"
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert caught_analysis.report.errors[0].code == "warmup-invalid-target"
+    with pytest.raises(BuilderAlreadyBuiltError):
+        builder.remove_warmup_plan(name)
+    builder = plan(ContainerBuilder(), name=name)
     builder.remove_warmup_plan(name)
     builder.build()
 
@@ -140,10 +152,10 @@ def test_duplicate_names_targets_missing_ambiguous_and_dependency_only():
             )
         plan(builder, Resource, *([Resource] if code == "warmup-duplicate-target" else []))
         configure(builder)
-        with pytest.raises(ContainerBuildError) as caught:
-            builder.build()
-        assert caught.value.report is not None
-        assert caught.value.report.errors[0].code == code
+        caught_analysis = builder.analyse()
+        assert not caught_analysis.report.is_valid
+        assert caught_analysis.report is not None
+        assert caught_analysis.report.errors[0].code == code
 
 
 def test_named_default_filters_and_fallback_are_frozen():
@@ -208,7 +220,7 @@ def test_failure_aggregation_retry_safe_exports_and_no_rollback():
         container.warmup("startup")
         assert events == ["bad", "good", "bad"]
     assert events[-1] == "closed"
-    assert json.loads(report.to_sarif())["runs"][0]["properties"]["graphFingerprint"] == report.graph_fingerprint
+    assert json.loads(report.to_sarif())["runs"][0]["properties"]["executionPlanId"] == report.plan_id
 
 
 @pytest.mark.asyncio
@@ -310,10 +322,10 @@ def test_alias_generic_demand_and_duplicate_canonical_target():
     duplicate = ContainerBuilder()
     duplicate.register(Resource, lifespan="singleton")
     plan(duplicate, Resource, alias)
-    with pytest.raises(ContainerBuildError) as caught:
-        duplicate.build()
-    assert caught.value.report is not None
-    assert caught.value.report.errors[0].code == "warmup-duplicate-target"
+    caught_analysis = duplicate.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert caught_analysis.report.errors[0].code == "warmup-duplicate-target"
 
 
 def test_overlay_reselection_anchors_parent_and_child_scopes_reuse():
@@ -321,12 +333,13 @@ def test_overlay_reselection_anchors_parent_and_child_scopes_reuse():
     builder = ContainerBuilder()
     builder.register(Resource, factory=lambda: calls.append("parent") or Resource(), lifespan="singleton")
     plan(builder, Resource)
+    parent_composition = builder.retain_composition()
     with builder.build() as parent:
-        overlay_builder = parent.new_scope_builder()
+        overlay_builder = ScopeBuilder(parent, composition=parent_composition)
         with overlay_builder.build() as inherited:
             inherited.warmup("startup").assert_valid()
             assert inherited.resolve(Resource) is parent.resolve(Resource)
-        override = parent.new_scope_builder()
+        override = ScopeBuilder(parent, composition=parent_composition)
         override.register(Resource, factory=lambda: calls.append("overlay") or Resource(), lifespan="singleton")
         with override.build() as overlay:
             overlay.warmup("startup").assert_valid()
@@ -334,12 +347,12 @@ def test_overlay_reselection_anchors_parent_and_child_scopes_reuse():
             with overlay.new_scope() as child:
                 child.warmup("startup").assert_valid()
         assert calls == ["parent", "overlay"]
-        duplicate = parent.new_scope_builder()
+        duplicate = ScopeBuilder(parent, composition=parent_composition)
         plan(duplicate, Resource)
-        with pytest.raises(ContainerBuildError) as caught:
-            duplicate.build()
-        assert caught.value.report is not None
-        assert caught.value.report.errors[0].code == "warmup-duplicate-plan"
+        caught_analysis = duplicate.analyse()
+        assert not caught_analysis.report.is_valid
+        assert caught_analysis.report is not None
+        assert caught_analysis.report.errors[0].code == "warmup-duplicate-plan"
 
 
 def test_unknown_and_closed_runtime_reject_before_activation():
@@ -361,7 +374,7 @@ def test_declaration_only_changes_preserve_fingerprint_and_no_entrypoints():
         b.register(Resource, lifespan="singleton")
         if declare:
             plan(b, Resource)
-        return b.build()
+        return b.analyse()
 
     with build(False) as plain, build(True) as declared:
         assert plain.graph.manifest().fingerprint == declared.graph.manifest().fingerprint
@@ -370,10 +383,13 @@ def test_declaration_only_changes_preserve_fingerprint_and_no_entrypoints():
 
 def test_missing_registration_and_invalid_sync_filters_remain_repairable():
     builder = plan(ContainerBuilder(), Resource)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert caught.value.report is not None
-    assert caught.value.report.errors[0].code == "warmup-missing-component"
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert caught_analysis.report.errors[0].code == "warmup-missing-component"
+    with pytest.raises(BuilderAlreadyBuiltError):
+        builder.register(Resource, lifespan="singleton")
+    builder = plan(ContainerBuilder(), Resource)
     builder.register(Resource, lifespan="singleton")
     builder.build().warmup("startup").assert_valid()
 
@@ -384,10 +400,10 @@ def test_missing_registration_and_invalid_sync_filters_remain_repairable():
         builder = ContainerBuilder()
         builder.register(Resource, lifespan="singleton")
         plan(builder, WarmupTarget(Resource, filter=cast(Any, predicate)))
-        with pytest.raises(ContainerBuildError) as caught:
-            builder.build()
-        assert caught.value.report is not None
-        assert caught.value.report.errors[0].code == "warmup-invalid-target"
+        caught_analysis = builder.analyse()
+        assert not caught_analysis.report.is_valid
+        assert caught_analysis.report is not None
+        assert caught_analysis.report.errors[0].code == "warmup-invalid-target"
 
 
 def test_exposed_boundary_and_private_service_selection():
@@ -400,14 +416,14 @@ def test_exposed_boundary_and_private_service_selection():
     plan(builder, Resource)
     with builder.build() as container:
         container.warmup("startup").assert_valid()
-        assert container.warmup_plans[0].targets[0].path.startswith("root:")
+        assert container.warmup_plans[0].targets[0].path.startswith("component:")
     private = ContainerBuilder()
     private.create_boundary("private").register(Resource, lifespan="singleton")
     plan(private, Resource)
-    with pytest.raises(ContainerBuildError) as caught:
-        private.build()
-    assert caught.value.report is not None
-    assert caught.value.report.errors[0].code == "warmup-missing-component"
+    caught_analysis = private.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert caught_analysis.report.errors[0].code == "warmup-missing-component"
 
 
 def test_closed_pattern_explicit_demand_and_fallback():
@@ -560,11 +576,11 @@ def test_static_validation_matrix_manifest_diff_and_activation_never_initialize(
         b.register(Resource, factory=lambda: calls.append(1) or Resource(), lifespan="singleton")
         return plan(b, Resource)
 
-    with builder().build() as container:
-        container.validation_report().assert_valid()
-        manifest = container.graph.manifest()
-        assert not container.graph.diff(manifest).changed
-        container.graph.activation_report(Resource)
+    with builder().analyse() as container_analysis, container_analysis.create_runtime() as _container:
+        container_analysis.report.assert_valid()
+        manifest = container_analysis.graph.manifest()
+        assert not container_analysis.graph.diff(manifest).changed
+        container_analysis.graph.activation_report(Resource)
     BuildMatrix((BuildVariant("one", builder),), reference="one").check().assert_valid()
     assert calls == []
 
@@ -599,11 +615,14 @@ def test_entrypoint_focus_stays_separate_and_cli_never_warms(monkeypatch, capsys
     )
     assert main(["check", "app:builder", "--ignore", "unreachable-component"]) == 0
     assert main(["activation", "app:builder", "app:Resource"]) == 0
-    with builder().build() as container:
-        assert len(container.graph.entrypoints) == 1
-        assert container.graph.entrypoints[0].component.service_type is Other
+    with builder().analyse() as container_analysis, container_analysis.create_runtime() as container:
+        assert len(container_analysis.graph.entrypoints) == 1
+        assert container_analysis.graph.entrypoints[0].component.service_type is Other
         assert container.warmup_plans[0].targets[0].service.endswith("Resource")
-        assert container.graph.manifest().fingerprint != container.graph.manifest(all_roots=True).fingerprint
+        assert (
+            container_analysis.graph.manifest().fingerprint
+            != container_analysis.graph.manifest(all_roots=True).fingerprint
+        )
     assert calls == []
     assert capsys.readouterr().out
 

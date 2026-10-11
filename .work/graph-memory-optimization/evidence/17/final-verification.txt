@@ -1,0 +1,25 @@
+{
+  "status": "PASS",
+  "previous_source_hashes_verified": 46,
+  "unchanged_previous_source_hashes": 45,
+  "production_matches_measured_transfer": true,
+  "runtime_change": "one retained-draft dictionary read becomes pop",
+  "source_patch_sha256": "9b2010fb6f23c8114089472eda4b5bdd77153bee17df131675f51eafabbe1ef8",
+  "main_shared_grid": "Not rerun in task17; final combined grid belongs to task18",
+  "paired_run_processes": 12,
+  "combined_census_processes": 6,
+  "separate_initial_census_processes": 2,
+  "phase_observer_processes": 2,
+  "internal_ownership_witness_processes": 3,
+  "all_counted_objects_released": true,
+  "python314_full_tests": 2407,
+  "python314_and_313_focused_tests": 462,
+  "python311_and_312_focused_tests": {
+    "passed": 459,
+    "skipped": 3
+  },
+  "strict_docs": true,
+  "full_ci": true,
+  "artifact_round_trip_tests_included": 18,
+  "exclusive_intervals": "finished"
+}

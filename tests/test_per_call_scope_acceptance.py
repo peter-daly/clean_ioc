@@ -10,7 +10,7 @@ from typing import Protocol
 
 import pytest
 
-from clean_ioc import ContainerBuilder, ContainerBuildError, ScopeClosedError
+from clean_ioc import ContainerBuilder, ContainerBuildError, ScopeBuilder, ScopeClosedError
 
 
 def test_long_lived_consumer_has_isolated_calls_after_first_resolving_child_closes(monkeypatch):
@@ -152,8 +152,9 @@ def test_overlay_direct_calls_follow_overlay_but_inherited_singleton_keeps_root_
     builder.register(Operation, Implementation, scope="per_call")
     builder.register(Consumer, lifespan="singleton")
 
+    container_composition = builder.retain_composition()
     with builder.build() as container:
-        overlay_builder = container.new_scope_builder()
+        overlay_builder = ScopeBuilder(container, composition=container_composition)
         overlay_builder.register(Label, instance=Label("overlay"))
         with overlay_builder.build() as overlay:
             direct = overlay.resolve(Operation)

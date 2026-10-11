@@ -44,7 +44,11 @@ object memory visible while templates and providers add distinct execution and
 selection paths. This remains a controlled synthetic workload, not a substitute
 for an application measurement.
 
-## Recorded results
+## Recorded results (historical baseline)
+
+The numerical results below predate the public run/analysis modes and compiler optimizations. They remain an archived
+baseline, not measurements of the current checkout. Final combined public-mode evidence is recorded in
+`.work/graph-memory-optimization/18-result.md`.
 
 Measured on 8 October 2026 with eight routes, Python 3.14.4, macOS 26.7.1 and
 ARM64. These are medians of three fresh normal processes and three separate
@@ -85,14 +89,15 @@ they neither account for all retained allocations nor establish which structures
 can safely be removed. This is a different workload from the earlier plain tree,
 so its figures are not an optimization before/after comparison.
 
-## Run locally
+## Measurement driver interface
 
-From the repository root:
+The current interface below is documented for later measurement work. Task 24 exercises its wiring only;
+new measurements remain deferred to task 25. From the repository root:
 
 ```sh
-.venv/bin/python -m benchmarks.graph_memory_evidence measure --routes 8
-.venv/bin/python -m benchmarks.graph_memory_evidence measure --routes 8 --heap
-.venv/bin/python -m benchmarks.graph_memory_evidence repeat --routes 8 --repeats 3 --output benchmarks/graph_memory_results.json
+.venv/bin/python -m benchmarks.graph_memory_evidence measure --routes 8 --operation build
+.venv/bin/python -m benchmarks.graph_memory_evidence measure --routes 8 --operation build --heap
+.venv/bin/python -m benchmarks.graph_memory_evidence repeat --routes 8 --operation build --repeats 3 --output /tmp/clean-ioc-current-run.json
 ```
 
 The default is eight routes. `--routes` accepts 1–128; the requested dependency
@@ -100,13 +105,18 @@ shape includes quadratic map fanout, and compilation can grow more steeply as
 template candidates interact. A first 32-route run exceeded 4 GiB current RSS
 before completion and was stopped. That observation is not a completed benchmark
 or a claim about an application. Start small when increasing the route count.
-`--diagnostics` enables full diagnostic capture for a separate comparison.
+Use `--operation analyse` for a separate completed-analysis comparison (start with two routes).
 `repeat` launches separate normal and traced processes for each repetition and
 requires their graph counts and resolution checks to agree.
 
-Build options are `allow_scope_builders=False`, `check_unreachable=False`, and
-`aggregate_errors=False`. Diagnostics default to false. The four worker provider
-forms are explicitly requested; injected maps and providers are compiled as usual.
+The current public operations are `builder.build()` and `builder.analyse()`. Analysis returns completed inspection;
+production build retains execution and discovery only. The fixture accepts an explicit operation and retains its
+analysis result separately when requested. Provider roots remain declared with `set_provider_roots()`.
+
+All recorded measurements on this page describe earlier revisions. Old fine-grained
+switches and build modes are removed. Archived sources/results remain immutable; historical toggle driver entrypoints
+are unsupported against the current API. Task 25 owns new memory, timing and population comparisons after integration.
+Task 24 verifies fixture semantics and CLI wiring without running measurement backends.
 
 ## Measurements and checks
 

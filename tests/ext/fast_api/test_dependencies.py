@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 
 import clean_ioc.component_filters as cf
-from clean_ioc import ContainerBuilder, ContainerBuildError
+from clean_ioc import ContainerBuilder, ScopeBuilder
 from clean_ioc.ext.fastapi import (
     FastAPIBundle,
     FastAPIIntegrationError,
@@ -49,9 +49,11 @@ def test_resolve_accepts_an_explicit_union_service_with_precise_typing():
 
 
 def test_fastapi_bundle_runs_once_per_class_for_root_and_overlay_builders():
-    root = ContainerBuilder().build()
+    root_builder = ContainerBuilder()
+    root_composition = root_builder.retain_composition()
+    root = root_builder.build()
 
-    for builder in (ContainerBuilder(), root.new_scope_builder()):
+    for builder in (ContainerBuilder(), ScopeBuilder(root, composition=root_composition)):
         builder.apply_bundle(FastAPIBundle())
         builder.apply_bundle(FastAPIBundle())
         scope = builder.build()
@@ -100,10 +102,10 @@ def test_request_scope_slot_rejects_singleton_capture_during_build():
     builder.apply_bundle(FastAPIBundle())
     builder.register(SingletonService, lifespan="singleton")
 
-    with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+    raised_analysis = builder.analyse()
+    assert not raised_analysis.report.is_valid
 
-    report = raised.value.report
+    report = raised_analysis.report
     assert report is not None
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("SingletonService"))
     assert issue.code == "captive-runtime-scope"

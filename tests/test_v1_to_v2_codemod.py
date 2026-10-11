@@ -43,6 +43,36 @@ def create():
     assert getattr(create(), "port") == 80
 
 
+def test_superseded_build_and_rule_modes_require_semantic_review() -> None:
+    original = """from clean_ioc import ContainerBuilder, BuildMode, BuildReport
+builder = ContainerBuilder()
+builder.add_validation_rule(check_policy, mode="validation")
+container = builder.build(mode="analysis")
+container.validation_report()
+container.new_scope_builder()
+"""
+    updated, findings = MODULE.transform(original)
+    assert updated == original
+    messages = {finding.message for finding in findings}
+    assert any("execution-only build()" in message for message in messages)
+    assert any("all validation rules run only during analyse()" in message for message in messages)
+    assert any("removed BuildReport" in message for message in messages)
+    assert any("removed BuildMode" in message for message in messages)
+    assert any("validation_report()" in message for message in messages)
+    assert any("new_scope_builder()" in message for message in messages)
+
+
+def test_named_operations_and_unified_rules_need_no_codemod() -> None:
+    original = """from clean_ioc import ContainerBuilder
+builder = ContainerBuilder()
+builder.add_validation_rule(check_policy)
+result = builder.analyse()
+with result.create_runtime() as runtime:
+    runtime.resolve(Service)
+"""
+    assert MODULE.transform(original) == (original, [])
+
+
 def test_later_mutation_does_not_move_build_too_early() -> None:
     original = """from clean_ioc import Container
 c = Container()

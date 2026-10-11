@@ -31,113 +31,56 @@ builder.add_validation_rule(validate_graph)
 `visit.issue(...)` creates an error by default and fills in the root and complete semantic path. The resulting finding
 uses the same reports, JSON output, CLI exit codes, and warning suppression as Clean IoC's built-in findings.
 
-!!! important
-    Clean IoC's built-in missing-component, circular-dependency, captive-dependency, lifespan, decorator, and
-    pre-configuration checks always run during `build()`. Setting `mode="validation"` on a custom rule never
-    disables those startup safety checks.
-
 ## When rules run
 
-Clean IoC has two rule execution modes. CLI strictness is a separate decision about warning severity; it does not select
-which rules run.
+Register every rule through `builder.add_validation_rule(rule)`. There is no rule mode or phase.
+`build()` executes no validation callbacks or built-in policy audits. It emits an execution runtime and still fails
+when binding or emission is impossible. Runtime scope, ownership, async and cleanup guards remain active.
 
-The public `ValidationRuleMode` type is `Literal["build", "validation"]`. Every custom rule belongs to exactly one mode,
-selected when it is registered:
-
-```python
-builder.add_validation_rule(required_at_startup)  # mode="build" is the default
-builder.add_validation_rule(expensive_policy, mode="validation")
-```
-
-The values are case-sensitive literal strings; boolean flags and any value other than `"build"` or `"validation"` raise
-`ValueError` during registration.
-
-| Rule | During `build()` | During `validation_report()` |
-| --- | ---: | ---: |
-| Built-in structural checks | Always | Prior findings retained; not rerun |
-| `mode="build"` custom rule (default) | Runs | Prior findings retained; not rerun |
-| `mode="validation"` custom rule | Skipped | Runs |
-
-### Build mode protects application startup
-
-`ContainerBuilder.build()` runs built-in structural checks and every custom rule whose `mode` is `"build"`. This is the
-default so an application that never runs separate validation does not silently miss its custom
-policies. An error from this subset raises `ContainerBuildError`; a warning is retained in `container.build_report`
-without preventing startup.
-
-Custom rules run only after structural compilation has produced a complete graph. For example, a missing dependency or
-dependency cycle can prevent that graph from existing and stop the build before custom rules run. Once the graph does
-exist, built-in complete-graph findings—such as an unreachable component or missing marked entry point—are aggregated
-with findings from build rules.
-
-Use the default for inexpensive rules that must hold whenever the application starts:
+`analyse()` completes all available validation rules and built-in checks before returning. Rules run in declaration
+order, parent declarations before local overlay declarations, once per analysis. Their findings, errors and unavailable
+or interrupted outcomes are recorded in `result.report`. Policy errors do not prevent testing an otherwise emitted
+plan. Missing bindings can prevent graph-dependent rules from running; the report then records incomplete coverage.
 
 ```python
 builder.add_validation_rule(enforce_architecture)
+builder.add_validation_rule(inspect_implementation_asts)
+with builder.analyse() as result:
+    result.report.assert_valid()
+    with result.create_runtime() as runtime:
+        runtime.resolve(Application)
 ```
 
-Use `mode="validation"` when a rule is too expensive for startup or is intended only for deliberate test and CI
-validation:
+Report and graph reads never rerun rules or wiring callbacks. `create_runtime()` uses the existing emitted plan.
+Use a fresh composition factory's `build()` for production and make a separate analysis check part of CI:
 
 ```python
-builder.add_validation_rule(inspect_implementation_asts, mode="validation")
+with application_builder().analyse() as result:
+    result.report.assert_valid()
+with application_builder().build() as production:
+    production.resolve(Application)
 ```
 
-### Validation mode runs validate-only rules
+Every admitted attempt consumes its builder, including failure, cancellation and budget refusal. Repair the composition
+factory and create a fresh builder to retry. An analysis of one input set does not approve every deployment input.
 
-An already-built container or scope can run its validate-only rules and return a complete report:
+### Captured views and failed attempts
 
-```python
-report = container.validation_report()
-if not report.is_valid:
-    print(report.to_text())
-```
+Analysis rules receive complete supported graph evidence where available. Saved analysis views remain readable;
+runtime objects retain no graph, report or validation callbacks. Rich findings preserve source attribution and boundary
+and occurrence identity. A finding from another graph never borrows matching occurrence numbers.
+Analysis may independently retry failed roots for diagnostics, retaining attempt and inconsistency facts. Such attempts
+can repeat wiring callbacks, but never a validation declaration. Production build has no diagnostic retries.
 
-Validation mode does not rerun build rules: the container already passed their error checks during `build()`.
-It runs every rule registered with `mode="validation"` and returns their errors in the report instead of raising.
-Each call creates a new shared `ValidationContext` for those validate-only rules, so they must be deterministic,
-side-effect-free, and safe to run repeatedly.
+### Strictness controls warnings
 
-The complete report starts with every stored `container.build_report` finding, including built-in findings and warnings
-from build rules, then adds the new validate-only results. Exact duplicate findings are removed across those two sources
-within the new report, and the stored build report is never mutated.
+`clean-ioc check` calls `analyse()` once. Errors and incomplete analysis always fail; strict mode also fails for
+unsuppressed warnings. `--ignore` suppresses selected warnings in CLI output without mutating the result.
 
-### Strictness controls warnings, not rule execution
-
-For a successfully built target, `clean-ioc check` always runs validation mode. It is strict by default, so unsuppressed
-errors and warnings produce a non-zero exit status. `--no-strict` uses the same stored build findings and runs the same
-validate-only rules, but only errors produce a non-zero status. `--ignore CODE` may suppress a selected warning; errors
-cannot be ignored.
-An ignored warning is removed from the CLI's displayed report as well as from its exit-status decision. The underlying
-container report is unchanged.
-
-```bash
+```console
 clean-ioc check my_app.composition:application_builder
-clean-ioc check my_app.composition:application_builder --ignore my-app-missing-owner
 clean-ioc check my_app.composition:application_builder --no-strict
 ```
-
-### Choose the execution mode by use case
-
-| Use case | Registration | Reason |
-| --- | --- | --- |
-| Fast invariant required by every application instance | Default | An error stops an unsafe container from starting |
-| Cheap advisory visible at startup | Default rule yielding a warning | The warning is retained without failing `build()` |
-| Expensive whole-graph or source-AST analysis | `mode="validation"` | Keeps the startup path fast while retaining CI coverage |
-| Policy meaningful only to architecture tests | `mode="validation"` | Runs through `validation_report()` and `clean-ioc check` |
-| Reusable library policy that consumers might not check separately | Default | Avoids depending on downstream CI configuration |
-
-!!! tip "Recommended trade-off"
-    Keep cheap graph-metadata checks in build mode so every application instance is protected, even when a separate
-    validation command is accidentally skipped. Prefer `mode="validation"` for rules that read source files,
-    parse ASTs, or perform other expensive whole-graph analysis, and make `clean-ioc check` or an equivalent
-    `validation_report()` test mandatory in CI.
-
-    A build rule is paid for on every application build but is not rerun by full validation. A validate-only rule is paid
-    for only during deliberate validation, but application startup alone will not enforce it. For a composition target,
-    `clean-ioc check` first builds the container and then runs validation, so build rules and validate-only rules each run
-    once. If an expensive rule protects runtime correctness rather than an architectural convention, keep it in build
-    mode or split it into a cheap startup invariant and a deeper validate-only rule.
 
 ## What a rule can inspect
 
@@ -350,7 +293,7 @@ def warn_about_transient_resources(context: ValidationContext) -> Iterable[Build
             )
 ```
 
-Warnings remain visible in `container.build_report` without stopping application startup. The strict CLI treats an
+Warnings remain visible in `result.report`; production build runs no policy rules. The strict CLI treats an
 unsuppressed warning as a failure, so teams can adopt advisory rules gradually.
 
 ## Recipe: validate environment-specific composition
@@ -385,11 +328,8 @@ or other input values in issue messages, roots, paths, or codes.
 for the current validation pass and shared by all rules in that pass. Source is not attached to the compiled graph,
 runtime, manifest, or fingerprint.
 
-AST inspection performs filesystem reads and parsing, so it is normally best registered with
-`mode="validation"` and enforced by the full validation suite in tests or CI. Register it for build mode only when
-the policy must block every application startup and that guarantee is worth the added startup cost.
-
-This validate-only rule finds direct `os.getenv(...)` calls inside component classes:
+AST inspection performs filesystem reads during analysis only. Include these rules in the same `add_validation_rule`
+API and enforce the completed result in CI. This rule finds direct `os.getenv(...)` calls inside component classes:
 
 ```python
 import ast
@@ -418,7 +358,7 @@ def forbid_direct_environment_access(context: ValidationContext) -> Iterable[Bui
                 )
 
 
-builder.add_validation_rule(forbid_direct_environment_access, mode="validation")
+builder.add_validation_rule(forbid_direct_environment_access)
 ```
 
 `type_ast()` returns `None` for built-in, extension, dynamically generated, or otherwise unavailable types. Each rule
@@ -482,25 +422,20 @@ from clean_ioc.bundles import BaseBundle
 class OrganizationPolicyBundle(BaseBundle):
     def apply(self, builder: ComponentBuilder) -> None:
         builder.add_validation_rule(require_unique_service_names)
-        builder.add_validation_rule(forbid_direct_environment_access, mode="validation")
+        builder.add_validation_rule(forbid_direct_environment_access)
 ```
 
-Rules registered on a root builder are frozen into its policy. A `ScopeBuilder` inherits those rules and applies build
-rules parent-first to the complete recompiled overlay graph, followed by build rules declared on the child builder.
-Ordinary `new_scope()` calls reuse the prior graph and report without rerunning rules. Calling `validation_report()` on
-that new scope runs the validate-only rules parent-first against the shared graph and retains the stored build findings.
+A retained `Composition` carries declarations into an explicit `ScopeBuilder(parent, composition=handle)`.
+Its analysis runs inherited rules followed by local rules against the overlay graph. Production overlay builds and
+ordinary scopes run no rules. Handles have no resource-cleanup lifecycle; keep them only when further composition is needed.
 
 ## Test the full suite without starting the application
 
-Build the immutable plan, then request the complete validation report. The first call runs build rules; the second runs
-validate-only rules and combines their findings with the stored build report. Components are compiled but not activated:
-
 ```python
 def test_architecture_policy(application_builder):
-    container = application_builder.build()
-    report = container.validation_report()
-
-    report.assert_valid()
+    with application_builder().analyse() as result:
+        report = result.report
+        report.assert_valid()
 ```
 
 `report.assert_valid()` checks `report.is_valid` and raises `AssertionError` with a SARIF document when errors remain.
@@ -535,21 +470,16 @@ CI can use the same composition target as production without activating applicat
   run: clean-ioc check my_app.composition:application_builder
 ```
 
-The CLI target may be a builder, built container or scope, or a zero-argument factory returning any of them.
-If the target cannot build, `check` reports that build failure; validate-only rules require a successfully built graph
-and cannot run in that invocation.
+The CLI target may be a builder, a completed `AnalysisResult`, or a zero-argument factory returning either.
+`check` completes analysis once and exports its report, including partial findings when compilation cannot finish.
+The report records which rule declarations could run.
 
 ## Rule behavior and failure handling
 
-Build rules run in declaration order after built-in complete-graph findings. Validate-only rules run in declaration
-order when a validation report is requested. Parent rules precede overlay rules within either phase. The complete report
-lists stored build findings before validate-only findings; exact duplicates are removed while the first occurrence
-retains its position.
+Each rule returns a synchronous iterable. If it raises, returns a non-iterable or awaitable, or yields a malformed
+issue, analysis records `validation-rule-error`, retains prior yielded issues and continues with later rules.
+A budget or cancellation can interrupt the attempt; outcomes describe what actually completed. Asynchronous rules
+are rejected at registration. Rules should be deterministic and free of external side effects.
 
-Each yielded value is validated. If a rule raises, returns a non-iterable, returns an awaitable, or yields a malformed
-issue, Clean IoC records a `validation-rule-error`, stops that rule, retains any issues it already yielded, and continues
-with later rules. Asynchronous rules are rejected during registration.
-
-Rules should be deterministic and side-effect-free. Structural compilation failures do not invoke custom rules because
-no honest complete graph exists. Failed builders remain reusable. Each explicit validation report performs a new pass
-of validate-only rules without rerunning build rules.
+A full report includes built-in findings and rule findings from that attempt. Equal public text from distinct
+boundaries or occurrences retains its attribution. Reading the completed result does not execute user code.

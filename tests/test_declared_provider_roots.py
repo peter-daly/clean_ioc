@@ -13,12 +13,12 @@ from clean_ioc import (
     CompilationBudget,
     CompilationProfiler,
     ContainerBuilder,
-    ContainerBuildError,
     Instrumentation,
     ManagedProvider,
     Provider,
     ResolutionContext,
     ResolutionProfiler,
+    ScopeBuilder,
 )
 from clean_ioc import component_filters as cf
 
@@ -38,7 +38,8 @@ async def test_declared_family_and_form_are_the_only_public_provider_roots(famil
     builder = ContainerBuilder()
     builder.register(Resource)
     annotation = family[target]
-    async with builder.build(provider_roots=[annotation], diagnostics=diagnostics) as container:
+    builder.set_provider_roots([annotation])
+    async with builder.build() as container:
         assert tuple(container._plan.provider_roots) == (annotation,)
         assert container.has_component(annotation)
         handle = container.resolve(annotation)
@@ -72,7 +73,8 @@ def test_empty_declaration_preserves_injected_handles_provider_maps_and_default_
     builder.register(Resource)
     builder.register(Consumer)
     builder.register_provider_map(Resource, key=lambda component: component.id)
-    container = builder.build(provider_roots=())
+    builder.set_provider_roots(())
+    container = builder.build()
     monkeypatch.setattr(ContainerBuilder, "build", lambda *a, **kw: pytest.fail("runtime compilation"))
     assert isinstance(container.resolve(Consumer).resource(), Resource)
     assert len(container.resolve(list[Resource])) == 1
@@ -111,9 +113,8 @@ async def test_managed_context_uses_private_frozen_targets_and_closes_resources(
         if lookup in (AsyncProvider[Resource], AsyncProvider[list[Resource]])
         else (AsyncManagedProvider[object],)
     )
-    async with builder.build(
-        provider_roots=requested, instrumentation=Instrumentation(profiler) if profiler is not None else None
-    ) as container:
+    builder.set_provider_roots(requested)
+    async with builder.build(instrumentation=Instrumentation(profiler) if profiler is not None else None) as container:
         monkeypatch.setattr(ContainerBuilder, "build", lambda *a, **kw: pytest.fail("runtime compilation"))
         async with container.resolve(AsyncManagedProvider[object])() as result:
             assert isinstance(result, list if lookup in (list[Resource], AsyncProvider[list[Resource]]) else Resource)
@@ -129,16 +130,19 @@ def test_declared_alias_names_filters_fallback_and_overlay_singleton_anchor():
     builder = ContainerBuilder()
     builder.register_fallback(Resource)
     builder.register(Resource, name="named", lifespan="singleton")
-    container = builder.build(provider_roots=[Provider[alias], Provider[Resource]])
+    builder.set_provider_roots([Provider[alias], Provider[Resource]])
+    container_composition = builder.retain_composition()
+    container = builder.build()
     assert tuple(container._plan.provider_roots) == (Provider[Resource],)
     assert isinstance(container.resolve(Provider[alias])(), Resource)
     named = container.resolve(Provider[alias], filter=cf.with_name("named"))()
     assert container.resolve(list[Provider[Resource]]) == []
     handles = container.resolve(list[Provider[Resource]], filter=cf.with_name("named"))
     assert len(handles) == 1 and handles[0]() is named
-    overlay_builder = container.new_scope_builder()
+    overlay_builder = ScopeBuilder(container, composition=container_composition)
     overlay_builder.register(Resource, name="named")
-    with overlay_builder.build(provider_roots=[Provider[Resource]]) as overlay:
+    overlay_builder.set_provider_roots([Provider[Resource]])
+    with overlay_builder.build() as overlay:
         assert overlay.resolve(Provider[Resource], filter=cf.with_name("named"))() is not named
     assert container.resolve(Provider[Resource], filter=cf.with_name("named"))() is named
     container.__exit__()
@@ -148,7 +152,8 @@ def test_provider_entrypoint_is_automatically_declared():
     builder = ContainerBuilder()
     builder.register(Resource)
     builder.mark_entrypoint(Provider[list[Resource]])
-    with builder.build(provider_roots=()) as container:
+    builder.set_provider_roots(())
+    with builder.build() as container:
         assert len(container.resolve(Provider[list[Resource]])()) == 1
         assert tuple(container._plan.provider_roots) == (Provider[list[Resource]],)
 
@@ -158,18 +163,23 @@ def test_invalid_option_does_not_consume_builder(invalid):
     builder = ContainerBuilder()
     builder.register(Resource)
     with pytest.raises(TypeError):
-        builder.build(provider_roots=invalid)
-    assert isinstance(builder.build(provider_roots=()).resolve(Resource), Resource)
+        builder.set_provider_roots(invalid)
+        builder.build()
+    builder.set_provider_roots(())
+    assert isinstance(builder.build().resolve(Resource), Resource)
 
 
 def test_missing_declared_provider_fails_at_build_and_builder_can_be_repaired():
     builder = ContainerBuilder()
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build(provider_roots=[Provider[Resource]])
-    assert caught.value.report is not None
-    assert "provider-missing-component" in {issue.code for issue in caught.value.report.errors}
+    builder.set_provider_roots([Provider[Resource]])
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert "provider-missing-component" in {issue.code for issue in caught_analysis.report.errors}
+    builder = ContainerBuilder()
     builder.register(Resource)
-    assert isinstance(builder.build(provider_roots=[Provider[Resource]]).resolve(Provider[Resource])(), Resource)
+    builder.set_provider_roots([Provider[Resource]])
+    assert isinstance(builder.build().resolve(Provider[Resource])(), Resource)
 
 
 def test_all_ordinary_roots_remain_validated_with_empty_provider_declaration():
@@ -179,10 +189,11 @@ def test_all_ordinary_roots_remain_validated_with_empty_provider_declaration():
 
     builder = ContainerBuilder()
     builder.register(Invalid)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build(provider_roots=())
-    assert caught.value.report is not None
-    assert "missing-component" in {issue.code for issue in caught.value.report.errors}
+    builder.set_provider_roots(())
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert "missing-component" in {issue.code for issue in caught_analysis.report.errors}
 
 
 def test_declared_closed_generic_target_is_compiled_during_build():
@@ -193,7 +204,8 @@ def test_declared_closed_generic_target_is_compiled_during_build():
 
     builder = ContainerBuilder()
     builder.register(GenericResource)
-    with builder.build(provider_roots=[Provider[GenericResource[int]]]) as container:
+    builder.set_provider_roots([Provider[GenericResource[int]]])
+    with builder.build() as container:
         assert isinstance(container.resolve(Provider[GenericResource[int]])(), GenericResource)
 
 
@@ -206,16 +218,18 @@ def test_private_managed_closure_is_counted_in_physical_budget_and_profile():
     builder.register(Resource)
     builder.register(Consumer)
     profile = CompilationProfiler(max_records=0)
-    with builder.build(provider_roots=(), profile=profile, budget=CompilationBudget(graph_occurrences=8)) as container:
+    builder.set_provider_roots(())
+    with builder.build(profile=profile, budget=CompilationBudget(graph_occurrences=8)) as container:
         assert len(container._plan.graph._records or {}) == 6
         assert len(container._plan.graph._views) == 2
         assert profile.report().counters.to_dict()["provider adapters"] == 2
     builder = ContainerBuilder()
     builder.register(Resource)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build(provider_roots=(), budget=CompilationBudget(graph_occurrences=0))
-    assert caught.value.report is not None
-    assert "compilation-budget-exceeded" in {issue.code for issue in caught.value.report.errors}
+    builder.set_provider_roots(())
+    caught_analysis = builder.analyse(budget=CompilationBudget(graph_occurrences=0))
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert "compilation-budget-exceeded" in {issue.code for issue in caught_analysis.report.errors}
 
 
 def test_full_mode_shares_managed_roots_and_keeps_every_form():
@@ -249,10 +263,8 @@ async def test_managed_scalar_context_filter_observes_provider_parent_once(decla
     selected_id = builder.register(Resource, name="selected")
     builder.register(Resource, name="skipped")
     builder.register(object, factory=target)
-    with builder.build(
-        provider_roots=[AsyncManagedProvider[object]] if declared else None,
-        instrumentation=Instrumentation(ResolutionProfiler()) if observed else None,
-    ) as container:
+    builder.set_provider_roots([AsyncManagedProvider[object]] if declared else None)
+    with builder.build(instrumentation=Instrumentation(ResolutionProfiler()) if observed else None) as container:
         async with container.resolve(AsyncManagedProvider[object])() as value:
             assert isinstance(value, Resource)
         assert [component.name for component in inspected] == ["skipped", "selected"]
@@ -277,18 +289,18 @@ async def test_private_closure_survives_orphan_pruning_and_overlay_parent_anchor
     builder.register(Dependency, root_policy="dependency_only", lifespan="singleton")
     builder.register(Product, lifespan="singleton")
     builder.register(object, factory=product)
-    async with builder.build(
-        provider_roots=[AsyncManagedProvider[object]],
-        instrumentation=Instrumentation(ResolutionProfiler()) if observed else None,
-    ) as container:
+    builder.set_provider_roots([AsyncManagedProvider[object]])
+    container_composition = builder.retain_composition()
+    async with builder.build(instrumentation=Instrumentation(ResolutionProfiler()) if observed else None) as container:
         async with container.resolve(AsyncManagedProvider[object])() as original:
             created.append(original)
-        overlay_builder = container.new_scope_builder()
+        overlay_builder = ScopeBuilder(container, composition=container_composition)
         overlay_builder.register(Dependency)
-        async with overlay_builder.build(provider_roots=[AsyncManagedProvider[object]]) as overlay:
+        overlay_builder.set_provider_roots([AsyncManagedProvider[object]])
+        async with overlay_builder.build() as overlay:
             async with overlay.resolve(AsyncManagedProvider[object])() as inherited:
                 assert inherited is original
-        assert Dependency in container._plan.blueprint.service_types()
+        assert Dependency in container_composition._for_parent(container).service_types()
         assert len(created) == 1
 
 
@@ -298,7 +310,8 @@ def test_absence_of_managed_handles_avoids_managed_conversion_and_private_graphs
     monkeypatch.setattr(_Compiler, "_managed_adapter_target", lambda *a: pytest.fail("unneeded managed conversion"))
     builder = ContainerBuilder()
     builder.register(Resource)
-    with builder.build(provider_roots=(), budget=CompilationBudget(graph_occurrences=1)) as container:
+    builder.set_provider_roots(())
+    with builder.build(budget=CompilationBudget(graph_occurrences=1)) as container:
         assert len(container._plan.graph._records or {}) == 1
         assert not container._plan.graph._views
         assert not container._plan.managed_provider_roots
@@ -327,9 +340,8 @@ async def test_injected_managed_handle_keeps_private_context_closure_without_pub
     builder.register(Resource, factory=resource, lifespan="scoped")
     builder.register(object, factory=product)
     builder.register(Consumer)
-    async with builder.build(
-        provider_roots=(), instrumentation=Instrumentation(ResolutionProfiler()) if observed else None
-    ) as container:
+    builder.set_provider_roots(())
+    async with builder.build(instrumentation=Instrumentation(ResolutionProfiler()) if observed else None) as container:
         consumer = container.resolve(Consumer)
         assert not container._plan.provider_roots
         assert AsyncManagedProvider[Resource] in container._plan.managed_provider_roots
@@ -353,7 +365,8 @@ def test_declared_provider_root_keeps_boundary_exposure_and_private_service_hidd
     boundary = builder.create_boundary("resources", exposes=[Expose(Product)])
     boundary.register(Hidden)
     boundary.register(Product)
-    with builder.build(provider_roots=[Provider[Product]]) as container:
+    builder.set_provider_roots([Provider[Product]])
+    with builder.build() as container:
         assert isinstance(container.resolve(Provider[Product])().hidden, Hidden)
         assert not container.has_component(Hidden)
         assert not container.has_component(Provider[Hidden])
@@ -362,5 +375,6 @@ def test_declared_provider_root_keeps_boundary_exposure_and_private_service_hidd
 def test_declared_empty_collection_preserves_early_rejected_service_contract():
     builder = ContainerBuilder()
     builder.register(Resource, candidate_when=cf.parent(cf.service_type_is(object)))
-    with builder.build(provider_roots=[Provider[list[Resource]]]) as container:
+    builder.set_provider_roots([Provider[list[Resource]]])
+    with builder.build() as container:
         assert container.resolve(Provider[list[Resource]])() == []

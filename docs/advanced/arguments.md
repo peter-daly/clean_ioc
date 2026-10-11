@@ -236,7 +236,8 @@ builder.patch_component(
 )
 ```
 
-Unknown argument names fail during build unless the target callable accepts `**kwargs`.
+Analysis reports unknown argument names unless the target callable accepts `**kwargs`. Production build omits this
+policy audit; impossible required binding still fails locally.
 
 ## Choosing between eligible services
 

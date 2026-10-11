@@ -18,7 +18,7 @@ import tracemalloc
 from pathlib import Path
 
 from benchmarks.graph_artifact import SCHEMA, dump_graph, load_graph
-from benchmarks.graph_artifact_evidence import _forbid_compilation, _memory
+from benchmarks.graph_artifact_evidence import _forbid_compilation, _memory, runtime_link_fingerprint
 from benchmarks.graph_memory_evidence import census, source_provenance
 
 
@@ -35,36 +35,13 @@ def provenance():
     return result
 
 
-def runtime_link_fingerprint(runtime):
-    """Compare stored runtime links without requesting a public inspection graph."""
-    rows = [
-        (
-            occurrence,
-            record.parent_id,
-            record.owner_id,
-            record.decorated_id,
-            record.dependency_ids,
-            record.decorator_ids,
-            record.pre_configuration_ids,
-        )
-        for occurrence, record in sorted(runtime._plan.graph._records.items())
-    ]
-    payload = {
-        "records": rows,
-        "contexts": [(view.index, view.root, view.parent) for view in runtime._plan.graph._views],
-    }
-    return hashlib.sha256(json.dumps(payload, separators=(",", ":")).encode()).hexdigest()
-
-
-async def measure(mode: str, artifact: Path, routes: int, heap: bool, explain_metadata: bool = True):
+async def measure(mode: str, artifact: Path, routes: int, heap: bool):
     if "benchmarks.graph_memory_fixture" in sys.modules:
         raise AssertionError("Run each observation in a fresh process")
     result = {
         "mode": mode,
         "routes": routes,
-        "explain_metadata": explain_metadata,
-        "diagnostics": False,
-        "allow_scope_builders": False,
+        "operation": "build",
         "artifact_schema": SCHEMA,
         "source": provenance(),
         "python": platform.python_version(),
@@ -103,14 +80,12 @@ async def measure(mode: str, artifact: Path, routes: int, heap: bool, explain_me
             raise AssertionError("Loading invoked template callbacks")
     else:
         fixture = importlib.import_module("benchmarks.graph_memory_fixture")
-        case = fixture.build(routes, explain_metadata=explain_metadata)
+        case = fixture.build(routes)
         runtime = case.runtime
         result["prepare_seconds"] = time.perf_counter() - started
         result["prepared"] = _memory(heap)
     held = None
     try:
-        if runtime.explain_metadata_enabled is not explain_metadata:
-            raise AssertionError("Artifact metadata mode differs from the requested mode")
         if len(case.source_ids) != routes or fixture.ACTIVATIONS:
             raise AssertionError("Wrong fixture size or preparation activated application objects")
         result["template_calls"] = dict(fixture.TEMPLATE_CALLS)
@@ -134,22 +109,8 @@ async def measure(mode: str, artifact: Path, routes: int, heap: bool, explain_me
         result["lazy_activations"] = held.lazy_counts
         result["graph"] = census(runtime)
         result["runtime_link_fingerprint"] = runtime_link_fingerprint(runtime)
-        if explain_metadata:
-            result["graph_fingerprint"] = runtime.graph.manifest(all_roots=True).fingerprint
-        else:
-            result["graph_fingerprint"] = None
-            if any(result["graph"]["metadata_entries"].values()):
-                raise AssertionError("Reduced artifact retained explanation metadata")
-            for _ in range(2):
-                try:
-                    _ = runtime.graph
-                except RuntimeError as error:
-                    if "explain-metadata-disabled" not in str(error):
-                        raise
-                else:
-                    raise AssertionError("Reduced artifact exposes a complete inspection graph")
-            if runtime._plan.compiled_graph is not None:
-                raise AssertionError("Reduced inspection reconstructed a graph")
+        if any(result["graph"]["metadata_entries"].values()):
+            raise AssertionError("Execution artifact retained explanation metadata")
         if mode in ("export", "load"):
             with artifact.open("rb") as stream:
                 result["artifact_sha256"] = hashlib.file_digest(stream, "sha256").hexdigest()
@@ -167,8 +128,7 @@ async def measure(mode: str, artifact: Path, routes: int, heap: bool, explain_me
 def _equivalence(run):
     graph = run["graph"]
     return {
-        "explain_metadata": run["explain_metadata"],
-        "fingerprint": run["graph_fingerprint"],
+        "operation": run["operation"],
         "runtime_links": run["runtime_link_fingerprint"],
         "validated": run["validated"],
         "activations": run["activations"],
@@ -211,8 +171,6 @@ def compare(arguments):
                 ]
                 if heap:
                     command.append("--heap")
-                if arguments.no_explain_metadata:
-                    command.append("--no-explain-metadata")
                 run = json.loads(subprocess.check_output(command, text=True))  # noqa: S603
                 run["repeat"] = repeat + 1
                 runs.append(run)
@@ -251,7 +209,7 @@ def compare(arguments):
     return {
         "routes": arguments.routes,
         "repeats": arguments.repeats,
-        "explain_metadata": not arguments.no_explain_metadata,
+        "operation": "build",
         "medians": medians,
         "runs": runs,
     }
@@ -263,7 +221,6 @@ def main():
     parser.add_argument("--routes", type=int, default=8)
     parser.add_argument("--artifact", type=Path, default=Path(".cache/graph-artifact/rich-graph.jsonl"))
     parser.add_argument("--heap", action="store_true")
-    parser.add_argument("--no-explain-metadata", action="store_true")
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--output", type=Path)
     arguments = parser.parse_args()
@@ -274,11 +231,7 @@ def main():
     result = (
         compare(arguments)
         if arguments.mode == "compare"
-        else asyncio.run(
-            measure(
-                arguments.mode, arguments.artifact, arguments.routes, arguments.heap, not arguments.no_explain_metadata
-            )
-        )
+        else asyncio.run(measure(arguments.mode, arguments.artifact, arguments.routes, arguments.heap))
     )
     encoded = json.dumps(result, indent=2, sort_keys=True) + "\n"
     if arguments.output:

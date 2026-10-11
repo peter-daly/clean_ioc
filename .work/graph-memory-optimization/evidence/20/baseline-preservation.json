@@ -1,0 +1,21 @@
+{
+  "root": "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2",
+  "checks": {
+    "current": {
+      "path": "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/current-source/clean_ioc/container.py",
+      "sha256": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223"
+    },
+    "task10-11": {
+      "path": "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/task10-11-source/clean_ioc/container.py",
+      "sha256": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683"
+    },
+    "consumer-original": {
+      "path": "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-original/cop-env/lib/python3.14/site-packages/clean_ioc/container.py",
+      "sha256": "6253f5e38bd8819099db53514ede0d3c0efc4f451b3ea33f05c6e4a9932e4253"
+    }
+  },
+  "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+  "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+  "method": "Full source copies; complete consumer roots and environments cloned with cp -cR; task10/11 reconstructed using accepted task18 captured overlays on unchanged supporting sources. Private settings remain outside repository."
+}

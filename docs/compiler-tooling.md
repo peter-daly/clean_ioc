@@ -14,9 +14,9 @@ builder = ContainerBuilder()
 builder.register(PaymentGateway, StripeGateway)
 builder.register(Checkout, root_policy="entrypoint")
 
-container = builder.build()
-print(container.build_report.to_text())
-print(container.graph.to_text())
+analysis = builder.analyse()
+print(analysis.report.to_text())
+print(analysis.graph.to_text())
 ```
 
 `root_policy` classifies each registration:
@@ -27,7 +27,7 @@ print(container.graph.to_text())
 | `"resolvable"` (default) | Public root without a tooling marker; this is the existing registration behavior. |
 | `"dependency_only"` | Available to dependencies, but not directly resolvable as a root. An unused registration is discarded by default. |
 
-`build(clean_orphans=False)` retains and validates otherwise unused dependency-only registrations as graph roots for inspection. They remain unavailable to direct resolution. With the default `clean_orphans=True`, unused dependency-only registrations and their unneeded graphs are omitted from the frozen container. A broken dependency inside an omitted orphan does not fail the build.
+`analyse()` retains and validates unused dependency-only declarations for inspection, without exposing public resolution roots. Production builds omit unused declarations; a broken dependency in an omitted orphan does not fail startup.
 
 `mark_entrypoint()` remains available for request-level markers, such as a filtered selection or `list[MessageHandler]`. An entry-point marker focuses tooling; it does not change a registration's root policy. Once any entry point is marked, registrations outside all marked component trees produce `unreachable-component` warnings.
 
@@ -37,323 +37,148 @@ Mark a collection when every implementation is an application entry point:
 builder.mark_entrypoint(list[MessageHandler])
 ```
 
-## Failure aggregation
+<a id="optional-explanation-metadata"></a>
+<a id="optional-diagnostic-capture"></a>
+<a id="deferred-reachability-advisories"></a>
+<a id="failure-aggregation"></a>
 
-Both `ContainerBuilder.build()` and `ScopeBuilder.build()` accept `aggregate_errors: bool = True`.
-The compatibility default independently recompiles roots after a reportless compilation failure to collect
-additional findings, with or without optional `diagnostics` capture. CLI `check` and matrix validation keep this
-aggregate behavior. An application production root can pass `aggregate_errors=False` to skip those diagnostic
-root retries:
+<a id="run-and-analysis-modes"></a>
+
+## Build and analyse
+
+`builder.build()` emits an ordinary execution runtime. It performs the binding and emission needed for execution,
+but runs no custom validation rules, policy checks or safety audit. Impossible binding still fails locally with
+`ContainerBuildError`. Actual resolution, scope ownership, async and cleanup guards remain enforced.
+
+`builder.analyse()` returns a completed `AnalysisResult`: its immutable `AnalysisReport`, full or partial graph,
+coverage and stage/rule outcomes. Every available validation declaration runs once before return. A missing graph
+makes graph-dependent rules unavailable; cancellation or a budget can make the result incomplete. An incomplete
+report is never valid. Reading reports, graphs, census or triage does not replay callbacks.
 
 ```python
-container = builder.build(
-    aggregate_errors=False,
-    diagnostics=False,
-    provider_roots=(),
-    allow_scope_builders=False,
-    check_unreachable=False,
-)
+with application_builder().analyse() as analysis:
+    analysis.report.assert_valid()
+    print(analysis.graph.manifest(all_roots=True).to_json())
+    with analysis.create_runtime() as runtime:
+        runtime.resolve(Application)
 ```
 
-Every essential structural check remains enabled. Missing dependencies, cycles, lifespan/ownership errors,
-provider admission, boundary contracts, entrypoint/warmup validation and build-mode application rules still fail
-the build. The flag controls recompilation for diagnostics; it does not turn every compiler phase into immediate
-first-error processing. Already collected preparation findings and report-bearing validation/build-rule failures
-keep their existing full reports. A failed builder remains reusable.
+`create_runtime()` uses the emitted test plan without recompilation. A result may have an executable plan despite
+policy errors; callers decide whether to test it. If emission failed, runtime creation raises
+`AnalysisRuntimeUnavailableError`. The result closes its test runtimes in reverse creation order, never a borrowed parent.
+Production separately calls a fresh composition factory's `build()`.
 
-For a reportless compiler failure, no-retry mode preserves the original error code, complete path and captured
-structural evidence in `ContainerBuildError.report`, including the defining boundary. Arbitrary callback exceptions
-keep a safe redacted message and the request path captured at selection/eligibility failure, without inspecting
-user exception text or invoking the callback again. Unsupported arbitrary failures can remain without a path or
-structured evidence. With `diagnostics=True`, the partial graph contains only the primary attempt and its usual
-bounded witness; `diagnostics=False` retains no optional partial graph. `report.checked_roots` and partial-graph
-root counts are zero for diagnostic roots in this mode, not a claim that primary compilation did no work.
-No diagnostic-attempt budget is consumed; all primary callback and compilation allowances remain enforced.
-A profiling failure still finishes with state `failed` and records no diagnostic root retry phase.
+Each admitted attempt consumes its builder on success, failure, cancellation or budget refusal. Retry with a fresh
+builder. Invalid inputs rejected before admission leave the builder mutable. Analysis can make independent diagnostic
+root attempts after binding failures; those can repeat wiring callbacks, but never validation declarations.
 
-The flag is independent of `diagnostics` and is not stored in the successful runtime. Successful executable graphs,
-selected registration catalogues, validation reports, activation, ownership and cleanup are identical. Ordinary
-scopes never compile. Each overlay build chooses its own aggregation setting, defaulting to compatibility behavior.
+CLI checks and inspection commands and matrix variants call `analyse()` once. They accept an unbuilt builder,
+a factory returning one, or a completed result where appropriate. Incomplete or invalid analysis exits unsuccessfully.
+Compilation profiling selects `--operation build|analyse`, defaulting to `build`.
 
-## Declared provider roots
+### RC migration
 
-`build(provider_roots=None)` is the compatibility default: every resolvable ordinary service gets `Provider`,
-`AsyncProvider`, `ManagedProvider` and `AsyncManagedProvider` roots for the scalar target and its `list`,
-`tuple[T, ...]` and `set` forms. Both container and overlay builders accept `provider_roots`.
+`BuildMode`, `ValidationRuleMode`, `BuildReport`, `build(mode=...)`, per-rule phases and fine-grained build flags are
+removed. Use `AnalysisReport` and the two named operations. Runtimes have no `graph`, `build_report`,
+`validation_report`, `build_mode`, `explain_metadata_enabled`, `allow_scope_builders` or `new_scope_builder` API.
+`build_args`, `budget` and `profile` apply to either operation; execution instrumentation belongs to `build()` or
+`result.create_runtime()`.
 
-Applications that only inject deferred handles can call `builder.build(provider_roots=())`. To expose specific
-handles through public `resolve()` calls, supply their complete annotations:
+### Declared provider roots
+
+Declare public handles before building with `builder.set_provider_roots(...)`.
+The declaration is independent of mode. `None` (the default) enables all automatic
+provider families and collection forms. An empty iterable enables none. Marked
+provider entrypoints are always included; injected handles and provider maps keep
+their dependency-specific targets.
 
 ```python
 from clean_ioc import AsyncProvider, ContainerBuilder, Provider
 
 builder = ContainerBuilder()
 builder.register(PaymentGateway, StripeGateway)
-container = builder.build(provider_roots=(AsyncProvider[PaymentGateway], Provider[list[PaymentGateway]]))
+builder.set_provider_roots((AsyncProvider[PaymentGateway], Provider[list[PaymentGateway]]))
+analysis = builder.analyse()
 ```
 
-The iterable declares public resolution capabilities independently of `diagnostics`. Omitted automatic provider
-forms are unavailable to `resolve()` and `has_component()`. Ordinary roots, root filters and ordinary collections
-remain available. Injected providers and provider maps still compile their dependency-specific targets normally.
-Marked provider entrypoints are included automatically. Duplicate annotations and type aliases are normalized.
-Invalid annotations or missing declared targets fail before activation; a failed build leaves the builder reusable.
+The iterable is captured immediately, aliases normalized and duplicates removed.
+Repeated calls replace the declaration; invalid declarations leave the previous
+one intact. Scope builders have their own declaration, initially `None`; they do
+not implicitly inherit a parent's restricted handle surface. Private managed
+acquisition targets remain compiled when necessary, without becoming public roots.
+Discovery never requires expanding public roots.
 
-A managed acquisition can use `ResolutionContext` to select any already-compiled ordinary root. The compiler
-therefore retains a private frozen `AsyncManagedProvider` scalar closure when managed handles are injected or
-requested, and the corresponding collection adapters when public deferred collection handles require them.
-This closure is unavailable to public resolution unless declared. Its physical records/views and adapter work
-count normally against compilation budgets and profilers. Full mode shares its public managed plans with the
-private closure. The compiler omits the closure when absence of managed acquisition is proven; boundaries and
-inherited singleton/pre-configuration plans conservatively retain it. Runtime resolution never extends the graph,
-compiles dependencies or reruns build-time selection/validation callbacks.
+### Runtime discovery and evidence lifetime
 
-An overlay's own `provider_roots` argument controls its public provider forms; omitted/`None` restores the full
-compatibility mode. Existing escaped handles and inherited singleton ownership keep their original compiled
-activation plans. Default collections of unmarked provider handles retain their existing empty semantics.
+`selected_registrations` remains a complete frozen catalogue of selected executable
+registrations and decorators, including dependency-only and deferred targets.
+It preserves IDs, canonical visible service types, implementation types, names
+and tags. It excludes rejected candidates, unused dependency-only declarations,
+synthetic nodes and unexposed architecture-only roots. Reading never resolves,
+compiles or reruns callbacks. Ordinary child scopes share the tuple; compiled
+overlays receive their own selection catalogue.
 
-## Selected runtime registration discovery
+Runtime components retain the relationships required by filters, providers, provisions and cleanup. Runtimes do not
+retain diagnostic histories or a link to an analysis result. Keep analysis results only where inspection is needed.
 
-`container.selected_registrations` and `scope.selected_registrations` expose a frozen tuple of `RegistrationInfo`
-records for registrations reachable through the scope's retained executable roots, public provider forms,
-private managed targets and warmup plans. Reading the tuple does not resolve services, compile dependency trees,
-or rerun selection callbacks. Ordinary nested scopes reuse the same tuple; a compiled overlay receives its own
-catalogue, including the selected dependencies of inherited anchored singletons.
+### Overlay composition
 
-Each entry supplies `id`, canonical visible `service_type`, static `implementation_type`, `name` and immutable
-`tags`. Explicitly closed constructor aliases and typed factory result aliases remain closed. Unknown factory
-result types are `None`; static discovery never makes result reflection a new activation requirement. The
-catalogue contains selected registration and decorator definitions, including dependency-only registrations
-reached through provider maps and deferred handles. Synthetic provider/collection/context/value nodes, dead
-dependency-only definitions, rejected candidates and unexposed architecture-only boundary roots are excluded.
-Boundary aliases appear with the service type visible in their executable plan. Dependency metadata follows
-the actual selected target, including targets inside an exposed boundary plan.
-
-Entries are deduplicated by registration ID and visible canonical service type, in deterministic depth-first
-root/dependency traversal order. Multiple closed requests or visible service aliases of one registration may
-produce multiple entries. The tuple retains metadata and type references, without `Component`, graph or builder
-blueprint references. Discovery remains available with `diagnostics=False`,
-`explain_metadata=False` and `allow_scope_builders=False`, including when all three
-are combined. The catalogue is captured before explanation metadata is discarded;
-reading it never reconstructs that metadata.
-
-Use this catalogue for static type discovery that does not need public component resolution. `scope.components`
-continues to expose public root occurrences; applications that resolve returned component IDs should keep using it.
-
-## Optional diagnostic capture
-
-`ContainerBuilder.build()` and `ScopeBuilder.build()` use `diagnostics=False` by default. Ordinary builds still compile
-all visible roots, check missing dependencies, cycles, retaining lifespans, ownership, aliases and decorator safety,
-and run build validation rules. With the default `explain_metadata=True`, runtime resolution, component discovery, graph traversal, manifests, ownership
-reports, source-linked findings and compilation/runtime profilers remain available.
-
-Use `builder.build(diagnostics=True)` for recorded candidate history, occurrence explanation paths, argument and
-specialization explanations, failed-build partial graphs and selection census. The flag must be a boolean. Rich
-history is captured during compilation; it cannot be added to an existing scope without rebuilding. For anchored
-parent singleton explanations in an overlay, build the parent with diagnostics enabled too: an overlay cannot
-recover omitted parent parameter/predicate history.
-
-`scope.graph.diagnostics_enabled` and `error.diagnostics_enabled` report the requested mode. With capture disabled,
-`graph.explain(component).selected` still exposes the actual compiled component identity, fallback status and declaring
-origin/layer. It labels ordinary presence as `compiled-occurrence`, without inventing predicate evaluations.
-Optional selected-decision policy fields (`preferences`, `parent_precedence`, `template`), its `path`, `rejected` and full serialization raise `ValueError` explaining that `diagnostics=True` is required.
-`explain_decorators(component)` retains the captured selected/rejected decorator and template facts needed by safety
-rules, with the same explicit restriction on explanation paths/serialization. `explain_template_sources()` retains
-source-filter facts without replaying callbacks. Semantic graph paths remain available through `graph.walk()`.
-
-Rich-only APIs raise `ValueError` with an opt-in instruction instead of presenting empty evidence as complete.
-Default failed builds still aggregate independent root failures and preserve concise error paths, source evidence and
-budget findings; `error.partial_graph` is `None`. Independent-root recovery continues to count against compilation
-budgets in either mode.
-
-CLI validation/inspection commands enable diagnostics when they build a supplied builder/factory;
-`clean-ioc profile` uses the normal build default and enables capture only with `--diagnostics`.
-`BuildMatrix.check()` enables diagnostics for
-variant builds before running validation. Calling `validation_report()` on an existing scope runs its validation
-rules against the existing graph; it does not recompile or enable previously omitted history. Supply an unbuilt
-builder to the CLI or build a scope with `diagnostics=True` when a validation rule needs rich evidence.
-
-## Optional explanation metadata
-
-Both build entry points accept `explain_metadata=True` by default. Set it to
-`False` to release successful-build explanation indexes, origins, candidates,
-inspection caches and records outside the required runtime relationships.
+Retain external composition before compiling when overlays will be needed:
 
 ```python
-from clean_ioc import ContainerBuilder
+from clean_ioc import ScopeBuilder
 
-class Service:
-    pass
-
-builder = ContainerBuilder()
-builder.register(Service)
-with builder.build(explain_metadata=False, allow_scope_builders=False) as container:
-    assert isinstance(container.resolve(Service), Service)
-    assert not container.explain_metadata_enabled
-    assert container.selected_registrations[0].implementation_type is Service
-    with container.new_scope() as scope:
-        assert isinstance(scope.resolve(Service), Service)
-        assert scope.selected_registrations is container.selected_registrations
+builder = application_builder()
+composition = builder.retain_composition()
+with builder.build() as parent:
+    child_builder = ScopeBuilder(parent, composition=composition)
+    child_builder.register(Service, Replacement)
+    with child_builder.build() as child:
+        child.resolve(Service)
 ```
 
-The runtime keeps resolvable root Components and every relationship required by
-runtime filters, providers, maps, resolution contexts, ownership and cleanup.
-`components`, `selected_registrations`, `has_component`, filtered resolution, ordinary scopes, provisions,
-warmups and instrumentation still work. Components retain generic bindings,
-build arguments, names, tags, aliases and ownership facts needed by filters.
-No inspection callback is replayed and no inspection cache reconstructs discarded
-facts after resolution.
+Analysis results automatically expose `result.composition` after executable capture. The handle contains immutable
+library declarations and retains opaque application values by identity; it has a retained-memory cost. It has no
+close or context-manager lifecycle. A child builder requires the matching live parent lineage and owns its restored
+declarations. Ordinary `new_scope()` needs no handle. Parent singletons keep their original owner and activation step;
+a new compilation can rerun template factories, but handle/report/runtime reads never do.
 
-The frozen discovery catalogue retains selected dependency-only/deferred
-registrations and decorators, with the same IDs, types, names and tags as a full
-build. It owns no occurrence graphs, explanation indexes, candidate histories or
-composition blueprints. Applications can discover handler implementation types
-without exposing extra public resolution roots.
+### Analysis-only roots
 
-`graph`, its traversal/explanation/manifest/census/architecture APIs
-and `validation_report()` raise `RuntimeError` containing
-`explain-metadata-disabled`. The scalar `build_report` remains available, including
-its checked-root count and captured issues; its SARIF output has no retained graph
-context. Build validation and build-mode rules always run before metadata is
-released. Validation-only rules are incompatible with this option and cause a
-clear `ValueError` before compilation. With `check_unreachable=False`, unreachable
-warnings stay unchecked and cannot be requested later through `validation_report()`.
-Use `check_unreachable=True` when those warnings are needed in the stored report.
+Analysis validates unused dependency-only declarations without exposing them to
+`resolve()`. Invalid unused declarations can therefore fail analysis while run
+succeeds. Graph roots expose `resolvable`; manifests mark nonpublic roots with
+`"resolvable": false`, and text rendering labels them `Inspect`. Promoting one
+of these declarations to a public root remains visible in semantic graph diffs.
+The selected executable catalogue is unaffected by these inspection-only roots.
 
-| diagnostics | explain_metadata | Successful runtime | Failed build |
-| --- | --- | --- | --- |
-| False | True | Existing inspection and safety facts | Existing minimal failure evidence |
-| True | True | Existing full diagnostic inspection | Full requested diagnostic evidence |
-| False | False | Runtime relationships, discovery catalogue and scalar build report | Existing minimal failure evidence |
-| True | False | Runtime relationships, discovery catalogue and scalar build report | Full requested diagnostic evidence |
+## Completed reports and partial analysis
 
-Diagnostics control failure/build capture independently of successful runtime
-retention. Temporary compilation facts needed for validation and failure evidence
-may still be captured, then released after success. Warmup planning and optional
-instrumentation capture their small runtime descriptors before graph inspection
-is disabled. Resolution profiling remains usable; graph-dependent analyses of a
-profile require an independently retained full graph.
-
-`allow_scope_builders` remains independent. Keeping it enabled retains declaration
-layers and private architecture anchors for future overlays, while completed
-source-inspection graphs and template expansion evidence are released. A reduced
-parent requires `scope_builder.build(explain_metadata=False)`; requesting full
-metadata from that parent raises `ValueError`, because inherited facts cannot be
-recovered. A full parent can create either kind of overlay. Ordinary descendants
-inherit their existing plan's metadata mode. Reducing a child never changes an
-ancestor's graph or releases memory still owned by that ancestor.
-
-Build callbacks receive valid Components while running. After a successful reduced
-build, Components from discarded compilation paths raise `RuntimeError` containing
-`explain-metadata-disabled` when their metadata is accessed; their occurrence IDs
-remain available for logging. Saved Components in the retained runtime closure
-remain usable, including all their relationships. Separate source-inspection
-snapshots remain caller-owned and usable; retaining them keeps their own graphs
-alive. Saved inspection graphs supplied to build validation rules explicitly
-expire and release their context. These limits apply only to the explicit reduced
-mode; full builds keep existing escaped-view behaviour.
-
-Retaining a builder, a callback closure, a source snapshot or a full ancestor can
-keep application-owned data alive. Release those owners when their work is done.
-The private schema-7 artifact experiment supports the reduced local fixture;
-it remains an unfinished experiment with no public persistence API.
-Build matrices continue to use full metadata because their contract includes
-manifests and graph comparisons; this option does not add a reduced matrix mode.
-
-## Deferred reachability advisories
-
-Both builder types accept `check_unreachable=True` by default, preserving the existing
-`unreachable-component` warnings in `build_report`. Production composition can pass
-`check_unreachable=False` to defer this scan to `scope.validation_report()` or the CLI
-`check` command. The flag must be a boolean and is independent of diagnostic capture
-and provider-root selection. It affects only unreachable-component warnings; missing
-entrypoints, boundary contracts, dependency/lifespan errors, other built-in findings,
-build-mode application rules and compilation callback budgets always remain active.
-
-A deferred runtime's `build_report` omits these warnings. `validation_report()` returns
-them alongside stored build findings and fresh validation-only rule results, without
-altering the stored report. Reachability is recovered from immutable graph roots and
-selected entrypoints, including dependencies, pre-configurations and decorators; it
-never reruns selectors, constructors, factories or template preparation. This works
-for ordinary descendants, compiled overlays and compact runtimes built with
-`allow_scope_builders=False`, without retaining composition to support the scan.
-Strict CLI checks therefore still fail for deferred unreachable warnings unless the
-warning code is explicitly ignored. A failed build with deferred checking reports its
-essential findings immediately; it has no runtime on which to request advisories.
-
-With `diagnostics=False`, entrypoint selection evaluates the same eligible candidates
-and callbacks in the same order, including fallback suppression and provider target
-filters, but retains no selected/rejected entrypoint histories or census records.
-`graph.explain(component)` still provides minimal compiled origin/layer/fallback facts;
-service/filter explanations and selection census require `diagnostics=True`.
-Graph manifests and boundary contracts keep their existing shape.
-
-## Structured build reports
-
-A successful runtime exposes its immutable `BuildReport` as `container.build_report`. A failed build raises `ContainerBuildError` with the same report on `error.report`.
-
-## Inspect a failed build
-
-With `diagnostics=True`, failed builds also expose `error.partial_graph`: a frozen, non-executable diagnostic snapshot. It records only
-structural labels, completed draft branches, observed failing parameter edges, and known selection candidates.
-Evaluated candidates are marked `complete`, `failed`, or `rejected`; known candidates compilation did not visit are
-marked `not-examined`, never rejected. Cycles use explicit back-reference edges and attempts
-retain their safe witness paths. It deliberately does not freeze a
-runtime graph, execute constructors or callbacks, or serialize configured values or exception text.
+`AnalysisResult.report` contains findings, `complete`, root coverage, and rule/stage outcomes. It is available even
+when no full graph could be emitted. Production binding errors are local errors without rich reports or partial graphs.
 
 ```python
-from clean_ioc import ContainerBuildError
-
-try:
-    builder.build(diagnostics=True)
-except ContainerBuildError as error:
-    print(error.partial_graph.to_text())
+result = builder.analyse()
+for issue in result.report.errors:
+    print(issue.code, issue.path, issue.message)
+if result.partial_graph is not None:
+    print(result.partial_graph.to_text())
+print(result.triage_report().to_text())
 ```
 
-Independent error-report retries remain separate attempts in this artifact; they are not merged into a graph that
-looks coherent. Capture is bounded (500 nodes and edges per attempt), and reports truncation explicitly. JSON includes
-graph-level `total_attempts`, `retained_attempts`, `omitted_attempts`, `total_roots`, `retained_roots`, and
-`omitted_roots`; each attempt includes `witness_total` and `witness_omitted` when its witness path is clipped. Use the CLI
-to write an artifact while retaining a failing exit status:
+A partial graph is frozen, non-executable diagnostic evidence. It records completed branches, failed parameter edges,
+known candidates and bounded independent attempts. `not-examined` differs from rejected; cycles have explicit
+back-references. Counts report retained and omitted evidence. Diagnostic attempts are not merged into a coherent
+execution graph. Analysis never activates application constructors.
 
 ```console
 clean-ioc graph my_app.composition:application_builder --on-error partial --format json -o failed-graph.json
-```
-
-```python
-from clean_ioc import ContainerBuildError
-
-try:
-    container = builder.build()
-except ContainerBuildError as error:
-    for issue in error.report.errors:
-        print(issue.code, issue.path, issue.message)
-```
-
-Independent root failures are aggregated so one build can report several composition mistakes. Issues have a stable code, `error` or `warning` severity, a message, and a semantic component path. Errors always fail the build; warnings are available for policy in tooling and CI.
-With `diagnostics=True`, when compilation reached candidate selection before failing, `ContainerBuildError.explanations` contains the safe partial
-decision records captured up to that point; retrying the repaired builder creates a fresh index.
-
-### Triage repeated failures
-
-`ContainerBuildError.triage_report()` summarizes supported structural failures using facts captured at the failure
-site. Its `BuildTriage` groups include the original `issue:1`, `issue:2`, etc. references, distinct affected roots,
-marked entry points when known, separate `attempt:1`, `attempt:2`, etc. references, bounded witness paths, and a fixed
-investigation hint. The original `BuildReport` and its JSON format are unchanged.
-
-```python
-from clean_ioc import ContainerBuildError
-
-try:
-    builder.build()
-except ContainerBuildError as error:
-    triage = error.triage_report()
-    print(triage.to_text())
-    saved_json = triage.to_json()
-```
-
-```console
 clean-ioc check my_app.composition:application_builder --triage --format json
 ```
+
+`result.triage_report()` groups supported failures from captured evidence and preserves references into the completed
+report. `result.selection_census()` returns the full inventory when available or an honest lower-bound failed census.
+Repeated reads do not compile, run rules or replay selection.
 
 For example, `PlaceOrder` and `CancelOrder` can both fail because their dependency paths request the same missing
 `Clock` in the `orders` boundary. Triage reports one group with two member findings and two separate retry attempts.
@@ -387,9 +212,7 @@ Current issue codes include:
 
 Applications may add their own stable codes by registering a custom graph rule. Each rule receives a per-pass
 `ValidationContext` containing the graph and lazy type-AST inspection. Custom issues use the same report, JSON, CLI
-strictness, and warning-suppression behavior as compiler findings. Rules use `mode="build"` by default. Set
-`mode="validation"` to skip a rule during application builds and run it only during explicit validation. Build rules are not
-rerun during that validation; their stored findings remain in the aggregate report. Use
+strictness, and warning-suppression behavior as compiler findings. Rules use `add_validation_rule(rule)` and run once during `analyse()`. Report reads do not rerun them. Use
 `context.graph.walk()` for a deterministic all-roots traversal; each returned `GraphVisit` retains the component objects
 and the matching diagnostic path. See [Custom graph validation](custom-validation.md) for the complete rule cookbook.
 
@@ -401,10 +224,10 @@ positions and metadata. Nodes describe components; edges consistently describe t
 `depends on: <argument>`, `decorated by`, or `pre-configured by`.
 
 ```python
-text = container.graph.to_text()
-mermaid = container.graph.to_mermaid()
-manifest = container.graph.manifest()
-ownership = container.graph.ownership_report()
+text = analysis.graph.to_text()
+mermaid = analysis.graph.to_mermaid()
+manifest = analysis.graph.manifest()
+ownership = analysis.graph.ownership_report()
 
 print(manifest.fingerprint)
 print(ownership.to_text())
@@ -427,7 +250,7 @@ The JSON manifest is deterministic across equivalent builds. It uses semantic pa
 from clean_ioc import GraphManifest
 
 baseline = GraphManifest.from_json(saved_json)
-difference = container.graph.manifest().diff(baseline)
+difference = analysis.graph.manifest().diff(baseline)
 
 for change in difference.changed:
     print(change.path)
@@ -436,12 +259,12 @@ for change in difference.changed:
 Manifests include `cache_owner`, `cleanup_owner`, and a semantic `owner_path` on every node. A diff reports added,
 removed, and semantically changed component paths and boundary contracts.
 
-Use `container.graph.diff(baseline)` for classified changes with known current entry points, and
+Use `analysis.graph.diff(baseline)` for classified changes with known current entry points, and
 `difference.evaluate(DiffPolicy(...))` to enforce risk thresholds, denied kinds, and path allowances.
 See [Graph-change policies](graph-change-policies.md) for complete Python and CLI examples.
 
 [Build-variant matrices](build-matrices.md) compile an explicit set of supported configurations, aggregate each
-variant's build and validation findings, and apply entry-point and semantic-drift policies against a named reference.
+variant's completed analysis findings, and apply entry-point and semantic-drift policies against a named reference.
 Use `clean-ioc matrix module:object --format json` or `--format sarif` for combined reports.
 
 Graph manifests, build reports, and ownership reports are unversioned in this release candidate. They omit schema
@@ -464,13 +287,13 @@ three ideas separate:
 - activation obligations: what resolving a root can require immediately and what is deferred behind providers.
 
 ```python
-impact = container.graph.dependents(PaymentGateway, match="registration")
+impact = analysis.graph.dependents(PaymentGateway, match="registration")
 print(impact.to_text())
 
-sharing = container.graph.sharing_report(Database)
+sharing = analysis.graph.sharing_report(Database)
 print(sharing.to_json())
 
-activation = container.graph.activation_report(Checkout, scenario="cold")
+activation = analysis.graph.activation_report(Checkout, scenario="cold")
 print(activation.to_text())
 ```
 
@@ -501,8 +324,8 @@ renderers:
 ```python
 import clean_ioc.component_filters as cf
 
-default = container.graph.explain(PaymentGateway)
-stripe = container.graph.explain(
+default = analysis.graph.explain(PaymentGateway)
+stripe = analysis.graph.explain(
     PaymentGateway,
     filter=cf.with_name("stripe"),
 )
@@ -512,7 +335,7 @@ gateway = next(
     for dependency in checkout_component.dependencies
     if dependency.service_type is PaymentGateway
 )
-dependency_choice = container.graph.explain(gateway)
+dependency_choice = analysis.graph.explain(gateway)
 ```
 
 Origins identify the registration, decorator, pre-configuration, scope-slot, entry-point, validation-rule, or synthetic
@@ -543,13 +366,13 @@ fixed and derived values are reported only as redacted values. Inspection reads 
 filters, constructors, or factories again.
 
 ```python
-component = container.graph.component_at_path(
+component = analysis.graph.component_at_path(
     "root:my_app.Checkout:default:0/dependency:serializer:0"
 )
-for parameter in container.graph.explain_arguments(component):
+for parameter in analysis.graph.explain_arguments(component):
     print(parameter.parameter, parameter.policy_kind, parameter.result_category)
 
-specialization = container.graph.explain_specialization(component)
+specialization = analysis.graph.explain_specialization(component)
 print(specialization.service_bindings)
 print(specialization.factory_pattern_bindings)  # a distinct TypeVar scope
 ```
@@ -560,8 +383,8 @@ kinds. Generic records preserve before/after dependency annotations and keep ser
 bindings separate. They are compiler evidence, not a new runtime type check. `ParameterExplanation.to_dict()` omits
 provenance by default so equivalent builds serialize identically; pass `include_provenance=True` when source metadata is
 needed for an interactive or local report.
-Only successful specializations have a graph occurrence and therefore a `GenericBindingExplanation`; an unsuccessful
-build exposes its existing redacted selection/failure explanations instead of reconstructing bindings by re-running
+Only successful specializations have a graph occurrence and therefore a `GenericBindingExplanation`; an incomplete
+analysis exposes its captured redacted selection/failure explanations instead of reconstructing bindings by re-running
 user code.
 
 ## Reverse dependencies and impact
@@ -571,12 +394,12 @@ factories, filters, or argument policies, and it leaves manifests and their fing
 occurrence when its path matters, or select one registration to include every compiled occurrence of that registration:
 
 ```python
-impact = container.graph.dependents(PaymentGateway, match="registration")
+impact = analysis.graph.dependents(PaymentGateway, match="registration")
 for root in impact.affected_entrypoints:
     print(root.path, impact.witness_paths[root.path])
 
 # Provider targets are a separate deferred edge category.
-including_deferred = container.graph.dependents(
+including_deferred = analysis.graph.dependents(
     PaymentGateway,
     match="registration",
     include_deferred=True,
@@ -625,7 +448,7 @@ builder.register(Gateway, DefaultGateway)
 builder.register(Gateway, NamedGateway, name="named")
 builder.register(Checkout)
 builder.mark_entrypoint(Checkout)
-report = builder.build(diagnostics=True).graph.selection_census()
+report = builder.analyse().graph.selection_census()
 print(report.to_text())
 print(report.to_json())
 ```
@@ -641,8 +464,8 @@ specializations under that source declaration; an unrequested pattern says “No
 
 Each summary has exact counts for the recorded successful view and at most eight example outcomes; `omitted_examples`
 states how many more examples were captured. `recorded_requests` counts observed decisions, not hypothetical requests.
-The compiler never reruns a predicate, derivation, key function, or template callback for this report. A failed build
-offers `error.selection_census()` with `complete=False`: selected, rejected, failed, and not-examined evidence from its
+The compiler never reruns a predicate, derivation, key function, or template callback for this report. An incomplete analysis
+offers `result.selection_census()` with `complete=False`: selected, rejected, failed, and not-examined evidence from its
 primary attempt are shown in separate attempt counts, and selection totals are lower bounds. A missing selection
 record is unknown, not proof of rejection.
 
@@ -710,11 +533,11 @@ Text, JSON, and SARIF support `-o` for successful and failed checks. See
 
 `diff` exits `0` when the graph is unchanged and `1` when it changed. Add `--all` to `graph` or `diff` when the baseline should include every root rather than the entry-point view. Baselines are never updated implicitly.
 `ownership` emits the frozen all-roots ownership proof as text or JSON and does not activate components.
-`census` emits text or JSON and exits `0` even with zero selections. If the build fails, it emits the partial census and
+`census` emits text or JSON and exits `0` even with zero selections. If analysis is invalid or incomplete, it emits the captured census and
 exits `1`; invalid input or output exits `2`.
 `impact`, `sharing`, and `activation` emit text, JSON, or Mermaid and exit `2` for invalid targets, paths, or ambiguous
 selectors. Impact analysis is informational; high fan-in does not fail a build.
-`explain` exits `0` for an explanation, `1` when the target does not build, and `2` for an invalid target, service,
+`explain` exits `0` for an explanation, `1` when analysis is invalid or incomplete, and `2` for an invalid target, service,
 manifest path, or ambiguous selection. `--path` and the service locator are mutually exclusive; the initial CLI supports
 default and exact-name root selection.
 `impact` is informational and exits `0` even when no consumers are found; invalid paths, missing services, and
@@ -733,11 +556,10 @@ Update the checked-in manifest only after reviewing the corresponding compositio
 
 ## Profile one compilation
 
-Profiling uses the same `diagnostics=False` default as an ordinary build. To measure a build that captures optional
-diagnostics, pass `diagnostics=True` in Python or `--diagnostics` to the CLI:
+Profiling defaults to `build`. Select `analyse()` in Python or `--operation analyse` to profile analysis:
 
 ```console
-clean-ioc profile my_app.composition:application_builder --diagnostics --format json
+clean-ioc profile my_app.composition:application_builder --operation analyse --format json
 ```
 
 Pass a fresh `CompilationProfiler` to either builder's `build()` method:
@@ -753,9 +575,8 @@ finally:
 ```
 
 The report remains available when the build fails. It records one build, including blueprint preparation, alias and
-boundary preparation, decorator-template expansion, primary compilation, build-mode validation, and any diagnostic
-root retries. A used collector cannot be attached to another build. The builder can still be repaired after a failed
-build with a fresh collector. `to_json()` returns an unversioned, deterministic serialization of the captured report;
+boundary preparation, decorator-template expansion, primary compilation, analysis validation when selected, and any diagnostic
+root retries. A used collector cannot be attached to another build. A failed builder is consumed; use a fresh builder and collector. `to_json()` returns an unversioned, deterministic serialization of the captured report;
 durations vary between runs and never enter graph manifests or fingerprints.
 
 The CLI takes an unbuilt builder or a zero-argument factory returning one:
@@ -765,12 +586,12 @@ clean-ioc profile my_app.composition:application_builder --format text
 clean-ioc profile my_app.composition:application_builder --format json -o compilation-profile.json
 ```
 
-It runs exactly one public build. A successful build exits `0`, a failed build emits its partial profile and exits `1`,
+It runs exactly one selected public operation. A successful build exits `0`, a failed build emits its partial profile and exits `1`,
 and invalid targets, limits, or output paths exit `2`. Built containers and scopes cannot be profiled retroactively.
 The measured interval begins at `build()`; module import, builder-factory execution, prior registration work, and
 parent builds reused by an overlay are excluded. Registered activation factories, constructors, resolution, and
-validation-only rules are excluded too. Explicit argument derivations and decorator-template factories are composition
-callbacks and are included. For all rules, run `check` separately.
+validation rules are excluded from build and included in analyse. Explicit argument derivations and decorator-template factories are composition
+callbacks and are included. Use `check` for a completed validation report.
 
 Phase durations do not overlap. Nested span `inclusive_ns` includes child work; `self_ns` excludes it. The `other build
 work` phase includes finalization and runtime wrapper construction that has no separate top-level phase. Counters name
@@ -817,7 +638,11 @@ binding, step type, runtime owner, cleanup descriptor and selected dependency-st
 identities/names. Decorated, configured, provider-map and per-call targets bypass
 interning. This shares immutable executable plans without merging runtime caches.
 `reused activation templates` counts these post-compilation interning hits separately
-from `invariant subplan cache hits`.
+from `invariant subplan cache hits`. `unique activation templates` counts cache
+admissions, including a new generation when a discarded scalar-only plan is later
+recreated. It is not a count of simultaneously live plans or structurally distinct
+keys. Optional scalar-only templates may use weak ownership; opaque values and
+unsupported key or execution forms keep strong ownership through compilation.
 
 A compiler-local early cache additionally reuses successful subplans whose entire
 compilation reaches only invariant work. A transitive proof rejects contextual or

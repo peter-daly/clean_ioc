@@ -33,12 +33,12 @@ compiler allocations, rather than public graph visits or retained executable ste
 
 | Limit | One admitted unit |
 | --- | --- |
-| `graph_occurrences` | Creation of a component draft, synthetic preview record, or provider target view context. Includes source metadata, visibility/scope-slot records, recursive expansion, and overlay clones. Proven early exclusions create a rejected record only with `diagnostics=True`; ordinary builds charge no occurrence for those excluded definitions. A provider target context counts once regardless of logical subtree size; descendant inspection creates no retained records. Reusing an executable step does not itself count. |
+| `graph_occurrences` | Creation of a component draft, synthetic preview record, or provider target view context. Includes source metadata, visibility/scope-slot records, recursive expansion, and overlay clones. Proven early exclusions create a rejected record only during `analyse()`; ordinary builds charge no occurrence for those excluded definitions. A provider target context counts once regardless of logical subtree size; descendant inspection creates no retained records. Reusing an executable step does not itself count. |
 | `active_dependency_depth` | Maximum length of the active component parent path at occurrence creation, including the new component. Roots have depth one. Synthetic providers, collections, clone branches and the complete logical target paths of views count, even though views do not allocate descendant records. Independent roots do not add their depths together. |
 | `specialization_materializations` | Start of constructing a new specialized registration after the compiler has established that a cached registration or closed no-op cannot satisfy it. Cache hits do not count. Earlier binding/dependency preparation is a separate preparation operation. |
 | `generated_template_outputs` | Start of producing one new registration/decorator template output, before calling its factory. Invalid returns or subsequent failed materialization consume the unit. Already frozen inherited registration-template outputs do not count again. Decorator templates count the outputs they actually regenerate. |
 | `diagnostic_attempts` | Start of one recovery compilation for a closed root/boundary root after a failed primary compile. The primary compile is excluded. A failed recovery attempt still consumes its unit. |
-| `preparation_operations` | One discovery import attempt; one package-enumeration iterator advance (including terminal advance); one subclass candidate examination, including rejected/abstract candidates; one template source examination; one invoked source/visibility filter or template factory; one uncached specialization preparation; one early eligibility expression evaluation; one invoked registration, candidate eligibility, parent, selection, preference, argument derivation, pre-configuration/decorator applicability, decorator position or provider-map key callback; one entry-point/warm-up selection callback; one build validation rule entry or iterator advance, including the terminal advance. |
+| `preparation_operations` | One discovery import attempt; one package-enumeration iterator advance (including terminal advance); one subclass candidate examination, including rejected/abstract candidates; one template source examination; one invoked source/visibility filter or template factory; one uncached specialization preparation; one early eligibility expression evaluation; one invoked registration, candidate eligibility, parent, selection, preference, argument derivation, pre-configuration/decorator applicability, decorator position or provider-map key callback; one entry-point/warm-up selection callback; one analysis validation rule entry or iterator advance, including the terminal advance. |
 
 These are operation-start counters. An admitted operation consumes allowance even
 if it raises. A refused next operation does not run, increment its operation
@@ -65,21 +65,20 @@ class Leaf:
 
 builder = ContainerBuilder()
 builder.register(Leaf)
-try:
-    builder.build(budget=CompilationBudget(graph_occurrences=0), diagnostics=True)
-except ContainerBuildError as error:
-    issue = error.report.errors[0]
-    assert issue.code == "compilation-budget-exceeded"
-    assert issue.budget.kind == "graph_occurrences"
-    assert (issue.budget.maximum, issue.budget.admitted, issue.budget.attempted) == (0, 0, 1)
-    assert error.partial_graph.truncated
-    assert error.compiled_graph is None
-else:
-    raise AssertionError("zero occurrences must refuse the first occurrence")
+result = builder.analyse(budget=CompilationBudget(graph_occurrences=0))
+issue = result.report.errors[0]
+assert issue.code == "compilation-budget-exceeded"
+assert issue.budget.kind == "graph_occurrences"
+assert (issue.budget.maximum, issue.budget.admitted, issue.budget.attempted) == (0, 0, 1)
+assert result.partial_graph.truncated
+assert result.graph is None
 
-# A new explicit attempt receives a fresh allowance; the failed builder is editable.
+# Every admitted attempt consumes its builder; a fresh attempt gets a fresh allowance.
+builder = ContainerBuilder()
+builder.register(Leaf)
 with builder.build(budget=CompilationBudget(graph_occurrences=45)) as container:
     assert isinstance(container.resolve(Leaf), Leaf)
+
 ```
 
 Exhaustion is an error that warning suppression cannot turn into a valid build.
@@ -87,9 +86,9 @@ The immutable `CompilationBudgetExhaustion` sidecar records `kind`, `maximum`,
 `admitted`, `attempted`, `phase`, and a snapshot of all admitted units. Path/root
 and declaration source evidence are included where the operation has them. Text,
 JSON and SARIF include the failure; SARIF also includes the structured sidecar.
-With `diagnostics=True`, partial diagnostic graphs and triage show that further evidence was omitted.
-Normal builds preserve budget findings and source evidence but do not capture a partial graph.
-Recovery operation limits apply in both modes.
+During `analyse()`, partial diagnostic graphs and triage show that further evidence was omitted.
+Production builds raise local budget errors without a rich report or partial graph.
+Analysis recovery work is bounded independently.
 Their attempt totals describe actually started compiler views, including preparation
 inspections when an allowance is configured; omitted root counts
 include roots whose recovery was never started. A truncated graph is evidence
@@ -152,7 +151,7 @@ Choose the fields matching the work you need to limit. Limits on occurrences
 alone permit preparation that does not create occurrences. Registration and
 bundle application performed before `build()` are outside its allowance.
 
-Declaring `provider_roots=()` (or selected complete provider annotations) reduces automatic provider preparation.
+Declaring `builder.set_provider_roots(())` (or selected complete provider annotations) reduces automatic provider preparation.
 Any retained private managed-context closure is real compilation work: its records, views, adapter conversions
 and graph depth are admitted against the same budgets as public provider forms. The compiler never hides those
 allocations or defers their preparation until runtime.

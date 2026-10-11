@@ -14,6 +14,7 @@ from clean_ioc import (
     DerivedServices,
     Expose,
     RegistrationTemplate,
+    ScopeBuilder,
     ServiceGroup,
     Tag,
     Use,
@@ -52,17 +53,17 @@ def test_each_registration_gets_a_target_bound_to_its_exact_source_without_build
         return target_for(source)
 
     template_id = builder.register_registration_template(for_each=Source, template=template)
-    with builder.build() as container:
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
         assert created == []
         assert [source.id for source in calls] == [first, second]
         targets = container.resolve(list[Target])
         assert len(targets) == 2
         assert targets[0].source is container.resolve(Source, filter=cf.with_id(second))
         assert targets[1].source is container.resolve(Source, filter=cf.with_id(first))
-        decisions = container.graph.explain_template_sources(template_id)
+        decisions = container_analysis.graph.explain_template_sources(template_id)
         assert [item.source_registration_id for item in decisions] == [first, second]
         assert all(item.selected and item.generated_definition_id for item in decisions)
-        container.graph.manifest(all_roots=True).to_json()
+        container_analysis.graph.manifest(all_roots=True).to_json()
         container.resolve(list[Target])
         assert len(calls) == 2
     with pytest.raises(BuilderAlreadyBuiltError):
@@ -88,12 +89,12 @@ def test_sources_are_exact_service_keys_and_source_filters_skip_factories():
         source_filter=cf.has_tag("enabled"),
         template=template,
     )
-    with builder.build() as container:
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
         assert seen == [selected]
         assert len(container.resolve(list[Target])) == 1
         assert [
             (item.source_registration_id, item.selected)
-            for item in container.graph.explain_template_sources(template_id)
+            for item in container_analysis.graph.explain_template_sources(template_id)
         ] == [(selected, True), (rejected, False)]
 
 
@@ -115,11 +116,12 @@ def test_generated_outputs_are_not_sources_even_in_overlays():
     builder.register_registration_template(
         for_each=Target, template=lambda _: RegistrationTemplate(bytes, instance=b"bad")
     )
+    container_composition = builder.retain_composition()
     with builder.build() as container:
         assert len(container.resolve(list[Target])) == 1
         with pytest.raises(CannotResolveError):
             container.resolve(bytes)
-        with container.new_scope_builder().build() as overlay:
+        with ScopeBuilder(container, composition=container_composition).build() as overlay:
             assert len(overlay.resolve(list[Target])) == 1
             with pytest.raises(CannotResolveError):
                 overlay.resolve(bytes)
@@ -218,9 +220,10 @@ def test_overlays_extend_templates_and_keep_parent_singletons_anchored():
             lifespan="singleton",
         ),
     )
+    container_composition = builder.retain_composition()
     with builder.build() as container:
         original = container.resolve(Target)
-        overlay = container.new_scope_builder()
+        overlay = ScopeBuilder(container, composition=container_composition)
         child_source = Source()
         overlay.register(Source, instance=child_source)
         with overlay.build() as scope:
@@ -228,12 +231,12 @@ def test_overlays_extend_templates_and_keep_parent_singletons_anchored():
             assert len(targets) == 2
             assert targets[1] is original
             assert targets[0].source is child_source
-        removed = container.new_scope_builder()
+        removed = ScopeBuilder(container, composition=container_composition)
         removed.remove_registration_template(template_id)
         with removed.build() as scope:
             with pytest.raises(CannotResolveError):
                 scope.resolve(Target)
-        patched = container.new_scope_builder()
+        patched = ScopeBuilder(container, composition=container_composition)
         patched.patch_registration_template(
             template_id, template=lambda _: RegistrationTemplate(str, instance="overlay")
         )
@@ -250,9 +253,9 @@ def test_boundary_generates_private_targets_and_can_expose_them():
     private.register(Source)
     private.register_registration_template(for_each=Source, template=target_for)
     root_id = builder.register_registration_template(for_each=Source, template=lambda _: RegistrationTemplate(bytes))
-    with builder.build() as container:
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
         assert isinstance(container.resolve(Target).source, Source)
-        assert container.graph.explain_template_sources(root_id) == ()
+        assert container_analysis.graph.explain_template_sources(root_id) == ()
         with pytest.raises(CannotResolveError):
             container.resolve(Source)
 
@@ -277,10 +280,14 @@ def test_open_source_rejected_and_closed_generic_source_supported():
     template_id = builder.register_registration_template(
         for_each=GenericSource, template=lambda _: RegistrationTemplate(str, instance="ok")
     )
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert error.value.report is not None
-    assert error.value.report.errors[0].code == "template-source-open-generic"
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert error_analysis.report is not None
+    assert error_analysis.report.errors[0].code == "template-source-open-generic"
+    builder = ContainerBuilder()
+    template_id = builder.register_registration_template(
+        for_each=GenericSource, template=lambda _: RegistrationTemplate(str, instance="ok")
+    )
     builder.patch_registration_template(template_id, for_each=GenericSource[int])
     builder.register(GenericSource[int])
     with builder.build() as container:
@@ -292,11 +299,14 @@ def test_invalid_factory_result_fails_build_and_can_be_repaired(result):
     builder = ContainerBuilder()
     builder.register(Source)
     template_id = builder.register_registration_template(for_each=Source, template=lambda _: result)
-    with pytest.raises(ContainerBuildError) as error:
-        builder.build()
-    assert error.value.report is not None
-    assert error.value.report.errors[0].code == "template-expansion"
-    assert template_id in error.value.report.errors[0].path
+    error_analysis = builder.analyse()
+    assert not error_analysis.report.is_valid
+    assert error_analysis.report is not None
+    assert error_analysis.report.errors[0].code == "template-expansion"
+    assert template_id in error_analysis.report.errors[0].path
+    builder = ContainerBuilder()
+    builder.register(Source)
+    template_id = builder.register_registration_template(for_each=Source, template=target_for)
     builder.patch_registration_template(template_id, template=target_for)
     with builder.build() as container:
         assert isinstance(container.resolve(Target).source, Source)
@@ -307,10 +317,10 @@ def test_callbacks_cannot_mutate_or_reenter_the_builder():
         builder = ContainerBuilder()
         builder.register(Source)
         builder.register_registration_template(for_each=Source, template=lambda _: callback(builder))
-        with pytest.raises(ContainerBuildError) as error:
-            builder.build()
-        assert error.value.report is not None
-        assert error.value.report.errors[0].code == "template-expansion-reentry"
+        error_analysis = builder.analyse()
+        assert not error_analysis.report.is_valid
+        assert error_analysis.report is not None
+        assert error_analysis.report.errors[0].code == "template-expansion-reentry"
 
 
 def test_async_template_rejected():
@@ -337,6 +347,9 @@ def test_generated_dependencies_receive_normal_validation():
     )
     with pytest.raises(ContainerBuildError):
         builder.build()
+    builder = ContainerBuilder()
+    builder.register(Source)
+    template_id = builder.register_registration_template(for_each=Source, template=target_for)
     builder.patch_registration_template(template_id, template=target_for)
     with builder.build() as container:
         assert isinstance(container.resolve(Target), Target)
@@ -421,9 +434,10 @@ def test_overlay_patch_replaces_same_service_without_reusing_parent_singleton():
             lifespan="singleton",
         ),
     )
+    container_composition = builder.retain_composition()
     with builder.build() as container:
         parent = container.resolve(Target)
-        overlay = container.new_scope_builder()
+        overlay = ScopeBuilder(container, composition=container_composition)
         overlay.patch_registration_template(template_id, template=target_for)
         with overlay.build() as scope:
             assert len(scope.resolve(list[Target])) == 1
@@ -439,10 +453,16 @@ def test_inherited_outputs_keep_frozen_selection_when_overlay_build_arguments_ch
         template=target_for,
         source_filter=lambda component: component.build_args["enabled"],
     )
+    container_composition = builder.retain_composition()
     with builder.build(build_args={"enabled": True}) as container:
-        with container.new_scope_builder().build(build_args={"enabled": False}) as scope:
+        with (
+            ScopeBuilder(container, composition=container_composition).analyse(
+                build_args={"enabled": False}
+            ) as scope_analysis,
+            scope_analysis.create_runtime() as scope,
+        ):
             assert len(scope.resolve(list[Target])) == 1
-            assert scope.graph.explain_template_sources(template_id)[0].selected
+            assert scope_analysis.graph.explain_template_sources(template_id)[0].selected
 
 
 def test_generated_captive_dependency_is_rejected():
@@ -456,16 +476,16 @@ def test_generated_captive_dependency_is_rejected():
             lifespan="singleton",
         ),
     )
-    with pytest.raises(ContainerBuildError, match="[Cc]aptive"):
-        builder.build()
+    result = builder.analyse()
+    assert any(issue.code == "captive-dependency" for issue in result.report.errors)
 
 
 def test_generated_registration_census_records_source_and_template():
     builder = ContainerBuilder()
     builder.register(Source)
     builder.register_registration_template(for_each=Source, template=target_for)
-    with builder.build(diagnostics=True) as container:
-        census = container.graph.selection_census(all_roots=True).to_dict()
+    with builder.analyse() as result:
+        census = result.graph.selection_census(all_roots=True).to_dict()
         definitions = [item["definition"] for item in census["definitions"]]
         generated = next(item for item in definitions if item["kind"] == "generated-registration")
         source = next(item for item in definitions if item["kind"] == "registration")
@@ -491,15 +511,15 @@ def test_source_visibility_cannot_change_as_a_result_of_expansion():
     private.register(Source, BoundarySource, name="a")
     private.register(Source, BoundarySource, name="b")
     builder.register_registration_template(for_each=Source, template=lambda _: RegistrationTemplate(Added))
-    with pytest.raises(ContainerBuildError, match="template-source-visibility-changed"):
-        builder.build()
+    result = builder.analyse()
+    assert any(issue.code == "template-source-visibility-changed" for issue in result.report.errors)
 
 
 def test_inherited_private_boundary_does_not_generate_new_parent_owned_singletons():
     builder = ContainerBuilder()
     private = builder.create_boundary("workers")
     private.register(Source, lifespan="singleton")
-    template_id = private.register_registration_template(
+    _template_id = private.register_registration_template(
         for_each=Source,
         source_filter=lambda c: c.build_args["enabled"],
         template=lambda source: RegistrationTemplate(
@@ -508,9 +528,17 @@ def test_inherited_private_boundary_does_not_generate_new_parent_owned_singleton
             arguments={"source": select(cf.with_id(source.id))},
         ),
     )
+    container_composition = builder.retain_composition()
     with builder.build(build_args={"enabled": False}) as container:
-        with container.new_scope_builder().build(build_args={"enabled": True}) as scope:
-            assert not scope.graph.explain_template_sources(template_id)[0].selected
+        with (
+            ScopeBuilder(container, composition=container_composition).analyse(
+                build_args={"enabled": True}
+            ) as scope_analysis,
+            scope_analysis.create_runtime() as scope,
+        ):
+            assert not scope_analysis.report.is_valid
+            assert any(issue.code == "overlay-singleton" for issue in scope_analysis.report.errors)
+            assert not scope.has_component(Target)
 
 
 @pytest.mark.parametrize("lifespan", ["transient", "scoped", "singleton"])
@@ -546,12 +574,12 @@ def test_source_can_depend_on_its_own_generated_registration(lifespan):
     preview_ids = builder.get_component_ids(Consumer, filter=cf.all_components)
     assert set(preview_ids) == {first, second}
     calls.clear()
-    with builder.build() as container:
+    with builder.analyse() as analysis, analysis.create_runtime() as container:
         with container.new_scope() as scope:
             assert scope.resolve(Consumer, filter=cf.with_id(first)).configuration.label == "first"
             assert scope.resolve(Consumer, filter=cf.with_id(second)).configuration.label == "second"
             assert calls == [first, second]
-            assert len(scope.graph.explain_template_sources(template_id)) == 2
+            assert len(analysis.graph.explain_template_sources(template_id)) == 2
             with pytest.raises(CannotResolveError):
                 scope.resolve(Configuration)
 
@@ -681,9 +709,14 @@ def test_source_graph_filter_fails_clearly_if_it_requires_generated_dependencies
         template=template,
         source_filter=cf.has_descendant(cf.service_type_is(Configuration)),
     )
-    with pytest.raises(ContainerBuildError, match="registration-template-source-graph"):
+    with pytest.raises(ContainerBuildError, match="source_filter requested a dependency graph"):
         builder.build()
     assert calls == []
+    builder = ContainerBuilder()
+    builder.register(Consumer)
+    template_id = builder.register_registration_template(
+        for_each=Consumer, template=template, source_filter=cf.has_descendant(cf.service_type_is(Configuration))
+    )
     builder.patch_registration_template(template_id, source_filter=cf.all_components)
     with builder.build() as container:
         assert isinstance(container.resolve(Consumer).configuration, Configuration)
@@ -727,7 +760,7 @@ def test_parent_bound_generated_dependency_is_not_available_to_unrelated_consume
             root_policy="dependency_only",
         ),
     )
-    with pytest.raises(ContainerBuildError, match="missing-component"):
+    with pytest.raises(ContainerBuildError, match="No component"):
         builder.build()
 
 
@@ -782,10 +815,11 @@ def test_parent_bound_generated_dependencies_work_in_boundaries_and_overlays():
     private.register_registration_template(for_each=Consumer, template=configure)
     builder.register(Consumer, name="root", lifespan="singleton")
     builder.register_registration_template(for_each=Consumer, template=configure)
+    container_composition = builder.retain_composition()
     with builder.build() as container:
         root = container.resolve(Consumer, filter=cf.with_name("root"))
         assert container.resolve(Consumer, filter=cf.with_name("private")).configuration.label == "private"
-        overlay = container.new_scope_builder()
+        overlay = ScopeBuilder(container, composition=container_composition)
         overlay.register(Consumer, name="overlay", lifespan="singleton")
         with overlay.build() as scope:
             assert scope.resolve(Consumer, filter=cf.with_name("root")) is root

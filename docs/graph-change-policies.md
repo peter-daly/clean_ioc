@@ -39,7 +39,7 @@ def make_graph(implementation):
     builder = ContainerBuilder()
     builder.register(Repository, implementation)
     builder.register(Checkout, root_policy="entrypoint")
-    return builder.build().graph
+    return builder.analyse().graph
 
 
 baseline = GraphManifest.from_json(make_graph(SqlRepository).manifest().to_json())
@@ -159,18 +159,18 @@ clean-ioc diff my_app.composition:make_builder baseline.json --policy my_app.arc
 ```
 
 `--fail-on` and `--policy` imply classified output and cannot be combined. The policy locator names a `DiffPolicy`
-object. The composition target supports the same builders, built scopes, and zero-argument factories as other tooling
+object. The composition target supports the same builders, completed analysis results, and zero-argument factories as other tooling
 commands. Use `--all` consistently when saving and comparing an all-roots baseline.
 
 | Mode | Exit 0 | Exit 1 | Exit 2 |
 | --- | --- | --- | --- |
-| Raw diff or `--classify` | No changes | Any graph change or build failure | Invalid input or output |
-| `--fail-on` or `--policy` | Policy passes, including permitted changes | Policy violation or build failure | Invalid policy, locator, manifest, or output |
+| Raw diff or `--classify` | No changes | Any graph change or invalid or incomplete analysis | Invalid input or output |
+| `--fail-on` or `--policy` | Policy passes, including permitted changes | Policy violation or invalid or incomplete analysis | Invalid policy, locator, manifest, or output |
 
-Text and JSON formats are supported. Failed builds return their normal build findings; they do not produce a partial
+Text and JSON formats are supported. Invalid or incomplete analyses return their captured findings; they do not produce a partial
 graph comparison. `-o` writes a successful comparison or policy report to a file; it does not update the baseline.
 
-For PR checks, CI can build the base revision and save its manifest, then build the PR revision and compare it with that
+For PR checks, CI can analyse the base revision and save its manifest, then analyse the PR revision and compare it with that
 file. It can also download a matching baseline artifact previously produced by the target branch. Checkout and artifact
 management belong to the workflow; Clean IoC consumes the baseline file. Review a baseline change explicitly when an
 architectural change is accepted.

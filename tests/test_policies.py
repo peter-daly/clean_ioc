@@ -8,20 +8,20 @@ from typing_extensions import TypeAliasType
 
 import clean_ioc.component_filters as cf
 from clean_ioc import (
+    AnalysisResult,
     BuildIssue,
     Component,
     Container,
     ContainerBuilder,
-    ContainerBuildError,
     Expose,
     IssueSeverity,
     Provider,
     ProviderMapGroup,
     ResolutionContext,
     Scope,
+    ScopeBuilder,
     Tag,
     ValidationContext,
-    ValidationRule,
     select,
 )
 from clean_ioc.cli import main
@@ -40,17 +40,16 @@ from clean_ioc.tooling import qualified_name
 
 
 def errors(builder: ContainerBuilder) -> tuple[BuildIssue, ...]:
-    with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
-    assert raised.value.report is not None
-    return raised.value.report.errors
+    result = builder.analyse()
+    assert result.emission_complete
+    return result.report.errors
 
 
-def test_pack_freezes_a_list_and_honors_default_and_per_rule_modes_without_replaying_build_rules():
-    calls: list[str] = []
+def test_pack_freezes_rules_runs_each_once_and_report_reads_never_replay():
+    calls = []
 
-    def record(name: str) -> ValidationRule:
-        def rule(context: ValidationContext):
+    def record(name):
+        def rule(context):
             calls.append(name)
             assert len(context.graph.roots) == 1
             yield BuildIssue(name, IssueSeverity.warning, name)
@@ -61,33 +60,29 @@ def test_pack_freezes_a_list_and_honors_default_and_per_rule_modes_without_repla
         def __init__(self):
             raise AssertionError("Policies must not activate services")
 
-    rules = [record("default"), (record("build"), "build"), (record("validation"), "validation")]
-    pack = PolicyPack("architecture", cast(Any, rules), mode="validation")
+    rules = [record("first"), record("second"), record("third")]
+    pack = PolicyPack("architecture", rules)
     rules.clear()
     builder = ContainerBuilder()
     builder.register(Service)
     builder.apply_bundle(pack)
-    container = builder.build()
-
-    assert calls == ["build"]
-    assert [issue.code for issue in container.build_report.warnings] == ["build"]
-    assert "architecture" in container.build_report.warnings[0].message
+    result = builder.analyse()
+    assert calls == ["first", "second", "third"]
+    assert [issue.code for issue in result.report.warnings] == calls
+    assert "architecture" in result.report.warnings[0].message
     with pytest.raises(FrozenInstanceError):
-        setattr(pack, "mode", "build")
-
-    report = container.validation_report()
-    assert calls == ["build", "default", "validation"]
-    assert [issue.code for issue in report.warnings] == ["build", "default", "validation"]
-    container.validation_report()
-    assert calls == ["build", "default", "validation", "default", "validation"]
+        setattr(pack, "name", "changed")
+    result.report.to_json()
+    result.report.to_text()
+    assert calls == ["first", "second", "third"]
 
 
-def test_pack_default_build_mode_and_parent_first_overlay_inheritance():
+def test_pack_parent_first_overlay_inheritance():
     class Service:
         pass
 
-    def finding(code: str) -> ValidationRule:
-        def rule(_: ValidationContext):
+    def finding(code):
+        def rule(_):
             yield BuildIssue(code, IssueSeverity.warning, code)
 
         return rule
@@ -95,12 +90,11 @@ def test_pack_default_build_mode_and_parent_first_overlay_inheritance():
     builder = ContainerBuilder()
     builder.register(Service)
     builder.apply_bundle(PolicyPack("parent", [finding("parent")]))
-    container = builder.build()
-    overlay = container.new_scope_builder()
-    overlay.apply_bundle(PolicyPack("child", [finding("child"), (finding("extra"), "validation")]))
-    scope = overlay.build()
-    assert [issue.code for issue in scope.build_report.warnings] == ["parent", "child"]
-    assert [issue.code for issue in scope.validation_report().warnings] == ["parent", "child", "extra"]
+    with builder.analyse() as parent:
+        overlay = ScopeBuilder(parent.create_runtime(), composition=parent.composition)
+        overlay.apply_bundle(PolicyPack("child", [finding("child"), finding("extra")]))
+        with overlay.analyse() as child:
+            assert [issue.code for issue in child.report.warnings] == ["parent", "child", "extra"]
 
 
 def test_inherited_policy_detects_an_overlay_lifespan_override():
@@ -110,12 +104,10 @@ def test_inherited_policy_detects_an_overlay_lifespan_override():
     builder = ContainerBuilder()
     builder.register(Service, lifespan="singleton")
     builder.apply_bundle(PolicyPack("lifespans", [require_lifespan(cf.service_type_is(Service), "singleton")]))
-    overlay = builder.build().new_scope_builder()
-    overlay.register(Service, lifespan="scoped")
-    with pytest.raises(ContainerBuildError) as raised:
-        overlay.build()
-    assert raised.value.report is not None
-    assert [issue.code for issue in raised.value.report.errors] == ["policy-invalid-lifespan"]
+    with builder.analyse() as parent:
+        overlay = ScopeBuilder(parent.create_runtime(), composition=parent.composition)
+        overlay.register(Service, lifespan="scoped")
+        assert [issue.code for issue in overlay.analyse().report.errors] == ["policy-invalid-lifespan"]
 
 
 def test_pack_is_usable_on_a_boundary_and_respects_existing_rule_visibility():
@@ -127,22 +119,26 @@ def test_pack_is_usable_on_a_boundary_and_respects_existing_rule_visibility():
     boundary = builder.create_boundary("feature", exposes=(Expose(Service),))
     boundary.register(Service, lifespan="singleton")
     boundary.apply_bundle(PolicyPack("feature", [require_lifespan(cf.service_type_is(Service), "singleton")]))
-    assert builder.build().build_report.is_valid
+    assert builder.analyse().report.is_valid
 
 
 @pytest.mark.parametrize(
-    ("name", "rules", "mode", "exception"),
+    ("name", "rules", "exception"),
     [
-        ("", [], "build", ValueError),
-        ("pack", [None], "build", TypeError),
-        ("pack", [(lambda _: (),)], "build", TypeError),
-        ("pack", [(lambda _: (), "other")], "build", ValueError),
-        ("pack", [], "other", ValueError),
+        ("", [], ValueError),
+        ("pack", [None], TypeError),
+        ("pack", [(lambda _: (),)], TypeError),
+        ("pack", [(lambda _: (), "validation")], TypeError),
     ],
 )
-def test_pack_rejects_invalid_configuration(name, rules, mode, exception):
+def test_pack_rejects_invalid_configuration(name, rules, exception):
     with pytest.raises(exception):
-        PolicyPack(name, rules, mode=mode)
+        PolicyPack(name, rules)
+
+
+def test_pack_rejects_removed_mode_argument():
+    with pytest.raises(TypeError):
+        PolicyPack("pack", [], mode="validation")  # ty: ignore[unknown-argument]  # Deliberately invalid input.
 
 
 def test_pack_rejects_async_callbacks_including_callable_objects():
@@ -213,7 +209,7 @@ def test_require_decorator_checks_exact_types_counts_and_only_registration_nodes
             require_decorator(cf.service_type_is(Service), decorator_type=TracedService, count=required)
         )
         if code is None:
-            assert builder.build().build_report.is_valid
+            assert builder.analyse().report.is_valid
         else:
             assert [issue.code for issue in errors(builder)] == [code]
 
@@ -246,7 +242,7 @@ def test_require_decorator_matches_exact_closed_generic_and_transparent_type_ali
         builder.register_decorator(Service, Wrapper, decorated_arg="inner")
         builder.add_validation_rule(require_decorator(cf.service_type_is(Service[int]), decorator_type=expected))
         if passes:
-            assert builder.build().build_report.is_valid
+            assert builder.analyse().report.is_valid
         else:
             assert [issue.code for issue in errors(builder)] == ["policy-missing-decorator"]
 
@@ -259,7 +255,7 @@ def test_require_lifespan_supports_all_public_values_and_multiple_allowed_lifesp
     builder = ContainerBuilder()
     builder.register(Service, lifespan=lifespan)
     builder.add_validation_rule(require_lifespan(cf.service_type_is(Service), lifespan, "transient"))
-    assert builder.build().build_report.is_valid
+    assert builder.analyse().report.is_valid
 
 
 def test_require_tags_checks_exact_pairs_including_none_and_aggregates_missing_tags():
@@ -276,7 +272,7 @@ def test_require_tags_checks_exact_pairs_including_none_and_aggregates_missing_t
         builder.register(Service, tags=tags)
         builder.add_validation_rule(require_tags(cf.service_type_is(Service), Tag("owner", "platform"), Tag("public")))
         if passes:
-            assert builder.build().build_report.is_valid
+            assert builder.analyse().report.is_valid
         else:
             assert [issue.code for issue in errors(builder)] == ["policy-missing-tag"]
 
@@ -389,10 +385,10 @@ def test_direct_dependency_check_does_not_cross_an_intermediate_registration():
         builder.register(service)
     builder.add_validation_rule(forbid_dependency(cf.service_type_is(Source), cf.service_type_is(Forbidden)))
     builder.add_validation_rule(
-        forbid_dependency(cf.service_type_is(Source), cf.service_type_is(Forbidden), transitive=True), mode="validation"
+        forbid_dependency(cf.service_type_is(Source), cf.service_type_is(Forbidden), transitive=True)
     )
-    container = builder.build()
-    report = container.validation_report()
+    container = builder.analyse()
+    report = container.report
     assert [issue.code for issue in report.errors] == ["policy-forbidden-dependency"]
     assert report.errors[0].path == (qualified_name(Source), qualified_name(Intermediate), qualified_name(Forbidden))
 
@@ -449,7 +445,7 @@ def test_layering_uses_package_boundaries_longest_prefix_and_frozen_configuratio
     builder.register(Dependency)
     builder.register(Service)
     builder.add_validation_rule(rule)
-    assert builder.build().build_report.is_valid
+    assert builder.analyse().report.is_valid
 
     Service.__module__ = "example.domain_extra"
     builder = ContainerBuilder()
@@ -458,9 +454,8 @@ def test_layering_uses_package_boundaries_longest_prefix_and_frozen_configuratio
     builder.add_validation_rule(layering(layers=[Layer("domain", ("example.domain",))], allowed_dependencies={}))
     builder.add_validation_rule(
         layering(layers=[Layer("domain", ("example.domain",))], allowed_dependencies={}, require_match=True),
-        mode="validation",
     )
-    report = builder.build().validation_report()
+    report = builder.analyse().report
     assert [issue.code for issue in report.errors] == ["policy-unmatched-layer"]
     assert report.errors[0].path == (qualified_name(Service),)
 
@@ -614,7 +609,7 @@ def test_capabilities_do_not_infer_effects_from_names_or_other_tags():
     builder = ContainerBuilder()
     builder.register(NetworkClient, tags=(Tag("capability"), Tag("effect", "network")))
     builder.add_validation_rule(capability_boundary(cf.all_components, allow=()))
-    assert builder.build().build_report.is_valid
+    assert builder.analyse().report.is_valid
 
 
 def test_policies_do_not_change_manifests_or_disclose_build_inputs_and_configured_values():
@@ -622,35 +617,35 @@ def test_policies_do_not_change_manifests_or_disclose_build_inputs_and_configure
         def __init__(self, token: str):
             self.token = token
 
-    def compose(with_policy: bool) -> Container:
+    def compose(with_policy: bool) -> AnalysisResult:
         builder = ContainerBuilder()
         builder.register(Service, arguments={"token": "secret-configured-value"})
         if with_policy:
             builder.apply_bundle(
                 PolicyPack(
                     "metadata",
-                    [(require_tags(cf.build_arg_is("secret-key", "secret-input"), Tag("owner", "team")), "validation")],
+                    [require_tags(cf.build_arg_is("secret-key", "secret-input"), Tag("owner", "team"))],
                 )
             )
-        return builder.build(build_args={"secret-key": "secret-input"})
+        return builder.analyse(build_args={"secret-key": "secret-input"})
 
     plain = compose(False)
     checked = compose(True)
     assert plain.graph.manifest().to_json() == checked.graph.manifest().to_json()
     assert plain.graph.manifest().fingerprint == checked.graph.manifest().fingerprint
-    payload = checked.validation_report().to_json()
+    payload = checked.report.to_json()
     assert "policy-missing-tag" in payload
     for secret in ("secret-key", "secret-input", "secret-configured-value"):
         assert secret not in payload
 
 
-def test_cli_runs_validation_only_pack_rules_and_cannot_ignore_errors(monkeypatch, capsys):
+def test_cli_reads_completed_pack_findings_and_cannot_ignore_errors(monkeypatch, capsys):
     from tests import tooling_targets
 
     def compose() -> ContainerBuilder:
         builder = ContainerBuilder()
         builder.register(tooling_targets.Dependency)
-        builder.apply_bundle(PolicyPack("cli", [(require_tags(cf.all_components, Tag("owner", "team")), "validation")]))
+        builder.apply_bundle(PolicyPack("cli", [require_tags(cf.all_components, Tag("owner", "team"))]))
         return builder
 
     monkeypatch.setattr(tooling_targets, "policy_builder", compose, raising=False)

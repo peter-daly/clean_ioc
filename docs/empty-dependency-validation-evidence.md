@@ -1,5 +1,11 @@
 # Empty dependency-name validation evidence
 
+> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/analyse API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-analyse).
+
+> Historical comparison: these measurements use the former fine-grained build policies.
+> Their reproduction scripts use the private compiler harness; current public applications
+> use [run or analysis mode](compiler-tooling.md#run-and-analysis-modes).
+
 Step 7 skips `_validate_dependency_names()` immediately when its dependency mapping
 is empty. An empty set cannot contain an unknown callable argument name. The only
 production Python change from the frozen Step 6 wheel is this two-line guard in

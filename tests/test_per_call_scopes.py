@@ -1,6 +1,7 @@
 """Per-call declarations compile a deferred, isolated operation plan."""
 
 import inspect
+import re
 import typing
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping
@@ -14,7 +15,6 @@ from typing_extensions import Self
 from clean_ioc import (
     ComponentKind,
     ContainerBuilder,
-    ContainerBuildError,
     DecoratorTemplate,
     Expose,
     LifespanPolicy,
@@ -97,8 +97,8 @@ def test_policy_matrix(lifespan: LifespanPolicy, scope: ScopePolicy, expected: s
     builder = ContainerBuilder()
     builder.register(Operation, OperationImpl, lifespan=lifespan, scope=scope)
     builder.register(Resource, lifespan="scoped")
-    with builder.build() as container:
-        root = next(root for root in container.graph.roots if root.requested_type is Operation)
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
+        root = next(root for root in container_analysis.graph.roots if root.requested_type is Operation)
         assert root.component.lifespan == expected
 
 
@@ -116,8 +116,8 @@ def test_patch_policy_is_atomic_and_can_restore_current_scope() -> None:
     with pytest.raises(ValueError):
         builder.patch_component(Operation, component_id, scope="per_call", lifespan="singleton")
     builder.patch_component(Operation, component_id, scope="per_call", lifespan="auto")
-    with builder.build() as container:
-        root = next(root for root in container.graph.roots if root.requested_type is Operation)
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
+        root = next(root for root in container_analysis.graph.roots if root.requested_type is Operation)
         assert root.component.kind is ComponentKind.per_call_handle
 
 
@@ -290,8 +290,9 @@ def test_abstract_special_method_is_rejected_at_build() -> None:
 
     builder = ContainerBuilder()
     builder.register(Service, Impl, scope="per_call")
-    with pytest.raises(ContainerBuildError, match="unsupported abstract special method '__str__'"):
-        builder.build()
+    analysis_294 = builder.analyse()
+    assert not analysis_294.report.is_valid
+    assert re.search("unsupported abstract special method '__str__'", analysis_294.report.to_text())
 
 
 def test_provider_in_singleton_captures_safe_handle() -> None:
@@ -333,8 +334,9 @@ def test_direct_handle_expires_with_its_scope() -> None:
 def test_unsupported_contracts_fail_at_build(contract: type, implementation: type) -> None:
     builder = ContainerBuilder()
     builder.register(contract, implementation, scope="per_call")
-    with pytest.raises(ContainerBuildError, match="per-call-unsupported"):
-        builder.build()
+    analysis_336 = builder.analyse()
+    assert not analysis_336.report.is_valid
+    assert re.search("per-call-unsupported", analysis_336.report.to_text())
 
 
 def test_generator_operation_is_rejected() -> None:
@@ -347,8 +349,9 @@ def test_generator_operation_is_rejected() -> None:
 
     builder = ContainerBuilder()
     builder.register(Stream, Impl, scope="per_call")
-    with pytest.raises(ContainerBuildError, match="stream result"):
-        builder.build()
+    analysis_352 = builder.analyse()
+    assert not analysis_352.report.is_valid
+    assert re.search("stream result", analysis_352.report.to_text())
 
 
 def test_graph_marks_invocation_boundary_without_activation() -> None:
@@ -356,16 +359,16 @@ def test_graph_marks_invocation_boundary_without_activation() -> None:
     builder = ContainerBuilder()
     builder.register(Resource, lifespan="scoped")
     builder.register(Operation, OperationImpl, scope="per_call")
-    with builder.build() as container:
-        root = next(root for root in container.graph.roots if root.requested_type is Operation)
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
+        root = next(root for root in container_analysis.graph.roots if root.requested_type is Operation)
         assert root.component.kind is ComponentKind.per_call_handle
-        manifest = container.graph.manifest().to_dict()
+        manifest = container_analysis.graph.manifest().to_dict()
         assert "per_call" in str(manifest)
-        report = container.graph.activation_report(Operation)
+        report = container_analysis.graph.activation_report(Operation)
         assert any(item.kind == "per_call_handle" for item in report.immediate_obligations)
         assert any(item.kind == "construction" for item in report.potential_acquisitions)
         assert all(item.phase == "deferred" for item in report.potential_acquisitions)
-        sharing = container.graph.sharing_report(Operation)
+        sharing = container_analysis.graph.sharing_report(Operation)
         assert any("each method call" in " ".join(item.conditions) for item in sharing.groups)
         assert OperationImpl.created == 0
 
@@ -481,12 +484,14 @@ def test_provider_map_and_boundary_expose_one_public_per_call_registration() -> 
     builder.create_boundary("private", exposes=(Expose(Service), Expose(Mapping[str, Provider[Service]]))).apply_bundle(
         bundle
     )
-    with builder.build() as container:
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
         assert container.resolve(Service).run() == "inside"
         providers = container.resolve(Mapping[str, Provider[Service]])
         assert list(providers) == ["one"]
         assert providers["one"]().run() == "inside"
-        assert len({root.component.id for root in container.graph.roots if root.requested_type is Service}) == 1
+        assert (
+            len({root.component.id for root in container_analysis.graph.roots if root.requested_type is Service}) == 1
+        )
 
 
 def test_transitive_captive_dependency_and_cycle_still_fail() -> None:
@@ -511,8 +516,9 @@ def test_transitive_captive_dependency_and_cycle_still_fail() -> None:
     builder.register(Short)
     builder.register(Middle, lifespan="transient")
     builder.register(Service, Impl, scope="per_call")
-    with pytest.raises(ContainerBuildError, match="captive-dependency"):
-        builder.build()
+    analysis_516 = builder.analyse()
+    assert not analysis_516.report.is_valid
+    assert re.search("captive-dependency", analysis_516.report.to_text())
 
     class CyclicImpl:
         def __init__(self, service: Service):
@@ -523,8 +529,9 @@ def test_transitive_captive_dependency_and_cycle_still_fail() -> None:
 
     builder = ContainerBuilder()
     builder.register(Service, CyclicImpl, scope="per_call")
-    with pytest.raises(ContainerBuildError, match="circular-dependency"):
-        builder.build()
+    analysis_531 = builder.analyse()
+    assert not analysis_531.report.is_valid
+    assert re.search("circular-dependency", analysis_531.report.to_text())
 
 
 def test_activation_and_method_failures_finalize_invocation_scope() -> None:
@@ -575,8 +582,9 @@ def test_known_async_mode_mismatch_fails_at_build() -> None:
 
     builder = ContainerBuilder()
     builder.register(Service, AsyncImpl, scope="per_call")
-    with pytest.raises(ContainerBuildError, match="per-call-method-mode"):
-        builder.build()
+    analysis_580 = builder.analyse()
+    assert not analysis_580.report.is_valid
+    assert re.search("per-call-method-mode", analysis_580.report.to_text())
 
 
 def test_public_descriptor_and_implementation_property_fail_at_build() -> None:
@@ -590,8 +598,9 @@ def test_public_descriptor_and_implementation_property_fail_at_build() -> None:
 
     builder = ContainerBuilder()
     builder.register(DescriptorService, scope="per_call")
-    with pytest.raises(ContainerBuildError, match="descriptor 'state'"):
-        builder.build()
+    analysis_599 = builder.analyse()
+    assert not analysis_599.report.is_valid
+    assert re.search("descriptor 'state'", analysis_599.report.to_text())
 
     class Service(Protocol):
         def run(self) -> str: ...
@@ -603,8 +612,9 @@ def test_public_descriptor_and_implementation_property_fail_at_build() -> None:
 
     builder = ContainerBuilder()
     builder.register(Service, PropertyImpl, scope="per_call")
-    with pytest.raises(ContainerBuildError, match="unsupported operation 'run'"):
-        builder.build()
+    analysis_612 = builder.analyse()
+    assert not analysis_612.report.is_valid
+    assert re.search("unsupported operation 'run'", analysis_612.report.to_text())
 
 
 def test_declared_iterator_results_and_generator_decorator_fail_at_build() -> None:
@@ -617,16 +627,18 @@ def test_declared_iterator_results_and_generator_decorator_fail_at_build() -> No
 
     builder = ContainerBuilder()
     builder.register(Stream, StreamImpl, scope="per_call")
-    with pytest.raises(ContainerBuildError, match="stream result"):
-        builder.build()
+    analysis_626 = builder.analyse()
+    assert not analysis_626.report.is_valid
+    assert re.search("stream result", analysis_626.report.to_text())
 
     class OpaqueService(Protocol):
         def read(self) -> object: ...
 
     builder = ContainerBuilder()
     builder.register(OpaqueService, StreamImpl, scope="per_call")
-    with pytest.raises(ContainerBuildError, match="unsupported operation 'read'"):
-        builder.build()
+    analysis_634 = builder.analyse()
+    assert not analysis_634.report.is_valid
+    assert re.search("unsupported operation 'read'", analysis_634.report.to_text())
 
     class Service(Protocol):
         def run(self) -> str: ...
@@ -645,8 +657,9 @@ def test_declared_iterator_results_and_generator_decorator_fail_at_build() -> No
     builder = ContainerBuilder()
     builder.register(Service, Impl, scope="per_call")
     builder.register_decorator(Service, GeneratorDecorator)
-    with pytest.raises(ContainerBuildError, match="unsupported operation 'run'"):
-        builder.build()
+    analysis_654 = builder.analyse()
+    assert not analysis_654.report.is_valid
+    assert re.search("unsupported operation 'run'", analysis_654.report.to_text())
 
 
 def test_unknown_factory_stream_result_is_rejected_before_scope_closes() -> None:
@@ -840,8 +853,9 @@ def test_inherited_unsupported_contract_hook_is_rejected(hook_name: str) -> None
 
     builder = ContainerBuilder()
     builder.register(Service, scope="per_call")
-    with pytest.raises(ContainerBuildError, match=hook_name):
-        builder.build()
+    analysis_849 = builder.analyse()
+    assert not analysis_849.report.is_valid
+    assert re.search(hook_name, analysis_849.report.to_text())
 
 
 def test_implementation_only_attribute_hook_is_allowed() -> None:
@@ -874,8 +888,9 @@ def test_fluent_contract_result_is_rejected_at_build(annotation: object) -> None
 
     builder = ContainerBuilder()
     builder.register(Service, Impl, scope="per_call")
-    with pytest.raises(ContainerBuildError, match="scoped target result"):
-        builder.build()
+    analysis_883 = builder.analyse()
+    assert not analysis_883.report.is_valid
+    assert re.search("scoped target result", analysis_883.report.to_text())
 
 
 def test_fluent_implementation_result_is_rejected_at_build() -> None:
@@ -888,8 +903,9 @@ def test_fluent_implementation_result_is_rejected_at_build() -> None:
 
     builder = ContainerBuilder()
     builder.register(Service, Impl, scope="per_call")
-    with pytest.raises(ContainerBuildError, match="scoped target result"):
-        builder.build()
+    analysis_897 = builder.analyse()
+    assert not analysis_897.report.is_valid
+    assert re.search("scoped target result", analysis_897.report.to_text())
 
 
 def test_fluent_names_nested_in_literal_metadata_and_callable_are_not_results() -> None:
@@ -970,8 +986,9 @@ def test_callable_object_attribute_hook_is_rejected_without_executing_it() -> No
     service = type("Service", (), {"__getattribute__": Hook(), "run": lambda self: "ok"})
     builder = ContainerBuilder()
     builder.register(service, scope="per_call")
-    with pytest.raises(ContainerBuildError, match="__getattribute__"):
-        builder.build()
+    analysis_979 = builder.analyse()
+    assert not analysis_979.report.is_valid
+    assert re.search("__getattribute__", analysis_979.report.to_text())
     assert events == []
 
 
@@ -984,5 +1001,6 @@ def test_reserved_handle_members_fail_with_named_build_error(reserved_name: str)
     )
     builder = ContainerBuilder()
     builder.register(service, scope="per_call")
-    with pytest.raises(ContainerBuildError, match=reserved_name):
-        builder.build()
+    analysis_993 = builder.analyse()
+    assert not analysis_993.report.is_valid
+    assert re.search(reserved_name, analysis_993.report.to_text())

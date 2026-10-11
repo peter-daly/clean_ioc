@@ -16,6 +16,7 @@ from clean_ioc import (
     Provider,
     ProviderMapGroup,
     RegistrationInfo,
+    ScopeBuilder,
     Tag,
 )
 
@@ -58,12 +59,8 @@ def test_selected_dependency_only_registration_is_frozen_and_provider_views_dedu
     rejected = builder.register(Route, ClosedRoute[bytes], when=lambda _: False, root_policy="dependency_only")
     builder.register_provider_map(group, root_policy="dependency_only")
     builder.register(Dispatcher)
-    container = builder.build(
-        provider_roots=(),
-        diagnostics=diagnostics,
-        explain_metadata=explain_metadata,
-        allow_scope_builders=allow_scope_builders,
-    )
+    builder.set_provider_roots(())
+    container = builder.build()
     catalogue = container.selected_registrations
     assert catalogue is container.selected_registrations
     assert isinstance(catalogue, tuple)
@@ -104,9 +101,8 @@ def test_catalogue_contains_selected_decorator_and_its_private_dependency_only(d
     extra = builder.register(Extra, root_policy="dependency_only")
     wrapper = builder.register_decorator(Service, Wrapper, decorated_arg="child", tags=[Tag("selected")])
     rejected = builder.register_decorator(Service, Wrapper, decorated_arg="child", when=lambda _: False)
-    container = builder.build(
-        provider_roots=(), diagnostics=diagnostics, explain_metadata=explain_metadata, allow_scope_builders=False
-    )
+    builder.set_provider_roots(())
+    container = builder.build()
     assert [item.id for item in container.selected_registrations] == [core, wrapper, extra]
     assert rejected not in {item.id for item in container.selected_registrations}
     assert isinstance(container.resolve(Service), Wrapper)
@@ -127,7 +123,8 @@ def test_catalogue_normalizes_type_aliases_and_tracks_only_exposed_boundary_exec
     boundary = builder.create_boundary("local", exposes=(Expose(alias, alias=BoundaryAlias(Public)),))
     hidden = boundary.register(Hidden)
     exposed = boundary.register(alias, Service, tags=[Tag("local")])
-    container = builder.build(provider_roots=(), explain_metadata=explain_metadata, allow_scope_builders=False)
+    builder.set_provider_roots(())
+    container = builder.build()
     catalogue = container.selected_registrations
     assert hidden not in {item.id for item in catalogue}
     visible = [item for item in catalogue if item.id == exposed]
@@ -150,10 +147,13 @@ def test_overlay_catalogue_preserves_child_precedence_and_parent_public_alternat
 
     builder = ContainerBuilder()
     parent_id = builder.register(Service, Parent)
-    container = builder.build(provider_roots=(), explain_metadata=parent_metadata)
-    overlay = container.new_scope_builder()
+    builder.set_provider_roots(())
+    container_composition = builder.retain_composition()
+    container = builder.build()
+    overlay = ScopeBuilder(container, composition=container_composition)
     child_id = overlay.register(Service, Child)
-    child = overlay.build(provider_roots=(), explain_metadata=explain_metadata, allow_scope_builders=False)
+    overlay.set_provider_roots(())
+    child = overlay.build()
     assert [item.id for item in container.selected_registrations if item.service_type is Service] == [parent_id]
     assert [item.id for item in child.selected_registrations if item.service_type is Service] == [child_id, parent_id]
     assert isinstance(child.resolve(Service), Child)
@@ -171,7 +171,8 @@ def test_unhashable_factory_has_static_metadata_without_retaining_instance_value
 
     builder = ContainerBuilder()
     factory_id = builder.register(Service, factory=Factory())
-    container = builder.build(provider_roots=(), explain_metadata=explain_metadata, allow_scope_builders=False)
+    builder.set_provider_roots(())
+    container = builder.build()
     info = next(item for item in container.selected_registrations if item.id == factory_id)
     assert info.implementation_type is Service
     assert isinstance(container.resolve(Service), Service)
@@ -206,9 +207,8 @@ def test_catalogue_uses_context_and_fallback_selections_without_repeating_callba
     fallback = builder.register_fallback(Service, Fallback, root_policy="dependency_only")
     builder.register(First)
     builder.register(Second)
-    container = builder.build(
-        provider_roots=(), diagnostics=True, explain_metadata=explain_metadata, allow_scope_builders=False
-    )
+    builder.set_provider_roots(())
+    container = builder.build()
     callback_count = len(calls)
     assert callback_count > 0
     selections = [item for item in container.selected_registrations if item.service_type is Service]
@@ -245,13 +245,16 @@ def test_catalogue_includes_warmup_and_anchored_parent_singleton_dependencies_in
     parent = builder.register(Dependency, ParentDependency, root_policy="dependency_only", lifespan="singleton")
     service = builder.register(Service, lifespan="singleton")
     builder.add_warmup_plan(WarmupPlan("start", [WarmupTarget(Service)]))
-    container = builder.build(provider_roots=(), explain_metadata=parent_metadata)
+    builder.set_provider_roots(())
+    container_composition = builder.retain_composition()
+    container = builder.build()
     assert activated == []
-    overlay = container.new_scope_builder()
+    overlay = ScopeBuilder(container, composition=container_composition)
     child_dependency = overlay.register(
         Dependency, ChildDependency, root_policy="dependency_only", lifespan="singleton"
     )
-    child = overlay.build(provider_roots=(), explain_metadata=explain_metadata, allow_scope_builders=False)
+    overlay.set_provider_roots(())
+    child = overlay.build()
     assert activated == []
     assert {item.id for item in child.selected_registrations} == {parent, service}
     assert child_dependency not in {item.id for item in child.selected_registrations}
@@ -284,7 +287,8 @@ def test_catalogue_unknown_factory_annotation_does_not_reject_a_valid_build(monk
     monkeypatch.setattr(implementation, "_selected_registration_catalogue", unavailable_catalogue_metadata)
     builder = ContainerBuilder()
     registration = builder.register(Service, factory=factory)
-    container = builder.build(provider_roots=(), explain_metadata=explain_metadata, allow_scope_builders=False)
+    builder.set_provider_roots(())
+    container = builder.build()
     info = next(item for item in container.selected_registrations if item.id == registration)
     assert info.implementation_type is None
     assert isinstance(container.resolve(Service), Service)
@@ -318,14 +322,15 @@ def test_reduced_catalogue_outlives_graphs_and_does_not_retain_composition_or_fa
     factory_ref, predicate_ref = weakref.ref(factory), weakref.ref(predicate)
     builder = ContainerBuilder()
     registration = builder.register(Service, factory=factory, when=predicate, tags=[Tag("handler")])
-    with builder.build(explain_metadata=False, allow_scope_builders=False, provider_roots=()) as runtime:
+    builder.set_provider_roots(())
+    with builder.build() as runtime:
         catalogue = runtime.selected_registrations
         assert catalogue == (RegistrationInfo(registration, Service, Service, tags=(Tag("handler"),)),)
-        assert runtime._plan._blueprint is None
-        assert runtime._plan.compiled_graph is None
-        assert not runtime._plan.root_candidates
-        assert not runtime._plan.occurrence_origins
-        assert not runtime._plan.decorator_explanations
+        assert not hasattr(runtime._plan, "_blueprint")
+        assert not hasattr(runtime._plan, "compiled_graph")
+        assert not hasattr(runtime._plan, "root_candidates")
+        assert not hasattr(runtime._plan, "occurrence_origins")
+        assert not hasattr(runtime._plan, "decorator_explanations")
         del builder, predicate, factory
         gc.collect()
         assert predicate_ref() is None
@@ -343,7 +348,7 @@ def test_reduced_catalogue_outlives_graphs_and_does_not_retain_composition_or_fa
                 with runtime.new_scope() as scope:
                     assert scope.selected_registrations is catalogue
                 del scope
-        assert runtime._plan.compiled_graph is None
+        assert not hasattr(runtime._plan, "compiled_graph")
     del runtime
     gc.collect()
     assert factory_ref() is None
@@ -355,7 +360,7 @@ def test_reduced_catalogue_matches_full_template_selections_without_replaying_ca
     from benchmarks import graph_memory_fixture as rich
 
     fixture = rich.build(2)
-    reduced_fixture = rich.build(2, explain_metadata=False, allow_scope_builders=False)
+    reduced_fixture = rich.build(2)
     with fixture.runtime, reduced_fixture.runtime as reduced:
         callbacks_after_build = dict(rich.TEMPLATE_CALLS)
         catalogue = reduced.selected_registrations
@@ -374,5 +379,5 @@ def test_reduced_catalogue_matches_full_template_selections_without_replaying_ca
                 assert scope.selected_registrations is catalogue
         assert dict(rich.TEMPLATE_CALLS) == callbacks_after_build
         assert not rich.ACTIVATIONS
-        assert reduced._plan._blueprint is None
-        assert reduced._plan.compiled_graph is None
+        assert not hasattr(reduced._plan, "_blueprint")
+        assert not hasattr(reduced._plan, "compiled_graph")

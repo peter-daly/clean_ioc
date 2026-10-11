@@ -1,5 +1,5 @@
 site_name: Clean IoC
-site_description: Typed Python dependency injection with compiled runtime plans and custom build-time architecture validation.
+site_description: Typed Python dependency injection with compiled runtime plans and separate graph analysis.
 site_author: Peter Daly
 site_url: https://peter-daly.github.io/clean_ioc/
 repo_name: peter-daly/clean_ioc

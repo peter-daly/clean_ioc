@@ -2,6 +2,12 @@
 
 The suite uses [BenchBro](https://github.com/peter-daly/benchbro) to measure repeat-level samples, report noise and confidence, and keep comparisons environment-aware.
 
+### Integration status
+
+Task 24 checks benchmark discovery and functional fixture semantics only. Memory, timing and population comparisons
+are deferred to task 25. Historical result files and one-off toggle experiments retain their recorded meaning; retired
+entrypoints must not be treated as supported current APIs. No current performance gain is claimed here.
+
 ### Large graph memory fixture
 
 `graph_memory_evidence.py` measures a larger composition with registration templates
@@ -62,9 +68,8 @@ Use `uv run benchbro list --verbose` to inspect the discovered operations. The s
 
 - `compiled-runtime`: resolution, scope creation, and request-slot plan execution with composition excluded;
 - `compiled-build`: explicit root, scope-overlay, and open-generic factory compilation, including builder setup;
-- `compiled-build-features`: five-component builds that isolate build validation, validate-only rule
-  registration, resource ownership, typed providers, and boundary visibility;
-- `compiler-validation`: deferred whole-graph walking and source AST inspection on an already-built graph;
+- `compiled-build-features`: five-component builds that isolate execution with registered graph/AST rules, resource ownership, typed providers, and boundary visibility;
+- `compiler-analysis`: fresh analysis operations including whole-graph and source AST rules;
 - `compiler-tooling`: uncached semantic manifest and ownership-report creation plus identical/single-change manifest diffs,
   with composition excluded;
 - `compiled-allocations`: Python allocations reported by `tracemalloc`, not process RSS.
@@ -264,8 +269,8 @@ acceptance separately. See `docs/compiler-memory-evidence.md` for the recorded r
 
 The evidence runner reports identity-deduplicated retained decorator objects and
 logical decision counts separately. Use `--inspection` for first/repeated public
-explanation access (128 components) and, with `--diagnostics`, full selection census.
-These operations occur after measured build/resolution intervals.
+explanation access (128 components) and completed selection census with `--operation analyse`.
+These operations occur after the operation/resolution intervals. New measurements remain deferred to task 25.
 `--eager-decorator-facts` recreates the eager evidence representation solely inside
 the evidence process, for inspection comparisons. Save new results under
 `.work/graph-memory-optimization/evidence/` to preserve the original baseline.
@@ -292,6 +297,14 @@ measurements; the [rollback record](../.work/graph-memory-optimization/04-rollba
 documents the restored pre-task-04 runtime, measurement runner and artifact codec.
 
 The [artifact retest after task 05](../.work/graph-memory-optimization/artifact-retest-post05.md)
-compares compilation and separate-process loading with explanation metadata on
-and off. The private schema-7 codec accepts the reduced fixture runtime; add
-`--no-explain-metadata` to `benchmarks.graph_memory_artifact_evidence` to select it.
+records historical comparisons with explanation metadata toggled. Those flags are retired.
+
+The current source-coupled private artifact codec uses schema 9 and serializes a restricted
+execution plan. Prior experimental artifacts must be regenerated. This remains a parked,
+unsupported experiment; analysis metadata is outside its execution artifact contract.
+
+Current graph-memory and reachability drivers select `--operation build|analyse`;
+`--inspection` requires `analyse`. Artifact drivers export and load execution plans only.
+Historical experiments comparing independent compiler toggles now stop with an explicit
+unsupported-API message; their recorded results remain unchanged. Further measurement runs
+are deferred to task 25.

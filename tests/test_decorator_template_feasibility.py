@@ -5,7 +5,7 @@ from typing import Generic, TypeVar, cast, get_args
 
 import pytest
 
-from clean_ioc import ContainerBuilder, ContainerBuildError, Expose, Tag, Use, select
+from clean_ioc import ContainerBuilder, ContainerBuildError, Expose, ScopeBuilder, Tag, Use, select
 from clean_ioc import component_filters as cf
 from clean_ioc.components import _undecorated_component_view
 from clean_ioc.container import (
@@ -177,26 +177,30 @@ def test_source_to_target_is_safe_in_core_phase_and_actual_activation_cycle_is_d
             self.inner = inner
             self.source = source
 
-    builder = ContainerBuilder()
-    builder.register(Target)
-    source_id = builder.register(Source)
-    source = _core(_prepared(builder), source_id, Source)
-    assert [item.service_type for item in source.descendants()] == [Target]
-    builder.register_decorator(
-        Target,
-        Decorator,
-        decorated_arg="inner",
-        arguments={"source": select(cf.with_id(source_id))},
-        when=lambda _: matching,
-    )
+    def make_builder():
+        builder = ContainerBuilder()
+        builder.register(Target)
+        source_id = builder.register(Source)
+        source = _core(_prepared(builder), source_id, Source)
+        assert [item.service_type for item in source.descendants()] == [Target]
+        builder.register_decorator(
+            Target,
+            Decorator,
+            decorated_arg="inner",
+            arguments={"source": select(cf.with_id(source_id))},
+            when=lambda _: matching,
+        )
+        return builder
+
+    builder = make_builder()
     if not matching:
         assert isinstance(builder.build().resolve(Source).target, Target)
         return
     failures = []
     for _ in range(2):
-        with pytest.raises(ContainerBuildError) as captured:
-            builder.build()
-        report = captured.value.report
+        captured_analysis = make_builder().analyse()
+        assert not captured_analysis.report.is_valid
+        report = captured_analysis.report
         assert report is not None
         failures.append(tuple((issue.code, issue.path) for issue in report.errors))
     assert failures[0] == failures[1]
@@ -264,11 +268,13 @@ def test_overlay_source_core_preserves_anchored_dependencies_and_skips_frozen_de
     builder.register(Marker, lifespan="singleton")
     source_id = builder.register(Source, lifespan="singleton")
     builder.register_decorator(Source, Decorator, decorated_arg="inner")
-    parent = builder.build()
+    parent_analysis = builder.analyse()
+    parent = parent_analysis.create_runtime()
     existing = parent.resolve(Source)
-    overlay = parent.new_scope_builder()
+    assert parent_analysis.composition is not None
+    overlay = ScopeBuilder(parent, composition=parent_analysis.composition)
     overlay.register(Resource, lifespan="singleton", tags=[Tag("area", "overlay")])
-    blueprint = _Blueprint((overlay._layer(), *parent._plan.blueprint.layers))
+    blueprint = _Blueprint((overlay._layer(), *parent_analysis.composition._for_parent(parent).layers))
     anchors = _anchored_singletons(parent._plan)
     anchored = next(step for step in anchors.values() if step.component.id == source_id)
     assert anchored.component.argument == "source"
@@ -292,7 +298,10 @@ def test_overlay_source_core_preserves_anchored_dependencies_and_skips_frozen_de
     assert not cf.has_descendant(cf.has_tag("area", "overlay"))(source)
     scope = overlay.build()
     assert scope.resolve(Source) is existing
-    assert len(next(root.component for root in parent.graph.roots if root.component.id == source_id).decorators) == 1
+    assert (
+        len(next(root.component for root in parent_analysis.graph.roots if root.component.id == source_id).decorators)
+        == 1
+    )
 
 
 def test_generated_target_view_hides_nested_decorators_and_preserves_occurrence_context():
@@ -349,13 +358,14 @@ def test_generated_target_view_hides_nested_decorators_and_preserves_occurrence_
     target_id = builder.register(Target, arguments={"dependency": select(cf.with_name("chosen"))})
     builder.register_decorator(Dependency, DependencyDecorator, decorated_arg="inner")
     builder.register_decorator(Target, TargetDecorator, decorated_arg="inner", when=ordinary_when)
-    container = builder.build()
+    container_analysis = builder.analyse()
+    container = container_analysis.create_runtime()
     assert len(captured) == 2
     assert any(view.parent is not None for view in captured)
     # The snapshots remain undecorated after runtime compilation adds pipelines.
     assert all(view.decorators == () and view.dependencies[0].decorators == () for view in captured)
     assert all(view._graph._records is not None and not view._graph._drafts for view in captured)
-    frozen_target = next(root.component for root in container.graph.roots if root.component.id == target_id)
+    frozen_target = next(root.component for root in container_analysis.graph.roots if root.component.id == target_id)
     assert len(frozen_target.decorators) == len(frozen_target.dependencies[0].decorators) == 1
     frozen_view = _undecorated_component_view(frozen_target)
     assert not cf.has_descendant(cf.implementation_type_is(Marker))(frozen_view)

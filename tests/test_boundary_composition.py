@@ -15,6 +15,7 @@ from clean_ioc import (
     ContainerBuildError,
     Expose,
     IssueSeverity,
+    ScopeBuilder,
     Use,
     ValidationContext,
 )
@@ -124,7 +125,10 @@ def test_boundary_owning_bundle_can_publish_its_composition_handle():
 @pytest.mark.parametrize("overlay", [False, True])
 @pytest.mark.parametrize("profiled", [False, True])
 def test_successful_build_freezes_every_retained_boundary_handle(overlay, profiled):
-    builder = ContainerBuilder().build().new_scope_builder() if overlay else ContainerBuilder()
+    parent_builder = ContainerBuilder()
+    parent_composition = parent_builder.retain_composition()
+    parent = parent_builder.build()
+    builder = ScopeBuilder(parent, composition=parent_composition) if overlay else ContainerBuilder()
     boundary = builder.create_boundary("feature", exposes=(Expose(Clock),))
     component_id = boundary.register(Clock)
     container = builder.build(profile=CompilationProfiler() if profiled else None)
@@ -153,45 +157,67 @@ def test_successful_build_freezes_every_retained_boundary_handle(overlay, profil
 
 
 @pytest.mark.parametrize("overlay", [False, True])
-def test_failed_build_can_be_repaired_through_boundary_and_parent_handles(overlay):
-    builder = ContainerBuilder().build().new_scope_builder() if overlay else ContainerBuilder()
-    boundary = builder.create_boundary("feature", uses=(Use.root(Settings),), exposes=(Expose(Worker),))
-    boundary.register(Worker)
-    boundary.register(HealthPolicy)
+def test_failed_attempt_consumes_boundary_and_parent_handles(overlay):
+    parent_builder = ContainerBuilder()
+    handle = parent_builder.retain_composition()
+    parent = parent_builder.build()
+
+    def configured():
+        builder = ScopeBuilder(parent, composition=handle) if overlay else ContainerBuilder()
+        boundary = builder.create_boundary("feature", uses=(Use.root(Settings),), exposes=(Expose(Worker),))
+        boundary.register(Worker)
+        boundary.register(HealthPolicy)
+        return builder, boundary
+
+    builder, boundary = configured()
     with pytest.raises(ContainerBuildError):
         builder.build()
-
+    with pytest.raises(BuilderAlreadyBuiltError):
+        builder.register(Settings, instance=Settings("repaired"))
+    with pytest.raises(BuilderAlreadyBuiltError):
+        boundary.apply_bundle(CustomWaitBundle())
+    builder, boundary = configured()
     builder.register(Settings, instance=Settings("repaired"))
     with pytest.raises(ContainerBuildError):
         builder.build()
-
+    builder, boundary = configured()
+    builder.register(Settings, instance=Settings("repaired"))
     boundary.apply_bundle(CustomWaitBundle())
-    container = builder.build()
-    worker = container.resolve(Worker)
-    assert worker.settings.value == "repaired"
-    assert isinstance(worker.wait_policy, ObservedWaitPolicy)
-    assert isinstance(worker.wait_policy.inner, CustomWaitPolicy)
-    assert isinstance(worker.wait_policy.inner.clock, Clock)
+    with builder.build() as container:
+        worker = container.resolve(Worker)
+        assert worker.settings.value == "repaired"
+        assert isinstance(worker.wait_policy, ObservedWaitPolicy)
+        assert isinstance(worker.wait_policy.inner, CustomWaitPolicy)
+        assert isinstance(worker.wait_policy.inner.clock, Clock)
+    parent.__exit__()
 
 
-def test_visibility_contracts_can_be_repaired_after_build_failure():
-    builder = ContainerBuilder()
-    consumer = builder.create_boundary("consumer", uses=(Use("source", Clock),))
-    consumer.register(CustomWaitPolicy)
-    source = builder.create_boundary("source")
-    source.register(Clock, lifespan="singleton")
+def test_visibility_contracts_can_be_repaired_in_fresh_composition():
+    def configured():
+        builder = ContainerBuilder()
+        consumer = builder.create_boundary("consumer", uses=(Use("source", Clock),))
+        consumer.register(CustomWaitPolicy)
+        source = builder.create_boundary("source")
+        source.register(Clock, lifespan="singleton")
+        return builder, consumer, source
+
+    builder, consumer, source = configured()
     with pytest.raises(ContainerBuildError):
         builder.build()
-
+    with pytest.raises(BuilderAlreadyBuiltError):
+        source.exposes = (Expose(Clock),)
+    builder, consumer, source = configured()
     source.exposes = (Expose(Clock),)
     consumer.exposes = (Expose(CustomWaitPolicy),)
     consumer.uses = (Use("source", Clock), Use.root(Settings))
-    with pytest.raises(ContainerBuildError):
-        builder.build()
+    result = builder.analyse()
+    assert not result.report.is_valid
+    builder, consumer, source = configured()
+    source.exposes = (Expose(Clock),)
+    consumer.exposes = (Expose(CustomWaitPolicy),)
     consumer.uses = (Use("source", Clock),)
-
-    container = builder.build()
-    assert container.resolve(CustomWaitPolicy).clock is container.resolve(Clock)
+    with builder.build() as container:
+        assert container.resolve(CustomWaitPolicy).clock is container.resolve(Clock)
 
 
 def test_boundary_queries_use_current_local_and_imported_components_and_leave_composition_mutable():
@@ -230,7 +256,7 @@ def test_discovery_sees_classes_declared_after_boundary_creation_and_bundle_appl
     assert isinstance(builder.build().resolve(Service), LateService)
 
 
-def test_failed_build_retains_successful_run_once_contributions():
+def test_failed_build_consumes_run_once_contributions_and_fresh_composition_reapplies():
     class Once(OnlyRunOncePerInstanceBundle):
         calls = 0
 
@@ -238,16 +264,22 @@ def test_failed_build_retains_successful_run_once_contributions():
             self.calls += 1
             builder.register(CustomWaitPolicy)
 
+    bundle = Once()
     builder = ContainerBuilder()
     boundary = builder.create_boundary("feature", exposes=(Expose(CustomWaitPolicy),))
-    bundle = Once()
     boundary.apply_bundle(bundle)
     with pytest.raises(ContainerBuildError):
         builder.build()
+    with pytest.raises(BuilderAlreadyBuiltError):
+        boundary.apply_bundle(bundle)
+    assert bundle.calls == 1
+    builder = ContainerBuilder()
+    boundary = builder.create_boundary("feature", exposes=(Expose(CustomWaitPolicy),))
+    boundary.apply_bundle(bundle)
     boundary.apply_bundle(bundle)
     boundary.register(Clock)
     assert isinstance(builder.build().resolve(CustomWaitPolicy).clock, Clock)
-    assert bundle.calls == 1
+    assert bundle.calls == 2
 
 
 @pytest.mark.parametrize("profiled", [False, True])
@@ -261,13 +293,21 @@ def test_validation_failure_leaves_boundary_editable_until_successful_retry(prof
     boundary.register(Clock)
     boundary.add_validation_rule(require_health_policy)
     profile = CompilationProfiler() if profiled else None
-    with pytest.raises(ContainerBuildError) as captured:
-        builder.build(profile=profile)
-    assert captured.value.report is not None
-    assert "missing-health-policy" in {issue.code for issue in captured.value.report.errors}
+    captured_analysis = builder.analyse(profile=profile)
+    assert not captured_analysis.report.is_valid
+    assert captured_analysis.report is not None
+    assert "missing-health-policy" in {issue.code for issue in captured_analysis.report.errors}
 
+    with pytest.raises(BuilderAlreadyBuiltError):
+        boundary.register(HealthPolicy)
+    builder = ContainerBuilder()
+    boundary = builder.create_boundary("feature", exposes=(Expose(Clock),))
+    boundary.register(Clock)
+    boundary.add_validation_rule(require_health_policy)
     boundary.register(HealthPolicy)
-    container = builder.build(profile=CompilationProfiler() if profiled else None)
+    analysis = builder.analyse(profile=CompilationProfiler() if profiled else None)
+    analysis.report.assert_valid()
+    container = analysis.create_runtime()
     assert isinstance(container.resolve(Clock), Clock)
     assert not container.has_component(HealthPolicy)
     with pytest.raises(BuilderAlreadyBuiltError):
@@ -315,11 +355,18 @@ def test_boundary_visibility_inputs_are_snapshotted_and_use_cycles_can_be_repair
     first.register(Clock)
     second = builder.create_boundary("second", uses=(Use("first", Clock),), exposes=(Expose(HealthPolicy),))
     second.register(HealthPolicy)
-    with pytest.raises(ContainerBuildError) as captured:
-        builder.build()
-    assert captured.value.report is not None
-    assert captured.value.report.errors[0].code == "boundary-use-cycle"
+    captured_analysis = builder.analyse()
+    assert not captured_analysis.report.is_valid
+    assert captured_analysis.report is not None
+    assert captured_analysis.report.errors[0].code == "boundary-use-cycle"
 
+    with pytest.raises(BuilderAlreadyBuiltError):
+        first.uses = ()
+    builder = ContainerBuilder()
+    first = builder.create_boundary("first", uses=(Use("second", HealthPolicy),), exposes=(Expose(Clock),))
+    first.register(Clock)
+    second = builder.create_boundary("second", uses=(Use("first", Clock),), exposes=(Expose(HealthPolicy),))
+    second.register(HealthPolicy)
     first.uses = ()
     assert first.exposes == (Expose(Clock),)
     container = builder.build()

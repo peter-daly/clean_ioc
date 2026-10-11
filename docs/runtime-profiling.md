@@ -34,8 +34,8 @@ Pass a `CompilationProfiler` through the independent `profile=` keyword if you a
 remain application composition inputs; Clean IoC does not interpret a special profiling key inside them. The same
 `ResolutionProfiler` continues to collect through ordinary child scopes and compatible overlay builds. An overlay must
 use its parent's profiler, because it may execute steps owned by that parent.
-Use a fresh profiler for a separately built container with the same graph fingerprint; the collector rejects a second
-runtime for that fingerprint to keep build-local registration identities from being conflated.
+Each installation receives a unique execution ID. Independent builds and test runtimes remain distinct even when
+they have equivalent composition; ordinary scopes aggregate under their installation.
 
 The report contains exact request, activation, failure, cancellation, cache-hit, cache-miss, and coordinator-wait
 counters. Timing is sampled once at each top-level resolve or provider call and that choice covers its nested DI work.
@@ -53,7 +53,8 @@ cleanup are recorded separately from the application's service method, which is 
 
 `snapshot.records` contains compiled occurrence paths, including paths with no observed activity. A zero-count path
 means **not observed during this recording**, not unreachable or unused. `snapshot.groups` aggregates by registration;
-`snapshot.sharing_groups` aggregates paths using the compiled sharing references. `snapshot.ranked(by="activations")`
+`snapshot.cache_groups` aggregates paths by actual registration key, owner binding and lifespan. These are static cache
+families, not a census of live cache entries. `snapshot.ranked(by="activations")`
 and `ranked(by="waits")` use exact counts, while `ranked(by="factory_time")` and
 `ranked(by="slow_requests")` use sampled durations. `report()` is safe while traffic is running: completed updates
 appear in the snapshot and `in_flight` states how many top-level operations had started but not finished at capture.
@@ -67,13 +68,13 @@ matching graph occurrence, its cache outcome is labelled `[cache caller unresolv
 it to every candidate.
 An async caller that waits for a shared initializer records both a cache miss and a coordinator wait.
 
-The JSON identifies the full all-roots graph fingerprint and exposes only compiled semantic paths and registration
-references. It omits configured and provided values, map keys, exception messages, runtime object IDs, and finalizer
+The JSON identifies `executions`; each record has `execution_id`, a `component:<occurrence>` path and a display label.
+Identifiers are process-local and do not imply stable semantic manifest identity. It omits configured and provided values, map keys, exception messages, runtime object IDs, and finalizer
 closures. The collector retains exact counters and fixed-size duration histograms per compiled reference. It retains
 no instances, arguments, traceback frames, per-request records, or unbounded event stream. A profiler failure is
 marked by `incomplete` and `dropped_updates`; application resolution and cleanup continue to behave as before.
-Save the JSON next to the matching graph manifest if you need to inspect it later. A report is observational evidence;
-it does not change the graph, build findings, or manifest fingerprint.
+The report is observational evidence independent of rich graphs and manifests. Installing or reading observation never
+constructs a graph, manifest, analysis index or sharing report.
 
 
-Managed provider entry records a request and the target activation/cache outcomes using the existing graph identities. Context exit records scope cleanup separately. Application work inside the block is excluded from DI request and activation duration. Creating an unentered manager records no acquisition or cleanup.
+Managed provider entry records a request and the target activation/cache outcomes using execution identities. Context exit records scope cleanup separately. Application work inside the block is excluded from DI request and activation duration. Creating an unentered manager records no acquisition or cleanup.

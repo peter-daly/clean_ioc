@@ -1,0 +1,33 @@
+{
+  "policy": "transfer",
+  "source": {
+    "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223"
+  },
+  "events": [
+    {
+      "event": "freeze begin",
+      "opaque_alive": true
+    },
+    {
+      "event": "freeze end",
+      "opaque_alive": true,
+      "released_drafts": [
+        1
+      ]
+    },
+    {
+      "event": "discarded opaque released",
+      "graph_frozen": true,
+      "selected_tags_normalized": true,
+      "selected_dependency": 2
+    },
+    {
+      "event": "returned",
+      "released_drafts": [
+        1,
+        3,
+        2
+      ]
+    }
+  ]
+}

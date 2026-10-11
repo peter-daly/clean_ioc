@@ -16,6 +16,7 @@ from clean_ioc import (
     Container,
     ContainerBuilder,
     Provider,
+    ScopeBuilder,
     ScopeClosedError,
     ScopeProvisionError,
 )
@@ -51,7 +52,7 @@ def forbid_normalization(value):
 
 
 @pytest.fixture
-def lookup_container() -> Iterator[Container]:
+def lookup_runtime_composition():
     builder = ContainerBuilder()
     builder.register(Service, lifespan="singleton")
     builder.register(Service, name="named", lifespan="singleton")
@@ -60,9 +61,15 @@ def lookup_container() -> Iterator[Container]:
     builder.register(ServiceId, instance=ServiceId("service"))
     builder.declare_scope_slot(Request[int])
     builder.declare_scope_slot(Request[int], name="named")
+    composition = builder.retain_composition()
     container = builder.build()
     with container:
-        yield container
+        yield container, composition
+
+
+@pytest.fixture
+def lookup_container(lookup_runtime_composition) -> Iterator[Container]:
+    yield lookup_runtime_composition[0]
 
 
 def test_plain_class_normalization_does_not_inspect_aliases(monkeypatch):
@@ -223,9 +230,9 @@ def test_runtime_alias_failures_can_be_repaired_without_locking_scope_provisions
         assert scope.resolve(module.Late) is lookup_container.resolve(Repository[int])
 
 
-def test_overlay_alias_lookup_keeps_the_overlays_own_plan(lookup_container):
+def test_overlay_alias_lookup_keeps_the_overlays_own_plan(lookup_container, lookup_runtime_composition):
     parent_value = lookup_container.resolve(Repository[int])
-    builder = lookup_container.new_scope_builder()
+    builder = ScopeBuilder(lookup_container, composition=lookup_runtime_composition[1])
     replacement = Repository[int]()
     builder.register(Repository[int], instance=replacement)
     with builder.build() as overlay:

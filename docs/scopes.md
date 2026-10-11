@@ -131,7 +131,7 @@ These constraints keep the plan static while still supporting FastAPI requests, 
 
 ## ScopeBuilder overlays
 
-A child scope with different registrations requires a `ScopeBuilder` and a separate build:
+A child scope with different registrations requires a matching retained `Composition`, a live parent, and a separate compilation:
 
 ```python
 class PaymentGateway:
@@ -148,9 +148,11 @@ class TenantGateway(PaymentGateway):
 
 builder = ContainerBuilder()
 builder.register(PaymentGateway, ProductionGateway)
+composition = builder.retain_composition()
 container = builder.build()
 
-tenant_builder = container.new_scope_builder()
+from clean_ioc import ScopeBuilder
+tenant_builder = ScopeBuilder(container, composition=composition)
 tenant_builder.register(PaymentGateway, TenantGateway)
 
 with tenant_builder.build() as tenant_scope:
@@ -159,7 +161,10 @@ with tenant_builder.build() as tenant_scope:
 assert isinstance(container.resolve(PaymentGateway), ProductionGateway)
 ```
 
-`new_scope_builder()` is available on both `Container` and `Scope`. It recompiles the visible overlay roots for correctness while reusing frozen parent plans where ownership requires it.
+The handle is separate from the runtime and retains declaration values by identity. It has no close or context-manager
+lifecycle. Analysis captures a handle automatically on `result.composition`. Ordinary `new_scope()` needs no handle.
+Child builders restore their own declarations and can build execution or analyse the overlay. Runtimes retain no
+inspection graph or report; keep the analysis result for those reads.
 
 An overlay singleton belongs to the built scope and its descendants. It is finalized when that built scope exits. An
 inherited root singleton remains anchored to the root container's frozen activation plan and owner; overlay registrations
@@ -186,11 +191,11 @@ unchanged. Build a new root when a key must be absent because overlays do not ha
 | Same composition, new cache boundary | `new_scope()` |
 | Fresh scoped dependencies for each service method call | `register(..., scope="per_call")` |
 | Supply a request/framework value | `declare_scope_slot()` + `scope.provide()` |
-| Change child registrations/decorators | `new_scope_builder()` + `build()` |
+| Change child registrations/decorators | `ScopeBuilder(parent, composition=handle)` + `build()` |
 | Change the application root | Create a new `ContainerBuilder` |
 
 Scopes are idempotently closeable through synchronous or asynchronous context management. After exit, `resolve`,
-`resolve_async`, `provide`, `new_scope`, and `new_scope_builder` raise `ScopeClosedError`. Closing a parent does not
+`resolve_async`, `provide`, `new_scope`, and `ScopeBuilder(parent, composition=handle)` raise `ScopeClosedError`. Closing a parent does not
 implicitly close child scopes that have their own boundary; integrations should still nest scope contexts so inherited
 resources are not used after their owner closes.
 

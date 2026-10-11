@@ -3,7 +3,7 @@ from typing import Any, cast
 
 import pytest
 
-from clean_ioc import AsyncProvider, ContainerBuilder, ContainerBuildError, Provider, select
+from clean_ioc import AsyncProvider, ContainerBuilder, ContainerBuildError, Provider, ScopeBuilder, select
 from clean_ioc import component_filters as cf
 
 
@@ -47,12 +47,12 @@ def test_contextual_choice_preserves_roots_previews_collections_and_hard_filters
     builder.register(Consumer)
     builder.register(Consumer, name="filtered", arguments={"policy": select(cf.implementation_type_is(Default))})
     preview = builder.get_component_id(Policy)
-    with builder.build() as container:
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
         result = container.resolve(Consumer)
         assert isinstance(result.policy, Preferred)
         assert [type(item) for item in result.policies] == [item[0] for item in reversed(order)]
         assert type(container.resolve(Policy)) is order[-1][0]
-        assert container.graph is not None
+        assert container_analysis.graph is not None
         assert preview is not None
         assert isinstance(container.resolve(Consumer, filter=cf.with_name("filtered")).policy, Default)
 
@@ -63,9 +63,9 @@ def test_signed_values_and_ordinary_ties(values):
     builder.register(Policy, Default, parent_precedence=values[0])
     builder.register(Policy, Preferred, parent_precedence=values[1])
     builder.register(Consumer)
-    with builder.build() as container:
+    with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
         assert isinstance(container.resolve(Consumer).policy, Preferred)
-        warnings = [issue for issue in container.build_report.warnings if "policy" in issue.message]
+        warnings = [issue for issue in container_analysis.report.warnings if "policy" in issue.message]
         assert bool(warnings) == (values[0] == values[1])
 
 
@@ -94,11 +94,12 @@ def test_patch_validation_reset_immutability_and_discovered_metadata():
     builder.patch_component(Policy, discovered, parent_precedence=-2)
     builder.patch_component(Policy, fallback, parent_precedence=0)
     builder.register(Consumer)
+    container_composition = builder.retain_composition()
     container = builder.build()
     assert isinstance(container.resolve(Consumer).policy, Default)
     with pytest.raises(Exception):
         builder.patch_component(Policy, fallback, parent_precedence=100)
-    layer = container._plan.blueprint.layers[0]
+    layer = container_composition._for_parent(container).layers[0]
     with pytest.raises(TypeError):
         cast(Any, layer.registration_parent_precedence)[fallback] = 99
 
@@ -112,18 +113,18 @@ def test_provider_unique_maximum_and_tied_maximum(tied):
         builder.register(Policy, Application, parent_precedence=10)
     builder.register(Deferred)
     if tied:
-        with pytest.raises(ContainerBuildError) as caught:
-            builder.build(diagnostics=True)
-        assert caught.value.report is not None
-        assert any(issue.code == "provider-ambiguous-component" for issue in caught.value.report.errors)
+        caught_analysis = builder.analyse()
+        assert not caught_analysis.report.is_valid
+        assert caught_analysis.report is not None
+        assert any(issue.code == "provider-ambiguous-component" for issue in caught_analysis.report.errors)
         explanations = [
             item
-            for item in caught.value.explanations
+            for item in caught_analysis.report._explanations
             if any("equal-parent-precedence-ambiguous" in decision.reason_codes for decision in item.rejected)
         ]
         assert explanations and not explanations[0].selected
     else:
-        with builder.build(diagnostics=True) as container:
+        with builder.build() as container:
             assert isinstance(container.resolve(Deferred).policy(), Preferred)
 
 
@@ -151,7 +152,7 @@ def test_evidence_census_and_fingerprint_do_not_replay_callbacks():
         builder.register(Policy, Default)
         builder.register(Consumer)
         builder.mark_entrypoint(Consumer)
-        return builder.build(diagnostics=True)
+        return builder.analyse()
 
     first = build(10)
     second = build(20)
@@ -165,7 +166,7 @@ def test_evidence_census_and_fingerprint_do_not_replay_callbacks():
             if "lower-parent-precedence" in use.reason_codes:
                 assert "first-eligible-wins" not in use.reason_codes
     for _ in range(3):
-        first.resolve(Consumer)
+        first.create_runtime().resolve(Consumer)
         first.graph.selection_census().to_json()
         first.graph.manifest().to_json()
     assert len(calls) == before
@@ -185,6 +186,10 @@ def test_losing_invalid_candidate_is_not_hidden_and_failed_builder_can_be_repair
     builder.register(Consumer)
     with pytest.raises(ContainerBuildError):
         builder.build()
+    builder = ContainerBuilder()
+    builder.register(Policy, Broken, parent_precedence=-10)
+    builder.register(Policy, Preferred, parent_precedence=10)
+    builder.register(Consumer)
     builder.register(Missing)
     assert isinstance(builder.build().resolve(Consumer).policy, Preferred)
 
@@ -198,9 +203,10 @@ def test_overlay_new_choices_do_not_rewire_anchored_singletons():
     builder.register(Policy, Preferred, parent_precedence=10, lifespan="singleton")
     builder.register(Consumer)
     builder.register(Frozen, lifespan="singleton")
+    parent_composition = builder.retain_composition()
     parent = builder.build()
     original = parent.resolve(Frozen)
-    overlay_builder = parent.new_scope_builder()
+    overlay_builder = ScopeBuilder(parent, composition=parent_composition)
     overlay_builder.register(Policy, Application, parent_precedence=30, lifespan="singleton")
     overlay = overlay_builder.build()
     assert isinstance(overlay.resolve(Consumer).policy, Application)
@@ -297,10 +303,10 @@ def test_provider_map_retains_members_and_duplicate_keys():
     duplicate.register(Policy, Preferred, parent_precedence=10)
     duplicate.register(Policy, Default)
     duplicate.register_provider_map(Policy, key=lambda component: "same")
-    with pytest.raises(ContainerBuildError) as caught:
-        duplicate.build()
-    assert caught.value.report is not None
-    assert any(issue.code == "provider-map-duplicate-key" for issue in caught.value.report.errors)
+    caught_analysis = duplicate.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert any(issue.code == "provider-map-duplicate-key" for issue in caught_analysis.report.errors)
 
 
 def test_tuple_set_and_deferred_collection_membership_ignores_values():
@@ -359,16 +365,20 @@ def test_failed_callback_is_not_hidden_by_precedence_and_build_can_be_repaired()
     builder.register(Policy, Default, when=conditional, parent_precedence=-100)
     builder.register(Policy, Preferred, parent_precedence=10)
     builder.register(Consumer)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build(diagnostics=True)
-    assert caught.value.report is not None
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
     assert any(
         "ValueError" in decision.reason
-        for explanation in caught.value.explanations
+        for explanation in caught_analysis.report._explanations
         for decision in explanation.rejected
     )
     state["fail"] = False
-    assert isinstance(builder.build(diagnostics=True).resolve(Consumer).policy, Preferred)
+    builder = ContainerBuilder()
+    builder.register(Policy, Default, when=conditional, parent_precedence=-100)
+    builder.register(Policy, Preferred, parent_precedence=10)
+    builder.register(Consumer)
+    assert isinstance(builder.build().resolve(Consumer).policy, Preferred)
 
 
 def test_scope_slot_fallback_and_per_call_target_use_frozen_plans():
@@ -420,9 +430,10 @@ def test_tied_maximum_census_does_not_claim_first_eligible_won():
     builder.register(Policy, Default)
     builder.register(Consumer)
     builder.mark_entrypoint(Consumer)
-    container = builder.build(diagnostics=True)
+    container_analysis = builder.analyse()
+    container = container_analysis.create_runtime()
     assert isinstance(container.resolve(Consumer).policy, Application)
-    uses = [use for item in container.graph.selection_census().definitions for use in item.examples]
+    uses = [use for item in container_analysis.graph.selection_census().definitions for use in item.examples]
     tie = next(use for use in uses if "equal-parent-precedence-order" in use.reason_codes)
     assert "first-eligible-wins" not in tie.reason_codes
 
@@ -438,11 +449,12 @@ def test_unbounded_integer_scores_build_and_serialize_without_decimal_conversion
     builder.register(Policy, Preferred, parent_precedence=value)
     builder.register(Policy, Default, parent_precedence=value - 1)
     builder.register(Consumer)
-    container = builder.build(diagnostics=True)
+    container_analysis = builder.analyse()
+    container = container_analysis.create_runtime()
     assert isinstance(container.resolve(Consumer).policy, Preferred)
-    root = next(root for root in container.graph.roots if root.component.service_type is Consumer)
+    root = next(root for root in container_analysis.graph.roots if root.component.service_type is Consumer)
     dependency = next(item for item in root.component.dependencies if item.service_type is Policy)
-    explanation = container.graph.explain(dependency)
+    explanation = container_analysis.graph.explain(dependency)
     assert explanation.selected[0].parent_precedence == value
     encoded = json.loads(explanation.to_json())
     assert int(encoded["selected"][0]["parent_precedence"]["integer_hex"], 16) == value

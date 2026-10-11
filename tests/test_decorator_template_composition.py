@@ -6,12 +6,13 @@ import pytest
 
 from clean_ioc import (
     BoundaryAlias,
+    BuilderAlreadyBuiltError,
     ContainerBuilder,
-    ContainerBuildError,
     DecoratorTemplate,
     DerivedServices,
     Expose,
     RuntimeOwnerKind,
+    ScopeBuilder,
     ServiceGroup,
     Use,
     select,
@@ -77,32 +78,45 @@ def test_inherited_templates_expand_new_sources_targets_and_nested_plans_with_pr
         return ()
 
     builder.add_validation_rule(validate)
+    root_composition = builder.retain_composition()
     with builder.build() as root:
         assert unwrap(root.resolve(Target))[0] == [("base", first)]
-        overlay = root.new_scope_builder()
+        overlay = ScopeBuilder(root, composition=root_composition)
         overlay.register(Source, instance=second, name="second")
         added_id = overlay.register(NewTarget, groups=[group])
         assert overlay.get_component_ids(Target, filter=lambda c: len(c.decorators) == 2) == [original_id]
         assert overlay.get_component_id(NewTarget, filter=lambda c: len(c.decorators) == 2) == added_id
-        assert validations == [True]
+        assert validations == []
+        child_composition = overlay.retain_composition()
         with overlay.build() as child:
             for service in (Target, NewTarget):
                 assert unwrap(child.resolve(service))[0] == [("base", second), ("base", first)]
-            nested = child.new_scope_builder()
+            nested = ScopeBuilder(child, composition=child_composition)
             nested.register(Source, instance=third, name="third")
             assert nested.has_component(NewTarget, filter=lambda c: len(c.decorators) == 3)
+            grandchild_composition = nested.retain_composition()
             with nested.build() as grandchild:
                 assert unwrap(grandchild.resolve(NewTarget))[0] == [("base", third), ("base", second), ("base", first)]
-                candidates = grandchild._plan.blueprint.generated_decorators
-                assert len(candidates) == len({c.id for c in candidates}) == 3
-                assert {c.declaration.id for c in candidates} == {template_id}
-                assert sum(len(layer.decorator_templates) for layer in grandchild._plan.blueprint.layers) == 1
+                declarations = [
+                    d
+                    for layer in grandchild_composition._for_parent(grandchild).layers
+                    for d in layer.decorator_templates
+                ]
+                assert {d.id for d in declarations} == {template_id}
+                assert grandchild_composition._for_parent(grandchild).generated_decorators == ()
+                assert (
+                    sum(
+                        len(layer.decorator_templates)
+                        for layer in grandchild_composition._for_parent(grandchild).layers
+                    )
+                    == 1
+                )
                 callback_count = len(calls)
                 with grandchild.new_scope() as plain:
                     assert unwrap(plain.resolve(NewTarget))[0] == unwrap(grandchild.resolve(NewTarget))[0]
-                    _ = plain.graph.ownership_report()
+                    assert not hasattr(plain, "graph")
                 assert len(calls) == callback_count
-        assert validations == [True, True, True]
+        assert validations == []
         assert unwrap(root.resolve(Target))[0] == [("base", first)]
 
 
@@ -115,17 +129,19 @@ def test_named_override_has_only_its_explicit_membership(membership):
     parent_core, override_core = Target(), NewTarget()
     original = builder.register(Target, instance=parent_core, name="selected", groups=[group])
     builder.register_decorator_template(for_each=Source, template=template_for(group))
+    root_composition = builder.retain_composition()
     with builder.build() as root:
-        overlay = root.new_scope_builder()
+        overlay = ScopeBuilder(root, composition=root_composition)
         override = overlay.register(
             Target, instance=override_core, name="selected", groups=[group] if membership else []
         )
+        child_composition = overlay.retain_composition()
         with overlay.build() as child:
             layers, core = unwrap(child.resolve(Target, filter=cf.with_name("selected")))
             assert core is override_core
             assert layers == ([("base", source)] if membership else [])
             assert unwrap(child.resolve(Target, filter=cf.with_id(original)))[1] is parent_core
-            assert child._plan.blueprint.layers[0].service_groups.get(override, frozenset()) == (
+            assert child_composition._for_parent(child).layers[0].service_groups.get(override, frozenset()) == (
                 frozenset([group]) if membership else frozenset()
             )
 
@@ -146,27 +162,40 @@ def test_overlay_patch_remove_and_repatch_preserve_ids_ordinals_and_other_family
         source_filter=cf.implementation_type_is(OtherSource),
         template=template_for(DerivedServices(Target), "B"),
     )
+    root_composition = builder.retain_composition()
     with builder.build() as root:
-        originals = {d.id: d for d in root._plan.blueprint.layers[0].decorator_templates}
-        overlay = root.new_scope_builder()
+        originals = {d.id: d for d in root_composition._for_parent(root).layers[0].decorator_templates}
+        overlay = ScopeBuilder(root, composition=root_composition)
         overlay.patch_decorator_template(first_id, template=template_for(DerivedServices(Target), "patched"))
+        child_composition = overlay.retain_composition()
         with overlay.build() as child:
             assert unwrap(child.resolve(Target))[0] == [("B", second), ("patched", first)]
-            patched = child._plan.blueprint.layers[0].decorator_templates[0]
+            patched = child_composition._for_parent(child).layers[0].decorator_templates[0]
             assert (patched.id, patched.order) == (first_id, originals[first_id].order)
-            assert {c.id for c in child._plan.blueprint.generated_decorators} == {
-                c.id for c in root._plan.blueprint.generated_decorators
+            assert {c.id for c in child_composition._for_parent(child).generated_decorators} == {
+                c.id for c in root_composition._for_parent(root).generated_decorators
             }
-            nested = child.new_scope_builder()
+            nested = ScopeBuilder(child, composition=child_composition)
             nested.remove_decorator_template(first_id)
             with pytest.raises(KeyError):
                 nested.patch_decorator_template(first_id, source_filter=cf.all_components)
             with pytest.raises(KeyError):
                 nested.remove_decorator_template(first_id)
+            grandchild_composition = nested.retain_composition()
             with nested.build() as grandchild:
                 assert unwrap(grandchild.resolve(Target))[0] == [("B", second)]
-                assert {c.declaration.id for c in grandchild._plan.blueprint.generated_decorators} == {second_id}
-                further = grandchild.new_scope_builder()
+                assert {
+                    d.id
+                    for layer in grandchild_composition._for_parent(grandchild).layers
+                    for d in layer.decorator_templates
+                    if d.id
+                    not in {
+                        removed
+                        for prior in grandchild_composition._for_parent(grandchild).layers
+                        for removed in prior.removed_template_ids
+                    }
+                } == {second_id}
+                further = ScopeBuilder(grandchild, composition=grandchild_composition)
                 with pytest.raises(KeyError):
                     further.patch_decorator_template(first_id)
                 with further.build() as final:
@@ -184,8 +213,9 @@ def test_patched_inherited_ordinal_collision_keeps_template_sources_together(loc
     inherited = builder.register_decorator_template(
         for_each=Source, template=template_for(DerivedServices(Target), "B")
     )
+    root_composition = builder.retain_composition()
     with builder.build() as root:
-        overlay = root.new_scope_builder()
+        overlay = ScopeBuilder(root, composition=root_composition)
         if local_kind == "template":
             overlay.register_decorator_template(for_each=Source, template=template_for(DerivedServices(Target), "A"))
         else:
@@ -193,11 +223,12 @@ def test_patched_inherited_ordinal_collision_keeps_template_sources_together(loc
         overlay.patch_decorator_template(inherited, template=template_for(DerivedServices(Target), "B2"))
         # Replacing an existing local shadow must not change its traversal tie-break.
         overlay.patch_decorator_template(inherited, template=template_for(DerivedServices(Target), "B3"))
+        child_composition = overlay.retain_composition()
         with overlay.build() as child:
             expected = [("B3", first), ("B3", second)]
             expected += [("A", first), ("A", second)] if local_kind == "template" else [("A", ordinary)]
             assert unwrap(child.resolve(Target))[0] == expected
-            assert {d.order for d in child._plan.blueprint.layers[0].decorator_templates} == {0}
+            assert {d.order for d in child_composition._for_parent(child).layers[0].decorator_templates} == {0}
 
 
 @pytest.mark.parametrize("activate_parent_first", [False, True])
@@ -235,9 +266,10 @@ def test_parent_singleton_wrappers_sources_resources_and_cleanup_stay_anchored(a
         return DecoratorTemplate(DerivedServices(Target), wrapper, arguments={"source": select(cf.with_id(source.id))})
 
     policy_id = builder.register_decorator_template(for_each=Source, template=template)
+    root_composition = builder.retain_composition()
     with builder.build() as root:
         existing = root.resolve(Target) if activate_parent_first else None
-        overlay = root.new_scope_builder()
+        overlay = ScopeBuilder(root, composition=root_composition)
         overlay_resource = Resource()
         overlay.register(Resource, instance=overlay_resource)
         added_source = Source()
@@ -248,7 +280,7 @@ def test_parent_singleton_wrappers_sources_resources_and_cleanup_stay_anchored(a
         inspection = overlay._expand_decorator_templates()
         inherited_source = next(s.component for s in inspection.selections if s.source.id == source_id)
         assert inherited_source.dependencies[0].id == resource_id
-        with overlay.build() as child:
+        with overlay.analyse() as child_analysis, child_analysis.create_runtime() as child:
             with child.new_scope() as plain:
                 anchored = plain.resolve(Target)
                 assert existing is None or anchored is existing
@@ -259,7 +291,7 @@ def test_parent_singleton_wrappers_sources_resources_and_cleanup_stay_anchored(a
                 assert anchored.source.resource is not overlay_resource
                 new = plain.resolve(NewTarget)
                 assert unwrap(new)[0] == [("overlay", added_source), ("overlay", anchored.source)]
-                report = plain.graph.ownership_report()
+                report = child_analysis.graph.ownership_report()
                 target_record = next(
                     r for r in report.records if r.component.id == target_id and r.component.parent is None
                 )
@@ -335,6 +367,7 @@ def test_exposed_and_used_sources_bind_exact_original_identity_and_deduplicate_a
             uses.append(Use("provider", source_type, filter=cf.with_name("alternate")))
         builder.create_boundary("consumer", uses=tuple(uses), exposes=(Expose(Target),)).apply_bundle(consumer)
     assert builder.has_component(Target, filter=lambda c: len(c.decorators) == 1)
+    root_composition = builder.retain_composition()
     with builder.build() as root:
         value = root.resolve(Target)
         assert isinstance(value, (Wrapper, PublicWrapper))
@@ -342,19 +375,21 @@ def test_exposed_and_used_sources_bind_exact_original_identity_and_deduplicate_a
         assert value.source is root.resolve(source_type, filter=cf.with_name(public_name))
         assert calls and all(info.id == original_ids[0] for info in calls)
         assert all(info.name == "internal" and info.service_type is Source for info in calls)
-        assert len(root._plan.blueprint.generated_decorators) == 1
-        overlay = root.new_scope_builder()
+        assert root_composition._for_parent(root).generated_decorators == ()
+        overlay = ScopeBuilder(root, composition=root_composition)
         assert overlay.has_component(Target, filter=lambda c: len(c.decorators) == 1)
+        child_composition = overlay.retain_composition()
         with overlay.build() as child:
             child_value = child.resolve(Target)
             assert isinstance(child_value, (Wrapper, PublicWrapper))
             assert child_value.source is source
-            nested = child.new_scope_builder()
+            nested = ScopeBuilder(child, composition=child_composition)
+            grandchild_composition = nested.retain_composition()
             with nested.build() as grandchild:
                 nested_value = grandchild.resolve(Target)
                 assert isinstance(nested_value, (Wrapper, PublicWrapper))
                 assert nested_value.source is source
-                assert len(grandchild._plan.blueprint.generated_decorators) == 1
+                assert grandchild_composition._for_parent(grandchild).generated_decorators == ()
 
 
 def test_shared_group_grants_neither_private_source_visibility_nor_cross_area_decoration_or_edits():
@@ -379,11 +414,12 @@ def test_shared_group_grants_neither_private_source_visibility_nor_cross_area_de
     for edit in (builder.patch_decorator_template, builder.remove_decorator_template):
         with pytest.raises(KeyError):
             edit(private_ids[0])
+    root_composition = builder.retain_composition()
     with builder.build() as root:
         assert unwrap(root.resolve(Target))[0] == [("private", private_source)]
         assert unwrap(root.resolve(Target, filter=cf.with_name("root")))[0] == [("root", root_source)]
         assert len(source_calls) == 1
-        overlay = root.new_scope_builder()
+        overlay = ScopeBuilder(root, composition=root_composition)
         overlay.remove_decorator_template(root_policy)
         for edit in (overlay.patch_decorator_template, overlay.remove_decorator_template):
             with pytest.raises(KeyError):
@@ -424,36 +460,43 @@ def test_exact_source_selection_cannot_fall_back_to_an_eligible_visible_source(i
     selected_ids = []
     calls = []
     group = ServiceGroup("targets", service_type=Target)
-    builder = ContainerBuilder()
-    if invisible:
 
-        def private(local):
-            selected_ids.append(local.register(Source, name="same"))
+    def make_builder():
+        builder = ContainerBuilder()
+        if invisible:
 
-        builder.create_boundary("private").apply_bundle(private)
-    else:
-        selected_ids.append(builder.register(Source, name="same", when=lambda component: component.parent is None))
-    visible_id = builder.register(Source, name="same")
-    builder.register(Target, groups=[group])
+            def private(local):
+                selected_ids.append(local.register(Source, name="same"))
 
-    def template(info):
-        calls.append(info.id)
-        # An application selecting an unavailable private ID must not bypass visibility.
-        exact_id = selected_ids[0] if invisible else info.id
-        return DecoratorTemplate(group, Wrapper, arguments={"source": select(cf.with_id(exact_id))})
+            builder.create_boundary("private").apply_bundle(private)
+        else:
+            selected_ids.append(builder.register(Source, name="same", when=lambda component: component.parent is None))
+        visible_id = builder.register(Source, name="same")
+        builder.register(Target, groups=[group])
 
-    template_id = builder.register_decorator_template(
-        for_each=Source,
-        source_filter=cf.with_id(visible_id if invisible else selected_ids[0]),
-        template=template,
-    )
+        def template(info):
+            calls.append(info.id)
+            # An application selecting an unavailable private ID must not bypass visibility.
+            exact_id = selected_ids[-1] if invisible else info.id
+            return DecoratorTemplate(group, Wrapper, arguments={"source": select(cf.with_id(exact_id))})
+
+        template_id = builder.register_decorator_template(
+            for_each=Source,
+            source_filter=cf.with_id(visible_id if invisible else selected_ids[-1]),
+            template=template,
+        )
+        return builder, template_id
+
     for attempt in range(2):
-        with pytest.raises(ContainerBuildError) as caught:
-            builder.build()
-        assert caught.value.report is not None
-        assert caught.value.report.errors
+        builder, template_id = make_builder()
+        caught_analysis = builder.analyse()
+        assert not caught_analysis.report.is_valid
+        assert caught_analysis.report is not None
+        assert caught_analysis.report.errors
         assert len(calls) == attempt + 1
-        assert builder._decorator_templates[0].id == template_id
+        with pytest.raises(BuilderAlreadyBuiltError):
+            builder.build()
+    builder, template_id = make_builder()
     builder.remove_decorator_template(template_id)
     with builder.build() as repaired:
         assert type(repaired.resolve(Target)) is Target
@@ -469,40 +512,48 @@ def test_failed_build_diagnostic_retries_and_repair_do_not_accumulate_generated_
             self.missing = missing
 
     calls = []
-    builder = ContainerBuilder()
     source = Source()
-    builder.register(Source, instance=source)
-    builder.register(Target)
-    template_id = builder.register_decorator_template(
-        for_each=Source, template=template_for(DerivedServices(Target), calls=calls)
-    )
-    root = builder.build(diagnostics=True) if overlay_build else None
-    current = root.new_scope_builder() if root is not None else builder
-    current.register(Broken)
+
+    def make_builder():
+        builder = ContainerBuilder()
+        builder.register(Source, instance=source)
+        builder.register(Target)
+        template_id = builder.register_decorator_template(
+            for_each=Source, template=template_for(DerivedServices(Target), calls=calls)
+        )
+        return builder, template_id
+
+    builder, template_id = make_builder()
+    composition = builder.retain_composition()
+    root = builder.build() if overlay_build else None
+    current = None
     baseline_calls = len(calls)
     failures = []
     for attempt in range(2):
-        with pytest.raises(ContainerBuildError) as caught:
-            current.build(diagnostics=True)
-        failures.append(caught.value)
+        current = ScopeBuilder(root, composition=composition) if root is not None else make_builder()[0]
+        current.register(Broken)
+        caught_analysis = current.analyse()
+        assert not caught_analysis.report.is_valid
+        failures.append(caught_analysis)
         assert len(calls) == baseline_calls + attempt + 1
-        assert caught.value.partial_graph is not None
-        assert len(caught.value.partial_graph.attempts) > 1
-        assert all(
-            not layer.decorators for layer in ([current._layer()] if root is None else root._plan.blueprint.layers)
-        )
+        assert caught_analysis.partial_graph is not None
+        assert len(caught_analysis.partial_graph.attempts) > 1
+        with pytest.raises(BuilderAlreadyBuiltError):
+            current.build()
     assert failures[0].report is not None and failures[1].report is not None
     assert [issue.code for issue in failures[0].report.errors] == [issue.code for issue in failures[1].report.errors]
     resource = Missing()
+    current = ScopeBuilder(root, composition=composition) if root is not None else make_builder()[0]
+    current.register(Broken)
     current.register(Missing, instance=resource)
     assert current.has_component(Broken, filter=lambda c: len(c.decorators) == 1)
-    with current.build(diagnostics=True) as repaired:
+    repaired_composition = current.retain_composition()
+    with current.build() as repaired:
         layers, core = unwrap(repaired.resolve(Broken))
         assert layers == [("base", source)]
         assert core.missing is resource
-        assert len(repaired._plan.blueprint.generated_decorators) == 1
-        assert repaired._plan.blueprint.generated_decorators[0].declaration.id == template_id
-        assert sum(len(layer.decorator_templates) for layer in repaired._plan.blueprint.layers) == 1
+        assert repaired_composition._for_parent(repaired).generated_decorators == ()
+        assert sum(len(layer.decorator_templates) for layer in repaired_composition._for_parent(repaired).layers) == 1
     if root is not None:
         root._close()
 
@@ -529,11 +580,13 @@ def test_inherited_generic_source_metadata_is_preserved_after_patch_and_nested_o
         return DecoratorTemplate(DerivedServices(Target), Wrapper, arguments={"source": select(cf.with_id(info.id))})
 
     policy = builder.register_decorator_template(for_each=Source, template=template)
+    root_composition = builder.retain_composition()
     with builder.build() as root:
-        overlay = root.new_scope_builder()
+        overlay = ScopeBuilder(root, composition=root_composition)
         overlay.patch_decorator_template(policy, source_filter=cf.implementation_type_is(ConcreteSource))
+        child_composition = overlay.retain_composition()
         with overlay.build() as child:
-            nested = child.new_scope_builder()
+            nested = ScopeBuilder(child, composition=child_composition)
             nested.register(NewTarget)
             with nested.build() as grandchild:
                 assert unwrap(grandchild.resolve(NewTarget))[0] == [("base", source)]
@@ -564,12 +617,17 @@ def test_boundary_metadata_recheck_uses_parent_singleton_anchor(contract):
         builder.register(Target, lifespan="singleton")
     else:
         builder.create_boundary(
-            "provider", exposes=(Expose(Target, filter=lambda c: not c.decorators, alias=BoundaryAlias(PublicTarget)),)
+            "provider",
+            exposes=(
+                Expose(Target, filter=lambda c: not c.decorators, alias=BoundaryAlias(PublicTarget)),
+                Expose(Source),
+            ),
         ).apply_bundle(compose)
     service = Target if contract == "use" else PublicTarget
+    root_composition = builder.retain_composition()
     with builder.build() as root:
         original = root.resolve(service)
-        overlay = root.new_scope_builder()
+        overlay = ScopeBuilder(root, composition=root_composition)
         if contract == "use":
             overlay.register(Source, lifespan="singleton")
             overlay.register_decorator_template(for_each=Source, template=template_for(DerivedServices(Target)))
@@ -582,9 +640,10 @@ def test_boundary_metadata_recheck_uses_parent_singleton_anchor(contract):
             ).apply_bundle(lambda _: None)
         # New policy applies to newly compiled plans, not to the parent singleton.
         assert overlay.has_component(service, filter=lambda c: not c.decorators, build_args={"decorate": True})
+        child_composition = overlay.retain_composition()
         with overlay.build(build_args={"decorate": True}) as child:
             assert child.resolve(service) is original
-            nested = child.new_scope_builder()
+            nested = ScopeBuilder(child, composition=child_composition)
             assert nested.has_component(service, filter=lambda c: not c.decorators)
             with nested.build() as grandchild:
                 assert grandchild.resolve(service) is original
@@ -599,16 +658,19 @@ def test_repatch_keeps_stable_traversal_among_multiple_inherited_ordinal_collisi
     original = builder.register_decorator_template(
         for_each=Source, template=template_for(DerivedServices(Target), "root")
     )
+    root_composition = builder.retain_composition()
     with builder.build() as root:
-        overlay = root.new_scope_builder()
+        overlay = ScopeBuilder(root, composition=root_composition)
         middle = overlay.register_decorator_template(
             for_each=Source, template=template_for(DerivedServices(Target), "middle")
         )
+        child_composition = overlay.retain_composition()
         with overlay.build() as child:
-            nested = child.new_scope_builder()
+            nested = ScopeBuilder(child, composition=child_composition)
             nested.patch_decorator_template(original, template=template_for(DerivedServices(Target), "root-patched"))
             nested.patch_decorator_template(middle, template=template_for(DerivedServices(Target), "middle-patched"))
             nested.patch_decorator_template(original, source_filter=cf.all_components)
+            grandchild_composition = nested.retain_composition()
             with nested.build() as grandchild:
                 assert unwrap(grandchild.resolve(Target))[0] == [
                     ("middle-patched", first),
@@ -616,7 +678,10 @@ def test_repatch_keeps_stable_traversal_among_multiple_inherited_ordinal_collisi
                     ("root-patched", first),
                     ("root-patched", second),
                 ]
-                assert [(d.id, d.order) for d in grandchild._plan.blueprint.layers[0].decorator_templates] == [
+                assert [
+                    (d.id, d.order)
+                    for d in grandchild_composition._for_parent(grandchild).layers[0].decorator_templates
+                ] == [
                     (original, 0),
                     (middle, 0),
                 ]
@@ -635,8 +700,9 @@ def test_overlay_patch_can_replace_source_service_and_filter_without_changing_si
         def __init__(self, inner: Target, source: OtherSource):
             self.inner, self.source = inner, source
 
+    root_composition = builder.retain_composition()
     with builder.build() as root:
-        overlay = root.new_scope_builder()
+        overlay = ScopeBuilder(root, composition=root_composition)
         overlay.patch_decorator_template(
             original,
             for_each=OtherSource,
@@ -680,21 +746,23 @@ def test_overlay_owned_generated_resources_close_with_overlay_after_nested_activ
             DerivedServices(Target), wrapper, arguments={"source": select(cf.with_id(info.id))}
         ),
     )
+    root_composition = builder.retain_composition()
     with builder.build() as root:
-        overlay = root.new_scope_builder()
+        overlay = ScopeBuilder(root, composition=root_composition)
         source_id = overlay.register(
             Source, factory=source_factory(overlay_source, "overlay"), name="overlay", lifespan="singleton"
         )
         target_id = overlay.register(NewTarget, lifespan="singleton")
-        with overlay.build() as child:
-            nested = child.new_scope_builder()
-            with nested.build() as grandchild:
+        child_composition = overlay.retain_composition()
+        with overlay.analyse() as child_analysis, child_analysis.create_runtime() as child:
+            nested = ScopeBuilder(child, composition=child_composition)
+            with nested.analyse() as grandchild_analysis, grandchild_analysis.create_runtime() as grandchild:
                 with grandchild.new_scope() as plain:
                     value = plain.resolve(NewTarget)
                     assert unwrap(value)[0] == [("base", overlay_source), ("base", root_source)]
                     assert child.resolve(NewTarget) is value
                     assert unwrap(plain.resolve(Target))[0] == [("base", root_source)]
-                    report = plain.graph.ownership_report()
+                    report = grandchild_analysis.graph.ownership_report()
                     assert report.is_valid
                     acquired_sources = [r for r in report.records if r.component.id == source_id]
                     assert acquired_sources and all(
@@ -748,8 +816,9 @@ def test_shared_layer_tie_order_is_independent_of_decorator_kind_and_stable_on_r
         builder.register(Source, instance=source, name=str(index))
     builder.register(Target)
     inherited = register(builder, parent_kind, "parent")
+    root_composition = builder.retain_composition()
     with builder.build() as root:
-        overlay = root.new_scope_builder()
+        overlay = ScopeBuilder(root, composition=root_composition)
         if patch_first:
             patch(overlay, parent_kind, inherited, "patched")
         local = register(overlay, local_kind, "local")
@@ -758,17 +827,18 @@ def test_shared_layer_tie_order_is_independent_of_decorator_kind_and_stable_on_r
         # Updating either kind in place preserves the first insertion into the layer.
         patch(overlay, parent_kind, inherited, "patched-again")
         patch(overlay, local_kind, local, "local-again")
+        child_composition = overlay.retain_composition()
         with overlay.build() as child:
             expected_parent = layers(parent_kind, "patched-again")
             expected_local = layers(local_kind, "local-again")
             expected = expected_local + expected_parent if patch_first else expected_parent + expected_local
             assert unwrap(child.resolve(Target))[0] == expected
-            layer = child._plan.blueprint.layers[0]
+            layer = child_composition._for_parent(child).layers[0]
             assert layer.decorator_declaration_ids == ((inherited, local) if patch_first else (local, inherited))
             assert {
                 (definition.id, definition.order) for definition in (*layer.decorators, *layer.decorator_templates)
             } == {(inherited, 0), (local, 0)}
-            nested = child.new_scope_builder()
+            nested = ScopeBuilder(child, composition=child_composition)
             with nested.build() as grandchild:
                 assert unwrap(grandchild.resolve(Target))[0] == expected
         assert unwrap(root.resolve(Target))[0] == layers(parent_kind, "parent")

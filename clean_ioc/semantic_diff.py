@@ -243,6 +243,7 @@ _KNOWN_FIELDS = frozenset(
         "scope_policy",
         "key_type",
         "requested_type",
+        "resolvable",
     }
 )
 
@@ -271,10 +272,12 @@ def validate_manifest(data: dict[str, Any]) -> None:
         seen.add(path)
         if parent is not None and not path.startswith(f"{parent}/"):
             invalid("child paths must be below their parent")
-        for key in ("requires_async", "manages_cleanup"):
+        if parent is not None and "resolvable" in node:
+            invalid("resolvable is only valid on root nodes")
+        for key in ("requires_async", "manages_cleanup", "resolvable"):
             if key in node and not isinstance(node[key], bool):
                 invalid(f"{key} must be a boolean")
-        for key in _KNOWN_FIELDS - {"tags", "order", "position", "requires_async", "manages_cleanup"}:
+        for key in _KNOWN_FIELDS - {"tags", "order", "position", "requires_async", "manages_cleanup", "resolvable"}:
             if key in node and node[key] is not None and not isinstance(node[key], str):
                 invalid(f"{key} must be a string or null")
         for key in ("order", "position"):
@@ -461,6 +464,21 @@ def classify(
             for key in before.keys() | after.keys()
             if before.get(key) != after.get(key) or (key in before) != (key in after)
         } - {"path"}
+        if (
+            path in current_roots
+            and path in old_roots
+            and before.get("resolvable", True) != after.get("resolvable", True)
+        ):
+            added = after.get("resolvable", True)
+            record(
+                path,
+                GraphChangeKind.root_added if added else GraphChangeKind.root_removed,
+                ChangeRisk.medium if added else ChangeRisk.high,
+                ("resolvable",),
+                {"resolvable": before.get("resolvable", True)},
+                {"resolvable": after.get("resolvable", True)},
+            )
+        changed.discard("resolvable")
         for kind, risk, concern in concerns:
             fields = tuple(sorted(changed & concern))
             if not fields:

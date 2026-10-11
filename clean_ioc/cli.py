@@ -12,8 +12,8 @@ from typing import Any, Sequence
 
 from . import component_filters as cf
 from .compilation_profile import CompilationProfiler
-from .container import ContainerBuilder, ContainerBuildError, Scope, ScopeBuilder
-from .tooling import BuildReport, BuildTriage, ChangeRisk, DiffPolicy, GraphManifest, IssueSeverity
+from .container import AnalysisResult, ContainerBuilder, ContainerBuildError, ScopeBuilder
+from .tooling import AnalysisReport, BuildTriage, ChangeRisk, DiffPolicy, GraphManifest, IssueSeverity
 
 
 def _load_object(locator: str) -> Any:
@@ -26,17 +26,23 @@ def _load_object(locator: str) -> Any:
     return value
 
 
-def _load_scope(locator: str) -> Scope:
+def _load_analysis(locator: str) -> AnalysisResult:
     value = _load_object(locator)
-    if isinstance(value, (ContainerBuilder, ScopeBuilder)):
-        value = value.build(diagnostics=True)
-    elif not isinstance(value, Scope) and callable(value):
+    if not isinstance(value, (ContainerBuilder, ScopeBuilder, AnalysisResult)) and callable(value):
         value = value()
-        if isinstance(value, (ContainerBuilder, ScopeBuilder)):
-            value = value.build(diagnostics=True)
-    if not isinstance(value, Scope):
-        raise TypeError("Target must be a builder, a built Container/Scope, or a zero-argument factory returning one")
+    if isinstance(value, (ContainerBuilder, ScopeBuilder)):
+        value = value.analyse()
+    if not isinstance(value, AnalysisResult):
+        raise TypeError("Analysis target must be a fresh builder, an AnalysisResult, or a factory returning one")
     return value
+
+
+def _required_graph(analysis: AnalysisResult):
+    if analysis.graph is None:
+        raise ContainerBuildError(
+            report=analysis.report, partial_graph=analysis.partial_graph, diagnostics_enabled=True
+        )
+    return analysis.graph
 
 
 def _write(value: str, output: str | None) -> None:
@@ -46,7 +52,7 @@ def _write(value: str, output: str | None) -> None:
     Path(output).write_text(f"{value.rstrip()}\n", encoding="utf-8")
 
 
-def _filtered_report(report: BuildReport, ignored: set[str]) -> BuildReport:
+def _filtered_report(report: AnalysisReport, ignored: set[str]) -> AnalysisReport:
     retained = tuple(
         index
         for index, issue in enumerate(report.issues)
@@ -73,7 +79,7 @@ def _check(args: argparse.Namespace) -> int:
     if args.triage and args.format == "sarif":
         raise ValueError("--triage supports text and JSON; SARIF reports individual findings")
     try:
-        scope = _load_scope(args.target)
+        analysis = _load_analysis(args.target)
     except ContainerBuildError as error:
         if args.triage:
             triage = error.triage_report()
@@ -87,11 +93,13 @@ def _check(args: argparse.Namespace) -> int:
         _write(value, args.output)
         return 1
     report = _filtered_report(
-        scope.validation_report(),
+        analysis.report,
         set(args.ignore),
     )
     if args.triage:
-        triage = BuildTriage.from_report(report)
+        triage = (
+            analysis.triage_report() if report.issues == analysis.report.issues else BuildTriage.from_report(report)
+        )
         value = triage.to_json() if args.format == "json" else triage.to_text()
     elif args.format == "sarif":
         value = report.to_sarif()
@@ -113,19 +121,23 @@ def _profile(args: argparse.Namespace) -> int:
         raise TypeError("Profile target must be an unbuilt builder")
     collector = CompilationProfiler(max_records=args.max_records)
     try:
-        target.build(profile=collector, diagnostics=args.diagnostics)
+        if args.operation == "build":
+            with target.build(profile=collector):
+                result = 0
+        else:
+            with target.analyse(profile=collector) as analysis:
+                result = 0 if analysis.report.is_valid else 1
     except Exception:
         result = 1
-    else:
-        result = 0
     report = collector.report()
     _write(report.to_json() if args.format == "json" else report.to_text(), args.output)
     return result
 
 
 def _graph(args: argparse.Namespace) -> int:
+    analysis = _load_analysis(args.target)
     try:
-        graph = _load_scope(args.target).graph
+        graph = _required_graph(analysis)
     except ContainerBuildError as error:
         if args.on_error != "partial" or error.partial_graph is None:
             raise
@@ -144,29 +156,25 @@ def _graph(args: argparse.Namespace) -> int:
     else:
         value = graph.to_text(all_roots=args.all)
     _write(value, args.output)
-    return 0
+    return 0 if analysis.report.is_valid else 1
 
 
 def _ownership(args: argparse.Namespace) -> int:
-    report = _load_scope(args.target).graph.ownership_report()
+    analysis = _load_analysis(args.target)
+    report = _required_graph(analysis).ownership_report()
     _write(report.to_json() if args.format == "json" else report.to_text(), args.output)
-    return 0 if report.is_valid else 1
+    return 0 if analysis.report.is_valid and report.is_valid else 1
 
 
 def _census(args: argparse.Namespace) -> int:
-    try:
-        report = _load_scope(args.target).graph.selection_census(
-            all_roots=args.all, include_deferred=not args.exclude_deferred
-        )
-    except ContainerBuildError as error:
-        report = error.selection_census()
-        _write(report.to_json() if args.format == "json" else report.to_text(), args.output)
-        return 1
+    analysis = _load_analysis(args.target)
+    report = analysis.selection_census(all_roots=args.all, include_deferred=not args.exclude_deferred)
     _write(report.to_json() if args.format == "json" else report.to_text(), args.output)
-    return 0
+    return 0 if analysis.report.is_valid else 1
 
 
 def _diff(args: argparse.Namespace) -> int:
+    analysis = _load_analysis(args.target)
     policy = None
     if args.policy is not None:
         policy = _load_object(args.policy)
@@ -175,17 +183,17 @@ def _diff(args: argparse.Namespace) -> int:
     elif args.fail_on is not None:
         policy = DiffPolicy(fail_at=ChangeRisk(args.fail_on))
     baseline = GraphManifest.from_json(Path(args.baseline).read_text(encoding="utf-8"))
-    difference = _load_scope(args.target).graph.diff(baseline, all_roots=args.all)
+    difference = _required_graph(analysis).diff(baseline, all_roots=args.all)
     if policy is not None:
         report = difference.evaluate(policy)
         _write(report.to_json() if args.format == "json" else report.to_text(), args.output)
-        return 0 if report.is_valid else 1
+        return 0 if analysis.report.is_valid and report.is_valid else 1
     if args.classify:
         value = difference.to_semantic_json() if args.format == "json" else difference.to_semantic_text()
     else:
         value = difference.to_json() if args.format == "json" else difference.to_text()
     _write(value, args.output)
-    return 0 if difference.is_empty else 1
+    return 0 if analysis.report.is_valid and difference.is_empty else 1
 
 
 def _matrix(args: argparse.Namespace) -> int:
@@ -220,9 +228,10 @@ def _matrix(args: argparse.Namespace) -> int:
 
 
 def _explain(args: argparse.Namespace) -> int:
+    analysis = _load_analysis(args.target)
     if args.argument is not None and not args.arguments:
         raise ValueError("--argument requires --arguments")
-    graph = _load_scope(args.target).graph
+    graph = _required_graph(analysis)
     component = None
     if args.path is not None:
         if args.name is not None:
@@ -286,7 +295,7 @@ def _explain(args: argparse.Namespace) -> int:
     else:
         value = explanation.to_json() if args.format == "json" else explanation.to_text()
     _write(value, args.output)
-    return 0
+    return 0 if analysis.report.is_valid else 1
 
 
 def _analysis_subject(graph: Any, service: str | None, path: str | None, *, all_roots: bool = True) -> Any:
@@ -300,7 +309,8 @@ def _analysis_subject(graph: Any, service: str | None, path: str | None, *, all_
 
 
 def _impact(args: argparse.Namespace) -> int:
-    graph = _load_scope(args.target).graph
+    analysis = _load_analysis(args.target)
+    graph = _required_graph(analysis)
     subject = _analysis_subject(graph, args.service, args.path, all_roots=args.all)
     match = "occurrence" if args.path is not None else args.match
     report = graph.dependents(subject, match=match, name=args.name, include_deferred=args.include_deferred)
@@ -311,11 +321,12 @@ def _impact(args: argparse.Namespace) -> int:
     else:
         value = report.to_text()
     _write(value, args.output)
-    return 0
+    return 0 if analysis.report.is_valid else 1
 
 
 def _sharing(args: argparse.Namespace) -> int:
-    graph = _load_scope(args.target).graph
+    analysis = _load_analysis(args.target)
+    graph = _required_graph(analysis)
     subject = None if args.service is None and args.path is None else _analysis_subject(graph, args.service, args.path)
     report = graph.sharing_report(subject)
     if args.format == "json":
@@ -325,11 +336,12 @@ def _sharing(args: argparse.Namespace) -> int:
     else:
         value = report.to_text()
     _write(value, args.output)
-    return 0
+    return 0 if analysis.report.is_valid else 1
 
 
 def _activation(args: argparse.Namespace) -> int:
-    graph = _load_scope(args.target).graph
+    analysis = _load_analysis(args.target)
+    graph = _required_graph(analysis)
     subject = _analysis_subject(graph, args.service, args.path)
     report = graph.activation_report(subject, scenario=args.scenario)
     if args.format == "json":
@@ -339,14 +351,14 @@ def _activation(args: argparse.Namespace) -> int:
     else:
         value = report.to_text()
     _write(value, args.output)
-    return 0
+    return 0 if analysis.report.is_valid else 1
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="clean-ioc", description="Inspect compiled Clean IoC component plans")
     commands = parser.add_subparsers(dest="command", required=True)
 
-    check = commands.add_parser("check", help="Build a target and report compiler findings")
+    check = commands.add_parser("check", help="Analyse a target and report findings")
     check.add_argument("target", help="module:object composition target")
     check.add_argument("--format", choices=("text", "json", "sarif"), default="text")
     check.add_argument("--triage", action="store_true", help="Group captured failed-build evidence")
@@ -363,7 +375,7 @@ def _parser() -> argparse.ArgumentParser:
     profile = commands.add_parser("profile", help="Measure one actual builder compilation")
     profile.add_argument("target", help="module:object unbuilt builder or zero-argument builder factory")
     profile.add_argument("--format", choices=("text", "json"), default="text")
-    profile.add_argument("--diagnostics", action="store_true", help="Include optional compiler diagnostic capture")
+    profile.add_argument("--operation", choices=("build", "analyse"), default="build", help="Operation to profile")
     profile.add_argument("--max-records", type=int, default=10_000, help="Maximum detailed spans (default: 10000)")
     profile.add_argument("-o", "--output", help="Write output to a file instead of stdout")
     profile.set_defaults(handler=_profile)

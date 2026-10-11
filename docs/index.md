@@ -75,8 +75,8 @@ builder.register(UserService)  # UserRepository is missing
 container = builder.build()  # raises ContainerBuildError
 ```
 
-`build()` raises `ContainerBuildError` with a structured report for invalid plans. A failed build leaves the builder
-reusable. After a successful build, the builder is immutable and cannot be built again.
+`build()` raises a local `ContainerBuildError` for impossible wiring. Use `analyse()` for completed findings and full
+or partial graphs. Every admitted attempt consumes the builder; retry with a fresh composition factory.
 
 ## Core capabilities
 
@@ -97,8 +97,8 @@ reusable. After a successful build, the builder is immutable and cannot be built
 
 Custom validation rules receive the complete immutable compiled graph and return structured findings. They can enforce
 module boundaries, registration uniqueness, required decorators, naming and tag conventions, or policies found by
-inspecting implementation ASTs. Rules run during `build()` by default; expensive rules can set
-`mode="validation"` and still run under `clean-ioc check` in both strict and non-strict modes.
+inspecting implementation ASTs. Rules run once during `analyse()` and never during `build()`. `clean-ioc check` inspects the completed analysis in both
+strict and non-strict modes.
 
 ```python
 def forbid_domain_to_infrastructure(context):
@@ -131,7 +131,7 @@ See [Custom graph validation](custom-validation.md) for a complete rule cookbook
 - [Decorators](decorators.md), [decorator templates](decorator-templates.md), and [generics](generics.md) — compiled handler pipelines
 - [Boundaries](boundaries.md) — private registrations, explicit exposures, and declared cross-boundary uses
 - [Custom graph validation](custom-validation.md) — executable architecture and policy recipes
-- [Policy helpers and packs](policies.md) — reusable rules with per-rule build and validation phases
+- [Policy helpers and packs](policies.md) — reusable analysis rules
 - [ASGI](extensions/asgi.md) — dependency-free lifespan and operation scopes
 - [FastAPI](extensions/fastapi.md) — request scopes and explicit request values
 - [Benchmarks](benchmarks.md) — build, runtime, and allocation experiments

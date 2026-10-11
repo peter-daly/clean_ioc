@@ -1,6 +1,10 @@
 # Local compiled graph artifact experiment
 
-**Status: unfinished experiment, not ready for production; may be dropped.**
+**Status: parked unsupported experiment; may be dropped.**
+
+The current private schema 9 serializes a restricted execution plan only. This page preserves earlier measurements
+and reproduction commands from their recorded revisions, including retired flags. Task 24 checks current artifact
+round-trip correctness; task 25 owns further measurement. Analysis metadata is not an execution artifact promise.
 
 Retained as a local proof of concept and benchmark only. The initial constructor-only
 experiment saved about 0.62 seconds, with similar retained memory and higher startup
@@ -13,6 +17,12 @@ The retest after task 05 adds reduced-metadata artifacts. Its results are record
 in `.work/graph-memory-optimization/artifact-retest-post05.md`. The local schema-7
 codec supports both full and reduced fixture plans; it does not change production
 compiler or runtime code.
+
+The current source-coupled codec uses schema 8 to preserve compact origin and
+decorator indexes and shared mapping-proxy backing. Older experimental files must
+be regenerated. The supported public build subset remains run mode; complete
+analysis plans exceed this parked codec's exclusions. Historical full-metadata
+comparisons use private fixture controls and do not define another public mode.
 
 For the subsequent memory investigation with decorator/registration templates,
 providers and maps, see the [richer graph fixture](graph-memory-fixture.md).

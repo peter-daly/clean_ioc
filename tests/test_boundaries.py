@@ -15,6 +15,7 @@ from clean_ioc import (
     Expose,
     GraphManifest,
     Provider,
+    ScopeBuilder,
     Tag,
     Use,
     ValidationContext,
@@ -136,14 +137,15 @@ def application_builder() -> ContainerBuilder:
 
 
 def issue_code(builder) -> str:
-    with pytest.raises(ContainerBuildError) as captured:
-        builder.build()
-    assert captured.value.report is not None
-    return captured.value.report.errors[0].code
+    captured_analysis = builder.analyse()
+    assert not captured_analysis.report.is_valid
+    assert captured_analysis.report is not None
+    return captured_analysis.report.errors[0].code
 
 
 def test_private_by_default_exposed_at_root_and_used_explicitly():
-    container = application_builder().build()
+    container_analysis = application_builder().analyse()
+    container = container_analysis.create_runtime()
 
     with container.new_scope() as scope:
         order = scope.resolve(PlaceOrder)
@@ -155,7 +157,7 @@ def test_private_by_default_exposed_at_root_and_used_explicitly():
     assert not container.has_component(Repository)
     assert container.has_component(Gateway)
     assert container.has_component(PlaceOrder)
-    assert {root.component.boundary for root in container.graph.entrypoints} == {"orders"}
+    assert {root.component.boundary for root in container_analysis.graph.entrypoints} == {"orders"}
 
 
 def test_exposure_and_use_preserve_named_tagged_singleton_identity():
@@ -239,7 +241,8 @@ def test_exposure_alias_can_publish_a_complete_public_identity():
     builder.create_boundary(
         "checkout", uses=(Use("payments", PublicGateway, filter=cf.with_name("primary")),), exposes=(Expose(Checkout),)
     ).apply_bundle(checkout)
-    container = builder.build()
+    container_analysis = builder.analyse()
+    container = container_analysis.create_runtime()
 
     exposed = container.resolve(PublicGateway, filter=cf.with_name("primary"))
     alternate = container.resolve(AlternateGateway, filter=cf.with_name("backup"))
@@ -254,7 +257,7 @@ def test_exposure_alias_can_publish_a_complete_public_identity():
 
     gateway_roots = [
         root
-        for root in container.graph.roots
+        for root in container_analysis.graph.roots
         if root.component.service_type in (Gateway, PublicGateway, AlternateGateway)
     ]
     assert {(root.area, root.component.service_type, root.component.name) for root in gateway_roots} == {
@@ -264,7 +267,7 @@ def test_exposure_alias_can_publish_a_complete_public_identity():
     }
     assert len({root.component.id for root in gateway_roots}) == 1
 
-    contracts = {item["name"]: item for item in container.graph.manifest(all_roots=True).data["boundaries"]}
+    contracts = {item["name"]: item for item in container_analysis.graph.manifest(all_roots=True).data["boundaries"]}
     public = next(exposure for exposure in contracts["payments"]["exposures"] if exposure["name"] == "primary")
     assert public["service"].endswith(".PublicGateway")
     assert public["source_service"].endswith(".Gateway")
@@ -294,15 +297,16 @@ def test_boundary_alias_can_publish_a_named_source_as_the_unnamed_default():
             ),
         ),
     ).apply_bundle(source)
-    container = builder.build()
+    container_analysis = builder.analyse()
+    container = container_analysis.create_runtime()
 
     assert isinstance(container.resolve(Public), Internal)
     assert container.has_component(Public)
     assert not container.has_component(Public, filter=cf.with_name("private"))
-    public = next(root.component for root in container.graph.roots if root.component.service_type is Public)
+    public = next(root.component for root in container_analysis.graph.roots if root.component.service_type is Public)
     private = next(
         root.component
-        for root in container.graph.roots
+        for root in container_analysis.graph.roots
         if root.area == "source" and root.component.service_type is Internal
     )
     assert (public.name, public.tags) == (None, ())
@@ -322,7 +326,7 @@ def test_duplicate_public_exposure_identity_is_rejected():
             Expose(Gateway, filter=cf.with_name("stripe"), alias=alias),
         ),
     ).apply_bundle(payments)
-    assert issue_code(builder) == "boundary-expose-ambiguous"
+    assert issue_code(builder) == "boundary-expose-duplicate"
 
 
 @pytest.mark.parametrize(
@@ -409,6 +413,7 @@ def test_alias_projects_only_after_the_complete_source_plan_is_compiled():
             ),
         ),
     ).apply_bundle(source)
+    container_composition = builder.retain_composition()
     container = builder.build()
 
     resolved = container.resolve(PublicService, filter=cf.with_name("public"))
@@ -420,7 +425,7 @@ def test_alias_projects_only_after_the_complete_source_plan_is_compiled():
     assert {name for _, name, _ in policy_views} == {"internal"}
     assert {tags for _, _, tags in policy_views} == {(Tag("side", "source"),)}
 
-    with container.new_scope_builder().build() as overlay:
+    with ScopeBuilder(container, composition=container_composition).build() as overlay:
         assert overlay.resolve(PublicService, filter=cf.with_name("public")) is resolved
 
 
@@ -535,7 +540,7 @@ def test_boundary_alias_duplicate_identity_canonicalizes_tag_order():
             ),
         ),
     ).apply_bundle(source)
-    exposure = manifest_builder.build().graph.manifest().data["boundaries"][0]["exposures"][0]
+    exposure = manifest_builder.analyse().graph.manifest().data["boundaries"][0]["exposures"][0]
     assert exposure["tags"] == [
         {"name": "same", "value": None},
         {"name": "same", "value": ""},
@@ -555,11 +560,12 @@ def test_boundary_alias_duplicate_identity_canonicalizes_tag_order():
             ),
         ),
     ).apply_bundle(source)
-    assert issue_code(builder) == "boundary-expose-ambiguous"
+    assert issue_code(builder) == "boundary-expose-duplicate"
 
 
 def test_boundary_install_order_does_not_change_resolution_or_manifest():
-    first = application_builder().build()
+    first_analysis = application_builder().analyse()
+    _first = first_analysis.create_runtime()
     second_builder = ContainerBuilder()
     second_builder.register(Settings, instance=Settings("secret"))
     second_builder.create_boundary(
@@ -568,10 +574,14 @@ def test_boundary_install_order_does_not_change_resolution_or_manifest():
     second_builder.create_boundary("payments", uses=(Use.root(Settings),), exposes=(Expose(Gateway),)).apply_bundle(
         payments_bundle
     )
-    second = second_builder.build()
+    second_analysis = second_builder.analyse()
+    second = second_analysis.create_runtime()
 
     assert isinstance(second.resolve(PlaceOrder).gateway, StripeGateway)
-    assert first.graph.manifest(all_roots=True).to_json() == second.graph.manifest(all_roots=True).to_json()
+    assert (
+        first_analysis.graph.manifest(all_roots=True).to_json()
+        == second_analysis.graph.manifest(all_roots=True).to_json()
+    )
 
 
 def test_exposure_filters_inspect_the_original_compiled_component_subtree():
@@ -594,14 +604,14 @@ def test_missing_visibility_reports_private_source_and_boundary_decisions():
     builder.create_boundary("payments", uses=(Use.root(Settings),)).apply_bundle(payments_bundle)
     builder.create_boundary("orders", exposes=(Expose(PlaceOrder),)).apply_bundle(orders_bundle)
 
-    with pytest.raises(ContainerBuildError) as captured:
-        builder.build(diagnostics=True)
-    assert captured.value.report is not None
-    assert {issue.code for issue in captured.value.report.errors} == {"boundary-private-component"}
-    assert "payments" in captured.value.report.errors[0].message
+    captured_analysis = builder.analyse()
+    assert not captured_analysis.report.is_valid
+    assert captured_analysis.report is not None
+    assert {issue.code for issue in captured_analysis.report.errors} == {"boundary-private-component"}
+    assert "payments" in captured_analysis.report.errors[0].message
     assert any(
         "rejected-not-exposed" in decision.reason_codes
-        for explanation in captured.value.explanations
+        for explanation in captured_analysis.report._explanations
         for decision in explanation.rejected
     )
 
@@ -615,10 +625,14 @@ def test_missing_visibility_reports_private_source_and_boundary_decisions():
 )
 def test_invalid_names_are_structured(name, expected):
     builder = ContainerBuilder()
-    with pytest.raises(ContainerBuildError) as captured:
+    if name == "root":
+        with pytest.raises(ContainerBuildError) as captured:
+            builder.create_boundary(name)
+        assert captured.value.code == expected
+        assert builder.analyse().graph.boundaries == ()
+    else:
         builder.create_boundary(name)
-    assert captured.value.code == expected
-    assert builder.build().graph.boundaries == ()
+        assert any(issue.code == expected for issue in builder.analyse().report.errors)
 
 
 def test_duplicate_names_missing_sources_and_cycles_are_structured():
@@ -635,11 +649,11 @@ def test_duplicate_names_missing_sources_and_cycles_are_structured():
     cycle = ContainerBuilder()
     cycle.create_boundary("first", uses=(Use("second", Gateway),)).apply_bundle(lambda builder: None)
     cycle.create_boundary("second", uses=(Use("first", Gateway),)).apply_bundle(lambda builder: None)
-    with pytest.raises(ContainerBuildError) as captured:
-        cycle.build()
-    assert captured.value.report is not None
-    assert captured.value.report.errors[0].code == "boundary-use-cycle"
-    assert captured.value.report.errors[0].path == ("first", "second", "first")
+    captured_analysis = cycle.analyse()
+    assert not captured_analysis.report.is_valid
+    assert captured_analysis.report is not None
+    assert captured_analysis.report.errors[0].code == "boundary-use-cycle"
+    assert captured_analysis.report.errors[0].path == ("first", "second", "first")
 
 
 def test_expose_and_use_cardinality_and_reexport_are_validated():
@@ -706,17 +720,18 @@ def test_root_entrypoint_can_select_a_boundary_alias_by_its_public_identity():
         ),
     ).apply_bundle(source)
     builder.mark_entrypoint(Public, filter=cf.has_tag("side", "public"))
-    container = builder.build()
+    container_analysis = builder.analyse()
+    _container = container_analysis.create_runtime()
 
-    assert len(container.graph.entrypoints) == 1
-    entrypoint = container.graph.entrypoints[0]
+    assert len(container_analysis.graph.entrypoints) == 1
+    entrypoint = container_analysis.graph.entrypoints[0]
     assert entrypoint.requested_type is Public
     assert entrypoint.area is None
     assert entrypoint.component.service_type is Public
     assert entrypoint.component.name == "public"
     assert entrypoint.component.tags == (Tag("side", "public"),)
     assert entrypoint.component.boundary == "source"
-    assert container.graph.manifest().data["roots"][0]["service"].endswith(".Public")
+    assert container_analysis.graph.manifest().data["roots"][0]["service"].endswith(".Public")
 
 
 def test_decorators_do_not_cross_boundaries_and_explicit_cross_attempt_is_rejected():
@@ -786,13 +801,15 @@ def test_root_scope_slot_can_be_used_but_private_slots_are_rejected():
 
 
 def test_overlay_can_add_a_boundary_use_parent_exposure_but_cannot_reopen_it():
-    parent = application_builder().build()
+    parent_builder = application_builder()
+    parent_composition = parent_builder.retain_composition()
+    parent = parent_builder.build()
 
     class Refund:
         def __init__(self, gateway: Gateway):
             self.gateway = gateway
 
-    overlay_builder = parent.new_scope_builder()
+    overlay_builder = ScopeBuilder(parent, composition=parent_composition)
 
     def refund_bundle(builder):
         builder.register(Refund)
@@ -803,15 +820,16 @@ def test_overlay_can_add_a_boundary_use_parent_exposure_but_cannot_reopen_it():
     overlay = overlay_builder.build()
     assert overlay.resolve(Refund).gateway is parent.resolve(Gateway)
 
-    reopened = parent.new_scope_builder()
+    reopened = ScopeBuilder(parent, composition=parent_composition)
     with pytest.raises(ContainerBuildError) as captured:
         reopened.create_boundary("payments")
     assert captured.value.code == "overlay-boundary-reopened"
 
 
 def test_manifest_provenance_rendering_and_semantic_diff_include_boundaries():
-    container = application_builder().build(diagnostics=True)
-    graph = container.graph
+    container_analysis = application_builder().analyse()
+    _container = container_analysis.create_runtime()
+    graph = container_analysis.graph
     manifest = graph.manifest(all_roots=True)
 
     assert "schema_version" not in manifest.data
@@ -845,14 +863,14 @@ def test_manifest_provenance_rendering_and_semantic_diff_include_boundaries():
         graph.explain(child).selected[0].reason_codes for child in order.dependencies if child.service_type is Gateway
     )
 
-    without = ContainerBuilder().build(diagnostics=True).graph.manifest(all_roots=True)
+    without = ContainerBuilder().analyse().graph.manifest(all_roots=True)
     changes = manifest.diff(without).semantic_changes
     assert {change.category for change in changes} >= {"boundary-added"}
     assert "boundary-removed" in {change.category for change in without.diff(manifest).semantic_changes}
 
 
 def test_semantic_diff_reports_removed_boundary_access_and_bypasses():
-    baseline = application_builder().build().graph.manifest(all_roots=True)
+    baseline = application_builder().analyse().graph.manifest(all_roots=True)
     data = baseline.to_dict()
     orders = next(boundary for boundary in data["boundaries"] if boundary["name"] == "orders")
     orders["uses"] = []
@@ -907,7 +925,7 @@ def test_semantic_diff_reports_boundary_alias_contract_changes(changed_alias):
         builder.create_boundary(
             "source", exposes=(Expose(Gateway, filter=cf.with_name("stripe"), alias=alias),)
         ).apply_bundle(source)
-        return builder.build().graph.manifest(all_roots=True)
+        return builder.analyse().graph.manifest(all_roots=True)
 
     baseline = manifest(baseline_alias)
     changed = manifest(changed_alias)
@@ -930,7 +948,7 @@ def test_semantic_diff_reports_a_component_moving_between_boundaries():
         builder = ContainerBuilder()
         builder.create_boundary(name, exposes=(Expose(Repository),)).apply_bundle(bundle)
         builder.mark_entrypoint(Repository)
-        return builder.build().graph.manifest()
+        return builder.analyse().graph.manifest()
 
     changes = manifest("reporting").diff(manifest("orders")).semantic_changes
     moved = [change for change in changes if change.category == "boundary-component-moved"]
@@ -955,7 +973,7 @@ def test_root_and_local_validation_rules_receive_the_promised_graph_views():
         boundary_builder.add_validation_rule(validate)
 
     builder.create_boundary("reporting").apply_bundle(local_bundle)
-    builder.build()
+    builder.analyse()
 
     root_view = next(areas for boundary, areas in seen if boundary is None)
     local_view = next(areas for boundary, areas in seen if boundary == "reporting")
@@ -995,15 +1013,15 @@ def test_validation_occurrence_path_caches_are_isolated_between_full_and_boundar
 
     for name in ("first", "second"):
         builder.create_boundary(name).apply_bundle(local_bundle)
-    with builder.build(budget=budget) as owner:
-        assert graphs[None] is owner.graph
+    with builder.analyse(budget=budget) as owner_analysis, owner_analysis.create_runtime() as _owner:
+        assert graphs[None] is owner_analysis.graph
         assert graphs[None]._occurrence_paths_cache is not graphs["first"]._occurrence_paths_cache
         assert graphs["first"]._occurrence_paths_cache is not graphs["second"]._occurrence_paths_cache
         # Boundary caches were populated after the full view; they must not
         # invalidate its original numbering or alter its graph membership.
-        paths = owner.graph._component_paths(all_roots=True)
+        paths = owner_analysis.graph._component_paths(all_roots=True)
         for path, component in paths.items():
-            assert "/".join(owner.graph._path_for_component(component)) == path
+            assert "/".join(owner_analysis.graph._path_for_component(component)) == path
 
 
 def test_bundle_failure_keeps_partial_composition_and_nested_boundaries_are_rejected():
@@ -1186,12 +1204,15 @@ def test_open_generic_factory_alias_specializes_the_source_service():
         ),
         exposes=(Expose(Consumer),),
     ).apply_bundle(consumer)
-    container = builder.build()
+    container_analysis = builder.analyse()
+    container = container_analysis.create_runtime()
 
     product = container.resolve(PublicGenericProduct[int])
     assert isinstance(product, GenericProduct)
     assert isinstance(product.dependency, IntGenericDependency)
-    public_root = next(root for root in container.graph.roots if root.requested_type == PublicGenericProduct[int])
+    public_root = next(
+        root for root in container_analysis.graph.roots if root.requested_type == PublicGenericProduct[int]
+    )
     assert public_root.component.service_type == PublicGenericProduct[int]
     assert container.resolve(Consumer).product is not product
 
@@ -1231,10 +1252,11 @@ def test_open_generic_alias_singleton_anchors_by_source_specialization_in_overla
     builder.create_boundary(
         "parent_consumer", uses=(Use("generic_source", PublicGenericProduct[int]),), exposes=(Expose(ParentConsumer),)
     ).apply_bundle(parent_bundle)
+    parent_composition = builder.retain_composition()
     parent = builder.build()
     parent_product = parent.resolve(ParentConsumer).product
 
-    overlay_builder = parent.new_scope_builder()
+    overlay_builder = ScopeBuilder(parent, composition=parent_composition)
 
     def overlay_bundle(private):
         private.register(OverlayConsumer)

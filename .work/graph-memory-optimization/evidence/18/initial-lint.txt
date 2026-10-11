@@ -1,0 +1,2 @@
+.work/graph-memory-optimization/evidence/18/grid.py:104:18: F821 Undefined name `Path`
+Found 2 errors (1 fixed, 1 remaining).

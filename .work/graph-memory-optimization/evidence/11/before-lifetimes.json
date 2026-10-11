@@ -1,0 +1,242 @@
+[
+  {
+    "traced": false,
+    "failure": false,
+    "seconds": 0.09984641696792096,
+    "python_retained": null,
+    "python_peak": null,
+    "peak_rss_bytes": 45989888,
+    "saved_views": 2,
+    "active_views": 2,
+    "origin_entries": 1606,
+    "cached_manifests": 2,
+    "error_graph": false,
+    "report_graph": false,
+    "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "source_hashes": {
+      "clean_ioc/container.py": "295af04a30fbe59546a56723409035986bb7d4238d7262b053c2282aa97eaa37",
+      "clean_ioc/tooling.py": "33a49e389164f1d77d22d98ebea907b433ef02e04898f6e4b106e37943fdec32"
+    }
+  },
+  {
+    "traced": false,
+    "failure": false,
+    "seconds": 0.09989758301526308,
+    "python_retained": null,
+    "python_peak": null,
+    "peak_rss_bytes": 46383104,
+    "saved_views": 2,
+    "active_views": 2,
+    "origin_entries": 1606,
+    "cached_manifests": 2,
+    "error_graph": false,
+    "report_graph": false,
+    "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "source_hashes": {
+      "clean_ioc/container.py": "295af04a30fbe59546a56723409035986bb7d4238d7262b053c2282aa97eaa37",
+      "clean_ioc/tooling.py": "33a49e389164f1d77d22d98ebea907b433ef02e04898f6e4b106e37943fdec32"
+    }
+  },
+  {
+    "traced": false,
+    "failure": false,
+    "seconds": 0.0992532919626683,
+    "python_retained": null,
+    "python_peak": null,
+    "peak_rss_bytes": 46268416,
+    "saved_views": 2,
+    "active_views": 2,
+    "origin_entries": 1606,
+    "cached_manifests": 2,
+    "error_graph": false,
+    "report_graph": false,
+    "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "source_hashes": {
+      "clean_ioc/container.py": "295af04a30fbe59546a56723409035986bb7d4238d7262b053c2282aa97eaa37",
+      "clean_ioc/tooling.py": "33a49e389164f1d77d22d98ebea907b433ef02e04898f6e4b106e37943fdec32"
+    }
+  },
+  {
+    "traced": true,
+    "failure": false,
+    "seconds": 0.6576112500624731,
+    "python_retained": 3107727,
+    "python_peak": 5598061,
+    "peak_rss_bytes": 50266112,
+    "saved_views": 2,
+    "active_views": 2,
+    "origin_entries": 1606,
+    "cached_manifests": 2,
+    "error_graph": false,
+    "report_graph": false,
+    "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "source_hashes": {
+      "clean_ioc/container.py": "295af04a30fbe59546a56723409035986bb7d4238d7262b053c2282aa97eaa37",
+      "clean_ioc/tooling.py": "33a49e389164f1d77d22d98ebea907b433ef02e04898f6e4b106e37943fdec32"
+    }
+  },
+  {
+    "traced": true,
+    "failure": false,
+    "seconds": 0.6562151670223102,
+    "python_retained": 3107326,
+    "python_peak": 5598006,
+    "peak_rss_bytes": 50348032,
+    "saved_views": 2,
+    "active_views": 2,
+    "origin_entries": 1606,
+    "cached_manifests": 2,
+    "error_graph": false,
+    "report_graph": false,
+    "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "source_hashes": {
+      "clean_ioc/container.py": "295af04a30fbe59546a56723409035986bb7d4238d7262b053c2282aa97eaa37",
+      "clean_ioc/tooling.py": "33a49e389164f1d77d22d98ebea907b433ef02e04898f6e4b106e37943fdec32"
+    }
+  },
+  {
+    "traced": true,
+    "failure": false,
+    "seconds": 0.6595430829329416,
+    "python_retained": 3107302,
+    "python_peak": 5597817,
+    "peak_rss_bytes": 50659328,
+    "saved_views": 2,
+    "active_views": 2,
+    "origin_entries": 1606,
+    "cached_manifests": 2,
+    "error_graph": false,
+    "report_graph": false,
+    "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "source_hashes": {
+      "clean_ioc/container.py": "295af04a30fbe59546a56723409035986bb7d4238d7262b053c2282aa97eaa37",
+      "clean_ioc/tooling.py": "33a49e389164f1d77d22d98ebea907b433ef02e04898f6e4b106e37943fdec32"
+    }
+  },
+  {
+    "traced": false,
+    "failure": true,
+    "seconds": 0.08761404198594391,
+    "python_retained": null,
+    "python_peak": null,
+    "peak_rss_bytes": 45727744,
+    "saved_views": 2,
+    "active_views": 2,
+    "origin_entries": 1606,
+    "cached_manifests": 2,
+    "error_graph": true,
+    "report_graph": true,
+    "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "source_hashes": {
+      "clean_ioc/container.py": "295af04a30fbe59546a56723409035986bb7d4238d7262b053c2282aa97eaa37",
+      "clean_ioc/tooling.py": "33a49e389164f1d77d22d98ebea907b433ef02e04898f6e4b106e37943fdec32"
+    }
+  },
+  {
+    "traced": false,
+    "failure": true,
+    "seconds": 0.08754749991931021,
+    "python_retained": null,
+    "python_peak": null,
+    "peak_rss_bytes": 45891584,
+    "saved_views": 2,
+    "active_views": 2,
+    "origin_entries": 1606,
+    "cached_manifests": 2,
+    "error_graph": true,
+    "report_graph": true,
+    "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "source_hashes": {
+      "clean_ioc/container.py": "295af04a30fbe59546a56723409035986bb7d4238d7262b053c2282aa97eaa37",
+      "clean_ioc/tooling.py": "33a49e389164f1d77d22d98ebea907b433ef02e04898f6e4b106e37943fdec32"
+    }
+  },
+  {
+    "traced": false,
+    "failure": true,
+    "seconds": 0.08785370807163417,
+    "python_retained": null,
+    "python_peak": null,
+    "peak_rss_bytes": 46104576,
+    "saved_views": 2,
+    "active_views": 2,
+    "origin_entries": 1606,
+    "cached_manifests": 2,
+    "error_graph": true,
+    "report_graph": true,
+    "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "source_hashes": {
+      "clean_ioc/container.py": "295af04a30fbe59546a56723409035986bb7d4238d7262b053c2282aa97eaa37",
+      "clean_ioc/tooling.py": "33a49e389164f1d77d22d98ebea907b433ef02e04898f6e4b106e37943fdec32"
+    }
+  },
+  {
+    "traced": true,
+    "failure": true,
+    "seconds": 0.6155189160490409,
+    "python_retained": 3250429,
+    "python_peak": 5182462,
+    "peak_rss_bytes": 49856512,
+    "saved_views": 2,
+    "active_views": 2,
+    "origin_entries": 1606,
+    "cached_manifests": 2,
+    "error_graph": true,
+    "report_graph": true,
+    "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "source_hashes": {
+      "clean_ioc/container.py": "295af04a30fbe59546a56723409035986bb7d4238d7262b053c2282aa97eaa37",
+      "clean_ioc/tooling.py": "33a49e389164f1d77d22d98ebea907b433ef02e04898f6e4b106e37943fdec32"
+    }
+  },
+  {
+    "traced": true,
+    "failure": true,
+    "seconds": 0.6014613750157878,
+    "python_retained": 3250618,
+    "python_peak": 5182651,
+    "peak_rss_bytes": 49741824,
+    "saved_views": 2,
+    "active_views": 2,
+    "origin_entries": 1606,
+    "cached_manifests": 2,
+    "error_graph": true,
+    "report_graph": true,
+    "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "source_hashes": {
+      "clean_ioc/container.py": "295af04a30fbe59546a56723409035986bb7d4238d7262b053c2282aa97eaa37",
+      "clean_ioc/tooling.py": "33a49e389164f1d77d22d98ebea907b433ef02e04898f6e4b106e37943fdec32"
+    }
+  },
+  {
+    "traced": true,
+    "failure": true,
+    "seconds": 0.6114057080121711,
+    "python_retained": 3250366,
+    "python_peak": 5182399,
+    "peak_rss_bytes": 49905664,
+    "saved_views": 2,
+    "active_views": 2,
+    "origin_entries": 1606,
+    "cached_manifests": 2,
+    "error_graph": true,
+    "report_graph": true,
+    "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "source_hashes": {
+      "clean_ioc/container.py": "295af04a30fbe59546a56723409035986bb7d4238d7262b053c2282aa97eaa37",
+      "clean_ioc/tooling.py": "33a49e389164f1d77d22d98ebea907b433ef02e04898f6e4b106e37943fdec32"
+    }
+  }
+]

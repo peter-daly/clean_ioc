@@ -21,6 +21,7 @@ from typing import (
     Union,
     overload,
 )
+from weakref import WeakValueDictionary
 
 from typetoolbox.generics import GenericTypeMap
 from typing_extensions import TypeForm
@@ -44,7 +45,6 @@ Lifespan: TypeAlias = Literal["transient", "per_resolution", "scoped", "singleto
 LifespanPolicy: TypeAlias = Lifespan | Literal["auto"]
 ScopePolicy: TypeAlias = Literal["current", "per_call"]
 RootPolicy: TypeAlias = Literal["entrypoint", "resolvable", "dependency_only"]
-ValidationRuleMode: TypeAlias = Literal["build", "validation"]
 BundleRunScope: TypeAlias = Literal["boundary", "scope", "container"]
 K = TypeVar("K")
 TProviderService = TypeVar("TProviderService")
@@ -88,7 +88,7 @@ class ComponentActivation(str, Enum):
     deferred = "deferred"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, weakref_slot=True)
 class _ComponentDefinition:
     """Captured referents shared only by identity; never runtime products or owners."""
 
@@ -179,19 +179,34 @@ class _ComponentRecord:
         return mapping
 
 
-@dataclass(slots=True)
+_DRAFT_FIELD_UNSET = object()
+
+
+class _DraftDefinitionPool:
+    """A graph-local weak index; only live drafts and snapshots own facts."""
+
+    __slots__ = ("definitions",)
+
+    def __init__(self) -> None:
+        self.definitions: WeakValueDictionary[tuple[Any, ...], _ComponentDefinition] = WeakValueDictionary()
+
+    def intern(self, values: tuple[Any, ...]) -> _ComponentDefinition:
+        # Integer identities never call application equality/hash. A live value
+        # owns all referents in its key; weak removal prevents stale id reuse.
+        key = tuple(id(value) for value in values)
+        definition = self.definitions.get(key)
+        if definition is None:
+            definition = _ComponentDefinition(*values)
+            self.definitions[key] = definition
+        return definition
+
+
+@dataclass(slots=True, init=False)
 class _ComponentDraft:
+    _definition: _ComponentDefinition
+    _definitions: _DraftDefinitionPool | None
     id: str
     occurrence_id: int
-    service_type: Any
-    implementation: Any
-    implementation_type: type
-    lifespan: Lifespan
-    name: str | None
-    tags: tuple[Tag, ...]
-    build_args: Mapping[str, Any]
-    kind: ComponentKind
-    activation: ComponentActivation
     requires_async: bool = False
     manages_cleanup: bool = False
     cache_owner: RuntimeOwnerKind = RuntimeOwnerKind.none
@@ -206,44 +221,198 @@ class _ComponentDraft:
     decorator_ids: tuple[int, ...] = ()
     decorated_id: int | None = None
     pre_configuration_ids: tuple[int, ...] = ()
-    boundary: str | None = None
-    declared_service_type: Any | None = None
 
-    def freeze(self, definitions: dict[tuple[Any, ...], _ComponentDefinition] | None = None) -> _ComponentRecord:
-        # All key members are built-in integers/tuples. Identity equivalence is
-        # intentionally stricter than equality, including specialized types and
-        # build-argument mappings. Retained definitions keep referents alive,
-        # preventing identity reuse while the build-local index exists.
-        key = (
-            id(self.service_type),
-            id(self.implementation),
-            id(self.implementation_type),
-            id(self.lifespan),
-            id(self.name),
-            tuple(id(tag) for tag in self.tags),
-            id(self.build_args),
-            id(self.kind),
-            id(self.activation),
-            id(self.boundary),
-            id(self.declared_service_type),
+    def __init__(
+        self,
+        id: str,
+        occurrence_id: int,
+        service_type: Any = _DRAFT_FIELD_UNSET,
+        implementation: Any = _DRAFT_FIELD_UNSET,
+        implementation_type: Any = _DRAFT_FIELD_UNSET,
+        lifespan: Any = _DRAFT_FIELD_UNSET,
+        name: Any = _DRAFT_FIELD_UNSET,
+        tags: Any = _DRAFT_FIELD_UNSET,
+        build_args: Any = _DRAFT_FIELD_UNSET,
+        kind: Any = _DRAFT_FIELD_UNSET,
+        activation: Any = _DRAFT_FIELD_UNSET,
+        requires_async: bool = False,
+        manages_cleanup: bool = False,
+        cache_owner: RuntimeOwnerKind = RuntimeOwnerKind.none,
+        cleanup_owner: RuntimeOwnerKind = RuntimeOwnerKind.none,
+        owner_id: int | None = None,
+        ownership_reason: str = "No runtime-owned cache or cleanup",
+        provider_mode: Literal["sync", "async"] | None = None,
+        position: int | None = None,
+        argument: str | None = None,
+        parent_id: int | None = None,
+        dependency_ids: tuple[int, ...] = (),
+        decorator_ids: tuple[int, ...] = (),
+        decorated_id: int | None = None,
+        pre_configuration_ids: tuple[int, ...] = (),
+        boundary: Any = _DRAFT_FIELD_UNSET,
+        declared_service_type: Any = _DRAFT_FIELD_UNSET,
+        *,
+        _definition: _ComponentDefinition | None = None,
+        _definitions: _DraftDefinitionPool | None = None,
+    ) -> None:
+        values = (
+            service_type,
+            implementation,
+            implementation_type,
+            lifespan,
+            name,
+            tags,
+            build_args,
+            kind,
+            activation,
+            boundary,
+            declared_service_type,
         )
-        definition = None if definitions is None else definitions.get(key)
-        if definition is None:
-            definition = _ComponentDefinition(
-                service_type=self.service_type,
-                implementation=self.implementation,
-                implementation_type=self.implementation_type,
-                lifespan=self.lifespan,
-                name=self.name,
-                tags=self.tags,
-                build_args=self.build_args,
-                kind=self.kind,
-                activation=self.activation,
-                boundary=self.boundary,
-                declared_service_type=self.declared_service_type,
+        if _definition is not None:
+            values = tuple(
+                getattr(_definition, name) if value is _DRAFT_FIELD_UNSET else value
+                for name, value in zip(_DEFINITION_FIELDS, values, strict=True)
             )
-            if definitions is not None:
-                definitions[key] = definition
+        else:
+            values = (
+                *values[:9],
+                None if boundary is _DRAFT_FIELD_UNSET else boundary,
+                None if declared_service_type is _DRAFT_FIELD_UNSET else declared_service_type,
+            )
+            if any(value is _DRAFT_FIELD_UNSET for value in values):
+                raise TypeError("A new component draft requires all definition fields")
+        self._definitions = _definitions
+        self._definition = _ComponentDefinition(*values) if _definitions is None else _definitions.intern(values)
+        self.id = id
+        self.occurrence_id = occurrence_id
+        self.requires_async = requires_async
+        self.manages_cleanup = manages_cleanup
+        self.cache_owner = cache_owner
+        self.cleanup_owner = cleanup_owner
+        self.owner_id = owner_id
+        self.ownership_reason = ownership_reason
+        self.provider_mode = provider_mode
+        self.position = position
+        self.argument = argument
+        self.parent_id = parent_id
+        self.dependency_ids = dependency_ids
+        self.decorator_ids = decorator_ids
+        self.decorated_id = decorated_id
+        self.pre_configuration_ids = pre_configuration_ids
+
+    def _replace_definition(self, name: str, value: Any) -> None:
+        if getattr(self._definition, name) is value:
+            return
+        values = tuple(
+            value if field_name == name else getattr(self._definition, field_name) for field_name in _DEFINITION_FIELDS
+        )
+        self._definition = (
+            _ComponentDefinition(*values) if self._definitions is None else self._definitions.intern(values)
+        )
+
+    @property
+    def service_type(self) -> Any:
+        return self._definition.service_type
+
+    @service_type.setter
+    def service_type(self, value: Any) -> None:
+        self._replace_definition("service_type", value)
+
+    @property
+    def implementation(self) -> Any:
+        return self._definition.implementation
+
+    @implementation.setter
+    def implementation(self, value: Any) -> None:
+        self._replace_definition("implementation", value)
+
+    @property
+    def implementation_type(self) -> type:
+        return self._definition.implementation_type
+
+    @implementation_type.setter
+    def implementation_type(self, value: type) -> None:
+        self._replace_definition("implementation_type", value)
+
+    @property
+    def lifespan(self) -> Lifespan:
+        return self._definition.lifespan
+
+    @lifespan.setter
+    def lifespan(self, value: Lifespan) -> None:
+        self._replace_definition("lifespan", value)
+
+    @property
+    def name(self) -> str | None:
+        return self._definition.name
+
+    @name.setter
+    def name(self, value: str | None) -> None:
+        self._replace_definition("name", value)
+
+    @property
+    def tags(self) -> tuple[Tag, ...]:
+        return self._definition.tags
+
+    @tags.setter
+    def tags(self, value: tuple[Tag, ...]) -> None:
+        self._replace_definition("tags", value)
+
+    @property
+    def build_args(self) -> Mapping[str, Any]:
+        return self._definition.build_args
+
+    @build_args.setter
+    def build_args(self, value: Mapping[str, Any]) -> None:
+        self._replace_definition("build_args", value)
+
+    @property
+    def kind(self) -> ComponentKind:
+        return self._definition.kind
+
+    @kind.setter
+    def kind(self, value: ComponentKind) -> None:
+        self._replace_definition("kind", value)
+
+    @property
+    def activation(self) -> ComponentActivation:
+        return self._definition.activation
+
+    @activation.setter
+    def activation(self, value: ComponentActivation) -> None:
+        self._replace_definition("activation", value)
+
+    @property
+    def boundary(self) -> str | None:
+        return self._definition.boundary
+
+    @boundary.setter
+    def boundary(self, value: str | None) -> None:
+        self._replace_definition("boundary", value)
+
+    @property
+    def declared_service_type(self) -> Any | None:
+        return self._definition.declared_service_type
+
+    @declared_service_type.setter
+    def declared_service_type(self, value: Any | None) -> None:
+        self._replace_definition("declared_service_type", value)
+
+    def freeze(
+        self,
+        definitions: dict[tuple[Any, ...], _ComponentDefinition] | None = None,
+        *,
+        include_decorators: bool = True,
+    ) -> _ComponentRecord:
+        definition = self._definition
+        if definitions is not None:
+            # The established final-graph contract normalizes equal ordered tag
+            # referents. Live callbacks and detached snapshots retain tuple identity.
+            key = tuple(
+                tuple(id(tag) for tag in self.tags) if name == "tags" else id(getattr(definition, name))
+                for name in _DEFINITION_FIELDS
+            )
+            definition = definitions.setdefault(key, definition)
         return _ComponentRecord(
             _definition=definition,
             id=self.id,
@@ -259,10 +428,25 @@ class _ComponentDraft:
             argument=self.argument,
             parent_id=self.parent_id,
             dependency_ids=self.dependency_ids,
-            decorator_ids=self.decorator_ids,
+            decorator_ids=self.decorator_ids if include_decorators else (),
             decorated_id=self.decorated_id,
             pre_configuration_ids=self.pre_configuration_ids,
         )
+
+
+_DEFINITION_FIELDS = (
+    "service_type",
+    "implementation",
+    "implementation_type",
+    "lifespan",
+    "name",
+    "tags",
+    "build_args",
+    "kind",
+    "activation",
+    "boundary",
+    "declared_service_type",
+)
 
 
 def normalize_implementation_type(implementation: Any, service_type: Any) -> type:
@@ -290,15 +474,19 @@ def normalize_implementation_type(implementation: Any, service_type: Any) -> typ
 
 
 class _ComponentGraph:
-    __slots__ = ("_drafts", "_records", "_views", "_reduced")
+    __slots__ = ("_drafts", "_records", "_views", "_reduced", "_definitions")
 
     def __init__(self) -> None:
         self._reduced = False
+        self._definitions = _DraftDefinitionPool()
         self._views: list[_ComponentViewContext] = []
         self._drafts: dict[int, _ComponentDraft] = {}
         self._records: dict[int, _ComponentRecord] | None = None
 
     def add(self, draft: _ComponentDraft) -> Component:
+        if draft._definitions is not self._definitions:
+            draft._definition = self._definitions.intern(tuple(getattr(draft, name) for name in _DEFINITION_FIELDS))
+            draft._definitions = self._definitions
         self._drafts[draft.occurrence_id] = draft
         return Component(self, draft.occurrence_id)
 
@@ -336,7 +524,8 @@ class _ComponentGraph:
         # Frozen graphs need none of that capacity; clear the now-empty table.
         self._drafts.clear()
         self._records = records
-        # Only records retain definitions; release interning keys after freezing.
+        # Frozen records own definitions; neither snapshots nor graphs need keys.
+        self._definitions.definitions.clear()
         definitions.clear()
 
 
@@ -644,8 +833,14 @@ def _undecorated_component_view(component: Component) -> Component:
         if key in records:
             continue
         value = source.record(key)
-        record = value if isinstance(value, _ComponentRecord) else value.freeze()
-        records[key] = replace(record, decorator_ids=())
+        if isinstance(value, _ComponentDraft):
+            # Freeze once into an unpublished detached record. Sharing existing
+            # records would also share their lazily populated generic caches.
+            record = value.freeze(include_decorators=False)
+        else:
+            record = value if isinstance(value, _ComponentRecord) else value.freeze()
+            record = replace(record, decorator_ids=())
+        records[key] = record
         pending.extend(record.dependency_ids)
         pending.extend(record.pre_configuration_ids)
         pending.extend(item for item in (record.parent_id, record.decorated_id, record.owner_id) if item is not None)
@@ -686,7 +881,7 @@ class ComponentBuilder(Protocol):
 
     def bundle_run_key(self, per: BundleRunScope) -> str: ...
 
-    def add_validation_rule(self, rule: ValidationRule, *, mode: ValidationRuleMode = "build") -> None: ...
+    def add_validation_rule(self, rule: ValidationRule) -> None: ...
 
     def register(
         self,

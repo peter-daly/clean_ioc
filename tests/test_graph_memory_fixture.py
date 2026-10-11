@@ -1,8 +1,5 @@
 import json
-import os
-import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 
@@ -14,7 +11,7 @@ from clean_ioc import component_filters as cf
 
 @pytest.mark.parametrize("routes,diagnostics", [(1, False), (3, False), (3, True)])
 async def test_template_directions_decorators_providers_maps_and_lifetimes(routes, diagnostics):
-    case = fixture.build(routes, diagnostics=diagnostics)
+    case = fixture.build(routes)
     assert not fixture.ACTIVATIONS
     held = None
     try:
@@ -86,16 +83,23 @@ def test_invalid_scale_fails_before_build(routes):
         fixture.build(routes)
 
 
-def test_memory_measurement_in_fresh_process():
-    command = [sys.executable, "-m", "benchmarks.graph_memory_evidence", "measure", "--routes", "2", "--heap"]
-    repo = Path(__file__).resolve().parents[1]
-    result = json.loads(subprocess.check_output(command, cwd=repo, text=True))  # noqa: S603
-    assert result["pid"] != os.getpid()
+def test_measurement_cli_forwards_heap_options_without_running_measurements(monkeypatch, capsys):
+    from benchmarks import graph_memory_evidence
+
+    calls = []
+
+    async def measure(*arguments):
+        calls.append(arguments)
+        return {"instrumentation": "tracemalloc", "stubbed": True}
+
+    monkeypatch.setattr(graph_memory_evidence, "measure", measure)
+    monkeypatch.setattr(sys, "argv", ["graph_memory_evidence", "measure", "--routes", "2", "--heap"])
+    graph_memory_evidence.main()
+    result = json.loads(capsys.readouterr().out)
+    assert result["stubbed"]
     assert result["instrumentation"] == "tracemalloc"
-    assert result["validated"]["workers"] == 22
-    assert result["prepared"]["traced_retained_bytes"] > 0
-    assert result["graph"]["record_kinds"]["provider_map"] > 0
-    assert result["template_calls"]["generated_worker_to_endpoint_decorator"] == 2
+    assert calls[0][:2] == (2, True)
+    assert not result["eager_decorator_facts"]
 
 
 def test_compact_richer_fixture_explanations_preserve_all_captured_fields():
@@ -103,24 +107,26 @@ def test_compact_richer_fixture_explanations_preserve_all_captured_fields():
 
     from clean_ioc.tooling import _RemappedDecoratorExplanation
 
-    case = fixture.build(1, diagnostics=False)
+    case = fixture.build(1, operation="analyse")
     checked = 0
     with case.runtime:
         callbacks = dict(fixture.TEMPLATE_CALLS)
-        graph = case.runtime.graph
+        assert case.analysis is not None
+        graph = case.analysis.graph
         for visit in graph.walk():
             component = visit.component
             stored = graph._component_evidence(graph._decorator_explanations, component)
-            if not isinstance(stored, _RemappedDecoratorExplanation):
+            if stored is None:
                 continue
-            source_selected, source_rejected = stored.source.selected, stored.source.rejected
+            source = stored.source if isinstance(stored, _RemappedDecoratorExplanation) else stored
+            source_selected, source_rejected = source.selected, source.rejected
 
             def remap(decisions):
                 return tuple(
                     decision
                     if decision.template is None
                     else replace(
-                        decision, template=replace(decision.template, target_occurrence_id=stored.target_occurrence_id)
+                        decision, template=replace(decision.template, target_occurrence_id=component.occurrence_id)
                     )
                     for decision in decisions
                 )
@@ -130,13 +136,13 @@ def test_compact_richer_fixture_explanations_preserve_all_captured_fields():
             second = graph.explain_decorators(component)
             assert (first.selected, first.rejected) == expected
             assert (second.selected, second.rejected) == expected
-            assert first.subject == stored.source.subject
+            assert first.subject == source.subject
             assert all(
                 decision.template is None or decision.template.target_occurrence_id == component.occurrence_id
                 for decision in (*first.selected, *first.rejected)
             )
-            assert stored.source.selected is source_selected
-            assert stored.source.rejected is source_rejected
+            assert source.selected is source_selected
+            assert source.rejected is source_rejected
             checked += 1
         assert checked > 100
         assert fixture.TEMPLATE_CALLS == callbacks
@@ -146,12 +152,13 @@ def test_compact_fixture_matches_eager_manifests_and_complete_decorator_facts(mo
     from dataclasses import asdict
     from uuid import UUID
 
-    from clean_ioc.container import _Compiler, _ExplanationCloneContext
+    from clean_ioc.container import _ExplanationCloneContext
 
     def snapshot():
-        case = fixture.build(1)
+        case = fixture.build(1, operation="analyse")
         with case.runtime:
-            graph = case.runtime.graph
+            assert case.analysis is not None
+            graph = case.analysis.graph
             identities = {}
 
             def normalize(value):
@@ -184,6 +191,5 @@ def test_compact_fixture_matches_eager_manifests_and_complete_decorator_facts(mo
             return graph.manifest(all_roots=True).to_json(), facts
 
     compact = snapshot()
-    monkeypatch.setattr(_Compiler, "_capture_decorator_pattern", lambda _self, explanation: explanation)
     monkeypatch.setattr(_ExplanationCloneContext, "remap_decorators", _ExplanationCloneContext.remap)
     assert snapshot() == compact

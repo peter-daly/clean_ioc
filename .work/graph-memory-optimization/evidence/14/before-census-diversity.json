@@ -1,0 +1,92 @@
+{
+  "policy": "before",
+  "variant": "diversity",
+  "counts": {
+    "_ComponentDraft": {
+      "constructed": 2000,
+      "live": 0,
+      "maximum_live": 2000
+    },
+    "_ComponentDefinition": {
+      "constructed": 2000,
+      "live": 0,
+      "maximum_live": 2000
+    },
+    "_ComponentRecord": {
+      "constructed": 2000,
+      "live": 0,
+      "maximum_live": 2000
+    }
+  },
+  "after_build": [
+    {
+      "_ComponentDraft": {
+        "constructed": 2000,
+        "live": 0,
+        "maximum_live": 2000
+      },
+      "_ComponentDefinition": {
+        "constructed": 2000,
+        "live": 2000,
+        "maximum_live": 2000
+      },
+      "_ComponentRecord": {
+        "constructed": 2000,
+        "live": 2000,
+        "maximum_live": 2000
+      }
+    }
+  ],
+  "graphs": [
+    {
+      "phase": "before-runtime-retention",
+      "drafts": 2000,
+      "draft_shallow_bytes": 496000,
+      "definition_shallow_bytes": 0,
+      "live_definitions": null,
+      "tag_tuples": 1,
+      "ordered_tag_patterns": 1,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 0,
+      "pool_key_bytes": 0,
+      "pool_key_integer_bytes": 0,
+      "pool_weakref_bytes": 0,
+      "pool_table_bytes": 0,
+      "pool_wrapper_bytes": 0
+    },
+    {
+      "phase": "freeze",
+      "drafts": 2000,
+      "draft_shallow_bytes": 496000,
+      "definition_shallow_bytes": 0,
+      "live_definitions": null,
+      "tag_tuples": 1,
+      "ordered_tag_patterns": 1,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 0,
+      "pool_key_bytes": 0,
+      "pool_key_integer_bytes": 0,
+      "pool_weakref_bytes": 0,
+      "pool_table_bytes": 0,
+      "pool_wrapper_bytes": 0
+    },
+    {
+      "phase": "before-runtime-retention",
+      "drafts": 0,
+      "draft_shallow_bytes": 0,
+      "definition_shallow_bytes": 0,
+      "live_definitions": null,
+      "tag_tuples": 0,
+      "ordered_tag_patterns": 0,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 0,
+      "pool_key_bytes": 0,
+      "pool_key_integer_bytes": 0,
+      "pool_weakref_bytes": 0,
+      "pool_table_bytes": 0,
+      "pool_wrapper_bytes": 0
+    }
+  ],
+  "pool": {},
+  "graph": null
+}

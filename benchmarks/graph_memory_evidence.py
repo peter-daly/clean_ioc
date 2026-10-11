@@ -53,7 +53,7 @@ def decorator_census(runtime):
     explanations, decisions, templates, tuples = {}, {}, {}, {}
     logical_outcomes, logical_reasons = Counter(), Counter()
     patterns = {}
-    for explanation in runtime._plan.decorator_explanations.values():
+    for explanation in getattr(runtime._plan, "decorator_explanations", {}).values():
         explanations[id(explanation)] = explanation
         source = (
             explanation.source if isinstance(explanation, runtime_code._RemappedDecoratorExplanation) else explanation
@@ -141,7 +141,7 @@ def census(runtime):
         for group in roots.values()
         for root in group
     ]
-    root_plans.extend(root for _, _, root in plan.architecture_roots)
+    root_plans.extend(root for _, _, root in getattr(plan, "architecture_roots", ()))
     pending = [root.step for root in root_plans]
     seen, steps, registrations = set(), {}, {}
     helpers = Counter()
@@ -188,9 +188,9 @@ def census(runtime):
                 occurrence_ids[id(value)] = value
     origin_maps = {}
     for mapping in (
-        plan.occurrence_origins,
-        (plan.compiled_graph._occurrence_origins if plan.compiled_graph else {}),
-        getattr(plan.occurrence_layers, "origins", plan.occurrence_layers),
+        getattr(plan, "occurrence_origins", {}),
+        {},
+        {},
     ):
         backing = gc.get_referents(mapping)[0] if type(mapping).__name__ == "mappingproxy" else mapping
         origin_maps[id(backing)] = backing
@@ -198,7 +198,7 @@ def census(runtime):
         "decorator_objects": decorator_census(runtime),
         "component_metadata": component_census(records),
         "physical_records": len(records),
-        "logical_graph_visits": sum(1 for _ in runtime.graph.walk()) if plan.explain_metadata else None,
+        "logical_graph_visits": None,
         "provider_view_contexts": len(plan.graph._views),
         "record_kinds": dict(Counter(record.kind.value for record in records.values())),
         "activation_kinds": dict(Counter(record.activation.value for record in records.values())),
@@ -227,7 +227,7 @@ def census(runtime):
         },
         "executable_helpers": dict(helpers),
         "selected_registrations": len(plan.selected_registrations),
-        "unique_origins": len({id(origin) for origin in plan.occurrence_origins.values()}),
+        "unique_origins": len({id(origin) for origin in getattr(plan, "occurrence_origins", {}).values()}),
         "shallow_storage_bytes": {
             "component_records": sum(map(sys.getsizeof, records.values())),
             "record_index": sys.getsizeof(records),
@@ -238,7 +238,7 @@ def census(runtime):
             "registration_objects": sum(map(sys.getsizeof, registrations.values())),
         },
         "metadata_entries": {
-            name: len(getattr(plan, name))
+            name: len(getattr(plan, name, ()))
             for name in (
                 "occurrence_explanations",
                 "parameter_explanations",
@@ -268,9 +268,8 @@ def source_provenance():
     }
 
 
-def inspect_graph(runtime):
+def inspect_graph(graph):
     """Measure bounded public explanations and full public census separately."""
-    graph = runtime.graph
     components = []
     seen = set()
     for visit in graph.walk():
@@ -324,21 +323,19 @@ def inspect_graph(runtime):
 async def measure(
     routes: int,
     heap: bool,
-    diagnostics: bool,
+    operation: str = "build",
     inspection: bool = False,
-    explain_metadata: bool = True,
-    allow_scope_builders: bool = False,
     retain_builder: bool = False,
     capture_selection_views: bool = False,
 ):
     if "benchmarks.graph_memory_fixture" in sys.modules:
         raise RuntimeError("Run each sample in a fresh process")
+    if inspection and operation != "analyse":
+        raise ValueError("Inspection requires --operation analyse")
     result = {
+        "operation": operation,
         "source": source_provenance(),
         "routes": routes,
-        "diagnostics": diagnostics,
-        "explain_metadata": explain_metadata,
-        "allow_scope_builders": allow_scope_builders,
         "ownership": {"retained_builder": retain_builder, "captured_selection_views": capture_selection_views},
         "instrumentation": "tracemalloc" if heap else "none",
         "python": platform.python_version(),
@@ -368,9 +365,7 @@ async def measure(
     with patch.object(cf, "with_name", recording_with_name if capture_selection_views else original):
         fixture = fixture_module.build(
             routes,
-            diagnostics=diagnostics,
-            explain_metadata=explain_metadata,
-            allow_scope_builders=allow_scope_builders,
+            operation=operation,
             retain_builder=retain_builder,
         )
     result["build_seconds"] = time.perf_counter() - started
@@ -403,28 +398,13 @@ async def measure(
             ),
         }
         del graphs
-        if inspection and explain_metadata:
-            result["inspection"] = inspect_graph(fixture.runtime)
+        if inspection:
+            if fixture.analysis is None:
+                raise AssertionError("Inspection requires an analysis result")
+            result["inspection"] = inspect_graph(fixture.analysis.graph)
             fixture_module.require(
                 fixture_module.TEMPLATE_CALLS == fixture.callbacks_after_build, "Inspection reran callbacks"
             )
-        if inspection and not explain_metadata:
-            before = census(fixture.runtime)
-            errors = []
-            for _ in range(2):
-                for operation in (
-                    lambda: fixture.runtime.graph,
-                    fixture.runtime.validation_report,
-                ):
-                    try:
-                        operation()
-                    except RuntimeError as error:
-                        errors.append(str(error))
-                    else:
-                        raise AssertionError("Reduced inspection unexpectedly succeeded")
-            if census(fixture.runtime) != before:
-                raise AssertionError("Reduced inspection retained new metadata")
-            result["disabled_inspection"] = errors
         return result
     finally:
         if tracemalloc.is_tracing():
@@ -432,6 +412,8 @@ async def measure(
         if held is not None:
             await held.scope.__aexit__(None, None, None)
         await fixture.runtime.__aexit__(None, None, None)
+        if fixture.analysis is not None:
+            await fixture.analysis.aclose()
 
 
 def repeat(arguments):
@@ -446,15 +428,14 @@ def repeat(arguments):
                 "--routes",
                 str(arguments.routes),
             ]
+            command.extend(("--operation", arguments.operation))
             if heap:
                 command.append("--heap")
             if arguments.eager_decorator_facts:
                 command.append("--eager-decorator-facts")
             if arguments.inspection:
                 command.append("--inspection")
-            if arguments.diagnostics:
-                command.append("--diagnostics")
-            for option in ("no_explain_metadata", "allow_scope_builders", "retain_builder", "capture_selection_views"):
+            for option in ("retain_builder", "capture_selection_views"):
                 if getattr(arguments, option):
                     command.append("--" + option.replace("_", "-"))
             run = json.loads(subprocess.check_output(command, text=True))  # noqa: S603
@@ -490,9 +471,7 @@ def main():
         action="store_true",
         help="Evidence-only eager reference: disable compact patterns and compact clone remapping",
     )
-    parser.add_argument("--diagnostics", action="store_true")
-    parser.add_argument("--no-explain-metadata", action="store_true")
-    parser.add_argument("--allow-scope-builders", action="store_true")
+    parser.add_argument("--operation", choices=("build", "analyse"), default="build")
     parser.add_argument("--retain-builder", action="store_true")
     parser.add_argument("--capture-selection-views", action="store_true")
     parser.add_argument("--output", type=Path)
@@ -501,8 +480,16 @@ def main():
         parser.error("routes must be 1..128 and repeats must be positive")
     if arguments.mode == "repeat" and arguments.heap:
         parser.error("repeat already runs separate normal and traced samples")
+    if arguments.inspection and arguments.operation != "analyse":
+        parser.error("--inspection requires --operation analyse")
     if arguments.eager_decorator_facts:
-        setattr(runtime_code._Compiler, "_capture_decorator_pattern", lambda _self, explanation: explanation)
+        setattr(
+            runtime_code._Compiler,
+            "_capture_decorator_pattern",
+            lambda _self, explanation, occurrence: runtime_code._RemappedDecoratorExplanation(
+                explanation, occurrence, explanation.path
+            ).materialize(),
+        )
         setattr(runtime_code._ExplanationCloneContext, "remap_decorators", runtime_code._ExplanationCloneContext.remap)
     result = (
         repeat(arguments)
@@ -511,10 +498,8 @@ def main():
             measure(
                 arguments.routes,
                 arguments.heap,
-                arguments.diagnostics,
+                arguments.operation,
                 arguments.inspection,
-                not arguments.no_explain_metadata,
-                arguments.allow_scope_builders,
                 arguments.retain_builder,
                 arguments.capture_selection_views,
             )

@@ -8,9 +8,9 @@ CI services and compatible viewers can link these findings to the relevant compo
 clean-ioc check my_app.composition:application_builder --format sarif -o clean-ioc.sarif
 ```
 
-The target follows the usual [CLI rules](compiler-tooling.md#use-it-from-the-command-line): a builder, built container or
-scope, or a zero-argument factory returning one. The check runs build rules and, when building succeeds, validate-only
-rules. It never activates components to generate the report.
+The target follows the usual [CLI rules](compiler-tooling.md#use-it-from-the-command-line): a builder, a completed
+`AnalysisResult`, or a zero-argument factory returning either. The check completes analysis and exports its report.
+It never activates components to generate the report.
 
 ## Findings and source locations
 
@@ -30,7 +30,7 @@ a location for a missing registration.
 
 The report records the installed Clean IoC version and, when a complete compiled graph exists, its **all-roots graph
 fingerprint**. A structural build failure still produces a valid SARIF file, using captured failure evidence; it has
-no complete-graph fingerprint. A complete graph rejected by a build-mode policy can retain its fingerprint and exact
+no complete-graph fingerprint. A complete graph with analysis policy errors can retain its fingerprint and exact
 registration sources.
 
 Build inputs, configured values, runtime IDs, and callable representations are not added to SARIF. Source metadata and
@@ -84,7 +84,7 @@ Reports created by a container or scope retain the compiled graph they were vali
 static reporting context rather than the runtime container, so it can still be rendered after the container closes.
 Failed-build reports also retain their captured source evidence.
 
-This standalone example creates a validate-only policy finding without activating either class:
+This standalone example creates an analysis policy finding without activating either class:
 
 ```python
 import json
@@ -108,10 +108,9 @@ builder.register(Database)
 builder.register(Handler)
 builder.add_validation_rule(
     forbid_dependency(cf.service_type_is(Handler), cf.service_type_is(Database)),
-    mode="validation",
 )
-container = builder.build()
-report = container.validation_report()
+result = builder.analyse()
+report = result.report
 document = json.loads(report.to_sarif())
 assert document["runs"][0]["results"][0]["ruleId"] == "policy-forbidden-dependency"
 
@@ -122,21 +121,17 @@ except AssertionError as error:
 else:
     raise AssertionError("Expected the policy finding to fail the assertion")
 
-# A structural failure can be exported directly from the exception.
+# Failed analysis retains evidence without retaining an exception traceback.
 invalid = ContainerBuilder()
 invalid.register(Handler)
-try:
-    invalid.build()
-except ContainerBuildError as error:
-    failure = json.loads(error.to_sarif())
-    assert failure["runs"][0]["results"][0]["ruleId"] == "missing-component"
-else:
-    raise AssertionError("Expected a missing database registration")
+failed = invalid.analyse()
+failure = json.loads(failed.report.to_sarif())
+assert failure["runs"][0]["results"][0]["ruleId"] == "missing-component"
+
 ```
 
-`ContainerBuildError.compiled_graph` is available when compilation produced a complete graph that final validation
-rejected. Structural failures retain their existing partial diagnostic graph and failure evidence. Both forms can be
-exported through `error.to_sarif()` without retrying compilation.
+`result.graph` is available when analysis emitted its full inspection graph. Binding failures can instead retain a
+partial graph and captured evidence. Exporting a completed report never retries compilation or runs validation.
 
 ## Assert validity in tests
 
@@ -153,16 +148,16 @@ class Service:
 
 builder = ContainerBuilder()
 builder.register(Service)
-container = builder.build()
-report = container.validation_report()
+result = builder.analyse()
+report = result.report
 report.assert_valid()
 ```
 
-The method follows `report.is_valid`: errors fail; warnings alone pass. It returns `None` without rendering when the
+The method follows `report.is_valid`: errors and incomplete analysis fail; warnings alone pass. It returns `None` without rendering when the
 report is valid. It inspects the existing report without re-running validation or activating components, and remains
 active under Python's `-O` mode. `error.report.assert_valid()` uses captured failure evidence automatically too.
 
-For a manually constructed `BuildReport`, the optional `graph`, `explanations`, and `evidence` arguments to
+For a manually constructed `AnalysisReport`, the optional `graph`, `explanations`, and `evidence` arguments to
 `to_sarif()` and `assert_valid()` supply reporting context. Explicit arguments can also override captured context;
 `indent` controls JSON formatting. Context remains private and does not change report equality, hashing, or existing
 text/JSON output.

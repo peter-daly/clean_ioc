@@ -73,12 +73,12 @@ ordering semantics.
 
 For an injected single dependency, selection proceeds in this order:
 
-1. Apply service-type, generic-definition and visibility rules; compile and validate candidate graphs.
+1. Apply service-type, generic-definition and visibility rules; bind candidate execution plans.
 2. Keep candidates accepted by their registration `when` and the consumer's `select` filter.
 3. Keep those with the highest effective `parent_precedence` (default `0`).
 4. Narrow any remaining tie using the consumer's `select(..., prefer=chain)`.
 5. Narrow any remaining tie using each candidate's registration `prefer=chain`.
-6. If still tied, an ordinary dependency takes the first remaining candidate (LIFO within a layer/tier) and warns.
+6. If still tied, an ordinary dependency takes the first remaining candidate (LIFO within a layer/tier); analysis reports a warning.
    Injected `Provider[T]` and `AsyncProvider[T]` instead require a unique final winner and report an ambiguity error.
 
 A later phase cannot restore an excluded candidate. Preference callbacks are skipped once at most one candidate

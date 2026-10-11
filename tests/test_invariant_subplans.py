@@ -18,6 +18,7 @@ from clean_ioc import (
     IssueSeverity,
     ResolutionContext,
     ResolutionProfiler,
+    ScopeBuilder,
     derive,
 )
 from clean_ioc.container import _Compiler, _RegistrationStep
@@ -70,34 +71,40 @@ def test_shared_infrastructure_compiles_its_dependencies_once_with_distinct_path
     builder, routes = shared_builder(count)
     profile = CompilationProfiler(max_records=0)
     runtime = ResolutionProfiler()
-    with builder.build(profile=profile, instrumentation=Instrumentation(runtime), diagnostics=True) as owner:
+    with (
+        builder.analyse(profile=profile) as owner_analysis,
+        owner_analysis.create_runtime(instrumentation=Instrumentation(runtime)) as owner,
+    ):
         assert dependency_calls.count(Infrastructure) == 1
         assert dependency_calls.count(Leaf) == 1
         leaves = []
         for route in routes:
-            component = owner._plan.roots[route][0].component.dependencies[0]
+            component = next(
+                root.component for root in owner_analysis.graph.roots if root.requested_type is route
+            ).dependencies[0]
             assert component.parent.service_type is route
             assert component.argument == "infrastructure"
             assert component.dependencies[0].argument == "first"
             assert component.dependencies[0].parent.occurrence_id == component.occurrence_id
-            explanation = owner.graph.explain(component.dependencies[0])
+            explanation = owner_analysis.graph.explain(component.dependencies[0])
             assert route.__name__ in explanation.path[0]
-            arguments = owner.graph.explain_arguments(component)
+            arguments = owner_analysis.graph.explain_arguments(component)
             assert "dependency:first" in arguments[0].selected_components[0]
             assert "dependency:second" in arguments[1].selected_components[0]
             value = owner.resolve(route)
             leaves += [value.infrastructure.first, value.infrastructure.second]
         assert len({id(leaf) for leaf in leaves}) == count * 2
-        assert owner.graph.manifest(all_roots=True).to_json()
-        runtime_paths = [record.path for record in runtime.report().records if record.attempts]
-        assert all(
-            any(route.__name__ in path and "dependency:first" in path for path in runtime_paths) for route in routes
-        )
+        assert owner_analysis.graph.manifest(all_roots=True).to_json()
+        runtime_records = [
+            record for record in runtime.report().records if record.attempts and record.kind == "registration"
+        ]
+        assert all(record.path.startswith("component:") for record in runtime_records)
+        assert all(any(route.__name__ in record.label for record in runtime_records) for route in routes)
     counters = profile.report().counters.to_dict()
     assert counters["registration subplans compiled"] == count + 2
     assert counters["parameter processing attempts"] == count + 2
-    assert counters["invariant subplan cache hits"] == count
-    assert counters["physical component records"] == count * 32
+    assert counters["invariant subplan cache hits"] == count + 2
+    assert counters["physical component records"] == count * 32 + 4
 
 
 def test_contextual_descendant_and_opaque_selection_are_never_skipped():
@@ -210,11 +217,13 @@ def test_cached_safe_transient_subtree_cannot_bypass_ancestor_captive_validation
 
     builder, _ = shared_builder(2, leaf_options={"lifespan": "per_resolution"})
     builder.register(Bad, lifespan="singleton")
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build()
-    assert caught.value.report is not None
-    assert any(issue.code == "captive-dependency" for issue in caught.value.report.errors)
-    assert any("Bad" in item and "Leaf" in str(caught.value) for item in caught.value.report.errors[0].path)
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert any(issue.code == "captive-dependency" for issue in caught_analysis.report.errors)
+    assert any(
+        "Bad" in item and "Leaf" in str(caught_analysis.report) for item in caught_analysis.report.errors[0].path
+    )
 
 
 @pytest.mark.asyncio
@@ -231,6 +240,7 @@ async def test_async_cleanup_reuse_keeps_scope_and_overlay_identity():
 
     builder, routes = shared_builder(3, leaf_options={"factory": resource, "lifespan": "scoped"})
     profile = CompilationProfiler(max_records=0)
+    owner_composition = builder.retain_composition()
     async with builder.build(profile=profile) as owner:
         async with owner.new_scope() as scope:
             values = [await scope.resolve_async(route) for route in routes]
@@ -239,7 +249,7 @@ async def test_async_cleanup_reuse_keeps_scope_and_overlay_identity():
                 value.infrastructure.first is shared and value.infrastructure.second is shared for value in values
             )
         assert closed == [shared]
-        async with owner.new_scope_builder().build() as overlay:
+        async with ScopeBuilder(owner, composition=owner_composition).build() as overlay:
             value = await overlay.resolve_async(routes[0])
             assert value.infrastructure.first is not shared
     assert len(closed) == 2
@@ -256,18 +266,19 @@ def test_failed_validation_and_partial_edges_use_the_reused_occurrence_path():
                 break
 
     builder.add_validation_rule(findings)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build(diagnostics=True)
-    assert caught.value.report is not None
-    assert caught.value.partial_graph is not None
-    issue = next(issue for issue in caught.value.report.errors if issue.code == "reject-second")
+    caught_analysis = builder.analyse()
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert caught_analysis.graph is not None
+    assert caught_analysis.partial_graph is None
+    issue = next(issue for issue in caught_analysis.report.errors if issue.code == "reject-second")
     assert routes[1].__name__ in issue.path[0]
     assert any(
-        routes[1].__name__ in explanation.path[0] and "Infrastructure" in explanation.path[-1]
-        for explanation in caught.value.explanations
+        routes[1].__name__ in caught_analysis.graph.explain(visit.component).path[0]
+        for visit in caught_analysis.graph.walk()
+        if visit.component.service_type is Infrastructure
     )
-    attempts = caught.value.partial_graph.attempts
-    assert any(edge.label == "first" for attempt in attempts for edge in attempt.edges)
+    assert any(visit.component.argument == "first" for visit in caught_analysis.graph.walk())
 
 
 def test_reused_subtree_checks_full_depth_and_physical_occurrence_budget():
@@ -279,10 +290,10 @@ def test_reused_subtree_checks_full_depth_and_physical_occurrence_budget():
     assert dict(profile.report().budget_usage or ())["graph_occurrences"] == 144
     assert dict(profile.report().budget_usage or ())["active_dependency_depth"] == 5
     builder, _ = shared_builder(3)
-    with pytest.raises(ContainerBuildError) as caught:
-        builder.build(budget=CompilationBudget(graph_occurrences=143))
-    assert caught.value.report is not None
-    assert caught.value.report.errors[-1].code == "compilation-budget-exceeded"
+    caught_analysis = builder.analyse(budget=CompilationBudget(graph_occurrences=143))
+    assert not caught_analysis.report.is_valid
+    assert caught_analysis.report is not None
+    assert caught_analysis.report.errors[-1].code == "compilation-budget-exceeded"
 
 
 def test_successful_cache_does_not_retain_compiler_with_gc_disabled(monkeypatch):
@@ -358,18 +369,18 @@ def test_reused_alias_dependencies_keep_each_declared_annotation():
         routes.append(route)
         builder.register(route)
     profile = CompilationProfiler(max_records=0)
-    with builder.build(profile=profile, diagnostics=True) as owner:
+    with builder.analyse(profile=profile) as owner_analysis, owner_analysis.create_runtime() as _owner:
         for route, alias in zip(routes, (first_alias, second_alias), strict=True):
-            root = owner._plan.roots[route][0].component
-            evidence = owner.graph.explain_arguments(root)[0]
+            root = next(root.component for root in owner_analysis.graph.roots if root.requested_type is route)
+            evidence = owner_analysis.graph.explain_arguments(root)[0]
             assert alias.__name__ in evidence.declared_annotation
             assert "Infrastructure" in evidence.canonical_annotation
             assert route.__name__ in evidence.selected_components[0]
             target = root.dependencies[0]
             assert target.service_type is Infrastructure
             assert target.declared_service_type is Infrastructure
-            assert route.__name__ in owner.graph.explain(target).path[0]
-    assert profile.report().counters.to_dict()["invariant subplan cache hits"] == 2
+            assert route.__name__ in owner_analysis.graph.explain(target).path[0]
+    assert profile.report().counters.to_dict()["invariant subplan cache hits"] == 4
 
 
 def test_failed_build_retry_gets_a_new_cache_and_revalidates_required_roots(monkeypatch):
@@ -396,6 +407,8 @@ def test_failed_build_retry_gets_a_new_cache_and_revalidates_required_roots(monk
         builder.build()
     assert "Missing" in str(caught.value)
     before = len(dependency_calls)
+    builder, routes = shared_builder(2)
+    builder.register(Broken)
     builder.register(Missing)
     with builder.build() as owner:
         assert len(dependency_calls) > before

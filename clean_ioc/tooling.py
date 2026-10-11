@@ -8,7 +8,8 @@ import inspect
 import json
 import textwrap
 import unicodedata
-from dataclasses import dataclass, field, replace
+import weakref
+from dataclasses import dataclass, field, fields, replace
 from enum import Enum
 from html import escape
 from types import MappingProxyType, UnionType
@@ -452,6 +453,8 @@ class BuildIssue:
     # changing issue equality, existing serialization, or graph fingerprints.
     _occurrence_path: tuple[int, ...] = field(default=(), repr=False, compare=False)
     budget: CompilationBudgetExhaustion | None = None
+    _origin: DefinitionOrigin | None = field(default=None, repr=False, compare=False, kw_only=True)
+    _graph_identity: object | None = field(default=None, repr=False, compare=False, kw_only=True)
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -472,11 +475,49 @@ class BuildIssue:
 
 
 @dataclass(frozen=True, slots=True)
-class BuildReport:
+class AnalysisRuleOutcome:
+    declaration: str
+    rule: str
+    layer: str | None
+    boundary: str | None
+    context: str | None
+    status: str
+    issues: tuple[BuildIssue, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "declaration": self.declaration,
+            "rule": self.rule,
+            "layer": self.layer,
+            "boundary": self.boundary,
+            "context": self.context,
+            "status": self.status,
+            "issues": [issue.to_dict() for issue in self.issues],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class AnalysisStageOutcome:
+    stage: str
+    status: str
+    detail: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"stage": self.stage, "status": self.status, "detail": self.detail}
+
+
+@dataclass(frozen=True, slots=True)
+class AnalysisReport:
     """Immutable result of validating and compiling a component plan."""
 
     issues: tuple[BuildIssue, ...] = ()
     checked_roots: int = 0
+    complete: bool = field(default=True, kw_only=True)
+    requested_roots: int = field(default=0, kw_only=True)
+    compiled_roots: int = field(default=0, kw_only=True)
+    failed_roots: int = field(default=0, kw_only=True)
+    rule_outcomes: tuple[AnalysisRuleOutcome, ...] = field(default=(), kw_only=True)
+    stage_outcomes: tuple[AnalysisStageOutcome, ...] = field(default=(), kw_only=True)
     # Captured reporting context is static and excluded from public report
     # serialization/equality. No runtime container reference is added.
     _graph: CompiledGraph | None = field(default=None, repr=False, compare=False, kw_only=True)
@@ -493,12 +534,18 @@ class BuildReport:
 
     @property
     def is_valid(self) -> bool:
-        return not self.errors
+        return self.complete and not self.errors
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "valid": self.is_valid,
             "checked_roots": self.checked_roots,
+            "complete": self.complete,
+            "requested_roots": self.requested_roots,
+            "compiled_roots": self.compiled_roots,
+            "failed_roots": self.failed_roots,
+            "rule_outcomes": [outcome.to_dict() for outcome in self.rule_outcomes],
+            "stage_outcomes": [outcome.to_dict() for outcome in self.stage_outcomes],
             "issues": [issue.to_dict() for issue in self.issues],
         }
 
@@ -559,7 +606,7 @@ class BuildReport:
         else:
             count = len(self.errors)
             noun = "error" if count == 1 else "errors"
-            heading = f"Container build failed with {count} {noun}."
+            heading = f"Analysis {'incomplete' if not self.complete else 'invalid'} with {count} {noun}."
         if not self.issues:
             return heading
         return "\n".join((heading, *(f"- {issue}" for issue in self.issues)))
@@ -592,6 +639,7 @@ class FailureEvidence:
     witness_total: int = 0
     witness_omitted: int = 0
     identity: tuple[object, ...] = field(default=(), repr=False, compare=False)
+    selection_witness: CandidateDecision | None = None
 
     def __post_init__(self) -> None:
         total = self.witness_total or len(self.witness)
@@ -618,6 +666,7 @@ class FailureEvidence:
             "witness": list(self.witness),
             "witness_total": self.witness_total,
             "witness_omitted": self.witness_omitted,
+            "selection_witness": None if self.selection_witness is None else self.selection_witness.to_dict(),
         }
 
 
@@ -684,7 +733,7 @@ class TriageGroup:
 class BuildTriage:
     """Frozen summary of a build report; every finding remains addressable."""
 
-    report: BuildReport
+    report: AnalysisReport
     groups: tuple[TriageGroup, ...]
     ungrouped_issue_refs: tuple[str, ...]
     evidence: tuple[FailureEvidence | None, ...]
@@ -695,6 +744,7 @@ class BuildTriage:
     inconsistent_retries: bool = False
     partial_graph_truncated: bool = False
     issue_boundaries: tuple[str | None, ...] | None = None
+    attempt_history_available: bool = False
 
     def _issue_boundary(self, index: int) -> tuple[str | None, bool]:
         if self.issue_boundaries is not None:
@@ -724,7 +774,7 @@ class BuildTriage:
     @classmethod
     def from_report(
         cls,
-        report: BuildReport,
+        report: AnalysisReport,
         *,
         evidence: Iterable[FailureEvidence | None] = (),
         partial_graph: PartialGraph | None = None,
@@ -848,6 +898,7 @@ class BuildTriage:
             bool(graph and graph.inconsistent_retries),
             bool(graph and graph.truncated),
             captured_boundaries,
+            graph is not None,
         )
 
     def to_dict(self) -> dict[str, object]:
@@ -870,6 +921,7 @@ class BuildTriage:
             "affected_root_count": self._affected_root_count(),
             "affected_root_count_status": self._affected_root_count_status(),
             "attempt_count": self.attempt_count,
+            "attempt_history_available": self.attempt_history_available,
             "attempt_count_status": (
                 "unknown"
                 if self.attempt_count == 0 and self.retained_attempt_count == 0
@@ -897,6 +949,8 @@ class BuildTriage:
         ]
         if self.inconsistent_retries:
             lines.append("Retry outcomes differed; attempts remain separate.")
+        if not self.attempt_history_available:
+            lines.append("Attempt history is unavailable; counts do not describe unexamined roots.")
         if self.incomplete:
             lines.append("Evidence is incomplete or truncated; witness counts can be lower bounds.")
         for group in self.groups:
@@ -1326,6 +1380,7 @@ class GraphRoot:
     requested_type: Any
     component: Component
     area: str | None = None
+    resolvable: bool = True
 
     @property
     def boundary(self) -> str | None:
@@ -1344,6 +1399,7 @@ class GraphVisit:
 
     root: GraphRoot
     components: tuple[Component, ...]
+    _graph_identity: object | None = field(default=None, repr=False, compare=False, kw_only=True)
 
     def __post_init__(self) -> None:
         if not self.components:
@@ -1383,6 +1439,7 @@ class GraphVisit:
             root=self.root_name,
             path=self.path,
             _occurrence_path=tuple(component.occurrence_id for component in self.components),
+            _graph_identity=self._graph_identity,
         )
 
 
@@ -1811,7 +1868,7 @@ class _CompiledSelectionDecision(CandidateDecision):
 
     def __getattribute__(self, name: str) -> Any:
         if name in ("preferences", "parent_precedence", "template"):
-            raise ValueError("diagnostics-disabled: build with diagnostics=True to inspect selection-policy history")
+            raise ValueError("diagnostics-disabled: use analyse() to inspect selection-policy history")
         return super().__getattribute__(name)
 
     def __repr__(self) -> str:
@@ -1837,7 +1894,7 @@ class _CapturedSelectionFacts(CompilationExplanation):
     __slots__ = ()
 
     def __repr__(self) -> str:
-        return f"Selection facts for {self.subject} (full diagnostics not recorded; build with diagnostics=True)"
+        return f"Selection facts for {self.subject} (full diagnostics not recorded; use analyse())"
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, _CapturedSelectionFacts) or type(self) is not type(other):
@@ -1849,7 +1906,7 @@ class _CapturedSelectionFacts(CompilationExplanation):
 
     def __getattribute__(self, name: str) -> Any:
         if name == "path":
-            raise ValueError("diagnostics-disabled: build with diagnostics=True to inspect explanation paths")
+            raise ValueError("diagnostics-disabled: use analyse() to inspect explanation paths")
         return super().__getattribute__(name)
 
 
@@ -1858,7 +1915,7 @@ class _SelectionExplanation(_CapturedSelectionFacts):
 
     def __getattribute__(self, name: str) -> Any:
         if name == "rejected":
-            raise ValueError("diagnostics-disabled: build with diagnostics=True to inspect candidate history")
+            raise ValueError("diagnostics-disabled: use analyse() to inspect candidate history")
         return super().__getattribute__(name)
 
     def __eq__(self, other: object) -> bool:
@@ -1870,7 +1927,52 @@ class _SelectionExplanation(_CapturedSelectionFacts):
         return hash((self.subject, self.selected))
 
 
-@dataclass(frozen=True, slots=True)
+class _InspectionLifetime:
+    """Weakly track one build's inspection views without hashing their contents."""
+
+    def __init__(self) -> None:
+        self.views: dict[int, weakref.ReferenceType[CompiledGraph]] = {}
+
+    def track(self, graph: CompiledGraph) -> None:
+        lifetime = weakref.ref(self)
+        identity = id(graph)
+
+        def released(reference: weakref.ReferenceType[CompiledGraph]) -> None:
+            owner = lifetime()
+            if owner is not None:
+                owner.views.pop(identity, None)
+
+        self.views[identity] = weakref.ref(graph, released)
+
+    def expire(self) -> None:
+        for reference in tuple(self.views.values()):
+            graph = reference()
+            if graph is None:
+                continue
+            object.__setattr__(graph, "explain_metadata_enabled", False)
+            for item in fields(graph):
+                if item.name in (
+                    "explain_metadata_enabled",
+                    "diagnostics_enabled",
+                    "build_args",
+                    "_inspection_lifetime",
+                ):
+                    continue
+                value = object.__getattribute__(graph, item.name)
+                if isinstance(value, Mapping):
+                    object.__setattr__(graph, item.name, MappingProxyType({}))
+                elif isinstance(value, tuple):
+                    object.__setattr__(graph, item.name, ())
+                elif isinstance(value, frozenset):
+                    object.__setattr__(graph, item.name, frozenset())
+                elif isinstance(value, list):
+                    value.clear()
+                else:
+                    object.__setattr__(graph, item.name, None)
+        self.views.clear()
+
+
+@dataclass(frozen=True, slots=True, weakref_slot=True)
 class CompiledGraph:
     """Read-only view and renderer for compiled root component plans."""
 
@@ -1920,6 +2022,14 @@ class CompiledGraph:
     _ownership_report_cache: list[OwnershipReport] = field(default_factory=list, compare=False, repr=False)
     _occurrence_paths_cache: dict[bool, _OccurrencePaths] = field(default_factory=dict, compare=False, repr=False)
     _analysis_index_cache: Any | None = field(default=None, compare=False, repr=False)
+    _inspection_lifetime: _InspectionLifetime = field(
+        default_factory=_InspectionLifetime, compare=False, repr=False, kw_only=True
+    )
+
+    def __post_init__(self) -> None:
+        # dataclasses.replace deliberately shares this lifetime for boundary and
+        # warmup views. Weak references never own views or invoke graph equality.
+        self._inspection_lifetime.track(self)
 
     def __getattribute__(self, name: str) -> Any:
         if not name.startswith("_") and name != "explain_metadata_enabled":
@@ -1947,7 +2057,7 @@ class CompiledGraph:
 
     def _require_diagnostics(self) -> None:
         if not self.diagnostics_enabled:
-            raise ValueError("diagnostics-disabled: build with diagnostics=True to inspect captured compiler evidence")
+            raise ValueError("diagnostics-disabled: use analyse() to inspect captured compiler evidence")
 
     def ownership_report(self) -> OwnershipReport:
         """Return the immutable ownership proof compiled for every graph occurrence."""
@@ -2401,7 +2511,7 @@ class CompiledGraph:
 
         def visit(root: GraphRoot, component: Component, ancestors: tuple[Component, ...]) -> Iterator[GraphVisit]:
             components = (*ancestors, component)
-            yield GraphVisit(root=root, components=components)
+            yield GraphVisit(root=root, components=components, _graph_identity=self._inspection_lifetime)
             for child in component.dependencies:
                 yield from visit(root, child, components)
             for configuration in component.pre_configurations:
@@ -2434,6 +2544,8 @@ class CompiledGraph:
             path = f"root:{requested}:{name}:{candidate}"
             node = _node_dict(root.component, path, order, owner_paths)
             node["requested_type"] = requested
+            if not root.resolvable:
+                node["resolvable"] = False
             roots.append(node)
         manifest = GraphManifest(
             {
@@ -2497,7 +2609,8 @@ class CompiledGraph:
         for index, root in enumerate(self._selected_roots(all_roots)):
             if index:
                 lines.append("")
-            lines.append(f"Resolve {qualified_name(root.requested_type)}")
+            action = "Resolve" if root.resolvable else "Inspect"
+            lines.append(f"{action} {qualified_name(root.requested_type)}")
             visit(root.component, 1)
         return "\n".join(lines)
 

@@ -1,6 +1,7 @@
 """Explicit service membership before decorator-template selection is available."""
 
 import inspect
+import re
 from collections.abc import Callable, Mapping
 from dataclasses import FrozenInstanceError
 from typing import Generic, TypeVar, cast
@@ -8,7 +9,7 @@ from typing import Generic, TypeVar, cast
 import pytest
 from typing_extensions import TypeAliasType
 
-from clean_ioc import ComponentBuilder, ContainerBuilder, Provider, ProviderMapGroup, ServiceGroup
+from clean_ioc import ComponentBuilder, ContainerBuilder, Provider, ProviderMapGroup, ScopeBuilder, ServiceGroup
 from clean_ioc import component_filters as cf
 from clean_ioc.container import _Compiler
 
@@ -48,8 +49,9 @@ def test_identity_immutability_and_per_registration_membership_across_builders()
     assert memberships(builder)[other] == frozenset({second})
     assert memberships(builder)[plain] == frozenset()
 
+    container_composition = builder.retain_composition()
     container = builder.build()
-    definition = container._plan.blueprint.registration_definition(grouped)
+    definition = container_composition._for_parent(container).registration_definition(grouped)
     assert definition is not None
     assert definition[1].service_groups[grouped] == frozenset({first, second})
     assert isinstance(container.resolve(Service, cf.with_name("grouped")), Service)
@@ -75,9 +77,9 @@ def test_factory_instance_and_provider_map_metadata_remain_independent():
     builder.register_provider_map(provider_group)
     provider_id = builder.register(Service, name="provider", contributes={provider_group: "provider"})
 
-    container = builder.build()
     assert memberships(builder)[factory_id] == memberships(builder)[instance_id] == frozenset({group})
     assert memberships(builder)[provider_id] == frozenset()
+    container = builder.build()
     assert container.resolve(Service, cf.with_name("instance")) is instance
     assert isinstance(container.resolve(Service, cf.with_name("factory")), Service)
     assert list(container.resolve(Mapping[str, Provider[Service]])) == ["provider"]
@@ -96,10 +98,16 @@ def test_known_contract_failures_are_transactional_and_use_registered_service():
     service_group = ServiceGroup("services", service_type=Service)
     other_group = ServiceGroup("other", service_type=Other)
     builder = ContainerBuilder()
-    with pytest.raises(TypeError, match="service group 'other'.*Other"):
-        builder.register(Service, Implementation, groups=(group for group in (service_group, other_group)))
-    with pytest.raises(TypeError, match="service group 'services'"):
-        builder.register(Other, factory=Implementation, groups=[service_group])
+    invalid_100 = ContainerBuilder()
+    invalid_100.register(Service, Implementation, groups=(group for group in (service_group, other_group)))
+    invalid_100_result = invalid_100.analyse()
+    assert not invalid_100_result.report.is_valid
+    assert re.search("service group 'other'.*Other", invalid_100_result.report.to_text())
+    invalid_102 = ContainerBuilder()
+    invalid_102.register(Other, factory=Implementation, groups=[service_group])
+    invalid_102_result = invalid_102.analyse()
+    assert not invalid_102_result.report.is_valid
+    assert re.search("service group 'services'", invalid_102_result.report.to_text())
     with pytest.raises(TypeError, match="ServiceGroup"):
         builder.register(Service, groups=cast(list[ServiceGroup], [object()]))
     assert not any(builder._composition._registry.get_registrations(Service))
@@ -124,13 +132,22 @@ def test_generic_projection_rejects_closed_conflicts_and_keeps_open_constraints(
     int_group = ServiceGroup("integers", service_type=Contract[int])
     bare_group = ServiceGroup("all", service_type=Contract)
     builder = ContainerBuilder()
-    with pytest.raises(TypeError, match="integers"):
-        builder.register(Contract[str], factory=Contract, groups=[int_group])
-    with pytest.raises(TypeError, match="integers"):
-        builder.register(Child[str], factory=Child, groups=[int_group])
+    invalid_128 = ContainerBuilder()
+    invalid_128.register(Contract[str], factory=Contract, groups=[int_group])
+    invalid_128_result = invalid_128.analyse()
+    assert not invalid_128_result.report.is_valid
+    assert re.search("integers", invalid_128_result.report.to_text())
+    invalid_130 = ContainerBuilder()
+    invalid_130.register(Child[str], factory=Child, groups=[int_group])
+    invalid_130_result = invalid_130.analyse()
+    assert not invalid_130_result.report.is_valid
+    assert re.search("integers", invalid_130_result.report.to_text())
     nested_group = ServiceGroup("nested", service_type=Contract[list[int]])
-    with pytest.raises(TypeError, match="nested"):
-        builder.register(Contract[list[str]], factory=Contract, groups=[nested_group])
+    invalid_133 = ContainerBuilder()
+    invalid_133.register(Contract[list[str]], factory=Contract, groups=[nested_group])
+    invalid_133_result = invalid_133.analyse()
+    assert not invalid_133_result.report.is_valid
+    assert re.search("nested", invalid_133_result.report.to_text())
     assert not memberships(builder)
 
     open_id = builder.register(Child[T], factory=Child, groups=[int_group, bare_group])
@@ -145,8 +162,11 @@ def test_equivalent_unions_in_generic_arguments_are_compatible():
     assert memberships(builder)[component_id] == frozenset({group})
 
     incompatible = ServiceGroup("different", service_type=list[str | bytes])
-    with pytest.raises(TypeError, match="different"):
-        builder.register(list[int | str], instance=[], groups=[incompatible])
+    invalid_149 = ContainerBuilder()
+    invalid_149.register(list[int | str], instance=[], groups=[incompatible])
+    invalid_149_result = invalid_149.analyse()
+    assert not invalid_149_result.report.is_valid
+    assert re.search("different", invalid_149_result.report.to_text())
     assert len(memberships(builder)) == 1
 
 
@@ -159,10 +179,16 @@ def test_open_union_constraints_defer_without_hiding_fixed_conflicts():
     open_id = builder.register(Service[T | int], factory=Service, groups=[group])
     assert memberships(builder)[open_id] == frozenset({group})
 
-    with pytest.raises(TypeError, match="union"):
-        builder.register(Service[int | bytes], factory=Service, groups=[group])
-    with pytest.raises(TypeError, match="union"):
-        builder.register(Service[T | bytes], factory=Service, groups=[group])
+    invalid_163 = ContainerBuilder()
+    invalid_163.register(Service[int | bytes], factory=Service, groups=[group])
+    invalid_163_result = invalid_163.analyse()
+    assert not invalid_163_result.report.is_valid
+    assert re.search("union", invalid_163_result.report.to_text())
+    invalid_165 = ContainerBuilder()
+    invalid_165.register(Service[T | bytes], factory=Service, groups=[group])
+    invalid_165_result = invalid_165.analyse()
+    assert not invalid_165_result.report.is_valid
+    assert re.search("union", invalid_165_result.report.to_text())
     assert len(memberships(builder)) == 1
 
 
@@ -175,10 +201,16 @@ def test_callable_parameter_typevars_defer_but_concrete_conflicts_reject():
     open_id = builder.register(Service[Callable[[T], int]], factory=Service, groups=[group])
     assert memberships(builder)[open_id] == frozenset({group})
 
-    with pytest.raises(TypeError, match="callable"):
-        builder.register(Service[Callable[[bytes], int]], factory=Service, groups=[group])
-    with pytest.raises(TypeError, match="callable"):
-        builder.register(Service[Callable[[str], bytes]], factory=Service, groups=[group])
+    invalid_179 = ContainerBuilder()
+    invalid_179.register(Service[Callable[[bytes], int]], factory=Service, groups=[group])
+    invalid_179_result = invalid_179.analyse()
+    assert not invalid_179_result.report.is_valid
+    assert re.search("callable", invalid_179_result.report.to_text())
+    invalid_181 = ContainerBuilder()
+    invalid_181.register(Service[Callable[[str], bytes]], factory=Service, groups=[group])
+    invalid_181_result = invalid_181.analyse()
+    assert not invalid_181_result.report.is_valid
+    assert re.search("callable", invalid_181_result.report.to_text())
     assert len(memberships(builder)) == 1
 
 
@@ -190,8 +222,9 @@ def test_aliases_normalize_without_changing_membership_identity():
     group = ServiceGroup("alias", service_type=alias)
     builder = ContainerBuilder()
     component_id = builder.register(alias, groups=[group])
+    container_composition = builder.retain_composition()
     container = builder.build()
-    definition = container._plan.blueprint.registration_definition(component_id)
+    definition = container_composition._for_parent(container).registration_definition(component_id)
     assert definition is not None
     registration, layer = definition
     assert registration.service_type is Service
@@ -245,10 +278,16 @@ def test_discovery_rejects_incompatible_groups_before_queue_mutation():
 
     wrong = ServiceGroup("wrong", service_type=Other)
     builder = ContainerBuilder()
-    with pytest.raises(TypeError, match="wrong"):
-        builder.register_subclasses(Service, groups=[wrong])
-    with pytest.raises(TypeError, match="wrong"):
-        builder.register_subclasses(Service, groups=[wrong])
+    invalid_250 = ContainerBuilder()
+    invalid_250.register_subclasses(Service, groups=[wrong])
+    invalid_250_result = invalid_250.analyse()
+    assert not invalid_250_result.report.is_valid
+    assert re.search("wrong", invalid_250_result.report.to_text())
+    invalid_252 = ContainerBuilder()
+    invalid_252.register_subclasses(Service, groups=[wrong])
+    invalid_252_result = invalid_252.analyse()
+    assert not invalid_252_result.report.is_valid
+    assert re.search("wrong", invalid_252_result.report.to_text())
     assert builder._registration_discoveries == []
 
 
@@ -267,14 +306,18 @@ def test_discovered_closed_generic_conflict_does_not_publish_partial_cache():
     builder = ContainerBuilder()
     builder.register_subclasses(Service, groups=[group], subclass_type_filter=lambda item: item in allowed)
     rule = builder._registration_discoveries[0]
-    with pytest.raises(TypeError, match="integers"):
-        builder.build()
-    assert rule.registrations == {}
+    result = builder.analyse()
+    assert not result.report.is_valid
+    assert "integers" in result.report.to_text()
+    assert rule.registrations  # Discovery completed; compatibility is an analysis finding.
 
     allowed.remove(Rejected)
+    builder = ContainerBuilder()
+    builder.register_subclasses(Service, groups=[group], subclass_type_filter=lambda item: item in allowed)
+    container_composition = builder.retain_composition()
     container = builder.build()
     assert isinstance(container.resolve(Service[int]), Accepted)
-    registered = container._plan.blueprint.layers[0].service_groups
+    registered = container_composition._for_parent(container).layers[0].service_groups
     assert len([members for members in registered.values() if group in members]) == 1
 
 
@@ -285,13 +328,15 @@ def test_overlay_keeps_inherited_membership_and_does_not_infer_it_for_override()
     group = ServiceGroup("services", service_type=Service)
     root_builder = ContainerBuilder()
     root_id = root_builder.register(Service, name="root", groups=[group])
+    container_composition = root_builder.retain_composition()
     container = root_builder.build()
 
-    overlay_builder = container.new_scope_builder()
+    overlay_builder = ScopeBuilder(container, composition=container_composition)
     override_id = overlay_builder.register(Service, name="override")
+    scope_composition = overlay_builder.retain_composition()
     scope = overlay_builder.build()
-    inherited = scope._plan.blueprint.registration_definition(root_id)
-    override = scope._plan.blueprint.registration_definition(override_id)
+    inherited = scope_composition._for_parent(scope).registration_definition(root_id)
+    override = scope_composition._for_parent(scope).registration_definition(override_id)
     assert inherited is not None and override is not None
     assert inherited[1].service_groups[root_id] == frozenset({group})
     assert override[1].service_groups[override_id] == frozenset()
@@ -308,7 +353,9 @@ def test_pattern_specialization_retains_membership_by_new_definition_id():
     group = ServiceGroup("services", service_type=Service)
     builder = ContainerBuilder()
     template_id = builder.register_pattern(Service[list[T]], factory=make_service, groups=iter([group]))
-    compiler = _Compiler(builder.build()._plan.blueprint)
+    handle = builder.retain_composition()
+    runtime = builder.build()
+    compiler = _Compiler(handle._for_parent(runtime))
     definition = compiler.blueprint.registration_definition(template_id)
     assert definition is not None
     registration, normalized_layer = definition

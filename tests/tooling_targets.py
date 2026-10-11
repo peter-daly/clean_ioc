@@ -2,7 +2,7 @@
 
 from typing import Any, Generic, TypeVar, cast
 
-from clean_ioc import BuildIssue, Container, ContainerBuilder, IssueSeverity, ValidationContext
+from clean_ioc import BuildIssue, ContainerBuilder, IssueSeverity, ValidationContext
 from clean_ioc.matrix import BuildMatrix, BuildVariant
 from clean_ioc.tooling import ChangeAllowance, DiffPolicy
 
@@ -162,12 +162,12 @@ def validation_only_warning_builder() -> ContainerBuilder:
             ),
         )
 
-    builder.add_validation_rule(expensive_rule, mode="validation")
+    builder.add_validation_rule(expensive_rule)
     return builder
 
 
-def validation_only_warning_container_factory() -> Container:
-    return validation_only_warning_builder().build()
+def validation_only_warning_container_factory():
+    return validation_only_warning_builder().analyse()
 
 
 def validation_only_error_builder() -> ContainerBuilder:
@@ -184,7 +184,7 @@ def validation_only_error_builder() -> ContainerBuilder:
             ),
         )
 
-    builder.add_validation_rule(validation_rule, mode="validation")
+    builder.add_validation_rule(validation_rule)
     return builder
 
 

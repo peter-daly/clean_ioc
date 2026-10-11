@@ -1,0 +1,43 @@
+error[invalid-assignment]: Object of type `def without_collection(...) -> CoroutineType[Any, Any, Unknown]` is not assignable to attribute `resolve_workload` of type `def resolve_workload(fixture: Fixture) -> CoroutineType[Any, Any, Resolved]`
+  --> .work/graph-memory-optimization/evidence/18/analysis_stage14.py:35:13
+   |
+35 |             fixture.resolve_workload = without_collection
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[invalid-assignment]: Object of type `def prepare(*args) -> Unknown` is not assignable to attribute `prepare` of type `def prepare(policy, variant) -> Unknown`
+  --> .work/graph-memory-optimization/evidence/18/analysis_stage14.py:37:9
+   |
+37 |         grid.prepare = prepare
+   |         ^^^^^^^^^^^^
+
+error[unresolved-reference]: Name `Path` used when not defined
+   --> .work/graph-memory-optimization/evidence/18/grid.py:104:18
+    |
+104 |         output = Path(sys.argv[2])
+    |                  ^^^^
+
+error[invalid-assignment]: Cannot assign to a subscript on an object of type `str`
+  --> .work/graph-memory-optimization/evidence/18/verify_extras.py:98:9
+   |
+98 |         summary[key][control] = {}
+   |         ^^^^^^^^^^^^^^^^^^^^^
+info: The full type of the subscripted object is `str | dict[Unknown, Unknown]`
+info: `str` does not have a `__setitem__` method.
+
+error[invalid-assignment]: Cannot assign to a subscript on an object of type `str`
+   --> .work/graph-memory-optimization/evidence/18/verify_extras.py:102:17
+    |
+102 |                 summary[key][control][policy] = [
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+info: The full type of the subscripted object is `str | Unknown`
+info: `str` does not have a `__setitem__` method.
+
+error[invalid-assignment]: Cannot assign to a subscript on an object of type `str`
+   --> .work/graph-memory-optimization/evidence/18/verify_extras.py:107:17
+    |
+107 |                 summary[key][control][policy] = {
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+info: The full type of the subscripted object is `str | Unknown`
+info: `str` does not have a `__setitem__` method.
+
+Found 6 diagnostics

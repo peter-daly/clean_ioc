@@ -17,6 +17,7 @@ from clean_ioc import (
     ContainerBuilder,
     ManagedProvider,
     RegistrationTemplate,
+    ScopeBuilder,
     WarmupPlan,
     WarmupTarget,
     build_arg,
@@ -113,8 +114,13 @@ def resource() -> Iterator[Leaf]:
 SHAPES = ("wide-24", "diamond-depth-5", "generic-8-roots", "collection-12", "template-12", "managed-warmup")
 
 
-def make_builder(shape: str, *, parent=None):
-    builder = ContainerBuilder() if parent is None else parent.new_scope_builder()
+def make_builder(shape: str, *, parent=None, composition=None):
+    if parent is None:
+        builder = ContainerBuilder()
+    else:
+        if composition is None:
+            raise ValueError("An overlay fixture requires its parent composition handle")
+        builder = ScopeBuilder(parent, composition=composition)
     if shape == "wide-24":
         for service in WIDE:
             builder.register(service)
@@ -172,7 +178,7 @@ def prepared_build(shape: str) -> Iterator[dict]:
         yield prepared
     finally:
         if prepared["owner"] is not None:
-            prepared["owner"].__exit__()
+            prepared["owner"].__exit__(None, None, None)
 
 
 compilation = Case(
@@ -263,8 +269,9 @@ def related_generics(changed: bool):
 def compiler_parent():
     builder = ContainerBuilder()
     builder.register(Leaf, lifespan="singleton")
+    composition = builder.retain_composition()
     with builder.build() as parent:
-        yield parent
+        yield parent, composition
 
 
 overlays = Case(
@@ -279,7 +286,8 @@ overlays = Case(
 @overlays.benchmark(name="fresh-overlay")
 @overlays.parametrize("changed", [False, True], ids=["inherited", "local-override"])
 def related_overlays(compiler_parent, changed: bool):
-    builder = compiler_parent.new_scope_builder()
+    parent, composition = compiler_parent
+    builder = ScopeBuilder(parent, composition=composition)
     if changed:
         builder.register(Leaf, lifespan="scoped")
     builder.register(Worker)

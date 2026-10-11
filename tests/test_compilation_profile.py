@@ -16,6 +16,7 @@ from clean_ioc import (
     ContainerBuildError,
     DecoratorTemplate,
     DerivedServices,
+    ScopeBuilder,
 )
 from clean_ioc.cli import main
 
@@ -82,7 +83,7 @@ def test_pre_graph_preparation_failure_leaves_a_partial_profile_and_repairable_b
         builder.build(build_args=cast(Any, {1: "PRIVATE-BUILD-VALUE"}), profile=profile)
     report = profile.report()
     assert report.state == "failed"
-    assert any(span.phase == "discovery and blueprint preparation" and span.state == "failed" for span in report.spans)
+    assert report.spans == ()  # Invalid build arguments are refused before admission.
     assert "PRIVATE-BUILD-VALUE" not in report.to_json()
     builder.build(profile=CompilationProfiler())
 
@@ -95,16 +96,18 @@ def test_failed_build_preserves_partial_primary_and_retry_measurements():
     builder = ContainerBuilder()
     builder.register(Root)
     profile = CompilationProfiler(max_records=100)
-    with pytest.raises(ContainerBuildError):
-        builder.build(profile=profile)
+    analysis = builder.analyse(profile=profile)
+    assert not analysis.report.is_valid
     report = profile.report()
-    assert report.state == "failed"
+    assert report.state == "completed"
     assert report.elapsed_ns >= sum(dict(report.phases_ns).values())
     assert dict(report.counters.values)["diagnostic root attempts"] >= 1
     assert any(span.attempt == "primary" for span in report.spans)
     assert any(span.attempt and span.attempt.startswith("retry:") for span in report.spans)
     with pytest.raises(ValueError, match="single-use"):
-        builder.build(profile=profile)
+        ContainerBuilder().build(profile=profile)
+    builder = ContainerBuilder()
+    builder.register(Root)
     builder.register(str, instance="repaired")
     assert builder.build(profile=CompilationProfiler()).resolve(Root).missing == "repaired"
 
@@ -128,13 +131,13 @@ def test_profiled_build_runs_callbacks_once_and_redacts_build_values():
     builder.register(Root, when=predicate)
     builder.add_validation_rule(rule)
     profile = CompilationProfiler(max_records=100)
-    container = builder.build(build_args={"secret": "PRIVATE-BUILD-VALUE"}, profile=profile)
+    analysis = builder.analyse(build_args={"secret": "PRIVATE-BUILD-VALUE"}, profile=profile)
+    container = analysis.create_runtime()
     assert container.resolve(Root).__class__ is Root
     assert calls == ["predicate", "rule start", "rule end"]
     report = profile.report()
     assert report.state == "completed"
-    assert dict(report.counters.values)["build validation rule calls"] == 1
-    assert any(span.operation == "validation rule" for span in report.spans)
+    assert dict(report.counters.values)["analysis validation rule calls"] == 1
     assert "PRIVATE-BUILD-VALUE" not in report.to_json()
 
 
@@ -144,9 +147,10 @@ def test_overlay_profiles_anchored_reuse_without_charging_parent_build():
 
     root_builder = ContainerBuilder()
     root_builder.register(Shared, lifespan="singleton")
+    parent_composition = root_builder.retain_composition()
     parent = root_builder.build()
     profile = CompilationProfiler()
-    overlay = parent.new_scope_builder().build(profile=profile)
+    overlay = ScopeBuilder(parent, composition=parent_composition).build(profile=profile)
     assert overlay.resolve(Shared) is parent.resolve(Shared)
     assert dict(profile.report().counters.values)["anchored parent plan reuses"] >= 1
 
@@ -192,7 +196,7 @@ def test_alias_failure_and_post_template_check_are_alias_phase_work():
         for span in profile.report().spans
         if span.phase == "alias and boundary preparation" and span.operation == "phase"
     ]
-    assert len(alias_spans) >= 4
+    assert len(alias_spans) == 2  # Initial normalization and post-expansion normalization.
 
 
 def test_cli_runs_one_factory_and_rejects_built_targets(monkeypatch, capsys):

@@ -1,5 +1,8 @@
 """Fresh-process installed-wheel evidence for selected route discovery metadata."""
 
+# Historical policy comparison; intentionally uses the private compiler harness.
+# New acceptance measurements use graph_memory_evidence --operation build|analyse.
+
 import argparse
 import gc
 import hashlib
@@ -126,7 +129,8 @@ def main():
     if args.heap:
         tracemalloc.start()
     started = time.monotonic()
-    container = builder.build(provider_roots=())
+    builder.set_provider_roots(())
+    container = builder.build()
     seconds = time.monotonic() - started
     route_types = (_CommandRoute, _QueryRoute, _EventRoute, _ReplyRoute, _QueryResultRoute)
     catalogue = getattr(container, "selected_registrations", ())

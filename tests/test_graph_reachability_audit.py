@@ -6,11 +6,12 @@ import pytest
 
 from benchmarks.graph_memory_fixture import build
 from benchmarks.graph_reachability_audit import audit
+from clean_ioc import ScopeBuilder
 
 
 @pytest.mark.parametrize("diagnostics", [False, True])
 def test_rich_fixture_audit_classifies_every_record_without_broken_views(diagnostics):
-    fixture = build(1, diagnostics=diagnostics)
+    fixture = build(1, operation="analyse" if diagnostics else "build")
     with fixture.runtime:
         result = audit(fixture.runtime._plan)
         assert not result["missing_graph_qualified_links"]
@@ -61,8 +62,9 @@ def test_audit_qualifies_inherited_execution_components_and_warmup_roots():
     builder.register(Resource, lifespan="singleton")
     builder.register(Consumer)
     builder.add_warmup_plan(WarmupPlan("startup", [WarmupTarget(Resource)]))
-    with builder.build(diagnostics=True) as parent:
-        with parent.new_scope_builder().build(diagnostics=True) as overlay:
+    parent_composition = builder.retain_composition()
+    with builder.build() as parent:
+        with ScopeBuilder(parent, composition=parent_composition).build() as overlay:
             result = audit(overlay._plan)
             assert not result["missing_graph_qualified_links"]
             assert result["graph_count_including_inherited_execution_graphs"] >= 2
@@ -70,7 +72,7 @@ def test_audit_qualifies_inherited_execution_components_and_warmup_roots():
             assert overlay.resolve(Consumer).resource is parent.resolve(Resource)
 
 
-def test_selection_callback_can_retain_records_outside_runtime_root_closure(monkeypatch):
+def test_selection_callback_records_remain_readable_with_compact_runtime_closure(monkeypatch):
     from clean_ioc import component_filters as cf
 
     captured = []
@@ -86,15 +88,12 @@ def test_selection_callback_can_retain_records_outside_runtime_root_closure(monk
         return capture
 
     monkeypatch.setattr(cf, "with_name", recording_with_name)
-    fixture = build(2)
+    fixture = build(2, operation="analyse")
     with fixture.runtime:
         result = audit(fixture.runtime._plan, external_components=captured)
         assert not result["missing_graph_qualified_links"]
-        assert (
-            result["overlapping_reachability"]["externally_retained_components"]["physical_records"]
-            > result["overlapping_reachability"]["public_roots"]["physical_records"]
-        )
-        assert result["externally_reachable_outside_runtime_roots"] > 0
+        assert result["overlapping_reachability"]["externally_retained_components"]["logical_ids"] > 0
+        assert result["externally_reachable_outside_runtime_roots"] == 0
         # Escaped components remain live public objects, including rejected
         # contextual candidates. Inspection must still work after compilation.
         assert all(component.service_type is not None for component in captured)
@@ -113,8 +112,9 @@ def test_audit_includes_unexposed_boundary_architecture_roots():
         boundary.register(PrivateService)
 
     builder.create_boundary("feature").apply_bundle(register_private)
-    with builder.build(diagnostics=True) as runtime:
+    with builder.build() as runtime:
         result = audit(runtime._plan)
         assert not result["missing_graph_qualified_links"]
-        assert result["overlapping_reachability"]["architecture_roots"]["physical_records"] > 0
+        assert result["overlapping_reachability"]["architecture_roots"]["physical_records"] == 0
+        assert runtime.components == ()
         assert not runtime.has_component(PrivateService)

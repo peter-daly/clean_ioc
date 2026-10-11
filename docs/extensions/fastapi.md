@@ -231,15 +231,17 @@ builder.register(
 | `singleton` | Shared by the application container and finalized at shutdown |
 
 Singleton activation is lazy by default. Resolve a singleton from a custom application lifespan when eager initialization
-is required. The compiler rejects a singleton that directly or transitively captures request-scoped state.
+is required. Analysis reports a singleton that directly or transitively captures request-scoped state.
 
 ## Build and startup validation
 
-The integration has two validation points:
+Use the same composition factory in CI and production:
 
-1. `ContainerBuilder.build()` compiles every visible application component plan and rejects missing components, cycles,
-   invalid generic specialization, decorator or pre-configuration errors, and captive lifespan paths.
-2. During ASGI startup, `install_fastapi` verifies that every route-level `Resolve` service and filter exists in the
+1. In CI, a fresh builder’s `analyse()` audits the graph, including captive lifespans, decorators, pre-configurations
+   and registered application policies. Reject invalid or incomplete results.
+2. In production, a fresh builder’s `build()` emits execution and discovery. It still fails for impossible binding,
+   and runtime ownership, cleanup and async guards remain active. It does not run policy checks.
+3. During ASGI startup, `install_fastapi` verifies that every route-level `Resolve` service and filter exists in the
    frozen container.
 
 Every `Resolve` dependency records its requested service type and component filter. Before FastAPI starts accepting traffic, the integration checks those requests against the frozen container.
@@ -256,8 +258,8 @@ async def primary(service: Service = Resolve(Service, filter=cf.with_name("prima
 If the `primary` component does not exist, application startup raises `FastAPIIntegrationError` with the route and missing service. The first request is not used as validation.
 
 FastAPI also performs early validation: it builds its native dependency model while routes are registered and validates
-the parameter declarations it owns. The distinction is scope. FastAPI validates the HTTP dependency tree; Clean IoC
-validates the separately registered application component graph and its ownership rules.
+the parameter declarations it owns. The distinction is scope. FastAPI validates the HTTP dependency tree; Clean IoC’s separate analysis
+audits the registered application component graph and its ownership rules.
 
 ## Request and response boundary values
 
@@ -340,12 +342,13 @@ Application-owned async singletons are finalized at FastAPI shutdown. Request-ow
 
 ## Testing overrides
 
-Keep application construction injectable so a compiled overlay can become the test root without mutating the production container:
+Keep application construction injectable so a compiled overlay can become the test root.
+Use a composition factory returning a fresh builder and retain external composition before building the test parent:
 
 ```python
 from fastapi.testclient import TestClient
 
-from clean_ioc import Scope
+from clean_ioc import Scope, ScopeBuilder
 
 
 def create_app(root_scope: Scope) -> FastAPI:
@@ -354,12 +357,14 @@ def create_app(root_scope: Scope) -> FastAPI:
     return app
 
 
-test_builder = container.new_scope_builder()
-test_builder.register(PaymentGateway, FakePaymentGateway)
-test_scope = test_builder.build()
-
-with TestClient(create_app(test_scope)) as client:
-    response = client.post("/checkout")
+builder = application_builder()
+composition = builder.retain_composition()
+with builder.build() as test_parent:
+    test_builder = ScopeBuilder(test_parent, composition=composition)
+    test_builder.register(PaymentGateway, FakePaymentGateway)
+    test_scope = test_builder.build()
+    with TestClient(create_app(test_scope)) as client:
+        response = client.post("/checkout")
 ```
 
 The installed application owns and closes the overlay. For request-specific values, use the slots installed by

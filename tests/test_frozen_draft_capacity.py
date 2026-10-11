@@ -35,7 +35,15 @@ def test_freeze_releases_draft_capacity_and_preserves_every_record(count):
     snapshots = []
     for occurrence in range(1, count + 1):
         value = draft(occurrence)
-        snapshots.append({item.name: getattr(value, item.name) for item in fields(value)})
+        # Drafts store definition facts separately from occurrence state. Preserve
+        # every original fact while excluding the temporary interning owner.
+        snapshot = {
+            item.name: getattr(value, item.name)
+            for item in fields(value)
+            if item.name not in ("_definition", "_definitions")
+        }
+        snapshot.update({item.name: getattr(value, item.name) for item in fields(value._definition)})
+        snapshots.append(snapshot)
         components.append(graph.add(value))
     allocated = sys.getsizeof(graph._drafts)
     graph.freeze()

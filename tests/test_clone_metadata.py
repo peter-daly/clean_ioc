@@ -8,8 +8,7 @@ import pytest
 
 import clean_ioc.container as compiler_module
 from benchmarks import bench_compiler_optimization as workloads
-from benchmarks.compiler_optimization_evidence import executable_inventory
-from clean_ioc import ComponentActivation, ComponentKind, Container, ContainerBuilder, ContainerBuildError
+from clean_ioc import ComponentActivation, ComponentKind, ContainerBuilder, ScopeBuilder
 
 
 def _baseline_draft(original):
@@ -40,69 +39,69 @@ def _normalized(value, replacements):
     return value
 
 
-def _assert_equivalent(builder, monkeypatch, *, build_args=None):
-    blueprint, inputs = builder._compilation_snapshot(build_args)
-    inputs["diagnostics"] = True
-    optimized = compiler_module._compile_with_report(blueprint, **inputs)
+def _assert_equivalent(make_builder, monkeypatch, *, build_args=None):
+    optimized = make_builder().analyse(build_args=build_args)
     with monkeypatch.context() as patch:
         patch.setattr(compiler_module._Compiler, "_draft", _baseline_draft(compiler_module._Compiler._draft))
-        baseline = compiler_module._compile_with_report(blueprint, **inputs)
-    left = optimized.graph._records
-    right = baseline.graph._records
-    assert left is not None and right is not None
+        baseline = make_builder().analyse(build_args=build_args)
+    optimized.report.assert_valid()
+    baseline.report.assert_valid()
+    left = optimized.graph.roots[0].component._graph._records
+    right = baseline.graph.roots[0].component._graph._records
     assert tuple(left) == tuple(right)
-    ids = {}
-    for occurrence, record in left.items():
-        ids[record.id] = right[occurrence].id
-    # All graph records includes hidden eager provider/collection occurrences,
-    # not merely the public walk or default manifest.
+    ids = {record.id: right[occurrence].id for occurrence, record in left.items()}
+    baseline_ids = {reference: identity for identity, reference in baseline.graph._census_ids.items()}
+    ids.update({identity: baseline_ids[reference] for identity, reference in optimized.graph._census_ids.items()})
     assert _normalized(left, ids) == _normalized(right, {})
     for name in (
-        "occurrence_explanations",
-        "occurrence_origins",
-        "decorator_explanations",
-        "parameter_explanations",
-        "generic_explanations",
-        "occurrence_layers",
-        "compiler_issues",
-        "census_definitions",
-        "census_sources",
+        "_occurrence_explanations",
+        "_occurrence_origins",
+        "_decorator_explanations",
+        "_parameter_explanations",
+        "_generic_explanations",
+        "_occurrence_layers",
+        "_census_definitions",
+        "_census_sources",
     ):
-        assert _normalized(getattr(optimized, name), ids) == _normalized(getattr(baseline, name), {})
-    with Container(optimized, builder._owner_token) as actual, Container(baseline, builder._owner_token) as expected:
-        assert actual.graph.manifest(all_roots=True).to_json() == expected.graph.manifest(all_roots=True).to_json()
-        assert actual.graph.manifest().fingerprint == expected.graph.manifest().fingerprint
-        assert not actual.graph.diff(expected.graph.manifest()).changed
-        assert actual.build_report.to_json() == expected.build_report.to_json()
-        assert actual.graph.to_text(all_roots=True) == expected.graph.to_text(all_roots=True)
-        assert actual.graph.to_mermaid(all_roots=True) == expected.graph.to_mermaid(all_roots=True)
-        assert actual.graph.ownership_report().to_json() == expected.graph.ownership_report().to_json()
-        assert actual.graph.sharing_report().to_json() == expected.graph.sharing_report().to_json()
-        for root in actual.graph.roots:
-            assert (
-                actual.graph.activation_report(root.requested_type).to_json()
-                == expected.graph.activation_report(root.requested_type).to_json()
-            )
+        assert _normalized(getattr(optimized.graph, name), ids) == _normalized(getattr(baseline.graph, name), {})
+    assert optimized.graph.manifest(all_roots=True).to_json() == baseline.graph.manifest(all_roots=True).to_json()
+    assert optimized.graph.manifest().fingerprint == baseline.graph.manifest().fingerprint
+    assert not optimized.graph.diff(baseline.graph.manifest()).changed
+    assert optimized.report.to_json() == baseline.report.to_json()
+    assert optimized.graph.to_text(all_roots=True) == baseline.graph.to_text(all_roots=True)
+    assert optimized.graph.to_mermaid(all_roots=True) == baseline.graph.to_mermaid(all_roots=True)
+    assert optimized.graph.ownership_report().to_json() == baseline.graph.ownership_report().to_json()
+    assert optimized.graph.sharing_report().to_json() == baseline.graph.sharing_report().to_json()
+    for actual_root, expected_root in zip(optimized.graph.roots, baseline.graph.roots, strict=True):
         assert (
-            actual.graph.selection_census(all_roots=True).to_json()
-            == expected.graph.selection_census(all_roots=True).to_json()
+            optimized.graph.activation_report(actual_root.component).to_json()
+            == baseline.graph.activation_report(expected_root.component).to_json()
         )
-        assert executable_inventory(actual) == executable_inventory(expected)
+    assert optimized.selection_census(all_roots=True).to_json() == baseline.selection_census(all_roots=True).to_json()
+    with optimized.create_runtime() as actual, baseline.create_runtime() as expected:
+        assert [(item.service_type, item.implementation_type) for item in actual.selected_registrations] == [
+            (item.service_type, item.implementation_type) for item in expected.selected_registrations
+        ]
 
 
 @pytest.mark.parametrize("shape", workloads.SHAPES)
 def test_cloned_metadata_matches_discarded_normalization_baseline(shape, monkeypatch):
-    _assert_equivalent(workloads.make_builder(shape), monkeypatch, **workloads.build_inputs(shape))
+    _assert_equivalent(lambda: workloads.make_builder(shape), monkeypatch, **workloads.build_inputs(shape))
 
 
 def test_anchored_overlay_preserves_source_graph_sidecars(monkeypatch):
     parent_builder = ContainerBuilder()
     parent_builder.register(workloads.Leaf, lifespan="singleton")
     parent_builder.register(workloads.Worker, lifespan="singleton")
-    with parent_builder.build(diagnostics=True) as parent:
-        builder = parent.new_scope_builder()
-        builder.register(workloads.CollectionRoot)
-        _assert_equivalent(builder, monkeypatch)
+    parent_composition = parent_builder.retain_composition()
+    with parent_builder.build() as parent:
+
+        def make_builder():
+            builder = ScopeBuilder(parent, composition=parent_composition)
+            builder.register(workloads.CollectionRoot)
+            return builder
+
+        _assert_equivalent(make_builder, monkeypatch)
 
 
 @pytest.mark.parametrize("captured", [dict, None])
@@ -227,8 +226,7 @@ def test_captured_type_survives_changed_signature_getter_but_fresh_inspection_fa
         with monkeypatch.context() as patch:
             if baseline:
                 patch.setattr(compiler_module._Compiler, "_draft", _baseline_draft(original))
-            with pytest.raises(ContainerBuildError) as raised:
-                builder.build()
-        assert raised.value.report.errors[0].code == "compile-error"
+            with pytest.raises(RuntimeError, match="dynamic signature changed after capture"):
+                builder.analyse()
         assert fresh_callbacks == []
         assert fresh_factory.activations == 0

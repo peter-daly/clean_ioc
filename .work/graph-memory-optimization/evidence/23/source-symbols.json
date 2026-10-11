@@ -1,0 +1,77 @@
+[
+  {
+    "name": "_CapturedDependency",
+    "line": 1421,
+    "end_line": 1437
+  },
+  {
+    "name": "_CapturedRegistration",
+    "line": 1441,
+    "end_line": 1462
+  },
+  {
+    "name": "_CapturedLayer",
+    "line": 1466,
+    "end_line": 1506
+  },
+  {
+    "name": "_CapturedComposition",
+    "line": 1510,
+    "end_line": 1535
+  },
+  {
+    "name": "Composition",
+    "line": 1539,
+    "end_line": 1571
+  },
+  {
+    "name": "_compile_warmup_plans",
+    "line": 13469,
+    "end_line": 13549
+  },
+  {
+    "name": "_compile_execution",
+    "line": 13782,
+    "end_line": 13845
+  },
+  {
+    "name": "_ObservedPreConfiguration",
+    "line": 15076,
+    "end_line": 15204
+  },
+  {
+    "name": "_observe_execution_plan",
+    "line": 15226,
+    "end_line": 15560
+  },
+  {
+    "name": "AnalysisResult",
+    "line": 17124,
+    "end_line": 17218
+  },
+  {
+    "name": "ScopeBuilder",
+    "line": 17352,
+    "end_line": 17500
+  },
+  {
+    "name": "retain_composition",
+    "line": 15641,
+    "end_line": 15646
+  },
+  {
+    "name": "_release_declarations",
+    "line": 15655,
+    "end_line": 15700
+  },
+  {
+    "name": "_build_plan",
+    "line": 15772,
+    "end_line": 15931
+  },
+  {
+    "name": "_analyse",
+    "line": 15933,
+    "end_line": 16039
+  }
+]

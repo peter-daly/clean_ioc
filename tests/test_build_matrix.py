@@ -95,8 +95,8 @@ def test_builds_in_declaration_order_reference_position_and_closes_before_polici
     scopes = []
 
     class TrackedBuilder(ContainerBuilder):
-        def build(self, **kwargs):
-            scope = super().build(**kwargs)
+        def analyse(self, **kwargs):
+            scope = super().analyse(**kwargs)
             scopes.append(scope)
             return scope
 
@@ -136,7 +136,7 @@ def test_each_check_uses_fresh_factories_and_stable_captured_reports(validator):
     assert first.assert_valid() is None
 
 
-def test_runs_build_rules_once_and_validation_only_rules_once_per_variant():
+def test_runs_all_validation_rules_once_per_variant():
     calls = []
 
     def create():
@@ -151,7 +151,7 @@ def test_runs_build_rules_once_and_validation_only_rules_once_per_variant():
             return (BuildIssue("validation-finding", IssueSeverity.error, "Validation failed."),)
 
         created.add_validation_rule(build_rule)
-        created.add_validation_rule(validation_rule, mode="validation")
+        created.add_validation_rule(validation_rule)
         return created
 
     report = matrix(BuildVariant("production", builder), BuildVariant("staging", create)).check()
@@ -316,7 +316,15 @@ def test_definition_validation_and_captured_build_input_mapping():
         BuildVariant("production", builder, cast(Any, {object(): "private"}))
 
 
-@pytest.mark.parametrize("factory", [lambda: None, lambda: {}, lambda: builder().build(), lambda: object()])
+@pytest.mark.parametrize(
+    "factory",
+    [
+        lambda: None,
+        lambda: {},
+        lambda: builder().analyse(),
+        lambda: object(),
+    ],
+)
 def test_factory_rejects_invalid_results_and_continues(factory):
     report = matrix(BuildVariant("invalid", factory), BuildVariant("production", builder)).check()
     assert report.exit_code == 2 and report.variants[1].is_valid
@@ -325,7 +333,7 @@ def test_factory_rejects_invalid_results_and_continues(factory):
 
 def test_prebuilt_and_reused_builders_including_failed_builders_are_rejected():
     used = builder()
-    used.build()
+    used.analyse()
     prebuilt = matrix(BuildVariant("bad", lambda: used), BuildVariant("production", builder)).check()
     assert prebuilt.exit_code == 2
     reused = builder()
@@ -455,7 +463,7 @@ def test_matrix_captures_declaration_lists_and_rejects_noniterables():
 
 def test_unstructured_build_exceptions_do_not_stop_later_variants():
     class UnexpectedBuilder(ContainerBuilder):
-        def build(self, **kwargs):
+        def analyse(self, **kwargs):
             raise RuntimeError("private-key private-value")
 
     report = matrix(BuildVariant("unexpected", UnexpectedBuilder), BuildVariant("production", builder)).check()
@@ -466,7 +474,7 @@ def test_unstructured_build_exceptions_do_not_stop_later_variants():
 
 def test_unstructured_container_build_errors_remain_safe():
     class UnexpectedBuilder(ContainerBuilder):
-        def build(self, **kwargs):
+        def analyse(self, **kwargs):
             raise ContainerBuildError("private-key private-value")
 
     report = matrix(BuildVariant("production", UnexpectedBuilder)).check()
@@ -611,7 +619,7 @@ def test_validation_callback_errors_are_redacted_but_keep_their_code():
         def bad_rule(_):
             raise RuntimeError("private-key private-value")
 
-        created.add_validation_rule(bad_rule, mode="validation")
+        created.add_validation_rule(bad_rule)
         return created
 
     report = matrix(BuildVariant("production", create)).check()
@@ -624,8 +632,8 @@ def test_matrix_reports_do_not_retain_runtime_containers(validator):
     references = []
 
     class TrackedBuilder(ContainerBuilder):
-        def build(self, **kwargs):
-            scope = super().build(**kwargs)
+        def analyse(self, **kwargs):
+            scope = super().analyse(**kwargs)
             references.append(weakref.ref(scope))
             return scope
 
@@ -643,17 +651,18 @@ def test_matrix_reports_do_not_retain_runtime_containers(validator):
 def test_overlay_variants_close_the_overlay_and_leave_the_parent_open():
     from clean_ioc import ScopeBuilder
 
-    parent = builder().build()
+    parent_result = builder().analyse()
+    parent = parent_result.create_runtime()
     scopes = []
 
     class TrackedScopeBuilder(ScopeBuilder):
-        def build(self, **kwargs):
-            scope = super().build(**kwargs)
+        def analyse(self, **kwargs):
+            scope = super().analyse(**kwargs)
             scopes.append(scope)
             return scope
 
     def create():
-        overlay = TrackedScopeBuilder(parent)
+        overlay = TrackedScopeBuilder(parent, composition=parent_result.composition)
         overlay.register(OtherApplication)
         return overlay
 
@@ -665,18 +674,18 @@ def test_overlay_variants_close_the_overlay_and_leave_the_parent_open():
     assert report.is_valid
     assert len(scopes) == 2 and all(scope._closed for scope in scopes)
     assert parent._closed is False
-    parent.__exit__(None, None, None)
+    parent_result.close()
 
 
 @pytest.mark.parametrize("failure", ["capture", "policy"])
-def test_scopes_are_closed_on_capture_or_policy_failure(monkeypatch, failure):
+def test_analysis_results_are_closed_on_capture_or_policy_failure(monkeypatch, failure):
     import clean_ioc.matrix as matrix_module
 
     scopes = []
 
     class TrackedBuilder(ContainerBuilder):
-        def build(self, **kwargs):
-            scope = super().build(**kwargs)
+        def analyse(self, **kwargs):
+            scope = super().analyse(**kwargs)
             scopes.append(scope)
             return scope
 

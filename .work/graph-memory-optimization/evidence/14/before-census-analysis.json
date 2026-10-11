@@ -1,0 +1,489 @@
+{
+  "policy": "before",
+  "variant": "analysis",
+  "counts": {
+    "_ComponentDraft": {
+      "constructed": 2847,
+      "live": 0,
+      "maximum_live": 2685
+    },
+    "_ComponentDefinition": {
+      "constructed": 4696,
+      "live": 0,
+      "maximum_live": 981
+    },
+    "_ComponentRecord": {
+      "constructed": 12079,
+      "live": 0,
+      "maximum_live": 2847
+    }
+  },
+  "after_build": [
+    {
+      "_ComponentDraft": {
+        "constructed": 2847,
+        "live": 0,
+        "maximum_live": 2685
+      },
+      "_ComponentDefinition": {
+        "constructed": 4696,
+        "live": 80,
+        "maximum_live": 981
+      },
+      "_ComponentRecord": {
+        "constructed": 12079,
+        "live": 2847,
+        "maximum_live": 2847
+      }
+    }
+  ],
+  "graphs": [
+    {
+      "phase": "freeze",
+      "drafts": 1,
+      "draft_shallow_bytes": 248,
+      "definition_shallow_bytes": 0,
+      "live_definitions": null,
+      "tag_tuples": 1,
+      "ordered_tag_patterns": 1,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 0,
+      "pool_key_bytes": 0,
+      "pool_key_integer_bytes": 0,
+      "pool_weakref_bytes": 0,
+      "pool_table_bytes": 0,
+      "pool_wrapper_bytes": 0
+    },
+    {
+      "phase": "freeze",
+      "drafts": 1,
+      "draft_shallow_bytes": 248,
+      "definition_shallow_bytes": 0,
+      "live_definitions": null,
+      "tag_tuples": 1,
+      "ordered_tag_patterns": 1,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 0,
+      "pool_key_bytes": 0,
+      "pool_key_integer_bytes": 0,
+      "pool_weakref_bytes": 0,
+      "pool_table_bytes": 0,
+      "pool_wrapper_bytes": 0
+    },
+    {
+      "phase": "freeze",
+      "drafts": 1,
+      "draft_shallow_bytes": 248,
+      "definition_shallow_bytes": 0,
+      "live_definitions": null,
+      "tag_tuples": 1,
+      "ordered_tag_patterns": 1,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 0,
+      "pool_key_bytes": 0,
+      "pool_key_integer_bytes": 0,
+      "pool_weakref_bytes": 0,
+      "pool_table_bytes": 0,
+      "pool_wrapper_bytes": 0
+    },
+    {
+      "phase": "freeze",
+      "drafts": 1,
+      "draft_shallow_bytes": 248,
+      "definition_shallow_bytes": 0,
+      "live_definitions": null,
+      "tag_tuples": 1,
+      "ordered_tag_patterns": 1,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 0,
+      "pool_key_bytes": 0,
+      "pool_key_integer_bytes": 0,
+      "pool_weakref_bytes": 0,
+      "pool_table_bytes": 0,
+      "pool_wrapper_bytes": 0
+    },
+    {
+      "phase": "freeze",
+      "drafts": 2,
+      "draft_shallow_bytes": 496,
+      "definition_shallow_bytes": 0,
+      "live_definitions": null,
+      "tag_tuples": 1,
+      "ordered_tag_patterns": 1,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 0,
+      "pool_key_bytes": 0,
+      "pool_key_integer_bytes": 0,
+      "pool_weakref_bytes": 0,
+      "pool_table_bytes": 0,
+      "pool_wrapper_bytes": 0
+    },
+    {
+      "phase": "freeze",
+      "drafts": 2,
+      "draft_shallow_bytes": 496,
+      "definition_shallow_bytes": 0,
+      "live_definitions": null,
+      "tag_tuples": 1,
+      "ordered_tag_patterns": 1,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 0,
+      "pool_key_bytes": 0,
+      "pool_key_integer_bytes": 0,
+      "pool_weakref_bytes": 0,
+      "pool_table_bytes": 0,
+      "pool_wrapper_bytes": 0
+    },
+    {
+      "phase": "freeze",
+      "drafts": 77,
+      "draft_shallow_bytes": 19096,
+      "definition_shallow_bytes": 0,
+      "live_definitions": null,
+      "tag_tuples": 1,
+      "ordered_tag_patterns": 1,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 0,
+      "pool_key_bytes": 0,
+      "pool_key_integer_bytes": 0,
+      "pool_weakref_bytes": 0,
+      "pool_table_bytes": 0,
+      "pool_wrapper_bytes": 0
+    },
+    {
+      "phase": "freeze",
+      "drafts": 77,
+      "draft_shallow_bytes": 19096,
+      "definition_shallow_bytes": 0,
+      "live_definitions": null,
+      "tag_tuples": 1,
+      "ordered_tag_patterns": 1,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 0,
+      "pool_key_bytes": 0,
+      "pool_key_integer_bytes": 0,
+      "pool_weakref_bytes": 0,
+      "pool_table_bytes": 0,
+      "pool_wrapper_bytes": 0
+    },
+    {
+      "phase": "freeze",
+      "drafts": 2685,
+      "draft_shallow_bytes": 665880,
+      "definition_shallow_bytes": 0,
+      "live_definitions": null,
+      "tag_tuples": 1,
+      "ordered_tag_patterns": 1,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 0,
+      "pool_key_bytes": 0,
+      "pool_key_integer_bytes": 0,
+      "pool_weakref_bytes": 0,
+      "pool_table_bytes": 0,
+      "pool_wrapper_bytes": 0
+    }
+  ],
+  "pool": {},
+  "graph": {
+    "decorator_objects": {
+      "unique_objects": {
+        "explanations": 2269,
+        "decisions": 9076,
+        "template_facts": 9076,
+        "decision_tuples": 2300
+      },
+      "unique_patterns": 2269,
+      "logical_outcomes_by_entry": {
+        "rejected": 9018,
+        "selected": 58
+      },
+      "logical_reason_codes_by_entry": {
+        "template-target-not-selected": 9016,
+        "decorator-filter-matched": 58,
+        "decorator-filter-rejected": 2
+      },
+      "shallow_storage_bytes": {
+        "explanations": 145216,
+        "decisions": 871296,
+        "template_facts": 1306944,
+        "decision_tuples": 183008
+      },
+      "outcomes": {
+        "rejected": 9018,
+        "selected": 58
+      },
+      "reason_codes": {
+        "template-target-not-selected": 9016,
+        "decorator-filter-matched": 58,
+        "decorator-filter-rejected": 2
+      }
+    },
+    "component_metadata": {
+      "identity_patterns": 385,
+      "definition_identity_patterns": 46,
+      "patterns_by_kind": {
+        "registration": 17,
+        "value": 322,
+        "provider": 22,
+        "decorator": 4,
+        "managed_provider": 14,
+        "provider_map": 6
+      },
+      "unique_field_objects": {
+        "id": 381,
+        "service_type": 29,
+        "implementation": 20,
+        "implementation_type": 20,
+        "lifespan": 3,
+        "name": 5,
+        "tags": 1,
+        "build_args": 1,
+        "kind": 6,
+        "activation": 4,
+        "boundary": 1,
+        "declared_service_type": 15
+      },
+      "shared_definition_objects": 46,
+      "shared_definition_bytes": 5520,
+      "retained_definition_index_bytes": 0
+    },
+    "physical_records": 2685,
+    "logical_graph_visits": 1549,
+    "provider_view_contexts": 14,
+    "record_kinds": {
+      "registration": 2263,
+      "value": 322,
+      "provider": 22,
+      "decorator": 58,
+      "managed_provider": 14,
+      "provider_map": 6
+    },
+    "activation_kinds": {
+      "constructor": 2321,
+      "supplied": 322,
+      "deferred": 36,
+      "collection": 6
+    },
+    "unique_execution_steps": 279,
+    "execution_step_kinds": {
+      "_ProviderMapStep": 10,
+      "_ProviderStep": 22,
+      "_ScopedRegistrationStep": 29,
+      "_TransientRegistrationStep": 56,
+      "_ValueStep": 96,
+      "_SingletonRegistrationStep": 38,
+      "_ManagedProviderStep": 14,
+      "_ContextProviderStep": 14
+    },
+    "unique_registration_objects": 19,
+    "registration_carrier_kinds": {
+      "_Registration": 19
+    },
+    "retained_execution_composition": {
+      "decorator_definitions": 40,
+      "decorator_dependency_settings": 40,
+      "registration_dependency_settings": 40
+    },
+    "retained_plan_fields": {
+      "graph": {
+        "type": "_ComponentGraph",
+        "entries": null,
+        "shallow_bytes": 64
+      },
+      "roots": {
+        "type": "dict",
+        "entries": 14,
+        "shallow_bytes": 632
+      },
+      "default_roots": {
+        "type": "dict",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "default_root_groups": {
+        "type": "dict",
+        "entries": 14,
+        "shallow_bytes": 632
+      },
+      "_blueprint": {
+        "type": "_Blueprint",
+        "entries": null,
+        "shallow_bytes": 64
+      },
+      "build_args": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "diagnostics": {
+        "type": "bool",
+        "entries": null,
+        "shallow_bytes": 28
+      },
+      "explain_metadata": {
+        "type": "bool",
+        "entries": null,
+        "shallow_bytes": 28
+      },
+      "unreachable_checked": {
+        "type": "bool",
+        "entries": null,
+        "shallow_bytes": 28
+      },
+      "unreachable_issue_offset": {
+        "type": "int",
+        "entries": null,
+        "shallow_bytes": 28
+      },
+      "fallback_ids": {
+        "type": "frozenset",
+        "entries": 0,
+        "shallow_bytes": 216
+      },
+      "compiled_graph": {
+        "type": "CompiledGraph",
+        "entries": null,
+        "shallow_bytes": 264
+      },
+      "build_report": {
+        "type": "BuildReport",
+        "entries": null,
+        "shallow_bytes": 72
+      },
+      "compiler_issues": {
+        "type": "tuple",
+        "entries": 0,
+        "shallow_bytes": 48
+      },
+      "root_candidates": {
+        "type": "mappingproxy",
+        "entries": 18,
+        "shallow_bytes": 632
+      },
+      "occurrence_explanations": {
+        "type": "mappingproxy",
+        "entries": 2512,
+        "shallow_bytes": 73808
+      },
+      "occurrence_origins": {
+        "type": "mappingproxy",
+        "entries": 2685,
+        "shallow_bytes": 73808
+      },
+      "decorator_explanations": {
+        "type": "mappingproxy",
+        "entries": 2269,
+        "shallow_bytes": 73808
+      },
+      "parameter_explanations": {
+        "type": "mappingproxy",
+        "entries": 1333,
+        "shallow_bytes": 36952
+      },
+      "generic_explanations": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "occurrence_layers": {
+        "type": "_OccurrenceLayers",
+        "entries": 2685,
+        "shallow_bytes": 48
+      },
+      "provider_roots": {
+        "type": "mappingproxy",
+        "entries": 4,
+        "shallow_bytes": 224
+      },
+      "managed_provider_roots": {
+        "type": "mappingproxy",
+        "entries": 4,
+        "shallow_bytes": 224
+      },
+      "architecture_roots": {
+        "type": "tuple",
+        "entries": 17,
+        "shallow_bytes": 184
+      },
+      "area_root_candidates": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "census_sources": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "census_definitions": {
+        "type": "tuple",
+        "entries": 27,
+        "shallow_bytes": 264
+      },
+      "census_ids": {
+        "type": "mappingproxy",
+        "entries": 27,
+        "shallow_bytes": 832
+      },
+      "warmup_steps": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "warmup_infos": {
+        "type": "tuple",
+        "entries": 0,
+        "shallow_bytes": 48
+      },
+      "warmup_fingerprint": {
+        "type": "str",
+        "entries": null,
+        "shallow_bytes": 41
+      },
+      "selected_registrations": {
+        "type": "tuple",
+        "entries": 21,
+        "shallow_bytes": 216
+      },
+      "slots": {
+        "type": "frozenset",
+        "entries": 0,
+        "shallow_bytes": 216
+      },
+      "ensured_import_modules": {
+        "type": "tuple",
+        "entries": 0,
+        "shallow_bytes": 48
+      },
+      "validation_rules": {
+        "type": "tuple",
+        "entries": 0,
+        "shallow_bytes": 48
+      }
+    },
+    "executable_helpers": {
+      "_CompiledDependency": 270,
+      "_CompiledDecorator": 40
+    },
+    "selected_registrations": 21,
+    "unique_origins": 21,
+    "shallow_storage_bytes": {
+      "component_records": 472560,
+      "record_index": 73808,
+      "link_tuples": 87504,
+      "occurrence_integers": 75684,
+      "origin_indexes": 73808,
+      "execution_steps": 25528,
+      "registration_objects": 3192
+    },
+    "metadata_entries": {
+      "occurrence_explanations": 2512,
+      "parameter_explanations": 1333,
+      "generic_explanations": 0,
+      "decorator_explanations": 2269,
+      "root_candidates": 18,
+      "census_sources": 0,
+      "census_definitions": 27
+    }
+  }
+}

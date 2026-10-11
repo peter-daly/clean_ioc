@@ -8,11 +8,47 @@ The [retest after task 05](artifact-retest-post05.md) compares full and reduced
 artifacts using the same current runtime in separate compile/export/load processes.
 
 Created: 2026-10-08\
-Status: Tasks 01 and 02 retained; 03 pruning declined; 04 reverted; 05 retained; 06, 07 and 08 investigations complete; 09 refinement complete; isolated prototype retained.
+Status: Tasks 01–24 have recorded outcomes and reviews; task 23 closes task 21's feature integration gate, and task 24 completes the API/tooling/consumer migration with full quality checks. Task 25 is ready for assignment and remains unassigned. No new performance comparison has been run.
+
+## Current direction: execution-only build and complete analyse
+
+The maintainer's follow-up on 2026-10-10 requests two explicit methods:
+`build()` emits a runtime with **no validation rules or safety-policy checks**;
+`analyse()` performs complete analysis and all validation. Breaking changes are
+acceptable. This supersedes the earlier task 10/11 requirement for mandatory
+checks in both modes. There is no implicit analysis prerequisite or new set of
+fine-grained build switches.
+
+The follow-up decision removes the build-rule/validation-rule distinction:
+one `add_validation_rule(rule)` API, no phase argument, and every rule runs only
+in `analyse()`. Task 20's scoped implementation is reviewed. The maintainer has
+authorized sequential local implementation and verification of tasks 21–24.
+
+The maintainer accepted task 19's reviewed ownership recommendations: an admitted
+build/analysis attempt consumes its builder, including failure, and optional
+external composition supports overrides without a blueprint on ordinary runtimes.
+Composition has immutable declaration structure and ordinary reference ownership,
+with no separate close lifecycle. Ordinary scopes require no handle. These are
+design decisions; actual reference release and peak-memory savings require measurement.
+
+The [source investigation](build-and-analyse-investigation.md) identifies the
+automatic rich capture for build rules, inline validation, report finalization,
+and hidden warmup/profiling dependencies on inspection graphs. It also records
+the actual Cop regression and the baseline gap in task 18. Compilation must still
+bind dependencies and emit instructions; an impossible plan can fail without
+performing an architectural or safety audit.
+
+Tasks 19–24 have completed their design/implementation reviews. Task 23 completes
+task 21's feature gate. Task 24 passes full library CI on Python 3.11–3.14 and actual
+Bark/Cop verification: 6,040 Bark unit tests (29 existing skips), 504 Cop unit tests
+and 64 Cop integration tests. [Task 24 result](24-result.md) records source identities,
+consumer patches and the 15 retired duplicate host-mode cases. Preserved baselines
+remain intact. Task 25 is ready and unassigned; it supplies performance acceptance.
+Passing correctness checks does not establish a memory or startup improvement.
 
 Reduce the memory retained by the compiled output graph while preserving
 resolution, ownership, filtering, inspection and diagnostic behaviour. Measure
-compilation peak memory and build time alongside retained memory. These nine
+compilation peak memory and build time alongside retained memory. These
 tasks follow the investigation using the large graph fixture with registration
 templates, decorator templates, providers and maps.
 
@@ -51,6 +87,137 @@ memory measurements before deciding production readiness.
 | 07 | [Investigate object layout and avoidable allocation](07-object-layout-and-allocation.md) | Complete — investigation only | GPT-6.1 Sol (`gpt-6.1-sol`), medium reasoning; [result](07-result.md), [inventory](07-inventory.md) |
 | 08 | [Investigate compact indexes](08-compact-indexes.md) | Complete — investigation only; refine | GPT-6.1 Sol (`gpt-6.1-sol`), high reasoning; [result](08-result.md), [inventory](08-inventory.md) |
 | 09 | [Refine compact indexes and verify dictionary compatibility](09-refine-compact-indexes.md) | Complete — isolated prototype retained; not production adopted | GPT-6.1 Sol (`gpt-6.1-sol`), medium reasoning; [result](09-result.md), [inventory](09-inventory.md) |
+| 10 | [Replace fine-grained build switches with run and analysis modes](10-run-and-analysis-modes.md) | Complete — implemented | High reasoning; [result](10-result.md), [contract](10-contract.md); 2,204 tests and CI pass |
+| 11 | [Define validation requirements and minimum failure evidence](11-validation-and-failure-contract.md) | Complete — scoped lifetime/failure changes retained | Extra-high reasoning; [result](11-result.md), [inventory](11-inventory.md); 2,229 tests and CI pass |
+| 12 | [Construct compact selection facts directly](12-direct-compact-selection-facts.md) | Complete — scoped CPU/churn improvement retained | High reasoning; [result](12-result.md), [inventory](12-inventory.md); no memory reduction |
+| 13 | [Shorten activation-cache ownership](13-activation-cache-lifetimes.md) | Complete — scoped KEEP accepted; [result](13-result.md), [inventory](13-inventory.md) | Extra-high reasoning; 06 cache/lifetime evidence; 10–12 contracts |
+| 14 | [Share component definitions in mutable drafts](14-shared-draft-definitions.md) | Complete — scoped KEEP accepted; [result](14-result.md), [inventory](14-inventory.md) | High reasoning; repeated-definition peak gain with explicit unique-definition regression |
+| 15 | [Compact temporary indexes and relationship tables](15-compact-compilation-tables.md) | Complete — scoped index KEEP accepted; wider tables DROP / DEFER | High reasoning; [result](15-result.md), [inventory](15-inventory.md); 4.96 MiB lower peak with explicit costs |
+| 16 | [Reduce callback snapshot copying](16-callback-snapshot-sharing.md) | Complete — direct-freeze KEEP for CPU/churn; broader sharing DROP; accepted | High reasoning; detached views preserved, traced peaks flat |
+| 17 | [Release completed intermediate occurrences earlier](17-intermediate-occurrence-lifetimes.md) | Complete — retained-draft transfer KEEP accepted; broader reclamation DROP / DEFER | 10–11 and consumer/liveness inventory |
+| 18 | [Verify both modes and combined compiler-memory gains](18-mode-equivalence-and-memory-acceptance.md) | Complete — combined qualified KEEP accepted; [result](18-result.md) | High reasoning; 10–11 and each optimization selected for integration |
+| 19 | [Define explicit build and analyse contracts](19-build-and-analyse-contract.md) | Complete — design reviewed; ownership decisions accepted; [result](19-result.md) | High reasoning; `/root/graph_memory_task_19`; planning only |
+| 20 | [Move all validation into analyse](20-analysis-validation-pipeline.md) | Complete — scoped review accepted; [result](20-result.md) | Extra-high reasoning; 262 focused tests, lint/format/types and real Bark rule proof |
+| 21 | [Emit execution plans without analysis finalization](21-execution-only-plan-finalization.md) | Complete — core and task 23 feature gate reviewed; [result](21-result.md) | Extra-high reasoning; direct execution result and discovery |
+| 22 | [Avoid analysis evidence allocation during build](22-execution-only-evidence-capture.md) | Complete — scoped review accepted; [result](22-result.md) | Extra-high reasoning; 337 focused tests, lint/format/types and real Bark rule proof |
+| 23 | [Decouple runtime features from analysis graphs](23-runtime-features-without-analysis-graphs.md) | Complete — scoped review accepted; [result](23-result.md) | High reasoning; 406 focused tests, quality and real Bark rule proof |
+| 24 | [Migrate tooling and verify consumers](24-build-analyse-tools-and-consumers.md) | Complete — reviewed; [result](24-result.md) | High reasoning; full CI/docs and actual Bark/Cop verification |
+| 25 | [Accept the whole upgrade against consumer baselines](25-build-analyse-consumer-memory-acceptance.md) | Ready — unassigned; baselines preserved; performance not measured | High reasoning; actual application peak/RSS/startup and separate analysis cost |
+
+## Run and analysis workstream — historical direction for tasks 10–18
+
+The new build/analyse direction above supersedes this section's requirement for
+mandatory build validation. The following records the earlier work and measured
+decisions; it must not be read as a constraint on tasks 19–25.
+
+On 2026-10-10 the maintainer requested exactly two build modes: **run** and
+**analysis**, replacing fine-grained build policy options. This is a change to
+the intended public API, not a request to add presets alongside permanent
+per-feature overrides. The names and direction are agreed; the API spelling,
+default, migration and capability decisions are recorded in the implemented
+[task 10 contract](10-contract.md).
+
+- Run builds construct and retain the minimum required for correct application
+  resolution, discovery, ownership, cleanup and mandatory validation. Reduce
+  temporary construction and lifetime as well as successful-runtime retention.
+- Analysis builds provide the complete supported inspection, explanation,
+  diagnostic and full-validation workflow. They still do not activate application
+  constructors or replay callbacks to manufacture evidence.
+- Both use the same dependency-selection and execution semantics. Preserve the
+  selected-registration catalogue, including selected dependency-only/deferred
+  registrations and decorators. Never recreate public roots merely for discovery.
+- Mandatory structural checks and build-mode rules remain effective. Registered
+  validation-only rules must not prevent a run build. Full validation uses a fresh
+  analysis build; discarded capabilities fail clearly on a run runtime.
+- Older tasks describe historical fine-grained flags and their compatibility
+  contracts. Preserve those records; tasks 10–11 define their explicit successor.
+  Task 10 implements these successor modes in the local working tree.
+
+The maintainer subsequently authorized work on tasks 10–18 sequentially, with
+one subagent per task using its recorded reasoning effort. Task 10 was accepted
+after root review and all local checks passed. Task 11's
+[scoped lifetime/failure changes](11-result.md) are also accepted.
+Task 12 completed at high effort; root review accepted the scoped
+[direct-fact CPU/churn improvement](12-result.md), with its small peak-memory
+cost explicit. Task 13 completed at extra-high effort; root review accepted its
+[conservative cache ownership change](13-result.md), with ordinary/rich run traced
+peaks 28.72%/8.52% lower and build medians 2.96%/1.78% slower. Retention is unchanged,
+cold/steady resolution stays close to baseline, and all checks pass. Task 14 was
+completed by `/root/graph_memory_task_14` at high effort, with scoped KEEP accepted
+after root review. Its [result](14-result.md) records about 6.4 MiB lower traced
+peak on the repeated eight-route graph and roughly 1.4% build cost. Its unique-
+definition control increases compiler peak by 0.88–1.29 MiB (4.06–6.31%),
+measured separately with matched compiler-only tracing.
+Task 15 completed at high effort; root review accepted its [result](15-result.md): scoped
+index KEEP with about 4.96 MiB lower large compiler peak and 3.2–3.4% build cost.
+Wider relationship tables are independently dropped/deferred. Cold/steady resolution
+timing was carried into task 18 despite zero index lookups during resolution;
+full experimental artifact loading costs about 8% more. CI passes 2,386 tests,
+strict docs and 263 focused tests on each supported Python 3.11–3.13.
+Task 16 completed at high effort; its [result](16-result.md) recommends direct
+draft-snapshot freezing for CPU/churn only, accepted after root review. It avoids
+91,816 record constructors with unchanged peak-live/retained counts and flat traced
+peak; build medians improve 5–7%. Rich-run resolution +2.01% was carried into task 18 as a
+signal. CI passes 2,401 tests, strict docs and focused checks on 3.11–3.13.
+Task 17 completed at extra-high reasoning; root review accepted its [retained-draft transfer](17-result.md), reducing ordinary-run traced peak by 1.40 MiB (3.43%) without claiming a build-time or retained-memory gain. Broader streaming reclamation is dropped/deferred. All 2,407 tests, supported-Python focused checks and strict docs pass. Task 18 completed at high reasoning; its [combined result](18-result.md) received qualified KEEP
+after coordinating review. Against accepted10/11, ordinary-run build changes 10.992→5.764 seconds and traced peak
+72.848→39.416 MiB; rich-rule peak falls 290.183→254.089 MiB with a 1.53% build-time cost. Retention is nearly flat.
+Low-reuse build/peak regressions and bounded analysis/post-collection resolution costs are explicitly retained
+as tradeoffs. All 2,409 tests, strict docs and expanded supported-Python focused checks pass. Runtime source is
+unchanged from task17; downstream Bark/Cop, Docker and production verification were not run.
+The coordinating agent reviews each outcome and carries decisions into the next
+task. Resolve design gates during the work rather than treating the earlier
+planning-only status as a standing prohibition. Preserve safety and explicit
+evidence requirements; an optimization may still conclude with refine or drop.
+This execution request does not include a commit, version bump, push or release.
+Parked pre-compilation work remains parked; check existing artifact experiments
+only where a representation or API change affects them.
+
+### Recommended reasoning effort
+
+These recommendations apply when each new task is assigned; they do not select
+a model, assign an agent or change the task's readiness gate.
+
+| Task | Effort | Reason |
+| --- | --- | --- |
+| 10 — Run and analysis modes | High (`high`) | Public capability, default and migration decisions across tooling and overlays |
+| 11 — Validation and failure contract | Extra high (`xhigh`) | Safety-critical evidence requirements and compatibility with arbitrary callbacks |
+| 12 — Direct compact selection facts | High (`high`) | Preserve contextual facts and failure semantics while removing allocations |
+| 13 — Activation-cache lifetimes | Extra high (`xhigh`) | Subtle observable ownership, weak-reference and derived-value lifetime hazards |
+| 14 — Shared draft definitions | High (`high`) | Copy-on-write correctness across mutations, identity and pool lifetimes |
+| 15 — Compact compilation tables | High (`high`) | Mapping compatibility, sparse storage and representation tradeoffs |
+| 16 — Callback snapshot sharing | High (`high`) | Stable escaped views and bounded sharing without retained-history chains |
+| 17 — Intermediate-occurrence lifetimes | Extra high (`xhigh`) | Architectural last-consumer reasoning across graph-wide validation and callbacks |
+| 18 — Mode equivalence and memory acceptance | High (`high`) | Cross-feature equivalence, reliable measurement and combined regression assessment |
+
+### Baseline and evidence boundaries
+
+Start from the current checkout, not an archived probe installed as production.
+At planning time HEAD is `34d1ea0` (2.0.0rc4), with an uncommitted fix accepting
+validation-only rule registrations in reduced builds. RC4 already preserves
+`selected_registrations`; the local validation fix has passed 2,163 tests and
+repository checks. Record the exact revision and working changes again when work
+starts, and preserve this unrelated consumer fix.
+
+The recent eight-route object census, with diagnostics and scope builders off,
+has 88,558 full versus 8,982 reduced records, 1,765 retained execution steps and
+51 discovery entries in either mode. Across either build it constructs about
+90,250 drafts, 1.13 million candidate decisions and 1.13 million template facts;
+the primary activation cache has about 31,025 entries. These are object counts,
+not new RSS/timing measurements. Tasks 06–09 contain historical measured probes,
+including failed approaches; none establishes combined savings or adoption.
+
+### Sequence
+
+1. Define the public mode/capability and migration contract in 10; audit validation
+   and evidence consumers in 11. Capture a fresh baseline using 18's protocol.
+2. Investigate 12–16 separately. Cache ownership (13) and draft representation
+   (14) target live peak; direct facts (12) primarily target allocation churn.
+   Task 15 starts from the corrected index work rather than repeating task 08.
+3. Proceed with 17 only after lifetime and graph-wide validation obligations are
+   explicit. It is a deeper architectural change, not automatic pruning.
+4. Integrate only accepted candidates and finish 18 against the combined source.
+   Standalone improvements are not additive estimates of the combined result.
 
 Tasks 01–08 have recorded outcomes. Task 06 was completed by Astra with high
 reasoning on 2026-10-09; production optimization remains unimplemented. Task 07
@@ -98,6 +265,12 @@ Use eight routes for the initial comparisons and increase scale deliberately.
 The baseline is synthetic and does not establish production memory use.
 
 ## Shared implementation and measurement rules
+
+For tasks 20–24, the maintainer's latest direction overrides per-task measurement
+requirements below: continue implementation and correctness/quality verification,
+preserve source identities and existing evidence, and defer further memory/timing
+benchmarks and performance population studies to final task 25. Individual task
+completion must state that performance acceptance remains pending.
 
 - Preserve the original baseline; write each task's before/after results to new
   files. Record the source revision and any local changes, fixture, interpreter,

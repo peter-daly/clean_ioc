@@ -8,7 +8,13 @@ from typing import Callable, Generic, Literal, NewType, TypeVar, Union, cast
 import pytest
 from typing_extensions import TypeAliasType
 
-from clean_ioc import CompilationBudget, CompilationProfiler, ContainerBuilder, ContainerBuildError, Provider
+from clean_ioc import (
+    CompilationBudget,
+    CompilationProfiler,
+    ContainerBuilder,
+    Provider,
+    ScopeBuilder,
+)
 from clean_ioc.tooling import _DiagnosticNames, qualified_name
 
 Item = TypeVar("Item")
@@ -112,21 +118,29 @@ def test_builds_and_failed_build_retries_refresh_metadata_and_public_names_stay_
     builder = ContainerBuilder()
     builder.register(Root)
     old_label = qualified_name(Root)
-    with pytest.raises(ContainerBuildError) as failed:
-        builder.build(diagnostics=True)
-    assert failed.value.report is not None
-    assert any(old_label in issue.path for issue in failed.value.report.issues)
+    failed_analysis = builder.analyse()
+    assert not failed_analysis.report.is_valid
+    assert failed_analysis.report is not None
+    assert any(old_label in issue.path for issue in failed_analysis.report.issues)
     Root.__qualname__ = "RenamedRoot"
     new_label = qualified_name(Root)
     assert new_label == f"{__name__}.RenamedRoot"
+    builder = ContainerBuilder()
+    builder.register(Root)
     builder.register(Missing, root_policy="dependency_only")
-    with builder.build(diagnostics=True) as owner:
-        explanation = next(item for item in owner._plan.occurrence_explanations.values() if item.subject == new_label)
+    owner_composition = builder.retain_composition()
+    with builder.analyse() as analysis, analysis.create_runtime() as owner:
+        explanation = next(
+            item for item in analysis.graph._occurrence_explanations.values() if item.subject == new_label
+        )
         assert new_label in explanation.path
         Root.__qualname__ = "OverlayRoot"
         assert qualified_name(Root) == f"{__name__}.OverlayRoot"
-        with owner.new_scope_builder().build(diagnostics=True) as overlay:
-            assert any(item.subject == qualified_name(Root) for item in overlay._plan.occurrence_explanations.values())
+        with ScopeBuilder(owner, composition=owner_composition).analyse() as overlay_analysis:
+            assert any(
+                item.subject == qualified_name(Root)
+                for item in overlay_analysis.graph._occurrence_explanations.values()
+            )
 
 
 def test_reentrant_builds_get_independent_snapshots():
@@ -140,19 +154,19 @@ def test_reentrant_builds_get_independent_snapshots():
         Shared.__qualname__ = "NestedShared"
         nested = ContainerBuilder()
         nested.register(Shared)
-        with nested.build(diagnostics=True) as owner:
-            nested_subjects.extend(item.subject for item in owner._plan.occurrence_explanations.values())
+        with nested.analyse() as analysis:
+            nested_subjects.extend(item.subject for item in analysis.graph._occurrence_explanations.values())
         return True
 
     outer = ContainerBuilder()
     outer.register(Shared, when=selection)
-    with outer.build(diagnostics=True) as owner:
-        assert any(item.subject == prior_label for item in owner._plan.occurrence_explanations.values())
+    with outer.analyse() as analysis:
+        assert any(item.subject == prior_label for item in analysis.graph._occurrence_explanations.values())
         assert f"{__name__}.NestedShared" in nested_subjects
     fresh = ContainerBuilder()
     fresh.register(Shared)
-    with fresh.build(diagnostics=True) as owner:
-        assert any(item.subject == qualified_name(Shared) for item in owner._plan.occurrence_explanations.values())
+    with fresh.analyse() as analysis:
+        assert any(item.subject == qualified_name(Shared) for item in analysis.graph._occurrence_explanations.values())
 
 
 @pytest.mark.parametrize("instrumented", [False, True])
@@ -182,19 +196,19 @@ def test_frozen_plan_retains_shared_strings_but_no_compiler_name_cache(monkeypat
     builder.register(First)
     builder.register(Second)
     kwargs = {"budget": CompilationBudget(), "profile": CompilationProfiler(max_records=0)} if instrumented else {}
-    with builder.build(**kwargs, diagnostics=True) as owner:
+    with builder.analyse(**kwargs) as analysis, analysis.create_runtime() as owner:
         gc.collect()
         assert caches and all(reference() is None for reference in caches)
         label = qualified_name(Shared[list[int]])
         subjects = [
             name
-            for explanation in owner._plan.occurrence_explanations.values()
+            for explanation in analysis.graph._occurrence_explanations.values()
             for name in explanation.path
             if name == label
         ]
         annotations = [
             parameter.canonical_annotation
-            for records in owner._plan.parameter_explanations.values()
+            for records in analysis.graph._parameter_explanations.values()
             for parameter in records.values()
             if parameter.canonical_annotation == label
         ]

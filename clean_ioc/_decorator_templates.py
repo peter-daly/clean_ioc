@@ -11,11 +11,10 @@ from .components import Component, ComponentFilter, all_components
 from .generic_utils import _project_service_type
 from .metadata import Tag
 from .service_groups import DerivedServices, ServiceGroup
-from .tooling import DefinitionOrigin
 from .type_aliases import normalize_type_alias
 
 if TYPE_CHECKING:
-    from .container import _Blueprint
+    from .container import _Blueprint, _Origin
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,7 +71,7 @@ class _DecoratorTemplateDefinition:
     template: Callable[[RegistrationInfo], DecoratorTemplate]
     source_filter: ComponentFilter
     order: int
-    origin: DefinitionOrigin
+    origin: _Origin
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,7 +104,7 @@ class _TemplateSourceSelection:
     generated_id: str | None
     source_filter_description: str
     source_bindings: tuple[tuple[str, str], ...]
-    origin: DefinitionOrigin
+    origin: _Origin
 
 
 @dataclass(frozen=True, slots=True)

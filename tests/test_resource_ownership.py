@@ -9,11 +9,11 @@ import pytest
 
 from clean_ioc import (
     ContainerBuilder,
-    ContainerBuildError,
     GraphManifest,
     ResolutionContext,
     RuntimeOwnerKind,
     Scope,
+    ScopeBuilder,
     ScopeClosedError,
     all_components,
 )
@@ -57,10 +57,11 @@ def test_ownership_report_proves_each_lifespan_and_transient_promotion():
         builder.register(service_type, factory=resource_factory(service_type), lifespan=lifespan)
     builder.register(PromotedResource, factory=resource_factory(PromotedResource), lifespan="transient")
     builder.register(SingletonHost, lifespan="singleton")
-    container = builder.build()
+    container_analysis = builder.analyse()
+    _container = container_analysis.create_runtime()
 
-    report = container.graph.ownership_report()
-    assert report is container.graph.ownership_report()
+    report = container_analysis.graph.ownership_report()
+    assert report is container_analysis.graph.ownership_report()
     assert report.is_valid
     by_type = {record.component.service_type: record for record in report.records if record.component.parent is None}
     assert (by_type[TransientResource].cache_owner, by_type[TransientResource].cleanup_owner) == (
@@ -112,8 +113,9 @@ def test_transient_cleanup_follows_inherited_root_singleton_owner_from_overlay_d
     builder = ContainerBuilder()
     builder.register(Resource, factory=resource_factory, lifespan="transient")
     builder.register(SingletonHost, lifespan="singleton")
+    container_composition = builder.retain_composition()
     container = builder.build()
-    overlay_builder = container.new_scope_builder()
+    overlay_builder = ScopeBuilder(container, composition=container_composition)
 
     class OverlayMarker:
         pass
@@ -148,8 +150,10 @@ def test_transient_cleanup_follows_overlay_singleton_owner_from_nested_scope():
         finally:
             events.append("exit")
 
-    root = ContainerBuilder().build()
-    builder = root.new_scope_builder()
+    root_builder = ContainerBuilder()
+    root_composition = root_builder.retain_composition()
+    root = root_builder.build()
+    builder = ScopeBuilder(root, composition=root_composition)
     builder.register(Resource, factory=resource_factory, lifespan="transient")
     builder.register(OverlayHost, lifespan="singleton")
     overlay = builder.build()
@@ -243,8 +247,9 @@ async def test_concurrent_async_root_activation_uses_each_compiled_singleton_own
 
     root_builder = ContainerBuilder()
     root_builder.register(Service, factory=service_factory("root"), lifespan="singleton", name="root")
+    root_composition = root_builder.retain_composition()
     root = root_builder.build()
-    overlay_builder = root.new_scope_builder()
+    overlay_builder = ScopeBuilder(root, composition=root_composition)
     overlay_builder.register(Service, factory=service_factory("overlay"), lifespan="singleton", name="overlay")
     overlay = overlay_builder.build()
     child = overlay.new_scope()
@@ -275,10 +280,10 @@ def test_runtime_context_capture_has_specific_diagnostic(dependency, lifespan, c
     builder = ContainerBuilder()
     builder.register(Service, lifespan=lifespan)
 
-    with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
+    raised_analysis = builder.analyse()
+    assert not raised_analysis.report.is_valid
 
-    report = raised.value.report
+    report = raised_analysis.report
     assert report is not None
     issue = report.errors[0]
     assert issue.code == code
@@ -329,9 +334,9 @@ def test_resolution_context_capture_is_transitively_validated_across_edges(edge)
         builder.register(Service, lifespan="transient")
         builder.pre_configure(Service, configure)
 
-    with pytest.raises(ContainerBuildError) as raised:
-        builder.build()
-    report = raised.value.report
+    raised_analysis = builder.analyse()
+    assert not raised_analysis.report.is_valid
+    report = raised_analysis.report
     assert report is not None
     assert report.errors[0].code == "captive-resolution-context"
 
@@ -500,6 +505,7 @@ def test_closed_scope_rejects_runtime_operations_and_saved_resolution_context():
     builder = ContainerBuilder()
     builder.declare_scope_slot(Request)
     builder.register(Service, lifespan="transient")
+    composition = builder.retain_composition()
     scope = builder.build().new_scope().provide(Request, Request())
     context = scope.resolve(Service).context
     scope._close()
@@ -509,7 +515,7 @@ def test_closed_scope_rejects_runtime_operations_and_saved_resolution_context():
         lambda: asyncio.run(scope.resolve_async(Service)),
         lambda: scope.provide(Request, Request()),
         scope.new_scope,
-        scope.new_scope_builder,
+        lambda: ScopeBuilder(scope, composition=composition),
         lambda: context.resolve(Service),
         lambda: asyncio.run(context.resolve_async(Service)),
     )
@@ -569,19 +575,24 @@ def test_manifest_serializes_ownership_deterministically_without_a_version():
 
     graph = ContainerBuilder()
     graph.register(Service, lifespan="singleton")
-    container = graph.build()
-    manifest = container.graph.manifest()
+    container_analysis = graph.analyse()
+    _container = container_analysis.create_runtime()
+    manifest = container_analysis.graph.manifest()
     equivalent = ContainerBuilder()
     equivalent.register(Service, lifespan="singleton")
-    equivalent_container = equivalent.build()
-    assert container.graph.ownership_report().to_json() == equivalent_container.graph.ownership_report().to_json()
+    equivalent_container_analysis = equivalent.analyse()
+    _equivalent_container = equivalent_container_analysis.create_runtime()
+    assert (
+        container_analysis.graph.ownership_report().to_json()
+        == equivalent_container_analysis.graph.ownership_report().to_json()
+    )
     current = manifest.to_dict()
     assert "schema_version" not in current
     assert current["roots"][0]["cache_owner"] == "singleton"
     assert current["roots"][0]["cleanup_owner"] == "singleton"
     assert current["roots"][0]["owner_path"] is None
 
-    baseline = GraphManifest.from_json(equivalent_container.graph.manifest().to_json())
+    baseline = GraphManifest.from_json(equivalent_container_analysis.graph.manifest().to_json())
     assert baseline.to_dict() == current
     assert baseline.fingerprint == manifest.fingerprint
     assert manifest.diff(baseline).is_empty
@@ -598,10 +609,11 @@ def test_reports_and_manifests_are_redacted_and_cli_renders_ownership(capsys):
     builder = ContainerBuilder()
     secret_id = builder.register(Secret, instance=Secret())
     service_id = builder.register(Service, arguments={"secret": "top-secret"})
-    container = builder.build(build_args={"credential": "do-not-serialize"})
+    container_analysis = builder.analyse(build_args={"credential": "do-not-serialize"})
+    _container = container_analysis.create_runtime()
 
-    rendered = container.graph.ownership_report().to_json()
-    manifest = container.graph.manifest().to_json()
+    rendered = container_analysis.graph.ownership_report().to_json()
+    manifest = container_analysis.graph.manifest().to_json()
     for forbidden in (
         "top-secret",
         "credential",
