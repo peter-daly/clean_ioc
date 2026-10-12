@@ -2,7 +2,7 @@
 
 A policy helper creates an ordinary `ValidationRule`: a synchronous callback that checks the compiled graph and yields
 `BuildIssue` findings. Register it with `add_validation_rule()` or group rules in a `PolicyPack`. Both run only during
-[`analyse()`](validation.md#custom-graph-rules).
+[`verify()`](validation.md#custom-graph-rules).
 
 ## A pack of analysis rules
 
@@ -42,12 +42,12 @@ builder.register_decorator(
     tags=(Tag("owner", "payments"),),
 )
 builder.apply_bundle(policies)
-result = builder.analyse()
-report = result.report
+result = builder.verify()
+report = result
 report.assert_valid()
 ```
 
-Custom callbacks work in the same list. `build()` runs none of these rules. `analyse()` completes every available rule
+Custom callbacks work in the same list. `build()` runs none of these rules. `verify()` completes every available rule
 once and returns findings and outcomes. Reading the report does not replay rules. The strict CLI check inspects that
 completed report; `--ignore CODE` suppresses warnings only, and incomplete analysis always fails.
 

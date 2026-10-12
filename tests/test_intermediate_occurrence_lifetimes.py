@@ -139,13 +139,13 @@ def test_late_graph_rule_reads_rejected_live_captures_before_retention_and_keeps
     builder.register(Consumer)
     builder.add_validation_rule(rule)
     if fail:
-        caught_analysis = builder.analyse()
-        assert not caught_analysis.report.is_valid
+        caught_analysis = builder.verify()
+        assert not caught_analysis.is_valid
         assert calls.count("late-rule") == 1
-        assert caught_analysis.report is not None
-        assert caught_analysis.report.errors[0].code == "late-owner-witness"
-        assert caught_analysis.report.errors[0].path
-        fact = caught_analysis.report._evidence[0]
+        assert caught_analysis is not None
+        assert caught_analysis.errors[0].code == "late-owner-witness"
+        assert caught_analysis.errors[0].path
+        fact = caught_analysis._evidence[0]
         assert fact is not None and fact.source_location is not None and fact.source_location.path is not None
         assert fact.source_location.path.endswith("test_intermediate_occurrence_lifetimes.py")
         assert builder._built
@@ -157,7 +157,7 @@ def test_late_graph_rule_reads_rejected_live_captures_before_retention_and_keeps
         builder.register(Choice, Rejected, root_policy="dependency_only", when=choose)
         builder.register(Consumer)
         builder.add_validation_rule(rule)
-    with builder.analyse() as result, result.create_runtime() as runtime:
+    with builder.verify() as result, result.create_runtime() as runtime:
         finished_calls = tuple(calls)
         assert len(runtime.resolve(Consumer).choices) == 1
         assert type(runtime.resolve(Consumer).choices[0]) is Accepted

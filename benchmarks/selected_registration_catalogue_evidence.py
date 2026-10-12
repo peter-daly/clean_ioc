@@ -1,7 +1,7 @@
 """Fresh-process installed-wheel evidence for selected route discovery metadata."""
 
 # Historical policy comparison; intentionally uses the private compiler harness.
-# New acceptance measurements use graph_memory_evidence --operation build|analyse.
+# New acceptance measurements use graph_memory_evidence --operation build|verify.
 
 import argparse
 import gc

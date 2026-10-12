@@ -162,9 +162,9 @@ assert isinstance(container.resolve(PaymentGateway), ProductionGateway)
 ```
 
 The handle is separate from the runtime and retains declaration values by identity. It has no close or context-manager
-lifecycle. Analysis captures a handle automatically on `result.composition`. Ordinary `new_scope()` needs no handle.
-Child builders restore their own declarations and can build execution or analyse the overlay. Runtimes retain no
-inspection graph or report; keep the analysis result for those reads.
+lifecycle. Verification captures a handle automatically on `result.composition`. Ordinary `new_scope()` needs no handle.
+Child builders restore their own declarations and can build execution or verify the overlay. Runtimes retain no
+inspection graph or report; keep the verification report for those reads.
 
 An overlay singleton belongs to the built scope and its descendants. It is finalized when that built scope exits. An
 inherited root singleton remains anchored to the root container's frozen activation plan and owner; overlay registrations

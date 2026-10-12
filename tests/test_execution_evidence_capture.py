@@ -26,6 +26,7 @@ from clean_ioc import (
     WarmupPlan,
     WarmupTarget,
 )
+from tests.verification_helpers import present
 
 T = TypeVar("T")
 
@@ -76,7 +77,7 @@ def forbid_evidence(monkeypatch):
         compiler.CompilationAttempt,
         compiler.PartialGraph,
         compiler.CompiledGraph,
-        compiler.AnalysisReport,
+        compiler.VerificationReport,
         compiler._PlanSet,
         compiler._ExplanationCloneContext,
     ):
@@ -187,8 +188,8 @@ def test_registration_preparation_and_execution_construct_no_analysis_evidence(
 
 def test_analysis_keeps_original_source_and_target_decisions_without_callback_replay():
     calls, snapshots = [], []
-    with complex_builder(calls, snapshots).analyse() as result:
-        assert result.report.is_valid
+    with complex_builder(calls, snapshots).verify() as result:
+        assert result.is_valid
         assert calls.count(("rule", "root")) == 1
         assert calls.count(("rule", "boundary")) == 1
         before = list(calls)
@@ -206,7 +207,7 @@ def test_analysis_keeps_original_source_and_target_decisions_without_callback_re
         ]
         assert any("template-target-not-selected" in item.reason_codes for item in decisions)
         assert any(item.template.target_bindings for item in decisions)
-        result.report.to_text()
+        result.to_text()
         graph.manifest(all_roots=True).to_json()
         graph.selection_census().to_dict()
         runtime = result.create_runtime()
@@ -225,14 +226,16 @@ def test_provenance_uses_declaration_directory_and_line_after_cwd_changes(monkey
     assert type(origin) is compiler._DeclarationOrigin
     assert type(origin.location) is compiler._SourceReference
     monkeypatch.chdir(tmp_path)
-    with source.analyse() as result:
+    with source.verify() as result:
         captured = next(
-            origin for origin in result.graph._occurrence_origins.values() if origin.definition_id == identity
+            origin for origin in present(result.graph)._occurrence_origins.values() if origin.definition_id == identity
         )
         assert type(captured) is compiler.DefinitionOrigin
-        assert captured.location.line == line
-        assert captured.location.path == os.path.relpath(__file__, directory).replace(os.sep, "/")
-        assert captured.location.symbol == "test_provenance_uses_declaration_directory_and_line_after_cwd_changes"
+        assert present(captured.location).line == line
+        assert present(captured.location).path == os.path.relpath(__file__, directory).replace(os.sep, "/")
+        assert (
+            present(captured.location).symbol == "test_provenance_uses_declaration_directory_and_line_after_cwd_changes"
+        )
 
 
 def test_unavailable_cwd_does_not_prevent_declaration_or_build(monkeypatch):
@@ -266,8 +269,8 @@ def test_declaration_provenance_never_retains_caller_frames():
     owner = declare()
     gc.collect()
     assert owner() is None
-    with source.analyse() as result:
-        assert result.report.is_valid
+    with source.verify() as result:
+        assert result.is_valid
 
 
 @pytest.mark.parametrize("failure", ["missing", "cycle", "filter", "private", "warmup"])
@@ -307,9 +310,9 @@ def test_empty_provider_collections_survive_rejected_non_early_root_without_cand
 def test_scope_build_needs_no_origin_or_explanation_clone_tables(monkeypatch):
     source = ContainerBuilder().set_provider_roots(())
     source.register(Resource, lifespan="singleton")
-    with source.analyse() as analysis:
+    with source.verify() as analysis:
         parent = analysis.create_runtime()
-        child = ScopeBuilder(parent, composition=analysis.composition).set_provider_roots(())
+        child = ScopeBuilder(parent, composition=present(analysis.composition)).set_provider_roots(())
         child.register(Source)
         forbid_evidence(monkeypatch)
         with child.build() as runtime:
@@ -328,8 +331,8 @@ def test_rule_findings_keep_exact_occurrence_provenance():
         return (visit.issue("located", "Exact registration location"),)
 
     source.add_validation_rule(rule)
-    with source.analyse() as result:
-        finding = next(issue for issue in result.report.issues if issue.code == "located")
+    with source.verify() as result:
+        finding = next(issue for issue in result.issues if issue.code == "located")
         assert finding._origin is captured[0]
         assert finding._origin.kind == "registration"
         assert finding._origin.location.line == line
@@ -372,7 +375,7 @@ def test_pattern_factory_binding_and_derived_values_need_no_diagnostic_labels(mo
         assert runtime.resolve(Consumer).box.payload == list[int]
 
 
-def test_nested_analyse_callback_can_build_without_inheriting_capture(monkeypatch):
+def test_nested_verify_callback_can_build_without_inheriting_capture(monkeypatch):
     calls = []
 
     def rule(context):
@@ -388,8 +391,8 @@ def test_nested_analyse_callback_can_build_without_inheriting_capture(monkeypatc
     source = ContainerBuilder().set_provider_roots(())
     source.register(Resource)
     source.add_validation_rule(rule)
-    with source.analyse() as result:
-        assert result.report.is_valid
+    with source.verify() as result:
+        assert result.is_valid
         assert calls == [Resource]
 
 
@@ -400,8 +403,8 @@ def test_runtime_provider_boundary_facts_match_analysis_without_origin_index():
         boundary.register(Resource)
         return source
 
-    with create().build() as runtime, create().analyse() as analysis:
-        for plan in (runtime._plan, analysis._plan):
+    with create().build() as runtime, create().verify() as analysis:
+        for plan in (runtime._plan, analysis._runtime._plan):
             provider = plan.provider_roots[Provider[Resource]][0].component
             assert provider.boundary == "private"
             assert provider.dependencies[0].boundary == "private"
@@ -485,5 +488,5 @@ def test_entrypoint_and_registration_share_original_source_capture():
     source = ContainerBuilder().set_provider_roots(())
     identity = source.register(Resource, root_policy="entrypoint")
     assert source._entrypoints[0].origin.location is source._registration_origins[identity].location
-    with source.analyse() as result:
-        assert result.report.is_valid
+    with source.verify() as result:
+        assert result.is_valid

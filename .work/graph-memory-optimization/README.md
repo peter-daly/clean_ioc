@@ -8,7 +8,13 @@ The [retest after task 05](artifact-retest-post05.md) compares full and reduced
 artifacts using the same current runtime in separate compile/export/load processes.
 
 Created: 2026-10-08\
-Status: Tasks 01–24 have recorded outcomes and reviews; task 23 closes task 21's feature integration gate, and task 24 completes the API/tooling/consumer migration with full quality checks. Task 25 is ready for assignment and remains unassigned. No new performance comparison has been run.
+Status: Tasks 01–24 have recorded outcomes and reviews; task 23 closes task 21's feature integration gate, and task 24 completes the API/tooling/consumer migration with full quality checks. Task 25 remains ready and unassigned. Task 26 is implemented and validated; see its result for the direct verification API. No new performance comparison has been run.
+
+The 2026-10-12 follow-up is [task 26](26-verify-and-verification-report.md): rename
+`analyse()` to `verify()` and return a `VerificationReport` with direct methods
+such as `assert_valid()`. [Implementation and validation are complete](26-result.md),
+by `/root/graph_memory_task_26` at medium reasoning. The released RC5 history below
+still describes `analyse()` and `AnalysisResult.report`; current source uses `verify()`.
 
 ## Current direction: execution-only build and complete analyse
 
@@ -103,6 +109,7 @@ memory measurements before deciding production readiness.
 | 23 | [Decouple runtime features from analysis graphs](23-runtime-features-without-analysis-graphs.md) | Complete — scoped review accepted; [result](23-result.md) | High reasoning; 406 focused tests, quality and real Bark rule proof |
 | 24 | [Migrate tooling and verify consumers](24-build-analyse-tools-and-consumers.md) | Complete — reviewed; [result](24-result.md) | High reasoning; full CI/docs and actual Bark/Cop verification |
 | 25 | [Accept the whole upgrade against consumer baselines](25-build-analyse-consumer-memory-acceptance.md) | Ready — unassigned; baselines preserved; performance not measured | High reasoning; actual application peak/RSS/startup and separate analysis cost |
+| 26 | [Replace analyse with verify and return a verification report](26-verify-and-verification-report.md) | Complete — [result](26-result.md) | Medium reasoning; full Python 3.11–3.14 CI, direct report/assertion API, isolated consumer checks |
 
 ## Run and analysis workstream — historical direction for tasks 10–18
 

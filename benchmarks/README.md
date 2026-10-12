@@ -69,7 +69,7 @@ Use `uv run benchbro list --verbose` to inspect the discovered operations. The s
 - `compiled-runtime`: resolution, scope creation, and request-slot plan execution with composition excluded;
 - `compiled-build`: explicit root, scope-overlay, and open-generic factory compilation, including builder setup;
 - `compiled-build-features`: five-component builds that isolate execution with registered graph/AST rules, resource ownership, typed providers, and boundary visibility;
-- `compiler-analysis`: fresh analysis operations including whole-graph and source AST rules;
+- `compiler-verification`: fresh verification operations including whole-graph and source AST rules;
 - `compiler-tooling`: uncached semantic manifest and ownership-report creation plus identical/single-change manifest diffs,
   with composition excluded;
 - `compiled-allocations`: Python allocations reported by `tracemalloc`, not process RSS.
@@ -269,7 +269,7 @@ acceptance separately. See `docs/compiler-memory-evidence.md` for the recorded r
 
 The evidence runner reports identity-deduplicated retained decorator objects and
 logical decision counts separately. Use `--inspection` for first/repeated public
-explanation access (128 components) and completed selection census with `--operation analyse`.
+explanation access (128 components) and completed selection census with `--operation verify`.
 These operations occur after the operation/resolution intervals. New measurements remain deferred to task 25.
 `--eager-decorator-facts` recreates the eager evidence representation solely inside
 the evidence process, for inspection comparisons. Save new results under
@@ -303,8 +303,8 @@ The current source-coupled private artifact codec uses schema 9 and serializes a
 execution plan. Prior experimental artifacts must be regenerated. This remains a parked,
 unsupported experiment; analysis metadata is outside its execution artifact contract.
 
-Current graph-memory and reachability drivers select `--operation build|analyse`;
-`--inspection` requires `analyse`. Artifact drivers export and load execution plans only.
+Current graph-memory and reachability drivers select `--operation build|verify`;
+`--inspection` requires `verify`. Artifact drivers export and load execution plans only.
 Historical experiments comparing independent compiler toggles now stop with an explicit
 unsupported-API message; their recorded results remain unchanged. Further measurement runs
 are deferred to task 25.

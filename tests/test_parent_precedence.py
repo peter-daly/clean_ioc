@@ -5,6 +5,7 @@ import pytest
 
 from clean_ioc import AsyncProvider, ContainerBuilder, ContainerBuildError, Provider, ScopeBuilder, select
 from clean_ioc import component_filters as cf
+from tests.verification_helpers import present
 
 
 class Policy:
@@ -47,7 +48,7 @@ def test_contextual_choice_preserves_roots_previews_collections_and_hard_filters
     builder.register(Consumer)
     builder.register(Consumer, name="filtered", arguments={"policy": select(cf.implementation_type_is(Default))})
     preview = builder.get_component_id(Policy)
-    with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
+    with builder.verify() as container_analysis, container_analysis.create_runtime() as container:
         result = container.resolve(Consumer)
         assert isinstance(result.policy, Preferred)
         assert [type(item) for item in result.policies] == [item[0] for item in reversed(order)]
@@ -63,9 +64,9 @@ def test_signed_values_and_ordinary_ties(values):
     builder.register(Policy, Default, parent_precedence=values[0])
     builder.register(Policy, Preferred, parent_precedence=values[1])
     builder.register(Consumer)
-    with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
+    with builder.verify() as container_analysis, container_analysis.create_runtime() as container:
         assert isinstance(container.resolve(Consumer).policy, Preferred)
-        warnings = [issue for issue in container_analysis.report.warnings if "policy" in issue.message]
+        warnings = [issue for issue in container_analysis.warnings if "policy" in issue.message]
         assert bool(warnings) == (values[0] == values[1])
 
 
@@ -113,13 +114,13 @@ def test_provider_unique_maximum_and_tied_maximum(tied):
         builder.register(Policy, Application, parent_precedence=10)
     builder.register(Deferred)
     if tied:
-        caught_analysis = builder.analyse()
-        assert not caught_analysis.report.is_valid
-        assert caught_analysis.report is not None
-        assert any(issue.code == "provider-ambiguous-component" for issue in caught_analysis.report.errors)
+        caught_analysis = builder.verify()
+        assert not caught_analysis.is_valid
+        assert caught_analysis is not None
+        assert any(issue.code == "provider-ambiguous-component" for issue in caught_analysis.errors)
         explanations = [
             item
-            for item in caught_analysis.report._explanations
+            for item in caught_analysis._explanations
             if any("equal-parent-precedence-ambiguous" in decision.reason_codes for decision in item.rejected)
         ]
         assert explanations and not explanations[0].selected
@@ -152,7 +153,7 @@ def test_evidence_census_and_fingerprint_do_not_replay_callbacks():
         builder.register(Policy, Default)
         builder.register(Consumer)
         builder.mark_entrypoint(Consumer)
-        return builder.analyse()
+        return builder.verify()
 
     first = build(10)
     second = build(20)
@@ -303,10 +304,10 @@ def test_provider_map_retains_members_and_duplicate_keys():
     duplicate.register(Policy, Preferred, parent_precedence=10)
     duplicate.register(Policy, Default)
     duplicate.register_provider_map(Policy, key=lambda component: "same")
-    caught_analysis = duplicate.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert any(issue.code == "provider-map-duplicate-key" for issue in caught_analysis.report.errors)
+    caught_analysis = duplicate.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert any(issue.code == "provider-map-duplicate-key" for issue in caught_analysis.errors)
 
 
 def test_tuple_set_and_deferred_collection_membership_ignores_values():
@@ -365,12 +366,12 @@ def test_failed_callback_is_not_hidden_by_precedence_and_build_can_be_repaired()
     builder.register(Policy, Default, when=conditional, parent_precedence=-100)
     builder.register(Policy, Preferred, parent_precedence=10)
     builder.register(Consumer)
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
     assert any(
         "ValueError" in decision.reason
-        for explanation in caught_analysis.report._explanations
+        for explanation in caught_analysis._explanations
         for decision in explanation.rejected
     )
     state["fail"] = False
@@ -430,10 +431,10 @@ def test_tied_maximum_census_does_not_claim_first_eligible_won():
     builder.register(Policy, Default)
     builder.register(Consumer)
     builder.mark_entrypoint(Consumer)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
     assert isinstance(container.resolve(Consumer).policy, Application)
-    uses = [use for item in container_analysis.graph.selection_census().definitions for use in item.examples]
+    uses = [use for item in present(container_analysis.graph).selection_census().definitions for use in item.examples]
     tie = next(use for use in uses if "equal-parent-precedence-order" in use.reason_codes)
     assert "first-eligible-wins" not in tie.reason_codes
 
@@ -449,12 +450,12 @@ def test_unbounded_integer_scores_build_and_serialize_without_decimal_conversion
     builder.register(Policy, Preferred, parent_precedence=value)
     builder.register(Policy, Default, parent_precedence=value - 1)
     builder.register(Consumer)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
     assert isinstance(container.resolve(Consumer).policy, Preferred)
-    root = next(root for root in container_analysis.graph.roots if root.component.service_type is Consumer)
+    root = next(root for root in present(container_analysis.graph).roots if root.component.service_type is Consumer)
     dependency = next(item for item in root.component.dependencies if item.service_type is Policy)
-    explanation = container_analysis.graph.explain(dependency)
+    explanation = present(container_analysis.graph).explain(dependency)
     assert explanation.selected[0].parent_precedence == value
     encoded = json.loads(explanation.to_json())
     assert int(encoded["selected"][0]["parent_precedence"]["integer_hex"], 16) == value

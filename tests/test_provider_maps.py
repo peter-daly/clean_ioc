@@ -26,10 +26,11 @@ from clean_ioc import (
     Use,
     select,
 )
+from tests.verification_helpers import present
 
 
 def codes(error):
-    return {issue.code for issue in error.report.errors}
+    return {issue.code for issue in error.errors}
 
 
 def test_provider_map_group_selects_contributors_before_compiling_delegator():
@@ -91,8 +92,8 @@ def test_provider_map_group_duplicate_contribution_keys_fail():
     builder.register(Service, name="second", contributes={group: "same"})
     builder.register_provider_map(group)
 
-    error_analysis = builder.analyse()
-    assert not error_analysis.report.is_valid
+    error_analysis = builder.verify()
+    assert not error_analysis.is_valid
     assert "provider-map-duplicate-key" in codes(error_analysis)
 
 
@@ -124,7 +125,7 @@ def test_provider_map_group_rejects_incompatible_contributions_transactionally()
     group = ProviderMapGroup("services", str, Service)
     builder = ContainerBuilder()
     builder.register(Other, contributes={group: "wrong"})
-    report = builder.analyse().report
+    report = builder.verify()
     assert not report.is_valid
     assert "incompatible" in report.to_text()
     builder = ContainerBuilder()
@@ -156,8 +157,8 @@ def test_provider_map_group_filters_before_component_filter_and_keeps_contributi
     recursive = ContainerBuilder()
     recursive.register(Recursive, factory=recursive_factory, contributes={recursive_group: "recursive"})
     recursive.register_provider_map(recursive_group)
-    error_analysis = recursive.analyse()
-    assert not error_analysis.report.is_valid
+    error_analysis = recursive.verify()
+    assert not error_analysis.is_valid
     assert "circular-dependency" in codes(error_analysis)
 
 
@@ -350,8 +351,8 @@ def test_sync_map_rejects_async_target():
     builder = ContainerBuilder()
     builder.register(Service, factory=factory)
     builder.register_provider_map(Service, key=lambda c: "service")
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
     assert "provider-requires-async" in codes(caught_analysis)
 
 
@@ -378,8 +379,8 @@ def test_singleton_capture_rejects_scope_state_transitively(edge):
     builder.register(Service, lifespan="transient")
     builder.register_provider_map(Service, key=lambda c: "s")
     builder.register(Consumer, lifespan="singleton")
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
     assert "provider-captive-scope" in codes(caught_analysis)
 
 
@@ -480,8 +481,8 @@ def test_key_failures_are_structured_redacted_and_repairable(failure):
     builder.register(Service, name="b")
     callback: Any = async_key if failure == "async" else "name" if failure == "invalid" else key
     builder.register_provider_map(Service, key=callback)
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
     expected = {
         "duplicate": "provider-map-duplicate-key",
         "unhashable": "provider-map-unhashable-key",
@@ -490,9 +491,9 @@ def test_key_failures_are_structured_redacted_and_repairable(failure):
         "invalid": "provider-map-invalid-key",
     }.get(failure, "provider-map-key-evaluation")
     assert expected in codes(caught_analysis)
-    assert secret not in str(caught_analysis.report)
-    assert caught_analysis.report is not None
-    assert secret not in str(caught_analysis.report.to_dict())
+    assert secret not in str(caught_analysis)
+    assert caught_analysis is not None
+    assert secret not in str(caught_analysis.to_dict())
     if failure not in ("async", "invalid"):
         repaired = True
         builder = ContainerBuilder()
@@ -611,13 +612,15 @@ def test_boundary_alias_projects_provider_map_only_after_source_plan_compilation
     builder.create_boundary("source", exposes=(Expose(source_map, alias=BoundaryAlias(PublicProviders)),)).apply_bundle(
         source
     )
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
 
     providers = cast(Any, container.resolve(PublicProviders))
     assert list(providers) == ["service"]
     assert isinstance(providers["service"](), Service)
-    public_root = next(root for root in container_analysis.graph.roots if root.requested_type is PublicProviders)
+    public_root = next(
+        root for root in present(container_analysis.graph).roots if root.requested_type is PublicProviders
+    )
     assert public_root.component.service_type is PublicProviders
     assert public_root.component.kind is ComponentKind.provider_map
 
@@ -650,8 +653,8 @@ def test_uncalled_missing_target_and_recursive_maps_fail_build():
     builder = ContainerBuilder()
     builder.register(Recursive, factory=factory)
     builder.register_provider_map(Recursive, key=lambda c: "recursive")
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
     assert "circular-dependency" in codes(caught_analysis)
 
 
@@ -664,7 +667,7 @@ def test_graph_explain_fingerprints_are_deterministic_and_keys_redacted():
         builder.register(Service, name="a")
         builder.register(Service, name="b")
         builder.register_provider_map(Service, key=lambda c: secret + c.name)
-        return builder.analyse()
+        return builder.verify()
 
     first, second = build("private-one"), build("private-two")
     assert first.graph.manifest().fingerprint == second.graph.manifest().fingerprint
@@ -695,8 +698,8 @@ def test_dictionary_equality_collisions_and_nested_unhashable_keys():
         builder.register(Service, name="a")
         builder.register(Service, name="b")
         builder.register_provider_map(Service, key=key)
-        caught_analysis = builder.analyse()
-        assert not caught_analysis.report.is_valid
+        caught_analysis = builder.verify()
+        assert not caught_analysis.is_valid
         assert expected in codes(caught_analysis)
 
 
@@ -715,8 +718,8 @@ def test_async_callable_objects_and_async_generator_results_are_rejected():
         builder = ContainerBuilder()
         builder.register(Service)
         builder.register_provider_map(Service, key=key)
-        caught_analysis = builder.analyse()
-        assert not caught_analysis.report.is_valid
+        caught_analysis = builder.verify()
+        assert not caught_analysis.is_valid
         assert "provider-map-invalid-key" in codes(caught_analysis)
 
 
@@ -729,14 +732,14 @@ def test_provider_maps_require_closed_declarations_and_cannot_be_patched_to_cach
     for target, key_type in ((Service, str), (Service[int], parameter)):
         builder = ContainerBuilder()
         builder.register_provider_map(target, key=lambda c: "s", key_type=key_type)
-        caught_analysis = builder.analyse()
-        assert not caught_analysis.report.is_valid
+        caught_analysis = builder.verify()
+        assert not caught_analysis.is_valid
         assert "provider-map-invalid-declaration" in codes(caught_analysis)
     builder = ContainerBuilder()
     map_id = builder.register_provider_map(Service[int], key=lambda c: "s")
     builder.patch_component(Mapping[str, Provider[Service[int]]], map_id, lifespan="singleton")
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
     assert "provider-map-invalid-declaration" in codes(caught_analysis)
     builder = ContainerBuilder()
     map_id = builder.register_provider_map(Service[int], key=lambda c: "s")
@@ -846,12 +849,12 @@ def test_provider_map_group_key_failures_are_structured_and_redacted():
     builder = ContainerBuilder()
     builder.register(Service, contributes={group: BrokenKey()})
     builder.register_provider_map(group)
-    error_analysis = builder.analyse()
-    assert not error_analysis.report.is_valid
+    error_analysis = builder.verify()
+    assert not error_analysis.is_valid
     assert "provider-map-key-evaluation" in codes(error_analysis)
-    assert secret not in str(error_analysis.report)
-    assert error_analysis.report is not None
-    assert secret not in json.dumps(error_analysis.report.to_dict())
+    assert secret not in str(error_analysis)
+    assert error_analysis is not None
+    assert secret not in json.dumps(error_analysis.to_dict())
 
 
 def test_newtype_key_identity_is_not_its_supertype():
@@ -894,7 +897,7 @@ def test_callback_inspection_and_invalid_coroutine_cleanup_cannot_leak_errors():
         builder = ContainerBuilder()
         builder.register(Service)
         builder.register_provider_map(Service, key=callback)
-        caught_analysis = builder.analyse()
-        assert not caught_analysis.report.is_valid
+        caught_analysis = builder.verify()
+        assert not caught_analysis.is_valid
         assert "provider-map-invalid-key" in codes(caught_analysis)
-        assert "private-" not in str(caught_analysis.report)
+        assert "private-" not in str(caught_analysis)

@@ -75,7 +75,7 @@ def test_package_root_has_one_compiled_container_surface():
     assert tuple(inspect.signature(ScopeBuilder.add_validation_rule).parameters) == ("self", "rule")
     assert not {"BuildMode", "ValidationRuleMode", "BuildReport"}.intersection(clean_ioc.__all__)
     assert not {"graph", "build_report", "validation_report", "new_scope_builder"}.intersection(dir(clean_ioc.Scope))
-    assert {"AnalysisReport", "AnalysisResult", "Composition"}.issubset(clean_ioc.__all__)
+    assert {"VerificationReport", "VerificationReport", "Composition"}.issubset(clean_ioc.__all__)
     assert {
         "AsyncProvider",
         "BoundaryBuilder",

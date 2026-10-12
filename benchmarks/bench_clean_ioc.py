@@ -1,6 +1,6 @@
 """BenchBro experiments for explicit build, analysis and runtime boundaries.
 
-Analysis cases measure a fresh analyse call; rule execution is never a deferred
+Analysis cases measure a fresh verify call; rule execution is never a deferred
 report read. Their renamed IDs must not compare against old validation baselines.
 Rule declarations in build-feature cases intentionally remain unexecuted. Analysis
 iteration fixtures exclude declarations/cleanup and include compilation plus rules.
@@ -13,7 +13,6 @@ from typing import Any, Generic, TypeVar
 from benchbro import Case, system
 
 from clean_ioc import (
-    AnalysisReport,
     BuildIssue,
     CompiledGraph,
     ComponentBuilder,
@@ -28,6 +27,7 @@ from clean_ioc import (
     ScopeBuilder,
     Use,
     ValidationContext,
+    VerificationReport,
 )
 
 
@@ -241,7 +241,7 @@ def scaled_transient_containers() -> dict[int, tuple[Container, type]]:
 
 @system(scope="session")
 def tooling_graph():
-    with build_graph_builder().analyse() as analysis:
+    with build_graph_builder().verify() as analysis:
         if analysis.graph is None:
             raise RuntimeError("Benchmark fixture analysis did not emit an inspection graph")
         yield analysis.graph
@@ -261,7 +261,7 @@ def changed_tooling_manifest() -> GraphManifest:
     builder.register(Leaf, AlternateLeaf)
     for service_type in (LevelFour, LevelThree, LevelTwo, LevelOne):
         builder.register(service_type)
-    with builder.analyse() as analysis:
+    with builder.verify() as analysis:
         if analysis.graph is None:
             raise RuntimeError("Benchmark fixture analysis did not emit an inspection graph")
         return analysis.graph.manifest(all_roots=True)
@@ -290,7 +290,7 @@ def ast_rule_analysis_input():
 
 @system(scope="session")
 def ownership_graph():
-    with feature_graph_builder("resource-ownership").analyse() as analysis:
+    with feature_graph_builder("resource-ownership").verify() as analysis:
         if analysis.graph is None:
             raise RuntimeError("Benchmark fixture analysis did not emit an inspection graph")
         yield analysis.graph
@@ -370,10 +370,10 @@ def build_five_component_container() -> Container:
     return build_graph_builder().build()
 
 
-@build.benchmark(name="analyse-five-component-entrypoints")
-def analyse_five_component_entrypoints() -> AnalysisReport:
-    with build_graph_builder(mark_entrypoint=True).analyse() as analysis:
-        return analysis.report
+@build.benchmark(name="verify-five-component-entrypoints")
+def verify_five_component_entrypoints() -> VerificationReport:
+    with build_graph_builder(mark_entrypoint=True).verify() as analysis:
+        return analysis
 
 
 @build.benchmark(name="build-scope-overlay")
@@ -427,7 +427,7 @@ def build_five_component_feature_graph(scenario: str) -> Container:
 
 
 validation = Case(
-    name="compiler-analysis",
+    name="compiler-verification",
     tags=["core", "tooling", "compiler-features", "validation"],
     min_iterations=500,
     setup_timing="exclude",
@@ -435,18 +435,18 @@ validation = Case(
 )
 
 
-@validation.benchmark(name="analyse-graph-walk")
-def analyse_graph_walk(graph_rule_analysis_input) -> AnalysisReport:
-    result = graph_rule_analysis_input["builder"].analyse()
+@validation.benchmark(name="verify-graph-walk")
+def verify_graph_walk(graph_rule_analysis_input) -> VerificationReport:
+    result = graph_rule_analysis_input["builder"].verify()
     graph_rule_analysis_input["result"] = result
-    return result.report
+    return result
 
 
-@validation.benchmark(name="analyse-type-ast-inspection")
-def analyse_type_ast_inspection(ast_rule_analysis_input) -> AnalysisReport:
-    result = ast_rule_analysis_input["builder"].analyse()
+@validation.benchmark(name="verify-type-ast-inspection")
+def verify_type_ast_inspection(ast_rule_analysis_input) -> VerificationReport:
+    result = ast_rule_analysis_input["builder"].verify()
     ast_rule_analysis_input["result"] = result
-    return result.report
+    return result
 
 
 tooling = Case(

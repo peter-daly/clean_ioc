@@ -17,6 +17,7 @@ from clean_ioc import (
     select,
 )
 from clean_ioc import component_filters as cf
+from tests.verification_helpers import present
 
 
 class Source:
@@ -367,15 +368,15 @@ def test_actual_generated_boundary_effect_rejected_once_with_cause(declaration, 
         builder.create_boundary("consumer", uses=(Use(None, Target, filter=selection),)).apply_bundle(lambda _: None)
     else:
         builder.create_boundary("provider", exposes=(Expose(Target, filter=selection),)).apply_bundle(compose)
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
     error = caught_analysis
-    assert error.report is not None
-    assert error.report.errors[0].code == "template-visibility-cycle"
+    assert error is not None
+    assert error.errors[0].code == "template-visibility-cycle"
     assert len(calls) == 1
-    assert any(calls[0] in piece for piece in error.report.errors[0].path)
+    assert any(calls[0] in piece for piece in error.errors[0].path)
     if ambiguous:
-        assert "matches" in error.report.errors[0].message and "components" in error.report.errors[0].message
+        assert "matches" in error.errors[0].message and "components" in error.errors[0].message
     assert not hasattr(error, "__cause__")
 
 
@@ -418,10 +419,10 @@ def test_generated_activation_cycle_retains_code_and_provenance():
             arguments={"source": select(cf.with_id(info.id))},
         ),
     )
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    errors = caught_analysis.report.errors
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    errors = caught_analysis.errors
     assert any(error.code == "circular-dependency" for error in errors)
     assert any(template in error.path and source in error.path for error in errors)
 
@@ -575,7 +576,7 @@ def test_when_snapshot_reused_recursive_undecoration_parent_context_and_scale(mo
         arguments={"source": Source()},
         when=lambda core: ordinary_saw.append(core.has_dependant_service_type(SecondResource)) or False,
     )
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
     assert snapshots
     assert len(views) == 2 * len(snapshots)
@@ -584,7 +585,7 @@ def test_when_snapshot_reused_recursive_undecoration_parent_context_and_scale(mo
     assert all(ordinary_saw)
     before = len(views)
     container.resolve(Consumer)
-    _ = container_analysis.graph.roots
+    _ = present(container_analysis.graph).roots
     assert len(views) == before
 
 
@@ -686,10 +687,10 @@ def test_generated_argument_validation_and_provenance(invalid):
             **options[invalid],
         ),
     )
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    issue = caught_analysis.report.errors[0]
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    issue = caught_analysis.errors[0]
     assert issue.code == "invalid-decorator"
     assert source_id in issue.path and template_id in issue.path
 
@@ -708,10 +709,10 @@ def test_callable_decorator_rejects_conflicting_generic_result():
             wrapper,
         ),
     )
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert caught_analysis.report.errors[0].code == "invalid-decorator"
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert caught_analysis.errors[0].code == "invalid-decorator"
 
 
 def test_nested_resource_matching_produces_one_layer_and_preserves_position():
@@ -778,7 +779,7 @@ def test_template_position_can_depend_on_decorator_and_target_components():
         ),
     )
 
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
     assert sorted(calls) == ["inside", "outside"]
     for name, expected_sources, expected_positions in (
@@ -788,7 +789,7 @@ def test_template_position_can_depend_on_decorator_and_target_components():
     ):
         value = container.resolve(Target, filter=cf.with_name(name))
         assert unwrap(value)[0] == expected_sources
-        core = next(root.component for root in container_analysis.graph.roots if root.component.name == name)
+        core = next(root.component for root in present(container_analysis.graph).roots if root.component.name == name)
         assert [component.position for component in core.decorators] == expected_positions
 
 
@@ -806,10 +807,10 @@ def test_template_position_callback_must_return_an_integer(result):
             position=lambda _decorator, _decorated: result,
         ),
     )
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    issue = caught_analysis.report.errors[0]
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    issue = caught_analysis.errors[0]
     assert issue.code == "decorator-position-failed"
     assert all(item in issue.path for item in (template_id, source_id, target_id))
 
@@ -909,11 +910,11 @@ def test_cyclic_default_fails_clearly_before_activation():
     builder.register_decorator_template(
         for_each=Source, template=lambda _: DecoratorTemplate(DerivedServices(Target), wrapper)
     )
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert caught_analysis.report.errors[0].code == "invalid-decorator"
-    assert "Cyclic decorator TypeVar default" in str(caught_analysis.report)
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert caught_analysis.errors[0].code == "invalid-decorator"
+    assert "Cyclic decorator TypeVar default" in str(caught_analysis)
 
 
 def test_generated_predicate_failure_preserves_safe_provenance_and_original_cause():
@@ -935,14 +936,14 @@ def test_generated_predicate_failure_preserves_safe_provenance_and_original_caus
         return DecoratorTemplate(DerivedServices(Target), Wrapper, when=predicate)
 
     template_id = builder.register_decorator_template(for_each=Source, source_filter=source_filter, template=template)
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
     assert source_calls == factory_calls == [source_id]
-    issues = caught_analysis.report.errors
+    issues = caught_analysis.errors
     assert all(issue.code == "decorator-filter-failed" for issue in issues)
     assert all(template_id in issue.path and source_id in issue.path and target_id in issue.path for issue in issues)
-    assert "private failure details" not in str(caught_analysis.report)
+    assert "private failure details" not in str(caught_analysis)
     assert not hasattr(caught_analysis, "__cause__")
     assert all("RuntimeError" in issue.message for issue in issues)
     assert caught_analysis.partial_graph is not None
@@ -965,8 +966,8 @@ def test_extensions_typevar_without_default_remains_unresolved():
     builder.register_decorator_template(
         for_each=Source, template=lambda _: DecoratorTemplate(DerivedServices(Target), wrapper)
     )
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert caught_analysis.report.errors[0].code == "invalid-decorator"
-    assert "Unresolved decorator TypeVar(s): ExternalT" in str(caught_analysis.report)
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert caught_analysis.errors[0].code == "invalid-decorator"
+    assert "Unresolved decorator TypeVar(s): ExternalT" in str(caught_analysis)

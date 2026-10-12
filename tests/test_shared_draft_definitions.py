@@ -212,11 +212,11 @@ def test_failed_build_releases_weak_pools_when_error_owners_are_released(monkeyp
     builder = ContainerBuilder()
     builder.set_provider_roots(())
     builder.register(Service, when=fail)
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
     assert callback_calls
-    assert caught_analysis.report is not None
-    assert {issue.code for issue in caught_analysis.report.errors} == {"compile-error"}
+    assert caught_analysis is not None
+    assert {issue.code for issue in caught_analysis.errors} == {"compile-error"}
     del caught_analysis, builder
     gc.collect()
     assert references

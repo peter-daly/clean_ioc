@@ -11,7 +11,7 @@ from clean_ioc import ScopeBuilder
 
 @pytest.mark.parametrize("diagnostics", [False, True])
 def test_rich_fixture_audit_classifies_every_record_without_broken_views(diagnostics):
-    fixture = build(1, operation="analyse" if diagnostics else "build")
+    fixture = build(1, operation="verify" if diagnostics else "build")
     with fixture.runtime:
         result = audit(fixture.runtime._plan)
         assert not result["missing_graph_qualified_links"]
@@ -88,7 +88,7 @@ def test_selection_callback_records_remain_readable_with_compact_runtime_closure
         return capture
 
     monkeypatch.setattr(cf, "with_name", recording_with_name)
-    fixture = build(2, operation="analyse")
+    fixture = build(2, operation="verify")
     with fixture.runtime:
         result = audit(fixture.runtime._plan, external_components=captured)
         assert not result["missing_graph_qualified_links"]

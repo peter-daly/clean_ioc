@@ -14,13 +14,13 @@ from .compilation_budget import CompilationBudget
 from .container import ContainerBuilder, ContainerBuildError, ScopeBuilder, _valid_build_issue
 from .sarif import _location, _unique_source
 from .tooling import (
-    AnalysisReport,
     BuildIssue,
     CompiledGraph,
     DiffPolicy,
     GraphDiff,
     GraphManifest,
     IssueSeverity,
+    VerificationReport,
     qualified_name,
 )
 
@@ -77,7 +77,7 @@ class BuildVariant:
 @dataclass(frozen=True, slots=True)
 class VariantReport:
     name: str
-    build_report: AnalysisReport
+    build_report: VerificationReport
     fingerprint: str | None = None
     difference: GraphDiff | None = None
     entrypoints: tuple[tuple[str, str | None], ...] = ()
@@ -247,7 +247,7 @@ class MatrixReport:
 
     def to_sarif(self, *, indent: int | None = 2) -> str:
         # Captured SARIF documents contain sources, never live graphs or inputs.
-        document = json.loads(AnalysisReport(self.issues).to_sarif())
+        document = json.loads(VerificationReport(self.issues).to_sarif())
         policy_run = document["runs"][0]
         policy_run["properties"]["reference"] = self.reference
         policy_run["properties"]["matrixPolicies"] = True
@@ -303,7 +303,7 @@ def _redacted_manifest(graph: CompiledGraph) -> GraphManifest:
 
 def _capture(
     name: str,
-    report: AnalysisReport,
+    report: VerificationReport,
     graph: CompiledGraph | None = None,
 ) -> tuple[VariantReport, str, dict[str, str], str | None]:
     # Ordinary validation callback errors may contain arbitrary exception text.
@@ -347,6 +347,7 @@ def _capture(
             )
             for outcome in report.rule_outcomes
         ),
+        _runtime=None,
         _graph=None,
         _explanations=(),
         _evidence=(),
@@ -377,25 +378,27 @@ def _build_variant(
         if not isinstance(builder, (ContainerBuilder, ScopeBuilder)):
             raise TypeError
     except Exception:
-        report = AnalysisReport((_issue("matrix-factory-error", "Factory did not return an unbuilt builder."),))
+        report = VerificationReport((_issue("matrix-factory-error", "Factory did not return an unbuilt builder."),))
     else:
         if any(builder is previous for previous in used):
-            report = AnalysisReport(
+            report = VerificationReport(
                 (_issue("matrix-reused-builder", "A builder was already returned by another variant."),)
             )
         elif builder._built:
-            report = AnalysisReport((_issue("matrix-factory-error", "Factory returned an already built builder."),))
+            report = VerificationReport((_issue("matrix-factory-error", "Factory returned an already built builder."),))
             used.append(builder)
         else:
             used.append(builder)
             try:
-                with builder.analyse(build_args=variant.build_args, budget=variant.budget) as analysis:
-                    captured = _capture(variant.name, analysis.report, analysis.graph)
+                with builder.verify(build_args=variant.build_args, budget=variant.budget) as analysis:
+                    captured = _capture(variant.name, analysis, analysis.graph)
                 return captured
             except ContainerBuildError as error:
-                report = error.report or AnalysisReport((_issue("matrix-build-failed", "Variant compilation failed."),))
+                report = error.report or VerificationReport(
+                    (_issue("matrix-build-failed", "Variant compilation failed."),)
+                )
             except Exception:
-                report = AnalysisReport(
+                report = VerificationReport(
                     (_issue("matrix-build-failed", "Variant compilation, validation, or cleanup failed."),)
                 )
     return _capture(variant.name, report)

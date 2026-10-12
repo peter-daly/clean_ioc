@@ -55,7 +55,7 @@ container.new_scope_builder()
     assert updated == original
     messages = {finding.message for finding in findings}
     assert any("execution-only build()" in message for message in messages)
-    assert any("all validation rules run only during analyse()" in message for message in messages)
+    assert any("all validation rules run only during verify()" in message for message in messages)
     assert any("removed BuildReport" in message for message in messages)
     assert any("removed BuildMode" in message for message in messages)
     assert any("validation_report()" in message for message in messages)
@@ -66,7 +66,7 @@ def test_named_operations_and_unified_rules_need_no_codemod() -> None:
     original = """from clean_ioc import ContainerBuilder
 builder = ContainerBuilder()
 builder.add_validation_rule(check_policy)
-result = builder.analyse()
+result = builder.verify()
 with result.create_runtime() as runtime:
     runtime.resolve(Service)
 """
@@ -134,3 +134,16 @@ def test_cli_preview_check_and_write(tmp_path: Path) -> None:
     assert "c = c.build()" in path.read_text()
     clean = subprocess.run([sys.executable, str(SCRIPT), "--check", str(path)], capture_output=True, text=True)  # noqa: S603
     assert clean.returncode == 0
+
+
+def test_rc5_analysis_api_is_reported_for_direct_verification_migration():
+    original = """from clean_ioc import AnalysisResult, AnalysisReport, ContainerBuilder
+builder = ContainerBuilder()
+result = builder.analyse()
+result.report.assert_valid()
+"""
+    updated, findings = MODULE.transform(original)
+    assert updated == original
+    assert any("replace analyse() with verify()" in finding.message for finding in findings)
+    assert any("replace removed AnalysisResult" in finding.message for finding in findings)
+    assert any("replace removed AnalysisReport" in finding.message for finding in findings)

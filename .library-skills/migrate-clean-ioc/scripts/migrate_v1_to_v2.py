@@ -267,8 +267,13 @@ def transform(value: str) -> tuple[str, list[Finding]]:
             if method in {"new_scope_builder", "validation_report"}:
                 findings.append(
                     Finding(
-                        node.lineno, f"replace removed runtime {method}() with explicit analysis/composition ownership"
+                        node.lineno,
+                        f"replace removed runtime {method}() with explicit verification/composition ownership",
                     )
+                )
+            if method == "analyse":
+                findings.append(
+                    Finding(node.lineno, "replace analyse() with verify(); use report.assert_valid() directly")
                 )
             receiver_known = (
                 isinstance(node.func, ast.Attribute)
@@ -284,12 +289,12 @@ def transform(value: str) -> tuple[str, list[Finding]]:
                 ):
                     findings.append(
                         Finding(
-                            keyword.lineno, "choose execution-only build() or separate analyse(); remove build switches"
+                            keyword.lineno, "choose execution-only build() or separate verify(); remove build switches"
                         )
                     )
                 if receiver_known and method == "add_validation_rule" and keyword.arg == "mode":
                     findings.append(
-                        Finding(keyword.lineno, "remove the rule phase; all validation rules run only during analyse()")
+                        Finding(keyword.lineno, "remove the rule phase; all validation rules run only during verify()")
                     )
                 if keyword.arg == "lifespan" and receiver_known and method in COMPOSITION_METHODS:
                     member = keyword.value
@@ -325,13 +330,22 @@ def transform(value: str) -> tuple[str, list[Finding]]:
         elif isinstance(node, (ast.Import, ast.ImportFrom)):
             if isinstance(node, ast.ImportFrom) and node.module == "clean_ioc":
                 for alias in node.names:
-                    if alias.name in {"BuildReport", "BuildMode", "ValidationRuleMode"}:
-                        findings.append(
-                            Finding(
-                                node.lineno,
-                                f"replace removed {alias.name}; use AnalysisResult/AnalysisReport and named operations",
-                            )
-                        )
+                    if alias.name in {
+                        "BuildReport",
+                        "BuildMode",
+                        "ValidationRuleMode",
+                        "AnalysisResult",
+                        "AnalysisReport",
+                        "AnalysisRuntimeUnavailableError",
+                        "AnalysisRuleOutcome",
+                        "AnalysisStageOutcome",
+                    }:
+                        replacement = {
+                            "AnalysisRuntimeUnavailableError": "VerificationRuntimeUnavailableError",
+                            "AnalysisRuleOutcome": "VerificationRuleOutcome",
+                            "AnalysisStageOutcome": "VerificationStageOutcome",
+                        }.get(alias.name, "VerificationReport and named operations")
+                        findings.append(Finding(node.lineno, f"replace removed {alias.name}; use {replacement}"))
             modules = [alias.name for alias in node.names] if isinstance(node, ast.Import) else [node.module or ""]
             if any(
                 name.startswith(

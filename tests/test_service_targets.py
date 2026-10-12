@@ -232,11 +232,11 @@ def test_open_registration_constraints_validate_actual_closed_requests(factory):
     builder = ContainerBuilder()
     builder.register(Service, groups=[group], **({"factory": make} if factory else {}))
     builder.mark_entrypoint(Service[str])
-    error_analysis = builder.analyse()
-    assert not error_analysis.report.is_valid
-    assert re.search("integers", error_analysis.report.to_text())
-    assert error_analysis.report is not None
-    assert any(issue.code == "service-group-incompatible" for issue in error_analysis.report.errors)
+    error_analysis = builder.verify()
+    assert not error_analysis.is_valid
+    assert re.search("integers", error_analysis.to_text())
+    assert error_analysis is not None
+    assert any(issue.code == "service-group-incompatible" for issue in error_analysis.errors)
 
 
 def test_pattern_request_retains_original_registration_id_and_enforces_fixed_contract():
@@ -270,7 +270,7 @@ def test_pattern_request_retains_original_registration_id_and_enforces_fixed_con
 
     builder.register(BadConsumer)
     with pytest.raises(AssertionError, match="lists"):
-        builder.analyse().report.assert_valid()
+        builder.verify().assert_valid()
 
 
 @pytest.mark.parametrize(
@@ -294,7 +294,7 @@ def test_deferred_nested_callable_and_union_group_constraints(contract_arg, good
     builder.register(Service, groups=[group])
     builder.mark_entrypoint(Service[bad_arg])
     with pytest.raises(AssertionError, match="constrained"):
-        builder.analyse().report.assert_valid()
+        builder.verify().assert_valid()
 
 
 def test_union_variable_matching_is_order_independent_and_rejects_ambiguity():
@@ -317,7 +317,7 @@ def test_open_targets_fail_clearly_and_closed_repeated_registration_constraints_
         selected(compiler, group, registration_id, Contract)
     builder.mark_entrypoint(Contract[int, str])
     with pytest.raises(AssertionError, match="repeated"):
-        builder.analyse().report.assert_valid()
+        builder.verify().assert_valid()
 
 
 def test_deferred_discovery_and_fallback_are_selected_using_current_snapshot():
@@ -349,7 +349,7 @@ def test_deferred_discovery_and_fallback_are_selected_using_current_snapshot():
     fallback_builder.register_fallback(Service, Fallback, groups=[group])
     fallback_builder.mark_entrypoint(Service[str])
     with pytest.raises(AssertionError, match="discovered"):
-        fallback_builder.analyse().report.assert_valid()
+        fallback_builder.verify().assert_valid()
 
 
 def test_existing_ordinary_decorator_does_not_gain_derived_matching():
@@ -444,7 +444,7 @@ def test_alias_closed_request_completes_deferred_group_constraint_at_build():
     builder.register(Service, groups=[group])
     builder.mark_entrypoint(closed_alias)
     with pytest.raises(AssertionError, match="alias-constraint"):
-        builder.analyse().report.assert_valid()
+        builder.verify().assert_valid()
 
 
 def test_closed_typevar_domain_constraints_and_decorator_expression_rejection():

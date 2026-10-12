@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .components import ComponentFilter, default_component_filter
-from .tooling import AnalysisReport, BuildIssue, FailureEvidence, IssueSeverity, SourceLocation
+from .tooling import BuildIssue, FailureEvidence, IssueSeverity, SourceLocation, VerificationReport
 
 __all__ = [
     "WarmupTarget",
@@ -122,7 +122,7 @@ class WarmupReport:
 
     def to_sarif(self, *, indent: int | None = 2) -> str:
         failures = tuple(result for result in self.results if result.code is not None)
-        report = AnalysisReport(
+        report = VerificationReport(
             tuple(
                 BuildIssue(
                     result.code or "warmup-activation-failed",

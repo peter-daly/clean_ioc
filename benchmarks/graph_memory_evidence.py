@@ -330,8 +330,8 @@ async def measure(
 ):
     if "benchmarks.graph_memory_fixture" in sys.modules:
         raise RuntimeError("Run each sample in a fresh process")
-    if inspection and operation != "analyse":
-        raise ValueError("Inspection requires --operation analyse")
+    if inspection and operation != "verify":
+        raise ValueError("Inspection requires --operation verify")
     result = {
         "operation": operation,
         "source": source_provenance(),
@@ -400,7 +400,7 @@ async def measure(
         del graphs
         if inspection:
             if fixture.analysis is None:
-                raise AssertionError("Inspection requires an analysis result")
+                raise AssertionError("Inspection requires a verification report")
             result["inspection"] = inspect_graph(fixture.analysis.graph)
             fixture_module.require(
                 fixture_module.TEMPLATE_CALLS == fixture.callbacks_after_build, "Inspection reran callbacks"
@@ -471,7 +471,7 @@ def main():
         action="store_true",
         help="Evidence-only eager reference: disable compact patterns and compact clone remapping",
     )
-    parser.add_argument("--operation", choices=("build", "analyse"), default="build")
+    parser.add_argument("--operation", choices=("build", "verify"), default="build")
     parser.add_argument("--retain-builder", action="store_true")
     parser.add_argument("--capture-selection-views", action="store_true")
     parser.add_argument("--output", type=Path)
@@ -480,8 +480,8 @@ def main():
         parser.error("routes must be 1..128 and repeats must be positive")
     if arguments.mode == "repeat" and arguments.heap:
         parser.error("repeat already runs separate normal and traced samples")
-    if arguments.inspection and arguments.operation != "analyse":
-        parser.error("--inspection requires --operation analyse")
+    if arguments.inspection and arguments.operation != "verify":
+        parser.error("--inspection requires --operation verify")
     if arguments.eager_decorator_facts:
         setattr(
             runtime_code._Compiler,

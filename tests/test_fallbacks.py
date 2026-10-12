@@ -6,6 +6,7 @@ import pytest
 
 import clean_ioc.component_filters as cf
 from clean_ioc import ContainerBuilder, ContainerBuildError, Provider, ScopeBuilder, Tag, select
+from tests.verification_helpers import present
 
 T = TypeVar("T")
 
@@ -424,11 +425,11 @@ def test_fallback_explanation_retains_rejected_ordinary_candidate():
     ordinary = builder.register(Service[int], name="other")
     builder.register_fallback(Service, Default)
     builder.register(Consumer)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     _container = container_analysis.create_runtime()
     consumer = next(
-        root.component for root in container_analysis.graph.roots if root.component.service_type is Consumer
+        root.component for root in present(container_analysis.graph).roots if root.component.service_type is Consumer
     )
-    explanation = container_analysis.graph.explain(consumer.dependencies[0])
+    explanation = present(container_analysis.graph).explain(consumer.dependencies[0])
     assert "selected-fallback" in explanation.selected[0].reason_codes
     assert any(item.component_id == ordinary and "rejected-name" in item.reason_codes for item in explanation.rejected)

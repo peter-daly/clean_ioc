@@ -1,6 +1,6 @@
 # Invariant subplan reuse evidence — 7 October 2026
 
-> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/analyse API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-analyse).
+> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/verify API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-verify).
 
 Early reuse now occurs before dependency compilation. The existing executable
 interning remains a separate optimization after per-occurrence compilation.

@@ -1,6 +1,6 @@
 # Clean IoC 1.x to 2.0 upgrade guide
 
-This is an agent-oriented playbook for migrating applications, integrations, bundles, and tests from Clean IoC 1.x to 2.0. Version 2 separates composition, execution and analysis: compose with a builder, call `build()` for the immutable production runtime, or call `analyse()` on a fresh builder for complete diagnostics and custom validation. A successful build is not a policy-validation result.
+This is an agent-oriented playbook for migrating applications, integrations, bundles, and tests from Clean IoC 1.x to 2.0. Version 2 separates composition, execution and analysis: compose with a builder, call `build()` for the immutable production runtime, or call `verify()` on a fresh builder for complete diagnostics and custom validation. A successful build is not a policy-validation result.
 
 This guide has been checked against Clean IoC 1.24.0 on `main` and the 2.0.0rc2 API on `version2`. V2 requires Python
 3.11 or newer; V1 still supports Python 3.10. While V2 is a prerelease, install it with `pip install --pre clean_ioc`
@@ -9,6 +9,34 @@ or pin the release candidate explicitly.
 V2 changes the container lifecycle: composition is mutable, but a runtime is immutable and fully compiled before application code starts.
 
 Clean IoC 2 does not ship the V1 container as a parallel public API. `clean_ioc.core`, registration filters, node filters, runtime dependency graphs, and compatibility method aliases are removed. Do not import private modules such as `clean_ioc._legacy`; they are temporary implementation details and may disappear without notice.
+
+## Migration from 2.0.0rc5 verification
+
+Replace `builder.analyse()` with `builder.verify()` on both `ContainerBuilder` and `ScopeBuilder`.
+The return type is now `VerificationReport`: replace `result.report.assert_valid()` with
+`report.assert_valid()`, and read `report.is_valid`, `errors`, `warnings`, `issues`, `complete`,
+root coverage, and rule/stage outcomes directly. `AnalysisResult` and `AnalysisReport` are removed;
+use `VerificationReport`. Related public names are `VerificationRuntimeUnavailableError`,
+`VerificationRuleOutcome`, and `VerificationStageOutcome`. CLI profiling uses `--operation verify`.
+
+```python
+with application_builder().verify() as report:
+    report.assert_valid()
+    with report.create_runtime() as runtime:
+        runtime.resolve(ApplicationRoot)
+```
+
+Findings are immutable and remain readable after `close()` or `aclose()`. Runtime ownership is
+separate mutable state: the report closes every test runtime it creates, prevents creation after
+closing, and leaves borrowed parents open. Each runtime has independent caches. A complete,
+warning-only report is valid; errors or incomplete coverage fail `assert_valid()`, including under
+`python -O`. `emission_complete` says whether an executable plan exists, not whether verification
+passed. Reading, rendering, asserting, and creating runtimes do not replay verification callbacks.
+
+`graph`, `partial_graph`, `selection_census()`, `triage_report()`, `selected_registrations`, and
+`composition` remain available on the report. Production `build()` remains execution-only, with
+no rule execution or policy audits. Every admitted build or verification consumes its builder.
+Use a fresh builder for each operation. This change makes no performance claim.
 
 ## The essential conversion
 
@@ -56,7 +84,7 @@ Apply all registrations, decorators, pre-configurations, discovery rules, patche
 | `container.expect_to_be_scoped(T)` | `builder.declare_scope_slot(T)` | Declare every late-bound slot before build. |
 | `container.has_registration(...)` | `builder.has_component(...)` | This previews compiled components. |
 | `get_registration_id(s)` | `get_component_id(s)` | IDs identify registrations; compiled occurrences also have `occurrence_id`. |
-| `resolve_dependency_graph(...)` | `result.graph` from `analyse()` / `Component` | V2 exposes a static compiled graph, not a graph containing runtime instances. |
+| `resolve_dependency_graph(...)` | `result.graph` from `verify()` / `Component` | V2 exposes a static compiled graph, not a graph containing runtime instances. |
 | `resolve_from_registration_id(...)` | `resolve(T, filter=cf.with_id(id))` | Use `clean_ioc.component_filters`. |
 | mutable `scope.register(...)` | scope slot or `ScopeBuilder(parent, composition=handle)` | Choose based on whether the change is a value or composition. |
 | `force_run_pre_configuration(T)` | no direct equivalent | Resolve an applicable compiled root; use a declared warm-up plan for selected singleton startup targets. |
@@ -184,7 +212,7 @@ A derived policy returns a concrete value or `INJECT`. The latter compiles the n
 therefore preserves ordinary execution wiring and the evidence needed for analysis of lifespan, cycle, missing-component and async policies. Derived policies must be pure,
 synchronous composition code: use a registered factory for runtime work or a declared scope slot for boundary data.
 
-Analysis reports unknown `arguments` keys unless the target accepts `**kwargs`; production build does not perform this signature-policy audit. To remove an inherited override while
+Verification reports unknown `arguments` keys unless the target accepts `**kwargs`; production build does not perform this signature-policy audit. To remove an inherited override while
 patching, pass `arguments={"name": REMOVE}`.
 
 ## Composition and runtime must be separated
@@ -222,7 +250,7 @@ Do not add builder methods to a runtime to ease a migration. Move registration i
 `root_policy="entrypoint"` to mark a resolvable registration as an application entry point. Set
 `root_policy="dependency_only"` for a registration that may be injected but must not be resolved directly. With the
 `build()`, an unused dependency-only registration and its graph are omitted; a broken
-dependency in that omitted graph does not fail the build. Use a fresh builder's `analyse()` to inspect and validate those declarations without making them executable public roots. Neither setting makes a dependency-only registration directly resolvable.
+dependency in that omitted graph does not fail the build. Use a fresh builder's `verify()` to inspect and validate those declarations without making them executable public roots. Neither setting makes a dependency-only registration directly resolvable.
 
 `mark_entrypoint()` focuses graph tooling on an existing public request; it does not grant root access or make an
 otherwise private generic specialization available at runtime.
@@ -323,7 +351,7 @@ builder.pre_configure(
 )
 ```
 
-The function remains lazy, but its signature and dependency path are bound during compilation. Analysis additionally audits the path's ownership and safety policies; build does not. A pre-configuration is effectively singleton-owned regardless of the triggering component's lifespan, so its path cannot contain scoped or `per_resolution` state. Plain transient and singleton dependencies remain valid when their descendants are valid.
+The function remains lazy, but its signature and dependency path are bound during compilation. Verification additionally audits the path's ownership and safety policies; build does not. A pre-configuration is effectively singleton-owned regardless of the triggering component's lifespan, so its path cannot contain scoped or `per_resolution` state. Plain transient and singleton dependencies remain valid when their descendants are valid.
 
 Passing several service types now creates one shared initializer. It runs once before the first applicable activation, in declaration order, and concurrent triggers share one in-flight attempt. In an overlay, inherited initializers run before those declared on the `ScopeBuilder`. Closed generic targets match exact compiled specializations; open generic targets match their specializations.
 
@@ -368,8 +396,8 @@ with builder.build() as parent:
         service = test_scope.resolve(Checkout)
 ```
 
-For tests requiring inspection, use `with application_builder().analyse() as result`, create the parent
-with `result.create_runtime()`, and pass `result.composition` to `ScopeBuilder`. Call `test_builder.analyse()`
+For tests requiring inspection, use `with application_builder().verify() as result`, create the parent
+with `result.create_runtime()`, and pass `result.composition` to `ScopeBuilder`. Call `test_builder.verify()`
 if the child needs analysis. Request `retain_composition()` before a child build when further overlays will
 be needed. The handle must match the live parent lineage; an ordinary runtime cannot reconstruct discarded
 declarations. The handle is structurally immutable, preserves opaque application values by identity, has no
@@ -413,7 +441,7 @@ transient -> per_resolution
 per_resolution -> scoped/singleton
 ```
 
-When `analyse().report` contains `captive-dependency`:
+When `verify().report` contains `captive-dependency`:
 
 1. Read the complete issue path from the cached owner to the offending dependency.
 2. Decide the dependency's real ownership; do not merely hide it behind a transient wrapper.
@@ -544,7 +572,7 @@ may receive new fingerprints; identities for types without unions are unchanged.
 ## Diagnostics and failure handling
 
 V1 often discovered wiring and lifetime problems during resolution. V2 has two explicit operations:
-`build()` emits execution instructions without validation rules or safety-policy checks; `analyse()` performs
+`build()` emits execution instructions without validation rules or safety-policy checks; `verify()` performs
 complete diagnostics and runs every registered rule. Build still fails locally when it cannot bind an
 executable plan, for example because a required dependency is missing or a dependency cycle prevents wiring.
 
@@ -558,25 +586,25 @@ except ContainerBuildError as error:
 ```
 
 Build failures have bounded local error information, not an analysis report or retained inspection graph.
-Every admitted build or analysis attempt consumes its builder, including failure, interruption and budget
+Every admitted build or verification attempt consumes its builder, including failure, interruption and budget
 exhaustion. Fix declarations in a fresh composition factory instance. Invalid inputs rejected before admission
 leave the builder mutable.
 
 Use a fresh builder for complete analysis:
 
 ```python
-with application_builder().analyse() as result:
-    print(result.report.to_text())
+with application_builder().verify() as result:
+    print(result.to_text())
     if result.graph is not None:
         print(result.graph.to_text())
         print(result.graph.to_mermaid())
         manifest = result.graph.manifest()
-    if result.report.complete and result.report.is_valid:
+    if result.complete and result.is_valid:
         with result.create_runtime() as test_runtime:
             service = test_runtime.resolve(ApplicationRoot)
 ```
 
-`AnalysisResult` owns a completed `AnalysisReport`, stage/rule outcomes, a full or partial inspection graph,
+`VerificationReport` owns a completed `VerificationReport`, stage/rule outcomes, a full or partial inspection graph,
 and any executable test plan it could emit. A policy error can coexist with an emitted test plan; creating a
 test runtime does not certify that analysis passed. Incomplete analysis is not a successful check. Missing
 runtime emission makes `create_runtime()` unavailable. Each created runtime gets fresh root caches and is
@@ -586,20 +614,20 @@ wiring callbacks and record their attempt identities.
 
 Use `builder.mark_entrypoint(ApplicationRoot)` to focus graph tooling and enable analysis-only
 `unreachable-component` warnings. Public roots remain resolvable. Dependency-only registrations are never
-public roots; unused ones are omitted from execution but can be analysed. JSON manifests are deterministic
+public roots; unused ones are omitted from execution but can be verified. JSON manifests are deterministic
 and redact configured/default values. `result.graph.explain(Service)` uses recorded selection facts without
-replaying callbacks. Analysis reports definite factory return annotation mismatches as
+replaying callbacks. Verification reports definite factory return annotation mismatches as
 `factory-return-type-mismatch`; correct the annotation, registered service or factory result type.
 
 Register every custom rule with `builder.add_validation_rule(rule)`. Remove the old `mode="validation"` or
-`mode="build"` argument: there is no distinction between rule phases, and every rule finishes during `analyse()`.
+`mode="build"` argument: there is no distinction between rule phases, and every rule finishes during `verify()`.
 Production build invokes none of them. Runtime `build_report`, `validation_report()`, graph inspection,
 `build_mode` and `new_scope_builder()` are removed, as are the old `build(mode=...)` and fine-grained build flags.
 The minimal `selected_registrations` catalogue remains available for discovery, including selected private,
 deferred and decorator implementations, without requiring an inspection graph.
 
-CLI inspection/check commands accept a fresh builder/factory or an `AnalysisResult`, and call analysis when
-needed. A runtime cannot recover discarded evidence. For CI, analyse the same composition factory and intended
+CLI inspection/check commands accept a fresh builder/factory or a `VerificationReport`, and call verification when
+needed. A runtime cannot recover discarded evidence. For CI, verify the same composition factory and intended
 inputs, then build production using another fresh builder. Analysis for one input set does not validate other
 environments or future configurations; no analysis token is required to build.
 
@@ -617,7 +645,7 @@ V1 code may inject `Registrator`, `Resolver`, `ScopeCreator`, `CurrentGraph`, or
   `ManagedProvider[T]` or `AsyncManagedProvider[T]` when each acquisition must own and close a fresh scope.
 - If dynamic selection among compiled roots is unavoidable, inject public `ResolutionContext`.
 - Inject public `Scope` only when the service genuinely owns creation of nested runtime scopes.
-- Replace `CurrentGraph` or `DependencyNode` inspection with an analysis result's `graph` and static `Component` metadata at
+- Replace `CurrentGraph` or `DependencyNode` inspection with an verification report's `graph` and static `Component` metadata at
   the composition boundary; V2 does not retain a graph of resolved instances.
 
 `ResolutionContext` can only select already-compiled roots and preserves `per_resolution` identity. It is not a mutation or compilation API.
@@ -692,7 +720,7 @@ dictionaries. Review its line-numbered findings and rerun it after manual edits;
    rg -n "clean_ioc\.(core|registration_filters|node_filters|diagnostics)|use_registered|use_from_current_graph" .
    ```
 
-2. Convert production roots to `ContainerBuilder -> build -> Container`; expose fresh factories for a separate `analyse()` workflow. Do not scatter builders through application services.
+2. Convert production roots to `ContainerBuilder -> build -> Container`; expose fresh factories for a separate `verify()` workflow. Do not scatter builders through application services.
 3. Move all mutations before build. Classify later mutations as root composition, scope slots, or explicit scope overlays.
 4. Rewrite filters against `Component` and remove runtime-instance predicates.
 5. Run analysis and the smallest affected tests. Review report completeness and fix each error path, especially default `per_resolution` dependencies beneath scoped/singleton owners.

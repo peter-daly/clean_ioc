@@ -7,6 +7,7 @@ from benchmarks import graph_memory_fixture as fixture
 from benchmarks.graph_memory_evidence import census
 from clean_ioc import ComponentActivation, ComponentKind, ProviderScopeClosedError
 from clean_ioc import component_filters as cf
+from tests.verification_helpers import present
 
 
 @pytest.mark.parametrize("routes,diagnostics", [(1, False), (3, False), (3, True)])
@@ -107,15 +108,15 @@ def test_compact_richer_fixture_explanations_preserve_all_captured_fields():
 
     from clean_ioc.tooling import _RemappedDecoratorExplanation
 
-    case = fixture.build(1, operation="analyse")
+    case = fixture.build(1, operation="verify")
     checked = 0
     with case.runtime:
         callbacks = dict(fixture.TEMPLATE_CALLS)
         assert case.analysis is not None
         graph = case.analysis.graph
-        for visit in graph.walk():
+        for visit in present(graph).walk():
             component = visit.component
-            stored = graph._component_evidence(graph._decorator_explanations, component)
+            stored = present(graph)._component_evidence(present(graph)._decorator_explanations, component)
             if stored is None:
                 continue
             source = stored.source if isinstance(stored, _RemappedDecoratorExplanation) else stored
@@ -132,8 +133,8 @@ def test_compact_richer_fixture_explanations_preserve_all_captured_fields():
                 )
 
             expected = (remap(source_selected), remap(source_rejected))
-            first = graph.explain_decorators(component)
-            second = graph.explain_decorators(component)
+            first = present(graph).explain_decorators(component)
+            second = present(graph).explain_decorators(component)
             assert (first.selected, first.rejected) == expected
             assert (second.selected, second.rejected) == expected
             assert first.subject == source.subject
@@ -155,7 +156,7 @@ def test_compact_fixture_matches_eager_manifests_and_complete_decorator_facts(mo
     from clean_ioc.container import _ExplanationCloneContext
 
     def snapshot():
-        case = fixture.build(1, operation="analyse")
+        case = fixture.build(1, operation="verify")
         with case.runtime:
             assert case.analysis is not None
             graph = case.analysis.graph
@@ -175,11 +176,11 @@ def test_compact_fixture_matches_eager_manifests_and_complete_decorator_facts(mo
                 return value
 
             facts = []
-            for visit in graph.walk():
+            for visit in present(graph).walk():
                 component = visit.component
-                if graph._component_evidence(graph._decorator_explanations, component) is None:
+                if present(graph)._component_evidence(present(graph)._decorator_explanations, component) is None:
                     continue
-                explanation = graph.explain_decorators(component)
+                explanation = present(graph).explain_decorators(component)
                 facts.append(
                     (
                         component.occurrence_id,
@@ -188,7 +189,7 @@ def test_compact_fixture_matches_eager_manifests_and_complete_decorator_facts(mo
                         normalize(tuple(asdict(decision) for decision in explanation.rejected)),
                     )
                 )
-            return graph.manifest(all_roots=True).to_json(), facts
+            return present(graph).manifest(all_roots=True).to_json(), facts
 
     compact = snapshot()
     monkeypatch.setattr(_ExplanationCloneContext, "remap_decorators", _ExplanationCloneContext.remap)

@@ -107,9 +107,6 @@ from .selection_census import DefinitionReference
 from .sentinels import Undefined, _Undefined
 from .service_groups import DerivedServices, ServiceGroup
 from .tooling import (
-    AnalysisReport,
-    AnalysisRuleOutcome,
-    AnalysisStageOutcome,
     BuildIssue,
     BuildTriage,
     CandidateDecision,
@@ -133,6 +130,9 @@ from .tooling import (
     TemplateSourceDecision,
     ValidationContext,
     ValidationRule,
+    VerificationReport,
+    VerificationRuleOutcome,
+    VerificationStageOutcome,
     _CandidateRecord,
     _DecoratorExplanation,
     _DiagnosticNames,
@@ -453,7 +453,7 @@ def _validate_dependency_names(
 @dataclass(slots=True)
 class _AnalysisState:
     issues: list[BuildIssue] = field(default_factory=list)
-    rule_outcomes: list[AnalysisRuleOutcome] = field(default_factory=list)
+    rule_outcomes: list[VerificationRuleOutcome] = field(default_factory=list)
     evidence: dict[int, FailureEvidence | None] = field(default_factory=dict)
     unknown_checks: list[str] = field(default_factory=list)
     failed_checks: list[str] = field(default_factory=list)
@@ -529,7 +529,7 @@ def _analysis_factory_compatibility(result_type: Any, service_type: Any) -> bool
     return result
 
 
-def _analyse_check(
+def _verify_check(
     callback: Callable[..., Any],
     *args: Any,
     code: str | None = None,
@@ -537,7 +537,7 @@ def _analyse_check(
     path: tuple[str, ...] = (),
     **kwargs: Any,
 ) -> None:
-    """Run a pure policy check only inside analyse, preserving a failed finding."""
+    """Run a pure policy check only inside verify, preserving a failed finding."""
     if not _analysis_active():
         return
     try:
@@ -559,7 +559,7 @@ class ContainerBuildError(RuntimeError):
         self,
         message: str | None = None,
         *,
-        report: AnalysisReport | None = None,
+        report: VerificationReport | None = None,
         code: str | None = None,
         path: tuple[str, ...] = (),
         explanations: tuple[CompilationExplanation, ...] = (),
@@ -600,7 +600,7 @@ class ContainerBuildError(RuntimeError):
     def to_sarif(self, *, indent: int | None = 2) -> str:
         """Render captured build findings and source evidence as SARIF."""
 
-        report = self.report or AnalysisReport(
+        report = self.report or VerificationReport(
             (BuildIssue(self.code or "compile-error", IssueSeverity.error, "Compilation failed.", path=self.path),)
         )
         return report.to_sarif(
@@ -612,7 +612,7 @@ class ContainerBuildError(RuntimeError):
 
     def triage_report(self) -> BuildTriage:
         """Summarize captured failures without retrying compilation."""
-        report = self.report or AnalysisReport(
+        report = self.report or VerificationReport(
             (
                 BuildIssue(
                     self.code or "compile-error",
@@ -653,7 +653,7 @@ class ContainerBuildError(RuntimeError):
         from .selection_census import failed_selection_census
 
         if not self.diagnostics_enabled:
-            raise ValueError("diagnostics-disabled: use analyse() to inspect captured compiler evidence")
+            raise ValueError("diagnostics-disabled: use verify() to inspect captured compiler evidence")
         return failed_selection_census(self)
 
 
@@ -759,7 +759,7 @@ def _budget_build_error(
         )
     )
     return ContainerBuildError(
-        report=AnalysisReport(tuple(issues), checked_roots=started),
+        report=VerificationReport(tuple(issues), checked_roots=started),
         code=issue.code,
         path=stop.path,
         partial_graph=partial,
@@ -1679,7 +1679,7 @@ def _normalize_layer_aliases(layer: _Layer) -> _Layer:
                 registration._generic_mapping = None
                 _normalize_dependency_aliases(registration.dependencies)
                 if _analysis_active():
-                    _analyse_check(
+                    _verify_check(
                         _validate_service_groups,
                         canonical_service,
                         layer.service_groups.get(registration.id, ()),
@@ -1804,8 +1804,8 @@ def _blueprint_alias_errors(blueprint: _Blueprint) -> tuple[TypeAliasNormalizati
     return tuple(unique.values())
 
 
-def _alias_error_report(errors: Iterable[TypeAliasNormalizationError]) -> AnalysisReport:
-    return AnalysisReport(
+def _alias_error_report(errors: Iterable[TypeAliasNormalizationError]) -> VerificationReport:
+    return VerificationReport(
         tuple(
             BuildIssue(
                 code=error.code,
@@ -2693,7 +2693,7 @@ def _factory_result_annotation(factory: Callable[..., Any]) -> Any:
             annotation = normalize_type_alias(annotation)
         except TypeAliasNormalizationError as error:
             if _analysis_active():
-                _analysis_issue(ContainerBuildError("Factory result alias could not be analysed", code=error.code))
+                _analysis_issue(ContainerBuildError("Factory result alias could not be verified", code=error.code))
     target = inspect.unwrap(target)
     if inspect.isgeneratorfunction(target) or inspect.isasyncgenfunction(target):
         arguments = get_args(annotation)
@@ -2800,7 +2800,7 @@ def _specialized_factory_dependencies(
             for mapping in (service_mapping, explicit_mapping):
                 mapped = mapping.get(name, _NO_TYPEVAR_DEFAULT)
                 if mapped is not _NO_TYPEVAR_DEFAULT:
-                    _analyse_check(
+                    _verify_check(
                         _merge_factory_binding,
                         result_bindings,
                         typevar,
@@ -2809,7 +2809,7 @@ def _specialized_factory_dependencies(
                         service_type=service_type,
                         code="factory-return-type-binding",
                     )
-        _analyse_check(
+        _verify_check(
             _infer_factory_bindings,
             result_annotation,
             service_type,
@@ -2822,7 +2822,7 @@ def _specialized_factory_dependencies(
         for name, typevar in result_typevars.items():
             default = getattr(typevar, "__default__", _NO_TYPEVAR_DEFAULT)
             if name not in result_bindings and default is not _NO_TYPEVAR_DEFAULT and default is not no_default:
-                _analyse_check(
+                _verify_check(
                     _merge_factory_binding,
                     result_bindings,
                     typevar,
@@ -4273,7 +4273,7 @@ def _materialize_decorator(
             cast(Any, _arguments_to_dependency_config(definition.arguments)),
         )
         if _analysis_active():
-            _analyse_check(
+            _verify_check(
                 _validate_dependency_names,
                 source,
                 dependencies,
@@ -4523,7 +4523,7 @@ def _materialize_generated_decorator(
                 legacy.EMPTY,
             )
         if _analysis_active():
-            _analyse_check(
+            _verify_check(
                 _validate_dependency_names,
                 signature_source,
                 dependencies,
@@ -5418,7 +5418,7 @@ class _PlanSet(_ExecutionPlan):
     unreachable_issue_offset: int = 0
     fallback_ids: frozenset[str] = frozenset()
     compiled_graph: CompiledGraph | None = None
-    build_report: AnalysisReport | None = None
+    build_report: VerificationReport | None = None
     compiler_issues: tuple[BuildIssue, ...] = ()
     root_candidates: Mapping[Any, tuple[_CandidateRecord, ...]] = field(default_factory=dict)
     occurrence_explanations: Mapping[int, CompilationExplanation] = field(default_factory=dict)
@@ -7757,7 +7757,7 @@ class _Compiler:
                             )
                         )
                     if _analysis_active():
-                        _analyse_check(
+                        _verify_check(
                             patterns.factory_bindings,
                             registration.service_type,
                             requested_service_type,
@@ -9324,10 +9324,10 @@ class _Compiler:
         if _analysis_active():
             for group in sorted(groups, key=lambda item: (item.name, self._qualified_name(item.service_type))):
                 if _analysis_active():
-                    _analyse_check(self._select_service_target, group, registration, layer, requested_service_type)
+                    _verify_check(self._select_service_target, group, registration, layer, requested_service_type)
         map_definition = layer.provider_maps.get(registration.id)
         if _analysis_active():
-            _analyse_check(_validate_dependency_names, registration.implementation, registration.dependencies)
+            _verify_check(_validate_dependency_names, registration.implementation, registration.dependencies)
         if registration.lifespan == legacy.Lifespan.singleton and layer.owner_token in self._anchored_owner_tokens:
             self._subplan_unsafe_epoch += 1
             anchored = self._anchored_singletons.get((registration.id, _runtime_type_key(requested_service_type)))
@@ -9392,7 +9392,7 @@ class _Compiler:
             )
             methods = _per_call_methods(contract_type)
             if _analysis_active():
-                _analyse_check(_validate_per_call_implementation, registration.implementation, contract_type, methods)
+                _verify_check(_validate_per_call_implementation, registration.implementation, contract_type, methods)
             component, draft = self._draft(
                 component_id=registration.id,
                 service_type=requested_service_type,
@@ -9437,7 +9437,7 @@ class _Compiler:
                 raise RuntimeError("Per-call target did not compile to a registration step")
             for decorator in target_step.decorators:
                 if _analysis_active():
-                    _analyse_check(
+                    _verify_check(
                         _validate_per_call_implementation, decorator.source.implementation, contract_type, methods
                     )
             if _analysis_active() and (
@@ -11056,7 +11056,7 @@ class _Compiler:
                     cast(Any, _arguments_to_dependency_config(definition.arguments)),
                 )
                 if _analysis_active():
-                    _analyse_check(_validate_dependency_names, definition.configuration_fn, dependencies)
+                    _verify_check(_validate_dependency_names, definition.configuration_fn, dependencies)
             except MemoryError:
                 raise
             except (TypeError, ValueError, NameError) as error:
@@ -11987,7 +11987,7 @@ def _reduce_run_failure(error: ContainerBuildError, lifetime: _InspectionLifetim
         pending.extend(item for item in (current.__cause__, current.__context__) if item is not None)
         if not isinstance(current, ContainerBuildError) or current._inspection_lifetime is not lifetime:
             continue
-        report = current.report or AnalysisReport(
+        report = current.report or VerificationReport(
             (
                 BuildIssue(
                     current.code or "compile-error",
@@ -12091,7 +12091,7 @@ def _run_validation_rules(
             issues.extend(rule_issues)
             state.issues.extend(rule_issues)
             state.rule_outcomes.append(
-                AnalysisRuleOutcome(
+                VerificationRuleOutcome(
                     f"rule:{index + 1}",
                     qualified_name(definition.rule),
                     definition.origin.layer,
@@ -12135,7 +12135,7 @@ def _error_report(
     explain_metadata: bool = True,
     provider_roots: tuple[Any, ...] | None = None,
 ) -> tuple[
-    AnalysisReport,
+    VerificationReport,
     tuple[CompilationAttempt, ...],
     tuple[int, int],
     tuple[FailureEvidence | None, ...],
@@ -12268,7 +12268,7 @@ def _error_report(
         fact = original.evidence[0] if isinstance(original, ContainerBuildError) and original.evidence else None
         evidence.append(None if fact is None else replace(fact, attempt_ref="attempt:1"))
     return (
-        AnalysisReport(
+        VerificationReport(
             tuple(issues),
             checked_roots=checked,
             requested_roots=checked,
@@ -12759,7 +12759,7 @@ def _finalize_plan(
     state = cast(_AnalysisState, _ANALYSIS_STATE.get())
     state.graph = compiled_graph
     deduplicated = _distinct_analysis_issues((*state.issues, *built_in_issues), state.evidence)
-    report = AnalysisReport(
+    report = VerificationReport(
         deduplicated,
         checked_roots=len(all_roots),
         _graph=compiled_graph,
@@ -13557,7 +13557,7 @@ def _warmup_build_error(code: str, service: str, source: _Source | None, *, plan
     evidence = FailureEvidence(
         "warmup", service, "Invalid warm-up declaration.", source_location=_source_evidence(source)
     )
-    return ContainerBuildError(report=AnalysisReport((issue,), _evidence=(evidence,)), evidence=(evidence,))
+    return ContainerBuildError(report=VerificationReport((issue,), _evidence=(evidence,)), evidence=(evidence,))
 
 
 def _validate_warmup_declarations(blueprint: _Blueprint) -> None:
@@ -13822,7 +13822,7 @@ def _prepare_compilation(
                 compilation_inputs=compilation_inputs,
             )
         if _analysis_active():
-            _analyse_check(_check_registration_template_sources, blueprint)
+            _verify_check(_check_registration_template_sources, blueprint)
         if profile is None:
             expansion = _expand_decorator_templates(
                 blueprint,
@@ -13909,7 +13909,7 @@ def _prepare_compilation(
             root=(error.path[0] if error.path else None),
             path=error.path,
         )
-        report = AnalysisReport((issue,), checked_roots=0)
+        report = VerificationReport((issue,), checked_roots=0)
         census_definitions, census_ids = (
             _census_inventory(blueprint) if diagnostics else ((), types.MappingProxyType({}))
         )
@@ -14080,7 +14080,7 @@ def _compile_with_report(
                 budget_state=budget_state,
             )
             issues = _distinct_analysis_issues(
-                (*cast(AnalysisReport, finalized.build_report).issues, *analysis.issues), analysis.evidence
+                (*cast(VerificationReport, finalized.build_report).issues, *analysis.issues), analysis.evidence
             )
             complete = not analysis.failed_checks and all(
                 outcome.status == "completed" for outcome in analysis.rule_outcomes
@@ -14088,7 +14088,7 @@ def _compile_with_report(
             finalized = replace(
                 finalized,
                 build_report=replace(
-                    cast(AnalysisReport, finalized.build_report),
+                    cast(VerificationReport, finalized.build_report),
                     issues=issues,
                     _graph=finalized.compiled_graph,
                     complete=complete,
@@ -14097,15 +14097,17 @@ def _compile_with_report(
                         analysis.evidence.get(id(issue), _issue_failure_evidence(issue)) for issue in issues
                     ),
                     stage_outcomes=(
-                        AnalysisStageOutcome("declarations", "completed"),
-                        AnalysisStageOutcome("wiring", "completed"),
-                        AnalysisStageOutcome("built-in checks", "partial" if analysis.failed_checks else "completed"),
+                        VerificationStageOutcome("declarations", "completed"),
+                        VerificationStageOutcome("wiring", "completed"),
+                        VerificationStageOutcome(
+                            "built-in checks", "partial" if analysis.failed_checks else "completed"
+                        ),
                         *(
-                            AnalysisStageOutcome("entry-point selection", "failed", detail)
+                            VerificationStageOutcome("entry-point selection", "failed", detail)
                             for detail in analysis.failed_checks
                         ),
                         *(
-                            AnalysisStageOutcome("factory return assignability", "unknown", detail)
+                            VerificationStageOutcome("factory return assignability", "unknown", detail)
                             for detail in dict.fromkeys(analysis.unknown_checks)
                         ),
                     ),
@@ -14197,7 +14199,7 @@ def _compile_with_report(
                 root=primary_attempt.root,
                 path=failure_path,
             )
-            report = AnalysisReport((issue,), checked_roots=0)
+            report = VerificationReport((issue,), checked_roots=0)
             retries, retry_counts = (), (0, 0)
             facts = error.evidence if isinstance(error, ContainerBuildError) else ()
             if (
@@ -16025,7 +16027,7 @@ class _BuilderBase:
                     state.exhaustion.__context__ = None
                     state.exhaustion.__cause__ = None
 
-    def _analyse(self, *, build_args=None, profile=None, budget=None):
+    def _verify(self, *, build_args=None, profile=None, budget=None):
         self._assert_mutable()
         if profile is not None and not isinstance(profile, CompilationProfiler):
             raise TypeError("profile must be a CompilationProfiler instance or None")
@@ -16051,19 +16053,13 @@ class _BuilderBase:
                     build_args, profile, False, budget, True, True, self._declared_provider_roots, True, True, True
                 ),
             )
-            result = AnalysisResult(
-                cast(AnalysisReport, plan.build_report),
-                plan.compiled_graph,
-                None,
-                state.plan,
-                self._owner_token,
-                getattr(self, "_parent", None),
-            )
-            result.composition = composition if composition.is_ready else None
+            ownership = _VerificationRuntime(None, state.plan, self._owner_token, parent)
+            result = replace(cast(VerificationReport, plan.build_report), _runtime=ownership)
+            ownership.composition = composition if composition.is_ready else None
             profile_state = "completed"
             return result
         except ContainerBuildError as error:
-            prior = error.report or AnalysisReport(
+            prior = error.report or VerificationReport(
                 (
                     BuildIssue(
                         error.code or "compile-error", IssueSeverity.error, _safe_error_message(error), path=error.path
@@ -16078,7 +16074,7 @@ class _BuilderBase:
             )
             for index, definition in enumerate(state.definitions[len(outcomes) :], start=len(outcomes) + 1):
                 outcomes.append(
-                    AnalysisRuleOutcome(
+                    VerificationRuleOutcome(
                         f"rule:{index}",
                         qualified_name(definition.rule),
                         definition.origin.layer,
@@ -16113,27 +16109,21 @@ class _BuilderBase:
                 complete=False,
                 rule_outcomes=tuple(outcomes),
                 stage_outcomes=(
-                    AnalysisStageOutcome("declarations", "completed" if state.plan is not None else "partial"),
-                    AnalysisStageOutcome("wiring", "completed" if state.plan is not None else "failed"),
-                    AnalysisStageOutcome(
+                    VerificationStageOutcome("declarations", "completed" if state.plan is not None else "partial"),
+                    VerificationStageOutcome("wiring", "completed" if state.plan is not None else "failed"),
+                    VerificationStageOutcome(
                         "full graph checks", "completed" if completed_graph is not None else "unavailable"
                     ),
                 ),
             )
             profile_state = "completed"
-            result = AnalysisResult(
-                report,
-                completed_graph,
-                error.partial_graph,
-                state.plan,
-                self._owner_token,
-                getattr(self, "_parent", None),
-            )
-            result.composition = composition if composition.is_ready else None
+            ownership = _VerificationRuntime(error.partial_graph, state.plan, self._owner_token, parent)
+            result = replace(report, _runtime=ownership)
+            ownership.composition = composition if composition.is_ready else None
             # Capture failed-attempt inventories before dropping the compiler error.
             # Reading a result never performs another diagnostic attempt.
-            result._failed_census = error.selection_census()
-            result._triage = ContainerBuildError(
+            ownership._failed_census = error.selection_census()
+            ownership._triage = ContainerBuildError(
                 report=report,
                 partial_graph=error.partial_graph,
                 entry_points=error.entry_points,
@@ -16153,7 +16143,7 @@ class _BuilderBase:
                     else None
                 ),
             ).triage_report()
-            result._triage = replace(result._triage, report=report)
+            ownership._triage = replace(ownership._triage, report=report)
             return result
         finally:
             _ANALYSIS_STATE.reset(token)
@@ -16236,7 +16226,7 @@ class _BuilderBase:
         discovered = legacy._Registry()
         for rule in self._registration_discoveries:
             if _analysis_active():
-                _analyse_check(
+                _verify_check(
                     _validate_service_groups,
                     normalize_type_alias(rule.base_type),
                     rule.groups,
@@ -16324,7 +16314,7 @@ class _BuilderBase:
         return boundary
 
     def add_validation_rule(self, rule: ValidationRule) -> None:
-        """Add a synchronous graph rule evaluated once by analyse()."""
+        """Add a synchronous graph rule evaluated once by verify()."""
 
         self._assert_mutable()
         if not callable(rule):
@@ -17243,21 +17233,16 @@ class _WarmupBuilder(_BuilderBase):
         return self
 
 
-TRuntime = TypeVar("TRuntime", bound=Scope)
-
-
-class AnalysisRuntimeUnavailableError(RuntimeError):
-    def __init__(self, report: AnalysisReport):
+class VerificationRuntimeUnavailableError(RuntimeError):
+    def __init__(self, report: VerificationReport):
         self.report = report
-        super().__init__("This analysis has no complete execution plan")
+        super().__init__("This verification has no complete execution plan")
 
 
-class AnalysisResult(typing.Generic[TRuntime]):
-    """Completed analysis facts and an optional emitted plan for explicit tests."""
+class _VerificationRuntime:
+    """Mutable ownership of runtimes created from immutable verification findings."""
 
-    def __init__(self, report, graph, partial_graph, plan, owner_token, parent):
-        self.report = report
-        self.graph = graph
+    def __init__(self, partial_graph, plan, owner_token, parent):
         self.partial_graph = partial_graph
         self._plan = plan
         self._owner_token = owner_token
@@ -17268,33 +17253,9 @@ class AnalysisResult(typing.Generic[TRuntime]):
         self._failed_census: Any = None
         self._triage: BuildTriage | None = None
 
-    def selection_census(self, *, all_roots: bool = False, include_deferred: bool = True):
-        """Inspect the completed graph, or the captured lower-bound failed attempt."""
-        if self._failed_census is not None:
-            return self._failed_census
-        if self.graph is not None:
-            return self.graph.selection_census(all_roots=all_roots, include_deferred=include_deferred)
-        raise RuntimeError("Analysis has no captured selection census")
-
-    def triage_report(self) -> BuildTriage:
-        """Read grouped findings from this attempt without repeating analysis."""
-        return self._triage or BuildTriage.from_report(
-            self.report, evidence=self.report._evidence, partial_graph=self.partial_graph
-        )
-
-    @property
-    def emission_complete(self) -> bool:
-        return self._plan is not None
-
-    @property
-    def selected_registrations(self) -> tuple[RegistrationInfo, ...] | None:
-        return None if self._plan is None else self._plan.selected_registrations
-
-    def create_runtime(self, *, instrumentation: Instrumentation | None = None) -> TRuntime:
+    def create_runtime(self, *, instrumentation: Instrumentation | None = None) -> Scope:
         if self._closed:
-            raise RuntimeError("Analysis result is closed")
-        if self._plan is None:
-            raise AnalysisRuntimeUnavailableError(self.report)
+            raise RuntimeError("Verification report is closed")
         if instrumentation is not None and not isinstance(instrumentation, Instrumentation):
             raise TypeError("instrumentation must be an Instrumentation instance or None")
         if self._parent is not None:
@@ -17326,7 +17287,7 @@ class AnalysisResult(typing.Generic[TRuntime]):
         if instrumentation is not None:
             cast(_ObservedScope, runtime)._install_observation(instrumentation.profiler, fingerprint, labels, paths)
         self._runtimes.append(runtime)
-        return cast(TRuntime, runtime)
+        return runtime
 
     def close(self) -> None:
         self._closed = True
@@ -17352,7 +17313,7 @@ class AnalysisResult(typing.Generic[TRuntime]):
 
     def __enter__(self):
         if self._closed:
-            raise RuntimeError("Analysis result is closed")
+            raise RuntimeError("Verification report is closed")
         return self
 
     def __exit__(self, *args):
@@ -17378,7 +17339,7 @@ class _GeneratedRegistrationBuilder(_BuilderBase):
 
 
 class ContainerBuilder(_WarmupBuilder):
-    """Mutable root composition API. Call :meth:`build` exactly once."""
+    """Mutable root composition API. Call :meth:`build` or :meth:`verify` once."""
 
     def build(
         self,
@@ -17400,15 +17361,15 @@ class ContainerBuilder(_WarmupBuilder):
         finally:
             _ANALYSIS_STATE.reset(token)
 
-    def analyse(
+    def verify(
         self,
         *,
         build_args: Mapping[str, Any] | None = None,
         profile: CompilationProfiler | None = None,
         budget: CompilationBudget | None = None,
-    ) -> AnalysisResult[Container]:
-        """Complete supported analysis and all available rules without activation."""
-        return self._analyse(build_args=build_args, profile=profile, budget=budget)
+    ) -> VerificationReport[Container]:
+        """Verify the composition and all available rules without application activation."""
+        return self._verify(build_args=build_args, profile=profile, budget=budget)
 
 
 class ScopeBuilder(_WarmupBuilder):
@@ -17443,15 +17404,15 @@ class ScopeBuilder(_WarmupBuilder):
         finally:
             _ANALYSIS_STATE.reset(token)
 
-    def analyse(
+    def verify(
         self,
         *,
         build_args: Mapping[str, Any] | None = None,
         profile: CompilationProfiler | None = None,
         budget: CompilationBudget | None = None,
-    ) -> AnalysisResult[Scope]:
-        """Complete supported analysis and all available rules without activation."""
-        return self._analyse(build_args=build_args, profile=profile, budget=budget)
+    ) -> VerificationReport[Scope]:
+        """Verify the composition and all available rules without application activation."""
+        return self._verify(build_args=build_args, profile=profile, budget=budget)
 
 
 class BoundaryBuilder(_BuilderBase):

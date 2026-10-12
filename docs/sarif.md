@@ -1,7 +1,7 @@
 # Source-linked CI reporting
 
 `clean-ioc check` can export compiler and policy findings as
-[SARIF 2.1.0](https://www.oasis-open.org/standard/sarif-v2-1-0/), the standard JSON format for static-analysis results.
+[SARIF 2.1.0](https://www.oasis-open.org/standard/sarif-v2-1-0/), the standard JSON format for static-verification reports.
 CI services and compatible viewers can link these findings to the relevant composition source.
 
 ```bash
@@ -9,7 +9,7 @@ clean-ioc check my_app.composition:application_builder --format sarif -o clean-i
 ```
 
 The target follows the usual [CLI rules](compiler-tooling.md#use-it-from-the-command-line): a builder, a completed
-`AnalysisResult`, or a zero-argument factory returning either. The check completes analysis and exports its report.
+`VerificationReport`, or a zero-argument factory returning either. The check completes analysis and exports its report.
 It never activates components to generate the report.
 
 ## Findings and source locations
@@ -109,8 +109,8 @@ builder.register(Handler)
 builder.add_validation_rule(
     forbid_dependency(cf.service_type_is(Handler), cf.service_type_is(Database)),
 )
-result = builder.analyse()
-report = result.report
+result = builder.verify()
+report = result
 document = json.loads(report.to_sarif())
 assert document["runs"][0]["results"][0]["ruleId"] == "policy-forbidden-dependency"
 
@@ -124,8 +124,8 @@ else:
 # Failed analysis retains evidence without retaining an exception traceback.
 invalid = ContainerBuilder()
 invalid.register(Handler)
-failed = invalid.analyse()
-failure = json.loads(failed.report.to_sarif())
+failed = invalid.verify()
+failure = json.loads(failed.to_sarif())
 assert failure["runs"][0]["results"][0]["ruleId"] == "missing-component"
 
 ```
@@ -148,8 +148,8 @@ class Service:
 
 builder = ContainerBuilder()
 builder.register(Service)
-result = builder.analyse()
-report = result.report
+result = builder.verify()
+report = result
 report.assert_valid()
 ```
 
@@ -157,7 +157,7 @@ The method follows `report.is_valid`: errors and incomplete analysis fail; warni
 report is valid. It inspects the existing report without re-running validation or activating components, and remains
 active under Python's `-O` mode. `error.report.assert_valid()` uses captured failure evidence automatically too.
 
-For a manually constructed `AnalysisReport`, the optional `graph`, `explanations`, and `evidence` arguments to
+For a manually constructed `VerificationReport`, the optional `graph`, `explanations`, and `evidence` arguments to
 `to_sarif()` and `assert_valid()` supply reporting context. Explicit arguments can also override captured context;
 `indent` controls JSON formatting. Context remains private and does not change report equality, hashing, or existing
 text/JSON output.

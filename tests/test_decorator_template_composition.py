@@ -18,6 +18,7 @@ from clean_ioc import (
     select,
 )
 from clean_ioc import component_filters as cf
+from tests.verification_helpers import present
 
 
 class Source:
@@ -280,7 +281,7 @@ def test_parent_singleton_wrappers_sources_resources_and_cleanup_stay_anchored(a
         inspection = overlay._expand_decorator_templates()
         inherited_source = next(s.component for s in inspection.selections if s.source.id == source_id)
         assert inherited_source.dependencies[0].id == resource_id
-        with overlay.analyse() as child_analysis, child_analysis.create_runtime() as child:
+        with overlay.verify() as child_analysis, child_analysis.create_runtime() as child:
             with child.new_scope() as plain:
                 anchored = plain.resolve(Target)
                 assert existing is None or anchored is existing
@@ -291,7 +292,7 @@ def test_parent_singleton_wrappers_sources_resources_and_cleanup_stay_anchored(a
                 assert anchored.source.resource is not overlay_resource
                 new = plain.resolve(NewTarget)
                 assert unwrap(new)[0] == [("overlay", added_source), ("overlay", anchored.source)]
-                report = child_analysis.graph.ownership_report()
+                report = present(child_analysis.graph).ownership_report()
                 target_record = next(
                     r for r in report.records if r.component.id == target_id and r.component.parent is None
                 )
@@ -489,10 +490,10 @@ def test_exact_source_selection_cannot_fall_back_to_an_eligible_visible_source(i
 
     for attempt in range(2):
         builder, template_id = make_builder()
-        caught_analysis = builder.analyse()
-        assert not caught_analysis.report.is_valid
-        assert caught_analysis.report is not None
-        assert caught_analysis.report.errors
+        caught_analysis = builder.verify()
+        assert not caught_analysis.is_valid
+        assert caught_analysis is not None
+        assert caught_analysis.errors
         assert len(calls) == attempt + 1
         with pytest.raises(BuilderAlreadyBuiltError):
             builder.build()
@@ -532,16 +533,16 @@ def test_failed_build_diagnostic_retries_and_repair_do_not_accumulate_generated_
     for attempt in range(2):
         current = ScopeBuilder(root, composition=composition) if root is not None else make_builder()[0]
         current.register(Broken)
-        caught_analysis = current.analyse()
-        assert not caught_analysis.report.is_valid
+        caught_analysis = current.verify()
+        assert not caught_analysis.is_valid
         failures.append(caught_analysis)
         assert len(calls) == baseline_calls + attempt + 1
         assert caught_analysis.partial_graph is not None
         assert len(caught_analysis.partial_graph.attempts) > 1
         with pytest.raises(BuilderAlreadyBuiltError):
             current.build()
-    assert failures[0].report is not None and failures[1].report is not None
-    assert [issue.code for issue in failures[0].report.errors] == [issue.code for issue in failures[1].report.errors]
+    assert failures[0] is not None and failures[1] is not None
+    assert [issue.code for issue in failures[0].errors] == [issue.code for issue in failures[1].errors]
     resource = Missing()
     current = ScopeBuilder(root, composition=composition) if root is not None else make_builder()[0]
     current.register(Broken)
@@ -754,15 +755,15 @@ def test_overlay_owned_generated_resources_close_with_overlay_after_nested_activ
         )
         target_id = overlay.register(NewTarget, lifespan="singleton")
         child_composition = overlay.retain_composition()
-        with overlay.analyse() as child_analysis, child_analysis.create_runtime() as child:
+        with overlay.verify() as child_analysis, child_analysis.create_runtime() as child:
             nested = ScopeBuilder(child, composition=child_composition)
-            with nested.analyse() as grandchild_analysis, grandchild_analysis.create_runtime() as grandchild:
+            with nested.verify() as grandchild_analysis, grandchild_analysis.create_runtime() as grandchild:
                 with grandchild.new_scope() as plain:
                     value = plain.resolve(NewTarget)
                     assert unwrap(value)[0] == [("base", overlay_source), ("base", root_source)]
                     assert child.resolve(NewTarget) is value
                     assert unwrap(plain.resolve(Target))[0] == [("base", root_source)]
-                    report = grandchild_analysis.graph.ownership_report()
+                    report = present(grandchild_analysis.graph).ownership_report()
                     assert report.is_valid
                     acquired_sources = [r for r in report.records if r.component.id == source_id]
                     assert acquired_sources and all(

@@ -58,7 +58,7 @@ install_fastapi(app, container)
 ```
 
 This is the only module that selects concrete adapters and lifespans. `build()` binds the use case and decorator
-dependencies and emits their activation instructions. CI should separately run `analyse()` on a fresh composition
+dependencies and emits their activation instructions. CI should separately run `verify()` on a fresh composition
 to audit lifespan, annotation and application policies. `install_fastapi()` owns the container lifespan, creates
 request scopes, and validates the route's `Resolve(CreateOrder)` selection during application startup.
 

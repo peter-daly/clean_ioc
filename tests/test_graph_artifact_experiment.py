@@ -13,15 +13,15 @@ from clean_ioc import ContainerBuilder, _legacy, container
 
 def _build(builder, *, operation="build"):
     builder.set_provider_roots(())
-    if operation == "analyse":
-        result = builder.analyse()
-        result.report.assert_valid()
+    if operation == "verify":
+        result = builder.verify()
+        result.assert_valid()
         return result.create_runtime()
     return builder.build()
 
 
 @pytest.mark.parametrize("lifespan", ["transient", "per_resolution", "scoped", "singleton"])
-@pytest.mark.parametrize("operation", ["build", "analyse"])
+@pytest.mark.parametrize("operation", ["build", "verify"])
 async def test_lifetime_and_identity_survive_roundtrip(tmp_path, monkeypatch, lifespan, operation):
     builder = ContainerBuilder()
     builder.register(fixture.Leaf, lifespan=lifespan, root_policy="dependency_only")

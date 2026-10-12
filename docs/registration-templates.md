@@ -154,7 +154,7 @@ composition. Keep them pure: previews and failed-build retries may run them agai
 
 An overlay inherits existing generated registrations with their original owners. Their parent execution plans remain frozen. The external composition retains source declarations; a new overlay
 compilation may run template filters and factories again and generate additional overlay-owned registrations.
-Reading a runtime, analysis result or composition handle never replays these callbacks. A parent singleton retains its parent
+Reading a runtime, verification report or composition handle never replays these callbacks. A parent singleton retains its parent
 activation plan.
 
 Patching an inherited template replaces its generated registrations in the overlay with new overlay-owned definitions.

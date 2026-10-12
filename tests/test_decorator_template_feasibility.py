@@ -17,6 +17,7 @@ from clean_ioc.container import (
     _prepare_boundary_visibility,
 )
 from clean_ioc.generic_utils import _project_service_type
+from tests.verification_helpers import present
 
 
 def _snapshot(builder):
@@ -198,9 +199,9 @@ def test_source_to_target_is_safe_in_core_phase_and_actual_activation_cycle_is_d
         return
     failures = []
     for _ in range(2):
-        captured_analysis = make_builder().analyse()
-        assert not captured_analysis.report.is_valid
-        report = captured_analysis.report
+        captured_analysis = make_builder().verify()
+        assert not captured_analysis.is_valid
+        report = captured_analysis
         assert report is not None
         failures.append(tuple((issue.code, issue.path) for issue in report.errors))
     assert failures[0] == failures[1]
@@ -268,7 +269,7 @@ def test_overlay_source_core_preserves_anchored_dependencies_and_skips_frozen_de
     builder.register(Marker, lifespan="singleton")
     source_id = builder.register(Source, lifespan="singleton")
     builder.register_decorator(Source, Decorator, decorated_arg="inner")
-    parent_analysis = builder.analyse()
+    parent_analysis = builder.verify()
     parent = parent_analysis.create_runtime()
     existing = parent.resolve(Source)
     assert parent_analysis.composition is not None
@@ -299,7 +300,11 @@ def test_overlay_source_core_preserves_anchored_dependencies_and_skips_frozen_de
     scope = overlay.build()
     assert scope.resolve(Source) is existing
     assert (
-        len(next(root.component for root in parent_analysis.graph.roots if root.component.id == source_id).decorators)
+        len(
+            next(
+                root.component for root in present(parent_analysis.graph).roots if root.component.id == source_id
+            ).decorators
+        )
         == 1
     )
 
@@ -358,14 +363,16 @@ def test_generated_target_view_hides_nested_decorators_and_preserves_occurrence_
     target_id = builder.register(Target, arguments={"dependency": select(cf.with_name("chosen"))})
     builder.register_decorator(Dependency, DependencyDecorator, decorated_arg="inner")
     builder.register_decorator(Target, TargetDecorator, decorated_arg="inner", when=ordinary_when)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
     assert len(captured) == 2
     assert any(view.parent is not None for view in captured)
     # The snapshots remain undecorated after runtime compilation adds pipelines.
     assert all(view.decorators == () and view.dependencies[0].decorators == () for view in captured)
     assert all(view._graph._records is not None and not view._graph._drafts for view in captured)
-    frozen_target = next(root.component for root in container_analysis.graph.roots if root.component.id == target_id)
+    frozen_target = next(
+        root.component for root in present(container_analysis.graph).roots if root.component.id == target_id
+    )
     assert len(frozen_target.decorators) == len(frozen_target.dependencies[0].decorators) == 1
     frozen_view = _undecorated_component_view(frozen_target)
     assert not cf.has_descendant(cf.implementation_type_is(Marker))(frozen_view)

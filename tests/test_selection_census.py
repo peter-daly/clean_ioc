@@ -5,6 +5,7 @@ import pytest
 
 from clean_ioc import ContainerBuilder, Provider
 from clean_ioc.cli import main
+from tests.verification_helpers import present
 
 
 def _summary(report, implementation):
@@ -36,9 +37,9 @@ def test_census_separates_root_dependency_collection_and_named_rejection():
     builder.register(Many)
     builder.mark_entrypoint(Single)
     builder.mark_entrypoint(Many)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
 
-    focused = graph.selection_census()
+    focused = present(graph).selection_census()
     default = _summary(focused, ".Default")
     named = _summary(focused, ".Named")
     assert focused.view == "entrypoints"
@@ -49,10 +50,10 @@ def test_census_separates_root_dependency_collection_and_named_rejection():
     assert named.rejected_requests == 2
     assert named.collection_inclusions == 0
 
-    all_roots = graph.selection_census(all_roots=True)
+    all_roots = present(graph).selection_census(all_roots=True)
     assert _summary(all_roots, ".Named").root_requests == 2
     assert _summary(all_roots, ".Default").dependency_requests >= 1
-    assert graph.selection_census().to_json() == focused.to_json()
+    assert present(graph).selection_census().to_json() == focused.to_json()
     assert default_id not in focused.to_json()
     assert named_id not in focused.to_json()
     assert "no recorded request" in json.dumps(focused.to_dict()) or focused.complete
@@ -86,8 +87,8 @@ def test_census_keeps_global_and_boundary_marked_root_decisions_separate():
     builder.register(Service, GlobalNamed, name="named")
     builder.mark_entrypoint(Service)
     builder.create_boundary("local", exposes=(Expose(Service),)).apply_bundle(install)
-    graph = builder.analyse().graph
-    report = graph.selection_census()
+    graph = builder.verify().graph
+    report = present(graph).selection_census()
     global_named = _summary(report, ".GlobalNamed")
     local_named = _summary(report, ".LocalNamed")
     assert global_named.rejected_requests == 1
@@ -95,7 +96,7 @@ def test_census_keeps_global_and_boundary_marked_root_decisions_separate():
     assert not global_named.examples[0].path.startswith("boundary:")
     assert any(use.path.startswith("boundary:local/") for use in local_named.examples)
     with pytest.raises(ValueError, match="explain-ambiguous-root"):
-        graph.explain(Service)
+        present(graph).explain(Service)
 
 
 def test_all_roots_identifies_public_and_boundary_local_contexts():
@@ -110,7 +111,7 @@ def test_all_roots_identifies_public_and_boundary_local_contexts():
 
     builder = ContainerBuilder()
     builder.create_boundary("inner", exposes=(Expose(Service),)).apply_bundle(install)
-    report = builder.analyse().graph.selection_census(all_roots=True)
+    report = present(builder.verify().graph).selection_census(all_roots=True)
     summary = _summary(report, ".Service")
     assert summary.root_requests == 2
     assert len(report.analyzed_roots) == 2
@@ -125,7 +126,7 @@ def test_marked_collection_root_is_a_root_collection_inclusion():
     builder = ContainerBuilder()
     builder.register(Service)
     builder.mark_entrypoint(list[Service])
-    summary = _summary(builder.analyse().graph.selection_census(), ".Service")
+    summary = _summary(present(builder.verify().graph).selection_census(), ".Service")
     assert summary.root_requests == 0
     assert summary.root_collection_inclusions == 1
     assert summary.collection_inclusions == 0
@@ -146,8 +147,8 @@ def test_failed_census_counts_recorded_attempt_selections_as_lower_bounds():
     builder = ContainerBuilder()
     builder.register(Good)
     builder.register(Bad)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     report = raised_analysis.selection_census()
     good = _summary(report, ".Good")
     assert good.attempt_selected == 2
@@ -174,7 +175,7 @@ def test_census_keeps_unspecialized_pattern_and_closed_selection_distinct():
     builder.register_pattern(Repository[item], factory=Repository)
     builder.register(App)
     builder.mark_entrypoint(App)
-    census = builder.analyse().graph.selection_census()
+    census = present(builder.verify().graph).selection_census()
     pattern = next(item for item in census.definitions if item.definition.kind == "registration-pattern")
     assert pattern.dependency_requests == 1
     assert pattern.closed_specializations == (
@@ -183,7 +184,7 @@ def test_census_keeps_unspecialized_pattern_and_closed_selection_distinct():
 
     unused_builder = ContainerBuilder()
     unused_builder.register_pattern(Repository[item], factory=Repository)
-    unused = unused_builder.analyse().graph.selection_census()
+    unused = present(unused_builder.verify().graph).selection_census()
     unused_pattern = next(item for item in unused.definitions if item.definition.kind == "registration-pattern")
     assert unused_pattern.recorded_requests == 0
     assert unused_pattern.closed_specializations == ()
@@ -215,13 +216,13 @@ def test_census_reports_recorded_eligible_alternatives_without_rerunning_filters
     builder.register(Service, Second, when=eligible)
     builder.register(App)
     builder.mark_entrypoint(App)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
     build_calls = calls
-    census = graph.selection_census()
+    census = present(graph).selection_census()
     assert calls == build_calls
     assert sum(item.eligible_not_selected for item in census.definitions) == 1
     assert sum(item.dependency_requests for item in census.definitions) == 1
-    assert graph.selection_census().to_json() == census.to_json()
+    assert present(graph).selection_census().to_json() == census.to_json()
     assert calls == build_calls
 
 
@@ -240,7 +241,7 @@ def test_census_separates_known_pattern_precedence_from_filter_rejection():
     builder.register(Serializer[int], factory=Serializer)
     builder.register(App)
     builder.mark_entrypoint(App)
-    census = builder.analyse().graph.selection_census()
+    census = present(builder.verify().graph).selection_census()
     pattern = next(item for item in census.definitions if item.definition.kind == "registration-pattern")
     assert pattern.precedence_exclusions >= 1
     assert pattern.rejected_requests == 0
@@ -261,7 +262,7 @@ def test_census_boundary_alias_links_to_one_source_registration():
 
     builder = ContainerBuilder()
     builder.create_boundary("source", exposes=(Expose(Private, alias=BoundaryAlias(Public)),)).apply_bundle(install)
-    census = builder.analyse().graph.selection_census(all_roots=True)
+    census = present(builder.verify().graph).selection_census(all_roots=True)
     source = next(item for item in census.definitions if item.definition.service.endswith(".Private"))
     alias = next(item for item in census.definitions if item.definition.kind == "boundary-alias")
     assert alias.definition.source == source.definition.reference
@@ -284,7 +285,7 @@ def test_census_bounds_examples_without_truncating_counts():
         consumer = type(f"Consumer{index}", (), {"__init__": init})
         builder.register(consumer)
         builder.mark_entrypoint(consumer)
-    service = _summary(builder.analyse().graph.selection_census(), ".Service")
+    service = _summary(present(builder.verify().graph).selection_census(), ".Service")
     assert service.dependency_requests == 12
     assert len(service.examples) == 8
     assert service.omitted_examples == 4
@@ -310,7 +311,7 @@ def test_census_links_generated_decorator_to_source_and_template():
         for_each=Source,
         template=lambda _source: DecoratorTemplate(DerivedServices(Target), Wrapper),
     )
-    census = builder.analyse().graph.selection_census(all_roots=True)
+    census = present(builder.verify().graph).selection_census(all_roots=True)
     by_kind = {item.definition.kind: item for item in census.definitions}
     generated = by_kind["generated-decorator"]
     assert generated.definition.source in {item.definition.reference for item in census.definitions}
@@ -331,9 +332,9 @@ def test_census_per_call_target_is_separate_from_root_selection():
     builder = ContainerBuilder()
     builder.register(Service, Impl, scope="per_call")
     builder.mark_entrypoint(Service)
-    graph = builder.analyse().graph
-    included = _summary(graph.selection_census(), ".Impl")
-    excluded = _summary(graph.selection_census(include_deferred=False), ".Impl")
+    graph = builder.verify().graph
+    included = _summary(present(graph).selection_census(), ".Impl")
+    excluded = _summary(present(graph).selection_census(include_deferred=False), ".Impl")
     assert included.root_requests == 1
     assert included.deferred_target_uses == 1
     assert excluded.root_requests == 1
@@ -359,10 +360,10 @@ def test_census_provider_map_reports_deferred_member_without_key():
     builder.register_provider_map(group)
     builder.register(App)
     builder.mark_entrypoint(App)
-    graph = builder.analyse().graph
-    report = graph.selection_census()
+    graph = builder.verify().graph
+    report = present(graph).selection_census()
     assert _summary(report, ".Impl").collection_inclusions == 1
-    assert _summary(graph.selection_census(include_deferred=False), ".Impl").collection_inclusions == 0
+    assert _summary(present(graph).selection_census(include_deferred=False), ".Impl").collection_inclusions == 0
     assert "private-map-key" not in report.to_json()
 
 
@@ -387,10 +388,10 @@ def test_census_excludes_deferred_targets_and_records_applicability():
     builder.pre_configure(Service, configure)
     builder.register(App)
     builder.mark_entrypoint(App)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
 
-    included = graph.selection_census()
-    excluded = graph.selection_census(include_deferred=False)
+    included = present(graph).selection_census()
+    excluded = present(graph).selection_census(include_deferred=False)
     assert _summary(included, ".Service").deferred_target_uses >= 1
     assert _summary(excluded, ".Service").deferred_target_uses == 0
     assert _summary(included, ".Wrapper").applicable_decorators >= 1
@@ -414,8 +415,8 @@ def test_failed_census_keeps_structural_failure_and_unexamined_outcomes():
 
     builder = ContainerBuilder()
     builder.register(Service, when=forbidden)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     census = raised_analysis.selection_census()
     assert not census.complete
     assert not census.to_dict()["totals_exact"]

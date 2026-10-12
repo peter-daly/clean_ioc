@@ -21,6 +21,7 @@ from clean_ioc import (
     ScopeBuilder,
 )
 from clean_ioc.cli import _filtered_report
+from tests.verification_helpers import present
 
 
 class Leaf:
@@ -63,15 +64,15 @@ def leaf_builder():
 
 
 def failure(builder, budget, *, profile=None):
-    caught_analysis = builder.analyse(budget=budget, profile=profile)
-    assert not caught_analysis.report.is_valid
+    caught_analysis = builder.verify(budget=budget, profile=profile)
+    assert not caught_analysis.is_valid
     error = caught_analysis
     assert error.graph is None or error.emission_complete
-    assert error.report is not None and not error.report.is_valid
-    assert not error.report.complete
+    assert error is not None and not error.is_valid
+    assert not error.complete
     if not error.emission_complete:
         assert error.partial_graph is not None and error.partial_graph.truncated
-    issue = next(issue for issue in error.report.errors if issue.code == "compilation-budget-exceeded")
+    issue = next(issue for issue in error.errors if issue.code == "compilation-budget-exceeded")
     assert issue.budget is not None
     assert issue.budget.attempted > issue.budget.maximum
     return error, issue.budget
@@ -101,7 +102,7 @@ def test_occurrence_exact_threshold_includes_provider_view_contexts_and_no_activ
     before = Leaf.activations
     profile = CompilationProfiler(max_records=0)
     with (
-        leaf_builder().analyse(budget=CompilationBudget(graph_occurrences=45), profile=profile) as owner_analysis,
+        leaf_builder().verify(budget=CompilationBudget(graph_occurrences=45), profile=profile) as owner_analysis,
         owner_analysis.create_runtime() as _owner,
     ):
         assert len(owner_analysis.graph.roots) == 1
@@ -153,9 +154,9 @@ def test_depth_is_a_path_peak_across_roots_including_synthetic_metadata():
 
 def test_budget_fingerprint_and_disabled_profile_compatibility():
     with (
-        leaf_builder().analyse() as plain_analysis,
+        leaf_builder().verify() as plain_analysis,
         plain_analysis.create_runtime() as _plain,
-        leaf_builder().analyse(budget=CompilationBudget()) as limited_analysis,
+        leaf_builder().verify(budget=CompilationBudget()) as limited_analysis,
         limited_analysis.create_runtime() as _limited,
     ):
         assert plain_analysis.graph.manifest().fingerprint == limited_analysis.graph.manifest().fingerprint
@@ -168,21 +169,21 @@ def test_budget_fingerprint_and_disabled_profile_compatibility():
 def test_exhaustion_exports_are_stable_redacted_source_linked_and_cannot_be_ignored():
     builder = leaf_builder()
     profile = CompilationProfiler()
-    caught_analysis = builder.analyse(
+    caught_analysis = builder.verify(
         budget=CompilationBudget(graph_occurrences=0), build_args={"secret": "PRIVATE-VALUE"}, profile=profile
     )
-    assert not caught_analysis.report.is_valid
+    assert not caught_analysis.is_valid
     error = caught_analysis
-    assert error.report is not None and error.partial_graph is not None
-    assert not _filtered_report(error.report, {"compilation-budget-exceeded"}).is_valid
-    assert error.report.to_json() == error.report.to_json()
-    result = json.loads(error.report.to_sarif())["runs"][0]["results"][0]
+    assert error is not None and error.partial_graph is not None
+    assert not _filtered_report(error, {"compilation-budget-exceeded"}).is_valid
+    assert error.to_json() == error.to_json()
+    result = json.loads(error.to_sarif())["runs"][0]["results"][0]
     assert result["properties"]["compilationBudget"]["maximum"] == 0
     assert result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"].endswith("test_compilation_budget.py")
     exports = (
-        error.report.to_text(),
-        error.report.to_json(),
-        error.report.to_sarif(),
+        error.to_text(),
+        error.to_json(),
+        error.to_sarif(),
         error.partial_graph.to_json(),
         error.triage_report().to_json(),
         profile.report().to_json(),
@@ -205,7 +206,7 @@ def test_diagnostic_zero_retains_primary_missing_finding_and_no_retry():
     profile = CompilationProfiler()
     error, fact = failure(builder, CompilationBudget(diagnostic_attempts=0), profile=profile)
     assert fact.phase == "diagnostic root retries"
-    assert [issue.code for issue in error.report.errors] == ["missing-component", "compilation-budget-exceeded"]
+    assert [issue.code for issue in error.errors] == ["missing-component", "compilation-budget-exceeded"]
     assert dict(fact.usage)["graph_occurrences"] == 1
     assert "diagnostic root attempts" not in profile.report().counters.to_dict()
     assert error.partial_graph.total_attempts == 1
@@ -223,7 +224,7 @@ def test_occurrence_allowance_survives_retry_and_preserves_original():
     profile = CompilationProfiler()
     error, fact = failure(builder, CompilationBudget(graph_occurrences=1), profile=profile)
     assert fact.phase == "diagnostic root retries"
-    assert [issue.code for issue in error.report.errors] == ["missing-component", "compilation-budget-exceeded"]
+    assert [issue.code for issue in error.errors] == ["missing-component", "compilation-budget-exceeded"]
     assert dict(fact.usage)["diagnostic_attempts"] == 1
     assert profile.report().counters.to_dict()["graph occurrences"] == 1
     assert error.partial_graph.total_attempts == 2
@@ -301,7 +302,7 @@ def test_first_exhaustion_survives_callback_catching_control_signal_and_throwing
     )
     error, fact = failure(builder, CompilationBudget(graph_occurrences=1))
     assert fact.phase == "registration-template expansion"
-    assert calls == ["filter"] and "PRIVATE-EXCEPTION" not in error.report.to_json()
+    assert calls == ["filter"] and "PRIVATE-EXCEPTION" not in error.to_json()
 
 
 def test_discovery_zero_stops_before_filter_and_is_repairable():
@@ -345,7 +346,7 @@ def test_validation_iterator_advances_are_bounded_and_prior_findings_retained():
     # one ordinary root-selection callback + rule entry + first next = three.
     error, fact = failure(builder, CompilationBudget(preparation_operations=3))
     assert fact.phase == "analysis rules" and calls == ["rule", "next"]
-    assert [issue.code for issue in error.report.errors] == ["declared-finding", "compilation-budget-exceeded"]
+    assert [issue.code for issue in error.errors] == ["declared-finding", "compilation-budget-exceeded"]
 
 
 def test_overlay_budgets_actual_clones_and_matrix_budgets_reset_per_variant():
@@ -382,13 +383,13 @@ def test_configured_entrypoint_decisions_preserve_labels_and_fingerprint():
         return builder
 
     with (
-        make().analyse() as plain_analysis,
+        make().verify() as plain_analysis,
         plain_analysis.create_runtime() as _plain,
-        make().analyse(budget=CompilationBudget()) as limited_analysis,
+        make().verify(budget=CompilationBudget()) as limited_analysis,
         limited_analysis.create_runtime() as _limited,
     ):
         assert plain_analysis.graph.manifest().fingerprint == limited_analysis.graph.manifest().fingerprint
-        assert plain_analysis.report.to_dict() == limited_analysis.report.to_dict()
+        assert plain_analysis.to_dict() == limited_analysis.to_dict()
         ordinary = plain_analysis.graph.explain(Leaf).selected[0]
         configured = limited_analysis.graph.explain(Leaf).selected[0]
         assert ordinary.reason_codes == configured.reason_codes
@@ -406,10 +407,10 @@ def test_invalid_validation_returns_preserve_normal_labels_and_close_coroutines(
     for budget in (None, CompilationBudget()):
         builder = leaf_builder()
         builder.add_validation_rule(rule)
-        caught_analysis = builder.analyse(budget=budget)
-        assert not caught_analysis.report.is_valid
-        assert caught_analysis.report is not None
-        reports.append(caught_analysis.report.to_dict())
+        caught_analysis = builder.verify(budget=budget)
+        assert not caught_analysis.is_valid
+        assert caught_analysis is not None
+        reports.append(caught_analysis.to_dict())
     assert reports[0] == reports[1]
     assert "rule failed" in reports[0]["issues"][0]["message"]
 
@@ -426,10 +427,10 @@ def test_prior_validation_exception_is_redacted_when_later_budget_exhausts():
     builder.add_validation_rule(faulty)
     builder.add_validation_rule(endless)
     error, _ = failure(builder, CompilationBudget(preparation_operations=4))
-    assert "validation-rule-error" in [issue.code for issue in error.report.errors]
-    assert "PRIVATE-EXCEPTION" not in error.report.to_json()
-    assert "PRIVATE-EXCEPTION" not in error.report.to_sarif()
-    assert "physicalLocation" in error.report.to_sarif()
+    assert "validation-rule-error" in [issue.code for issue in error.errors]
+    assert "PRIVATE-EXCEPTION" not in error.to_json()
+    assert "PRIVATE-EXCEPTION" not in error.to_sarif()
+    assert "physicalLocation" in error.to_sarif()
 
 
 def test_wide_roots_use_work_occurrences_instead_of_public_graph_size():
@@ -438,12 +439,12 @@ def test_wide_roots_use_work_occurrences_instead_of_public_graph_size():
         builder.register(type(f"Wide{index}", (Leaf,), {}))
     profile = CompilationProfiler()
     with (
-        builder.analyse(
+        builder.verify(
             budget=CompilationBudget(graph_occurrences=1080, active_dependency_depth=3), profile=profile
         ) as owner_analysis,
         owner_analysis.create_runtime() as _owner,
     ):
-        assert len(owner_analysis.graph.roots) == 24
+        assert len(present(owner_analysis.graph).roots) == 24
     assert dict(profile.report().budget_usage or ())["graph_occurrences"] == 1080
 
 
@@ -469,7 +470,7 @@ def test_warmup_filter_admission_has_source_and_does_not_activate():
     error, fact = failure(builder, CompilationBudget(preparation_operations=1))
     assert fact.phase == "warm-up compilation" and calls == []
     assert Leaf.activations == before
-    assert "physicalLocation" in error.report.to_sarif()
+    assert "physicalLocation" in error.to_sarif()
 
 
 def test_structural_nontermination_guard_is_mandatory_with_unlimited_budget():
@@ -484,11 +485,11 @@ def test_structural_nontermination_guard_is_mandatory_with_unlimited_budget():
 
     builder.register_pattern(Box[T], factory=expanding)
     builder.register(Root)
-    caught_analysis = builder.analyse(budget=CompilationBudget())
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert "pattern-non-terminating-expansion" in [issue.code for issue in caught_analysis.report.errors]
-    assert "RecursionError" not in str(caught_analysis.report)
+    caught_analysis = builder.verify(budget=CompilationBudget())
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert "pattern-non-terminating-expansion" in [issue.code for issue in caught_analysis.errors]
+    assert "RecursionError" not in str(caught_analysis)
 
 
 def test_successful_budget_state_releases_compiler_without_cyclic_gc(monkeypatch):
@@ -524,7 +525,7 @@ def test_public_validation_findings_with_callback_error_code_are_preserved():
 
     builder.add_validation_rule(findings)
     error, _ = failure(builder, CompilationBudget(preparation_operations=3))
-    assert error.report.errors[0].message == "Intentional public declaration"
+    assert error.errors[0].message == "Intentional public declaration"
 
 
 def test_import_exhaustion_is_source_linked_before_import_callback(monkeypatch):
@@ -536,8 +537,8 @@ def test_import_exhaustion_is_source_linked_before_import_callback(monkeypatch):
     builder.register_subclasses(Leaf, ensure_import_modules="PRIVATE-MODULE")
     error, fact = failure(builder, CompilationBudget(preparation_operations=0))
     assert fact.phase == "discovery imports" and calls == []
-    assert "physicalLocation" in error.report.to_sarif()
-    assert "PRIVATE-MODULE" not in error.report.to_json()
+    assert "physicalLocation" in error.to_sarif()
+    assert "PRIVATE-MODULE" not in error.to_json()
 
 
 def test_failed_budget_control_signal_does_not_retain_compiler(monkeypatch):
@@ -582,7 +583,7 @@ def test_final_entrypoint_refusal_retains_already_captured_missing_entrypoint():
     builder.mark_entrypoint(Leaf)
     error, fact = failure(builder, CompilationBudget(preparation_operations=1))
     assert fact.phase == "final validation"
-    assert [issue.code for issue in error.report.errors] == ["missing-entrypoint", "compilation-budget-exceeded"]
+    assert [issue.code for issue in error.errors] == ["missing-entrypoint", "compilation-budget-exceeded"]
 
 
 def test_early_primary_refusal_preserves_previously_captured_compiler_issue():
@@ -593,12 +594,12 @@ def test_early_primary_refusal_preserves_previously_captured_compiler_issue():
     builder.register(Leaf, factory=wrong)
     builder.register(Worker)
     error, _ = failure(builder, CompilationBudget(graph_occurrences=1))
-    assert [issue.code for issue in error.report.errors] == [
+    assert [issue.code for issue in error.errors] == [
         "factory-return-type-mismatch",
         "compilation-budget-exceeded",
     ]
-    assert "PRIVATE-RETURN" not in error.report.to_json()
-    assert "physicalLocation" in error.report.to_sarif()
+    assert "PRIVATE-RETURN" not in error.to_json()
+    assert "physicalLocation" in error.to_sarif()
 
 
 def test_source_inspection_findings_survive_later_template_output_refusal():
@@ -614,7 +615,7 @@ def test_source_inspection_findings_survive_later_template_output_refusal():
     )
     error, fact = failure(builder, CompilationBudget(generated_template_outputs=0))
     assert fact.phase == "registration-template expansion"
-    assert [issue.code for issue in error.report.errors] == [
+    assert [issue.code for issue in error.errors] == [
         "factory-return-type-mismatch",
         "compilation-budget-exceeded",
     ]

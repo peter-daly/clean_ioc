@@ -37,16 +37,16 @@ Register every rule through `builder.add_validation_rule(rule)`. There is no rul
 `build()` executes no validation callbacks or built-in policy audits. It emits an execution runtime and still fails
 when binding or emission is impossible. Runtime scope, ownership, async and cleanup guards remain active.
 
-`analyse()` completes all available validation rules and built-in checks before returning. Rules run in declaration
+`verify()` completes all available validation rules and built-in checks before returning. Rules run in declaration
 order, parent declarations before local overlay declarations, once per analysis. Their findings, errors and unavailable
-or interrupted outcomes are recorded in `result.report`. Policy errors do not prevent testing an otherwise emitted
+or interrupted outcomes are recorded in `result`. Policy errors do not prevent testing an otherwise emitted
 plan. Missing bindings can prevent graph-dependent rules from running; the report then records incomplete coverage.
 
 ```python
 builder.add_validation_rule(enforce_architecture)
 builder.add_validation_rule(inspect_implementation_asts)
-with builder.analyse() as result:
-    result.report.assert_valid()
+with builder.verify() as result:
+    result.assert_valid()
     with result.create_runtime() as runtime:
         runtime.resolve(Application)
 ```
@@ -55,8 +55,8 @@ Report and graph reads never rerun rules or wiring callbacks. `create_runtime()`
 Use a fresh composition factory's `build()` for production and make a separate analysis check part of CI:
 
 ```python
-with application_builder().analyse() as result:
-    result.report.assert_valid()
+with application_builder().verify() as result:
+    result.assert_valid()
 with application_builder().build() as production:
     production.resolve(Application)
 ```
@@ -74,7 +74,7 @@ can repeat wiring callbacks, but never a validation declaration. Production buil
 
 ### Strictness controls warnings
 
-`clean-ioc check` calls `analyse()` once. Errors and incomplete analysis always fail; strict mode also fails for
+`clean-ioc check` calls `verify()` once. Errors and incomplete analysis always fail; strict mode also fails for
 unsuppressed warnings. `--ignore` suppresses selected warnings in CLI output without mutating the result.
 
 ```console
@@ -293,7 +293,7 @@ def warn_about_transient_resources(context: ValidationContext) -> Iterable[Build
             )
 ```
 
-Warnings remain visible in `result.report`; production build runs no policy rules. The strict CLI treats an
+Warnings remain visible in `result`; production build runs no policy rules. The strict CLI treats an
 unsuppressed warning as a failure, so teams can adopt advisory rules gradually.
 
 ## Recipe: validate environment-specific composition
@@ -433,12 +433,12 @@ ordinary scopes run no rules. Handles have no resource-cleanup lifecycle; keep t
 
 ```python
 def test_architecture_policy(application_builder):
-    with application_builder().analyse() as result:
-        report = result.report
+    with application_builder().verify() as result:
+        report = result
         report.assert_valid()
 ```
 
-`report.assert_valid()` checks `report.is_valid` and raises `AssertionError` with a SARIF document when errors remain.
+`report.assert_valid()` checks `report.is_valid` and raises `AssertionError` with a SARIF document when errors remain or verification is incomplete.
 Container-created reports include captured registration sources and dependency paths automatically; see
 [SARIF reporting](sarif.md).
 Warnings alone pass. To apply the CLI's default strict policy in a unit test, reject warnings too:
@@ -447,20 +447,18 @@ Warnings alone pass. To apply the CLI's default strict policy in a unit test, re
 assert not report.issues, report.to_text()
 ```
 
-If a built-in or build rule reports an error, no container is returned. Test that earlier boundary through
-`ContainerBuildError.report`:
+Built-in checks and custom rules produce findings on the returned verification report.
+Production `build()` does not run these policies. Test an invalid composition directly:
 
 ```python
 import pytest
 
-from clean_ioc import ContainerBuildError
-
 
 def test_invalid_composition_is_rejected(invalid_builder):
-    with pytest.raises(ContainerBuildError) as raised:
-        invalid_builder.build()
-
-    assert "my-app-layer-boundary" in {issue.code for issue in raised.value.report.errors}
+    report = invalid_builder.verify()
+    assert "my-app-layer-boundary" in {issue.code for issue in report.errors}
+    with pytest.raises(AssertionError):
+        report.assert_valid()
 ```
 
 CI can use the same composition target as production without activating application components:
@@ -470,7 +468,7 @@ CI can use the same composition target as production without activating applicat
   run: clean-ioc check my_app.composition:application_builder
 ```
 
-The CLI target may be a builder, a completed `AnalysisResult`, or a zero-argument factory returning either.
+The CLI target may be a builder, a completed `VerificationReport`, or a zero-argument factory returning either.
 `check` completes analysis once and exports its report, including partial findings when compilation cannot finish.
 The report records which rule declarations could run.
 

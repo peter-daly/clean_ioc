@@ -22,6 +22,7 @@ from clean_ioc import (
 )
 from clean_ioc.factories import use_component, use_component_async
 from clean_ioc.tooling import qualified_name
+from tests.verification_helpers import present
 
 
 class StandaloneClient:
@@ -87,8 +88,8 @@ def test_union_registration_and_injection(key: TypeForm[Client], implementation:
 def test_union_requires_an_explicit_activation_source(key: TypeForm[object]):
     builder = ContainerBuilder()
     builder.register(key)
-    result = builder.analyse()
-    assert any(issue.code == "missing-activation-source" for issue in result.report.errors)
+    result = builder.verify()
+    assert any(issue.code == "missing-activation-source" for issue in result.errors)
     builder = ContainerBuilder()
 
     # A rejected registration must leave the builder reusable and unmodified.
@@ -112,11 +113,11 @@ def test_registering_members_does_not_register_the_union():
     builder.register(StandaloneClient)
     builder.register(ClusterClient)
     builder.register(Consumer)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
-    assert raised_analysis.report is not None
-    assert raised_analysis.report.errors[0].code == "missing-component"
-    assert raised_analysis.report.errors[0].path[-1] == qualified_name(Client)
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
+    assert raised_analysis is not None
+    assert raised_analysis.errors[0].code == "missing-component"
+    assert raised_analysis.errors[0].path[-1] == qualified_name(Client)
 
 
 def test_optional_union_preserves_python_default_and_explicit_injection():
@@ -293,7 +294,7 @@ def test_union_selection_helpers_patching_and_pre_configuration():
     composition.register(Consumer, arguments={"client": select(cf.with_name("cluster"))})
     unnamed_union = cf.service_type_is(Client) & cf.is_not_named
     composition.mark_entrypoint(Client, filter=unnamed_union)
-    with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
+    with builder.verify() as container_analysis, container_analysis.create_runtime() as container:
         assert events == []
         assert container.resolve(Consumer).client.mode == "cluster"
         assert events == ["configured"]
@@ -301,7 +302,7 @@ def test_union_selection_helpers_patching_and_pre_configuration():
         assert container.resolve(object, cf.with_name("context")) is value
         assert container.resolve(object, cf.with_name("helper")) is value
         assert all(cf.service_type_is(Client)(item) for item in container.components if item.id == component_id)
-        explanation = container_analysis.graph.explain(Client, filter=unnamed_union)
+        explanation = present(container_analysis.graph).explain(Client, filter=unnamed_union)
         assert explanation.selected[0].component_id == component_id
 
 
@@ -311,11 +312,11 @@ def test_equivalent_union_graphs_have_identical_manifests_and_fingerprints():
         builder = ContainerBuilder()
         builder.register(key, factory=create_client)
         builder.register(Consumer)
-        with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
+        with builder.verify() as container_analysis, container_analysis.create_runtime() as container:
             union_components = [component for component in container.components if component.service_type == Client]
             assert union_components
             assert all(component.implementation_type is type(create_client) for component in union_components)
-            manifests.append(container_analysis.graph.manifest())
+            manifests.append(present(container_analysis.graph).manifest())
     assert len({manifest.to_json() for manifest in manifests}) == 1
     assert len({manifest.fingerprint for manifest in manifests}) == 1
 

@@ -96,8 +96,8 @@ def test_failed_build_preserves_partial_primary_and_retry_measurements():
     builder = ContainerBuilder()
     builder.register(Root)
     profile = CompilationProfiler(max_records=100)
-    analysis = builder.analyse(profile=profile)
-    assert not analysis.report.is_valid
+    analysis = builder.verify(profile=profile)
+    assert not analysis.is_valid
     report = profile.report()
     assert report.state == "completed"
     assert report.elapsed_ns >= sum(dict(report.phases_ns).values())
@@ -131,7 +131,7 @@ def test_profiled_build_runs_callbacks_once_and_redacts_build_values():
     builder.register(Root, when=predicate)
     builder.add_validation_rule(rule)
     profile = CompilationProfiler(max_records=100)
-    analysis = builder.analyse(build_args={"secret": "PRIVATE-BUILD-VALUE"}, profile=profile)
+    analysis = builder.verify(build_args={"secret": "PRIVATE-BUILD-VALUE"}, profile=profile)
     container = analysis.create_runtime()
     assert container.resolve(Root).__class__ is Root
     assert calls == ["predicate", "rule start", "rule end"]

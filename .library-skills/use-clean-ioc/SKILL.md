@@ -28,9 +28,9 @@ Perform registration, decoration, pre-configuration, slot declaration, bundle ap
 
 `build()` emits only the execution plan. It runs no validation rules or safety-policy audits. Missing dependencies or cycles can still prevent instruction emission. Constructors and activation factories remain lazy; selection, derivation and template callbacks run during compilation.
 
-Use a fresh composition factory's `analyse()` for complete diagnostics, architectural checks and every custom rule. It returns an `AnalysisResult` with a completed `report`, a full or partial inspection graph, and an optional executable test plan. Use `result.create_runtime()` to test that plan without recompilation. Reading the report or creating test runtimes does not replay callbacks.
+Use a fresh composition factory's `verify()` for complete diagnostics, architectural checks and every custom rule. It returns a `VerificationReport` with a immutable findings, a full or partial inspection graph, and an optional executable test plan. Use `result.create_runtime()` to test that plan without recompilation. Reading the report or creating test runtimes does not replay callbacks.
 
-Every admitted build or analysis attempt consumes its builder, including failed or interrupted attempts. Repair declarations in a fresh builder. Invalid inputs rejected before admission leave the builder mutable.
+Every admitted build or verification attempt consumes its builder, including failed or interrupted attempts. Repair declarations in a fresh builder. Invalid inputs rejected before admission leave the builder mutable.
 
 Do not attempt to mutate a `Container` or `Scope`.
 
@@ -78,7 +78,7 @@ Keep `clean_ioc.type_filters` separate for Python subclass/generic discovery.
 - `scoped`: runtime scope cache;
 - `singleton`: root container or owning compiled overlay scope.
 
-Scoped and singleton components must not directly or transitively depend on `per_resolution`; a transient wrapper does not make that capture valid. A singleton must not depend on scoped state. `analyse()` reports these invalid paths as `captive-dependency`; `build()` does not audit them.
+Scoped and singleton components must not directly or transitively depend on `per_resolution`; a transient wrapper does not make that capture valid. A singleton must not depend on scoped state. `verify()` reports these invalid paths as `captive-dependency`; `build()` does not audit them.
 
 Use `resolve_async()` whenever an activation path may contain async functions, generators, context managers, or cleanup. Always exit the owning scope/container so cleanup runs.
 

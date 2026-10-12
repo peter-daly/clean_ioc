@@ -75,7 +75,7 @@ builder.register(UserService)  # UserRepository is missing
 container = builder.build()  # raises ContainerBuildError
 ```
 
-`build()` raises a local `ContainerBuildError` for impossible wiring. Use `analyse()` for completed findings and full
+`build()` raises a local `ContainerBuildError` for impossible wiring. Use `verify()` for completed findings and full
 or partial graphs. Every admitted attempt consumes the builder; retry with a fresh composition factory.
 
 ## Core capabilities
@@ -97,7 +97,7 @@ or partial graphs. Every admitted attempt consumes the builder; retry with a fre
 
 Custom validation rules receive the complete immutable compiled graph and return structured findings. They can enforce
 module boundaries, registration uniqueness, required decorators, naming and tag conventions, or policies found by
-inspecting implementation ASTs. Rules run once during `analyse()` and never during `build()`. `clean-ioc check` inspects the completed analysis in both
+inspecting implementation ASTs. Rules run once during `verify()` and never during `build()`. `clean-ioc check` inspects the completed analysis in both
 strict and non-strict modes.
 
 ```python

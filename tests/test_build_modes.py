@@ -17,6 +17,7 @@ from clean_ioc import (
     ScopeBuilder,
 )
 from clean_ioc.cli import _load_analysis, main
+from tests.verification_helpers import present
 
 
 class Leaf:
@@ -55,7 +56,7 @@ def test_default_build_retains_execution_discovery_and_ordinary_scopes():
             ScopeBuilder(runtime)  # ty: ignore[missing-argument]  # Deliberately invalid input.
 
 
-@pytest.mark.parametrize("operation", ["build", "analyse"])
+@pytest.mark.parametrize("operation", ["build", "verify"])
 @pytest.mark.parametrize(
     "option",
     [
@@ -71,9 +72,9 @@ def test_default_build_retains_execution_discovery_and_ordinary_scopes():
 )
 def test_removed_flags_leave_both_builders_and_profiler_untouched(operation, option):
     profile = CompilationProfiler()
-    with composition().analyse() as analysis:
+    with composition().verify() as analysis:
         parent = analysis.create_runtime()
-        for builder in (composition(), ScopeBuilder(parent, composition=analysis.composition)):
+        for builder in (composition(), ScopeBuilder(parent, composition=present(analysis.composition))):
             method = getattr(builder, operation)
             with pytest.raises(TypeError, match=option):
                 method(profile=profile, **{option: False})
@@ -84,19 +85,19 @@ def test_removed_flags_leave_both_builders_and_profiler_untouched(operation, opt
                 assert isinstance(child.resolve(Service), Service)
 
 
-@pytest.mark.parametrize("operation", ["build", "analyse"])
+@pytest.mark.parametrize("operation", ["build", "verify"])
 def test_analysis_parent_supports_explicit_overlays_without_mutating_parent(operation):
-    with composition().analyse() as analysis:
+    with composition().verify() as analysis:
         parent = analysis.create_runtime()
         original = parent.resolve(Service).leaf
         manifest = analysis.graph.manifest(all_roots=True).fingerprint
-        builder = ScopeBuilder(parent, composition=analysis.composition)
+        builder = ScopeBuilder(parent, composition=present(analysis.composition))
         child_composition = builder.retain_composition()
-        if operation == "analyse":
-            with builder.analyse() as child_analysis:
+        if operation == "verify":
+            with builder.verify() as child_analysis:
                 child = child_analysis.create_runtime()
                 assert child.resolve(Service).leaf is original
-                with ScopeBuilder(child, composition=child_analysis.composition).build() as nested:
+                with ScopeBuilder(child, composition=present(child_analysis.composition)).build() as nested:
                     assert nested.resolve(Service).leaf is original
         else:
             with builder.build() as child:
@@ -138,7 +139,7 @@ def test_analysis_validates_orphans_without_expanding_public_roots_or_discovery(
         builder.register(Orphan, root_policy="dependency_only")
         return builder
 
-    with factory().build() as production, factory().analyse() as analysis:
+    with factory().build() as production, factory().verify() as analysis:
         runtime = analysis.create_runtime()
         for owner in (production, runtime):
             assert not owner.has_component(Orphan)
@@ -164,9 +165,9 @@ def test_invalid_unused_orphan_is_an_analysis_only_failure():
     with factory().build() as runtime:
         assert isinstance(runtime.resolve(Service), Service)
     builder = factory()
-    with builder.analyse() as analysis:
-        assert not analysis.report.is_valid
-        assert analysis.report.errors[0].code == "missing-component"
+    with builder.verify() as analysis:
+        assert not analysis.is_valid
+        assert analysis.errors[0].code == "missing-component"
     assert builder._built
 
 
@@ -182,12 +183,12 @@ def test_all_rules_run_only_during_analysis_and_report_reads_never_replay():
     with factory().build() as runtime:
         assert isinstance(runtime.resolve(Service), Service)
         assert calls == []
-    with factory().analyse() as analysis:
-        assert analysis.report.is_valid
+    with factory().verify() as analysis:
+        assert analysis.is_valid
         assert calls[-1] == "second"
         captured = list(calls)
-        analysis.report.to_json()
-        analysis.report.to_sarif()
+        analysis.to_json()
+        analysis.to_sarif()
         analysis.selection_census()
         analysis.triage_report()
         analysis.create_runtime().resolve(Service)
@@ -205,9 +206,9 @@ def test_rule_failure_consumes_analysis_builder_but_build_skips_rule():
         return builder
 
     builder = factory()
-    result = builder.analyse()
-    assert not result.report.is_valid
-    assert result.report.complete
+    result = builder.verify()
+    assert not result.is_valid
+    assert result.complete
     assert calls == ["rule"]
     with pytest.raises(BuilderAlreadyBuiltError):
         builder.build()
@@ -235,7 +236,7 @@ def test_cli_and_matrix_each_run_validation_once(monkeypatch, capsys):
 def test_cli_never_rebuilds_an_execution_runtime(monkeypatch):
     with composition().build() as runtime:
         monkeypatch.setattr("clean_ioc.cli._load_object", lambda _: runtime)
-        with pytest.raises(TypeError, match="AnalysisResult"):
+        with pytest.raises(TypeError, match="VerificationReport"):
             _load_analysis("ignored:runtime")
 
 
@@ -257,7 +258,7 @@ def test_analysis_manifests_classify_public_root_promotion_and_demotion(before_p
         builder = ContainerBuilder().set_provider_roots(())
         builder.register(Leaf, root_policy="resolvable" if public else "dependency_only")
         builder.register(Service, root_policy="entrypoint")
-        return builder.analyse()
+        return builder.verify()
 
     with graph(before_public) as before, graph(after_public) as after:
         old = before.graph.manifest(all_roots=True)
@@ -273,8 +274,8 @@ def test_analysis_manifests_classify_public_root_promotion_and_demotion(before_p
         assert change.risk is (ChangeRisk.medium if after_public else ChangeRisk.high)
         assert {item.implementation_type for item in before.selected_registrations} == {Leaf, Service}
         assert {item.implementation_type for item in after.selected_registrations} == {Leaf, Service}
-        assert before.report.is_valid
-        assert after.report.is_valid
+        assert before.is_valid
+        assert after.is_valid
 
 
 def test_manifest_resolvability_is_boolean_and_root_only():
@@ -282,7 +283,7 @@ def test_manifest_resolvability_is_boolean_and_root_only():
 
     from clean_ioc import GraphManifest
 
-    with composition().set_provider_roots(()).analyse() as runtime:
+    with composition().set_provider_roots(()).verify() as runtime:
         data = runtime.graph.manifest(all_roots=True).to_dict()
         invalid_root = copy.deepcopy(data)
         invalid_root["roots"][0]["resolvable"] = "no"

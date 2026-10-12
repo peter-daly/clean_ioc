@@ -154,6 +154,14 @@ Source/environment baselines and completed samples remain preserved. Task 25 is
 ready for assignment and remains unassigned; no new memory/startup comparison
 has been run. Correctness acceptance is not measured memory savings.
 
+On 2026-10-12, [task 26](graph-memory-optimization/26-verify-and-verification-report.md)
+was added to rename `analyse()` to `verify()` and return a `VerificationReport`
+with direct validity checks, findings and `assert_valid()`. [Implementation and
+validation are complete](graph-memory-optimization/26-result.md), by
+`/root/graph_memory_task_26` at medium reasoning: full supported-Python CI,
+executable docs, and isolated consumer discovery/unit checks passed. Task 25 remains
+unassigned; no memory/startup comparison was run.
+
 ## Pre-compilation
 
 The [pre-compilation plan](pre-compilation/README.md), created on 2026-10-09,

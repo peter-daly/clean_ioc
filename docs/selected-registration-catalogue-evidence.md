@@ -1,6 +1,6 @@
 # Selected registration catalogue evidence
 
-> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/analyse API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-analyse).
+> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/verify API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-verify).
 
 > Historical comparison: these measurements use the former fine-grained build policies.
 > Their reproduction scripts use the private compiler harness; current public applications

@@ -3,13 +3,13 @@
 import pytest
 
 from clean_ioc import (
-    AnalysisResult,
     BuildIssue,
     ComponentBuilder,
     ContainerBuilder,
     Expose,
     IssueSeverity,
     Provider,
+    VerificationReport,
 )
 from clean_ioc.bundles import BaseBundle
 
@@ -69,9 +69,9 @@ def test_private_deferred_command_and_saga_bundle_discovery_and_validation(mode)
 
     builder = ContainerBuilder().set_provider_roots(())
     builder.create_boundary("commands", exposes=(Expose(Saga),)).apply_bundle(CommandSagaBundle())
-    output = builder.analyse() if mode == "analysis" else builder.build()
+    output = builder.verify() if mode == "analysis" else builder.build()
     with output:
-        runtime = output.create_runtime() if isinstance(output, AnalysisResult) else output
+        runtime = output.create_runtime() if isinstance(output, VerificationReport) else output
         assert activations == []
         assert rules == (["build", "validation"] if mode == "analysis" else [])
         assert not runtime.has_component(CommandHandler)
@@ -85,9 +85,9 @@ def test_private_deferred_command_and_saga_bundle_discovery_and_validation(mode)
             assert saga.run() == "audited:handled"
         assert activations == ["saga", "handler", "audit"]
         if mode == "analysis":
-            assert isinstance(output, AnalysisResult)
+            assert isinstance(output, VerificationReport)
             for _ in range(2):
-                report = output.report
+                report = output
                 assert [issue.code for issue in report.errors] == ["application-policy"]
             assert rules == ["build", "validation"]
         else:

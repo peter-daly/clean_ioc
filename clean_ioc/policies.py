@@ -98,7 +98,7 @@ def _packed_rule(name: str, rule: ValidationRule) -> ValidationRule:
 
 @dataclass(frozen=True, slots=True, init=False)
 class PolicyPack:
-    """Install one ordered set of rules evaluated only during analyse()."""
+    """Install one ordered set of rules evaluated only during verify()."""
 
     name: str
     rules: tuple[ValidationRule, ...]

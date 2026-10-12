@@ -1,6 +1,6 @@
 """Separate allocation/count/cProfile probes; never latency baselines.
 
-Uses execution build() for allocation probes; the failure probe uses analyse()
+Uses execution build() for allocation probes; the failure probe uses verify()
 to capture diagnostic retries. These are separate operations, not mode switches.
 
 Run from repo root with `uv run python -m benchmarks.compiler_optimization_evidence`.
@@ -214,8 +214,8 @@ def main() -> None:
     builder = workloads.ContainerBuilder()
     builder.register(Broken)
     profile = CompilationProfiler(max_records=50_000)
-    with builder.analyse(profile=profile) as analysis:
-        if not analysis.report.errors:
+    with builder.verify(profile=profile) as analysis:
+        if not analysis.errors:
             raise AssertionError("Broken compiler workload unexpectedly succeeded")
     report = profile.report()
     Path(f"{prefix}-failed-compilation-profile.json").write_text(report.to_json())

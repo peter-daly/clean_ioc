@@ -11,13 +11,13 @@ from typing import Any, Literal
 import pytest
 
 from clean_ioc import (
-    AnalysisResult,
     ContainerBuilder,
     ContainerBuildError,
     Instrumentation,
     Provider,
     ResolutionProfiler,
     ScopeBuilder,
+    VerificationReport,
     derive,
 )
 from clean_ioc import container as code
@@ -113,9 +113,9 @@ def opaque_case(kind, *, mode=None, diagnostics=False, metadata=False, caller_he
             builder.build()
         assert observations and all(observations)
         return
-    output = builder.analyse() if mode == "analysis" else builder.build()
+    output = builder.verify() if mode == "analysis" else builder.build()
     with output:
-        owner = output.create_runtime() if isinstance(output, AnalysisResult) else output
+        owner = output.create_runtime() if isinstance(output, VerificationReport) else output
         assert owner.resolve(Later).alive is True
         expected = ["key" if kind == "map-key" else "derive", "reject", "observe"]
         if mode == "analysis":

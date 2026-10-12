@@ -72,7 +72,7 @@ def test_shared_infrastructure_compiles_its_dependencies_once_with_distinct_path
     profile = CompilationProfiler(max_records=0)
     runtime = ResolutionProfiler()
     with (
-        builder.analyse(profile=profile) as owner_analysis,
+        builder.verify(profile=profile) as owner_analysis,
         owner_analysis.create_runtime(instrumentation=Instrumentation(runtime)) as owner,
     ):
         assert dependency_calls.count(Infrastructure) == 1
@@ -217,13 +217,11 @@ def test_cached_safe_transient_subtree_cannot_bypass_ancestor_captive_validation
 
     builder, _ = shared_builder(2, leaf_options={"lifespan": "per_resolution"})
     builder.register(Bad, lifespan="singleton")
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert any(issue.code == "captive-dependency" for issue in caught_analysis.report.errors)
-    assert any(
-        "Bad" in item and "Leaf" in str(caught_analysis.report) for item in caught_analysis.report.errors[0].path
-    )
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert any(issue.code == "captive-dependency" for issue in caught_analysis.errors)
+    assert any("Bad" in item and "Leaf" in str(caught_analysis) for item in caught_analysis.errors[0].path)
 
 
 @pytest.mark.asyncio
@@ -266,12 +264,12 @@ def test_failed_validation_and_partial_edges_use_the_reused_occurrence_path():
                 break
 
     builder.add_validation_rule(findings)
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
     assert caught_analysis.graph is not None
     assert caught_analysis.partial_graph is None
-    issue = next(issue for issue in caught_analysis.report.errors if issue.code == "reject-second")
+    issue = next(issue for issue in caught_analysis.errors if issue.code == "reject-second")
     assert routes[1].__name__ in issue.path[0]
     assert any(
         routes[1].__name__ in caught_analysis.graph.explain(visit.component).path[0]
@@ -290,10 +288,10 @@ def test_reused_subtree_checks_full_depth_and_physical_occurrence_budget():
     assert dict(profile.report().budget_usage or ())["graph_occurrences"] == 144
     assert dict(profile.report().budget_usage or ())["active_dependency_depth"] == 5
     builder, _ = shared_builder(3)
-    caught_analysis = builder.analyse(budget=CompilationBudget(graph_occurrences=143))
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert caught_analysis.report.errors[-1].code == "compilation-budget-exceeded"
+    caught_analysis = builder.verify(budget=CompilationBudget(graph_occurrences=143))
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert caught_analysis.errors[-1].code == "compilation-budget-exceeded"
 
 
 def test_successful_cache_does_not_retain_compiler_with_gc_disabled(monkeypatch):
@@ -369,7 +367,7 @@ def test_reused_alias_dependencies_keep_each_declared_annotation():
         routes.append(route)
         builder.register(route)
     profile = CompilationProfiler(max_records=0)
-    with builder.analyse(profile=profile) as owner_analysis, owner_analysis.create_runtime() as _owner:
+    with builder.verify(profile=profile) as owner_analysis, owner_analysis.create_runtime() as _owner:
         for route, alias in zip(routes, (first_alias, second_alias), strict=True):
             root = next(root.component for root in owner_analysis.graph.roots if root.requested_type is route)
             evidence = owner_analysis.graph.explain_arguments(root)[0]

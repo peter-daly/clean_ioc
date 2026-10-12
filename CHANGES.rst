@@ -1,3 +1,13 @@
+2.0.0rc6
+--------
+
+    Rename builder analyse() to verify() and consolidate AnalysisResult and
+    AnalysisReport into VerificationReport. Findings, assertions and rendering
+    are direct; graph inspection and explicit test-runtime ownership remain.
+    Rename related public outcomes/errors and CLI profiling operation to verify.
+    Production build() remains execution-only. No performance claim is made.
+
+
 2.0.0rc5
 --------
 

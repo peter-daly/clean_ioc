@@ -23,6 +23,7 @@ from clean_ioc import (
     select,
 )
 from clean_ioc import component_filters as cf
+from tests.verification_helpers import present
 
 
 class Resource:
@@ -61,7 +62,7 @@ def composition():
 
 
 def codes(error):
-    return {issue.code for issue in error.report.errors}
+    return {issue.code for issue in error.errors}
 
 
 def test_lazy_isolated_nested_acquisitions_and_single_use(composition, monkeypatch):
@@ -242,8 +243,8 @@ def test_ordinary_provider_retention_restriction_is_preserved(provider, composit
 
     builder.register(Consumer, lifespan="singleton")
     if provider is Provider:
-        caught = builder.analyse()
-        assert not caught.report.is_valid
+        caught = builder.verify()
+        assert not caught.is_valid
         assert "provider-captive-scope" in codes(caught)
     else:
         with builder.build() as container:
@@ -256,8 +257,8 @@ def test_target_internal_captive_dependency_still_fails():
     builder.register(Resource, lifespan="scoped")
     builder.register(Product, lifespan="singleton")
     builder.register(Runner, lifespan="singleton")
-    caught = builder.analyse()
-    assert not caught.report.is_valid
+    caught = builder.verify()
+    assert not caught.is_valid
     assert "captive-dependency" in codes(caught)
 
 
@@ -307,10 +308,10 @@ async def test_async_plans_rejected_for_sync_and_supported_for_async(kind):
             pass
 
     builder.register(Consumer)
-    caught = builder.analyse()
-    assert not caught.report.is_valid
+    caught = builder.verify()
+    assert not caught.is_valid
     assert "managed-provider-requires-async" in codes(caught)
-    assert "use AsyncManagedProvider[" in caught.report.to_text()
+    assert "use AsyncManagedProvider[" in caught.to_text()
     builder = ContainerBuilder()
     builder.register(Resource, factory=create, lifespan="scoped")
     async with builder.build() as container:
@@ -419,7 +420,7 @@ def test_closed_generic_pattern_and_decorator(pattern):
 def test_managed_marked_entrypoint_and_deferred_graph(composition):
     builder, _ = composition
     builder.mark_entrypoint(ManagedProvider[Product])
-    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
+    with builder.verify() as container_analysis, container_analysis.create_runtime() as _container:
         root = container_analysis.graph.entrypoints[0].component
         assert root.kind is ComponentKind.managed_provider
         manifest = container_analysis.graph.manifest().to_json()
@@ -534,8 +535,8 @@ def test_boundary_exposure_and_private_target_diagnostics():
     builder = ContainerBuilder()
     builder.create_boundary("resources").register(Resource)
     builder.register(Consumer)
-    caught = builder.analyse()
-    assert not caught.report.is_valid
+    caught = builder.verify()
+    assert not caught.is_valid
     assert "boundary-private-component" in codes(caught)
 
 
@@ -553,8 +554,8 @@ def test_real_target_cycle_is_rejected():
     builder = ContainerBuilder()
     builder.register(Cyclic)
     builder.register(Consumer)
-    caught = builder.analyse()
-    assert not caught.report.is_valid
+    caught = builder.verify()
+    assert not caught.is_valid
     assert "circular-dependency" in codes(caught)
 
 
@@ -562,7 +563,7 @@ def test_scoped_target_sharing_groups_are_separate_from_ordinary_scope(compositi
     builder, _ = composition
     builder.mark_entrypoint(Runner)
     builder.mark_entrypoint(Product)
-    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
+    with builder.verify() as container_analysis, container_analysis.create_runtime() as _container:
         report = container_analysis.graph.sharing_report()
         scoped = [group for group in report.groups if group.service.endswith("Resource")]
         assert any("managed acquisition" in " ".join(group.conditions) for group in scoped)
@@ -581,11 +582,11 @@ def test_direct_policy_sarif_and_semantic_diff_traverse_managed_boundary(composi
 
     builder, _ = composition
     builder.add_validation_rule(forbid_dependency(cf.service_type_is(Runner), cf.service_type_is(Product)))
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
     assert "policy-forbidden-dependency" in codes(caught_analysis)
-    assert caught_analysis.report is not None
-    sarif = caught_analysis.report.to_sarif()
+    assert caught_analysis is not None
+    sarif = caught_analysis.to_sarif()
     assert "Product" in sarif and "Runner" in sarif
 
     class Consumer:
@@ -601,9 +602,9 @@ def test_direct_policy_sarif_and_semantic_diff_traverse_managed_boundary(composi
         return result
 
     with (
-        build(Provider).analyse() as ordinary_analysis,
+        build(Provider).verify() as ordinary_analysis,
         ordinary_analysis.create_runtime() as _ordinary,
-        build(ManagedProvider).analyse() as managed_analysis,
+        build(ManagedProvider).verify() as managed_analysis,
         managed_analysis.create_runtime() as _managed,
     ):
         diff = managed_analysis.graph.manifest().diff(ordinary_analysis.graph.manifest())
@@ -627,7 +628,7 @@ def test_matrix_and_public_reports_do_not_activate_or_expose_values():
     assert report.to_json() == report.to_json()
     assert "managed_provider" in report.to_json()
     with (
-        definition().analyse(build_args={"secret-input-name": "secret-input-value"}) as container_analysis,
+        definition().verify(build_args={"secret-input-name": "secret-input-value"}) as container_analysis,
         container_analysis.create_runtime() as _container,
     ):
         public = container_analysis.graph.manifest().to_json() + container_analysis.graph.ownership_report().to_json()
@@ -658,7 +659,7 @@ async def test_async_manager_rejects_sync_protocol(composition):
 def test_managed_root_explanations_and_census_match_provider_semantics(composition):
     builder, _ = composition
     builder.mark_entrypoint(Runner)
-    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
+    with builder.verify() as container_analysis, container_analysis.create_runtime() as _container:
         assert container_analysis.graph.explain(ManagedProvider[Resource]).selected
         arguments = container_analysis.graph.explain_arguments(container_analysis.graph.entrypoints[0].component)
         assert arguments[0].result_category == "managed_provider"
@@ -669,10 +670,10 @@ def test_managed_root_explanations_and_census_match_provider_semantics(compositi
     builder = ContainerBuilder()
     builder.register(Resource)
     builder.mark_entrypoint(ManagedProvider[Resource])
-    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
+    with builder.verify() as container_analysis, container_analysis.create_runtime() as _container:
         resource = next(
             item
-            for item in container_analysis.graph.selection_census().definitions
+            for item in present(container_analysis.graph).selection_census().definitions
             if item.definition.implementation.endswith(".Resource")
         )
         assert resource.root_requests == 1
@@ -968,16 +969,18 @@ def test_nested_isolated_boundaries_use_nearest_scope_for_sharing_and_ownership(
     builder.register(Operation, Implementation, scope="per_call")
     builder.register(Target)
     builder.mark_entrypoint(ManagedProvider[Target])
-    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
+    with builder.verify() as container_analysis, container_analysis.create_runtime() as _container:
         groups = [
-            group for group in container_analysis.graph.sharing_report().groups if group.service.endswith(".Resource")
+            group
+            for group in present(container_analysis.graph).sharing_report().groups
+            if group.service.endswith(".Resource")
         ]
         groups = [group for group in groups if any("ManagedProvider[" in path for path in group.occurrence_paths)]
         assert len(groups) == 2
         assert all("method invocation" in " ".join(group.conditions) for group in groups)
         records = [
             record
-            for record in container_analysis.graph.ownership_report().records
+            for record in present(container_analysis.graph).ownership_report().records
             if record.component.service_type is Resource
         ]
         assert all("managed acquisition" not in record.reason for record in records)
@@ -1030,10 +1033,10 @@ def test_sync_managed_plan_rejects_scoped_async_cleanup_behind_ordinary_provider
     else:
         builder.mark_entrypoint(ManagedProvider[Target])
     instrumentation = Instrumentation(ResolutionProfiler()) if observed else None
-    caught = builder.analyse()
+    caught = builder.verify()
     with caught.create_runtime(instrumentation=instrumentation):
         pass
-    assert not caught.report.is_valid
+    assert not caught.is_valid
     assert "managed-provider-requires-async" in codes(caught)
 
 

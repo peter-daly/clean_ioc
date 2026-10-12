@@ -103,11 +103,11 @@ def test_invalid_configured_argument_is_rejected_and_builder_can_be_repaired(kin
     options = {"factory": factory} if kind == "factory" else {}
     component_id = builder.register(service, arguments={"typo": 1}, **options)
     builder.set_provider_roots(())
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
-    assert re.search("no argument named 'typo'", raised_analysis.report.to_text())
-    assert raised_analysis.report is not None
-    assert raised_analysis.report.errors[0].code == "invalid-argument"
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
+    assert re.search("no argument named 'typo'", raised_analysis.to_text())
+    assert raised_analysis is not None
+    assert raised_analysis.errors[0].code == "invalid-argument"
     assert activated == []
     from clean_ioc import REMOVE
 

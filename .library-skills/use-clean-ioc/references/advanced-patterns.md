@@ -16,7 +16,7 @@ Keep acquisition and release in one generator or context-manager factory. Regist
 
 An inherited root singleton remains anchored to its root activation plan and owner inside a `ScopeBuilder` overlay; overlay registrations and decorators do not rewire it. Singletons introduced by the overlay belong to the built scope. A built overlay starts a fresh scoped cache boundary, while ordinary nested scopes retain scoped inheritance.
 
-Analysis checks that `per_resolution` state does not appear anywhere below a scoped or singleton component, including through transient components, factories, decorators, collections, provider fallbacks, or pre-configurations. Promote that dependency to the owner's lifespan or shorten the owner. Plain transient dependencies remain valid below long-lived components, and shorter-lived components may depend on scoped or singleton components.
+Verification checks that `per_resolution` state does not appear anywhere below a scoped or singleton component, including through transient components, factories, decorators, collections, provider fallbacks, or pre-configurations. Promote that dependency to the owner's lifespan or shorten the owner. Plain transient dependencies remain valid below long-lived components, and shorter-lived components may depend on scoped or singleton components.
 
 ## Dependency settings and runtime providers
 
@@ -39,7 +39,7 @@ builder.register_decorator(Handler, LoggingHandler, decorated_arg="child")
 
 Treat `position` as a z-index: higher values are outside, lower values are nearest the core, and equal values retain registration order outside-to-inside. `when=` predicates are evaluated against the completed undecorated core subtree, before decorator dependencies are added. This prevents one decorator from making another decorator eligible.
 
-`register_decorator()` returns a stable definition ID for `patch_decorator()` and `remove_decorator()`. Definitions may have their own name and tags. Analysis audits decorated arguments and generic compatibility, recording `invalid-decorator` findings. Build still fails if an argument or generic binding prevents executable wiring, but performs no annotation compatibility audit.
+`register_decorator()` returns a stable definition ID for `patch_decorator()` and `remove_decorator()`. Definitions may have their own name and tags. Verification audits decorated arguments and generic compatibility, recording `invalid-decorator` findings. Build still fails if an argument or generic binding prevents executable wiring, but performs no annotation compatibility audit.
 
 Register an open generic service with `register_decorator()` to define one policy for every closed plan the compiler encounters, including explicit and factory registrations. Migrate the removed `register_generic_decorator()` API to this method.
 
@@ -55,7 +55,7 @@ The compiler creates occurrence-specific component plans, so the same stable com
 
 Call `builder.mark_entrypoint(Service)` for each public resolution request. Mark `list[Service]` when every matching implementation is an entry point. Markers focus `result.graph` renderers and enable analysis-only `unreachable-component` warnings. Public roots remain resolvable. Dependency-only declarations do not become public roots; analysis may inspect unused declarations without adding them to its test runtime.
 
-Call `result = application_builder().analyse()` and read `result.report`. An incomplete report is not a successful validation. Analysis aggregates independent failures and records each rule outcome. Use `result.graph` when available or `result.partial_graph` for incomplete wiring. `result.graph.to_text()`, `.to_mermaid()`, and `.manifest()` support inspection; pass `all_roots=True` for all inspection roots. Manifests are deterministic and redact configured values. Compare them with `current.diff(baseline)`.
+Call `result = application_builder().verify()` and read `result`. An incomplete report is not a successful validation. Analysis aggregates independent failures and records each rule outcome. Use `result.graph` when available or `result.partial_graph` for incomplete wiring. `result.graph.to_text()`, `.to_mermaid()`, and `.manifest()` support inspection; pass `all_roots=True` for all inspection roots. Manifests are deterministic and redact configured values. Compare them with `current.diff(baseline)`.
 
 Register all custom rules with `builder.add_validation_rule(rule)`; there is no phase argument. They execute only during analysis and finish before it returns. `build()` never invokes them or retains their reports. Its binding failures carry a local error code and path, not an analysis report. Use fresh builders for production and CI with the same intended composition inputs; analysing one environment does not validate every configuration.
 
@@ -72,11 +72,11 @@ component_id = builder.register(Client)
 builder.patch_component(Client, component_id, lifespan="singleton")
 ```
 
-Use `arguments={"parameter": REMOVE}` to remove an inherited argument override. Patches are unavailable after any admitted build or analysis attempt.
+Use `arguments={"parameter": REMOVE}` to remove an inherited argument override. Patches are unavailable after any admitted build or verification attempt.
 
 ## Pre-configuration
 
-`pre_configure(Service, function, when=...)` returns a stable definition ID, compiles the function's dependencies as a singleton path, and runs the function once before an applicable component's first activation. Analysis reports scoped or `per_resolution` capture anywhere on that path; production build does not perform this audit. Passing several service types creates one shared initializer; applicable initializers run in declaration order, and concurrent triggers share one in-flight attempt. A propagated failure is retryable. `continue_on_failure=True` logs one tolerated failure and marks the initializer complete. Cleanup belongs to the builder layer that declared the initializer. Overlays retain an inherited initializer's frozen parent dependency plan; declare an initializer on the `ScopeBuilder` when it only applies to overlay components.
+`pre_configure(Service, function, when=...)` returns a stable definition ID, compiles the function's dependencies as a singleton path, and runs the function once before an applicable component's first activation. Verification reports scoped or `per_resolution` capture anywhere on that path; production build does not perform this audit. Passing several service types creates one shared initializer; applicable initializers run in declaration order, and concurrent triggers share one in-flight attempt. A propagated failure is retryable. `continue_on_failure=True` logs one tolerated failure and marks the initializer complete. Cleanup belongs to the builder layer that declared the initializer. Overlays retain an inherited initializer's frozen parent dependency plan; declare an initializer on the `ScopeBuilder` when it only applies to overlay components.
 
 ## Dynamic selection inside activation
 

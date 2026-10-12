@@ -22,6 +22,7 @@ from clean_ioc import component_filters as cf
 from clean_ioc.cli import _load_analysis
 from clean_ioc.container import _Compiler
 from clean_ioc.matrix import BuildMatrix, BuildVariant
+from tests.verification_helpers import present
 
 
 class Leaf:
@@ -45,7 +46,7 @@ def builder():
     return result
 
 
-@pytest.mark.parametrize("operation", ["build", "analyse"])
+@pytest.mark.parametrize("operation", ["build", "verify"])
 def test_graph_runtime_profiles_and_rules_follow_the_named_operation(operation):
     callbacks = []
     result = ContainerBuilder()
@@ -64,10 +65,10 @@ def test_graph_runtime_profiles_and_rules_follow_the_named_operation(operation):
 
     result.add_validation_rule(safety)
     compiler, runtime = CompilationProfiler(), ResolutionProfiler()
-    if operation == "analyse":
-        analysis = result.analyse(profile=compiler)
-        assert analysis.graph.diagnostics_enabled
-        assert analysis.report.is_valid
+    if operation == "verify":
+        analysis = result.verify(profile=compiler)
+        assert present(analysis.graph).diagnostics_enabled
+        assert analysis.is_valid
         scope = analysis.create_runtime(instrumentation=Instrumentation(runtime))
     else:
         scope = result.build(profile=compiler, instrumentation=Instrumentation(runtime))
@@ -77,7 +78,7 @@ def test_graph_runtime_profiles_and_rules_follow_the_named_operation(operation):
         assert scope.components
         assert runtime.report().records
         assert compiler.report().counters
-    if operation == "analyse":
+    if operation == "verify":
         assert callbacks[0][0] == "root"
         analysis.close()
     else:
@@ -88,7 +89,7 @@ def test_execution_has_no_diagnostics_and_analysis_has_completed_inspection():
     with builder().build() as runtime:
         assert not hasattr(runtime, "graph")
         assert not hasattr(runtime, "validation_report")
-    with builder().analyse() as result:
+    with builder().verify() as result:
         root = next(root.component for root in result.graph.roots if root.requested_type is Service)
         facts = result.graph.explain(root)
         assert facts.selected[0].origin.layer == "root"
@@ -124,9 +125,9 @@ def test_failed_analysis_aggregates_independent_roots_and_fresh_composition_can_
         return result
 
     failed = composition()
-    result = failed.analyse()
-    assert len(result.report.errors) == result.report.checked_roots == 2
-    assert all(issue.code == "missing-component" for issue in result.report.errors)
+    result = failed.verify()
+    assert len(result.errors) == result.checked_roots == 2
+    assert all(issue.code == "missing-component" for issue in result.errors)
     assert result.partial_graph is not None
     assert result.selection_census()
     with pytest.raises(BuilderAlreadyBuiltError):
@@ -137,27 +138,29 @@ def test_failed_analysis_aggregates_independent_roots_and_fresh_composition_can_
         assert isinstance(scope.resolve(First), First)
 
 
-@pytest.mark.parametrize("parent_operation", ["build", "analyse"])
+@pytest.mark.parametrize("parent_operation", ["build", "verify"])
 def test_overlay_preserves_parent_selection_origins_ownership_and_local_diagnostic_mode(parent_operation):
     result = ContainerBuilder()
     result.register(Leaf, lifespan="singleton")
     result.register(Service, lifespan="singleton")
     parent_composition = result.retain_composition()
     output = getattr(result, parent_operation)()
-    parent = output.create_runtime() if parent_operation == "analyse" else output
+    parent = output.create_runtime() if parent_operation == "verify" else output
     with parent:
         original = parent.resolve(Service)
         child_builder = ScopeBuilder(parent, composition=parent_composition)
         child_builder.register(str, instance="child")
-        with child_builder.analyse() as child_analysis, child_analysis.create_runtime() as child:
+        with child_builder.verify() as child_analysis, child_analysis.create_runtime() as child:
             assert child.resolve(Service) is original
             assert child.resolve(str) == "child"
-            root = next(root.component for root in child_analysis.graph.roots if root.requested_type is Service)
-            assert child_analysis.graph.explain(root).selected[0].origin.layer == "root"
-            assert child_analysis.graph.ownership_report().records
-            assert child_analysis.graph.diagnostics_enabled
+            root = next(
+                root.component for root in present(child_analysis.graph).roots if root.requested_type is Service
+            )
+            assert present(child_analysis.graph).explain(root).selected[0].origin.layer == "root"
+            assert present(child_analysis.graph).ownership_report().records
+            assert present(child_analysis.graph).diagnostics_enabled
             with pytest.raises(ValueError, match="explain-arguments-not-recorded"):
-                child_analysis.graph.explain_arguments(root)
+                present(child_analysis.graph).explain_arguments(root)
 
 
 def test_template_decorator_source_safety_facts_do_not_require_diagnostic_history():
@@ -176,32 +179,32 @@ def test_template_decorator_source_safety_facts_do_not_require_diagnostic_histor
         return DecoratorTemplate(group, Wrapper)
 
     template_id = result.register_decorator_template(for_each=Source, template=template)
-    with result.analyse() as scope_analysis, scope_analysis.create_runtime() as scope:
+    with result.verify() as scope_analysis, scope_analysis.create_runtime() as scope:
         before = tuple(calls)
-        root = next(root.component for root in scope_analysis.graph.roots if root.requested_type is Service)
-        assert scope_analysis.graph.explain_template_sources(template_id)[0].selected
-        fact = scope_analysis.graph.explain_decorators(root).selected[0].template
+        root = next(root.component for root in present(scope_analysis.graph).roots if root.requested_type is Service)
+        assert present(scope_analysis.graph).explain_template_sources(template_id)[0].selected
+        fact = present(scope_analysis.graph).explain_decorators(root).selected[0].template
         assert fact is not None and fact.template_id == template_id
         assert isinstance(cast(Wrapper, scope.resolve(Service)).inner.leaf, Leaf)
         assert tuple(calls) == before
 
 
-def test_validation_entrypoints_analyse_once_and_never_recompile_reports(monkeypatch):
+def test_validation_entrypoints_verify_once_and_never_recompile_reports(monkeypatch):
     calls = []
-    original = ContainerBuilder.analyse
+    original = ContainerBuilder.verify
 
     def capture(self, **kwargs):
-        calls.append("analyse")
+        calls.append("verify")
         return original(self, **kwargs)
 
-    monkeypatch.setattr(ContainerBuilder, "analyse", capture)
+    monkeypatch.setattr(ContainerBuilder, "verify", capture)
     with _load_analysis("tests.tooling_targets:valid_builder") as result:
-        assert result.graph.diagnostics_enabled
-        result.report.to_json()
-        result.report.to_sarif()
+        assert present(result.graph).diagnostics_enabled
+        result.to_json()
+        result.to_sarif()
     report = BuildMatrix((BuildVariant("one", builder),), reference="one").check()
     assert report.is_valid
-    assert calls == ["analyse", "analyse"]
+    assert calls == ["verify", "verify"]
 
 
 @pytest.mark.parametrize("value", [None, 0, 1, "yes"])
@@ -241,7 +244,7 @@ def wide_builder():
 
 def test_wide_execution_has_no_analysis_owners_and_same_selected_catalogue():
     # Relative memory comparisons belong to task25; this is a structural assertion.
-    with wide_builder().build() as execution, wide_builder().analyse() as result:
+    with wide_builder().build() as execution, wide_builder().verify() as result:
         assert not hasattr(execution._plan, "compiled_graph")
         assert not hasattr(execution._plan, "occurrence_explanations")
         assert not hasattr(execution._plan, "_blueprint")
@@ -273,7 +276,7 @@ def test_early_excluded_roots_keep_empty_automatic_provider_collections(diagnost
 
     result = ContainerBuilder()
     result.register(Service, candidate_when=cf.with_name("excluded"))
-    with result.analyse() as scope_analysis, scope_analysis.create_runtime() as scope:
+    with result.verify() as scope_analysis, scope_analysis.create_runtime() as scope:
         assert not scope._plan.roots[Service]
         assert scope.resolve(Provider[list[Service]])() == []
         for family in (Provider, AsyncProvider, ManagedProvider, AsyncManagedProvider):
@@ -282,7 +285,9 @@ def test_early_excluded_roots_keep_empty_automatic_provider_collections(diagnost
                 assert len(scope._plan.provider_roots[family[form]]) == 1
         assert len(scope._plan.graph._records or ()) == 24
         if diagnostics:
-            assert scope_analysis.graph.explain(list[Service]).rejected[0].reason_codes == ("rejected-candidate-when",)
+            assert present(scope_analysis.graph).explain(list[Service]).rejected[0].reason_codes == (
+                "rejected-candidate-when",
+            )
 
 
 @pytest.mark.parametrize("diagnostics", [False, True])
@@ -313,7 +318,7 @@ def test_early_rejected_contextual_alternative_still_prevents_unsafe_subplan_reu
         assert type(scope.resolve(Second).service.leaf) is Alternative
 
 
-@pytest.mark.parametrize("operation", ["build", "analyse"])
+@pytest.mark.parametrize("operation", ["build", "verify"])
 def test_late_rejected_components_escaped_from_callbacks_have_operation_lifetimes(operation):
     escaped = []
 
@@ -325,7 +330,7 @@ def test_late_rejected_components_escaped_from_callbacks_have_operation_lifetime
     result.register(Leaf, root_policy="dependency_only")
     result.register(Service, when=reject)
     with getattr(result, operation)() as output:
-        scope = output.create_runtime() if operation == "analyse" else output
+        scope = output.create_runtime() if operation == "verify" else output
         assert not scope._plan.roots[Service]
         component = escaped[0]
         if operation == "build":
@@ -348,10 +353,10 @@ def test_failed_build_early_exclusions_retain_full_evidence_only_when_requested(
         assert raised.value.report is raised.value.partial_graph is None
         assert raised.value.code == "missing-component"
         return
-    caught_analysis = result.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert caught_analysis.report.errors[0].code == "missing-component"
+    caught_analysis = result.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert caught_analysis.errors[0].code == "missing-component"
     if diagnostics:
         assert caught_analysis.partial_graph is not None
         assert any(
@@ -361,7 +366,7 @@ def test_failed_build_early_exclusions_retain_full_evidence_only_when_requested(
         )
         assert any(
             "rejected-candidate-when" in decision.reason_codes
-            for explanation in caught_analysis.report._explanations
+            for explanation in caught_analysis._explanations
             for decision in explanation.rejected
         )
 
@@ -410,15 +415,15 @@ def test_specialized_fallback_facts_survive_aliases_boundaries_and_overlay_ancho
     else:
         source.register_fallback(cast(Any, Contract[int] if boundary else Contract), Default, lifespan="singleton")
     result.register(Consumer)
-    with result.analyse() as parent_analysis:
+    with result.verify() as parent_analysis:
         parent = parent_analysis.create_runtime()
         original = parent.resolve(Consumer).value
-        with ScopeBuilder(parent, composition=parent_analysis.composition).analyse() as child_analysis:
+        with ScopeBuilder(parent, composition=present(parent_analysis.composition)).verify() as child_analysis:
             child = child_analysis.create_runtime()
             for analysis, runtime in ((parent_analysis, parent), (child_analysis, child)):
-                root = next(root.component for root in analysis.graph.roots if root.requested_type is Consumer)
+                root = next(root.component for root in present(analysis.graph).roots if root.requested_type is Consumer)
                 dependency = root.dependencies[0]
-                decision = analysis.graph.explain(dependency).selected[0]
+                decision = present(analysis.graph).explain(dependency).selected[0]
                 assert "selected-fallback" in decision.reason_codes
                 assert decision.origin.layer == "root"
                 assert runtime.resolve(Consumer).value is original
@@ -438,8 +443,10 @@ def test_default_and_enabled_preference_callbacks_follow_identical_reached_stage
             return component.name == "first"
 
         result.register(Service, arguments={"leaf": select(cf.all_components, prefer=prefer(stage))})
-        with result.analyse() as scope_analysis, scope_analysis.create_runtime() as scope:
-            root = next(root.component for root in scope_analysis.graph.roots if root.requested_type is Service)
+        with result.verify() as scope_analysis, scope_analysis.create_runtime() as scope:
+            root = next(
+                root.component for root in present(scope_analysis.graph).roots if root.requested_type is Service
+            )
             assert root.dependencies[0].name == "first"
             assert isinstance(scope.resolve(Service).leaf, Leaf)
         return calls
@@ -472,16 +479,16 @@ def test_budget_failures_preserve_requested_mode_before_during_and_after_compila
         assert raised.value.report is raised.value.partial_graph is None
         assert raised.value.code == ("missing-component" if phase == "recovery" else "compilation-budget-exceeded")
         return
-    caught_analysis = result.analyse(budget=budget)
-    assert not caught_analysis.report.is_valid
+    caught_analysis = result.verify(budget=budget)
+    assert not caught_analysis.is_valid
     error = caught_analysis
     assert error.partial_graph is not None
-    assert error.report is not None
-    finding = next(issue for issue in error.report.errors if issue.code == "compilation-budget-exceeded")
+    assert error is not None
+    finding = next(issue for issue in error.errors if issue.code == "compilation-budget-exceeded")
     assert finding.budget is not None and finding.budget.phase == expected
-    assert error.report._evidence
+    assert error._evidence
     if phase == "recovery":
-        assert any(issue.code == "missing-component" for issue in error.report.errors)
+        assert any(issue.code == "missing-component" for issue in error.errors)
     assert error.selection_census()
 
 
@@ -496,15 +503,15 @@ def test_precompiler_failure_reports_requested_mode(diagnostics):
             result.build()
         assert raised.value.report is raised.value.partial_graph is None
         return
-    caught_analysis = result.analyse()
-    assert not caught_analysis.report.is_valid
-    assert "warmup" in str(caught_analysis.report)
+    caught_analysis = result.verify()
+    assert not caught_analysis.is_valid
+    assert "warmup" in str(caught_analysis)
 
 
 def test_default_selection_membership_rejects_foreign_and_reduced_graphs_without_path_capture():
     from dataclasses import replace
 
-    with builder().analyse() as scope_analysis, scope_analysis.create_runtime() as _scope:
+    with builder().verify() as scope_analysis, scope_analysis.create_runtime() as _scope:
         graph = scope_analysis.graph
         root = next(root.component for root in graph.roots if root.requested_type is Service)
         assert graph.explain(root).selected
@@ -515,7 +522,7 @@ def test_default_selection_membership_rejects_foreign_and_reduced_graphs_without
         # projection omits a root; foreign graphs still fail membership below.
         assert reduced.explain(root).selected
         assert graph.explain(root).selected
-        with builder().analyse() as other_analysis, other_analysis.create_runtime() as _other:
+        with builder().verify() as other_analysis, other_analysis.create_runtime() as _other:
             foreign = next(
                 candidate.component for candidate in other_analysis.graph.roots if candidate.requested_type is Service
             )
@@ -556,7 +563,7 @@ def test_builder_previews_keep_structural_filter_parent_facts_without_capturing_
     assert modes and not any(modes)
 
 
-@pytest.mark.parametrize("operation", ["build", "analyse"])
+@pytest.mark.parametrize("operation", ["build", "verify"])
 def test_cli_profile_selects_the_named_operation(operation, monkeypatch, capsys):
     from clean_ioc.cli import main
 

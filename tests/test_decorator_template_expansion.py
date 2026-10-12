@@ -27,6 +27,7 @@ from clean_ioc.container import (
     _Compiler,
     _normalize_blueprint_aliases,
 )
+from tests.verification_helpers import present
 
 
 class Target:
@@ -571,11 +572,11 @@ def test_instance_family_filter_uses_static_class_without_changing_ordinary_comp
     assert expansion.candidates[0].source.id == source_id
     assert expansion.selections[0].component.implementation_type is Backend
     builder._remove_decorator_template(template_id)
-    runtime_analysis = builder.analyse()
+    runtime_analysis = builder.verify()
     runtime = runtime_analysis.create_runtime()
     assert (
         next(
-            root.component for root in runtime_analysis.graph.roots if root.component.id == source_id
+            root.component for root in present(runtime_analysis.graph).roots if root.component.id == source_id
         ).implementation_type
         is Source
     )
@@ -804,6 +805,6 @@ def test_factory_source_family_filters_use_declared_alias_without_activation_or_
     assert views[broad_id].implementation_type is Source
     assert views[unknown_id].implementation_type is Source
     builder._remove_decorator_template(template_id)
-    runtime_analysis = builder.analyse()
+    runtime_analysis = builder.verify()
     _runtime = runtime_analysis.create_runtime()
-    assert all(root.component.implementation_type is Source for root in runtime_analysis.graph.roots)
+    assert all(root.component.implementation_type is Source for root in present(runtime_analysis.graph).roots)

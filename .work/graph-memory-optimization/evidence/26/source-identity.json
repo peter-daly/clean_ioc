@@ -1,0 +1,7 @@
+{
+  "base_revision": "20e7dd599a0b97f4284368c1243888421fe18f63",
+  "package_manifest_sha256": "9229d0e003ef65e6655a62a343541276ab103bbdc852cda7d04ab9e2eb329750",
+  "package_version": "2.0.0rc5",
+  "task25_performance_measurements_run": false,
+  "working_tree_uncommitted": true
+}

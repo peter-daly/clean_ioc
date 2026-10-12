@@ -21,6 +21,7 @@ from clean_ioc import (
 from clean_ioc import component_filters as cf
 from clean_ioc.container import _Compiler
 from clean_ioc.tooling import CompiledGraph
+from tests.verification_helpers import present
 
 
 class Leaf:
@@ -51,7 +52,7 @@ def test_automatic_provider_views_keep_target_parent_and_do_not_copy_records(fam
     annotation = family[target]
     builder = chain_builder()
     builder.mark_entrypoint(annotation)
-    owner_analysis = builder.analyse()
+    owner_analysis = builder.verify()
     owner = owner_analysis.create_runtime()
     graph = owner._plan.graph
     records_before = len(graph._records)
@@ -135,9 +136,9 @@ def test_dependency_only_provider_map_is_compiled_only_when_consumed(name):
     builder = ContainerBuilder()
     builder.register(Leaf, contributes={group: "leaf"}, root_policy="dependency_only")
     builder.register_provider_map(group, name=name, root_policy="dependency_only")
-    with builder.analyse() as unused_analysis, unused_analysis.create_runtime() as unused:
+    with builder.verify() as unused_analysis, unused_analysis.create_runtime() as unused:
         assert not unused._plan.provider_roots
-        assert not any(root.resolvable for root in unused_analysis.graph.roots)
+        assert not any(root.resolvable for root in present(unused_analysis.graph).roots)
 
     class Consumer:
         def __init__(self, entries: Mapping[str, Provider[Leaf]]):
@@ -147,11 +148,13 @@ def test_dependency_only_provider_map_is_compiled_only_when_consumed(name):
     builder.register(Leaf, contributes={group: "leaf"}, root_policy="dependency_only")
     builder.register_provider_map(group, name=name, root_policy="dependency_only")
     builder.register(Consumer, arguments={"entries": select(cf.with_name(name))})
-    with builder.analyse() as used_analysis, used_analysis.create_runtime() as used:
+    with builder.verify() as used_analysis, used_analysis.create_runtime() as used:
         assert isinstance(used.resolve(Consumer).entries["leaf"](), Leaf)
         assert annotation not in used._plan.provider_roots
         assert Provider[annotation] not in used._plan.provider_roots
-        assert all(root.component.service_type != annotation for root in used_analysis.graph.roots if root.resolvable)
+        assert all(
+            root.component.service_type != annotation for root in present(used_analysis.graph).roots if root.resolvable
+        )
 
 
 def test_dependency_only_provider_map_still_validates_selected_contribution():
@@ -170,9 +173,9 @@ def test_dependency_only_provider_map_still_validates_selected_contribution():
     builder = ContainerBuilder()
     builder.register(Broken, contributes={group: "broken"}, root_policy="dependency_only")
     builder.register_provider_map(group, root_policy="dependency_only")
-    with builder.analyse() as unused_analysis, unused_analysis.create_runtime() as unused:
+    with builder.verify() as unused_analysis, unused_analysis.create_runtime() as unused:
         assert not unused.has_component(Broken)
-        assert not unused_analysis.report.is_valid
+        assert not unused_analysis.is_valid
         assert unused_analysis.partial_graph is not None
     builder = ContainerBuilder()
     builder.register(Broken, contributes={group: "broken"}, root_policy="dependency_only")
@@ -189,15 +192,15 @@ def test_provider_map_root_policy_default_entrypoint_and_invalid():
     builder = ContainerBuilder()
     builder.register(Leaf, contributes={group: "leaf"}, root_policy="dependency_only")
     builder.register_provider_map(group)
-    with builder.analyse() as owner_analysis, owner_analysis.create_runtime() as owner:
+    with builder.verify() as owner_analysis, owner_analysis.create_runtime() as owner:
         assert isinstance(owner.resolve(Mapping[str, Provider[Leaf]])["leaf"](), Leaf)
     with pytest.raises(ValueError, match="root_policy"):
         ContainerBuilder().register_provider_map(group, root_policy=cast(Any, "invalid"))
     builder = ContainerBuilder()
     builder.register(Leaf, contributes={group: "leaf"}, root_policy="dependency_only")
     builder.register_provider_map(group, root_policy="entrypoint")
-    with builder.analyse() as owner_analysis, owner_analysis.create_runtime() as owner:
-        assert owner_analysis.graph.entrypoints
+    with builder.verify() as owner_analysis, owner_analysis.create_runtime() as owner:
+        assert present(owner_analysis.graph).entrypoints
 
 
 def test_dependency_only_provider_maps_across_boundary_and_nested_overlay():
@@ -313,7 +316,7 @@ def test_early_exclusion_retains_execution_only_records_and_analysis_explains_re
         assert not hasattr(runtime._plan, "compiled_graph")
         execution = [(item.service_type.__qualname__, item.name) for item in runtime.selected_registrations]
     builder, _ = transport_builder(32, early=True)
-    with builder.analyse() as result:
+    with builder.verify() as result:
         assert result.graph.manifest(all_roots=True).fingerprint
         assert [(item.service_type.__qualname__, item.name) for item in result.selected_registrations] == execution
         assert result.graph.selection_census(all_roots=True)
@@ -329,9 +332,9 @@ def test_occurrence_budget_counts_only_physically_allocated_early_rejections():
     assert usage is not None
     assert dict(usage)["graph_occurrences"] == 192
     builder, _ = transport_builder(4, early=True)
-    caught_analysis = builder.analyse(budget=CompilationBudget(graph_occurrences=192))
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report.errors[0].code == "compilation-budget-exceeded"
+    caught_analysis = builder.verify(budget=CompilationBudget(graph_occurrences=192))
+    assert not caught_analysis.is_valid
+    assert caught_analysis.errors[0].code == "compilation-budget-exceeded"
 
 
 def test_legacy_when_preserves_full_subtree_validation_and_early_policy_is_opt_in():
@@ -405,7 +408,7 @@ def test_known_false_and_unknown_excludes_without_running_callback():
 
     builder = chain_builder()
     builder.register(Root, name="extra", candidate_when=cf.with_name("different") & cf.create_filter(fail))
-    with builder.analyse() as owner_analysis, owner_analysis.create_runtime() as _owner:
+    with builder.verify() as owner_analysis, owner_analysis.create_runtime() as _owner:
         explanation = owner_analysis.graph.explain(Root)
         assert any("rejected-candidate-when" in item.reason_codes for item in explanation.rejected)
 
@@ -444,15 +447,17 @@ def test_closed_generic_templates_keep_separate_bindings_and_provider_explanatio
     builder.register(Consumer[int])
     builder.register(Consumer[str])
     builder.mark_entrypoint(Provider[Consumer[int]])
-    with builder.analyse() as owner_analysis, owner_analysis.create_runtime() as owner:
+    with builder.verify() as owner_analysis, owner_analysis.create_runtime() as owner:
         assert owner._plan.roots[Consumer[int]][0].step is not owner._plan.roots[Consumer[str]][0].step
         component = owner._plan.provider_roots[Provider[Consumer[int]]][0].component.dependencies[0]
         assert component.generic_mapping[T] is int
         assert component.dependencies[0].generic_mapping[T] is int
         inspected = next(
-            root.component for root in owner_analysis.graph.roots if root.requested_type == Provider[Consumer[int]]
+            root.component
+            for root in present(owner_analysis.graph).roots
+            if root.requested_type == Provider[Consumer[int]]
         ).dependencies[0]
-        assert owner_analysis.graph.explain_specialization(inspected).to_dict()
+        assert present(owner_analysis.graph).explain_specialization(inspected).to_dict()
         source = owner._plan.roots[Consumer[int]][0].component
         assert dict(component.generic_mapping.items()) == dict(source.generic_mapping.items())
         with pytest.raises(ValueError, match="Cannot set"):
@@ -507,12 +512,12 @@ def test_early_parent_eligibility_hides_external_boundary_consumer():
     consumer_id = builder.register(Consumer)
     boundary = builder.create_boundary("service", exposes=(Expose(Service),))
     boundary.register(Service, candidate_when=cf.parent(cf.with_id(consumer_id)), root_policy="dependency_only")
-    error_analysis = builder.analyse()
-    assert not error_analysis.report.is_valid
-    assert "Service" in str(error_analysis.report)
+    error_analysis = builder.verify()
+    assert not error_analysis.is_valid
+    assert "Service" in str(error_analysis)
     assert any(
         "rejected-candidate-when" in decision.reason_codes
-        for explanation in error_analysis.report._explanations
+        for explanation in error_analysis._explanations
         for decision in explanation.rejected
     )
 

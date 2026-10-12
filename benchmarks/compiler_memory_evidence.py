@@ -1,7 +1,7 @@
 """Fresh-process compiler growth probe; counts and timings are separate modes.
 
 Uses the explicit execution build() API. Analysis measurements use
-graph_memory_evidence --operation analyse.
+graph_memory_evidence --operation verify.
 
 Example: uv run python -m benchmarks.compiler_memory_evidence chain --size 32 --profile
 Compare a baseline checkout by running the same saved file with that checkout's

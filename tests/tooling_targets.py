@@ -167,7 +167,7 @@ def validation_only_warning_builder() -> ContainerBuilder:
 
 
 def validation_only_warning_container_factory():
-    return validation_only_warning_builder().analyse()
+    return validation_only_warning_builder().verify()
 
 
 def validation_only_error_builder() -> ContainerBuilder:

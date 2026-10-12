@@ -14,8 +14,8 @@ builder = ContainerBuilder()
 builder.register(PaymentGateway, StripeGateway)
 builder.register(Checkout, root_policy="entrypoint")
 
-analysis = builder.analyse()
-print(analysis.report.to_text())
+analysis = builder.verify()
+print(analysis.to_text())
 print(analysis.graph.to_text())
 ```
 
@@ -27,7 +27,7 @@ print(analysis.graph.to_text())
 | `"resolvable"` (default) | Public root without a tooling marker; this is the existing registration behavior. |
 | `"dependency_only"` | Available to dependencies, but not directly resolvable as a root. An unused registration is discarded by default. |
 
-`analyse()` retains and validates unused dependency-only declarations for inspection, without exposing public resolution roots. Production builds omit unused declarations; a broken dependency in an omitted orphan does not fail startup.
+`verify()` retains and validates unused dependency-only declarations for inspection, without exposing public resolution roots. Production builds omit unused declarations; a broken dependency in an omitted orphan does not fail startup.
 
 `mark_entrypoint()` remains available for request-level markers, such as a filtered selection or `list[MessageHandler]`. An entry-point marker focuses tooling; it does not change a registration's root policy. Once any entry point is marked, registrations outside all marked component trees produce `unreachable-component` warnings.
 
@@ -44,20 +44,20 @@ builder.mark_entrypoint(list[MessageHandler])
 
 <a id="run-and-analysis-modes"></a>
 
-## Build and analyse
+## Build and verify
 
 `builder.build()` emits an ordinary execution runtime. It performs the binding and emission needed for execution,
 but runs no custom validation rules, policy checks or safety audit. Impossible binding still fails locally with
 `ContainerBuildError`. Actual resolution, scope ownership, async and cleanup guards remain enforced.
 
-`builder.analyse()` returns a completed `AnalysisResult`: its immutable `AnalysisReport`, full or partial graph,
+`builder.verify()` returns a completed `VerificationReport`: its immutable `VerificationReport`, full or partial graph,
 coverage and stage/rule outcomes. Every available validation declaration runs once before return. A missing graph
 makes graph-dependent rules unavailable; cancellation or a budget can make the result incomplete. An incomplete
 report is never valid. Reading reports, graphs, census or triage does not replay callbacks.
 
 ```python
-with application_builder().analyse() as analysis:
-    analysis.report.assert_valid()
+with application_builder().verify() as analysis:
+    analysis.assert_valid()
     print(analysis.graph.manifest(all_roots=True).to_json())
     with analysis.create_runtime() as runtime:
         runtime.resolve(Application)
@@ -65,21 +65,21 @@ with application_builder().analyse() as analysis:
 
 `create_runtime()` uses the emitted test plan without recompilation. A result may have an executable plan despite
 policy errors; callers decide whether to test it. If emission failed, runtime creation raises
-`AnalysisRuntimeUnavailableError`. The result closes its test runtimes in reverse creation order, never a borrowed parent.
+`VerificationRuntimeUnavailableError`. The result closes its test runtimes in reverse creation order, never a borrowed parent.
 Production separately calls a fresh composition factory's `build()`.
 
 Each admitted attempt consumes its builder on success, failure, cancellation or budget refusal. Retry with a fresh
 builder. Invalid inputs rejected before admission leave the builder mutable. Analysis can make independent diagnostic
 root attempts after binding failures; those can repeat wiring callbacks, but never validation declarations.
 
-CLI checks and inspection commands and matrix variants call `analyse()` once. They accept an unbuilt builder,
+CLI checks and inspection commands and matrix variants call `verify()` once. They accept an unbuilt builder,
 a factory returning one, or a completed result where appropriate. Incomplete or invalid analysis exits unsuccessfully.
-Compilation profiling selects `--operation build|analyse`, defaulting to `build`.
+Compilation profiling selects `--operation build|verify`, defaulting to `build`.
 
 ### RC migration
 
 `BuildMode`, `ValidationRuleMode`, `BuildReport`, `build(mode=...)`, per-rule phases and fine-grained build flags are
-removed. Use `AnalysisReport` and the two named operations. Runtimes have no `graph`, `build_report`,
+removed. Use `VerificationReport` and the two named operations. Runtimes have no `graph`, `build_report`,
 `validation_report`, `build_mode`, `explain_metadata_enabled`, `allow_scope_builders` or `new_scope_builder` API.
 `build_args`, `budget` and `profile` apply to either operation; execution instrumentation belongs to `build()` or
 `result.create_runtime()`.
@@ -98,7 +98,7 @@ from clean_ioc import AsyncProvider, ContainerBuilder, Provider
 builder = ContainerBuilder()
 builder.register(PaymentGateway, StripeGateway)
 builder.set_provider_roots((AsyncProvider[PaymentGateway], Provider[list[PaymentGateway]]))
-analysis = builder.analyse()
+analysis = builder.verify()
 ```
 
 The iterable is captured immediately, aliases normalized and duplicates removed.
@@ -119,7 +119,7 @@ compiles or reruns callbacks. Ordinary child scopes share the tuple; compiled
 overlays receive their own selection catalogue.
 
 Runtime components retain the relationships required by filters, providers, provisions and cleanup. Runtimes do not
-retain diagnostic histories or a link to an analysis result. Keep analysis results only where inspection is needed.
+retain diagnostic histories or a link to an verification report. Keep verification reports only where inspection is needed.
 
 ### Overlay composition
 
@@ -137,7 +137,7 @@ with builder.build() as parent:
         child.resolve(Service)
 ```
 
-Analysis results automatically expose `result.composition` after executable capture. The handle contains immutable
+Verification reports automatically expose `result.composition` after executable capture. The handle contains immutable
 library declarations and retains opaque application values by identity; it has a retained-memory cost. It has no
 close or context-manager lifecycle. A child builder requires the matching live parent lineage and owns its restored
 declarations. Ordinary `new_scope()` needs no handle. Parent singletons keep their original owner and activation step;
@@ -152,14 +152,16 @@ succeeds. Graph roots expose `resolvable`; manifests mark nonpublic roots with
 of these declarations to a public root remains visible in semantic graph diffs.
 The selected executable catalogue is unaffected by these inspection-only roots.
 
-## Completed reports and partial analysis
+## Verification reports and partial graphs
 
-`AnalysisResult.report` contains findings, `complete`, root coverage, and rule/stage outcomes. It is available even
-when no full graph could be emitted. Production binding errors are local errors without rich reports or partial graphs.
+`verify()` returns a `VerificationReport` directly. It contains immutable findings, `complete`, root coverage, and rule/stage outcomes. It is available even
+when no full graph could be emitted. Call `report.assert_valid()` directly; no nested report is needed.
+Closing the report disposes its test runtimes and prevents new ones, while its immutable findings remain readable.
+Production binding errors are local errors without rich reports or partial graphs.
 
 ```python
-result = builder.analyse()
-for issue in result.report.errors:
+result = builder.verify()
+for issue in result.errors:
     print(issue.code, issue.path, issue.message)
 if result.partial_graph is not None:
     print(result.partial_graph.to_text())
@@ -212,7 +214,7 @@ Current issue codes include:
 
 Applications may add their own stable codes by registering a custom graph rule. Each rule receives a per-pass
 `ValidationContext` containing the graph and lazy type-AST inspection. Custom issues use the same report, JSON, CLI
-strictness, and warning-suppression behavior as compiler findings. Rules use `add_validation_rule(rule)` and run once during `analyse()`. Report reads do not rerun them. Use
+strictness, and warning-suppression behavior as compiler findings. Rules use `add_validation_rule(rule)` and run once during `verify()`. Report reads do not rerun them. Use
 `context.graph.walk()` for a deterministic all-roots traversal; each returned `GraphVisit` retains the component objects
 and the matching diagnostic path. See [Custom graph validation](custom-validation.md) for the complete rule cookbook.
 
@@ -448,7 +450,7 @@ builder.register(Gateway, DefaultGateway)
 builder.register(Gateway, NamedGateway, name="named")
 builder.register(Checkout)
 builder.mark_entrypoint(Checkout)
-report = builder.analyse().graph.selection_census()
+report = builder.verify().graph.selection_census()
 print(report.to_text())
 print(report.to_json())
 ```
@@ -556,10 +558,10 @@ Update the checked-in manifest only after reviewing the corresponding compositio
 
 ## Profile one compilation
 
-Profiling defaults to `build`. Select `analyse()` in Python or `--operation analyse` to profile analysis:
+Profiling defaults to `build`. Select `verify()` in Python or `--operation verify` to profile analysis:
 
 ```console
-clean-ioc profile my_app.composition:application_builder --operation analyse --format json
+clean-ioc profile my_app.composition:application_builder --operation verify --format json
 ```
 
 Pass a fresh `CompilationProfiler` to either builder's `build()` method:
@@ -590,7 +592,7 @@ It runs exactly one selected public operation. A successful build exits `0`, a f
 and invalid targets, limits, or output paths exit `2`. Built containers and scopes cannot be profiled retroactively.
 The measured interval begins at `build()`; module import, builder-factory execution, prior registration work, and
 parent builds reused by an overlay are excluded. Registered activation factories, constructors, resolution, and
-validation rules are excluded from build and included in analyse. Explicit argument derivations and decorator-template factories are composition
+validation rules are excluded from build and included in verify. Explicit argument derivations and decorator-template factories are composition
 callbacks and are included. Use `check` for a completed validation report.
 
 Phase durations do not overlap. Nested span `inclusive_ns` includes child work; `self_ns` excludes it. The `other build

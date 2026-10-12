@@ -210,8 +210,8 @@ def test_visibility_contracts_can_be_repaired_in_fresh_composition():
     source.exposes = (Expose(Clock),)
     consumer.exposes = (Expose(CustomWaitPolicy),)
     consumer.uses = (Use("source", Clock), Use.root(Settings))
-    result = builder.analyse()
-    assert not result.report.is_valid
+    result = builder.verify()
+    assert not result.is_valid
     builder, consumer, source = configured()
     source.exposes = (Expose(Clock),)
     consumer.exposes = (Expose(CustomWaitPolicy),)
@@ -293,10 +293,10 @@ def test_validation_failure_leaves_boundary_editable_until_successful_retry(prof
     boundary.register(Clock)
     boundary.add_validation_rule(require_health_policy)
     profile = CompilationProfiler() if profiled else None
-    captured_analysis = builder.analyse(profile=profile)
-    assert not captured_analysis.report.is_valid
-    assert captured_analysis.report is not None
-    assert "missing-health-policy" in {issue.code for issue in captured_analysis.report.errors}
+    captured_analysis = builder.verify(profile=profile)
+    assert not captured_analysis.is_valid
+    assert captured_analysis is not None
+    assert "missing-health-policy" in {issue.code for issue in captured_analysis.errors}
 
     with pytest.raises(BuilderAlreadyBuiltError):
         boundary.register(HealthPolicy)
@@ -305,8 +305,8 @@ def test_validation_failure_leaves_boundary_editable_until_successful_retry(prof
     boundary.register(Clock)
     boundary.add_validation_rule(require_health_policy)
     boundary.register(HealthPolicy)
-    analysis = builder.analyse(profile=CompilationProfiler() if profiled else None)
-    analysis.report.assert_valid()
+    analysis = builder.verify(profile=CompilationProfiler() if profiled else None)
+    analysis.assert_valid()
     container = analysis.create_runtime()
     assert isinstance(container.resolve(Clock), Clock)
     assert not container.has_component(HealthPolicy)
@@ -355,10 +355,10 @@ def test_boundary_visibility_inputs_are_snapshotted_and_use_cycles_can_be_repair
     first.register(Clock)
     second = builder.create_boundary("second", uses=(Use("first", Clock),), exposes=(Expose(HealthPolicy),))
     second.register(HealthPolicy)
-    captured_analysis = builder.analyse()
-    assert not captured_analysis.report.is_valid
-    assert captured_analysis.report is not None
-    assert captured_analysis.report.errors[0].code == "boundary-use-cycle"
+    captured_analysis = builder.verify()
+    assert not captured_analysis.is_valid
+    assert captured_analysis is not None
+    assert captured_analysis.errors[0].code == "boundary-use-cycle"
 
     with pytest.raises(BuilderAlreadyBuiltError):
         first.uses = ()

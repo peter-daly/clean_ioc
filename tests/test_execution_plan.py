@@ -11,7 +11,6 @@ import pytest
 
 import clean_ioc.container as compiler
 from clean_ioc import (
-    AnalysisRuntimeUnavailableError,
     BuilderAlreadyBuiltError,
     CompilationBudget,
     CompilationProfiler,
@@ -23,9 +22,11 @@ from clean_ioc import (
     ScopeBuilder,
     ScopeClosedError,
     Tag,
+    VerificationRuntimeUnavailableError,
     WarmupPlan,
     WarmupTarget,
 )
+from tests.verification_helpers import present
 
 
 class Leaf:
@@ -55,7 +56,7 @@ def test_ordinary_build_does_not_construct_rich_plan_graph_report_or_finalize(mo
     source.create_boundary("private").register(bytes, instance=b"private")
     if rules:
         source.add_validation_rule(forbid)
-    for cls in (compiler._PlanSet, compiler.CompiledGraph, compiler.AnalysisReport):
+    for cls in (compiler._PlanSet, compiler.CompiledGraph, compiler.VerificationReport):
         monkeypatch.setattr(cls, "__init__", forbid)
     for name in ("_finalize_plan", "_compile_with_report", "_graph_roots", "_census_inventory"):
         monkeypatch.setattr(compiler, name, forbid)
@@ -135,7 +136,7 @@ def test_warmup_binding_needs_no_rich_graph_and_never_activates_implicitly(monke
 
 def test_analysis_projection_outlives_rich_result_without_retaining_it():
     source = builder()
-    result = source.analyse()
+    result = source.verify()
     graph = weakref.ref(result.graph)
     result_ref = weakref.ref(result)
     runtime = result.create_runtime()
@@ -159,7 +160,7 @@ def test_each_analysis_runtime_has_independent_singleton_and_shared_local_precon
     source = builder()
     source.register(Other)
     source.pre_configure((Service, Other), lambda: calls.append("configure"))
-    with source.analyse() as result:
+    with source.verify() as result:
         first, second = result.create_runtime(), result.create_runtime()
         assert calls == []
         assert first.resolve(Service).leaf is not second.resolve(Service).leaf
@@ -170,7 +171,7 @@ def test_each_analysis_runtime_has_independent_singleton_and_shared_local_precon
             child.resolve(Service)
             child.resolve(Other)
         assert calls == ["configure", "configure"]
-        assert first._plan.graph is second._plan.graph is result._plan.graph
+        assert first._plan.graph is second._plan.graph is result._runtime._plan.graph
 
 
 def test_scope_analysis_borrows_actual_parent_owners_and_keeps_child_state_independent():
@@ -190,13 +191,13 @@ def test_scope_analysis_borrows_actual_parent_owners_and_keeps_child_state_indep
     source = ContainerBuilder().set_provider_roots(())
     source.register(Leaf, factory=leaf, lifespan="singleton")
     source.pre_configure(Leaf, lambda: calls.append("parent"))
-    with source.analyse() as parent_result:
+    with source.verify() as parent_result:
         parent = parent_result.create_runtime()
-        overlay = ScopeBuilder(parent, composition=parent_result.composition)
+        overlay = ScopeBuilder(parent, composition=present(parent_result.composition))
         overlay.set_provider_roots(())
         overlay.register(Child, lifespan="scoped")
         overlay.pre_configure(Child, lambda: calls.append("child"))
-        with overlay.analyse() as result:
+        with overlay.verify() as result:
             assert calls == []
             first, second = result.create_runtime(), result.create_runtime()
             one, two = first.resolve(Child), second.resolve(Child)
@@ -220,12 +221,12 @@ def test_completed_execution_survives_inspection_only_boundary_failure():
     source = builder()
     source.create_boundary("private").register(Broken)
     source.add_validation_rule(forbid)
-    with source.analyse() as result:
+    with source.verify() as result:
         assert result.emission_complete
-        assert not result.report.complete
+        assert not result.complete
         assert result.graph is None
         assert result.partial_graph is not None
-        assert [outcome.status for outcome in result.report.rule_outcomes] == ["unavailable"]
+        assert [outcome.status for outcome in result.rule_outcomes] == ["unavailable"]
         assert Broken not in {entry.service_type for entry in result.selected_registrations}
         with result.create_runtime() as runtime:
             assert isinstance(runtime.resolve(Service).leaf, Leaf)
@@ -243,10 +244,10 @@ def test_primary_emission_failure_cannot_be_replaced_by_diagnostic_retry():
 
     source = ContainerBuilder().set_provider_roots(())
     source.register(Leaf, when=select)
-    result = source.analyse()
+    result = source.verify()
     assert not result.emission_complete
-    assert result.partial_graph.inconsistent_retries
-    with pytest.raises(AnalysisRuntimeUnavailableError):
+    assert present(result.partial_graph).inconsistent_retries
+    with pytest.raises(VerificationRuntimeUnavailableError):
         result.create_runtime()
 
 
@@ -255,19 +256,19 @@ def test_runtime_creation_and_report_reads_do_not_replay_selection_or_warmup_fil
     source = ContainerBuilder().set_provider_roots(())
     source.register(Leaf, when=lambda component: calls.append("selection") or True)
     source.add_warmup_plan(WarmupPlan("start", [WarmupTarget(Leaf, filter=lambda c: calls.append("warmup") or True)]))
-    result = source.analyse()
+    result = source.verify()
     captured = tuple(calls)
     assert captured.count("warmup") == 1
     for _ in range(2):
-        result.report.to_json()
-        result.report.to_text()
+        result.to_json()
+        result.to_text()
         with result.create_runtime() as runtime:
             runtime.resolve(Leaf)
     assert tuple(calls) == captured
     result.close()
 
 
-@pytest.mark.parametrize("operation", ["build", "analyse"])
+@pytest.mark.parametrize("operation", ["build", "verify"])
 def test_consumed_builder_and_retained_boundary_release_declaration_callbacks(operation):
     class Rule:
         def __call__(self, context):
@@ -281,7 +282,7 @@ def test_consumed_builder_and_retained_boundary_release_declaration_callbacks(op
     boundary.add_validation_rule(rule)
     del rule
     result = getattr(source, operation)()
-    if operation == "analyse":
+    if operation == "verify":
         result.close()
         del result
     gc.collect()
@@ -305,7 +306,7 @@ def test_failed_admitted_build_releases_declarations_and_never_allocates_a_repor
     boundary.register(Payload, instance=payload)
     del payload
     monkeypatch.setattr(compiler.CompiledGraph, "__init__", forbid)
-    monkeypatch.setattr(compiler.AnalysisReport, "__init__", forbid)
+    monkeypatch.setattr(compiler.VerificationReport, "__init__", forbid)
     if failure == "wiring":
 
         class Missing:
@@ -337,12 +338,12 @@ def test_failed_admitted_build_releases_declarations_and_never_allocates_a_repor
     assert reference() is None
     assert source._composition is boundary._composition is None
     with pytest.raises(BuilderAlreadyBuiltError):
-        source.analyse()
+        source.verify()
 
 
 def test_build_wraps_foreign_rich_error_without_mutating_it():
-    foreign = builder().analyse()
-    error = ContainerBuildError(report=foreign.report, compiled_graph=foreign.graph)
+    foreign = builder().verify()
+    error = ContainerBuildError(report=foreign, compiled_graph=foreign.graph)
     original_report = error.report
 
     def fail(component):
@@ -363,7 +364,7 @@ def test_opaque_instance_and_derived_value_identity_survive_builder_release():
     source = ContainerBuilder().set_provider_roots(())
     source.register(Leaf, instance=instance)
     source.register(Service, arguments={"leaf": payload})
-    with source.analyse() as result:
+    with source.verify() as result:
         for _ in range(2):
             runtime = result.create_runtime()
             assert runtime.resolve(Leaf) is instance
@@ -371,9 +372,9 @@ def test_opaque_instance_and_derived_value_identity_survive_builder_release():
 
 
 def test_closed_parent_is_pre_admission_and_scope_failure_consumes_once():
-    with builder().analyse() as result:
+    with builder().verify() as result:
         parent = result.create_runtime()
-        source = ScopeBuilder(parent, composition=result.composition)
+        source = ScopeBuilder(parent, composition=present(result.composition))
         source.set_provider_roots(())
         parent.__exit__(None, None, None)
         with pytest.raises(ScopeClosedError):
@@ -384,7 +385,7 @@ def test_closed_parent_is_pre_admission_and_scope_failure_consumes_once():
 def test_result_cleanup_preserves_one_failure_identity_and_reverse_runtime_order():
     events = []
     error = ValueError("cleanup")
-    result = builder().analyse()
+    result = builder().verify()
     first, second = result.create_runtime(), result.create_runtime()
     first._add_finalizer(lambda: events.append("first"))
 
@@ -405,7 +406,7 @@ def test_result_cleanup_preserves_one_failure_identity_and_reverse_runtime_order
 @pytest.mark.asyncio
 async def test_result_async_cleanup_and_fatal_error_aggregation():
     events = []
-    result = builder().analyse()
+    result = builder().verify()
     first, second = result.create_runtime(), result.create_runtime()
 
     async def close_first():
@@ -432,7 +433,7 @@ async def test_result_sync_close_preserves_async_cleanup_error():
 
     source = ContainerBuilder().set_provider_roots(())
     source.register(Leaf, factory=resource, lifespan="singleton")
-    result = source.analyse()
+    result = source.verify()
     await result.create_runtime().resolve_async(Leaf)
     with pytest.raises(RuntimeError, match="Async finalizer"):
         result.close()
@@ -455,7 +456,7 @@ def test_projection_preserves_provider_map_key_table_without_hashing_opaque_keys
     source.register(Leaf, root_policy="dependency_only")
     source.register_provider_map(Leaf, key=lambda component: key, key_type=Key, root_policy="dependency_only")
     source.register(Dispatcher)
-    with source.analyse() as result:
+    with source.verify() as result:
         hashing_allowed = False
         for _ in range(2):
             runtime = result.create_runtime()
@@ -471,9 +472,9 @@ def test_scope_failure_consumes_builder_and_retained_boundary_and_preserves_pare
         def __init__(self, missing: Missing):
             pass
 
-    with builder().analyse() as result:
+    with builder().verify() as result:
         parent = result.create_runtime()
-        source = ScopeBuilder(parent, composition=result.composition)
+        source = ScopeBuilder(parent, composition=present(result.composition))
         boundary = source.create_boundary("child")
         source.register(Broken)
         with pytest.raises(ContainerBuildError):
@@ -505,7 +506,7 @@ def test_caller_owned_component_snapshot_preserves_opaque_identity_and_relations
         assert isinstance(runtime.resolve(Service).leaf, Leaf)
 
 
-@pytest.mark.parametrize("operation", ["build", "analyse"])
+@pytest.mark.parametrize("operation", ["build", "verify"])
 def test_optional_observer_preserves_execution_without_rich_runtime_ownership(operation):
     from clean_ioc import Instrumentation, ResolutionProfiler
 
@@ -517,7 +518,7 @@ def test_optional_observer_preserves_execution_without_rich_runtime_ownership(op
         result = None
         runtime = source.build(instrumentation=instrumentation)
     else:
-        result = source.analyse()
+        result = source.verify()
         runtime = result.create_runtime(instrumentation=instrumentation)
     with runtime:
         assert type(runtime._plan) is compiler._ExecutionPlan

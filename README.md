@@ -9,7 +9,7 @@ Clean IoC is a typed dependency-injection container for Python 3.11+. Version 2 
 immutable runtime execution:
 
 1. Register components with `ContainerBuilder`.
-2. Call `build()` to compile the executable dependency plan; use a separate fresh builder’s `analyse()` for CI checks.
+2. Call `build()` to compile the executable dependency plan; use a separate fresh builder’s `verify()` for CI checks.
 3. Resolve from the immutable `Container` or a lightweight `Scope`.
 
 Constructors, factories, generators, and context managers do not run during the build. Explicit `derive(...)` argument
@@ -80,14 +80,14 @@ and activation returns ordinary Python objects rather than generated proxies.
 It runs no validation rules or policy audits. Impossible wiring fails locally; actual runtime ownership, async,
 resolution and cleanup guards remain enforced.
 
-Use a fresh builder's `analyse()` for a completed `AnalysisResult` containing an `AnalysisReport`, graph or partial
+Use a fresh builder's `verify()` for a completed `VerificationReport` containing a `VerificationReport`, graph or partial
 analysis, coverage and rule outcomes. Every available rule finishes before return. Reports never replay callbacks.
 Tests may call `result.create_runtime()` to execute the already emitted plan without recompilation.
 Production separately uses a fresh composition factory's `build()`.
 
 Every admitted attempt consumes its builder, including failures, cancellation and budget refusal. Retry with a fresh
 builder. Runtimes retain no graph, report or composition handle. For future overlays, call `retain_composition()` before
-compiling and pass the external handle to `ScopeBuilder(parent, composition=handle)`. Analysis captures this handle
+compiling and pass the external handle to `ScopeBuilder(parent, composition=handle)`. Verification captures this handle
 automatically. Ordinary scopes need no handle; composition handles have no cleanup lifecycle.
 See the [migration guide](V1_TO_V2_UPGRADE.md).
 
@@ -96,7 +96,7 @@ See the [migration guide](V1_TO_V2_UPGRADE.md).
 | Specialize generic types | Select a frozen root plan |
 | Build occurrence-specific component trees | Execute precompiled activation steps |
 | Evaluate filters and explicit `build_args` | Cache plain instances by lifespan |
-| Bind dependencies; analyse policy separately | Coordinate concurrent scoped/singleton builds |
+| Bind dependencies; verify policy separately | Coordinate concurrent scoped/singleton builds |
 | Freeze decorators, pre-configurations, and argument policies | Track only activation and teardown state |
 
 Application-defined build arguments make environment-dependent composition explicit without turning those inputs into
@@ -111,7 +111,7 @@ container = builder.build(
 Derived argument policies and component filters can inspect the immutable mapping during compilation. The chosen wiring
 is frozen, while graph manifests and reports omit build-argument names and values.
 
-`build()` raises a local `ContainerBuildError` when binding is impossible. `analyse()` additionally reports policy
+`build()` raises a local `ContainerBuildError` when binding is impossible. `verify()` additionally reports policy
 findings such as captive lifespans and incompatible annotations, with full or partial diagnostic evidence.
 Every admitted attempt consumes its builder. Retry with a fresh composition factory.
 
@@ -148,15 +148,15 @@ def enforce_architecture(context: ValidationContext) -> Iterable[BuildIssue]:
 builder.add_validation_rule(enforce_architecture)
 ```
 
-Custom rules and built-in checks run only during `analyse()`. Register all policies with the same API:
+Custom rules and built-in checks run only during `verify()`. Register all policies with the same API:
 
 ```python
 builder.add_validation_rule(forbid_direct_environment_access)
-with builder.analyse() as result:
-    result.report.assert_valid()
+with builder.verify() as result:
+    result.assert_valid()
 ```
 
-Errors and incomplete coverage make the report invalid. Warnings remain available for CI policy. Analysis of one
+Errors and incomplete coverage make the report invalid. Warnings remain available for CI policy. Verification of one
 configuration does not validate every future input; use the same composition factory and inputs for a separate CI check:
 
 ```console
@@ -176,16 +176,16 @@ Mark application entry points to focus graph output and reachability analysis:
 
 ```python
 builder.register(Checkout, root_policy="entrypoint")
-analysis = builder.analyse()
+analysis = builder.verify()
 
-print(analysis.report.to_text())
+print(analysis.to_text())
 print(analysis.graph.to_mermaid())
 analysis.graph.manifest().to_json()
 analysis.graph.ownership_report().to_json()
 analysis.graph.sharing_report().to_json()
 ```
 
-Use `root_policy="dependency_only"` for a helper that should be retained only when another root needs it. `build()` omits unused dependency-only registrations from execution. `analyse()` inspects and validates them without exposing runtime roots. `mark_entrypoint()` still marks collection and filtered requests.
+Use `root_policy="dependency_only"` for a helper that should be retained only when another root needs it. `build()` omits unused dependency-only registrations from execution. `verify()` inspects and validates them without exposing runtime roots. `mark_entrypoint()` still marks collection and filtered requests.
 
 ```bash
 clean-ioc check my_app.composition:application_builder
@@ -227,7 +227,7 @@ ownership reports explain that decision without exposing runtime tokens or value
 Sharing reports are static eligibility reports: they group occurrences by their compiled cache identity without
 activating them or claiming factory results are distinct. They explain per-resolution, scope, singleton, transient,
 and supplied-instance semantics, and identify occurrence plans that can compete to initialize one cache.
-All custom rules use `add_validation_rule(rule)` and run during `analyse()` or `clean-ioc check`, never production build. CLI strictness only controls whether warnings
+All custom rules use `add_validation_rule(rule)` and run during `verify()` or `clean-ioc check`, never production build. CLI strictness only controls whether warnings
 produce a failing exit code; errors fail in strict and non-strict modes.
 `analysis.graph.explain(...)` and `clean-ioc explain` show the recorded selected and rejected candidates, stable reason
 codes, bundle paths, and best-effort declaration locations without adding provenance to manifests or fingerprints.

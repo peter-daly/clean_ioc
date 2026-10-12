@@ -1,6 +1,6 @@
 # How compilation works
 
-Clean IoC has two public compilation operations. `build()` produces execution; `analyse()` produces completed
+Clean IoC has two public compilation operations. `build()` produces execution; `verify()` produces completed
 inspection and validation facts with an optional emitted test plan. Both consume an admitted builder attempt and
 neither activates application constructors or resource factories.
 
@@ -32,7 +32,7 @@ independent diagnostic retries. Local binding errors contain the actionable loca
 
 ## Analysis capture and completion
 
-`analyse()` captures candidate decisions, source origins, explanations and graph facts while compiling. It also inspects
+`verify()` captures candidate decisions, source origins, explanations and graph facts while compiling. It also inspects
 unused dependency-only declarations without making them executable roots. Built-in policy audits and custom rules
 produce findings and coverage. Graph-dependent rules run once after a complete graph is available; missing graph,
 budget and cancellation outcomes remain explicit. Invalid policy findings do not discard an otherwise emitted plan.
@@ -41,7 +41,7 @@ Independent diagnostic root attempts after failed binding retain separate attemp
 They can repeat wiring callbacks, never validation declarations, and never replace the primary executable plan.
 Evidence is bounded and omitted counts remain visible. A partial graph does not pretend to be a coherent execution graph.
 
-`AnalysisResult` owns the completed `AnalysisReport`, graph or partial graph, optional plan and retained `Composition`.
+`VerificationReport` owns the completed `VerificationReport`, graph or partial graph, optional plan and retained `Composition`.
 Report, manifest, census, triage and explanation reads use captured facts only. `create_runtime()` creates test runtime
 state from the existing plan; it does not compile or invoke rules. Closing a result closes owned test runtimes in reverse
 order and does not close a borrowed parent.
@@ -49,7 +49,7 @@ order and does not close a borrowed parent.
 ## Composition and overlays
 
 `builder.retain_composition()` returns a pending external handle before compilation. Successful executable capture
-seals immutable library declarations; opaque values remain identical. Analysis captures a handle automatically.
+seals immutable library declarations; opaque values remain identical. Verification captures a handle automatically.
 The handle has no close, async close or context-manager lifecycle. It retains declarations and callbacks, so callers
 should keep it only when further composition is needed.
 
@@ -65,7 +65,7 @@ lifespan families; they are not a census of live cache entries. Paths use occurr
 Warmup reports use `plan_id`, and SARIF uses `executionPlanId`; neither requires a graph manifest fingerprint.
 
 CLI check, explain, manifest, diff, census and triage use completed analysis. Compilation profiling explicitly selects
-`build` or `analyse`. No private historical compiler harness is a supported third operation. Experimental artifact
+`build` or `verify`. No private historical compiler harness is a supported third operation. Experimental artifact
 serialization remains parked and unsupported; it is not a public precompilation or deployment feature.
 
 For public usage see [build and analysis](validation.md), [compiler tooling](compiler-tooling.md),

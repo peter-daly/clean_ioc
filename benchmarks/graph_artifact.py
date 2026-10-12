@@ -58,7 +58,7 @@ _DATACLASSES = (
     tooling._RemappedDecoratorExplanation,
     tooling.TemplateDecision,
     tooling.TemplateSourceDecision,
-    tooling.AnalysisReport,
+    tooling.VerificationReport,
     templates.RegistrationInfo,
     configuration.DependencySettings,
     arguments._FixedArgument,

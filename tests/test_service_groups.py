@@ -100,14 +100,14 @@ def test_known_contract_failures_are_transactional_and_use_registered_service():
     builder = ContainerBuilder()
     invalid_100 = ContainerBuilder()
     invalid_100.register(Service, Implementation, groups=(group for group in (service_group, other_group)))
-    invalid_100_result = invalid_100.analyse()
-    assert not invalid_100_result.report.is_valid
-    assert re.search("service group 'other'.*Other", invalid_100_result.report.to_text())
+    invalid_100_result = invalid_100.verify()
+    assert not invalid_100_result.is_valid
+    assert re.search("service group 'other'.*Other", invalid_100_result.to_text())
     invalid_102 = ContainerBuilder()
     invalid_102.register(Other, factory=Implementation, groups=[service_group])
-    invalid_102_result = invalid_102.analyse()
-    assert not invalid_102_result.report.is_valid
-    assert re.search("service group 'services'", invalid_102_result.report.to_text())
+    invalid_102_result = invalid_102.verify()
+    assert not invalid_102_result.is_valid
+    assert re.search("service group 'services'", invalid_102_result.to_text())
     with pytest.raises(TypeError, match="ServiceGroup"):
         builder.register(Service, groups=cast(list[ServiceGroup], [object()]))
     assert not any(builder._composition._registry.get_registrations(Service))
@@ -134,20 +134,20 @@ def test_generic_projection_rejects_closed_conflicts_and_keeps_open_constraints(
     builder = ContainerBuilder()
     invalid_128 = ContainerBuilder()
     invalid_128.register(Contract[str], factory=Contract, groups=[int_group])
-    invalid_128_result = invalid_128.analyse()
-    assert not invalid_128_result.report.is_valid
-    assert re.search("integers", invalid_128_result.report.to_text())
+    invalid_128_result = invalid_128.verify()
+    assert not invalid_128_result.is_valid
+    assert re.search("integers", invalid_128_result.to_text())
     invalid_130 = ContainerBuilder()
     invalid_130.register(Child[str], factory=Child, groups=[int_group])
-    invalid_130_result = invalid_130.analyse()
-    assert not invalid_130_result.report.is_valid
-    assert re.search("integers", invalid_130_result.report.to_text())
+    invalid_130_result = invalid_130.verify()
+    assert not invalid_130_result.is_valid
+    assert re.search("integers", invalid_130_result.to_text())
     nested_group = ServiceGroup("nested", service_type=Contract[list[int]])
     invalid_133 = ContainerBuilder()
     invalid_133.register(Contract[list[str]], factory=Contract, groups=[nested_group])
-    invalid_133_result = invalid_133.analyse()
-    assert not invalid_133_result.report.is_valid
-    assert re.search("nested", invalid_133_result.report.to_text())
+    invalid_133_result = invalid_133.verify()
+    assert not invalid_133_result.is_valid
+    assert re.search("nested", invalid_133_result.to_text())
     assert not memberships(builder)
 
     open_id = builder.register(Child[T], factory=Child, groups=[int_group, bare_group])
@@ -164,9 +164,9 @@ def test_equivalent_unions_in_generic_arguments_are_compatible():
     incompatible = ServiceGroup("different", service_type=list[str | bytes])
     invalid_149 = ContainerBuilder()
     invalid_149.register(list[int | str], instance=[], groups=[incompatible])
-    invalid_149_result = invalid_149.analyse()
-    assert not invalid_149_result.report.is_valid
-    assert re.search("different", invalid_149_result.report.to_text())
+    invalid_149_result = invalid_149.verify()
+    assert not invalid_149_result.is_valid
+    assert re.search("different", invalid_149_result.to_text())
     assert len(memberships(builder)) == 1
 
 
@@ -181,14 +181,14 @@ def test_open_union_constraints_defer_without_hiding_fixed_conflicts():
 
     invalid_163 = ContainerBuilder()
     invalid_163.register(Service[int | bytes], factory=Service, groups=[group])
-    invalid_163_result = invalid_163.analyse()
-    assert not invalid_163_result.report.is_valid
-    assert re.search("union", invalid_163_result.report.to_text())
+    invalid_163_result = invalid_163.verify()
+    assert not invalid_163_result.is_valid
+    assert re.search("union", invalid_163_result.to_text())
     invalid_165 = ContainerBuilder()
     invalid_165.register(Service[T | bytes], factory=Service, groups=[group])
-    invalid_165_result = invalid_165.analyse()
-    assert not invalid_165_result.report.is_valid
-    assert re.search("union", invalid_165_result.report.to_text())
+    invalid_165_result = invalid_165.verify()
+    assert not invalid_165_result.is_valid
+    assert re.search("union", invalid_165_result.to_text())
     assert len(memberships(builder)) == 1
 
 
@@ -203,14 +203,14 @@ def test_callable_parameter_typevars_defer_but_concrete_conflicts_reject():
 
     invalid_179 = ContainerBuilder()
     invalid_179.register(Service[Callable[[bytes], int]], factory=Service, groups=[group])
-    invalid_179_result = invalid_179.analyse()
-    assert not invalid_179_result.report.is_valid
-    assert re.search("callable", invalid_179_result.report.to_text())
+    invalid_179_result = invalid_179.verify()
+    assert not invalid_179_result.is_valid
+    assert re.search("callable", invalid_179_result.to_text())
     invalid_181 = ContainerBuilder()
     invalid_181.register(Service[Callable[[str], bytes]], factory=Service, groups=[group])
-    invalid_181_result = invalid_181.analyse()
-    assert not invalid_181_result.report.is_valid
-    assert re.search("callable", invalid_181_result.report.to_text())
+    invalid_181_result = invalid_181.verify()
+    assert not invalid_181_result.is_valid
+    assert re.search("callable", invalid_181_result.to_text())
     assert len(memberships(builder)) == 1
 
 
@@ -280,14 +280,14 @@ def test_discovery_rejects_incompatible_groups_before_queue_mutation():
     builder = ContainerBuilder()
     invalid_250 = ContainerBuilder()
     invalid_250.register_subclasses(Service, groups=[wrong])
-    invalid_250_result = invalid_250.analyse()
-    assert not invalid_250_result.report.is_valid
-    assert re.search("wrong", invalid_250_result.report.to_text())
+    invalid_250_result = invalid_250.verify()
+    assert not invalid_250_result.is_valid
+    assert re.search("wrong", invalid_250_result.to_text())
     invalid_252 = ContainerBuilder()
     invalid_252.register_subclasses(Service, groups=[wrong])
-    invalid_252_result = invalid_252.analyse()
-    assert not invalid_252_result.report.is_valid
-    assert re.search("wrong", invalid_252_result.report.to_text())
+    invalid_252_result = invalid_252.verify()
+    assert not invalid_252_result.is_valid
+    assert re.search("wrong", invalid_252_result.to_text())
     assert builder._registration_discoveries == []
 
 
@@ -306,9 +306,9 @@ def test_discovered_closed_generic_conflict_does_not_publish_partial_cache():
     builder = ContainerBuilder()
     builder.register_subclasses(Service, groups=[group], subclass_type_filter=lambda item: item in allowed)
     rule = builder._registration_discoveries[0]
-    result = builder.analyse()
-    assert not result.report.is_valid
-    assert "integers" in result.report.to_text()
+    result = builder.verify()
+    assert not result.is_valid
+    assert "integers" in result.to_text()
     assert rule.registrations  # Discovery completed; compatibility is an analysis finding.
 
     allowed.remove(Rejected)

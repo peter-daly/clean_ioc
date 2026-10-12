@@ -57,8 +57,8 @@ Container/Scope
 
 - `ContainerBuilder` and `ScopeBuilder` are the only mutable composition APIs.
 - `Container` and `Scope` contain frozen `_PlanSet` instances and expose no registration APIs.
-- Every admitted build or analysis attempt consumes its builder.
-- Registrations default to `root_policy="resolvable"`, preserving whole-root compilation and validation. `"entrypoint"` also marks a root for tooling; `"dependency_only"` removes its direct root and keeps it only when another root needs it. `build()` omits unused dependency-only definitions from execution. `analyse()` inspects their graphs without making them public resolution roots. `mark_entrypoint()` continues to mark synthetic or filtered requests without changing root eligibility.
+- Every admitted build or verification attempt consumes its builder.
+- Registrations default to `root_policy="resolvable"`, preserving whole-root compilation and validation. `"entrypoint"` also marks a root for tooling; `"dependency_only"` removes its direct root and keeps it only when another root needs it. `build()` omits unused dependency-only definitions from execution. `verify()` inspects their graphs without making them public resolution roots. `mark_entrypoint()` continues to mark synthetic or filtered requests without changing root eligibility.
 - Building never invokes user constructors, factories, generators, or context managers. Explicit `derive(...)`
   argument policies run during compilation and their concrete results become value nodes.
 - Runtime resolution executes `_Step` objects. It does not allocate legacy `DependencyNode`/object-graph structures.
@@ -179,7 +179,7 @@ Draft records are mutable only while `_Compiler` is building the graph. `_Compon
 ## Build and validation invariants
 
 `ContainerBuilder.build()` materializes discovery, specializes generics, binds execution roots and freezes execution.
-`analyse()` additionally captures diagnostics and performs built-in and custom validation.
+`verify()` additionally captures diagnostics and performs built-in and custom validation.
 
 Impossible binding includes missing required components, cycles and absent parent singleton specializations. Missing
 marked entry points, captive lifespans and annotation policies are analysis findings.
@@ -209,7 +209,7 @@ per_resolution -> scoped/singleton           valid
 
 Invalid lifespan paths use the `captive-dependency` issue code and retain the complete semantic path. A transient is allowed beneath a long-lived component but cannot hide an invalid descendant.
 
-Analysis returns `AnalysisReport` findings and coverage through `AnalysisResult`. Production `build()` emits execution
+Analysis returns `VerificationReport` findings and coverage through `VerificationReport`. Production `build()` emits execution
 only: no built-in policy audit, custom rules, rich diagnostic capture or retries. Impossible binding remains a local
 error. Every admitted operation consumes its builder; pre-admission invalid inputs remain editable.
 
@@ -223,7 +223,7 @@ source positions; unavailable source is `None`. Treat shared ASTs as read-only. 
 manifests. Report/graph reads and `create_runtime()` never replay callbacks. The test runtime uses the emitted plan;
 a fresh production builder executes independently.
 
-CLI checks and matrix variants call `analyse()` once and inspect the completed result. Strictness controls warnings;
+CLI checks and matrix variants call `verify()` once and inspect the completed result. Strictness controls warnings;
 errors and incomplete analysis fail. The CLI compilation profiler selects the explicit public operation.
 
 ## Pre-configuration compilation and ownership
@@ -276,7 +276,7 @@ synchronous cleanup. Do not restore lifespan- or stack-based finalizer routing: 
 Ordinary `new_scope()` is cheap and never recompiles. It reuses the parent's plan, inherits provided slot values, and may inherit already-created scoped values. Runtime UUID strings are created lazily on first ``id`` access so unused diagnostic identity is not part of the scope-creation hot path. Declared slots are supplied with `scope.provide()` before the first resolution; undeclared, duplicate, late, or missing provisions fail.
 
 `ScopeBuilder(parent, composition=handle)` is the explicit child-composition boundary. Capture the external handle with
-`builder.retain_composition()` before compiling, or use `AnalysisResult.composition`. A handle has no close lifecycle
+`builder.retain_composition()` before compiling, or use `VerificationReport.composition`. A handle has no close lifecycle
 and retains opaque application values by identity. Runtimes hold no back-reference to it. The child builder:
 
 - it layers new composition over the frozen parent blueprint and recompiles visible overlay roots;
@@ -340,9 +340,9 @@ complete supported matching, filtering, exposure, and public-root rules.
 
 `clean_ioc/tooling.py` exposes read-only tooling over the exact compiled component plans:
 
-- `BuildIssue` and `AnalysisReport` for structured validation;
-- `AnalysisReport.to_sarif()` and `ContainerBuildError.to_sarif()` for captured source-linked CI findings;
-- `AnalysisReport.assert_valid()` for assertions over existing reports, raising with SARIF only when errors exist;
+- `BuildIssue` and `VerificationReport` for structured validation;
+- `VerificationReport.to_sarif()` and `ContainerBuildError.to_sarif()` for captured source-linked CI findings;
+- `VerificationReport.assert_valid()` for assertions over existing reports, raising with SARIF only when errors exist;
 - `CompiledGraph` with text and Mermaid renderers;
 - immutable compilation explanations with selected/rejected candidates, stable reason codes, and best-effort origins;
 - unversioned `GraphManifest` with deterministic fingerprints;

@@ -23,6 +23,7 @@ from clean_ioc import (
 )
 from clean_ioc import component_filters as cf
 from clean_ioc.components import ComponentKind
+from tests.verification_helpers import present
 
 
 class Leaf:
@@ -52,7 +53,7 @@ def composition():
     return builder
 
 
-@pytest.mark.parametrize("operation", ["build", "analyse"])
+@pytest.mark.parametrize("operation", ["build", "verify"])
 async def test_rich_runtime_preserves_templates_providers_maps_identity_and_cleanup(operation):
     fixture = build(2, operation=operation)
     async with fixture.runtime:
@@ -75,7 +76,7 @@ async def test_rich_runtime_preserves_templates_providers_maps_identity_and_clea
             assert plan.selected_registrations
             assert plan.graph._records
             if fixture.analysis:
-                assert fixture.analysis.graph.roots
+                assert present(fixture.analysis.graph).roots
         finally:
             await held.scope.__aexit__(None, None, None)
 
@@ -107,14 +108,14 @@ def test_runtime_filters_keep_full_root_relationships(diagnostics):
 
 
 def test_analysis_reads_never_add_metadata_to_runtime(monkeypatch):
-    with composition().analyse() as result, result.create_runtime() as runtime:
+    with composition().verify() as result, result.create_runtime() as runtime:
         before = len(runtime._plan.graph._records)
-        monkeypatch.setattr(ContainerBuilder, "analyse", lambda *args: pytest.fail("recompiled"))
+        monkeypatch.setattr(ContainerBuilder, "verify", lambda *args: pytest.fail("recompiled"))
         for _ in range(2):
             assert result.graph.manifest().fingerprint
-            assert result.report.is_valid
-            assert result.report.to_dict()["valid"]
-            assert result.report.to_sarif()
+            assert result.is_valid
+            assert result.to_dict()["valid"]
+            assert result.to_sarif()
         assert len(runtime._plan.graph._records) == before
         for name in ("graph", "validation_report", "build_report", "explain_metadata_enabled"):
             assert not hasattr(runtime, name)
@@ -147,7 +148,7 @@ def test_analysis_callback_views_remain_inspectable_without_runtime_ownership():
         return ()
 
     builder.add_validation_rule(rule)
-    with builder.analyse() as result, result.create_runtime() as runtime:
+    with builder.verify() as result, result.create_runtime() as runtime:
         graph, root = captured[0]
         assert graph.manifest().fingerprint
         assert list(graph.walk())
@@ -177,13 +178,13 @@ def test_all_rules_are_completed_once_only_by_analysis(boundary, monkeypatch):
         assert calls == []
         with runtime.new_scope() as scope:
             assert not hasattr(scope, "validation_report")
-    with create_builder().analyse() as result, result.create_runtime() as runtime:
+    with create_builder().verify() as result, result.create_runtime() as runtime:
         assert calls == ["warning", "error"]
-        assert result.report.issues == (warning, error)
-        assert not result.report.is_valid
+        assert result.issues == (warning, error)
+        assert not result.is_valid
         monkeypatch.setattr("clean_ioc.container._run_validation_rules", lambda *args: pytest.fail("replayed"))
         for _ in range(2):
-            assert result.report.issues == (warning, error)
+            assert result.issues == (warning, error)
             assert result.graph.manifest().fingerprint
             assert result.triage_report().to_dict()
         assert calls == ["warning", "error"]
@@ -205,14 +206,14 @@ def test_policy_failure_consumes_attempt_and_new_builder_can_apply_changed_polic
         return builder
 
     builder = make_builder()
-    result = builder.analyse()
-    assert [issue.code for issue in result.report.errors] == ["required-policy"]
+    result = builder.verify()
+    assert [issue.code for issue in result.errors] == ["required-policy"]
     assert calls == ["policy", "second"]
     with pytest.raises(BuilderAlreadyBuiltError):
         builder.build()
     reject = False
-    with make_builder().analyse() as result, result.create_runtime() as runtime:
-        assert result.report.is_valid
+    with make_builder().verify() as result, result.create_runtime() as runtime:
+        assert result.is_valid
         assert isinstance(runtime.resolve(Consumer), Wrapper)
     assert calls == ["policy", "second", "policy", "second"]
 
@@ -221,16 +222,16 @@ def test_overlay_analysis_completes_inherited_and_local_rules_once():
     calls = []
     builder = composition()
     builder.add_validation_rule(lambda context: calls.append("parent") or ())
-    with builder.analyse() as parent_result, parent_result.create_runtime() as parent:
+    with builder.verify() as parent_result, parent_result.create_runtime() as parent:
         assert calls == ["parent"]
         child_builder = ScopeBuilder(parent, composition=parent_result.composition)
         child_builder.add_validation_rule(lambda context: calls.append("child") or ())
-        with child_builder.analyse() as result, result.create_runtime() as child:
+        with child_builder.verify() as result, result.create_runtime() as child:
             assert calls == ["parent", "parent", "child"]
             assert isinstance(child.resolve(Consumer), Wrapper)
             assert not hasattr(child._plan, "validation_rules")
-            assert result.report.is_valid
-            assert parent_result.report.is_valid
+            assert result.is_valid
+            assert parent_result.is_valid
         assert calls == ["parent", "parent", "child"]
 
 
@@ -239,8 +240,8 @@ def test_failed_analysis_captures_diagnostics_and_consumes_builder():
     builder.register(Consumer)
     calls = []
     builder.add_validation_rule(lambda context: calls.append("validation") or ())
-    result = builder.analyse()
-    assert result.report.errors[0].code == "missing-component"
+    result = builder.verify()
+    assert result.errors[0].code == "missing-component"
     assert result.partial_graph is not None
     assert not result.emission_complete
     with pytest.raises(BuilderAlreadyBuiltError):
@@ -250,7 +251,7 @@ def test_failed_analysis_captures_diagnostics_and_consumes_builder():
     assert calls == []
 
 
-@pytest.mark.parametrize("operation", ["build", "analyse"])
+@pytest.mark.parametrize("operation", ["build", "verify"])
 def test_escaped_predicate_views_have_deliberate_lifetimes(monkeypatch, operation):
     captured = []
     original = cf.with_name
@@ -319,9 +320,9 @@ def test_overlay_analysis_uses_external_composition_from_execution_parent():
     builder = composition()
     handle = builder.retain_composition()
     with builder.build() as parent:
-        with ScopeBuilder(parent, composition=handle).analyse() as result, result.create_runtime() as child:
-            assert result.report.is_valid
-            assert result.graph.roots
+        with ScopeBuilder(parent, composition=handle).verify() as result, result.create_runtime() as child:
+            assert result.is_valid
+            assert present(result.graph).roots
             assert isinstance(child.resolve(Consumer), Wrapper)
 
 
@@ -442,8 +443,8 @@ def test_failed_final_validation_keeps_complete_frozen_graph_and_callback_views(
         return [next(context.graph.walk()).issue("refused", "intentional build refusal")]
 
     builder.add_validation_rule(reject)
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
     error = caught_analysis
     assert error.graph is not None
     assert error.graph.explain_metadata_enabled
@@ -452,7 +453,7 @@ def test_failed_final_validation_keeps_complete_frozen_graph_and_callback_views(
     assert root.decorators
     assert saved[0].manifest(all_roots=True).fingerprint
     assert builder._built
-    assert error.report.complete
+    assert error.complete
 
 
 def test_execution_build_never_provides_graph_methods_to_rules():

@@ -20,7 +20,7 @@ Factory parameters become compiled dependency edges. The factory itself does not
 
 ## Factory return annotations
 
-Analysis checks a factory's declared result against its registered service. A definite incompatibility
+Verification checks a factory's declared result against its registered service. A definite incompatibility
 produces `factory-return-type-mismatch`; no additional validation rule or policy pack is required:
 
 ```python
@@ -37,9 +37,9 @@ def incorrect_factory() -> str:
 
 builder = ContainerBuilder()
 builder.register(Repository, factory=incorrect_factory)
-result = builder.analyse()
-assert any(issue.code == "factory-return-type-mismatch" for issue in result.report.errors)
-print(result.report.to_text())
+result = builder.verify()
+assert any(issue.code == "factory-return-type-mismatch" for issue in result.errors)
+print(result.to_text())
 
 ```
 
@@ -170,7 +170,7 @@ builder.register(Sender, factory=use_component(SenderImpl))
 builder.register(BatchSender, factory=use_component(SenderImpl))
 ```
 
-`use_component()` and `use_component_async()` attach their target and filter as compiler metadata. The referenced root therefore appears as a dependency edge in the compiled graph and participates in binding and cycle detection. Analysis additionally audits captive lifespans and sync/async compatibility. Runtime use still resolves through the current context to preserve `per_resolution` identity; it does not trigger registration discovery or graph compilation.
+`use_component()` and `use_component_async()` attach their target and filter as compiler metadata. The referenced root therefore appears as a dependency edge in the compiled graph and participates in binding and cycle detection. Verification additionally audits captive lifespans and sync/async compatibility. Runtime use still resolves through the current context to preserve `per_resolution` identity; it does not trigger registration discovery or graph compilation.
 
 Direct calls made through an injected `ResolutionContext` remain dynamic because the compiler cannot inspect arbitrary
 function bodies. Use the helpers when the target is known during composition and should appear in the compiled graph.

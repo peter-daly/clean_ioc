@@ -17,6 +17,7 @@ from clean_ioc import (
     select,
 )
 from clean_ioc import component_filters as cf
+from tests.verification_helpers import present
 
 
 class Source:
@@ -63,12 +64,12 @@ def test_source_and_target_decisions_are_frozen_and_do_not_replay_callbacks():
         return DecoratorTemplate(group, Wrapper, arguments={"source": select(cf.with_id(source.id))}, when=when)
 
     template_id = builder.register_decorator_template(for_each=Source, source_filter=source_filter, template=factory)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
     before = dict(calls)
-    before_manifest = graph.manifest(all_roots=True).to_json()
+    before_manifest = present(graph).manifest(all_roots=True).to_json()
     inspect_started = True
 
-    sources = graph.explain_template_sources(template_id)
+    sources = present(graph).explain_template_sources(template_id)
     assert [(item.source_registration_id, item.selected) for item in sources] == [
         (source_a, True),
         (source_b, False),
@@ -79,9 +80,9 @@ def test_source_and_target_decisions_are_frozen_and_do_not_replay_callbacks():
     assert source_a in sources[0].to_text()
     assert source_a in sources[0].to_json()
     with pytest.raises(FrozenInstanceError):
-        sources[0].selected = False
+        sources[0].selected = False  # ty: ignore[invalid-assignment]
 
-    decisions = {component.name: graph.explain_decorators(component) for component in _roots(graph, Target)}
+    decisions = {component.name: present(graph).explain_decorators(component) for component in _roots(graph, Target)}
     assert [item.template.target_registration_id for item in decisions["a"].selected if item.template] == [target_a]
     assert [item.template.target_registration_id for item in decisions["b"].rejected if item.template] == [target_b]
     assert [item.template.target_registration_id for item in decisions["nonmember"].rejected if item.template] == [
@@ -98,7 +99,7 @@ def test_source_and_target_decisions_are_frozen_and_do_not_replay_callbacks():
     assert selected.template.selector_kind == "service-group"
     assert selected.template.selector_contract.endswith("Target")
     assert "template" in selected.to_dict()
-    assert graph.manifest(all_roots=True).to_json() == before_manifest
+    assert present(graph).manifest(all_roots=True).to_json() == before_manifest
     assert calls == before
 
 
@@ -130,18 +131,18 @@ def test_generic_source_and_target_projections_remain_separate():
             arguments={"source": select(cf.with_id(source.id))},
         ),
     )
-    graph = builder.analyse().graph
-    source_decision = graph.explain_template_sources()[0]
+    graph = builder.verify().graph
+    source_decision = present(graph).explain_template_sources()[0]
     assert any(key.endswith("Backend.T") and value == "str" for key, value in source_decision.source_bindings)
     handler = _roots(graph, Handler)[0]
-    decision = graph.explain_decorators(handler).selected[0].template
+    decision = present(graph).explain_decorators(handler).selected[0].template
     assert decision is not None
     assert decision.source_bindings == source_decision.source_bindings
     assert decision.projected_contract is not None and decision.projected_contract.endswith("Operation[int]")
     assert any(key.endswith("Operation.T") and value == "int" for key, value in decision.target_bindings)
     assert decision.selector_kind == "derived-services"
-    assert "source bindings:" in graph.explain_decorators(handler).to_text()
-    assert "target bindings:" in graph.explain_decorators(handler).to_text()
+    assert "source bindings:" in present(graph).explain_decorators(handler).to_text()
+    assert "target bindings:" in present(graph).explain_decorators(handler).to_text()
 
 
 def test_independent_overlapping_policies_keep_both_identities():
@@ -154,9 +155,9 @@ def test_independent_overlapping_policies_keep_both_identities():
 
     first = builder.register_decorator_template(for_each=Source, template=factory)
     second = builder.register_decorator_template(for_each=Source, template=factory)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
     target = _roots(graph, Target)[0]
-    decisions = graph.explain_decorators(target).selected
+    decisions = present(graph).explain_decorators(target).selected
     assert {decision.template.template_id for decision in decisions if decision.template is not None} == {
         first,
         second,
@@ -178,10 +179,10 @@ def test_alias_target_label_survives_frozen_template_inspection():
             DerivedServices(Target), Wrapper, arguments={"source": select(cf.with_id(source.id))}
         ),
     )
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
     target = _roots(graph, Target)[0]
-    assert graph.explain_decorators(target).selected[0].template is not None
-    assert "PublicTargetAlias" in graph.explain(PublicTargetAlias).subject
+    assert present(graph).explain_decorators(target).selected[0].template is not None
+    assert "PublicTargetAlias" in present(graph).explain(PublicTargetAlias).subject
 
 
 def test_private_boundary_facts_keep_declaration_and_target_context():
@@ -199,14 +200,14 @@ def test_private_boundary_facts_keep_declaration_and_target_context():
 
     builder = ContainerBuilder()
     builder.create_boundary("private", exposes=(Expose(Target),)).apply_bundle(private)
-    graph = builder.analyse().graph
-    sources = graph.explain_template_sources(ids["template"])
+    graph = builder.verify().graph
+    sources = present(graph).explain_template_sources(ids["template"])
     assert len(sources) == 1
     assert sources[0].source_registration_id == ids["source"]
     assert sources[0].declaration_boundary == sources[0].source_boundary == "private"
     assert sources[0].origin.boundary == "private"
     target = _roots(graph, Target)[0]
-    decision = graph.explain_decorators(target).selected[0].template
+    decision = present(graph).explain_decorators(target).selected[0].template
     assert decision is not None
     assert decision.boundary == "private"
     assert decision.template_id == ids["template"]
@@ -224,31 +225,31 @@ def test_anchored_overlay_relabels_target_occurrence_without_replaying_factory()
             DecoratorTemplate(DerivedServices(Target), Wrapper, arguments={"source": select(cf.with_id(info.id))}),
         )[1],
     )
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
     parent = _roots(container_analysis.graph, Target)[0]
-    parent_fact = container_analysis.graph.explain_decorators(parent).selected[0].template
+    parent_fact = present(container_analysis.graph).explain_decorators(parent).selected[0].template
     assert container_analysis.composition is not None
     overlay_builder = ScopeBuilder(container, composition=container_analysis.composition)
     overlay_builder.register(Source, name="new-overlay-source", lifespan="singleton")
-    overlay_analysis = overlay_builder.analyse()
+    overlay_analysis = overlay_builder.verify()
     overlay = overlay_analysis.create_runtime()
     child = _roots(overlay_analysis.graph, Target)[0]
     assert parent_fact is not None and parent_fact.source_registration_id == source
     with pytest.raises(ValueError, match="explain-decorators-not-recorded"):
-        overlay_analysis.graph.explain_decorators(child)
+        present(overlay_analysis.graph).explain_decorators(child)
     assert overlay.resolve(Target) is container.resolve(Target)
     assert child.decorators[0].id == parent.decorators[0].id
-    assert overlay_analysis.graph.explain(child).selected[0].origin.kind == "registration"
+    assert present(overlay_analysis.graph).explain(child).selected[0].origin.kind == "registration"
     assert overlay_analysis.composition is not None
-    grandchild_analysis = ScopeBuilder(overlay, composition=overlay_analysis.composition).analyse()
+    grandchild_analysis = ScopeBuilder(overlay, composition=overlay_analysis.composition).verify()
     grandchild = grandchild_analysis.create_runtime()
     grandchild_target = _roots(grandchild_analysis.graph, Target)[0]
     assert grandchild_target.decorators[0].id == parent.decorators[0].id
     assert grandchild.resolve(Target) is container.resolve(Target)
     before = len(calls)
     for _ in range(3):
-        grandchild_analysis.graph.manifest()
+        present(grandchild_analysis.graph).manifest()
         grandchild.resolve(Target)
     assert len(calls) == before
     assert calls.count(source) == 3
@@ -273,15 +274,15 @@ def test_failure_keeps_context_without_exception_or_argument_secrets():
             DerivedServices(Target), Wrapper, arguments={"unused": secret}, when=broken_filter
         ),
     )
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
     assert caught_analysis.partial_graph is not None
-    issue = caught_analysis.report.errors[0]
+    issue = caught_analysis.errors[0]
     assert issue.code == "decorator-filter-failed"
     assert all(item in issue.path for item in (template, source, target))
     assert "Target" in issue.message
-    output = caught_analysis.report.to_json() + "\n" + caught_analysis.partial_graph.to_json()
+    output = caught_analysis.to_json() + "\n" + caught_analysis.partial_graph.to_json()
     assert "private-filter-value" not in output
     assert "Secret" not in output
     assert "unused" not in output
@@ -301,16 +302,16 @@ def test_pregraph_expansion_failure_identifies_phase_and_source(phase):
         raise RuntimeError("private-factory-secret")
 
     template = builder.register_decorator_template(for_each=Source, source_filter=source_filter, template=factory)
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
     assert caught_analysis.partial_graph is not None
-    issue = caught_analysis.report.errors[0]
+    issue = caught_analysis.errors[0]
     assert issue.code == "template-expansion"
     assert issue.path[:2] == (template, source)
     assert ("Source filter" if phase == "filter" else "Template factory") in issue.message
     assert caught_analysis.partial_graph.attempts[0].witness_path[:2] == (template, source)
-    assert "private-" not in caught_analysis.report.to_json()
+    assert "private-" not in caught_analysis.to_json()
 
 
 def test_hostile_decorator_signature_error_never_formats_exception_text():
@@ -334,14 +335,14 @@ def test_hostile_decorator_signature_error_never_formats_exception_text():
         for_each=Source,
         template=lambda _: DecoratorTemplate(DerivedServices(Target), HostileWrapper),
     )
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
     assert caught_analysis.partial_graph is not None
-    issue = caught_analysis.report.errors[0]
+    issue = caught_analysis.errors[0]
     assert issue.code == "invalid-decorator"
     assert template in issue.path and source in issue.path and target in issue.path
-    output = caught_analysis.report.to_json() + caught_analysis.partial_graph.to_json()
+    output = caught_analysis.to_json() + caught_analysis.partial_graph.to_json()
     assert "private-signature-secret" not in output
     assert "hostile __str__" not in output
     assert "HostileError" in issue.message
@@ -361,14 +362,14 @@ def test_callback_container_build_error_cannot_supply_report_code_or_path(phase)
         raise ContainerBuildError("private-message", code="private-code", path=("private-path",))
 
     template = builder.register_decorator_template(for_each=Source, source_filter=source_filter, template=factory)
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
     assert caught_analysis.partial_graph is not None
-    issue = caught_analysis.report.errors[0]
+    issue = caught_analysis.errors[0]
     assert issue.code == "template-expansion"
     assert issue.path == (template, source)
-    output = caught_analysis.report.to_json() + caught_analysis.partial_graph.to_json()
+    output = caught_analysis.to_json() + caught_analysis.partial_graph.to_json()
     assert "private-" not in output
 
 
@@ -386,14 +387,14 @@ def test_clone_explanations_follow_growing_and_sibling_occurrence_mappings():
             DerivedServices(Target), Wrapper, arguments={"source": select(cf.with_id(info.id))}
         ),
     )
-    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
+    with builder.verify() as container_analysis, container_analysis.create_runtime() as _container:
         graph = container_analysis.graph
         target = _roots(graph, Target)[0]
         source = _roots(graph, Source)[0]
-        explanation = graph.explain_decorators(target)
+        explanation = present(graph).explain_decorators(target)
         # Include both selected and rejected facts so every target participates
         # in the key, including a target not yet encountered during traversal.
-        rejected = graph.explain_decorators(source).rejected
+        rejected = present(graph).explain_decorators(source).rejected
         explanation = replace(explanation, rejected=rejected)
         context = _ExplanationCloneContext()
         mapping = {}
@@ -415,7 +416,7 @@ def test_clone_explanations_follow_growing_and_sibling_occurrence_mappings():
         assert context.remap(explanation, {}) is explanation
         other_explanation = replace(explanation, subject="other graph")
         assert context.remap(other_explanation, mapping).subject == "other graph"
-        ordinary = graph.explain(target)
+        ordinary = present(graph).explain(target)
         assert context.remap(ordinary, mapping) is ordinary
 
 
@@ -434,11 +435,11 @@ def test_compact_decorator_clones_match_eager_facts_and_flatten_remappings():
             DerivedServices(Target), Wrapper, arguments={"source": select(cf.with_id(info.id))}
         ),
     )
-    with builder.analyse() as container_analysis, container_analysis.create_runtime() as _container:
+    with builder.verify() as container_analysis, container_analysis.create_runtime() as _container:
         graph = container_analysis.graph
         target = _roots(graph, Target)[0]
         source = _roots(graph, Source)[0]
-        original = graph.explain_decorators(target)
+        original = present(graph).explain_decorators(target)
         # Include an ordinary decision and a rejection with the same target;
         # preserve every captured field while remapping only the occurrence.
         original = replace(
@@ -465,7 +466,7 @@ def test_compact_decorator_clones_match_eager_facts_and_flatten_remappings():
         assert nested.source is original
         assert nested.materialize() == original
         assert compact.materialize() == eager
-        multiple_targets = replace(original, rejected=graph.explain_decorators(source).rejected)
+        multiple_targets = replace(original, rejected=present(graph).explain_decorators(source).rejected)
         fallback = context.remap_decorators(multiple_targets, mapping)
         assert isinstance(fallback, CompilationExplanation)
         assert fallback == context.remap(multiple_targets, mapping)

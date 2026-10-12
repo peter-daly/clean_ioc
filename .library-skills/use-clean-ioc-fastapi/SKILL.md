@@ -1,6 +1,6 @@
 ---
 name: use-clean-ioc-fastapi
-description: Use Clean IoC 2 with FastAPI to build an application runtime, install lifespan and request scope ownership, declare request slots, resolve endpoint services, analyse composition separately, and test cleanup. Use when code combines fastapi with clean_ioc.ext.fastapi.
+description: Use Clean IoC 2 with FastAPI to build an application runtime, install lifespan and request scope ownership, declare request slots, resolve endpoint services, verify composition separately, and test cleanup. Use when code combines fastapi with clean_ioc.ext.fastapi.
 ---
 
 # Use Clean IoC with FastAPI
@@ -34,9 +34,9 @@ async def endpoint(service: Service = Resolve(Service)):
 
 ## Separate production and validation
 
-`build()` emits execution instructions without custom validation rules or safety-policy checks. In CI or development, call `application_builder().analyse()` on a fresh builder with the intended composition inputs. Review its completed report, including errors, warnings and coverage. No compiler validation runs implicitly during application build.
+`build()` emits execution instructions without custom validation rules or safety-policy checks. In CI or development, call `application_builder().verify()` on a fresh builder with the intended composition inputs. Review its completed report, including errors, warnings and coverage. No compiler validation runs implicitly during application build.
 
-Use `result.create_runtime()` when a test needs the analysed plan and resolution without compiling again. Keep the analysis result alive around the test application and close it afterward; it owns its created test runtimes. Every admitted build or analysis attempt consumes the builder, even on failure.
+Use `result.create_runtime()` when a test needs the verified plan and resolution without compiling again. Keep the verification report alive around the test application and close it afterward; it owns its created test runtimes. Every admitted build or verification attempt consumes the builder, even on failure.
 
 ## Map ownership correctly
 
@@ -45,7 +45,7 @@ Use `result.create_runtime()` when a test needs the analysed plan and resolution
 - `per_resolution`: one endpoint-root resolution;
 - `transient`: each dependency edge.
 
-Analysis reports captive dependencies, such as a singleton retaining request state. Runtime scope and cleanup guards remain active. Use async lifespan/context management when any resource has async cleanup.
+Verification reports captive dependencies, such as a singleton retaining request state. Runtime scope and cleanup guards remain active. Use async lifespan/context management when any resource has async cleanup.
 
 ## Declare late values before compilation
 

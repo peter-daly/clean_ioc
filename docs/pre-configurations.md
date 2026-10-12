@@ -1,6 +1,6 @@
 # Pre-configurations
 
-A pre-configuration is a lazy, container-owned initializer. `build()` binds its dependencies and adds the initializer to the execution plan. `analyse()` also audits the dependency path as singleton-owned. The function itself does not run until the first applicable component is activated.
+A pre-configuration is a lazy, container-owned initializer. `build()` binds its dependencies and adds the initializer to the execution plan. `verify()` also audits the dependency path as singleton-owned. The function itself does not run until the first applicable component is activated.
 
 ```python
 import logging
@@ -49,7 +49,7 @@ Applicable initializers run in declaration order. In an overlay, inherited paren
 
 ## Lifespans and cleanup
 
-An initializer is effectively singleton even when the component that triggers it is transient. Analysis audits its complete dependency path as singleton-owned:
+An initializer is effectively singleton even when the component that triggers it is transient. Verification audits its complete dependency path as singleton-owned:
 
 ```text
 pre-configuration -> scoped          invalid

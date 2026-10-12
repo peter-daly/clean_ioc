@@ -14,6 +14,7 @@ from clean_ioc import (
 )
 from clean_ioc import component_filters as cf
 from clean_ioc.cli import main
+from tests.verification_helpers import present
 
 
 class Leaf:
@@ -44,7 +45,7 @@ def builder():
 
 
 def test_completed_advisories_keep_exact_findings_without_replaying_callbacks(monkeypatch):
-    eager = builder().set_provider_roots(()).analyse()
+    eager = builder().set_provider_roots(()).verify()
     calls = []
     result = builder()
 
@@ -55,9 +56,9 @@ def test_completed_advisories_keep_exact_findings_without_replaying_callbacks(mo
     result.register(str, instance="extra", when=eligible)
     result.mark_entrypoint(list[str], filter=eligible)
     result.set_provider_roots(())
-    with result.analyse() as analysis, analysis.create_runtime() as runtime:
+    with result.verify() as analysis, analysis.create_runtime() as runtime:
         baseline = tuple(calls)
-        assert analysis.report.warnings == eager.report.warnings
+        assert analysis.warnings == eager.warnings
         assert not hasattr(runtime._plan, "unreachable_checked")
         root = next(root.component for root in analysis.graph.roots if root.requested_type is Root)
         assert analysis.graph.explain(root).selected[0].origin.layer == "root"
@@ -65,11 +66,11 @@ def test_completed_advisories_keep_exact_findings_without_replaying_callbacks(mo
         assert analysis.graph.to_text(all_roots=True)
         assert runtime.selected_registrations
         assert analysis.selection_census(all_roots=True)
-        monkeypatch.setattr(ContainerBuilder, "analyse", lambda *a, **kw: pytest.fail("unexpected compilation"))
+        monkeypatch.setattr(ContainerBuilder, "verify", lambda *a, **kw: pytest.fail("unexpected compilation"))
         monkeypatch.setattr(Root, "__init__", lambda *a, **kw: pytest.fail("unexpected activation"))
         for _ in range(2):
-            assert analysis.report.issues == eager.report.issues
-            assert analysis.triage_report().report.issues == eager.report.issues
+            assert analysis.issues == eager.issues
+            assert analysis.triage_report().report.issues == eager.issues
         assert tuple(calls) == baseline
 
 
@@ -92,22 +93,24 @@ def test_minimal_entrypoint_selection_preserves_fallbacks_providers_decorators_a
         # A narrower request must still select fallback when ordinary is filtered out.
         result.mark_entrypoint(Root, filter=cf.with_name("fallback"))
         result.set_provider_roots(())
-        with result.analyse() as scope_analysis, scope_analysis.create_runtime() as scope:
-            names = tuple(root.component.name for root in scope_analysis.graph.entrypoints)
+        with result.verify() as scope_analysis, scope_analysis.create_runtime() as scope:
+            names = tuple(root.component.name for root in present(scope_analysis.graph).entrypoints)
             assert names == ("ordinary", "ordinary", "fallback")
             assert isinstance(scope.resolve(Root, filter=cf.with_name("ordinary")), Wrapped)
             fallback = next(
-                root.component for root in scope_analysis.graph.entrypoints if root.component.name == "fallback"
+                root.component
+                for root in present(scope_analysis.graph).entrypoints
+                if root.component.name == "fallback"
             )
-            assert "selected-fallback" in scope_analysis.graph.explain(fallback).selected[0].reason_codes
-            assert scope_analysis.graph.explain_decorators(fallback).selected
-            manifest = scope_analysis.graph.manifest(all_roots=True).fingerprint
+            assert "selected-fallback" in present(scope_analysis.graph).explain(fallback).selected[0].reason_codes
+            assert present(scope_analysis.graph).explain_decorators(fallback).selected
+            manifest = present(scope_analysis.graph).manifest(all_roots=True).fingerprint
             if diagnostics:
-                assert scope_analysis.graph._known_root_selections
-                assert scope_analysis.graph._census_root_selections
-                assert scope_analysis.graph.explain(Root, filter=select).rejected
+                assert present(scope_analysis.graph)._known_root_selections
+                assert present(scope_analysis.graph)._census_root_selections
+                assert present(scope_analysis.graph).explain(Root, filter=select).rejected
             else:
-                assert scope_analysis.graph.explain(Root, filter=select).rejected
+                assert present(scope_analysis.graph).explain(Root, filter=select).rejected
             return calls, manifest
 
     plain, rich = run(False), run(True)
@@ -130,18 +133,18 @@ def test_boundary_selection_and_contracts_survive_deferred_compact_overlay(diagn
         boundary.register(Unused)
         boundary.mark_entrypoint(Root)
         overlay.set_provider_roots(())
-        with overlay.analyse() as child_analysis, child_analysis.create_runtime() as child:
-            assert any(issue.code == "unreachable-component" for issue in child_analysis.report.warnings)
-            assert child_analysis.graph.boundaries[0]["name"] == "internal"
-            assert child_analysis.graph.boundaries[0]["exposures"]
-            assert any(root.boundary == "internal" for root in child_analysis.graph.entrypoints)
+        with overlay.verify() as child_analysis, child_analysis.create_runtime() as child:
+            assert any(issue.code == "unreachable-component" for issue in child_analysis.warnings)
+            assert present(child_analysis.graph).boundaries[0]["name"] == "internal"
+            assert present(child_analysis.graph).boundaries[0]["exposures"]
+            assert any(root.boundary == "internal" for root in present(child_analysis.graph).entrypoints)
             assert isinstance(child.resolve(Root).leaf, Leaf)
             assert child.resolve(Leaf) is container.resolve(Leaf)
             if diagnostics:
-                assert any(area == "internal" for area, _ in child_analysis.graph._census_root_selections)
+                assert any(area == "internal" for area, _ in present(child_analysis.graph)._census_root_selections)
             else:
-                assert child_analysis.graph._known_root_selections
-                assert child_analysis.graph._census_root_selections
+                assert present(child_analysis.graph)._known_root_selections
+                assert present(child_analysis.graph)._census_root_selections
 
 
 @pytest.mark.parametrize("value", [None, 0, 1, "yes"])
@@ -172,11 +175,11 @@ def test_entrypoint_callback_budget_and_prior_errors_are_never_deferred(diagnost
 
     result.mark_entrypoint(Leaf, filter=select)
     result.set_provider_roots(())
-    caught_analysis = result.analyse(budget=CompilationBudget(preparation_operations=1))
-    assert not caught_analysis.report.is_valid
+    caught_analysis = result.verify(budget=CompilationBudget(preparation_operations=1))
+    assert not caught_analysis.is_valid
     assert not calls
-    assert caught_analysis.report is not None
-    assert [issue.code for issue in caught_analysis.report.errors] == [
+    assert caught_analysis is not None
+    assert [issue.code for issue in caught_analysis.errors] == [
         "missing-entrypoint",
         "compilation-budget-exceeded",
     ]
@@ -199,11 +202,11 @@ def test_build_skips_policies_and_analysis_completes_them_once():
         assert calls == []
     analysis_builder = builder()
     analysis_builder.add_validation_rule(safety)
-    result = analysis_builder.analyse()
-    assert any(issue.code == "application-safety" for issue in result.report.errors)
+    result = analysis_builder.verify()
+    assert any(issue.code == "application-safety" for issue in result.errors)
     assert calls == ["policy"]
     for _ in range(2):
-        assert not result.report.is_valid
+        assert not result.is_valid
     assert calls == ["policy"]
 
 
@@ -212,19 +215,19 @@ def test_cli_strict_check_recovers_deferred_findings_from_existing_scope(monkeyp
 
     composition_builder_227 = builder()
     composition_builder_227.set_provider_roots(())
-    with composition_builder_227.analyse() as scope_analysis, scope_analysis.create_runtime() as _scope:
+    with composition_builder_227.verify() as scope_analysis, scope_analysis.create_runtime() as _scope:
         monkeypatch.setattr(cli, "_load_object", lambda _: scope_analysis)
         assert main(["check", "test:scope", "--strict"]) == 1
         assert "unreachable-component" in capsys.readouterr().out
         assert main(["check", "test:scope", "--strict", "--ignore", "unreachable-component"]) == 0
-        assert scope_analysis.report.warnings
+        assert scope_analysis.warnings
 
 
 def test_analysis_preserves_equal_findings_from_distinct_rule_declarations():
     initial = builder()
     initial.set_provider_roots(())
-    with initial.analyse() as initial_analysis:
-        advisory = initial_analysis.report.warnings[0]
+    with initial.verify() as initial_analysis:
+        advisory = initial_analysis.warnings[0]
     application_warning = BuildIssue("application-warning", IssueSeverity.warning, "Custom application advisory")
     validation_warning = BuildIssue("validation-warning", IssueSeverity.warning, "Custom validation advisory")
     calls = []
@@ -241,13 +244,13 @@ def test_analysis_preserves_equal_findings_from_distinct_rule_declarations():
     composition.add_validation_rule(first_rule)
     composition.add_validation_rule(second_rule)
     composition.set_provider_roots(())
-    with composition.analyse() as analysis:
-        report = analysis.report
+    with composition.verify() as analysis:
+        report = analysis
         assert report.issues == (advisory, application_warning, advisory, validation_warning, advisory)
         # The same declaration's duplicate is removed, while each distinct source survives.
         assert len({issue._origin for issue in report.issues if issue == advisory}) == 3
         for _ in range(2):
-            assert analysis.report is report
+            assert analysis is report
             analysis.triage_report()
             report.to_sarif()
         assert calls == ["first", "second"]

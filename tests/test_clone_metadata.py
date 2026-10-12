@@ -40,12 +40,12 @@ def _normalized(value, replacements):
 
 
 def _assert_equivalent(make_builder, monkeypatch, *, build_args=None):
-    optimized = make_builder().analyse(build_args=build_args)
+    optimized = make_builder().verify(build_args=build_args)
     with monkeypatch.context() as patch:
         patch.setattr(compiler_module._Compiler, "_draft", _baseline_draft(compiler_module._Compiler._draft))
-        baseline = make_builder().analyse(build_args=build_args)
-    optimized.report.assert_valid()
-    baseline.report.assert_valid()
+        baseline = make_builder().verify(build_args=build_args)
+    optimized.assert_valid()
+    baseline.assert_valid()
     left = optimized.graph.roots[0].component._graph._records
     right = baseline.graph.roots[0].component._graph._records
     assert tuple(left) == tuple(right)
@@ -67,7 +67,7 @@ def _assert_equivalent(make_builder, monkeypatch, *, build_args=None):
     assert optimized.graph.manifest(all_roots=True).to_json() == baseline.graph.manifest(all_roots=True).to_json()
     assert optimized.graph.manifest().fingerprint == baseline.graph.manifest().fingerprint
     assert not optimized.graph.diff(baseline.graph.manifest()).changed
-    assert optimized.report.to_json() == baseline.report.to_json()
+    assert optimized.to_json() == baseline.to_json()
     assert optimized.graph.to_text(all_roots=True) == baseline.graph.to_text(all_roots=True)
     assert optimized.graph.to_mermaid(all_roots=True) == baseline.graph.to_mermaid(all_roots=True)
     assert optimized.graph.ownership_report().to_json() == baseline.graph.ownership_report().to_json()
@@ -227,6 +227,6 @@ def test_captured_type_survives_changed_signature_getter_but_fresh_inspection_fa
             if baseline:
                 patch.setattr(compiler_module._Compiler, "_draft", _baseline_draft(original))
             with pytest.raises(RuntimeError, match="dynamic signature changed after capture"):
-                builder.analyse()
+                builder.verify()
         assert fresh_callbacks == []
         assert fresh_factory.activations == 0

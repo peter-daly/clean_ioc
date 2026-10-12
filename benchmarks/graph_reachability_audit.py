@@ -208,7 +208,7 @@ def audit(plan, *, external_components=()):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--routes", type=int, default=8)
-    parser.add_argument("--operation", choices=("build", "analyse"), default="build")
+    parser.add_argument("--operation", choices=("build", "verify"), default="build")
     parser.add_argument("--trace-audit", action="store_true")
     parser.add_argument("--capture-selection-views", action="store_true")
     parser.add_argument("--output", type=Path, required=True)

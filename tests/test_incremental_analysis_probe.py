@@ -205,9 +205,7 @@ def test_fresh_builds_keep_graphs_counts_and_owners(shape):
         profiler = CompilationProfiler()
         with investigation(mode, probe):
             with (
-                fixtures.make_builder(shape).analyse(
-                    **fixtures.build_inputs(shape), profile=profiler
-                ) as owner_analysis,
+                fixtures.make_builder(shape).verify(**fixtures.build_inputs(shape), profile=profiler) as owner_analysis,
                 owner_analysis.create_runtime() as _owner,
             ):
                 manifests.append(owner_analysis.graph.manifest(all_roots=True).fingerprint)

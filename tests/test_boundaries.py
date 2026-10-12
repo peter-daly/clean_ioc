@@ -23,6 +23,7 @@ from clean_ioc import (
 )
 from clean_ioc import component_filters as cf
 from clean_ioc.bundles import BaseBundle, OnlyRunOncePerInstanceBundle
+from tests.verification_helpers import present
 
 
 @dataclass(frozen=True)
@@ -137,14 +138,14 @@ def application_builder() -> ContainerBuilder:
 
 
 def issue_code(builder) -> str:
-    captured_analysis = builder.analyse()
-    assert not captured_analysis.report.is_valid
-    assert captured_analysis.report is not None
-    return captured_analysis.report.errors[0].code
+    captured_analysis = builder.verify()
+    assert not captured_analysis.is_valid
+    assert captured_analysis is not None
+    return captured_analysis.errors[0].code
 
 
 def test_private_by_default_exposed_at_root_and_used_explicitly():
-    container_analysis = application_builder().analyse()
+    container_analysis = application_builder().verify()
     container = container_analysis.create_runtime()
 
     with container.new_scope() as scope:
@@ -157,7 +158,7 @@ def test_private_by_default_exposed_at_root_and_used_explicitly():
     assert not container.has_component(Repository)
     assert container.has_component(Gateway)
     assert container.has_component(PlaceOrder)
-    assert {root.component.boundary for root in container_analysis.graph.entrypoints} == {"orders"}
+    assert {root.component.boundary for root in present(container_analysis.graph).entrypoints} == {"orders"}
 
 
 def test_exposure_and_use_preserve_named_tagged_singleton_identity():
@@ -241,7 +242,7 @@ def test_exposure_alias_can_publish_a_complete_public_identity():
     builder.create_boundary(
         "checkout", uses=(Use("payments", PublicGateway, filter=cf.with_name("primary")),), exposes=(Expose(Checkout),)
     ).apply_bundle(checkout)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
 
     exposed = container.resolve(PublicGateway, filter=cf.with_name("primary"))
@@ -257,7 +258,7 @@ def test_exposure_alias_can_publish_a_complete_public_identity():
 
     gateway_roots = [
         root
-        for root in container_analysis.graph.roots
+        for root in present(container_analysis.graph).roots
         if root.component.service_type in (Gateway, PublicGateway, AlternateGateway)
     ]
     assert {(root.area, root.component.service_type, root.component.name) for root in gateway_roots} == {
@@ -267,7 +268,9 @@ def test_exposure_alias_can_publish_a_complete_public_identity():
     }
     assert len({root.component.id for root in gateway_roots}) == 1
 
-    contracts = {item["name"]: item for item in container_analysis.graph.manifest(all_roots=True).data["boundaries"]}
+    contracts = {
+        item["name"]: item for item in present(container_analysis.graph).manifest(all_roots=True).data["boundaries"]
+    }
     public = next(exposure for exposure in contracts["payments"]["exposures"] if exposure["name"] == "primary")
     assert public["service"].endswith(".PublicGateway")
     assert public["source_service"].endswith(".Gateway")
@@ -297,16 +300,18 @@ def test_boundary_alias_can_publish_a_named_source_as_the_unnamed_default():
             ),
         ),
     ).apply_bundle(source)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
 
     assert isinstance(container.resolve(Public), Internal)
     assert container.has_component(Public)
     assert not container.has_component(Public, filter=cf.with_name("private"))
-    public = next(root.component for root in container_analysis.graph.roots if root.component.service_type is Public)
+    public = next(
+        root.component for root in present(container_analysis.graph).roots if root.component.service_type is Public
+    )
     private = next(
         root.component
-        for root in container_analysis.graph.roots
+        for root in present(container_analysis.graph).roots
         if root.area == "source" and root.component.service_type is Internal
     )
     assert (public.name, public.tags) == (None, ())
@@ -540,7 +545,7 @@ def test_boundary_alias_duplicate_identity_canonicalizes_tag_order():
             ),
         ),
     ).apply_bundle(source)
-    exposure = manifest_builder.analyse().graph.manifest().data["boundaries"][0]["exposures"][0]
+    exposure = present(manifest_builder.verify().graph).manifest().data["boundaries"][0]["exposures"][0]
     assert exposure["tags"] == [
         {"name": "same", "value": None},
         {"name": "same", "value": ""},
@@ -564,7 +569,7 @@ def test_boundary_alias_duplicate_identity_canonicalizes_tag_order():
 
 
 def test_boundary_install_order_does_not_change_resolution_or_manifest():
-    first_analysis = application_builder().analyse()
+    first_analysis = application_builder().verify()
     _first = first_analysis.create_runtime()
     second_builder = ContainerBuilder()
     second_builder.register(Settings, instance=Settings("secret"))
@@ -574,13 +579,13 @@ def test_boundary_install_order_does_not_change_resolution_or_manifest():
     second_builder.create_boundary("payments", uses=(Use.root(Settings),), exposes=(Expose(Gateway),)).apply_bundle(
         payments_bundle
     )
-    second_analysis = second_builder.analyse()
+    second_analysis = second_builder.verify()
     second = second_analysis.create_runtime()
 
     assert isinstance(second.resolve(PlaceOrder).gateway, StripeGateway)
     assert (
-        first_analysis.graph.manifest(all_roots=True).to_json()
-        == second_analysis.graph.manifest(all_roots=True).to_json()
+        present(first_analysis.graph).manifest(all_roots=True).to_json()
+        == present(second_analysis.graph).manifest(all_roots=True).to_json()
     )
 
 
@@ -604,14 +609,14 @@ def test_missing_visibility_reports_private_source_and_boundary_decisions():
     builder.create_boundary("payments", uses=(Use.root(Settings),)).apply_bundle(payments_bundle)
     builder.create_boundary("orders", exposes=(Expose(PlaceOrder),)).apply_bundle(orders_bundle)
 
-    captured_analysis = builder.analyse()
-    assert not captured_analysis.report.is_valid
-    assert captured_analysis.report is not None
-    assert {issue.code for issue in captured_analysis.report.errors} == {"boundary-private-component"}
-    assert "payments" in captured_analysis.report.errors[0].message
+    captured_analysis = builder.verify()
+    assert not captured_analysis.is_valid
+    assert captured_analysis is not None
+    assert {issue.code for issue in captured_analysis.errors} == {"boundary-private-component"}
+    assert "payments" in captured_analysis.errors[0].message
     assert any(
         "rejected-not-exposed" in decision.reason_codes
-        for explanation in captured_analysis.report._explanations
+        for explanation in captured_analysis._explanations
         for decision in explanation.rejected
     )
 
@@ -629,10 +634,10 @@ def test_invalid_names_are_structured(name, expected):
         with pytest.raises(ContainerBuildError) as captured:
             builder.create_boundary(name)
         assert captured.value.code == expected
-        assert builder.analyse().graph.boundaries == ()
+        assert present(builder.verify().graph).boundaries == ()
     else:
         builder.create_boundary(name)
-        assert any(issue.code == expected for issue in builder.analyse().report.errors)
+        assert any(issue.code == expected for issue in builder.verify().errors)
 
 
 def test_duplicate_names_missing_sources_and_cycles_are_structured():
@@ -649,11 +654,11 @@ def test_duplicate_names_missing_sources_and_cycles_are_structured():
     cycle = ContainerBuilder()
     cycle.create_boundary("first", uses=(Use("second", Gateway),)).apply_bundle(lambda builder: None)
     cycle.create_boundary("second", uses=(Use("first", Gateway),)).apply_bundle(lambda builder: None)
-    captured_analysis = cycle.analyse()
-    assert not captured_analysis.report.is_valid
-    assert captured_analysis.report is not None
-    assert captured_analysis.report.errors[0].code == "boundary-use-cycle"
-    assert captured_analysis.report.errors[0].path == ("first", "second", "first")
+    captured_analysis = cycle.verify()
+    assert not captured_analysis.is_valid
+    assert captured_analysis is not None
+    assert captured_analysis.errors[0].code == "boundary-use-cycle"
+    assert captured_analysis.errors[0].path == ("first", "second", "first")
 
 
 def test_expose_and_use_cardinality_and_reexport_are_validated():
@@ -720,18 +725,18 @@ def test_root_entrypoint_can_select_a_boundary_alias_by_its_public_identity():
         ),
     ).apply_bundle(source)
     builder.mark_entrypoint(Public, filter=cf.has_tag("side", "public"))
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     _container = container_analysis.create_runtime()
 
-    assert len(container_analysis.graph.entrypoints) == 1
-    entrypoint = container_analysis.graph.entrypoints[0]
+    assert len(present(container_analysis.graph).entrypoints) == 1
+    entrypoint = present(container_analysis.graph).entrypoints[0]
     assert entrypoint.requested_type is Public
     assert entrypoint.area is None
     assert entrypoint.component.service_type is Public
     assert entrypoint.component.name == "public"
     assert entrypoint.component.tags == (Tag("side", "public"),)
     assert entrypoint.component.boundary == "source"
-    assert container_analysis.graph.manifest().data["roots"][0]["service"].endswith(".Public")
+    assert present(container_analysis.graph).manifest().data["roots"][0]["service"].endswith(".Public")
 
 
 def test_decorators_do_not_cross_boundaries_and_explicit_cross_attempt_is_rejected():
@@ -827,10 +832,10 @@ def test_overlay_can_add_a_boundary_use_parent_exposure_but_cannot_reopen_it():
 
 
 def test_manifest_provenance_rendering_and_semantic_diff_include_boundaries():
-    container_analysis = application_builder().analyse()
+    container_analysis = application_builder().verify()
     _container = container_analysis.create_runtime()
     graph = container_analysis.graph
-    manifest = graph.manifest(all_roots=True)
+    manifest = present(graph).manifest(all_roots=True)
 
     assert "schema_version" not in manifest.data
     assert [item["name"] for item in manifest.data["boundaries"]] == ["orders", "payments"]
@@ -846,31 +851,33 @@ def test_manifest_provenance_rendering_and_semantic_diff_include_boundaries():
     assert restored.to_dict() == manifest.to_dict()
     assert restored.fingerprint == manifest.fingerprint
     assert restored.diff(manifest).is_empty
-    assert "boundary=orders" in graph.to_text(all_roots=True)
-    assert "boundary:payments" in graph.to_mermaid(all_roots=True)
-    order = next(root.component for root in graph.roots if root.component.service_type is PlaceOrder)
-    explanation = graph.explain(order)
+    assert "boundary=orders" in present(graph).to_text(all_roots=True)
+    assert "boundary:payments" in present(graph).to_mermaid(all_roots=True)
+    order = next(root.component for root in present(graph).roots if root.component.service_type is PlaceOrder)
+    explanation = present(graph).explain(order)
     assert explanation.selected[0].origin.boundary == "orders"
     origin = explanation.selected[0].origin.to_dict()
     assert origin["boundary"] == "orders"
     assert "assembly" not in origin
-    assert {root.boundary for root in graph.entrypoints} == {"orders"}
-    assert {visit.boundary for visit in graph.walk()} == {None, "orders", "payments"}
-    ownership = graph.ownership_report().to_dict()
+    assert {root.boundary for root in present(graph).entrypoints} == {"orders"}
+    assert {visit.boundary for visit in present(graph).walk()} == {None, "orders", "payments"}
+    ownership = present(graph).ownership_report().to_dict()
     assert {record["boundary"] for record in ownership["records"]} == {None, "orders", "payments"}
     assert all("assembly" not in record for record in ownership["records"])
     assert "selected-use" in next(
-        graph.explain(child).selected[0].reason_codes for child in order.dependencies if child.service_type is Gateway
+        present(graph).explain(child).selected[0].reason_codes
+        for child in order.dependencies
+        if child.service_type is Gateway
     )
 
-    without = ContainerBuilder().analyse().graph.manifest(all_roots=True)
+    without = present(ContainerBuilder().verify().graph).manifest(all_roots=True)
     changes = manifest.diff(without).semantic_changes
     assert {change.category for change in changes} >= {"boundary-added"}
     assert "boundary-removed" in {change.category for change in without.diff(manifest).semantic_changes}
 
 
 def test_semantic_diff_reports_removed_boundary_access_and_bypasses():
-    baseline = application_builder().analyse().graph.manifest(all_roots=True)
+    baseline = present(application_builder().verify().graph).manifest(all_roots=True)
     data = baseline.to_dict()
     orders = next(boundary for boundary in data["boundaries"] if boundary["name"] == "orders")
     orders["uses"] = []
@@ -925,7 +932,7 @@ def test_semantic_diff_reports_boundary_alias_contract_changes(changed_alias):
         builder.create_boundary(
             "source", exposes=(Expose(Gateway, filter=cf.with_name("stripe"), alias=alias),)
         ).apply_bundle(source)
-        return builder.analyse().graph.manifest(all_roots=True)
+        return present(builder.verify().graph).manifest(all_roots=True)
 
     baseline = manifest(baseline_alias)
     changed = manifest(changed_alias)
@@ -948,7 +955,7 @@ def test_semantic_diff_reports_a_component_moving_between_boundaries():
         builder = ContainerBuilder()
         builder.create_boundary(name, exposes=(Expose(Repository),)).apply_bundle(bundle)
         builder.mark_entrypoint(Repository)
-        return builder.analyse().graph.manifest()
+        return present(builder.verify().graph).manifest()
 
     changes = manifest("reporting").diff(manifest("orders")).semantic_changes
     moved = [change for change in changes if change.category == "boundary-component-moved"]
@@ -973,7 +980,7 @@ def test_root_and_local_validation_rules_receive_the_promised_graph_views():
         boundary_builder.add_validation_rule(validate)
 
     builder.create_boundary("reporting").apply_bundle(local_bundle)
-    builder.analyse()
+    builder.verify()
 
     root_view = next(areas for boundary, areas in seen if boundary is None)
     local_view = next(areas for boundary, areas in seen if boundary == "reporting")
@@ -1013,7 +1020,7 @@ def test_validation_occurrence_path_caches_are_isolated_between_full_and_boundar
 
     for name in ("first", "second"):
         builder.create_boundary(name).apply_bundle(local_bundle)
-    with builder.analyse(budget=budget) as owner_analysis, owner_analysis.create_runtime() as _owner:
+    with builder.verify(budget=budget) as owner_analysis, owner_analysis.create_runtime() as _owner:
         assert graphs[None] is owner_analysis.graph
         assert graphs[None]._occurrence_paths_cache is not graphs["first"]._occurrence_paths_cache
         assert graphs["first"]._occurrence_paths_cache is not graphs["second"]._occurrence_paths_cache
@@ -1204,14 +1211,14 @@ def test_open_generic_factory_alias_specializes_the_source_service():
         ),
         exposes=(Expose(Consumer),),
     ).apply_bundle(consumer)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
 
     product = container.resolve(PublicGenericProduct[int])
     assert isinstance(product, GenericProduct)
     assert isinstance(product.dependency, IntGenericDependency)
     public_root = next(
-        root for root in container_analysis.graph.roots if root.requested_type == PublicGenericProduct[int]
+        root for root in present(container_analysis.graph).roots if root.requested_type == PublicGenericProduct[int]
     )
     assert public_root.component.service_type == PublicGenericProduct[int]
     assert container.resolve(Consumer).product is not product

@@ -13,18 +13,19 @@ from jsonschema import Draft4Validator
 
 import clean_ioc.component_filters as cf
 from clean_ioc import (
-    AnalysisReport,
     BuildIssue,
     ContainerBuilder,
     ContainerBuildError,
     IssueSeverity,
     Provider,
     ScopeBuilder,
+    VerificationReport,
     build_arg,
 )
 from clean_ioc.cli import main
 from clean_ioc.policies import PolicyPack, forbid_dependency
 from clean_ioc.tooling import CompiledGraph, FailureEvidence, SourceLocation, qualified_name
+from tests.verification_helpers import present
 
 
 @pytest.fixture(scope="module")
@@ -64,9 +65,9 @@ def policy_builder(mode="validation"):
 def test_valid_report_is_deterministic_and_records_version_and_complete_graph_fingerprint(validator):
     builder = ContainerBuilder()
     builder.register(Dependency)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     _container = container_analysis.create_runtime()
-    report = container_analysis.report
+    report = container_analysis
     value = report.to_sarif(graph=container_analysis.graph)
     run = validated_run(value, validator)
 
@@ -74,7 +75,7 @@ def test_valid_report_is_deterministic_and_records_version_and_complete_graph_fi
     assert run["tool"]["driver"]["version"] == version("clean_ioc")
     assert run["properties"] == {
         "checkedRoots": 1,
-        "graphFingerprint": container_analysis.graph.manifest(all_roots=True).fingerprint,
+        "graphFingerprint": present(container_analysis.graph).manifest(all_roots=True).fingerprint,
     }
     assert value == report.to_sarif(graph=container_analysis.graph)
     assert json.loads(value) == json.loads(report.to_sarif(graph=container_analysis.graph, indent=None))
@@ -105,21 +106,21 @@ def test_cli_policy_failures_have_registration_locations_and_source_linked_depen
 
 
 def test_programmatic_failed_policy_keeps_complete_graph_and_uses_same_renderer(validator):
-    raised_analysis = policy_builder("build").analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = policy_builder("build").verify()
+    assert not raised_analysis.is_valid
     error = raised_analysis
     assert error.graph is not None
-    assert error.report is not None
-    run = validated_run(error.report.to_sarif(), validator)
+    assert error is not None
+    run = validated_run(error.to_sarif(), validator)
     assert run["properties"]["graphFingerprint"] == error.graph.manifest(all_roots=True).fingerprint
-    assert json.loads(error.report.to_sarif()) == json.loads(error.report.to_sarif(graph=error.graph))
+    assert json.loads(error.to_sarif()) == json.loads(error.to_sarif(graph=error.graph))
 
 
 def test_schema_valid_report_without_provenance_or_any_source_information(validator, monkeypatch):
     monkeypatch.setattr("clean_ioc.container._source_reference", lambda: None)
-    container_analysis = policy_builder().analyse()
+    container_analysis = policy_builder().verify()
     _container = container_analysis.create_runtime()
-    report = container_analysis.report
+    report = container_analysis
     graph = CompiledGraph(container_analysis.graph.roots)
     result = validated_run(report.to_sarif(graph=graph), validator)["results"][0]
     assert "physicalLocation" not in result["locations"][0]
@@ -132,7 +133,7 @@ def test_schema_valid_report_without_provenance_or_any_source_information(valida
 
 
 def test_stable_rules_severity_and_unlocated_findings_preserve_existing_json_shape(validator):
-    report = AnalysisReport(
+    report = VerificationReport(
         (
             BuildIssue("custom-rule", IssueSeverity.warning, "Advisory"),
             BuildIssue("other-rule", IssueSeverity.error, "Required"),
@@ -170,19 +171,19 @@ def test_exact_occurrence_attribution_does_not_guess_between_same_type_named_reg
     builder.register(Dependency)
     monkeypatch.setattr("clean_ioc.container._source_reference", lambda: SourceLocation(None, None, "src/named.py", 20))
     builder.register(Dependency, name="named")
-    graph = builder.analyse().graph
-    visit = next(visit for visit in graph.walk() if visit.component.name == "named")
+    graph = builder.verify().graph
+    visit = next(visit for visit in present(graph).walk() if visit.component.name == "named")
     exact = visit.issue("example-policy", "Finding")
     ambiguous = BuildIssue(exact.code, exact.severity, exact.message, root=exact.root, path=exact.path)
     assert exact == ambiguous
     assert hash(exact) == hash(ambiguous)
     assert exact.to_dict() == ambiguous.to_dict()
-    located = validated_run(AnalysisReport((exact,)).to_sarif(graph=graph), validator)["results"][0]
+    located = validated_run(VerificationReport((exact,)).to_sarif(graph=graph), validator)["results"][0]
     assert located["locations"][0]["physicalLocation"] == {
         "artifactLocation": {"uri": "src/named.py"},
         "region": {"startLine": 20},
     }
-    unlocated = validated_run(AnalysisReport((ambiguous,)).to_sarif(graph=graph), validator)["results"][0]
+    unlocated = validated_run(VerificationReport((ambiguous,)).to_sarif(graph=graph), validator)["results"][0]
     assert "physicalLocation" not in unlocated["locations"][0]
     assert "occurrence" not in json.dumps(located)
 
@@ -205,9 +206,9 @@ def test_source_uris_are_relative_encoded_and_omit_external_paths(source_path, e
     monkeypatch.setattr("clean_ioc.container._source_reference", lambda: source)
     builder = ContainerBuilder()
     builder.register(Dependency)
-    graph = builder.analyse().graph
-    issue = next(graph.walk()).issue("example-policy", "Finding")
-    value = AnalysisReport((issue,)).to_sarif(graph=graph)
+    graph = builder.verify().graph
+    issue = next(present(graph).walk()).issue("example-policy", "Finding")
+    value = VerificationReport((issue,)).to_sarif(graph=graph)
     result = validated_run(value, validator)["results"][0]
     if expected is None:
         assert "physicalLocation" not in result["locations"][0]
@@ -224,9 +225,9 @@ def test_unknown_or_invalid_lines_are_omitted_without_fabrication(line, monkeypa
     monkeypatch.setattr("clean_ioc.container._source_reference", lambda: SourceLocation(None, None, "src/app.py", line))
     builder = ContainerBuilder()
     builder.register(Dependency)
-    graph = builder.analyse().graph
-    issue = next(graph.walk()).issue("example-policy", "Finding")
-    result = validated_run(AnalysisReport((issue,)).to_sarif(graph=graph), validator)["results"][0]
+    graph = builder.verify().graph
+    issue = next(present(graph).walk()).issue("example-policy", "Finding")
+    result = validated_run(VerificationReport((issue,)).to_sarif(graph=graph), validator)["results"][0]
     assert result["locations"][0]["physicalLocation"] == {"artifactLocation": {"uri": "src/app.py"}}
 
 
@@ -246,11 +247,11 @@ def test_structural_failures_produce_schema_valid_reports_and_captured_source_re
         builder.register(Missing, lifespan="scoped")
     registration_line = sys._getframe().f_lineno + 1
     builder.register(Invalid, lifespan="singleton" if failure == "captive" else "transient")
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     error = raised_analysis
     assert (error.graph is not None) is (failure == "captive")
-    run = validated_run(error.report.to_sarif(), validator)
+    run = validated_run(error.to_sarif(), validator)
     assert ("graphFingerprint" in run["properties"]) is (failure == "captive")
     result = run["results"][0]
     assert result["level"] == "error"
@@ -289,7 +290,7 @@ def test_cli_ignore_never_suppresses_an_error(capsys, validator):
 
 
 def test_cli_suppresses_failed_build_warnings_and_keeps_failure_evidence_aligned(monkeypatch, capsys, validator):
-    report = AnalysisReport(
+    report = VerificationReport(
         (
             BuildIssue("warning", IssueSeverity.warning, "Advisory"),
             BuildIssue("failure", IssueSeverity.error, "Required"),
@@ -329,9 +330,9 @@ def test_source_linked_paths_cover_decorators_preconfigurations_and_deferred_pro
     builder.register(LazyService)
     builder.register_decorator(Service, Decorated, decorated_arg="inner")
     builder.pre_configure(Service, configure)
-    graph = builder.analyse().graph
-    issues = tuple(visit.issue("example-policy", "Finding") for visit in graph.walk())
-    run = validated_run(AnalysisReport(issues).to_sarif(graph=graph), validator)
+    graph = builder.verify().graph
+    issues = tuple(visit.issue("example-policy", "Finding") for visit in present(graph).walk())
+    run = validated_run(VerificationReport(issues).to_sarif(graph=graph), validator)
     for result in run["results"]:
         path = result["properties"]["componentPath"]
         if path[-1] in (qualified_name(Decorated), qualified_name(configure), qualified_name(Dependency)):
@@ -350,25 +351,25 @@ def test_overlay_uses_declaring_registration_sources_and_full_overlay_fingerprin
         "clean_ioc.container._source_reference", lambda: SourceLocation(None, None, "src/overlay.py", 20)
     )
     overlay.register(Service)
-    scope_analysis = overlay.analyse()
+    scope_analysis = overlay.verify()
     _scope = scope_analysis.create_runtime()
-    visit = next(visit for visit in scope_analysis.graph.walk() if len(visit.components) == 2)
+    visit = next(visit for visit in present(scope_analysis.graph).walk() if len(visit.components) == 2)
     run = validated_run(
-        AnalysisReport((visit.issue("example-policy", "Finding"),)).to_sarif(graph=scope_analysis.graph), validator
+        VerificationReport((visit.issue("example-policy", "Finding"),)).to_sarif(graph=scope_analysis.graph), validator
     )
     flow = run["results"][0]["codeFlows"][0]["threadFlows"][0]["locations"]
     assert [item["location"]["physicalLocation"]["artifactLocation"]["uri"] for item in flow] == [
         "src/overlay.py",
         "src/root.py",
     ]
-    assert run["properties"]["graphFingerprint"] == scope_analysis.graph.manifest(all_roots=True).fingerprint
+    assert run["properties"]["graphFingerprint"] == present(scope_analysis.graph).manifest(all_roots=True).fingerprint
 
 
 def test_cli_completed_analysis_reads_do_not_repeat_validation(monkeypatch, capsys, validator):
     calls = []
     builder = policy_builder()
     builder.add_validation_rule(lambda context: calls.append("validation") or ())
-    result = builder.analyse()
+    result = builder.verify()
     assert calls == ["validation"]
     monkeypatch.setattr("clean_ioc.cli._load_object", lambda _: result)
     for _ in range(2):
@@ -378,7 +379,7 @@ def test_cli_completed_analysis_reads_do_not_repeat_validation(monkeypatch, caps
 
 
 def test_ambiguous_failure_decisions_do_not_create_a_source_reference(validator):
-    container_analysis = policy_builder().analyse()
+    container_analysis = policy_builder().verify()
     _container = container_analysis.create_runtime()
     visit = next(visit for visit in container_analysis.graph.walk() if len(visit.components) == 2)
     decision = container_analysis.graph.explain(visit.component)
@@ -388,7 +389,7 @@ def test_ambiguous_failure_decisions_do_not_create_a_source_reference(validator)
     )
     second = replace(first, origin=replace(first.origin, location=SourceLocation(None, None, "src/b.py", 2)))
     explanation = replace(decision, path=visit.path, selected=(first, second))
-    report = AnalysisReport((visit.issue("example-policy", "Finding"),))
+    report = VerificationReport((visit.issue("example-policy", "Finding"),))
     result = validated_run(report.to_sarif(explanations=(explanation,)), validator)["results"][0]
     assert "physicalLocation" not in result["locations"][0]
 
@@ -412,7 +413,7 @@ def test_check_output_file_handles_success_and_both_failure_phases(format, targe
     elif format == "json":
         assert json.loads(value)["valid"] is (expected == 0)
     else:
-        assert ("Container is valid" if expected == 0 else "Analysis") in value
+        assert ("Container is valid" if expected == 0 else "Verification") in value
 
 
 @pytest.mark.parametrize("options", [["--triage"], ["--triage", "--format", "json"]])
@@ -481,15 +482,15 @@ def test_sarif_redacts_inputs_values_runtime_ids_and_does_not_replay_rules_or_fi
             yield visit.issue("example-policy", "Safe issue", severity=IssueSeverity.warning)
 
     builder.add_validation_rule(rule)
-    container_analysis = builder.analyse(build_args={private_key: private_value})
+    container_analysis = builder.verify(build_args={private_key: private_value})
     _container = container_analysis.create_runtime()
-    report = container_analysis.report
+    report = container_analysis
     before = calls.copy()
-    fingerprint = container_analysis.graph.manifest(all_roots=True).fingerprint
+    fingerprint = present(container_analysis.graph).manifest(all_roots=True).fingerprint
     value = report.to_sarif(graph=container_analysis.graph)
     validated_run(value, validator)
     assert calls == before
-    assert container_analysis.graph.manifest(all_roots=True).fingerprint == fingerprint
+    assert present(container_analysis.graph).manifest(all_roots=True).fingerprint == fingerprint
     for serialized in (value, report.to_json()):
         assert private_key not in serialized
         assert private_value not in serialized
@@ -509,7 +510,7 @@ def test_error_without_structured_report_never_serializes_exception_message(vali
 
 def test_renderer_rejects_misaligned_failure_evidence():
     with pytest.raises(ValueError, match="More evidence"):
-        AnalysisReport().to_sarif(evidence=(None,))
+        VerificationReport().to_sarif(evidence=(None,))
 
 
 @pytest.mark.parametrize("issues", [(), (BuildIssue("advisory", IssueSeverity.warning, "Advisory only"),)])
@@ -517,12 +518,12 @@ def test_assert_valid_returns_none_without_rendering_for_valid_and_warning_only_
     def must_not_render(*args, **kwargs):
         raise AssertionError("A valid report must not generate SARIF")
 
-    monkeypatch.setattr(AnalysisReport, "to_sarif", must_not_render)
-    assert AnalysisReport(issues).assert_valid() is None
+    monkeypatch.setattr(VerificationReport, "to_sarif", must_not_render)
+    assert VerificationReport(issues).assert_valid() is None
 
 
 def test_assert_valid_raises_with_complete_schema_valid_sarif_for_an_unlocated_error(validator):
-    report = AnalysisReport(
+    report = VerificationReport(
         (
             BuildIssue("advisory", IssueSeverity.warning, "Advisory"),
             BuildIssue("required", IssueSeverity.error, "Required"),
@@ -541,9 +542,9 @@ def test_assert_valid_raises_with_complete_schema_valid_sarif_for_an_unlocated_e
 
 
 def test_assert_valid_links_policy_findings_to_matching_graph_without_repeating_validation(validator, monkeypatch):
-    container_analysis = policy_builder().analyse()
+    container_analysis = policy_builder().verify()
     _container = container_analysis.create_runtime()
-    report = container_analysis.report
+    report = container_analysis
 
     def must_not_validate(*args, **kwargs):
         raise AssertionError("The assertion must inspect the existing report")
@@ -563,24 +564,24 @@ def test_assert_valid_links_policy_findings_to_matching_graph_without_repeating_
 def test_assert_valid_accepts_captured_structural_failure_evidence(validator):
     from tests.tooling_targets import invalid_builder
 
-    failed_analysis = invalid_builder().analyse()
-    assert not failed_analysis.report.is_valid
+    failed_analysis = invalid_builder().verify()
+    assert not failed_analysis.is_valid
     error = failed_analysis
-    assert error.report is not None
+    assert error is not None
     with pytest.raises(AssertionError) as raised:
-        error.report.assert_valid()
+        error.assert_valid()
 
     run = validated_run(str(raised.value), validator)
     result = run["results"][0]
     assert result["ruleId"] == "missing-component"
     assert result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "tests/tooling_targets.py"
-    assert str(raised.value) == error.report.to_sarif()
+    assert str(raised.value) == error.to_sarif()
 
 
 def test_container_validation_report_automatically_retains_graph_without_changing_report_identity_semantics(validator):
-    container_analysis = policy_builder().analyse()
+    container_analysis = policy_builder().verify()
     _container = container_analysis.create_runtime()
-    report = container_analysis.report
+    report = container_analysis
     standalone = replace(report, _graph=None)
     run = validated_run(report.to_sarif(), validator)
     result = run["results"][0]
@@ -605,9 +606,9 @@ def test_build_and_validation_reports_retain_their_graph_for_warning_findings(mo
             yield visit.issue("advisory", "Advisory only", severity=IssueSeverity.warning)
 
     builder.add_validation_rule(warning)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     _container = container_analysis.create_runtime()
-    report = container_analysis.report if mode == "build" else container_analysis.report
+    report = container_analysis if mode == "build" else container_analysis
     result = validated_run(report.to_sarif(), validator)["results"][0]
     assert result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "tests/test_sarif.py"
     assert report.assert_valid() is None
@@ -618,20 +619,20 @@ def test_failed_build_reports_automatically_export_complete_captured_context(fai
     from tests.tooling_targets import invalid_builder
 
     builder = policy_builder("build") if failure == "policy" else invalid_builder()
-    failed_analysis = builder.analyse()
-    assert not failed_analysis.report.is_valid
+    failed_analysis = builder.verify()
+    assert not failed_analysis.is_valid
     error = failed_analysis
-    assert error.report is not None
-    run = validated_run(error.report.to_sarif(), validator)
-    assert error.report.to_sarif() == error.report.to_sarif()
+    assert error is not None
+    run = validated_run(error.to_sarif(), validator)
+    assert error.to_sarif() == error.to_sarif()
     result = run["results"][0]
     assert "physicalLocation" in result["locations"][0]
     assert ("graphFingerprint" in run["properties"]) is (failure == "policy")
 
 
 def test_report_can_render_after_container_is_closed_and_collected(validator):
-    with policy_builder().analyse() as container_analysis, container_analysis.create_runtime() as container:
-        report = container_analysis.report
+    with policy_builder().verify() as container_analysis, container_analysis.create_runtime() as container:
+        report = container_analysis
         expected = report.to_sarif()
         reference = weakref.ref(container)
     del container
@@ -648,26 +649,26 @@ def test_report_can_render_after_container_is_closed_and_collected(validator):
 def test_overlay_report_automatically_uses_overlay_graph(validator):
     builder = ContainerBuilder()
     builder.register(Dependency, lifespan="singleton")
-    parent_analysis = builder.analyse()
+    parent_analysis = builder.verify()
     parent = parent_analysis.create_runtime()
     assert parent_analysis.composition is not None
     overlay = ScopeBuilder(parent, composition=parent_analysis.composition)
     overlay.register(Service)
     overlay.add_validation_rule(forbid_dependency(cf.service_type_is(Service), cf.service_type_is(Dependency)))
-    scope_analysis = overlay.analyse()
+    scope_analysis = overlay.verify()
     _scope = scope_analysis.create_runtime()
-    report = scope_analysis.report
+    report = scope_analysis
     run = validated_run(report.to_sarif(), validator)
-    assert run["properties"]["graphFingerprint"] == scope_analysis.graph.manifest(all_roots=True).fingerprint
-    assert run["properties"]["graphFingerprint"] != parent_analysis.graph.manifest(all_roots=True).fingerprint
+    assert run["properties"]["graphFingerprint"] == present(scope_analysis.graph).manifest(all_roots=True).fingerprint
+    assert run["properties"]["graphFingerprint"] != present(parent_analysis.graph).manifest(all_roots=True).fingerprint
     assert run["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "tests/test_sarif.py"
 
 
 def test_assert_valid_still_raises_under_optimized_python():
     code = """
 import json
-from clean_ioc import BuildIssue, AnalysisReport, IssueSeverity
-report = AnalysisReport((BuildIssue("required", IssueSeverity.error, "Required"),))
+from clean_ioc import BuildIssue, VerificationReport, IssueSeverity
+report = VerificationReport((BuildIssue("required", IssueSeverity.error, "Required"),))
 try:
     report.assert_valid()
 except AssertionError as error:

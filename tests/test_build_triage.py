@@ -7,12 +7,12 @@ from typing import Generic, TypeVar
 import pytest
 
 from clean_ioc import (
-    AnalysisReport,
     BuildIssue,
     BuildTriage,
     ContainerBuilder,
     FailureEvidence,
     IssueSeverity,
+    VerificationReport,
     select,
 )
 from clean_ioc import component_filters as cf
@@ -36,11 +36,11 @@ def test_shared_missing_request_groups_roots_and_retains_attempts_and_original_r
     builder.register(First)
     builder.register(Second)
     builder.mark_entrypoint(First)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     error = raised_analysis
-    assert error.report is not None
-    original_json = error.report.to_json()
+    assert error is not None
+    original_json = error.to_json()
     triage = error.triage_report()
     assert len(triage.groups) == 1
     group = triage.groups[0]
@@ -50,8 +50,8 @@ def test_shared_missing_request_groups_roots_and_retains_attempts_and_original_r
     assert group.attempt_refs == ("attempt:2", "attempt:3")
     assert group.provenance
     assert triage.attempt_count == 3
-    assert triage.to_dict()["report"] == error.report.to_dict()
-    assert error.report.to_json() == original_json
+    assert triage.to_dict()["report"] == error.to_dict()
+    assert error.to_json() == original_json
     assert error.triage_report().to_json() == triage.to_json()
     with pytest.raises(FrozenInstanceError):
         setattr(group, "ref", "mutated")
@@ -59,7 +59,7 @@ def test_shared_missing_request_groups_roots_and_retains_attempts_and_original_r
     builder.register(First)
     builder.register(Second)
     builder.register(Missing)
-    assert builder.analyse().report.is_valid
+    assert builder.verify().is_valid
 
 
 def test_same_display_name_different_type_identity_stays_separate():
@@ -77,8 +77,8 @@ def test_same_display_name_different_type_identity_stays_separate():
     builder = ContainerBuilder()
     builder.register(First)
     builder.register(Second)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     triage = raised_analysis.triage_report()
     assert len(triage.groups) == 2
     assert all(len(group.issue_refs) == 1 for group in triage.groups)
@@ -102,11 +102,11 @@ def test_boundary_and_named_selection_contexts_do_not_merge():
     builder = ContainerBuilder()
     builder.register(Root)
     builder.create_boundary("feature").apply_bundle(install_feature)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     groups = raised_analysis.triage_report().groups
     assert len(groups) == 2
-    assert {fact.boundary for fact in raised_analysis.report._evidence if fact is not None} == {None, "feature"}
+    assert {fact.boundary for fact in raised_analysis._evidence if fact is not None} == {None, "feature"}
 
     class Candidate:
         pass
@@ -123,8 +123,8 @@ def test_boundary_and_named_selection_contexts_do_not_merge():
     named.register(Candidate, name="available")
     named.register(First, arguments={"candidate": select(cf.with_name("first"))})
     named.register(Second, arguments={"candidate": select(cf.with_name("second"))})
-    named_failure_analysis = named.analyse()
-    assert not named_failure_analysis.report.is_valid
+    named_failure_analysis = named.verify()
+    assert not named_failure_analysis.is_valid
     named_groups = named_failure_analysis.triage_report().groups
     assert len(named_groups) == 2
     assert all("rejected candidates" in group.reason for group in named_groups)
@@ -147,11 +147,11 @@ def test_same_root_failure_in_two_boundaries_keeps_both_issues_and_entrypoint_co
     builder = ContainerBuilder()
     builder.create_boundary("a").apply_bundle(install_a)
     builder.create_boundary("b").apply_bundle(install_b)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     error = raised_analysis
-    assert error.report is not None
-    assert len(error.report.issues) == 2
+    assert error is not None
+    assert len(error.issues) == 2
     assert error.partial_graph is not None
     assert len(error.partial_graph.attempts) == 3
     triage = error.triage_report()
@@ -182,8 +182,8 @@ def test_successful_same_named_root_in_other_boundary_does_not_clear_failed_evid
     builder = ContainerBuilder()
     builder.create_boundary("a").apply_bundle(install_valid)
     builder.create_boundary("b").apply_bundle(install_invalid)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     triage = raised_analysis.triage_report()
     assert not triage.inconsistent_retries
     assert len(triage.groups) == 1
@@ -206,8 +206,8 @@ def test_unrelated_successful_retry_does_not_mark_inconsistent():
     builder = ContainerBuilder()
     builder.register(Good)
     builder.register(Bad)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     triage = raised_analysis.triage_report()
     assert not triage.inconsistent_retries
     assert len(triage.groups) == 1
@@ -231,11 +231,11 @@ def test_unsupported_callback_failures_keep_distinct_boundary_root_counts():
     builder = ContainerBuilder()
     builder.create_boundary("a").apply_bundle(install)
     builder.create_boundary("b").apply_bundle(install)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     error = raised_analysis
-    assert error.report is not None
-    original_report = error.report.to_json()
+    assert error is not None
+    original_report = error.to_json()
     triage = error.triage_report()
     assert len(triage.report.issues) == 2
     assert len(triage.ungrouped_issue_refs) == 2
@@ -246,8 +246,8 @@ def test_unsupported_callback_failures_keep_distinct_boundary_root_counts():
     assert [item["boundary"] for item in payload["findings"]] == ["a", "b"]
     assert all(item["boundary_known"] for item in payload["findings"])
     assert "private callback state" not in triage.to_json()
-    assert error.report.to_json() == original_report
-    detached = BuildTriage.from_report(error.report)
+    assert error.to_json() == original_report
+    detached = BuildTriage.from_report(error)
     assert detached.to_dict()["affected_root_count_status"] == "lower_bound"
     assert detached.to_text().startswith("Build failed: at least 1 root failure")
     assert triage.to_text().startswith("Build failed: 2 root failures")
@@ -264,8 +264,8 @@ def test_rejected_scope_slot_is_distinct_from_missing_declaration():
     builder = ContainerBuilder()
     builder.declare_scope_slot(Request)
     builder.register(Root, arguments={"request": select(cf.with_name("unavailable"))})
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     triage = raised_analysis.triage_report()
     assert len(triage.groups) == 1
     assert triage.evidence[0] is not None
@@ -288,8 +288,8 @@ def test_captive_ancestors_are_distinct_and_cycles_use_directed_identity():
     builder.register(Scoped, lifespan="scoped")
     builder.register(One, lifespan="singleton")
     builder.register(Two, lifespan="singleton")
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     triage = raised_analysis.triage_report()
     captive = [group for group in triage.groups if "retains" in group.reason]
     assert len(captive) == 2
@@ -303,8 +303,8 @@ def test_captive_ancestors_are_distinct_and_cycles_use_directed_identity():
     cycle_builder = ContainerBuilder()
     cycle_builder.register(CycleA, factory=use_component(CycleB))
     cycle_builder.register(CycleB, factory=use_component(CycleA))
-    raised_cycle_analysis = cycle_builder.analyse()
-    assert not raised_cycle_analysis.report.is_valid
+    raised_cycle_analysis = cycle_builder.verify()
+    assert not raised_cycle_analysis.is_valid
     cycle = raised_cycle_analysis.triage_report()
     assert any(group.reason.startswith("Cycle:") for group in cycle.groups)
 
@@ -330,8 +330,8 @@ def test_failed_closed_generic_retains_template_and_request():
     builder.register_pattern(Service[list[item_t]], factory=invalid)
     builder.register(Root)
     builder.register(OtherRoot)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     triage = raised_analysis.triage_report()
     generic = [fact for fact in triage.evidence if fact is not None and fact.kind == "generic"]
     assert generic
@@ -346,7 +346,7 @@ def test_validation_only_and_unsupported_findings_stay_individual():
         BuildIssue("custom", IssueSeverity.error, "identical"),
         BuildIssue("custom", IssueSeverity.error, "identical"),
     )
-    report = AnalysisReport(issues)
+    report = VerificationReport(issues)
     triage = BuildTriage.from_report(report)
     assert not triage.groups
     assert triage.ungrouped_issue_refs == ("issue:1", "issue:2")
@@ -365,7 +365,7 @@ def test_evidence_identity_is_never_serialized_and_no_repr_is_called():
         "missing declaration",
         identity=(Secret(),),
     )
-    report = AnalysisReport((BuildIssue("missing-component", IssueSeverity.error, "Safe", root="app.Root"),))
+    report = VerificationReport((BuildIssue("missing-component", IssueSeverity.error, "Safe", root="app.Root"),))
     triage = BuildTriage.from_report(report, evidence=(evidence,))
     assert "Secret" not in triage.to_json()
     assert "identity" not in triage.to_json()
@@ -394,8 +394,8 @@ def test_changed_filter_result_marks_retry_inconsistent_without_reexecuting_on_r
     builder = ContainerBuilder()
     builder.register(Service)
     builder.register(Root, arguments={"service": select(varying_filter)})
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     calls_after_build = calls
     triage = raised_analysis.triage_report()
     assert triage.inconsistent_retries
@@ -417,8 +417,8 @@ def test_wide_failed_report_bounds_group_details_and_accounts_for_every_issue():
             pass
 
         builder.register(type(f"Root{number}", (), {"__init__": initialize}))
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
     triage = raised_analysis.triage_report()
     assert len(triage.report.issues) == 105
     assert len(triage.groups) == 1

@@ -95,8 +95,8 @@ def test_builds_in_declaration_order_reference_position_and_closes_before_polici
     scopes = []
 
     class TrackedBuilder(ContainerBuilder):
-        def analyse(self, **kwargs):
-            scope = super().analyse(**kwargs)
+        def verify(self, **kwargs):
+            scope = super().verify(**kwargs)
             scopes.append(scope)
             return scope
 
@@ -110,7 +110,7 @@ def test_builds_in_declaration_order_reference_position_and_closes_before_polici
         return create
 
     def policy(context):
-        assert all(scope._closed for scope in scopes)
+        assert all(scope._runtime._closed for scope in scopes)
         assert [variant.name for variant in context.variants] == ["staging", "production", "local"]
         calls.append("policy")
         return ()
@@ -121,7 +121,7 @@ def test_builds_in_declaration_order_reference_position_and_closes_before_polici
     assert report.is_valid and report.exit_code == 0
     assert calls == ["staging", "production", "local", "policy"]
     assert all(variant.difference.is_empty for variant in report.variants)
-    assert all(scope._closed for scope in scopes)
+    assert all(scope._runtime._closed for scope in scopes)
     assert len({variant.fingerprint for variant in report.variants}) == 1
 
 
@@ -321,7 +321,7 @@ def test_definition_validation_and_captured_build_input_mapping():
     [
         lambda: None,
         lambda: {},
-        lambda: builder().analyse(),
+        lambda: builder().verify(),
         lambda: object(),
     ],
 )
@@ -333,7 +333,7 @@ def test_factory_rejects_invalid_results_and_continues(factory):
 
 def test_prebuilt_and_reused_builders_including_failed_builders_are_rejected():
     used = builder()
-    used.analyse()
+    used.verify()
     prebuilt = matrix(BuildVariant("bad", lambda: used), BuildVariant("production", builder)).check()
     assert prebuilt.exit_code == 2
     reused = builder()
@@ -463,7 +463,7 @@ def test_matrix_captures_declaration_lists_and_rejects_noniterables():
 
 def test_unstructured_build_exceptions_do_not_stop_later_variants():
     class UnexpectedBuilder(ContainerBuilder):
-        def analyse(self, **kwargs):
+        def verify(self, **kwargs):
             raise RuntimeError("private-key private-value")
 
     report = matrix(BuildVariant("unexpected", UnexpectedBuilder), BuildVariant("production", builder)).check()
@@ -474,7 +474,7 @@ def test_unstructured_build_exceptions_do_not_stop_later_variants():
 
 def test_unstructured_container_build_errors_remain_safe():
     class UnexpectedBuilder(ContainerBuilder):
-        def analyse(self, **kwargs):
+        def verify(self, **kwargs):
             raise ContainerBuildError("private-key private-value")
 
     report = matrix(BuildVariant("production", UnexpectedBuilder)).check()
@@ -632,8 +632,8 @@ def test_matrix_reports_do_not_retain_runtime_containers(validator):
     references = []
 
     class TrackedBuilder(ContainerBuilder):
-        def analyse(self, **kwargs):
-            scope = super().analyse(**kwargs)
+        def verify(self, **kwargs):
+            scope = super().verify(**kwargs)
             references.append(weakref.ref(scope))
             return scope
 
@@ -651,13 +651,13 @@ def test_matrix_reports_do_not_retain_runtime_containers(validator):
 def test_overlay_variants_close_the_overlay_and_leave_the_parent_open():
     from clean_ioc import ScopeBuilder
 
-    parent_result = builder().analyse()
+    parent_result = builder().verify()
     parent = parent_result.create_runtime()
     scopes = []
 
     class TrackedScopeBuilder(ScopeBuilder):
-        def analyse(self, **kwargs):
-            scope = super().analyse(**kwargs)
+        def verify(self, **kwargs):
+            scope = super().verify(**kwargs)
             scopes.append(scope)
             return scope
 
@@ -672,7 +672,7 @@ def test_overlay_variants_close_the_overlay_and_leave_the_parent_open():
         policies=(same_entrypoints(), semantic_drift(DiffPolicy())),
     ).check()
     assert report.is_valid
-    assert len(scopes) == 2 and all(scope._closed for scope in scopes)
+    assert len(scopes) == 2 and all(scope._runtime._closed for scope in scopes)
     assert parent._closed is False
     parent_result.close()
 
@@ -684,8 +684,8 @@ def test_analysis_results_are_closed_on_capture_or_policy_failure(monkeypatch, f
     scopes = []
 
     class TrackedBuilder(ContainerBuilder):
-        def analyse(self, **kwargs):
-            scope = super().analyse(**kwargs)
+        def verify(self, **kwargs):
+            scope = super().verify(**kwargs)
             scopes.append(scope)
             return scope
 
@@ -702,7 +702,7 @@ def test_analysis_results_are_closed_on_capture_or_policy_failure(monkeypatch, f
         return original(name, report)
 
     def policy_failed(_):
-        assert all(scope._closed for scope in scopes)
+        assert all(scope._runtime._closed for scope in scopes)
         raise RuntimeError("private-value")
 
     if failure == "capture":
@@ -711,7 +711,7 @@ def test_analysis_results_are_closed_on_capture_or_policy_failure(monkeypatch, f
         BuildVariant("production", create), policies=(policy_failed,) if failure == "policy" else ()
     ).check()
     assert not report.is_valid and len(scopes) == 1
-    assert all(scope._closed for scope in scopes)
+    assert all(scope._runtime._closed for scope in scopes)
     assert "private-value" not in report.to_json()
 
 

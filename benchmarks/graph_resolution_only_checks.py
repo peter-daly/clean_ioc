@@ -25,7 +25,7 @@ class ExecutionOnly:
         selected, inspection = [], []
         for item in items:
             source = ast.parse(textwrap.dedent(inspect.getsource(item.obj)))
-            if any(isinstance(node, ast.Attribute) and node.attr in ("graph", "analyse") for node in ast.walk(source)):
+            if any(isinstance(node, ast.Attribute) and node.attr in ("graph", "verify") for node in ast.walk(source)):
                 inspection.append(item)
             else:
                 selected.append(item)

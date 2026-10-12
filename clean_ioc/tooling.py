@@ -17,6 +17,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Generic,
     Iterable,
     Iterator,
     Literal,
@@ -24,6 +25,7 @@ from typing import (
     TypeAlias,
     TypeVar,
     Union,
+    cast,
     get_args,
     get_origin,
     overload,
@@ -475,7 +477,7 @@ class BuildIssue:
 
 
 @dataclass(frozen=True, slots=True)
-class AnalysisRuleOutcome:
+class VerificationRuleOutcome:
     declaration: str
     rule: str
     layer: str | None
@@ -497,7 +499,7 @@ class AnalysisRuleOutcome:
 
 
 @dataclass(frozen=True, slots=True)
-class AnalysisStageOutcome:
+class VerificationStageOutcome:
     stage: str
     status: str
     detail: str | None = None
@@ -506,9 +508,18 @@ class AnalysisStageOutcome:
         return {"stage": self.stage, "status": self.status, "detail": self.detail}
 
 
-@dataclass(frozen=True, slots=True)
-class AnalysisReport:
-    """Immutable result of validating and compiling a component plan."""
+TRuntime = TypeVar("TRuntime", bound="Scope")
+
+
+@dataclass(frozen=True, slots=True, weakref_slot=True)
+class VerificationReport(Generic[TRuntime]):
+    """Immutable verification findings with explicit ownership of test runtimes.
+
+    Reading, rendering, or asserting findings never replays compilation or rules.
+    Closing the report disposes runtimes it created and prevents further creation;
+    findings and captured graphs remain readable. Borrowed parents stay open.
+    Manually constructed reports carry findings but no emitted execution plan.
+    """
 
     issues: tuple[BuildIssue, ...] = ()
     checked_roots: int = 0
@@ -516,13 +527,83 @@ class AnalysisReport:
     requested_roots: int = field(default=0, kw_only=True)
     compiled_roots: int = field(default=0, kw_only=True)
     failed_roots: int = field(default=0, kw_only=True)
-    rule_outcomes: tuple[AnalysisRuleOutcome, ...] = field(default=(), kw_only=True)
-    stage_outcomes: tuple[AnalysisStageOutcome, ...] = field(default=(), kw_only=True)
+    rule_outcomes: tuple[VerificationRuleOutcome, ...] = field(default=(), kw_only=True)
+    stage_outcomes: tuple[VerificationStageOutcome, ...] = field(default=(), kw_only=True)
     # Captured reporting context is static and excluded from public report
-    # serialization/equality. No runtime container reference is added.
+    # serialization/equality. Mutable runtime ownership is kept separately below.
     _graph: CompiledGraph | None = field(default=None, repr=False, compare=False, kw_only=True)
     _explanations: tuple[CompilationExplanation, ...] = field(default=(), repr=False, compare=False, kw_only=True)
     _evidence: tuple[FailureEvidence | None, ...] = field(default=(), repr=False, compare=False, kw_only=True)
+
+    _runtime: _VerificationRuntime | None = field(default=None, repr=False, compare=False, kw_only=True)
+
+    @property
+    def graph(self) -> CompiledGraph | None:
+        return self._graph
+
+    @property
+    def partial_graph(self) -> PartialGraph | None:
+        return None if self._runtime is None else self._runtime.partial_graph
+
+    @property
+    def composition(self) -> Composition | None:
+        return None if self._runtime is None else self._runtime.composition
+
+    @property
+    def emission_complete(self) -> bool:
+        return self._runtime is not None and self._runtime._plan is not None
+
+    @property
+    def selected_registrations(self) -> tuple[RegistrationInfo, ...] | None:
+        if self._runtime is None or self._runtime._plan is None:
+            return None
+        return self._runtime._plan.selected_registrations
+
+    def selection_census(self, *, all_roots: bool = False, include_deferred: bool = True):
+        """Read captured selections, including lower-bound failed attempts."""
+        if self._runtime is not None and self._runtime._failed_census is not None:
+            return self._runtime._failed_census
+        if self.graph is not None:
+            return self.graph.selection_census(all_roots=all_roots, include_deferred=include_deferred)
+        raise RuntimeError("Verification has no captured selection census")
+
+    def triage_report(self) -> BuildTriage:
+        """Group captured findings without repeating verification."""
+        if self._runtime is not None and self._runtime._triage is not None:
+            return replace(self._runtime._triage, report=self)
+        return BuildTriage.from_report(self, evidence=self._evidence, partial_graph=self.partial_graph)
+
+    def create_runtime(self, *, instrumentation: Instrumentation | None = None) -> TRuntime:
+        """Create an independent test runtime from the emitted execution plan."""
+        from .container import VerificationRuntimeUnavailableError
+
+        if self._runtime is not None and self._runtime._closed:
+            raise RuntimeError("Verification report is closed")
+        if self._runtime is None or self._runtime._plan is None:
+            raise VerificationRuntimeUnavailableError(self)
+        return cast(TRuntime, self._runtime.create_runtime(instrumentation=instrumentation))
+
+    def close(self) -> None:
+        if self._runtime is not None:
+            self._runtime.close()
+
+    async def aclose(self) -> None:
+        if self._runtime is not None:
+            await self._runtime.aclose()
+
+    def __enter__(self) -> VerificationReport[TRuntime]:
+        if self._runtime is not None and self._runtime._closed:
+            raise RuntimeError("Verification report is closed")
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    async def __aenter__(self) -> VerificationReport[TRuntime]:
+        return self.__enter__()
+
+    async def __aexit__(self, *args):
+        await self.aclose()
 
     @property
     def errors(self) -> tuple[BuildIssue, ...]:
@@ -606,7 +687,7 @@ class AnalysisReport:
         else:
             count = len(self.errors)
             noun = "error" if count == 1 else "errors"
-            heading = f"Analysis {'incomplete' if not self.complete else 'invalid'} with {count} {noun}."
+            heading = f"Verification {'incomplete' if not self.complete else 'invalid'} with {count} {noun}."
         if not self.issues:
             return heading
         return "\n".join((heading, *(f"- {issue}" for issue in self.issues)))
@@ -733,7 +814,7 @@ class TriageGroup:
 class BuildTriage:
     """Frozen summary of a build report; every finding remains addressable."""
 
-    report: AnalysisReport
+    report: VerificationReport
     groups: tuple[TriageGroup, ...]
     ungrouped_issue_refs: tuple[str, ...]
     evidence: tuple[FailureEvidence | None, ...]
@@ -774,7 +855,7 @@ class BuildTriage:
     @classmethod
     def from_report(
         cls,
-        report: AnalysisReport,
+        report: VerificationReport,
         *,
         evidence: Iterable[FailureEvidence | None] = (),
         partial_graph: PartialGraph | None = None,
@@ -1850,6 +1931,9 @@ class GraphManifest:
 
 
 if TYPE_CHECKING:
+    from ._decorator_templates import RegistrationInfo
+    from .container import Composition, Scope, _VerificationRuntime
+    from .instrumentation import Instrumentation
     from .warmup import WarmupPlanInfo
 
 
@@ -1868,7 +1952,7 @@ class _CompiledSelectionDecision(CandidateDecision):
 
     def __getattribute__(self, name: str) -> Any:
         if name in ("preferences", "parent_precedence", "template"):
-            raise ValueError("diagnostics-disabled: use analyse() to inspect selection-policy history")
+            raise ValueError("diagnostics-disabled: use verify() to inspect selection-policy history")
         return super().__getattribute__(name)
 
     def __repr__(self) -> str:
@@ -1894,7 +1978,7 @@ class _CapturedSelectionFacts(CompilationExplanation):
     __slots__ = ()
 
     def __repr__(self) -> str:
-        return f"Selection facts for {self.subject} (full diagnostics not recorded; use analyse())"
+        return f"Selection facts for {self.subject} (full diagnostics not recorded; use verify())"
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, _CapturedSelectionFacts) or type(self) is not type(other):
@@ -1906,7 +1990,7 @@ class _CapturedSelectionFacts(CompilationExplanation):
 
     def __getattribute__(self, name: str) -> Any:
         if name == "path":
-            raise ValueError("diagnostics-disabled: use analyse() to inspect explanation paths")
+            raise ValueError("diagnostics-disabled: use verify() to inspect explanation paths")
         return super().__getattribute__(name)
 
 
@@ -1915,7 +1999,7 @@ class _SelectionExplanation(_CapturedSelectionFacts):
 
     def __getattribute__(self, name: str) -> Any:
         if name == "rejected":
-            raise ValueError("diagnostics-disabled: use analyse() to inspect candidate history")
+            raise ValueError("diagnostics-disabled: use verify() to inspect candidate history")
         return super().__getattribute__(name)
 
     def __eq__(self, other: object) -> bool:
@@ -2057,7 +2141,7 @@ class CompiledGraph:
 
     def _require_diagnostics(self) -> None:
         if not self.diagnostics_enabled:
-            raise ValueError("diagnostics-disabled: use analyse() to inspect captured compiler evidence")
+            raise ValueError("diagnostics-disabled: use verify() to inspect captured compiler evidence")
 
     def ownership_report(self) -> OwnershipReport:
         """Return the immutable ownership proof compiled for every graph occurrence."""

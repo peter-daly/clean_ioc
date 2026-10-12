@@ -17,6 +17,7 @@ from clean_ioc.tooling import (
     SemanticGraphChange,
 )
 from tests.tooling_targets import changed_builder, valid_builder
+from tests.verification_helpers import present
 
 ROOT = "root:app.Application:default:0"
 CHILD = f"{ROOT}/dependency:repository:0"
@@ -199,14 +200,14 @@ def test_raw_serialization_and_fingerprints_keep_their_existing_shape():
     }
     assert diff.to_text() == f"Dependency graph changed:\n~ {ROOT}"
     assert json.loads(diff.to_semantic_json()) == diff.to_semantic_dict()
-    graph = changed_builder().analyse().graph
-    saved = graph.manifest(all_roots=True).to_json()
-    graph.diff(
-        valid_builder().analyse().graph.manifest(all_roots=True),
+    graph = changed_builder().verify().graph
+    saved = present(graph).manifest(all_roots=True).to_json()
+    present(graph).diff(
+        present(valid_builder().verify().graph).manifest(all_roots=True),
         all_roots=True,
     )
-    assert graph.manifest(all_roots=True).to_json() == saved
-    assert GraphManifest.from_json(saved).fingerprint == graph.manifest(all_roots=True).fingerprint
+    assert present(graph).manifest(all_roots=True).to_json() == saved
+    assert GraphManifest.from_json(saved).fingerprint == present(graph).manifest(all_roots=True).fingerprint
 
 
 def test_entrypoints_and_low_risk_unreachable_roots_use_compiled_context():
@@ -218,17 +219,17 @@ def test_entrypoints_and_low_risk_unreachable_roots_use_compiled_context():
 
     before = ContainerBuilder()
     before.register(App, root_policy="entrypoint")
-    baseline = before.analyse().graph.manifest(all_roots=True)
+    baseline = present(before.verify().graph).manifest(all_roots=True)
     after = ContainerBuilder()
     after.register(App, root_policy="entrypoint")
     after.register(Unused)
-    graph = after.analyse().graph
-    changes = graph.diff(baseline, all_roots=True).semantic_changes
+    graph = after.verify().graph
+    changes = present(graph).diff(baseline, all_roots=True).semantic_changes
     addition = next(change for change in changes if change.kind is GraphChangeKind.root_added)
     assert addition.risk is ChangeRisk.low
     assert addition.affected_entrypoints == () and addition.entrypoint_status == "known"
-    assert graph.diff(baseline, all_roots=True).evaluate(DiffPolicy()).is_valid
-    plain = graph.manifest(all_roots=True).diff(baseline).semantic_changes
+    assert present(graph).diff(baseline, all_roots=True).evaluate(DiffPolicy()).is_valid
+    plain = present(graph).manifest(all_roots=True).diff(baseline).semantic_changes
     assert next(change for change in plain if change.kind is GraphChangeKind.root_added).risk is ChangeRisk.medium
 
 
@@ -242,11 +243,11 @@ def test_removed_all_roots_membership_is_unknown_but_default_view_is_known():
 
 
 def test_all_roots_comparison_identifies_current_marked_entrypoints_only():
-    baseline = valid_builder().analyse().graph.manifest(all_roots=True)
-    graph = changed_builder().analyse().graph
+    baseline = present(valid_builder().verify().graph).manifest(all_roots=True)
+    graph = changed_builder().verify().graph
     replacements = [
         change
-        for change in graph.diff(baseline, all_roots=True).semantic_changes
+        for change in present(graph).diff(baseline, all_roots=True).semantic_changes
         if change.kind is GraphChangeKind.implementation_changed
     ]
     assert len(replacements) == 2  # Public dependency root and its application occurrence.
@@ -269,7 +270,7 @@ def test_added_public_root_for_an_existing_entrypoint_dependency_is_medium_risk(
         builder = ContainerBuilder()
         builder.register(Repository, root_policy=root_policy)
         builder.register(App, root_policy="entrypoint")
-        return builder.analyse().graph
+        return builder.verify().graph
 
     diff = build("resolvable").diff(build("dependency_only").manifest(all_roots=True), all_roots=True)
     addition = next(change for change in diff.semantic_changes if change.kind is GraphChangeKind.root_added)
@@ -300,7 +301,7 @@ def test_all_roots_preserves_named_collection_entrypoint_requests():
         builder.register(Handler, FirstHandler, name="first")
         builder.register(Handler, second, name="second")
         builder.mark_entrypoint(list[Handler], filter=lambda _: True)
-        return builder.analyse().graph
+        return builder.verify().graph
 
     graph = build(ReplacementHandler)
     changes = graph.diff(build(SecondHandler).manifest(all_roots=True), all_roots=True).semantic_changes
@@ -425,7 +426,7 @@ def test_diff_does_not_activate_or_repeat_build_callbacks_and_redacts_inputs():
             when=lambda _: calls.append("filter") or True,
         )
         builder.register(App, root_policy="entrypoint")
-        return builder.analyse(build_args={"private-key": "private-value"}).graph
+        return builder.verify(build_args={"private-key": "private-value"}).graph
 
     baseline, graph = make_graph("scoped"), make_graph("singleton")
     called = list(calls)
@@ -439,7 +440,7 @@ def test_diff_does_not_activate_or_repeat_build_callbacks_and_redacts_inputs():
 
 def test_cli_raw_classified_policy_and_output_file(tmp_path, capsys):
     baseline = tmp_path / "baseline.json"
-    baseline.write_text(valid_builder().analyse().graph.manifest().to_json())
+    baseline.write_text(present(valid_builder().verify().graph).manifest().to_json())
     target = "tests.tooling_targets:changed_builder"
     assert main(["diff", target, str(baseline), "--format", "json"]) == 1
     raw = json.loads(capsys.readouterr().out)
@@ -460,7 +461,7 @@ def test_cli_raw_classified_policy_and_output_file(tmp_path, capsys):
 
 def test_cli_errors_leave_baseline_and_existing_output_untouched(tmp_path, capsys):
     baseline = tmp_path / "baseline.json"
-    baseline.write_text(valid_builder().analyse().graph.manifest().to_json())
+    baseline.write_text(present(valid_builder().verify().graph).manifest().to_json())
     initial = baseline.read_text()
     output = tmp_path / "report.json"
     output.write_text("existing-report")
@@ -484,7 +485,7 @@ def test_cli_errors_leave_baseline_and_existing_output_untouched(tmp_path, capsy
 
 def test_classified_cli_is_deterministic_across_processes(tmp_path):
     baseline = tmp_path / "baseline.json"
-    baseline.write_text(valid_builder().analyse().graph.manifest().to_json())
+    baseline.write_text(present(valid_builder().verify().graph).manifest().to_json())
     command = [
         sys.executable,
         "-m",

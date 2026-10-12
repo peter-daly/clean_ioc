@@ -11,8 +11,6 @@ import pytest
 import clean_ioc.component_filters as cf
 from clean_ioc import (
     INJECT,
-    AnalysisReport,
-    AnalysisResult,
     AsyncProvider,
     BuildIssue,
     CandidateDecision,
@@ -37,6 +35,7 @@ from clean_ioc import (
     SourceLocation,
     TypeAst,
     ValidationContext,
+    VerificationReport,
     build_arg,
     derive,
     generic_arg,
@@ -46,9 +45,10 @@ from clean_ioc import (
 from clean_ioc.cli import main
 from clean_ioc.factories import use_component, use_component_async
 from clean_ioc.tooling import qualified_name
+from tests.verification_helpers import present
 
 
-def _failed_partial_graph(error: AnalysisResult) -> PartialGraph:
+def _failed_partial_graph(error: VerificationReport) -> PartialGraph:
     assert error.partial_graph is not None
     return error.partial_graph
 
@@ -74,10 +74,10 @@ def test_argument_explanations_are_frozen_redacted_and_do_not_rerun_derivations(
         Service,
         arguments={"dependency": inject(), "timeout": derive(timeout), "environment": build_arg("token")},
     )
-    graph = builder.analyse(build_args={"token": "super-secret"}).graph
-    service = next(root.component for root in graph.roots if root.component.service_type is Service)
+    graph = builder.verify(build_args={"token": "super-secret"}).graph
+    service = next(root.component for root in present(graph).roots if root.component.service_type is Service)
 
-    records = {item.parameter: item for item in graph.explain_arguments(service)}
+    records = {item.parameter: item for item in present(graph).explain_arguments(service)}
     assert records["dependency"].policy_kind == "inject"
     assert records["dependency"].result_category == "component_edge"
     assert records["timeout"].policy_kind == "derive"
@@ -86,7 +86,7 @@ def test_argument_explanations_are_frozen_redacted_and_do_not_rerun_derivations(
     assert "super-secret" not in str([item.to_dict() for item in records.values()])
     assert "secret-default" not in str([item.to_dict() for item in records.values()])
     assert calls == 1
-    graph.explain_arguments(service)
+    present(graph).explain_arguments(service)
     assert calls == 1
 
 
@@ -99,13 +99,13 @@ def test_generic_specialization_explanation_keeps_substituted_dependency_annotat
 
     builder = ContainerBuilder()
     builder.register(Repository[int], arguments={"item_type": generic_arg(TItem)})
-    graph = builder.analyse().graph
-    component = next(root.component for root in graph.roots if root.component.service_type == Repository[int])
+    graph = builder.verify().graph
+    component = next(root.component for root in present(graph).roots if root.component.service_type == Repository[int])
 
-    explanation = graph.explain_specialization(component)
+    explanation = present(graph).explain_specialization(component)
     assert explanation.requested_service.endswith("Repository[int]")
     assert explanation.service_bindings
-    assert graph.explain_arguments(component)[0].policy_kind == "generic_argument"
+    assert present(graph).explain_arguments(component)[0].policy_kind == "generic_argument"
 
 
 def test_explanation_records_structural_factory_substitutions_and_never_stringifies_values():
@@ -132,10 +132,12 @@ def test_explanation_records_structural_factory_substitutions_and_never_stringif
     builder.register(Serializer[int], factory=Serializer)
     builder.register_pattern(Serializer[list[TItem]], factory=factory, arguments={"configured": HostileValue()})
     builder.register(Root)
-    graph = builder.analyse().graph
-    component = next(visit.component for visit in graph.walk() if visit.component.service_type == Serializer[list[int]])
+    graph = builder.verify().graph
+    component = next(
+        visit.component for visit in present(graph).walk() if visit.component.service_type == Serializer[list[int]]
+    )
 
-    specialization = graph.explain_specialization(component)
+    specialization = present(graph).explain_specialization(component)
     assert specialization.selected_tier == "structural_pattern"
     assert specialization.factory_pattern_bindings
     assert [name for name, _ in specialization.factory_pattern_bindings] == ["TItem"]
@@ -143,7 +145,7 @@ def test_explanation_records_structural_factory_substitutions_and_never_stringif
     assert specialization.dependency_annotations[0][0] == "child"
     assert specialization.dependency_annotations[0][1].endswith("Serializer[TypeVar(TItem)]")
     assert specialization.dependency_annotations[0][2].endswith("Serializer[int]")
-    rendered = [record.to_dict() for record in graph.explain_arguments(component)]
+    rendered = [record.to_dict() for record in present(graph).explain_arguments(component)]
     assert "tooling must not stringify" not in str(rendered)
 
 
@@ -162,7 +164,7 @@ def test_safe_declaration_labels_preserve_literal_and_newtype_identity():
 
     builder = ContainerBuilder()
     builder.register(Service, arguments={"value": "alpha"})
-    manifest = builder.analyse().graph.manifest().to_json()
+    manifest = present(builder.verify().graph).manifest().to_json()
     assert "typing.Literal[alpha]" in manifest
 
 
@@ -178,9 +180,9 @@ def test_parameter_explanation_serialization_is_deterministic_and_provenance_is_
         builder = ContainerBuilder()
         builder.register(Dependency)
         builder.register(Service)
-        graph = builder.analyse().graph
-        component = next(root.component for root in graph.roots if root.component.service_type is Service)
-        return graph.explain_arguments(component)[0]
+        graph = builder.verify().graph
+        component = next(root.component for root in present(graph).roots if root.component.service_type is Service)
+        return present(graph).explain_arguments(component)[0]
 
     first, second = build(), build()
     assert first.to_dict() == second.to_dict()
@@ -206,9 +208,9 @@ def test_closed_generic_constructor_keeps_declared_and_resolved_parameter_annota
     builder.register(Dependency[int])
     builder.register(Service[int])
     builder.register(Root)
-    graph = builder.analyse().graph
-    service = next(visit.component for visit in graph.walk() if visit.component.service_type == Service[int])
-    parameter = graph.explain_arguments(service)[0]
+    graph = builder.verify().graph
+    service = next(visit.component for visit in present(graph).walk() if visit.component.service_type == Service[int])
+    parameter = present(graph).explain_arguments(service)[0]
     assert parameter.declared_annotation.endswith("Dependency[TypeVar(TItem)]")
     assert parameter.canonical_annotation.endswith("Dependency[int]")
 
@@ -223,12 +225,12 @@ def test_failed_derivation_does_not_disclose_exception_text_in_text_or_json():
 
     builder = ContainerBuilder()
     builder.register(Service, arguments={"value": derive(fail)})
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    assert "derive-secret-value" not in str(raised_analysis.report)
-    assert raised_analysis.report is not None
-    assert "derive-secret-value" not in raised_analysis.report.to_json()
+    assert "derive-secret-value" not in str(raised_analysis)
+    assert raised_analysis is not None
+    assert "derive-secret-value" not in raised_analysis.to_json()
 
 
 def test_activation_report_separates_provider_target_slots_and_async_causes():
@@ -250,7 +252,7 @@ def test_activation_report_separates_provider_target_slots_and_async_causes():
     builder.declare_scope_slot(Request)
     builder.register(AsyncLeaf, factory=make_leaf)
     builder.register(Application)
-    report = builder.analyse().graph.activation_report(Application)
+    report = present(builder.verify().graph).activation_report(Application)
 
     assert report.scenario.value == "cold"
     assert [item.kind for item in report.immediate_obligations] == ["scope_slot", "provider"]
@@ -273,10 +275,10 @@ def test_activation_report_warm_cache_is_an_assumption_not_runtime_state():
     builder = ContainerBuilder()
     builder.register(Singleton, lifespan="singleton")
     builder.register(Application)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
 
-    cold = graph.activation_report(Application, scenario="cold")
-    warm = graph.activation_report(Application, scenario="warm_singletons")
+    cold = present(graph).activation_report(Application, scenario="cold")
+    warm = present(graph).activation_report(Application, scenario="warm_singletons")
 
     assert any(item.component.endswith("Singleton") for item in cold.potential_acquisitions)
     assert not any(item.component.endswith("Singleton") for item in warm.potential_acquisitions)
@@ -290,10 +292,10 @@ def test_activation_report_requires_an_unambiguous_root():
     builder = ContainerBuilder()
     builder.register(Service, name="first")
     builder.register(Service, name="second")
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
 
     with pytest.raises(ValueError, match="activation-service-not-found"):
-        graph.activation_report(Service)
+        present(graph).activation_report(Service)
 
 
 def test_activation_report_does_not_activate_application_code():
@@ -306,7 +308,7 @@ def test_activation_report_does_not_activate_application_code():
     builder = ContainerBuilder()
     builder.register(Service, factory=forbidden_factory)
 
-    report = builder.analyse().graph.activation_report(Service)
+    report = present(builder.verify().graph).activation_report(Service)
 
     assert report.potential_acquisitions[0].component.endswith("Service")
 
@@ -330,15 +332,13 @@ def test_build_report_aggregates_independent_errors_and_failed_builder_is_reusab
     builder.register(First)
     builder.register(Second)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
-    assert isinstance(report, AnalysisReport)
-    assert raised_analysis.report._explanations
-    assert any(
-        explanation.subject.startswith("Argument 'missing'") for explanation in raised_analysis.report._explanations
-    )
+    report = raised_analysis
+    assert isinstance(report, VerificationReport)
+    assert raised_analysis._explanations
+    assert any(explanation.subject.startswith("Argument 'missing'") for explanation in raised_analysis._explanations)
     assert [issue.code for issue in report.errors] == ["missing-component", "missing-component"]
     assert "FirstMissing" in report.errors[0].message
     assert "SecondMissing" in report.errors[1].message
@@ -350,7 +350,7 @@ def test_build_report_aggregates_independent_errors_and_failed_builder_is_reusab
     builder.register(Second)
     builder.register(FirstMissing)
     builder.register(SecondMissing)
-    assert builder.analyse().report.is_valid
+    assert builder.verify().is_valid
 
 
 def test_complete_component_graph_includes_special_injection_edges_and_redacts_values():
@@ -383,16 +383,16 @@ def test_complete_component_graph_includes_special_injection_edges_and_redacts_v
         arguments={"configured": derive(configured_value)},
     )
     builder.mark_entrypoint(Application)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     _container = container_analysis.create_runtime()
-    application = next(root.component for root in container_analysis.graph.entrypoints)
+    application = next(root.component for root in present(container_analysis.graph).entrypoints)
 
     assert {component.kind for component in application.dependencies} == {
         ComponentKind.scope_slot,
         ComponentKind.runtime_context,
         ComponentKind.value,
     }
-    manifest = container_analysis.graph.manifest().to_json()
+    manifest = present(container_analysis.graph).manifest().to_json()
     assert "top-secret" not in manifest
     assert "compiled-secret" not in manifest
     assert '"activation": "supplied"' in manifest
@@ -408,10 +408,10 @@ def test_use_component_target_is_visible_and_missing_targets_fail_at_build():
     builder = ContainerBuilder()
     builder.register(Service, factory=use_component(Missing))
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
     assert issue.code == "missing-component"
@@ -451,10 +451,10 @@ def test_use_component_self_reference_is_a_build_time_cycle():
     builder = ContainerBuilder()
     builder.register(Service, factory=use_component(Service))
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
     assert issue.code == "circular-dependency"
@@ -476,10 +476,10 @@ def test_use_component_target_participates_in_transitive_lifespan_validation():
     builder.register(TransientWrapper, lifespan="transient")
     builder.register(SingletonService, factory=use_component(TransientWrapper), lifespan="singleton")
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("SingletonService"))
     assert issue.code == "captive-dependency"
@@ -505,10 +505,10 @@ async def test_use_component_sync_mode_rejects_async_targets_but_async_mode_comp
     invalid_builder.register(AsyncTarget, factory=create_target)
     invalid_builder.register(Service, factory=use_component(AsyncTarget))
 
-    raised_analysis = invalid_builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = invalid_builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
     assert issue.code == "async-required"
@@ -567,7 +567,7 @@ def test_semantic_manifests_are_process_independent_and_diff_wiring_changes():
         builder.register(Dependency, implementation)
         builder.register(Application)
         builder.mark_entrypoint(Application)
-        return builder.analyse()
+        return builder.verify()
 
     first = build(FirstDependency).graph.manifest()
     equivalent = build(FirstDependency).graph.manifest()
@@ -598,12 +598,12 @@ def test_entrypoint_markers_focus_graphs_without_weakening_validation():
     builder.register(Application)
     builder.register(Unused)
     builder.mark_entrypoint(Application)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
 
-    assert [issue.code for issue in container_analysis.report.warnings] == ["unreachable-component"]
-    assert len(container_analysis.graph.manifest().data["roots"]) == 1
-    assert len(container_analysis.graph.manifest(all_roots=True).data["roots"]) == 3
+    assert [issue.code for issue in container_analysis.warnings] == ["unreachable-component"]
+    assert len(present(container_analysis.graph).manifest().data["roots"]) == 1
+    assert len(present(container_analysis.graph).manifest(all_roots=True).data["roots"]) == 3
     assert container.resolve(Unused).__class__ is Unused
 
 
@@ -617,11 +617,11 @@ def test_root_policy_entrypoint_marks_only_its_registration():
     builder = ContainerBuilder()
     builder.register(Service, OtherService)
     marked_id = builder.register(Service, root_policy="entrypoint")
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     _container = container_analysis.create_runtime()
 
-    assert [root.component.id for root in container_analysis.graph.entrypoints] == [marked_id]
-    assert len([root for root in container_analysis.graph.roots if root.requested_type is Service]) == 2
+    assert [root.component.id for root in present(container_analysis.graph).entrypoints] == [marked_id]
+    assert len([root for root in present(container_analysis.graph).roots if root.requested_type is Service]) == 2
 
 
 def test_dependency_only_registration_is_retained_when_reachable_but_is_not_a_root():
@@ -635,12 +635,14 @@ def test_dependency_only_registration_is_retained_when_reachable_but_is_not_a_ro
     builder = ContainerBuilder()
     builder.register(Dependency, root_policy="dependency_only")
     builder.register(Application, root_policy="entrypoint")
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
 
     assert isinstance(container.resolve(Application).dependency, Dependency)
     assert not container.has_component(Dependency)
-    assert all(root.requested_type is not Dependency for root in container_analysis.graph.roots if root.resolvable)
+    assert all(
+        root.requested_type is not Dependency for root in present(container_analysis.graph).roots if root.resolvable
+    )
 
 
 def test_execution_skips_unused_dependency_only_graphs_and_analysis_validates_them():
@@ -656,8 +658,8 @@ def test_execution_skips_unused_dependency_only_graphs_and_analysis_validates_th
         builder.register(Orphan, root_policy="dependency_only")
         return builder
 
-    result = configured().analyse()
-    assert [issue.code for issue in result.report.errors] == ["missing-component"]
+    result = configured().verify()
+    assert [issue.code for issue in result.errors] == ["missing-component"]
     builder = configured()
     handle = builder.retain_composition()
     with builder.build() as runtime:
@@ -676,10 +678,10 @@ def test_clean_orphans_false_keeps_valid_dependency_only_graph_without_exposing_
 
     builder = ContainerBuilder()
     builder.register(Orphan, root_policy="dependency_only")
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
 
-    assert [root.requested_type for root in container_analysis.graph.roots] == [Orphan]
+    assert [root.requested_type for root in present(container_analysis.graph).roots] == [Orphan]
     assert not container.has_component(Orphan)
 
 
@@ -729,10 +731,10 @@ def test_custom_validation_rules_receive_the_complete_graph_and_aggregate_with_b
     builder.mark_entrypoint(MissingEntrypoint)
     builder.add_validation_rule(validate)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     assert [issue.code for issue in report.errors] == ["missing-entrypoint", "example-domain-error"]
     assert len(received) == 1
@@ -776,10 +778,10 @@ def test_custom_validation_warning_order_deduplication_build_args_and_failed_bui
     builder.add_validation_rule(validate)
     builder.add_validation_rule(validate_later)
 
-    raised_analysis = builder.analyse(build_args={"ready": False})
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify(build_args={"ready": False})
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     assert [issue.code for issue in report.issues] == [
         "example-not-ready",
@@ -791,9 +793,9 @@ def test_custom_validation_warning_order_deduplication_build_args_and_failed_bui
     builder.register(Service)
     builder.add_validation_rule(validate)
     builder.add_validation_rule(validate_later)
-    container_analysis = builder.analyse(build_args={"ready": True})
+    container_analysis = builder.verify(build_args={"ready": True})
     _container = container_analysis.create_runtime()
-    assert [issue.code for issue in container_analysis.report.issues] == [
+    assert [issue.code for issue in container_analysis.issues] == [
         "example-duplicate",
         "example-later",
     ]
@@ -833,12 +835,12 @@ def test_graph_walk_preserves_paths_across_every_compiled_edge_kind():
     builder.register(Service, arguments={"configured": "fixed"})
     builder.register_decorator(Service, Decorator, decorated_arg="child")
     builder.pre_configure(Service, configure)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
 
-    visits = tuple(visit for visit in graph.walk() if visit.root.requested_type is Service)
+    visits = tuple(visit for visit in present(graph).walk() if visit.root.requested_type is Service)
     assert all(isinstance(visit, GraphVisit) for visit in visits)
-    assert [visit.component.occurrence_id for visit in graph.walk()] == [
-        visit.component.occurrence_id for visit in graph.walk()
+    assert [visit.component.occurrence_id for visit in present(graph).walk()] == [
+        visit.component.occurrence_id for visit in present(graph).walk()
     ]
     assert {
         ComponentKind.registration,
@@ -888,11 +890,11 @@ def test_validation_context_caches_type_asts_without_attaching_them_to_the_graph
     builder.register(InspectedService)
     builder.add_validation_rule(first_rule)
     builder.add_validation_rule(second_rule)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     _container = container_analysis.create_runtime()
     assert len(contexts) == 2
 
-    container_analysis.report
+    container_analysis
 
     assert contexts[0] is contexts[1]
     type_ast = inspected[0]
@@ -902,7 +904,7 @@ def test_validation_context_caches_type_asts_without_attaching_them_to_the_graph
     assert type_ast.node.lineno >= type_ast.first_line
     assert "type-ast-source-marker" in type_ast.source
     assert not hasattr(container_analysis.graph, "type_ast")
-    assert "type-ast-source-marker" not in container_analysis.graph.manifest(all_roots=True).to_json()
+    assert "type-ast-source-marker" not in present(container_analysis.graph).manifest(all_roots=True).to_json()
 
 
 def test_validation_context_type_ast_requires_a_type():
@@ -914,7 +916,7 @@ def test_validation_context_type_ast_requires_a_type():
 
     builder = ContainerBuilder()
     builder.add_validation_rule(validate)
-    builder.analyse()
+    builder.verify()
 
     with pytest.raises(TypeError, match="requires a type"):
         captured[0].type_ast(cast(Any, "not-a-type"))
@@ -962,13 +964,13 @@ def test_full_validation_reuses_build_findings_and_runs_only_validate_only_rules
     builder.mark_entrypoint(InspectedService)
     builder.add_validation_rule(build_rule)
     builder.add_validation_rule(expensive_rule)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
 
     assert len(contexts) == 1
     assert build_calls == 1
-    assert not container_analysis.report.is_valid
-    assert [issue.code for issue in container_analysis.report.issues] == [
+    assert not container_analysis.is_valid
+    assert [issue.code for issue in container_analysis.issues] == [
         "unreachable-component",
         "example-build-rule-run-1",
         "example-expensive-rule",
@@ -976,7 +978,7 @@ def test_full_validation_reuses_build_findings_and_runs_only_validate_only_rules
     container.new_scope()
     assert len(contexts) == 1
 
-    validation_report = container_analysis.report
+    validation_report = container_analysis
 
     assert build_calls == 1
     assert not validation_report.is_valid
@@ -985,7 +987,7 @@ def test_full_validation_reuses_build_findings_and_runs_only_validate_only_rules
         "example-build-rule-run-1",
         "example-expensive-rule",
     ]
-    assert [issue.code for issue in container_analysis.report.issues] == [
+    assert [issue.code for issue in container_analysis.issues] == [
         "unreachable-component",
         "example-build-rule-run-1",
         "example-expensive-rule",
@@ -993,7 +995,7 @@ def test_full_validation_reuses_build_findings_and_runs_only_validate_only_rules
     assert len(contexts) == 1
     assert "validation-only-type-ast-source-marker" in inspected[0].source
 
-    next_validation_report = container_analysis.report
+    next_validation_report = container_analysis
     assert build_calls == 1
     assert [issue.code for issue in next_validation_report.issues] == [
         "unreachable-component",
@@ -1051,14 +1053,14 @@ def test_full_validation_reuses_overlay_build_findings_and_runs_validate_only_ru
     overlay_builder = ScopeBuilder(container, composition=container_composition)
     overlay_builder.register(OverlayService)
     overlay_builder.add_validation_rule(child_rule)
-    overlay_analysis = overlay_builder.analyse()
+    overlay_analysis = overlay_builder.verify()
     _overlay = overlay_analysis.create_runtime()
 
     expected_roots = (OverlayService, ParentService)
     assert [(name, roots) for name, roots, _ in calls] == [("parent", expected_roots), ("child", expected_roots)]
     calls.clear()
 
-    report = overlay_analysis.report
+    report = overlay_analysis
 
     assert calls == []
     assert [issue.code for issue in report.issues] == [
@@ -1102,10 +1104,10 @@ def test_architecture_validation_rule_can_report_the_forbidden_occurrence_path()
     builder.register(DomainService)
     builder.add_validation_rule(enforce_boundaries)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     issue = report.errors[0]
     assert issue.code == "example-domain-depends-on-infrastructure"
@@ -1155,10 +1157,10 @@ def test_validation_rule_failures_are_structured_and_later_rules_continue():
     builder.add_validation_rule(missing_result)
     builder.add_validation_rule(later)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     assert [issue.code for issue in report.issues] == [
         "example-before-failure",
@@ -1272,12 +1274,12 @@ def test_overlay_inherits_parent_rules_and_runs_parent_before_child_against_all_
     overlay_builder = ScopeBuilder(container, composition=container_composition)
     overlay_builder.register(OverlayService)
     overlay_builder.add_validation_rule(child_rule)
-    overlay_analysis = overlay_builder.analyse()
+    overlay_analysis = overlay_builder.verify()
     _overlay = overlay_analysis.create_runtime()
 
     expected_roots = (OverlayService, ParentService)
     assert calls == [("parent", expected_roots), ("child", expected_roots)]
-    assert [issue.code for issue in overlay_analysis.report.warnings] == [
+    assert [issue.code for issue in overlay_analysis.warnings] == [
         "example-parent-rule",
         "example-child-rule",
     ]
@@ -1289,9 +1291,9 @@ def test_missing_and_ambiguous_entrypoints_have_structured_findings():
 
     missing_builder = ContainerBuilder()
     missing_builder.mark_entrypoint(Missing)
-    raised_analysis = missing_builder.analyse()
-    assert not raised_analysis.report.is_valid
-    report = raised_analysis.report
+    raised_analysis = missing_builder.verify()
+    assert not raised_analysis.is_valid
+    report = raised_analysis
     assert report is not None
     assert report.errors[0].code == "missing-entrypoint"
 
@@ -1308,7 +1310,7 @@ def test_missing_and_ambiguous_entrypoints_have_structured_findings():
     ambiguous_builder.register(Service, First)
     ambiguous_builder.register(Service, Second)
     ambiguous_builder.mark_entrypoint(Service)
-    report = ambiguous_builder.analyse().report
+    report = ambiguous_builder.verify()
     assert any(issue.code == "ambiguous-selection" for issue in report.warnings)
 
 
@@ -1326,17 +1328,17 @@ def test_collection_entrypoint_marks_every_matching_member():
     builder.register(Handler, First)
     builder.register(Handler, Second)
     builder.mark_entrypoint(list[Handler])
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     _container = container_analysis.create_runtime()
 
-    assert len(container_analysis.graph.entrypoints) == 2
-    assert not container_analysis.report.warnings
+    assert len(present(container_analysis.graph).entrypoints) == 2
+    assert not container_analysis.warnings
 
     missing_builder = ContainerBuilder()
     missing_builder.mark_entrypoint(list[Handler])
-    raised_analysis = missing_builder.analyse()
-    assert not raised_analysis.report.is_valid
-    report = raised_analysis.report
+    raised_analysis = missing_builder.verify()
+    assert not raised_analysis.is_valid
+    report = raised_analysis
     assert report is not None
     assert report.errors[0].code == "missing-entrypoint"
 
@@ -1407,10 +1409,10 @@ def test_long_lived_components_cannot_transitively_capture_per_resolution(owner_
     builder.register(TransientWrapper, lifespan="transient")
     builder.register(Owner, lifespan=owner_lifespan)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Owner"))
     assert issue.code == "captive-dependency"
@@ -1469,10 +1471,10 @@ def test_singleton_owned_paths_cannot_capture_supplied_scope_slots(edge):
         builder.register(Service, lifespan="transient")
         builder.pre_configure(Service, configure)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
     assert issue.code == "captive-runtime-scope"
@@ -1564,10 +1566,10 @@ def test_per_resolution_capture_is_rejected_across_compiled_edge_types(owner_lif
         builder.register(Service, lifespan=owner_lifespan)
         builder.pre_configure(Service, configure)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
     assert issue.code == "captive-dependency"
@@ -1629,8 +1631,8 @@ def test_failed_per_resolution_capture_build_remains_reusable():
     component_id = builder.register(ResolutionLocal)
     builder.register(SingletonService, lifespan="singleton")
 
-    result = builder.analyse()
-    assert any(issue.code == "captive-dependency" for issue in result.report.errors)
+    result = builder.verify()
+    assert any(issue.code == "captive-dependency" for issue in result.errors)
     builder = ContainerBuilder()
     component_id = builder.register(ResolutionLocal)
     builder.register(SingletonService, lifespan="singleton")
@@ -1656,10 +1658,10 @@ def test_singleton_pre_configuration_dependencies_are_validated_against_the_init
     builder.register(TransientTarget, lifespan="transient")
     builder.pre_configure(TransientTarget, configure)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("TransientTarget"))
     assert issue.code == "captive-dependency"
@@ -1684,10 +1686,10 @@ def test_missing_pre_configuration_dependency_is_reported_at_build():
     builder.register(Service)
     builder.pre_configure(Service, configure)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("Service"))
     assert issue.code == "missing-component"
@@ -1713,10 +1715,10 @@ def test_shared_pre_configuration_dependency_cannot_trigger_the_same_definition(
     builder.register(Second, lifespan="singleton")
     builder.pre_configure((First, Second), configure)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     issue = next(
         issue
@@ -1782,10 +1784,10 @@ def test_inherited_pre_configuration_requires_a_frozen_parent_plan():
     overlay_builder = ScopeBuilder(container, composition=container_composition)
     overlay_builder.register(OverlayService)
 
-    raised_analysis = overlay_builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = overlay_builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("OverlayService"))
     assert issue.code == "overlay-pre-configuration"
@@ -1798,12 +1800,12 @@ def test_graph_text_mermaid_and_json_renderers_are_available():
 
     builder = ContainerBuilder()
     builder.register(Service)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     _container = container_analysis.create_runtime()
 
-    assert "Resolve" in container_analysis.graph.to_text()
-    assert container_analysis.graph.to_mermaid().startswith("flowchart TD")
-    assert "schema_version" not in json.loads(container_analysis.graph.manifest().to_json())
+    assert "Resolve" in present(container_analysis.graph).to_text()
+    assert present(container_analysis.graph).to_mermaid().startswith("flowchart TD")
+    assert "schema_version" not in json.loads(present(container_analysis.graph).manifest().to_json())
 
 
 def test_graph_renderers_put_relationships_on_edges_and_keep_nodes_component_only():
@@ -1827,10 +1829,10 @@ def test_graph_renderers_put_relationships_on_edges_and_keep_nodes_component_onl
     builder.register_decorator(Service, TracedService, decorated_arg="child")
     builder.pre_configure(Service, configure_service)
     builder.mark_entrypoint(Service)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
 
-    text = graph.to_text()
-    mermaid = graph.to_mermaid()
+    text = present(graph).to_text()
+    mermaid = present(graph).to_mermaid()
 
     assert "depends on: repository → " in text
     assert "decorated by → " in text
@@ -1841,7 +1843,7 @@ def test_graph_renderers_put_relationships_on_edges_and_keep_nodes_component_onl
     assert "|pre-configured by|" in mermaid
     assert '["repository: ' not in mermaid
 
-    root = graph.manifest().data["roots"][0]
+    root = present(graph).manifest().data["roots"][0]
     repository = next(item for item in root["dependencies"] if item["service"].endswith("Repository"))
     assert repository["argument"] == "repository"
 
@@ -1862,12 +1864,12 @@ def test_graph_renderers_show_decorator_positions_outside_to_inside():
     builder.register(Service)
     builder.register_decorator(Service, Inner, position=100)
     builder.register_decorator(Service, Outer, position=1000)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
 
-    text = graph.to_text()
+    text = present(graph).to_text()
     assert text.index("Outer") < text.index("Inner")
     assert "position=1000" in text
-    decorators = graph.manifest().data["roots"][0]["decorators"]
+    decorators = present(graph).manifest().data["roots"][0]["decorators"]
     assert [item["implementation"].split(".")[-1] for item in decorators] == ["Outer", "Inner"]
     assert [item["position"] for item in decorators] == [1000, 100]
 
@@ -1894,17 +1896,17 @@ def test_dependency_impact_distinguishes_eager_and_deferred_reachability():
     builder.register(DeferredWorker)
     builder.register(Root)
     builder.mark_entrypoint(Root)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
 
-    eager = graph.dependents(Service)
+    eager = present(graph).dependents(Service)
     assert any(root.requested_type.endswith("Root") for root in eager.affected_roots)
     assert any(len(root.witness_path) > 1 for root in eager.affected_roots)
     assert any(relationship.parent.service.endswith("Worker") for relationship in eager.direct_consumers)
 
-    deferred_target = graph.entrypoints[0].component.dependencies[1].dependencies[0]
-    deferred = graph.dependents(deferred_target, match="occurrence")
+    deferred_target = present(graph).entrypoints[0].component.dependencies[1].dependencies[0]
+    deferred = present(graph).dependents(deferred_target, match="occurrence")
     assert not deferred.affected_roots
-    with_deferred = graph.dependents(deferred_target, match="occurrence", include_deferred=True)
+    with_deferred = present(graph).dependents(deferred_target, match="occurrence", include_deferred=True)
     assert any(root.requested_type.endswith("Root") for root in with_deferred.affected_roots)
     assert any(relationship.phase == "deferred" for relationship in with_deferred.direct_consumers)
     assert "DeferredWorker" in with_deferred.to_json()
@@ -1927,14 +1929,14 @@ def test_paths_between_and_shared_dependencies_are_bounded_and_registration_awar
     builder.register(Shared)
     builder.register(First)
     builder.register(Second)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
 
-    graph_slice = graph.paths_between(First, Shared, max_paths=10)
+    graph_slice = present(graph).paths_between(First, Shared, max_paths=10)
     assert len(graph_slice.paths) == 1
     assert not graph_slice.truncated
     assert "First" in graph_slice.to_text()
 
-    shared = graph.shared_dependencies(First, Second)
+    shared = present(graph).shared_dependencies(First, Second)
     assert any(item.first_paths[0].service.endswith("Shared") for item in shared)
 
 
@@ -1960,9 +1962,9 @@ def test_sharing_report_groups_repeated_singleton_occurrences_without_raw_ids():
     builder.register(FirstRepository)
     builder.register(SecondRepository)
     builder.register(Root)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
 
-    report = graph.sharing_report(Database)
+    report = present(graph).sharing_report(Database)
     database_group = next(group for group in report.groups if group.service.endswith("Database"))
     assert database_group.cache_category == "singleton owner cache"
     assert len(database_group.occurrence_paths) >= 2
@@ -1990,15 +1992,15 @@ def test_activation_report_keeps_provider_target_obligations_deferred():
     builder.declare_scope_slot(Request)
     builder.register(AsyncLeaf, factory=create_leaf)
     builder.register(Root)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
 
-    report = graph.activation_report(Root)
+    report = present(graph).activation_report(Root)
     assert any(item.kind == "scope_slot" for item in report.immediate_obligations)
     assert not any(item.kind == "async_requirement" for item in report.immediate_obligations)
     assert any(item.kind == "async_requirement" for item in report.deferred_obligations)
     assert any(item.phase == "deferred" for item in report.execution_relationships)
 
-    warm = graph.activation_report(Root, scenario="warm_singletons")
+    warm = present(graph).activation_report(Root, scenario="warm_singletons")
     assert "warm_singletons" in warm.to_json()
     assert report.to_mermaid().startswith("flowchart TD")
 
@@ -2105,8 +2107,8 @@ def test_failed_build_exposes_frozen_redacted_partial_graph_and_cli(capsys):
 
     builder = ContainerBuilder()
     builder.register(Service)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
     diagnostic = raised_analysis.partial_graph
     assert diagnostic is not None
@@ -2145,8 +2147,8 @@ def test_partial_graph_marks_cycle_back_references_and_unexamined_candidates():
     builder.register(First)
     builder.register(First, Alternative)
     builder.register(Second)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
     attempt = _failed_partial_graph(raised_analysis).attempts[0]
     assert attempt.witness_path
@@ -2175,13 +2177,13 @@ def test_partial_graph_retains_complete_structure_for_build_rule_failure():
     builder.register(Dependency)
     builder.register(Service)
     builder.add_validation_rule(reject)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
     assert raised_analysis.partial_graph is None
-    assert raised_analysis.report.errors[0].code == "rule-failed"
-    assert {root.requested_type for root in raised_analysis.graph.roots} >= {Service, Dependency}
-    service = next(root.component for root in raised_analysis.graph.roots if root.requested_type is Service)
+    assert raised_analysis.errors[0].code == "rule-failed"
+    assert {root.requested_type for root in present(raised_analysis.graph).roots} >= {Service, Dependency}
+    service = next(root.component for root in present(raised_analysis.graph).roots if root.requested_type is Service)
     assert service.dependencies[0].service_type is Dependency
 
 
@@ -2198,8 +2200,8 @@ def test_partial_graph_never_formats_hostile_user_exceptions():
 
     builder = ContainerBuilder()
     builder.register(Service, when=hostile)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
     assert raised_analysis.partial_graph is not None
     assert "compile-error" in raised_analysis.partial_graph.to_json()
@@ -2226,8 +2228,8 @@ def test_partial_graph_marks_throwing_selection_filter_failed_and_later_candidat
     builder.register(Service, Later)
     builder.register(Service, First)
     builder.register(Root, arguments={"service": select(throwing_filter)})
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
     graph = raised_analysis.partial_graph
     assert graph is not None
@@ -2255,8 +2257,8 @@ def test_partial_graph_marks_throwing_decorator_filter_failed_and_later_decorato
     builder.register(Service)
     builder.register_decorator(Service, LaterDecorator, decorated_arg="decorated")
     builder.register_decorator(Service, BrokenDecorator, when=throwing_filter, decorated_arg="decorated")
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
     graph = raised_analysis.partial_graph
     assert graph is not None
@@ -2284,8 +2286,8 @@ def test_partial_graph_marks_throwing_pre_configuration_filter_failed_and_later_
     builder.register(Service)
     builder.pre_configure(Service, broken_configuration, when=throwing_filter)
     builder.pre_configure(Service, later_configuration)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
     graph = raised_analysis.partial_graph
     assert graph is not None
@@ -2330,8 +2332,8 @@ def test_partial_graph_is_equal_for_equivalent_failing_builds():
     def diagnostic() -> str:
         builder = ContainerBuilder()
         builder.register(Service)
-        raised_analysis = builder.analyse()
-        assert not raised_analysis.report.is_valid
+        raised_analysis = builder.verify()
+        assert not raised_analysis.is_valid
         return _failed_partial_graph(raised_analysis).to_json()
 
     assert diagnostic() == diagnostic()
@@ -2349,13 +2351,13 @@ def test_partial_graph_retains_bounded_retry_accounting_without_skipping_roots()
     for number in range(505):
         builder.register(type(f"Good{number}", (), {}))
     builder.register(Bad)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
     error = raised_analysis
     graph = _failed_partial_graph(error).to_dict()
-    assert error.report is not None
-    assert error.report.checked_roots == 506
+    assert error is not None
+    assert error.checked_roots == 506
     assert graph["total_attempts"] == 507
     assert graph["retained_attempts"] == len(graph["attempts"]) == 101
     assert graph["omitted_attempts"] == 406
@@ -2387,8 +2389,8 @@ def test_unallocated_candidates_have_safe_distinct_declaration_links_and_are_det
         builder.register(Service, LaterA)
         builder.register(Service, LaterB)
         builder.register(Service, Bad)
-        raised_analysis = builder.analyse()
-        assert not raised_analysis.report.is_valid
+        raised_analysis = builder.verify()
+        assert not raised_analysis.is_valid
         graph = _failed_partial_graph(raised_analysis).to_dict()
         attempt = graph["attempts"][0]
         candidates = [node for node in attempt["nodes"] if node["kind"] == "candidate"]
@@ -2443,8 +2445,8 @@ def test_generic_specialization_failure_has_safe_declaration_candidate_link():
 
         builder = ContainerBuilder()
         builder.register(Product[int], factory=conflicting, factory_specialization=StrProduct)
-        raised_analysis = builder.analyse()
-        assert not raised_analysis.report.is_valid
+        raised_analysis = builder.verify()
+        assert not raised_analysis.is_valid
         attempt = _failed_partial_graph(raised_analysis).to_dict()["attempts"][0]
         candidate = next(node for node in attempt["nodes"] if node["kind"] == "candidate")
         declaration = next(
@@ -2487,16 +2489,16 @@ def test_partial_graph_caps_validation_issue_nodes_after_500_compiled_roots():
             yield BuildIssue("bulk-rule-failed", IssueSeverity.error, "rejected", path=(qualified_name(root),))
 
     builder.add_validation_rule(reject_all)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    assert raised_analysis.report is not None
-    assert len(raised_analysis.report.errors) == 500
+    assert raised_analysis is not None
+    assert len(raised_analysis.errors) == 500
     assert raised_analysis.partial_graph is None
-    assert len(raised_analysis.graph.roots) == 500
-    assert raised_analysis.report.complete
-    assert {issue.path for issue in raised_analysis.report.errors} == {(qualified_name(root),) for root in roots}
-    assert len(json.loads(raised_analysis.report.to_sarif())["runs"][0]["results"]) == 500
+    assert len(present(raised_analysis.graph).roots) == 500
+    assert raised_analysis.complete
+    assert {issue.path for issue in raised_analysis.errors} == {(qualified_name(root),) for root in roots}
+    assert len(json.loads(raised_analysis.to_sarif())["runs"][0]["results"]) == 500
 
 
 def test_partial_graph_links_validation_issue_to_the_exact_shared_occurrence_path():
@@ -2527,18 +2529,20 @@ def test_partial_graph_links_validation_issue_to_the_exact_shared_occurrence_pat
     builder.register(RootA)
     builder.register(RootB)
     builder.add_validation_rule(reject_root_b_shared)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
     assert raised_analysis.partial_graph is None
     graph = raised_analysis.graph
-    issue = raised_analysis.report.errors[0]
-    matching = [visit for visit in graph.walk() if visit.path == issue.path]
+    issue = raised_analysis.errors[0]
+    matching = [visit for visit in present(graph).walk() if visit.path == issue.path]
     assert len(matching) == 1
     assert matching[0].component.service_type is Shared
     assert matching[0].root.requested_type is RootB
     other = next(
-        visit for visit in graph.walk() if visit.root.requested_type is RootA and visit.component.service_type is Shared
+        visit
+        for visit in present(graph).walk()
+        if visit.root.requested_type is RootA and visit.component.service_type is Shared
     )
     assert matching[0].component.occurrence_id != other.component.occurrence_id
 
@@ -2561,16 +2565,18 @@ def test_partial_graph_links_graph_visit_decorator_issue_to_its_decorator_occurr
     builder.register(Service)
     builder.register_decorator(Service, Decorated, decorated_arg="service")
     builder.add_validation_rule(reject_decorator)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
     assert raised_analysis.partial_graph is None
-    visit = next(visit for visit in raised_analysis.graph.walk() if visit.component.kind is ComponentKind.decorator)
-    issue = raised_analysis.report.errors[0]
+    visit = next(
+        visit for visit in present(raised_analysis.graph).walk() if visit.component.kind is ComponentKind.decorator
+    )
+    issue = raised_analysis.errors[0]
     assert issue.code == issue_code
     assert issue._occurrence_path == tuple(component.occurrence_id for component in visit.components)
     assert issue.path == visit.path
-    assert "physicalLocation" in raised_analysis.report.to_sarif()
+    assert "physicalLocation" in raised_analysis.to_sarif()
 
 
 def test_partial_graph_does_not_invent_decorator_paths_from_allocation_parent():
@@ -2609,14 +2615,14 @@ def test_partial_graph_does_not_invent_decorator_paths_from_allocation_parent():
     builder.register(Root)
     builder.register_decorator(Service, Decorated, decorated_arg="service")
     builder.add_validation_rule(check_paths)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
     assert raised_analysis.partial_graph is None
     graph = raised_analysis.graph
-    unanchored, exact = raised_analysis.report.errors
-    assert not any(visit.path == unanchored.path for visit in graph.walk())
-    match = next(visit for visit in graph.walk() if visit.path == exact.path)
+    unanchored, exact = raised_analysis.errors
+    assert not any(visit.path == unanchored.path for visit in present(graph).walk())
+    match = next(visit for visit in present(graph).walk() if visit.path == exact.path)
     assert match.component.kind is ComponentKind.decorator
     assert match.components[-2].service_type is Service
     assert match.root.requested_type is Root
@@ -2640,18 +2646,20 @@ def test_partial_graph_links_graph_visit_pre_configuration_issue_to_its_occurren
     builder.register(Service)
     builder.pre_configure(Service, configure)
     builder.add_validation_rule(reject_pre_configuration)
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
     assert raised_analysis.partial_graph is None
     visit = next(
-        visit for visit in raised_analysis.graph.walk() if visit.component.kind is ComponentKind.pre_configuration
+        visit
+        for visit in present(raised_analysis.graph).walk()
+        if visit.component.kind is ComponentKind.pre_configuration
     )
-    issue = raised_analysis.report.errors[0]
+    issue = raised_analysis.errors[0]
     assert issue.code == issue_code
     assert issue._occurrence_path == tuple(component.occurrence_id for component in visit.components)
     assert issue.path == visit.path
-    assert "physicalLocation" in raised_analysis.report.to_sarif()
+    assert "physicalLocation" in raised_analysis.to_sarif()
 
 
 def test_explain_records_default_named_filtered_and_collection_selection_without_rerunning_filters():
@@ -2675,13 +2683,13 @@ def test_explain_records_default_named_filtered_and_collection_selection_without
     default_id = builder.register(Gateway, DefaultGateway)
     stripe_id = builder.register(Gateway, StripeGateway, name="stripe")
     builder.mark_entrypoint(Gateway, filter=stripe)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
     build_calls = calls
 
-    default = graph.explain(Gateway)
-    filtered = graph.explain(Gateway, filter=stripe)
-    named = graph.explain(Gateway, filter=cf.with_name("stripe"))
-    collection = graph.explain(list[Gateway])
+    default = present(graph).explain(Gateway)
+    filtered = present(graph).explain(Gateway, filter=stripe)
+    named = present(graph).explain(Gateway, filter=cf.with_name("stripe"))
+    collection = present(graph).explain(list[Gateway])
 
     assert calls == build_calls
     assert default.selected[0].component_id == default_id
@@ -2713,11 +2721,13 @@ def test_occurrence_explanations_build_each_path_view_once_and_prefer_entrypoint
     builder.register(Dependency)
     builder.register(Service, OtherService)
     marked_id = builder.register(Service, root_policy="entrypoint")
-    graph = builder.analyse().graph
-    marked_root = next(root for root in graph.roots if root.component.id == marked_id)
+    graph = builder.verify().graph
+    marked_root = next(root for root in present(graph).roots if root.component.id == marked_id)
     # Ensure the marked occurrence has a different candidate number in each
     # view regardless of the compiler's registration ordering.
-    graph = replace(graph, roots=(*(root for root in graph.roots if root is not marked_root), marked_root))
+    graph = replace(
+        present(graph), roots=(*(root for root in present(graph).roots if root is not marked_root), marked_root)
+    )
     selected_paths = graph._component_paths(all_roots=False)
     all_paths = graph._component_paths(all_roots=True)
     marked = next(root.component for root in graph.roots if root.component.id == marked_id)
@@ -2766,10 +2776,10 @@ def test_occurrence_paths_share_identical_views_and_preserve_first_and_last_path
     builder = ContainerBuilder()
     builder.register(Dependency, root_policy="dependency_only")
     builder.register(Service)
-    original_graph = builder.analyse().graph
-    root = original_graph.roots[0]
+    original_graph = builder.verify().graph
+    root = present(original_graph).roots[0]
     # A graph can project the same occurrence under multiple semantic roots.
-    graph = replace(original_graph, roots=(root, root))
+    graph = replace(present(original_graph), roots=(root, root))
     paths = graph._component_paths(all_roots=True)
     first = {item.occurrence_id: path for path, item in reversed(tuple(paths.items()))}
     last = {item.occurrence_id: path for path, item in paths.items()}
@@ -2800,16 +2810,16 @@ def test_occurrence_path_cache_rejects_foreign_and_absent_components_including_e
     builder = ContainerBuilder()
     builder.register(Service)
     builder.register(Other)
-    graph = builder.analyse().graph
-    service = graph.roots[0].component
-    graph.explain(service)
+    graph = builder.verify().graph
+    service = present(graph).roots[0].component
+    present(graph).explain(service)
     foreign_builder = ContainerBuilder()
     foreign_builder.register(Service)
-    foreign = foreign_builder.analyse().graph.roots[0].component
+    foreign = present(foreign_builder.verify().graph).roots[0].component
     assert foreign.occurrence_id == service.occurrence_id
     with pytest.raises(ValueError, match="different compiled graph"):
-        graph.explain(foreign)
-    reduced = replace(graph, roots=(graph.roots[1],), _occurrence_paths_cache={})
+        present(graph).explain(foreign)
+    reduced = replace(present(graph), roots=(present(graph).roots[1],), _occurrence_paths_cache={})
     with pytest.raises(ValueError, match="does not belong to this compiled graph"):
         reduced.explain(service)
     empty = CompiledGraph(roots=())
@@ -2869,15 +2879,15 @@ def test_explain_occurrences_captures_origins_bundles_argument_policies_and_appl
 
     builder = ContainerBuilder()
     builder.apply_bundle(bundle)
-    graph = builder.analyse().graph
-    service = next(root.component for root in graph.roots if root.requested_type is Service)
+    graph = builder.verify().graph
+    service = next(root.component for root in present(graph).roots if root.requested_type is Service)
     dependency = next(item for item in service.dependencies if item.service_type is Dependency)
     request = next(item for item in service.dependencies if item.service_type is Request)
     configured = next(item for item in service.dependencies if item.service_type is str)
     decorator = service.decorators[0]
     pre_configuration = service.pre_configurations[0]
 
-    registration_origin = graph.explain(dependency).selected[0].origin
+    registration_origin = present(graph).explain(dependency).selected[0].origin
     assert isinstance(registration_origin, DefinitionOrigin)
     assert isinstance(registration_origin.location, SourceLocation)
     assert registration_origin.kind == "registration"
@@ -2886,14 +2896,14 @@ def test_explain_occurrences_captures_origins_bundles_argument_policies_and_appl
     assert not Path(registration_origin.location.path or "/").is_absolute()
     assert registration_origin.bundle_path[-1].endswith("bundle")
 
-    assert graph.explain(request).selected[0].origin.kind == "scope-slot"
-    assert graph.explain(configured).selected[0].reason_codes == ("argument-derived",)
-    decorator_explanation = graph.explain(decorator)
+    assert present(graph).explain(request).selected[0].origin.kind == "scope-slot"
+    assert present(graph).explain(configured).selected[0].reason_codes == ("argument-derived",)
+    decorator_explanation = present(graph).explain(decorator)
     assert decorator_explanation.selected[0].reason_codes == ("decorator-filter-matched",)
     assert decorator_explanation.rejected[0].reason_codes == ("decorator-filter-rejected",)
-    assert graph.explain(pre_configuration).selected[0].reason_codes == ("pre-configuration-filter-matched",)
+    assert present(graph).explain(pre_configuration).selected[0].reason_codes == ("pre-configuration-filter-matched",)
     assert "secret" not in configured.__repr__()
-    assert "secret" not in graph.explain(configured).to_json()
+    assert "secret" not in present(graph).explain(configured).to_json()
 
 
 def test_explain_overlay_anchoring_normal_scope_reuse_and_manifest_stability(monkeypatch):
@@ -2907,14 +2917,14 @@ def test_explain_overlay_anchoring_normal_scope_reuse_and_manifest_stability(mon
     builder = ContainerBuilder()
     builder.register(Dependency, lifespan="singleton")
     builder.register(Service, lifespan="singleton")
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
-    before = container_analysis.graph.manifest(all_roots=True).to_json()
+    before = present(container_analysis.graph).manifest(all_roots=True).to_json()
 
     assert not hasattr(container.new_scope(), "graph")
-    assert container_analysis.graph.manifest(all_roots=True).to_json() == before
+    assert present(container_analysis.graph).manifest(all_roots=True).to_json() == before
     assert container_analysis.composition is not None
-    overlay_analysis = ScopeBuilder(container, composition=container_analysis.composition).analyse()
+    overlay_analysis = ScopeBuilder(container, composition=container_analysis.composition).verify()
     _overlay = overlay_analysis.create_runtime()
     calls = []
     original = CompiledGraph._component_paths
@@ -2924,22 +2934,24 @@ def test_explain_overlay_anchoring_normal_scope_reuse_and_manifest_stability(mon
         return original(self, all_roots=all_roots)
 
     monkeypatch.setattr(CompiledGraph, "_component_paths", record)
-    explanation = overlay_analysis.graph.explain(Service)
+    explanation = present(overlay_analysis.graph).explain(Service)
 
     assert "anchored-parent-singleton" in explanation.selected[0].reason_codes
     assert explanation.selected[0].origin.layer == "root"
-    component = next(root.component for root in overlay_analysis.graph.roots if root.component.service_type is Service)
+    component = next(
+        root.component for root in present(overlay_analysis.graph).roots if root.component.service_type is Service
+    )
     for _ in range(3):
-        assert overlay_analysis.graph.explain(component).path == explanation.path
+        assert present(overlay_analysis.graph).explain(component).path == explanation.path
         with pytest.raises(ValueError, match="explain-arguments-not-recorded"):
-            overlay_analysis.graph.explain_arguments(component)
+            present(overlay_analysis.graph).explain_arguments(component)
     assert calls == [(True, True)]
     parent_component = next(
-        root.component for root in container_analysis.graph.roots if root.component.service_type is Service
+        root.component for root in present(container_analysis.graph).roots if root.component.service_type is Service
     )
     with pytest.raises(ValueError, match="different compiled graph"):
-        overlay_analysis.graph.explain(parent_component)
-    assert container_analysis.graph.manifest(all_roots=True).to_json() == before
+        present(overlay_analysis.graph).explain(parent_component)
+    assert present(container_analysis.graph).manifest(all_roots=True).to_json() == before
 
 
 def test_failed_filter_explanation_records_only_the_error_type_and_builder_remains_repairable():
@@ -2956,10 +2968,10 @@ def test_failed_filter_explanation_records_only_the_error_type_and_builder_remai
     builder = ContainerBuilder()
     builder.register(Service, when=broken_filter)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    explanation_json = "\n".join(item.to_json() for item in raised_analysis.report._explanations)
+    explanation_json = "\n".join(item.to_json() for item in raised_analysis._explanations)
     assert "RuntimeError" in explanation_json
     assert "do-not-copy-this-filter-secret" not in explanation_json
 
@@ -3022,17 +3034,17 @@ def test_cli_impact_reports_json_and_query_errors(capsys):
 def test_tooling_json_is_unversioned_during_prerelease():
     builder = ContainerBuilder()
     builder.register(str, instance="value")
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     _container = container_analysis.create_runtime()
 
     for payload in (
-        container_analysis.report.to_json(),
-        container_analysis.graph.ownership_report().to_json(),
-        container_analysis.graph.manifest().to_json(),
+        container_analysis.to_json(),
+        present(container_analysis.graph).ownership_report().to_json(),
+        present(container_analysis.graph).manifest().to_json(),
     ):
         assert "schema_version" not in json.loads(payload)
 
-    manifest = container_analysis.graph.manifest()
+    manifest = present(container_analysis.graph).manifest()
     restored = GraphManifest.from_json(manifest.to_json())
     assert restored.data == manifest.data
     assert restored.fingerprint == manifest.fingerprint
@@ -3057,10 +3069,10 @@ def test_reverse_dependency_analysis_keeps_paths_deferred_edges_and_entrypoints(
     builder.register(RetryWorker)
     builder.mark_entrypoint(Checkout)
     builder.mark_entrypoint(RetryWorker)
-    graph = builder.analyse().graph
+    graph = builder.verify().graph
 
-    eager = graph.dependents(Gateway, match="registration")
-    deferred = graph.dependents(Gateway, match="registration", include_deferred=True)
+    eager = present(graph).dependents(Gateway, match="registration")
+    deferred = present(graph).dependents(Gateway, match="registration", include_deferred=True)
 
     assert {item.parent.service.rsplit(".", 1)[-1] for item in eager.direct_consumers} == {"Checkout"}
     assert any(item.kind == "deferred_target" for item in deferred.direct_consumers)
@@ -3092,17 +3104,17 @@ def test_reverse_dependency_analysis_bounds_paths_and_rejects_ambiguous_type_sel
     builder.register(First)
     builder.register(Second)
     builder.register(Root)
-    graph = builder.analyse().graph
-    root = next(item.component for item in graph.roots if item.requested_type is Root)
+    graph = builder.verify().graph
+    root = next(item.component for item in present(graph).roots if item.requested_type is Root)
     shared = next(item for item in root.descendants() if item.service_type is Shared)
 
-    sliced = graph.paths_between(root, shared, max_paths=1)
+    sliced = present(graph).paths_between(root, shared, max_paths=1)
     assert sliced.returned_paths == 1
     assert sliced.truncated is False
     assert sliced.max_paths == 1
     assert sliced.to_mermaid().startswith("flowchart TD")
     with pytest.raises(ValueError, match="analysis-ambiguous-occurrence"):
-        graph.dependents(Shared, match="occurrence")
+        present(graph).dependents(Shared, match="occurrence")
 
 
 def test_sharing_report_groups_cache_identity_without_activation_or_raw_ids(capsys):
@@ -3131,10 +3143,10 @@ def test_sharing_report_groups_cache_identity_without_activation_or_raw_ids(caps
     builder.register(Left)
     builder.register(Right)
     builder.register(Application)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     _container = container_analysis.create_runtime()
 
-    report = container_analysis.graph.sharing_report()
+    report = present(container_analysis.graph).sharing_report()
     database_groups = [group for group in report.groups if group.service.endswith(".Database")]
     assert len(database_groups) == 1
     group = database_groups[0]
@@ -3153,7 +3165,7 @@ def test_sharing_report_groups_cache_identity_without_activation_or_raw_ids(caps
 
     from tests.tooling_targets import valid_builder
 
-    path = valid_builder().analyse().graph.sharing_report().groups[0].paths[0]
+    path = present(valid_builder().verify().graph).sharing_report().groups[0].paths[0]
     assert main(["sharing", "tests.tooling_targets:valid_builder", "--path", path]) == 0
     assert path in capsys.readouterr().out
 

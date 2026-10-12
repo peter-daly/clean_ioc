@@ -20,4 +20,13 @@ Review every changed composition root. A builder must finish registrations, deco
 
 Rewrite V1 `DependencySettings`, registration/node filters, callbacks, mutable scopes, generic discovery fallbacks, injected container services, and framework setup using the upgrade guide. In particular, V2 filters receive static `Component` occurrences at build time, and `derive(...)` executes at build time; do not carry runtime-dependent callbacks across unchanged. Prefer public APIs only.
 
-Run the affected application's tests using fresh composition factories. Production `build()` emits execution only: it does not run validation rules or safety checks. Call `analyse()` separately for missing, circular, captive, factory and custom-rule findings, then inspect `result.report` and its completeness. Use `result.create_runtime()` under result ownership when tests need both inspection and resolution without recompilation. Every admitted attempt consumes its builder; repair by creating a fresh one. Register all rules with `add_validation_rule(rule)` without a phase argument. Check scope ownership and cleanup. Finish with the application's normal type, lint, and test checks. Do not treat a successful codemod run as proof that the migration is complete.
+Run the affected application's tests using fresh composition factories. Production `build()` emits execution only: it does not run validation rules or safety checks. Call `verify()` separately for missing, circular, captive, factory and custom-rule findings, then inspect `result` and its completeness. Use `result.create_runtime()` under result ownership when tests need both inspection and resolution without recompilation. Every admitted attempt consumes its builder; repair by creating a fresh one. Register all rules with `add_validation_rule(rule)` without a phase argument. Check scope ownership and cleanup. Finish with the application's normal type, lint, and test checks. Do not treat a successful codemod run as proof that the migration is complete.
+
+## Migrating the RC5 analysis API
+
+Replace `builder.analyse()` with `builder.verify()` for root and scope builders.
+Replace `AnalysisResult`/`AnalysisReport` imports with `VerificationReport` and
+`result.report.assert_valid()` with `report.assert_valid()`. Read findings and
+completion directly. Related outcome/error names use the `Verification` prefix.
+Keep `create_runtime()` and report context management for execution tests, and
+use `--operation verify` for CLI profiling. Do not introduce compatibility aliases.

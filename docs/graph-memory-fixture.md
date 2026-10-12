@@ -105,13 +105,13 @@ shape includes quadratic map fanout, and compilation can grow more steeply as
 template candidates interact. A first 32-route run exceeded 4 GiB current RSS
 before completion and was stopped. That observation is not a completed benchmark
 or a claim about an application. Start small when increasing the route count.
-Use `--operation analyse` for a separate completed-analysis comparison (start with two routes).
+Use `--operation verify` for a separate completed-analysis comparison (start with two routes).
 `repeat` launches separate normal and traced processes for each repetition and
 requires their graph counts and resolution checks to agree.
 
-The current public operations are `builder.build()` and `builder.analyse()`. Analysis returns completed inspection;
+The current public operations are `builder.build()` and `builder.verify()`. Analysis returns completed inspection;
 production build retains execution and discovery only. The fixture accepts an explicit operation and retains its
-analysis result separately when requested. Provider roots remain declared with `set_provider_roots()`.
+verification report separately when requested. Provider roots remain declared with `set_provider_roots()`.
 
 All recorded measurements on this page describe earlier revisions. Old fine-grained
 switches and build modes are removed. Archived sources/results remain immutable; historical toggle driver entrypoints

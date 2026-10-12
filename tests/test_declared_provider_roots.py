@@ -172,10 +172,10 @@ def test_invalid_option_does_not_consume_builder(invalid):
 def test_missing_declared_provider_fails_at_build_and_builder_can_be_repaired():
     builder = ContainerBuilder()
     builder.set_provider_roots([Provider[Resource]])
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert "provider-missing-component" in {issue.code for issue in caught_analysis.report.errors}
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert "provider-missing-component" in {issue.code for issue in caught_analysis.errors}
     builder = ContainerBuilder()
     builder.register(Resource)
     builder.set_provider_roots([Provider[Resource]])
@@ -190,10 +190,10 @@ def test_all_ordinary_roots_remain_validated_with_empty_provider_declaration():
     builder = ContainerBuilder()
     builder.register(Invalid)
     builder.set_provider_roots(())
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert "missing-component" in {issue.code for issue in caught_analysis.report.errors}
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert "missing-component" in {issue.code for issue in caught_analysis.errors}
 
 
 def test_declared_closed_generic_target_is_compiled_during_build():
@@ -226,10 +226,10 @@ def test_private_managed_closure_is_counted_in_physical_budget_and_profile():
     builder = ContainerBuilder()
     builder.register(Resource)
     builder.set_provider_roots(())
-    caught_analysis = builder.analyse(budget=CompilationBudget(graph_occurrences=0))
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert "compilation-budget-exceeded" in {issue.code for issue in caught_analysis.report.errors}
+    caught_analysis = builder.verify(budget=CompilationBudget(graph_occurrences=0))
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert "compilation-budget-exceeded" in {issue.code for issue in caught_analysis.errors}
 
 
 def test_full_mode_shares_managed_roots_and_keeps_every_form():

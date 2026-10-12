@@ -39,7 +39,7 @@ def forbidden(*args, **kwargs):
 
 
 def forbid_analysis(monkeypatch):
-    for cls in (compiler._PlanSet, compiler.CompiledGraph, compiler.AnalysisReport, compiler.ValidationContext):
+    for cls in (compiler._PlanSet, compiler.CompiledGraph, compiler.VerificationReport, compiler.ValidationContext):
         monkeypatch.setattr(cls, "__init__", forbidden)
     for name in ("_compile_with_report", "_finalize_plan", "_census_inventory"):
         monkeypatch.setattr(compiler, name, forbidden)
@@ -108,7 +108,7 @@ def test_pending_handle_identity_and_admission():
     assert not hasattr(parent, "new_scope_builder")
 
 
-@pytest.mark.parametrize("operation", ["build", "analyse"])
+@pytest.mark.parametrize("operation", ["build", "verify"])
 def test_failed_emission_leaves_requested_handle_unusable(operation):
     class Root:
         def __init__(self, missing: Missing):
@@ -121,7 +121,7 @@ def test_failed_emission_leaves_requested_handle_unusable(operation):
         with pytest.raises(ContainerBuildError):
             builder.build()
     else:
-        result = builder.analyse()
+        result = builder.verify()
         assert not result.emission_complete
         assert result.composition is None
     assert not handle.is_ready
@@ -221,7 +221,7 @@ def test_analysis_composition_is_independent_of_result_and_multiple_test_runtime
     builder.register(Service, lifespan="singleton")
     builder.pre_configure(Service, lambda: calls.append("configure"))
     handle = builder.retain_composition()
-    result = builder.analyse()
+    result = builder.verify()
     assert result.composition is handle
     profiler = ResolutionProfiler(sample_durations=0)
     first = result.create_runtime(instrumentation=Instrumentation(profiler))
@@ -474,8 +474,8 @@ def test_analysis_only_failure_still_exposes_completed_execution_composition():
     builder = ContainerBuilder().set_provider_roots(())
     builder.register(Service)
     builder.create_boundary("unused").register(Broken)
-    result = builder.analyse()
-    assert not result.report.complete
+    result = builder.verify()
+    assert not result.complete
     assert result.emission_complete
     assert result.composition is not None and result.composition.is_ready
     with result:

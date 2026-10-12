@@ -51,7 +51,7 @@ class ArchitecturePolicyBundle(BaseBundle):
         builder.add_validation_rule(inspect_all_source)
 ```
 
-Rules installed on a root builder are inherited by scope overlay compositions and run when that overlay is analysed.
+Rules installed on a root builder are inherited by scope overlay compositions and run when that overlay is verified.
 All bundled rules run only during analysis. Production build skips them.
 See [Custom graph validation](custom-validation.md#package-rules-in-bundles) for a complete policy-bundle example.
 

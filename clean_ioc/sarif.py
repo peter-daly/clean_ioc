@@ -9,7 +9,14 @@ from pathlib import Path, PureWindowsPath
 from typing import Any, Iterable
 from urllib.parse import quote
 
-from .tooling import AnalysisReport, BuildIssue, CompilationExplanation, CompiledGraph, FailureEvidence, SourceLocation
+from .tooling import (
+    BuildIssue,
+    CompilationExplanation,
+    CompiledGraph,
+    FailureEvidence,
+    SourceLocation,
+    VerificationReport,
+)
 
 _SCHEMA = "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json"
 
@@ -93,7 +100,7 @@ def _location(label: str, source: SourceLocation | None) -> dict[str, Any]:
 
 
 def report_to_sarif(
-    report: AnalysisReport,
+    report: VerificationReport,
     *,
     graph: CompiledGraph | None = None,
     explanations: Iterable[CompilationExplanation] = (),

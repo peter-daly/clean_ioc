@@ -318,9 +318,9 @@ def validate_custom_graph_rules() -> None:
     invalid_builder.register(DomainService)
     invalid_builder.add_validation_rule(enforce_architecture)
 
-    invalid = invalid_builder.analyse()
-    assert invalid.report.errors[0].code == "example-layer-boundary"  # noqa: S101
-    assert invalid.report.errors[0].path[-1].endswith("InfrastructureRepository")  # noqa: S101
+    invalid = invalid_builder.verify()
+    assert invalid.errors[0].code == "example-layer-boundary"  # noqa: S101
+    assert invalid.errors[0].path[-1].endswith("InfrastructureRepository")  # noqa: S101
 
     class InspectedService:
         pass
@@ -342,11 +342,11 @@ def validate_custom_graph_rules() -> None:
     validation_builder = ContainerBuilder()
     validation_builder.register(InspectedService)
     validation_builder.add_validation_rule(expensive_rule)
-    result = validation_builder.analyse()
+    result = validation_builder.verify()
     assert validation_calls == 1  # noqa: S101
-    report = result.report
+    report = result
     assert report.warnings[0].code == "example-expensive-warning"  # noqa: S101
-    assert result.report is report and validation_calls == 1  # noqa: S101
+    assert result is report and validation_calls == 1  # noqa: S101
 
 
 def validate_boundaries() -> None:

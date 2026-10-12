@@ -6,6 +6,7 @@ from typing import Generic, TypeVar, cast, final
 import pytest
 
 from clean_ioc import ComponentActivation, ContainerBuilder
+from tests.verification_helpers import present
 
 T = TypeVar("T")
 Item = TypeVar("Item")
@@ -72,11 +73,11 @@ def test_explicit_pair_and_inherited_reordered_bindings_and_metadata():
     builder.register(Repository[int])
     builder.register(Contract[str], Implementation[str])
     builder.register(Inherited[str, int])
-    with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
+    with builder.verify() as container_analysis, container_analysis.create_runtime() as container:
         service = container.resolve(Contract[str])
         assert type(service) is Implementation
         component = next(
-            r.component for r in container_analysis.graph.roots if r.component.service_type == Contract[str]
+            r.component for r in present(container_analysis.graph).roots if r.component.service_type == Contract[str]
         )
         assert component.implementation == Implementation[str]
         assert component.implementation_type is Implementation
@@ -92,11 +93,11 @@ def test_explicit_pair_and_inherited_reordered_bindings_and_metadata():
 def test_missing_closed_dependency_is_a_recoverable_build_failure():
     builder = ContainerBuilder()
     builder.register(Contract[str], Implementation[str])
-    error = builder.analyse()
-    assert not error.report.is_valid
-    assert re.search("Repository\\[str\\]", error.report.to_text())
-    assert "repository" in error.report.to_text()
-    assert "Implementation" in error.report.to_text()
+    error = builder.verify()
+    assert not error.is_valid
+    assert re.search("Repository\\[str\\]", error.to_text())
+    assert "repository" in error.to_text()
+    assert "Implementation" in error.to_text()
     builder = ContainerBuilder()
     builder.register(Contract[str], Implementation[str])
     builder.register(Repository[str])
@@ -165,9 +166,9 @@ def test_override_removal_rebuilds_specialized_required_dependency():
 def test_real_constructor_controls_unknown_argument_validation():
     builder = ContainerBuilder()
     builder.register(Implementation[str], arguments={"typo": 1, "repository": 2})
-    analysis_164 = builder.analyse()
-    assert not analysis_164.report.is_valid
-    assert re.search("no argument named 'typo'", analysis_164.report.to_text())
+    analysis_164 = builder.verify()
+    assert not analysis_164.is_valid
+    assert re.search("no argument named 'typo'", analysis_164.to_text())
 
     class Flexible(Generic[T]):
         def __init__(self, repository: Repository[T], **kwargs):
@@ -272,9 +273,9 @@ def test_unbound_required_nested_typevar_fails_but_value_policies_and_defaults_w
 
     builder = ContainerBuilder()
     key = builder.register(Unbound[str])
-    analysis_270 = builder.analyse()
-    assert not analysis_270.report.is_valid
-    assert re.search("Unable to resolve constructor TypeVar.*Value", analysis_270.report.to_text())
+    analysis_270 = builder.verify()
+    assert not analysis_270.is_valid
+    assert re.search("Unable to resolve constructor TypeVar.*Value", analysis_270.to_text())
     builder = ContainerBuilder()
     key = builder.register(Unbound[str])
     builder.patch_component(Unbound[str], key, arguments={"repositories": ["explicit"]})
@@ -370,6 +371,6 @@ def test_explicit_pair_policies_keep_service_mapping_in_drafts_and_frozen_graph(
     builder = ContainerBuilder()
     builder.register(Repository[str])
     builder.register(Contract[str], Descriptor[str], arguments={"item_type": generic_arg("Value")})
-    analysis_365 = builder.analyse()
-    assert not analysis_365.report.is_valid
-    assert re.search("Value", analysis_365.report.to_text())
+    analysis_365 = builder.verify()
+    assert not analysis_365.is_valid
+    assert re.search("Value", analysis_365.to_text())

@@ -7,13 +7,13 @@ from collections import defaultdict
 import pytest
 
 from clean_ioc import (
-    AnalysisResult,
     ContainerBuilder,
     ContainerBuildError,
     DecoratorTemplate,
     DerivedServices,
     Expose,
     ServiceGroup,
+    VerificationReport,
 )
 from clean_ioc.container import _Compiler
 from clean_ioc.tooling import _RemappedDecoratorExplanation
@@ -100,7 +100,7 @@ def test_direct_facts_preserve_occurrences_callbacks_and_escaped_snapshots(mode,
 
     if rich:
         declaration.add_validation_rule(rule)
-    analysis = builder.analyse() if mode == "analysis" else None
+    analysis = builder.verify() if mode == "analysis" else None
     runtime = analysis.create_runtime() if analysis is not None else builder.build()
     before = dict(calls)
     resolved = runtime.resolve(Consumer)
@@ -155,10 +155,10 @@ def test_template_callback_failure_keeps_original_identity_and_safe_path(mode):
         assert calls == [target_id]
         text = str(issue)
     else:
-        result = builder.analyse()
-        assert not result.report.is_valid
-        issue = result.report.errors[0]
-        text = result.report.to_text()
+        result = builder.verify()
+        assert not result.is_valid
+        issue = result.errors[0]
+        text = result.to_text()
     assert issue.code == "decorator-filter-failed"
     assert all(identity in issue.path for identity in (template_id, source_id, target_id))
     assert "private-callback-text" not in text
@@ -205,7 +205,7 @@ def test_stateful_filter_results_and_descriptions_are_captured_each_time(mode, m
         for_each=Source,
         template=lambda _: DecoratorTemplate(DerivedServices(Target), Wrapper, when=predicate),
     )
-    with builder.analyse() if mode == "analysis" else builder.build():
+    with builder.verify() if mode == "analysis" else builder.build():
         assert predicate.calls > 1
         if mode == "run":
             assert reasons == []
@@ -257,9 +257,9 @@ def test_direct_facts_keep_independent_generic_source_and_target_bindings(mode, 
         for_each=Source,
         template=lambda _: DecoratorTemplate(DerivedServices(Operation), GenericWrapper),
     )
-    output = builder.analyse() if mode == "analysis" else builder.build()
+    output = builder.verify() if mode == "analysis" else builder.build()
     with output:
-        runtime = output.create_runtime() if isinstance(output, AnalysisResult) else output
+        runtime = output.create_runtime() if isinstance(output, VerificationReport) else output
         resolved = runtime.resolve(Handler)
         assert isinstance(resolved, GenericWrapper)
         assert resolved.source is backend

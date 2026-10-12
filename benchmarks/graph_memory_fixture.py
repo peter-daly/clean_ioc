@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from clean_ioc import (
-    AnalysisResult,
     AsyncManagedProvider,
     AsyncProvider,
     Container,
@@ -24,6 +23,7 @@ from clean_ioc import (
     RegistrationTemplate,
     Scope,
     ServiceGroup,
+    VerificationReport,
     select,
 )
 from clean_ioc import component_filters as cf
@@ -180,7 +180,7 @@ class Fixture:
     template_ids: dict[str, str]
     callbacks_after_build: dict[str, int]
     retained_builder: ContainerBuilder | None = None
-    analysis: AnalysisResult[Container] | None = None
+    analysis: VerificationReport[Container] | None = None
 
 
 def build(
@@ -228,15 +228,15 @@ def build(
     )
     provider_roots = (Provider[Worker], AsyncProvider[Worker], ManagedProvider[Worker], AsyncManagedProvider[Worker])
     builder.set_provider_roots(provider_roots)
-    if operation == "analyse":
-        analysis = builder.analyse()
-        analysis.report.assert_valid()
+    if operation == "verify":
+        analysis = builder.verify()
+        analysis.assert_valid()
         runtime = analysis.create_runtime()
     elif operation == "build":
         analysis = None
         runtime = builder.build()
     else:
-        raise ValueError("operation must be build or analyse")
+        raise ValueError("operation must be build or verify")
     require(not ACTIVATIONS, "Compilation activated application constructors")
     require(
         dict(TEMPLATE_CALLS)

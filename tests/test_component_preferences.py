@@ -175,14 +175,14 @@ def test_ordered_consumer_stages_choose_all_matches_then_narrow(order):
     chain = prefer(stage("primary", cf.has_tag("primary"))).then(stage("eu", cf.has_tag("region", "eu"))).then(explode)
     builder.register(Client, arguments={"policy": select(prefer=chain)})
     builder.mark_entrypoint(Client)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     container = container_analysis.create_runtime()
     assert type(container.resolve(Client).policy) is A
     assert observations == [("primary", item) for item in reversed(order)] + [
         ("eu", item) for item in reversed(order) if item in (A, B)
     ]
     explanation = dependency_explanation(container_analysis)
-    assert not any(issue.code == "ambiguous-selection" for issue in container_analysis.report.warnings)
+    assert not any(issue.code == "ambiguous-selection" for issue in container_analysis.warnings)
     assert explanation.selected[0].preferences[-1].reason == "not-reached"
     assert all("preference-eliminated" in item.reason_codes for item in explanation.rejected)
 
@@ -208,10 +208,10 @@ def test_registration_stages_missing_rules_and_exhaustion(first, second, winner)
             result = prefer(predicate) if result is None else result.then(predicate)
         return result
 
-    container_analysis = build_pair(first=chain(first), second=chain(second)).analyse()
+    container_analysis = build_pair(first=chain(first), second=chain(second)).verify()
     container = container_analysis.create_runtime()
     assert type(container.resolve(Client).policy) is winner
-    assert any(issue.code == "ambiguous-selection" for issue in container_analysis.report.warnings) == (winner is B)
+    assert any(issue.code == "ambiguous-selection" for issue in container_analysis.warnings) == (winner is B)
 
 
 def test_all_false_falls_through_and_earlier_true_cannot_be_outweighed():
@@ -244,7 +244,7 @@ def test_filter_and_default_name_constraints_cannot_be_undone():
 def test_provider_final_tie_and_unique_choice(target, unique):
     builder = build_pair(consumer=prefer(cf.implementation_type_is(A) if unique else cf.all_components), target=target)
     if unique:
-        container_analysis = builder.analyse()
+        container_analysis = builder.verify()
         container = container_analysis.create_runtime()
         explanation = dependency_explanation(container_analysis, target)
         assert len(explanation.selected) == 1
@@ -252,11 +252,11 @@ def test_provider_final_tie_and_unique_choice(target, unique):
         if target is Deferred:
             assert type(container.resolve(Deferred).policy()) is A
     else:
-        caught_analysis = builder.analyse()
-        assert not caught_analysis.report.is_valid
+        caught_analysis = builder.verify()
+        assert not caught_analysis.is_valid
         explanations = [
             item
-            for item in caught_analysis.report._explanations
+            for item in caught_analysis._explanations
             if any("preference-final-ambiguous" in d.reason_codes for d in item.rejected)
         ]
         assert explanations and not explanations[0].selected
@@ -281,13 +281,13 @@ def test_reached_failure_redacted_and_failed_builder_repairable(phase):
     client_id = builder.register(
         Client, arguments={"policy": select(prefer=prefer(explode) if phase == "consumer" else None)}
     )
-    caught_analysis = builder.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = builder.verify()
+    assert not caught_analysis.is_valid
     error = caught_analysis
-    assert "SECRET" not in error.report.to_text()
-    assert phase in error.report.to_text()
-    assert "stage 0" in error.report.to_text()
-    assert any("failed" in item.to_json() for item in error.report._explanations)
+    assert "SECRET" not in error.to_text()
+    assert phase in error.to_text()
+    assert "stage 0" in error.to_text()
+    assert any("failed" in item.to_json() for item in error._explanations)
     with pytest.raises(BuilderAlreadyBuiltError):
         builder.patch_component(Policy, component_id, prefer=None)
     builder = ContainerBuilder()
@@ -371,10 +371,10 @@ def test_collections_roots_previews_maps_and_duplicate_keys_ignore_preferences()
     duplicate.register(Policy, A, prefer=prefer(explode))
     duplicate.register(Policy, B, prefer=prefer(explode))
     duplicate.register_provider_map(Policy, key=lambda _: "duplicate")
-    caught_analysis = duplicate.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert any(issue.code == "provider-map-duplicate-key" for issue in caught_analysis.report.errors)
+    caught_analysis = duplicate.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert any(issue.code == "provider-map-duplicate-key" for issue in caught_analysis.errors)
 
 
 def test_boundary_context_masking_and_strict_cardinality():
@@ -383,7 +383,7 @@ def test_boundary_context_masking_and_strict_cardinality():
     source.register(Policy, A, prefer=prefer(explode))
     builder.register(Policy, B)
     builder.register(Client)
-    with builder.analyse() as container_analysis, container_analysis.create_runtime() as container:
+    with builder.verify() as container_analysis, container_analysis.create_runtime() as container:
         assert type(container.resolve(Client).policy) is B
         explanation = dependency_explanation(container_analysis)
         assert any(
@@ -395,8 +395,8 @@ def test_boundary_context_masking_and_strict_cardinality():
     source = invalid.create_boundary("source", exposes=(Expose(Policy),))
     source.register(Policy, A, prefer=prefer(explode))
     source.register(Policy, B)
-    analysis_389 = invalid.analyse()
-    assert not analysis_389.report.is_valid
+    analysis_389 = invalid.verify()
+    assert not analysis_389.is_valid
 
 
 def test_patch_undefined_replace_clear_and_discovery_persistence():
@@ -508,7 +508,7 @@ def test_diagnostics_census_profile_and_runtime_do_not_replay_callbacks():
         return component.implementation is A
 
     profile = CompilationProfiler(max_records=10000)
-    first_analysis = build_pair(consumer=prefer(choose)).analyse(profile=profile)
+    first_analysis = build_pair(consumer=prefer(choose)).verify(profile=profile)
     first = first_analysis.create_runtime()
     before = list(calls)
     explanation = dependency_explanation(first_analysis)
@@ -533,9 +533,9 @@ def test_diagnostics_census_profile_and_runtime_do_not_replay_callbacks():
         with first.new_scope() as scope:
             scope.resolve(Client)
     assert calls == before
-    second_analysis = build_pair(consumer=prefer(cf.implementation_type_is(A)).then(explode)).analyse()
+    second_analysis = build_pair(consumer=prefer(cf.implementation_type_is(A)).then(explode)).verify()
     _second = second_analysis.create_runtime()
-    changed_analysis = build_pair(consumer=prefer(cf.implementation_type_is(B))).analyse()
+    changed_analysis = build_pair(consumer=prefer(cf.implementation_type_is(B))).verify()
     _changed = changed_analysis.create_runtime()
     assert first_analysis.graph.manifest().fingerprint == second_analysis.graph.manifest().fingerprint
     assert first_analysis.graph.manifest().fingerprint != changed_analysis.graph.manifest().fingerprint
@@ -552,12 +552,12 @@ def test_failed_stage_census_preserves_prior_elimination_without_selected_winner
         Client, arguments={"policy": select(prefer=prefer(lambda c: c.implementation is not C).then(explode))}
     )
     profile = CompilationProfiler(max_records=10000)
-    caught_analysis = builder.analyse(profile=profile)
-    assert not caught_analysis.report.is_valid
+    caught_analysis = builder.verify(profile=profile)
+    assert not caught_analysis.is_valid
     error = caught_analysis
     explanation = next(
         item
-        for item in error.report._explanations
+        for item in error._explanations
         if any("preference-evaluation-failed" in d.reason_codes for d in item.rejected)
     )
     assert not explanation.selected
@@ -585,7 +585,7 @@ def test_unreachable_tail_evidence_is_compact():
     chain = prefer(cf.implementation_type_is(A))
     for _ in range(100):
         chain = chain.then(explode)
-    container_analysis = build_pair(consumer=chain).analyse()
+    container_analysis = build_pair(consumer=chain).verify()
     explanation = dependency_explanation(container_analysis)
     for decision in (*explanation.selected, *explanation.rejected):
         assert len(decision.preferences) == 2
@@ -789,7 +789,7 @@ def test_generic_discovery_preferences_and_patched_fallback_are_preserved():
 
 
 def test_missing_registration_rule_is_not_misreported_as_masked_context():
-    container_analysis = build_pair(first=prefer(cf.all_components)).analyse()
+    container_analysis = build_pair(first=prefer(cf.all_components)).verify()
     explanation = dependency_explanation(container_analysis)
     stage = explanation.rejected[0].preferences[0]
     assert stage.reason == "missing-rule"

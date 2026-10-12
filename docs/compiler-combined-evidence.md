@@ -1,6 +1,6 @@
 # Combined compiler follow-up evidence — 7 October 2026
 
-> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/analyse API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-analyse).
+> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/verify API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-verify).
 
 All five sequential implementation changes are complete, with combined installed
 development-wheel unit verification. The final worker builder is measurably faster,

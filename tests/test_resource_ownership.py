@@ -18,6 +18,7 @@ from clean_ioc import (
     all_components,
 )
 from clean_ioc.cli import main
+from tests.verification_helpers import present
 
 
 def test_ownership_report_proves_each_lifespan_and_transient_promotion():
@@ -57,11 +58,11 @@ def test_ownership_report_proves_each_lifespan_and_transient_promotion():
         builder.register(service_type, factory=resource_factory(service_type), lifespan=lifespan)
     builder.register(PromotedResource, factory=resource_factory(PromotedResource), lifespan="transient")
     builder.register(SingletonHost, lifespan="singleton")
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     _container = container_analysis.create_runtime()
 
-    report = container_analysis.graph.ownership_report()
-    assert report is container_analysis.graph.ownership_report()
+    report = present(container_analysis.graph).ownership_report()
+    assert report is present(container_analysis.graph).ownership_report()
     assert report.is_valid
     by_type = {record.component.service_type: record for record in report.records if record.component.parent is None}
     assert (by_type[TransientResource].cache_owner, by_type[TransientResource].cleanup_owner) == (
@@ -280,10 +281,10 @@ def test_runtime_context_capture_has_specific_diagnostic(dependency, lifespan, c
     builder = ContainerBuilder()
     builder.register(Service, lifespan=lifespan)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     issue = report.errors[0]
     assert issue.code == code
@@ -334,9 +335,9 @@ def test_resolution_context_capture_is_transitively_validated_across_edges(edge)
         builder.register(Service, lifespan="transient")
         builder.pre_configure(Service, configure)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
-    report = raised_analysis.report
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
+    report = raised_analysis
     assert report is not None
     assert report.errors[0].code == "captive-resolution-context"
 
@@ -575,16 +576,16 @@ def test_manifest_serializes_ownership_deterministically_without_a_version():
 
     graph = ContainerBuilder()
     graph.register(Service, lifespan="singleton")
-    container_analysis = graph.analyse()
+    container_analysis = graph.verify()
     _container = container_analysis.create_runtime()
-    manifest = container_analysis.graph.manifest()
+    manifest = present(container_analysis.graph).manifest()
     equivalent = ContainerBuilder()
     equivalent.register(Service, lifespan="singleton")
-    equivalent_container_analysis = equivalent.analyse()
+    equivalent_container_analysis = equivalent.verify()
     _equivalent_container = equivalent_container_analysis.create_runtime()
     assert (
-        container_analysis.graph.ownership_report().to_json()
-        == equivalent_container_analysis.graph.ownership_report().to_json()
+        present(container_analysis.graph).ownership_report().to_json()
+        == present(equivalent_container_analysis.graph).ownership_report().to_json()
     )
     current = manifest.to_dict()
     assert "schema_version" not in current
@@ -592,7 +593,7 @@ def test_manifest_serializes_ownership_deterministically_without_a_version():
     assert current["roots"][0]["cleanup_owner"] == "singleton"
     assert current["roots"][0]["owner_path"] is None
 
-    baseline = GraphManifest.from_json(equivalent_container_analysis.graph.manifest().to_json())
+    baseline = GraphManifest.from_json(present(equivalent_container_analysis.graph).manifest().to_json())
     assert baseline.to_dict() == current
     assert baseline.fingerprint == manifest.fingerprint
     assert manifest.diff(baseline).is_empty
@@ -609,11 +610,11 @@ def test_reports_and_manifests_are_redacted_and_cli_renders_ownership(capsys):
     builder = ContainerBuilder()
     secret_id = builder.register(Secret, instance=Secret())
     service_id = builder.register(Service, arguments={"secret": "top-secret"})
-    container_analysis = builder.analyse(build_args={"credential": "do-not-serialize"})
+    container_analysis = builder.verify(build_args={"credential": "do-not-serialize"})
     _container = container_analysis.create_runtime()
 
-    rendered = container_analysis.graph.ownership_report().to_json()
-    manifest = container_analysis.graph.manifest().to_json()
+    rendered = present(container_analysis.graph).ownership_report().to_json()
+    manifest = present(container_analysis.graph).manifest().to_json()
     for forbidden in (
         "top-secret",
         "credential",

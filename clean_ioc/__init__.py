@@ -29,8 +29,6 @@ from .components import (
     default_component_filter,
 )
 from .container import (
-    AnalysisResult,
-    AnalysisRuntimeUnavailableError,
     BoundaryBuilder,
     BuilderAlreadyBuiltError,
     CannotResolveError,
@@ -45,6 +43,7 @@ from .container import (
     ScopeClosedError,
     ScopeProvisionError,
     UndeclaredScopeSlotError,
+    VerificationRuntimeUnavailableError,
 )
 from .graph_analysis import (
     ActivationObligation,
@@ -96,9 +95,6 @@ from .selection_census import DefinitionCensus, DefinitionReference, SelectionCe
 from .sentinels import Undefined
 from .service_groups import DerivedServices, ServiceGroup
 from .tooling import (
-    AnalysisReport,
-    AnalysisRuleOutcome,
-    AnalysisStageOutcome,
     BuildIssue,
     BuildTriage,
     CandidateDecision,
@@ -135,15 +131,17 @@ from .tooling import (
     TypeAst,
     ValidationContext,
     ValidationRule,
+    VerificationReport,
+    VerificationRuleOutcome,
+    VerificationStageOutcome,
 )
 from .warmup import WarmupError, WarmupPlan, WarmupPlanInfo, WarmupReport, WarmupResult, WarmupTarget, WarmupTargetInfo
 
 __all__ = [
-    "AnalysisResult",
-    "AnalysisRuntimeUnavailableError",
-    "AnalysisReport",
-    "AnalysisRuleOutcome",
-    "AnalysisStageOutcome",
+    "VerificationReport",
+    "VerificationRuntimeUnavailableError",
+    "VerificationRuleOutcome",
+    "VerificationStageOutcome",
     "WarmupError",
     "WarmupPlan",
     "WarmupPlanInfo",
@@ -197,7 +195,6 @@ __all__ = [
     "ContainerBuildError",
     "ContainerBuilder",
     "BuildIssue",
-    "AnalysisReport",
     "BuildTriage",
     "FailureEvidence",
     "TriageGroup",

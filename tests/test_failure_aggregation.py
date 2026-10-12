@@ -20,6 +20,7 @@ from clean_ioc import (
     WarmupTarget,
 )
 from clean_ioc.cli import main
+from tests.verification_helpers import present
 
 
 class Missing:
@@ -56,20 +57,20 @@ def test_no_retry_preserves_original_failure_evidence_and_failed_builder_reuse(d
     result.register(Second)
     profile = CompilationProfiler()
     result.set_provider_roots(())
-    caught_analysis = result.analyse(budget=CompilationBudget(diagnostic_attempts=0), profile=profile)
-    assert not caught_analysis.report.is_valid
+    caught_analysis = result.verify(budget=CompilationBudget(diagnostic_attempts=0), profile=profile)
+    assert not caught_analysis.is_valid
     error = caught_analysis
     assert calls == []  # Eligibility runs only after dependencies compile successfully.
-    assert error.report is not None
-    assert [issue.code for issue in error.report.errors] == ["missing-component", "compilation-budget-exceeded"]
-    issue = error.report.errors[0]
-    assert error.report.errors[0].code == issue.code == "missing-component"
-    assert error.report.errors[0].path == issue.path
+    assert error is not None
+    assert [issue.code for issue in error.errors] == ["missing-component", "compilation-budget-exceeded"]
+    issue = error.errors[0]
+    assert error.errors[0].code == issue.code == "missing-component"
+    assert error.errors[0].path == issue.path
     assert issue.root == issue.path[0]
     assert issue.path[0].endswith(".First") and issue.path[-1].endswith(".Missing")
-    assert error.report._evidence and error.report._evidence[0] is not None
-    assert error.report._evidence[0].attempt_ref is None  # Retry admission stopped before assigning a retry reference.
-    assert error.report._evidence == error.report._evidence
+    assert error._evidence and error._evidence[0] is not None
+    assert error._evidence[0].attempt_ref is None  # Retry admission stopped before assigning a retry reference.
+    assert error._evidence == error._evidence
     assert error.triage_report().groups
     if True:
         assert error.partial_graph is not None
@@ -85,7 +86,7 @@ def test_no_retry_preserves_original_failure_evidence_and_failed_builder_reuse(d
     assert measured.state == "completed"
     assert measured.budget_exhaustion is not None
     assert measured.budget_usage is not None and dict(measured.budget_usage)["diagnostic_attempts"] == 0
-    assert error.report.complete is False
+    assert error.complete is False
     assert measured.counters.to_dict().get("diagnostic root attempts", 0) == 0
     assert result._built
     with pytest.raises(BuilderAlreadyBuiltError):
@@ -109,10 +110,10 @@ def test_compatibility_default_and_explicit_aggregation_collect_independent_root
     kwargs = {}
     composition_builder_110 = broken_builder()
     composition_builder_110.set_provider_roots(())
-    caught_analysis = composition_builder_110.analyse(profile=profile, **kwargs)
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert len(caught_analysis.report.errors) == 2
+    caught_analysis = composition_builder_110.verify(profile=profile, **kwargs)
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert len(caught_analysis.errors) == 2
     assert profile.report().counters.to_dict()["diagnostic root attempts"] == 2
     if diagnostics:
         assert caught_analysis.partial_graph is not None
@@ -134,20 +135,20 @@ def test_arbitrary_callback_failure_is_not_replayed_and_exception_text_is_redact
     result = ContainerBuilder()
     result.register(Missing, when=reject)
     result.set_provider_roots(())
-    caught_analysis = result.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = result.verify()
+    assert not caught_analysis.is_valid
     assert calls == [Missing, Missing]
     error = caught_analysis
-    assert error.report is not None
-    assert error.report.errors[0].code == error.report.errors[0].code == "compile-error"
-    assert error.report.errors[0].message == "Compilation failed [compile-error]."
+    assert error is not None
+    assert error.errors[0].code == error.errors[0].code == "compile-error"
+    assert error.errors[0].message == "Compilation failed [compile-error]."
     captured_calls = len(calls)
-    error.report.to_sarif()
+    error.to_sarif()
     error.triage_report()
     assert len(calls) == captured_calls
-    assert error.report.errors[0].path == error.report.errors[0].path
-    assert error.report.errors[0].root == error.report.errors[0].path[0]
-    assert error.report.errors[0].path[0].endswith(".Missing")
+    assert error.errors[0].path == error.errors[0].path
+    assert error.errors[0].root == error.errors[0].path[0]
+    assert error.errors[0].path[0].endswith(".Missing")
     assert "private token" not in json.dumps(error.triage_report().to_dict())
     if diagnostics:
         assert error.partial_graph is not None and error.partial_graph.total_attempts == 2
@@ -160,12 +161,12 @@ def test_no_retry_retains_boundary_failure_identity(diagnostics):
     result.create_boundary("a").register(First)
     result.create_boundary("b").register(First)
     result.set_provider_roots(())
-    caught_analysis = result.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = result.verify()
+    assert not caught_analysis.is_valid
     error = caught_analysis
-    assert error.report is not None and len(error.report.errors) == 2
-    assert tuple(fact.boundary for fact in error.report._evidence if fact is not None) == ("a", "b")
-    assert error.report._evidence[0] is not None and error.report._evidence[0].boundary == "a"
+    assert error is not None and len(error.errors) == 2
+    assert tuple(fact.boundary for fact in error._evidence if fact is not None) == ("a", "b")
+    assert error._evidence[0] is not None and error._evidence[0].boundary == "a"
     assert error.triage_report().groups[0].boundary == "a"
     if diagnostics:
         assert error.partial_graph is not None and error.partial_graph.attempts[0].boundary == "a"
@@ -209,11 +210,11 @@ def test_build_rule_reports_keep_all_findings_and_do_not_replay_callbacks(diagno
     result.add_validation_rule(lambda _: calls.append("rule") or findings)
     result.mark_entrypoint(First)
     result.set_provider_roots(())
-    caught_analysis = result.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = result.verify()
+    assert not caught_analysis.is_valid
     assert calls == ["rule"]
-    assert caught_analysis.report is not None
-    assert [issue.code for issue in caught_analysis.report.errors] == [
+    assert caught_analysis is not None
+    assert [issue.code for issue in caught_analysis.errors] == [
         "missing-entrypoint",
         "application-a",
         "application-b",
@@ -228,10 +229,10 @@ def test_warmup_invalid_target_remains_a_build_failure(diagnostics):
     result.register(Missing, lifespan="singleton")
     result.add_warmup_plan(WarmupPlan("startup", [WarmupTarget(First)]))
     result.set_provider_roots(())
-    caught_analysis = result.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert caught_analysis.report.errors[0].code == "warmup-missing-component"
+    caught_analysis = result.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert caught_analysis.errors[0].code == "warmup-missing-component"
     assert result._built
 
 
@@ -241,10 +242,10 @@ def test_alias_preparation_findings_remain_aggregated():
     result = ContainerBuilder()
     result.register(first, instance=object())
     result.register(second, instance=object())
-    caught_analysis = result.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None and len(caught_analysis.report.errors) == 2
-    assert {issue.code for issue in caught_analysis.report.errors} == {"type-alias-invalid", "type-alias-unresolved"}
+    caught_analysis = result.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None and len(caught_analysis.errors) == 2
+    assert {issue.code for issue in caught_analysis.errors} == {"type-alias-invalid", "type-alias-unresolved"}
 
 
 def test_cli_and_matrix_keep_aggregate_diagnosis(monkeypatch, capsys):
@@ -275,12 +276,12 @@ def test_valid_manifest_execution_and_cleanup_are_identical(diagnostics):
         result.register(Second)
         result.mark_entrypoint(list[First])
         result.set_provider_roots(())
-        with result.analyse() as scope_analysis, scope_analysis.create_runtime() as scope:
+        with result.verify() as scope_analysis, scope_analysis.create_runtime() as scope:
             assert events == []
             assert scope.resolve(First).missing is scope.resolve(Second).missing
-            manifest = scope_analysis.graph.manifest(all_roots=True).fingerprint
+            manifest = present(scope_analysis.graph).manifest(all_roots=True).fingerprint
             catalogue = [(item.service_type, item.implementation_type) for item in scope.selected_registrations]
-            findings = scope_analysis.report.issues
+            findings = scope_analysis.issues
         assert events == ["open", "close"]
         return manifest, catalogue, findings
 
@@ -305,17 +306,17 @@ def test_nested_callback_failure_retains_request_path_without_replay(diagnostics
         result.register(Missing, root_policy="dependency_only", when=broken)
     result.register(First, arguments={"missing": select(broken)} if selection_filter else {})
     result.set_provider_roots(())
-    caught_analysis = result.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = result.verify()
+    assert not caught_analysis.is_valid
     error = caught_analysis
     assert calls == [Missing, Missing]
-    assert error.report is not None
-    path = error.report.errors[0].path
+    assert error is not None
+    path = error.errors[0].path
     assert len(path) == 2 and path[0].endswith(".First") and path[1].endswith(".Missing")
-    assert error.report.errors[0].root == path[0]
-    assert error.report._evidence and error.report._evidence[0] is not None
+    assert error.errors[0].root == path[0]
+    assert error._evidence and error._evidence[0] is not None
     assert error.triage_report().incomplete
-    assert error.triage_report().report == error.report
+    assert error.triage_report().report == error
     if diagnostics:
         assert error.partial_graph is not None and error.partial_graph.attempts[0].witness_path == path
 
@@ -325,12 +326,12 @@ def test_callback_allowance_remains_enforced_with_no_retry(diagnostics):
     result = ContainerBuilder()
     calls = []
     result.register(Missing, when=lambda _: calls.append("called") or True)
-    caught_analysis = result.analyse(budget=CompilationBudget(preparation_operations=0))
-    assert not caught_analysis.report.is_valid
+    caught_analysis = result.verify(budget=CompilationBudget(preparation_operations=0))
+    assert not caught_analysis.is_valid
     assert calls == []
-    assert caught_analysis.report is not None
-    assert caught_analysis.report.errors[0].code == "compilation-budget-exceeded"
-    assert caught_analysis.report.errors[0].budget is not None
+    assert caught_analysis is not None
+    assert caught_analysis.errors[0].code == "compilation-budget-exceeded"
+    assert caught_analysis.errors[0].budget is not None
     assert result._built
 
 
@@ -376,10 +377,10 @@ def test_structural_safety_errors_still_fail_without_retry(diagnostics, kind):
         result.register_registration_template(for_each=Missing, template=template)
         expected = "invalid-argument"
     result.set_provider_roots(())
-    caught_analysis = result.analyse()
-    assert not caught_analysis.report.is_valid
-    assert caught_analysis.report is not None
-    assert caught_analysis.report.errors[0].code == expected
+    caught_analysis = result.verify()
+    assert not caught_analysis.is_valid
+    assert caught_analysis is not None
+    assert caught_analysis.errors[0].code == expected
     assert result._built
     if kind == "template":
         assert calls == [Missing]
@@ -398,11 +399,11 @@ def test_long_original_error_path_is_not_replaced_by_bounded_partial_witness():
         result.register(component, factory=factory, root_policy="dependency_only" if index < 39 else "resolvable")
         dependency = component
     result.set_provider_roots(())
-    caught_analysis = result.analyse()
-    assert not caught_analysis.report.is_valid
+    caught_analysis = result.verify()
+    assert not caught_analysis.is_valid
     error = caught_analysis
-    assert error.report is not None and len(error.report.errors[0].path) == 41
-    assert error.report.errors[0].path == error.report.errors[0].path
+    assert error is not None and len(error.errors[0].path) == 41
+    assert error.errors[0].path == error.errors[0].path
     assert not hasattr(error, "__cause__")  # Completed results retain facts, not exceptions.
     assert error.partial_graph is not None
     attempt = error.partial_graph.attempts[0]

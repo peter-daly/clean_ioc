@@ -231,13 +231,13 @@ builder.register(
 | `singleton` | Shared by the application container and finalized at shutdown |
 
 Singleton activation is lazy by default. Resolve a singleton from a custom application lifespan when eager initialization
-is required. Analysis reports a singleton that directly or transitively captures request-scoped state.
+is required. Verification reports a singleton that directly or transitively captures request-scoped state.
 
 ## Build and startup validation
 
 Use the same composition factory in CI and production:
 
-1. In CI, a fresh builder’s `analyse()` audits the graph, including captive lifespans, decorators, pre-configurations
+1. In CI, a fresh builder’s `verify()` audits the graph, including captive lifespans, decorators, pre-configurations
    and registered application policies. Reject invalid or incomplete results.
 2. In production, a fresh builder’s `build()` emits execution and discovery. It still fails for impossible binding,
    and runtime ownership, cleanup and async guards remain active. It does not run policy checks.

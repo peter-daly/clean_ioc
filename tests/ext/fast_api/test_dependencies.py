@@ -102,10 +102,10 @@ def test_request_scope_slot_rejects_singleton_capture_during_build():
     builder.apply_bundle(FastAPIBundle())
     builder.register(SingletonService, lifespan="singleton")
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    report = raised_analysis.report
+    report = raised_analysis
     assert report is not None
     issue = next(issue for issue in report.errors if issue.root and issue.root.endswith("SingletonService"))
     assert issue.code == "captive-runtime-scope"

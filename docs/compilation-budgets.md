@@ -33,7 +33,7 @@ compiler allocations, rather than public graph visits or retained executable ste
 
 | Limit | One admitted unit |
 | --- | --- |
-| `graph_occurrences` | Creation of a component draft, synthetic preview record, or provider target view context. Includes source metadata, visibility/scope-slot records, recursive expansion, and overlay clones. Proven early exclusions create a rejected record only during `analyse()`; ordinary builds charge no occurrence for those excluded definitions. A provider target context counts once regardless of logical subtree size; descendant inspection creates no retained records. Reusing an executable step does not itself count. |
+| `graph_occurrences` | Creation of a component draft, synthetic preview record, or provider target view context. Includes source metadata, visibility/scope-slot records, recursive expansion, and overlay clones. Proven early exclusions create a rejected record only during `verify()`; ordinary builds charge no occurrence for those excluded definitions. A provider target context counts once regardless of logical subtree size; descendant inspection creates no retained records. Reusing an executable step does not itself count. |
 | `active_dependency_depth` | Maximum length of the active component parent path at occurrence creation, including the new component. Roots have depth one. Synthetic providers, collections, clone branches and the complete logical target paths of views count, even though views do not allocate descendant records. Independent roots do not add their depths together. |
 | `specialization_materializations` | Start of constructing a new specialized registration after the compiler has established that a cached registration or closed no-op cannot satisfy it. Cache hits do not count. Earlier binding/dependency preparation is a separate preparation operation. |
 | `generated_template_outputs` | Start of producing one new registration/decorator template output, before calling its factory. Invalid returns or subsequent failed materialization consume the unit. Already frozen inherited registration-template outputs do not count again. Decorator templates count the outputs they actually regenerate. |
@@ -65,8 +65,8 @@ class Leaf:
 
 builder = ContainerBuilder()
 builder.register(Leaf)
-result = builder.analyse(budget=CompilationBudget(graph_occurrences=0))
-issue = result.report.errors[0]
+result = builder.verify(budget=CompilationBudget(graph_occurrences=0))
+issue = result.errors[0]
 assert issue.code == "compilation-budget-exceeded"
 assert issue.budget.kind == "graph_occurrences"
 assert (issue.budget.maximum, issue.budget.admitted, issue.budget.attempted) == (0, 0, 1)
@@ -86,7 +86,7 @@ The immutable `CompilationBudgetExhaustion` sidecar records `kind`, `maximum`,
 `admitted`, `attempted`, `phase`, and a snapshot of all admitted units. Path/root
 and declaration source evidence are included where the operation has them. Text,
 JSON and SARIF include the failure; SARIF also includes the structured sidecar.
-During `analyse()`, partial diagnostic graphs and triage show that further evidence was omitted.
+During `verify()`, partial diagnostic graphs and triage show that further evidence was omitted.
 Production builds raise local budget errors without a rich report or partial graph.
 Analysis recovery work is bounded independently.
 Their attempt totals describe actually started compiler views, including preparation

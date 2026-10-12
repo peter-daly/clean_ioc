@@ -8,7 +8,6 @@ import pytest
 
 import clean_ioc.component_filters as cf
 from clean_ioc import (
-    AnalysisResult,
     AsyncProvider,
     ComponentActivation,
     ComponentKind,
@@ -16,14 +15,15 @@ from clean_ioc import (
     Provider,
     ProviderScopeClosedError,
     ScopeBuilder,
+    VerificationReport,
     build_arg,
     select,
 )
 
 
-def issue_codes(error: AnalysisResult) -> set[str]:
-    assert error.report is not None
-    return {issue.code for issue in error.report.errors}
+def issue_codes(error: VerificationReport) -> set[str]:
+    assert error is not None
+    return {issue.code for issue in error.errors}
 
 
 def test_provider_is_injected_and_root_resolved_from_frozen_transient_plan():
@@ -97,8 +97,8 @@ def test_sync_provider_rejects_an_async_target_at_build_time():
     builder.register(Service, factory=create_service)
     builder.register(Consumer)
 
-    caught = builder.analyse()
-    assert not caught.report.is_valid
+    caught = builder.verify()
+    assert not caught.is_valid
     assert "provider-requires-async" in issue_codes(caught)
 
 
@@ -190,8 +190,8 @@ def test_provider_rejects_invalid_target_policy_missing_and_ambiguity():
     policy_builder = ContainerBuilder()
     policy_builder.register(Service)
     policy_builder.register(InvalidPolicy, arguments={"service": build_arg("service")})
-    policy_error = policy_builder.analyse(build_args={"service": object()})
-    assert not policy_error.report.is_valid
+    policy_error = policy_builder.verify(build_args={"service": object()})
+    assert not policy_error.is_valid
     assert "provider-invalid-argument-policy" in issue_codes(policy_error)
 
     class Missing:
@@ -200,16 +200,16 @@ def test_provider_rejects_invalid_target_policy_missing_and_ambiguity():
 
     missing_builder = ContainerBuilder()
     missing_builder.register(Missing)
-    missing_error = missing_builder.analyse()
-    assert not missing_error.report.is_valid
+    missing_error = missing_builder.verify()
+    assert not missing_error.is_valid
     assert "provider-missing-component" in issue_codes(missing_error)
 
     ambiguous_builder = ContainerBuilder()
     ambiguous_builder.register(Service)
     ambiguous_builder.register(Service)
     ambiguous_builder.register(InvalidPolicy)
-    ambiguous_error = ambiguous_builder.analyse()
-    assert not ambiguous_error.report.is_valid
+    ambiguous_error = ambiguous_builder.verify()
+    assert not ambiguous_error.is_valid
     assert "provider-ambiguous-component" in issue_codes(ambiguous_error)
 
 
@@ -233,8 +233,8 @@ def test_bare_nested_open_and_unsupported_collection_provider_targets_are_invali
         create.__annotations__ = {"value": annotation, "return": object}
         builder = ContainerBuilder()
         builder.register(object, factory=create)
-        caught = builder.analyse()
-        assert not caught.report.is_valid
+        caught = builder.verify()
+        assert not caught.is_valid
         assert "provider-invalid-target" in issue_codes(caught)
 
 
@@ -249,8 +249,8 @@ def test_singleton_provider_rejects_scope_state_but_binds_safe_provider_to_singl
     unsafe = ContainerBuilder()
     unsafe.register(Scoped, lifespan="scoped")
     unsafe.register(UnsafeConsumer, lifespan="singleton")
-    caught = unsafe.analyse()
-    assert not caught.report.is_valid
+    caught = unsafe.verify()
+    assert not caught.is_valid
     assert "provider-captive-scope" in issue_codes(caught)
 
     class Transient:
@@ -287,8 +287,8 @@ def test_singleton_provider_rejects_transient_target_that_reaches_scope_slot():
     builder.register(Target, lifespan="transient")
     builder.register(Consumer, lifespan="singleton")
 
-    caught = builder.analyse()
-    assert not caught.report.is_valid
+    caught = builder.verify()
+    assert not caught.is_valid
     assert "provider-captive-scope" in issue_codes(caught)
 
 
@@ -475,7 +475,7 @@ def test_provider_graph_metadata_explanations_manifest_and_diff_show_deferred_ta
         builder.register(Service, implementation)
         builder.register(Consumer)
         builder.mark_entrypoint(Consumer)
-        return builder.analyse()
+        return builder.verify()
 
     original = build()
     provider = original.graph.entrypoints[0].component.dependencies[0]

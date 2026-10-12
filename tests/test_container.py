@@ -39,6 +39,7 @@ from clean_ioc import (
     inject,
     select,
 )
+from tests.verification_helpers import present
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -52,10 +53,10 @@ def test_lifespan_is_a_public_string_literal_and_component_metadata_uses_strings
 
     builder = ContainerBuilder()
     builder.register(Service, lifespan="singleton")
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     _container = container_analysis.create_runtime()
 
-    component = container_analysis.graph.roots[0].component
+    component = present(container_analysis.graph).roots[0].component
     assert component.lifespan == "singleton"
     assert isinstance(component.lifespan, str)
 
@@ -186,9 +187,9 @@ def test_implementation_type_filter_uses_normalized_factory_return_type():
 
     builder = ContainerBuilder()
     builder.register(Service, factory=create_service)
-    container_analysis = builder.analyse()
+    container_analysis = builder.verify()
     _container = container_analysis.create_runtime()
-    component = container_analysis.graph.roots[0].component
+    component = present(container_analysis.graph).roots[0].component
 
     assert cf.implementation_type_is(Service)(component)
     assert not cf.implementation_is(Service)(component)
@@ -259,17 +260,17 @@ def test_decorator_signature_errors_are_aggregated_during_build():
     builder.register_decorator(First, MissingChild)
     builder.register_decorator(Second, InvalidExplicitChild, decorated_arg="wrapped")
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    assert raised_analysis.report is not None
-    assert [issue.code for issue in raised_analysis.report.errors] == [
+    assert raised_analysis is not None
+    assert [issue.code for issue in raised_analysis.errors] == [
         "invalid-decorator",
         "invalid-decorator",
         "circular-dependency",
     ]
-    assert any("set decorated_arg=" in issue.message for issue in raised_analysis.report.errors)
-    assert any("no argument named 'wrapped'" in issue.message for issue in raised_analysis.report.errors)
+    assert any("set decorated_arg=" in issue.message for issue in raised_analysis.errors)
+    assert any("no argument named 'wrapped'" in issue.message for issue in raised_analysis.errors)
 
 
 def test_ambiguous_decorated_argument_requires_an_explicit_name():
@@ -285,12 +286,12 @@ def test_ambiguous_decorated_argument_requires_an_explicit_name():
     builder.register(Service)
     decorator_id = builder.register_decorator(Service, Ambiguous)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    assert raised_analysis.report is not None
-    assert raised_analysis.report.errors[0].code == "invalid-decorator"
-    assert "multiple arguments" in raised_analysis.report.errors[0].message
+    assert raised_analysis is not None
+    assert raised_analysis.errors[0].code == "invalid-decorator"
+    assert "multiple arguments" in raised_analysis.errors[0].message
 
     with pytest.raises(BuilderAlreadyBuiltError):
         builder.patch_decorator(Service, decorator_id, decorated_arg="first")
@@ -320,12 +321,12 @@ def test_callable_decorator_return_annotation_is_validated_during_build():
     builder.register(Service)
     builder.register_decorator(Service, invalid)
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    assert raised_analysis.report is not None
-    assert raised_analysis.report.errors[0].code == "invalid-decorator"
-    assert "not compatible" in raised_analysis.report.errors[0].message
+    assert raised_analysis is not None
+    assert raised_analysis.errors[0].code == "invalid-decorator"
+    assert "not compatible" in raised_analysis.errors[0].message
 
 
 def test_collections_are_static_components_with_selected_members():
@@ -688,14 +689,14 @@ def test_build_args_are_immutable_compilation_inputs_available_to_derive_and_gra
 
     builder = ContainerBuilder()
     builder.register(Service, arguments={"timeout": derive(timeout)})
-    container_analysis = builder.analyse(build_args=supplied)
+    container_analysis = builder.verify(build_args=supplied)
     container = container_analysis.create_runtime()
     supplied["environment"] = "development"
     supplied["late"] = True
 
     component = next(component for component in container.components if component.service_type is Service)
     assert container.build_args == {"environment": "production", "settings": nested}
-    assert container_analysis.graph.build_args is container.build_args
+    assert present(container_analysis.graph).build_args is container.build_args
     assert component.build_args is container.build_args
     assert component.dependencies[0].kind is ComponentKind.value
     assert container.build_args["settings"] is nested
@@ -754,13 +755,13 @@ def test_build_arg_validates_its_name_and_reports_missing_values_during_build():
     builder = ContainerBuilder()
     builder.register(Service, arguments={"environment": build_arg("super-secret-build-key")})
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    assert raised_analysis.report is not None
-    assert raised_analysis.report.errors[0].code == "invalid-derived-argument"
-    assert "super-secret-build-key" not in str(raised_analysis.report)
-    assert "super-secret-build-key" not in raised_analysis.report.to_json()
+    assert raised_analysis is not None
+    assert raised_analysis.errors[0].code == "invalid-derived-argument"
+    assert "super-secret-build-key" not in str(raised_analysis)
+    assert "super-secret-build-key" not in raised_analysis.to_json()
 
 
 def test_inject_forces_ordinary_component_injection_over_a_python_default():
@@ -811,11 +812,11 @@ def test_generic_arg_validates_its_key_and_reports_missing_bindings_during_build
     builder = ContainerBuilder()
     builder.register(Service, arguments={"item_type": generic_arg("TItem")})
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    assert raised_analysis.report is not None
-    assert raised_analysis.report.errors[0].code == "invalid-derived-argument"
+    assert raised_analysis is not None
+    assert raised_analysis.errors[0].code == "invalid-derived-argument"
 
 
 def test_build_arg_filters_apply_across_graph_aware_composition():
@@ -852,14 +853,14 @@ def test_build_arg_filters_apply_across_graph_aware_composition():
     builder.pre_configure(Service, configure, when=cf.build_arg_is("mode", "live"))
     builder.mark_entrypoint(Service, filter=cf.build_arg_is("mode", "live"))
 
-    container_analysis = builder.analyse(build_args={"environment": "production", "mode": "live"})
+    container_analysis = builder.verify(build_args={"environment": "production", "mode": "live"})
     container = container_analysis.create_runtime()
     service = container.resolve(Service)
 
     assert isinstance(service, Decorator)
     assert isinstance(service.child.plugins[0], ProductionPlugin)
     assert configured == ["configured"]
-    assert container_analysis.graph.entrypoints[0].component.service_type is Service
+    assert present(container_analysis.graph).entrypoints[0].component.service_type is Service
 
 
 def test_build_arg_filters_treat_missing_keys_as_non_matches():
@@ -941,11 +942,11 @@ def test_missing_build_arg_in_derive_is_reported_as_a_build_error():
     builder = ContainerBuilder()
     builder.register(Service, arguments={"value": derive(lambda context: context.build_args["missing"])})
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    assert raised_analysis.report is not None
-    assert raised_analysis.report.errors[0].code == "invalid-derived-argument"
+    assert raised_analysis is not None
+    assert raised_analysis.errors[0].code == "invalid-derived-argument"
 
 
 def test_scope_builder_inherits_and_overrides_build_args_without_relabeling_anchored_plans():
@@ -970,11 +971,11 @@ def test_scope_builder_inherits_and_overrides_build_args_without_relabeling_anch
         OverlayService,
         arguments={"mode": derive(lambda context: context.build_args["mode"])},
     )
-    overlay_analysis = overlay_builder.analyse(build_args={"mode": "tenant"})
+    overlay_analysis = overlay_builder.verify(build_args={"mode": "tenant"})
     overlay = overlay_analysis.create_runtime()
 
     assert overlay.build_args == {"environment": "production", "mode": "tenant"}
-    assert overlay_analysis.graph.build_args is overlay.build_args
+    assert present(overlay_analysis.graph).build_args is overlay.build_args
     assert overlay.resolve(OverlayService).mode == "tenant"
     overlay_component = next(component for component in overlay.components if component.service_type is OverlayService)
     assert overlay_component.build_args is overlay.build_args
@@ -991,24 +992,27 @@ def test_build_args_are_omitted_from_reports_and_graph_serializations():
 
     builder = ContainerBuilder()
     builder.register(Service)
-    container_analysis = builder.analyse(build_args={"private-build-key": "private-build-value"})
+    container_analysis = builder.verify(build_args={"private-build-key": "private-build-value"})
     _container = container_analysis.create_runtime()
 
     outputs = (
-        container_analysis.report.to_json(),
-        container_analysis.report.to_text(),
-        container_analysis.graph.manifest().to_json(),
-        container_analysis.graph.to_text(),
-        container_analysis.graph.to_mermaid(),
+        container_analysis.to_json(),
+        container_analysis.to_text(),
+        present(container_analysis.graph).manifest().to_json(),
+        present(container_analysis.graph).to_text(),
+        present(container_analysis.graph).to_mermaid(),
     )
     assert all("private-build-key" not in output for output in outputs)
     assert all("private-build-value" not in output for output in outputs)
 
     equivalent_builder = ContainerBuilder()
     equivalent_builder.register(Service)
-    equivalent_analysis = equivalent_builder.analyse(build_args={"another-private-key": object()})
+    equivalent_analysis = equivalent_builder.verify(build_args={"another-private-key": object()})
     _equivalent = equivalent_analysis.create_runtime()
-    assert equivalent_analysis.graph.manifest().fingerprint == container_analysis.graph.manifest().fingerprint
+    assert (
+        present(equivalent_analysis.graph).manifest().fingerprint
+        == present(container_analysis.graph).manifest().fingerprint
+    )
 
 
 def test_unknown_argument_override_fails_build_unless_callable_accepts_kwargs():
@@ -1018,11 +1022,11 @@ def test_unknown_argument_override_fails_build_unless_callable_accepts_kwargs():
     builder = ContainerBuilder()
     builder.register(Service, arguments={"unknown": 1})
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    assert raised_analysis.report is not None
-    assert raised_analysis.report.errors[0].code == "invalid-argument"
+    assert raised_analysis is not None
+    assert raised_analysis.errors[0].code == "invalid-argument"
 
     received = None
 
@@ -1054,11 +1058,11 @@ def test_derive_rejects_async_functions_and_reports_failures_at_build():
     builder = ContainerBuilder()
     builder.register(Service, arguments={"value": derive(failing_policy)})
 
-    raised_analysis = builder.analyse()
-    assert not raised_analysis.report.is_valid
+    raised_analysis = builder.verify()
+    assert not raised_analysis.is_valid
 
-    assert raised_analysis.report is not None
-    assert raised_analysis.report.errors[0].code == "invalid-derived-argument"
+    assert raised_analysis is not None
+    assert raised_analysis.errors[0].code == "invalid-derived-argument"
 
 
 def test_patch_component_remove_restores_automatic_injection():
@@ -2094,11 +2098,11 @@ def test_generic_factory_build_errors_explain_unresolved_and_conflicting_typevar
     unresolved_builder.register(Product, factory=unresolved)
     unresolved_builder.register(Product[int], factory=unresolved)
 
-    raised_analysis = unresolved_builder.analyse()
-    assert not raised_analysis.report.is_valid
-    assert re.search("Unable to resolve TypeVar.*TDependency", raised_analysis.report.to_text())
-    assert " at 0x" not in str(raised_analysis.report)
-    assert "unresolved" in str(raised_analysis.report)
+    raised_analysis = unresolved_builder.verify()
+    assert not raised_analysis.is_valid
+    assert re.search("Unable to resolve TypeVar.*TDependency", raised_analysis.to_text())
+    assert " at 0x" not in str(raised_analysis)
+    assert "unresolved" in str(raised_analysis)
 
     def conflicting(dependency: Dependency[TItem]) -> Product[TItem]:
         return Product()
@@ -2106,12 +2110,12 @@ def test_generic_factory_build_errors_explain_unresolved_and_conflicting_typevar
     conflicting_builder = ContainerBuilder()
     conflicting_builder.register(Product[int], factory=conflicting, factory_specialization=StrProduct)
 
-    raised_analysis = conflicting_builder.analyse()
-    assert not raised_analysis.report.is_valid
-    assert re.search("Conflicting TypeVar.*TItem", raised_analysis.report.to_text())
-    assert " at 0x" not in str(raised_analysis.report)
-    assert raised_analysis.report is not None
-    assert " at 0x" not in raised_analysis.report.to_json()
+    raised_analysis = conflicting_builder.verify()
+    assert not raised_analysis.is_valid
+    assert re.search("Conflicting TypeVar.*TItem", raised_analysis.to_text())
+    assert " at 0x" not in str(raised_analysis)
+    assert raised_analysis is not None
+    assert " at 0x" not in raised_analysis.to_json()
 
     builder = ContainerBuilder()
     with pytest.raises(ValueError, match="factory_specialization requires factory"):

@@ -1,6 +1,6 @@
 # Diagnostic name reuse evidence — 7 October 2026
 
-> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/analyse API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-analyse).
+> Historical evidence: measurements and APIs below describe the recorded revision. They are not performance claims for the current build/verify API. Further comparisons are deferred to task 25. See [current operations](compiler-tooling.md#build-and-verify).
 
 The compiler now owns an identity cache for rendered diagnostic names and a string pool for equal labels. Recursive
 generic rendering shares that cache. Compiler paths, partial failure labels, annotation explanations, generic bindings,

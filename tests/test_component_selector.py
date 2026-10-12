@@ -20,6 +20,7 @@ from clean_ioc import (
 from clean_ioc import component_filters as cf
 from clean_ioc.bundles import BaseBundle
 from clean_ioc.sentinels import _Undefined
+from tests.verification_helpers import present
 
 TItem = TypeVar("TItem")
 
@@ -216,7 +217,7 @@ def test_selector_matches_component_metadata(selector, expected):
     builder.register(int, factory=make_int, name="other", lifespan="singleton", tags=[Tag("env", "prod")])
     builder.register(str, factory=make_str, name="", lifespan="transient", tags=[Tag("env", "dev")])
     builder.register(str, factory=make_str, lifespan="transient")
-    components = [root.component for root in builder.analyse().graph.roots]
+    components = [root.component for root in present(builder.verify().graph).roots]
 
     assert {component.name for component in components if selector.to_filter()(component)} == expected
 
@@ -231,7 +232,7 @@ def test_selector_distinguishes_service_type_from_implementation_type():
     builder = ContainerBuilder()
     builder.register(Service, Implementation)
     builder.register(Implementation)
-    components = [root.component for root in builder.analyse().graph.roots]
+    components = [root.component for root in present(builder.verify().graph).roots]
     selector = ComponentSelector[Service](service_type=Service, implementation_type=Implementation)
     filter = selector.to_filter()
 
@@ -247,7 +248,7 @@ def test_selector_snapshots_tags_and_returns_composable_filters():
     builder.register(str, factory=make_str, name="named", tags=[Tag("enabled")])
     builder.register(str, factory=make_str, tags=[Tag("enabled")])
     builder.register(int, factory=make_int)
-    components = [root.component for root in builder.analyse().graph.roots]
+    components = [root.component for root in present(builder.verify().graph).roots]
 
     for value in (selector, from_iterator):
         for _ in range(2):

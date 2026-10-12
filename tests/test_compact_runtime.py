@@ -21,6 +21,7 @@ from clean_ioc import (
     WarmupTarget,
 )
 from clean_ioc import component_filters as cf
+from tests.verification_helpers import present
 
 
 class Service:
@@ -64,12 +65,12 @@ def test_execution_drops_composition_filters_but_preserves_catalogue():
         assert isinstance(container.resolve(Service), Service)
     builder = ContainerBuilder().set_provider_roots(())
     builder.register(Service)
-    with builder.analyse() as result:
-        assert result.graph.manifest(all_roots=True).fingerprint
-        assert result.graph.to_text(all_roots=True)
-        assert result.graph.to_mermaid(all_roots=True)
-        assert result.graph.ownership_report()
-        assert result.report.is_valid
+    with builder.verify() as result:
+        assert present(result.graph).manifest(all_roots=True).fingerprint
+        assert present(result.graph).to_text(all_roots=True)
+        assert present(result.graph).to_mermaid(all_roots=True)
+        assert present(result.graph).ownership_report()
+        assert result.is_valid
         assert result.selection_census(all_roots=True)
 
 
@@ -124,7 +125,7 @@ def test_compact_slots_aliases_warmup_managed_private_targets_and_cleanup(diagno
     assert events == ["closed"]
 
 
-@pytest.mark.parametrize("operation", ["build", "analyse"])
+@pytest.mark.parametrize("operation", ["build", "verify"])
 def test_execution_rules_detach_and_analysis_retains_external_composition(operation):
     class Rule:
         def __init__(self):
@@ -142,12 +143,12 @@ def test_execution_rules_detach_and_analysis_retains_external_composition(operat
     builder.register(Service)
     builder.add_validation_rule(first)
     builder.add_validation_rule(second)
-    if operation == "analyse":
-        result = builder.analyse()
+    if operation == "verify":
+        result = builder.verify()
         container = result.create_runtime()
         assert (first.calls, second.calls) == (1, 1)
-        assert result.report.is_valid
-        assert result.report.is_valid
+        assert result.is_valid
+        assert result.is_valid
         assert (first.calls, second.calls) == (1, 1)
     else:
         container = builder.build()
@@ -158,7 +159,7 @@ def test_execution_rules_detach_and_analysis_retains_external_composition(operat
     assert not hasattr(container._plan, "_blueprint")
     assert not hasattr(container._plan, "validation_rules")
     assert isinstance(container.resolve(Service), Service)
-    if operation == "analyse":
+    if operation == "verify":
         assert all(reference() is not None for reference in references)
         result.close()
         del result
@@ -261,11 +262,11 @@ def test_retained_composition_does_not_change_analysis_manifest_or_execution_cat
         builder.mark_entrypoint(Service)
         if retain:
             builder.retain_composition()
-        return builder.analyse()
+        return builder.verify()
 
     with compose(True) as retained, compose(False) as automatic:
         assert retained.graph.manifest(all_roots=True).to_dict() == automatic.graph.manifest(all_roots=True).to_dict()
-        assert retained.report.to_dict() == automatic.report.to_dict()
+        assert retained.to_dict() == automatic.to_dict()
         assert [i.implementation_type for i in retained.selected_registrations] == [
             i.implementation_type for i in automatic.selected_registrations
         ]

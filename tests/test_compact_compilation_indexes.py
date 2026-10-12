@@ -230,7 +230,7 @@ def test_caller_held_sidecar_proxy_survives_build_and_native_promotion(mode):
         builder.register(type(f"Service{number}", (), {}))
     builder.set_provider_roots(())
     builder.add_validation_rule(rule)
-    with builder.analyse() as analysis, analysis.create_runtime() as runtime:
+    with builder.verify() as analysis, analysis.create_runtime() as runtime:
         mapping, view, count, backing = saved[0]
         assert len(mapping) == len(view) == count
         assert gc.get_referents(mapping)[0] is backing
