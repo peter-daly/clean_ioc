@@ -1,0 +1,128 @@
+{
+  "after_inspection": {
+    "decorator_explanations": {
+      "dense_length": 2354,
+      "eligible": false,
+      "entries": 1988,
+      "promoted": false,
+      "shallow_bytes": 37240,
+      "sparse_entries": 0
+    },
+    "occurrence_origins": {
+      "dense_length": 2369,
+      "eligible": false,
+      "entries": 2368,
+      "promoted": false,
+      "shallow_bytes": 41240,
+      "sparse_entries": 0
+    }
+  },
+  "before_inspection": {
+    "decorator_explanations": {
+      "dense_length": 2354,
+      "eligible": false,
+      "entries": 1988,
+      "promoted": false,
+      "shallow_bytes": 37240,
+      "sparse_entries": 0
+    },
+    "occurrence_origins": {
+      "dense_length": 2369,
+      "eligible": false,
+      "entries": 2368,
+      "promoted": false,
+      "shallow_bytes": 41240,
+      "sparse_entries": 0
+    }
+  },
+  "compatibility": {
+    "hashes": {
+      "clean_ioc.container": "bf0eb01858f391479b82858aa982df25ea5777675055c9c86587fd0f50c8dfa7"
+    },
+    "probe": "both",
+    "probe_sha256": "95048c57af51588e8e47cd69f06459c6e5101245930f216720ab4db002763962"
+  },
+  "inspection": {
+    "before": {
+      "peak_rss_bytes": 52051968,
+      "rss_bytes": 52051968,
+      "traced_peak_bytes": 185526,
+      "traced_retained_bytes": 3135
+    },
+    "explanation_sample_size": 128,
+    "passes": [
+      {
+        "after_census": {
+          "peak_rss_bytes": 59277312,
+          "rss_bytes": 59277312,
+          "traced_peak_bytes": 4411896,
+          "traced_retained_bytes": 1252703
+        },
+        "after_explanations": {
+          "peak_rss_bytes": 52264960,
+          "rss_bytes": 52264960,
+          "traced_peak_bytes": 507110,
+          "traced_retained_bytes": 324727
+        },
+        "after_manifest": {
+          "peak_rss_bytes": 61177856,
+          "rss_bytes": 61177856,
+          "traced_peak_bytes": 4991281,
+          "traced_retained_bytes": 3188624
+        },
+        "after_traversal": {
+          "peak_rss_bytes": 59277312,
+          "rss_bytes": 59277312,
+          "traced_peak_bytes": 4411896,
+          "traced_retained_bytes": 1253431
+        },
+        "census_seconds": 0.13663545809686184,
+        "explain_seconds": 0.012025709031149745,
+        "manifest_fingerprint": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+        "manifest_seconds": 0.08396670804359019,
+        "pass": "first",
+        "sample_decisions": 512,
+        "traversal_seconds": 0.01242908404674381,
+        "traversal_visits": 1264
+      },
+      {
+        "after_census": {
+          "peak_rss_bytes": 61521920,
+          "rss_bytes": 61521920,
+          "traced_peak_bytes": 5368435,
+          "traced_retained_bytes": 3189544
+        },
+        "after_explanations": {
+          "peak_rss_bytes": 61177856,
+          "rss_bytes": 61177856,
+          "traced_peak_bytes": 4991281,
+          "traced_retained_bytes": 3189208
+        },
+        "after_manifest": {
+          "peak_rss_bytes": 61980672,
+          "rss_bytes": 61980672,
+          "traced_peak_bytes": 5368435,
+          "traced_retained_bytes": 3190633
+        },
+        "after_traversal": {
+          "peak_rss_bytes": 61521920,
+          "rss_bytes": 61521920,
+          "traced_peak_bytes": 5368435,
+          "traced_retained_bytes": 3190000
+        },
+        "census_seconds": 0.09430970903486013,
+        "explain_seconds": 0.0022062909556552768,
+        "manifest_fingerprint": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+        "manifest_seconds": 1.7375103197991848e-05,
+        "pass": "repeated",
+        "sample_decisions": 512,
+        "traversal_seconds": 0.012900041998364031,
+        "traversal_visits": 1264
+      }
+    ]
+  },
+  "mode": "inspection",
+  "physical_records": 2368,
+  "probe": "both",
+  "script_sha256": "647df5645bcd597d098e77327d3b43e787f7b9308c05464f7e4a69008af31fbc"
+}

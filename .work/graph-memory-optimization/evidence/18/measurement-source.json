@@ -1,0 +1,25 @@
+{
+  "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+  "branch": "version2",
+  "python": "3.14.4",
+  "executable": "/Users/peter.daly/WS/pete/clean_ioc/.venv/bin/python",
+  "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "version": "2.0.0rc4",
+  "accepted17_hashes_verified": 55,
+  "sha256": {
+    ".work/graph-memory-optimization/evidence/18/grid.py": "7ff395f791584dc32f842bcc2644da4a1479d2a4be0a730494cccea3bd6bcf93",
+    ".work/graph-memory-optimization/evidence/18/source_loader.py": "732818633f855316056397428ade4ff5da53f21172963a085c6d97017c4e7a35",
+    ".work/graph-memory-optimization/evidence/18/sources/after/benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+    ".work/graph-memory-optimization/evidence/18/sources/after/benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+    ".work/graph-memory-optimization/evidence/18/sources/after/clean_ioc/container.py": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+    ".work/graph-memory-optimization/evidence/18/sources/after/clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+    ".work/graph-memory-optimization/evidence/18/sources/after/clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+    ".work/graph-memory-optimization/evidence/18/sources/after/clean_ioc/components.py": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+    ".work/graph-memory-optimization/evidence/18/sources/before/benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+    ".work/graph-memory-optimization/evidence/18/sources/before/benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+    ".work/graph-memory-optimization/evidence/18/sources/before/clean_ioc/container.py": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+    ".work/graph-memory-optimization/evidence/18/sources/before/clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+    ".work/graph-memory-optimization/evidence/18/sources/before/clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+    ".work/graph-memory-optimization/evidence/18/sources/before/clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94"
+  }
+}

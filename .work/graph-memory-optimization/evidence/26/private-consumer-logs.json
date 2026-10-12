@@ -1,0 +1,30 @@
+{
+  "api.log": {
+    "path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task26-consumers-ber20yko/api.log",
+    "sha256": "24b0f4117593ad53f0f8ae42accbdf49d00e8925b8662e451b2f72e64e8e49d2"
+  },
+  "bark-rules.log": {
+    "path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task26-consumers-ber20yko/bark-rules.log",
+    "sha256": "211113f715902fc82c293047bf9f3d9d225f44db3ca5a3891449856e807f5c7a"
+  },
+  "bark-unit-final.log": {
+    "path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task26-consumers-ber20yko/bark-unit-final.log",
+    "sha256": "53cca624af7e615d3006afea7ee9aa67ddf9263eb2795b43d55381bda51d69a6"
+  },
+  "bark-unit.xml": {
+    "path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task26-consumers-ber20yko/bark-unit.xml",
+    "sha256": "36136a08826b6c7116399eaa7538292fa14cd30ffb2385d6bd5996cef828a359"
+  },
+  "cop-unit.log": {
+    "path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task26-consumers-ber20yko/cop-unit.log",
+    "sha256": "2fdce636b8fb49df3eb779414dc4ac99a02532b3f962bec9eecdca6b0131eb54"
+  },
+  "cop-unit.xml": {
+    "path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task26-consumers-ber20yko/cop-unit.xml",
+    "sha256": "d5fe7f8e29179deaa46cb591c5535af7f109b132b13d2b05141a9e4c98f6c03e"
+  },
+  "worker.log": {
+    "path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task26-consumers-ber20yko/worker.log",
+    "sha256": "e2fcf089e4ad232f5d3374efe62430e62adc56d29274d5a16f730e715e31b625"
+  }
+}

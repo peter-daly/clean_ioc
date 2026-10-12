@@ -1,0 +1,1614 @@
+{
+  "evidence": "Executed after comparison; assertions passed",
+  "cases": [
+    {
+      "case": "P1",
+      "desired_single_winners": {
+        "orders": "OrdersWait",
+        "invoices": "DefaultWait"
+      },
+      "after_permutations_satisfying_all_desired_winners": 2,
+      "permutations": 2,
+      "observed_after": [
+        {
+          "registration_order_oldest_first": [
+            "DefaultWait",
+            "OrdersWait"
+          ],
+          "parents": {
+            "orders": {
+              "single": "OrdersWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "invoices": {
+              "single": "DefaultWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            }
+          },
+          "parentless_root": "DefaultWait",
+          "parentless_preview_found": true,
+          "preference_evidence": [
+            {
+              "parent": "invoices",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            },
+            {
+              "parent": "orders",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        },
+        {
+          "registration_order_oldest_first": [
+            "OrdersWait",
+            "DefaultWait"
+          ],
+          "parents": {
+            "orders": {
+              "single": "OrdersWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "invoices": {
+              "single": "DefaultWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            }
+          },
+          "parentless_root": "DefaultWait",
+          "parentless_preview_found": true,
+          "preference_evidence": [
+            {
+              "parent": "invoices",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            },
+            {
+              "parent": "orders",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        }
+      ]
+    },
+    {
+      "case": "P2",
+      "desired_single_winners": {
+        "eu-batch": "EuropeanBatchWait",
+        "us-batch": "BatchWait",
+        "interactive": "DefaultWait"
+      },
+      "after_permutations_satisfying_all_desired_winners": 6,
+      "permutations": 6,
+      "observed_after": [
+        {
+          "registration_order_oldest_first": [
+            "DefaultWait",
+            "BatchWait",
+            "EuropeanBatchWait"
+          ],
+          "parents": {
+            "eu-batch": {
+              "single": "EuropeanBatchWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "us-batch": {
+              "single": "BatchWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "interactive": {
+              "single": "DefaultWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            }
+          },
+          "parentless_root": "DefaultWait",
+          "parentless_preview_found": true,
+          "preference_evidence": [
+            {
+              "parent": "interactive",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                },
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            },
+            {
+              "parent": "us-batch",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                },
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "parent": "eu-batch",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 20
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 10
+                },
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        },
+        {
+          "registration_order_oldest_first": [
+            "DefaultWait",
+            "EuropeanBatchWait",
+            "BatchWait"
+          ],
+          "parents": {
+            "eu-batch": {
+              "single": "EuropeanBatchWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "us-batch": {
+              "single": "BatchWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "interactive": {
+              "single": "DefaultWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            }
+          },
+          "parentless_root": "DefaultWait",
+          "parentless_preview_found": true,
+          "preference_evidence": [
+            {
+              "parent": "interactive",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                },
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            },
+            {
+              "parent": "us-batch",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                },
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "parent": "eu-batch",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 20
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 10
+                },
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        },
+        {
+          "registration_order_oldest_first": [
+            "BatchWait",
+            "DefaultWait",
+            "EuropeanBatchWait"
+          ],
+          "parents": {
+            "eu-batch": {
+              "single": "EuropeanBatchWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "us-batch": {
+              "single": "BatchWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "interactive": {
+              "single": "DefaultWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            }
+          },
+          "parentless_root": "DefaultWait",
+          "parentless_preview_found": true,
+          "preference_evidence": [
+            {
+              "parent": "interactive",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                },
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            },
+            {
+              "parent": "us-batch",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                },
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "parent": "eu-batch",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 20
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                },
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        },
+        {
+          "registration_order_oldest_first": [
+            "BatchWait",
+            "EuropeanBatchWait",
+            "DefaultWait"
+          ],
+          "parents": {
+            "eu-batch": {
+              "single": "EuropeanBatchWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "us-batch": {
+              "single": "BatchWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "interactive": {
+              "single": "DefaultWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            }
+          },
+          "parentless_root": "DefaultWait",
+          "parentless_preview_found": true,
+          "preference_evidence": [
+            {
+              "parent": "interactive",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                },
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            },
+            {
+              "parent": "us-batch",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                },
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "parent": "eu-batch",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 20
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                },
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        },
+        {
+          "registration_order_oldest_first": [
+            "EuropeanBatchWait",
+            "DefaultWait",
+            "BatchWait"
+          ],
+          "parents": {
+            "eu-batch": {
+              "single": "EuropeanBatchWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "us-batch": {
+              "single": "BatchWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "interactive": {
+              "single": "DefaultWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            }
+          },
+          "parentless_root": "DefaultWait",
+          "parentless_preview_found": true,
+          "preference_evidence": [
+            {
+              "parent": "interactive",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                },
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            },
+            {
+              "parent": "us-batch",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                },
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "parent": "eu-batch",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 20
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 10
+                },
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        },
+        {
+          "registration_order_oldest_first": [
+            "EuropeanBatchWait",
+            "BatchWait",
+            "DefaultWait"
+          ],
+          "parents": {
+            "eu-batch": {
+              "single": "EuropeanBatchWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "us-batch": {
+              "single": "BatchWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "interactive": {
+              "single": "DefaultWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            }
+          },
+          "parentless_root": "DefaultWait",
+          "parentless_preview_found": true,
+          "preference_evidence": [
+            {
+              "parent": "interactive",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                },
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            },
+            {
+              "parent": "us-batch",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                },
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "parent": "eu-batch",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 20
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                },
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        }
+      ]
+    },
+    {
+      "case": "P3",
+      "build": "succeeded",
+      "provider_target": "OrdersWait"
+    },
+    {
+      "case": "C1",
+      "desired_single_winners": {
+        "europe": "EuropeWait",
+        "america": "AmericaWait"
+      },
+      "after_permutations_satisfying_all_desired_winners": 2,
+      "permutations": 2,
+      "observed_after": [
+        {
+          "registration_order_oldest_first": [
+            "EuropeWait",
+            "AmericaWait"
+          ],
+          "parents": {
+            "europe": {
+              "single": "EuropeWait",
+              "collection": []
+            },
+            "america": {
+              "single": "AmericaWait",
+              "collection": []
+            }
+          },
+          "parentless_root": null,
+          "parentless_preview_found": false,
+          "preference_evidence": [
+            {
+              "parent": "america",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            },
+            {
+              "parent": "europe",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        },
+        {
+          "registration_order_oldest_first": [
+            "AmericaWait",
+            "EuropeWait"
+          ],
+          "parents": {
+            "europe": {
+              "single": "EuropeWait",
+              "collection": []
+            },
+            "america": {
+              "single": "AmericaWait",
+              "collection": []
+            }
+          },
+          "parentless_root": null,
+          "parentless_preview_found": false,
+          "preference_evidence": [
+            {
+              "parent": "america",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            },
+            {
+              "parent": "europe",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        }
+      ]
+    },
+    {
+      "case": "C2",
+      "desired_single_winners": {
+        "orders": "OrdersWait",
+        "invoices": "DefaultWait"
+      },
+      "after_permutations_satisfying_all_desired_winners": 2,
+      "permutations": 2,
+      "observed_after": [
+        {
+          "registration_order_oldest_first": [
+            "DefaultWait",
+            "OrdersWait"
+          ],
+          "parents": {
+            "orders": {
+              "single": "OrdersWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "invoices": {
+              "single": "DefaultWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            }
+          },
+          "parentless_root": "DefaultWait",
+          "parentless_preview_found": true,
+          "preference_evidence": [
+            {
+              "parent": "invoices",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            },
+            {
+              "parent": "orders",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        },
+        {
+          "registration_order_oldest_first": [
+            "OrdersWait",
+            "DefaultWait"
+          ],
+          "parents": {
+            "orders": {
+              "single": "OrdersWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            },
+            "invoices": {
+              "single": "DefaultWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            }
+          },
+          "parentless_root": "DefaultWait",
+          "parentless_preview_found": true,
+          "preference_evidence": [
+            {
+              "parent": "invoices",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            },
+            {
+              "parent": "orders",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        }
+      ]
+    },
+    {
+      "case": "C3",
+      "observed_after": [
+        {
+          "registration_order_oldest_first": [
+            "OrdersWait",
+            "ApplicationWait"
+          ],
+          "parents": {
+            "orders": {
+              "single": "ApplicationWait",
+              "collection": []
+            }
+          },
+          "parentless_root": null,
+          "parentless_preview_found": false,
+          "preference_evidence": [
+            {
+              "parent": "orders",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "equal-parent-precedence-order"
+                  ],
+                  "value": 10
+                }
+              ]
+            }
+          ],
+          "warning_codes": [
+            "ambiguous-selection"
+          ]
+        },
+        {
+          "registration_order_oldest_first": [
+            "ApplicationWait",
+            "OrdersWait"
+          ],
+          "parents": {
+            "orders": {
+              "single": "OrdersWait",
+              "collection": []
+            }
+          },
+          "parentless_root": null,
+          "parentless_preview_found": false,
+          "preference_evidence": [
+            {
+              "parent": "orders",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "equal-parent-precedence-order"
+                  ],
+                  "value": 10
+                }
+              ]
+            }
+          ],
+          "warning_codes": [
+            "ambiguous-selection"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "G1",
+      "observed_after": {
+        "registration_order_oldest_first": [
+          "DefaultWait",
+          "OrdersWait"
+        ],
+        "parents": {
+          "orders": {
+            "single": "DefaultWait",
+            "collection": [
+              "DefaultWait"
+            ]
+          },
+          "invoices": {
+            "single": "DefaultWait",
+            "collection": [
+              "DefaultWait"
+            ]
+          }
+        },
+        "parentless_root": "DefaultWait",
+        "parentless_preview_found": true,
+        "preference_evidence": [
+          {
+            "parent": "invoices",
+            "selected": [
+              {
+                "codes": [
+                  "selected-explicit-filter"
+                ],
+                "value": null
+              }
+            ],
+            "rejected": [
+              {
+                "codes": [
+                  "rejected-filter"
+                ],
+                "value": null
+              }
+            ]
+          },
+          {
+            "parent": "orders",
+            "selected": [
+              {
+                "codes": [
+                  "selected-explicit-filter"
+                ],
+                "value": null
+              }
+            ],
+            "rejected": [
+              {
+                "codes": [
+                  "rejected-filter"
+                ],
+                "value": null
+              }
+            ]
+          }
+        ],
+        "warning_codes": []
+      }
+    },
+    {
+      "case": "G2",
+      "observed_after": [
+        {
+          "registration_order_oldest_first": [
+            "DefaultWait",
+            "OrdersWait"
+          ],
+          "parents": {
+            "orders": {
+              "single": "OrdersWait",
+              "collection": [
+                "OrdersWait",
+                "DefaultWait"
+              ]
+            },
+            "invoices": {
+              "single": "DefaultWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            }
+          },
+          "parentless_root": "DefaultWait",
+          "parentless_preview_found": true,
+          "preference_evidence": [
+            {
+              "parent": "invoices",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            },
+            {
+              "parent": "orders",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        },
+        {
+          "registration_order_oldest_first": [
+            "OrdersWait",
+            "DefaultWait"
+          ],
+          "parents": {
+            "orders": {
+              "single": "OrdersWait",
+              "collection": [
+                "DefaultWait",
+                "OrdersWait"
+              ]
+            },
+            "invoices": {
+              "single": "DefaultWait",
+              "collection": [
+                "DefaultWait"
+              ]
+            }
+          },
+          "parentless_root": "DefaultWait",
+          "parentless_preview_found": true,
+          "preference_evidence": [
+            {
+              "parent": "invoices",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "rejected-filter"
+                  ],
+                  "value": null
+                }
+              ]
+            },
+            {
+              "parent": "orders",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 0
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        }
+      ]
+    },
+    {
+      "case": "G3",
+      "build": "succeeded",
+      "provider_target": "DefaultWait"
+    },
+    {
+      "case": "R1",
+      "observed_after": {
+        "registration_order_oldest_first": [
+          "OrdersWait",
+          "ApplicationWait"
+        ],
+        "parents": {
+          "orders": {
+            "single": "ApplicationWait",
+            "collection": [
+              "ApplicationWait"
+            ]
+          }
+        },
+        "parentless_root": "ApplicationWait",
+        "parentless_preview_found": true,
+        "preference_evidence": [
+          {
+            "parent": "orders",
+            "selected": [
+              {
+                "codes": [
+                  "selected-default"
+                ],
+                "value": null
+              },
+              {
+                "codes": [
+                  "selected-default"
+                ],
+                "value": null
+              }
+            ],
+            "rejected": []
+          }
+        ],
+        "warning_codes": [
+          "ambiguous-selection"
+        ]
+      }
+    },
+    {
+      "case": "R2",
+      "observed_after": [
+        {
+          "registration_order_oldest_first": [
+            "EuropeWait",
+            "PrivateWait"
+          ],
+          "parents": {
+            "private-eu": {
+              "single": "PrivateWait",
+              "collection": []
+            }
+          },
+          "parentless_root": null,
+          "parentless_preview_found": false,
+          "preference_evidence": [
+            {
+              "parent": "private-eu",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                },
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": []
+            }
+          ],
+          "warning_codes": [
+            "ambiguous-selection"
+          ]
+        },
+        {
+          "registration_order_oldest_first": [
+            "PrivateWait",
+            "EuropeWait"
+          ],
+          "parents": {
+            "private-eu": {
+              "single": "EuropeWait",
+              "collection": []
+            }
+          },
+          "parentless_root": null,
+          "parentless_preview_found": false,
+          "preference_evidence": [
+            {
+              "parent": "private-eu",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                },
+                {
+                  "codes": [
+                    "selected-default"
+                  ],
+                  "value": null
+                }
+              ],
+              "rejected": []
+            }
+          ],
+          "warning_codes": [
+            "ambiguous-selection"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "R1-explicit",
+      "observed_after": {
+        "registration_order_oldest_first": [
+          "OrdersWait",
+          "ApplicationWait"
+        ],
+        "parents": {
+          "orders": {
+            "single": "ApplicationWait",
+            "collection": [
+              "ApplicationWait"
+            ]
+          }
+        },
+        "parentless_root": "ApplicationWait",
+        "parentless_preview_found": true,
+        "preference_evidence": [
+          {
+            "parent": "orders",
+            "selected": [
+              {
+                "codes": [
+                  "selected-default",
+                  "selected-parent-precedence"
+                ],
+                "value": 30
+              }
+            ],
+            "rejected": [
+              {
+                "codes": [
+                  "lower-parent-precedence"
+                ],
+                "value": 10
+              }
+            ]
+          }
+        ],
+        "warning_codes": []
+      }
+    },
+    {
+      "case": "R2-explicit",
+      "observed_after": [
+        {
+          "registration_order_oldest_first": [
+            "EuropeWait",
+            "PrivateWait"
+          ],
+          "parents": {
+            "private-eu": {
+              "single": "PrivateWait",
+              "collection": []
+            }
+          },
+          "parentless_root": null,
+          "parentless_preview_found": false,
+          "preference_evidence": [
+            {
+              "parent": "private-eu",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 20
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        },
+        {
+          "registration_order_oldest_first": [
+            "PrivateWait",
+            "EuropeWait"
+          ],
+          "parents": {
+            "private-eu": {
+              "single": "PrivateWait",
+              "collection": []
+            }
+          },
+          "parentless_root": null,
+          "parentless_preview_found": false,
+          "preference_evidence": [
+            {
+              "parent": "private-eu",
+              "selected": [
+                {
+                  "codes": [
+                    "selected-default",
+                    "selected-parent-precedence"
+                  ],
+                  "value": 20
+                }
+              ],
+              "rejected": [
+                {
+                  "codes": [
+                    "lower-parent-precedence"
+                  ],
+                  "value": 10
+                }
+              ]
+            }
+          ],
+          "warning_codes": []
+        }
+      ]
+    }
+  ]
+}

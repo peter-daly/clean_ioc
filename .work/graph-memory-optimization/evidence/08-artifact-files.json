@@ -1,0 +1,82 @@
+{
+  ".cache/graph-memory-task08/08-baseline-full-graph.jsonl": {
+    "bytes": 29484023,
+    "header": {
+      "compatibility": {
+        "implementation": "cpython",
+        "python": [
+          3,
+          14,
+          4
+        ],
+        "schema": 7,
+        "source_sha256": "1af4456f89a082090e8e0f840c9094d28a82cb00e63bf7a48fe2e5232affc380"
+      }
+    },
+    "sha256": "71040fd153dc063f36b671d4dea8494e96e77053386bb928e5eb2dcb7e132df2"
+  },
+  ".cache/graph-memory-task08/08-baseline-reduced-graph.jsonl": {
+    "bytes": 2470435,
+    "header": {
+      "compatibility": {
+        "implementation": "cpython",
+        "python": [
+          3,
+          14,
+          4
+        ],
+        "schema": 7,
+        "source_sha256": "1af4456f89a082090e8e0f840c9094d28a82cb00e63bf7a48fe2e5232affc380"
+      }
+    },
+    "sha256": "2e3b1c4cf9b2efac05fe16bc10fef1d28eb955f12b2043b7cf7156e3c054acac"
+  },
+  ".cache/graph-memory-task08/08-both-full-graph.jsonl": {
+    "bytes": 29484349,
+    "header": {
+      "compatibility": {
+        "implementation": "cpython",
+        "python": [
+          3,
+          14,
+          4
+        ],
+        "schema": 8008,
+        "source_sha256": "1af4456f89a082090e8e0f840c9094d28a82cb00e63bf7a48fe2e5232affc380",
+        "task08": {
+          "hashes": {
+            "benchmarks.graph_artifact": "d1129ff34dbaeced6c96e022d2bc2d2ce3557c460577951c21f4254c87131777",
+            "clean_ioc.container": "c20311357fd7180a5a4cfecc7b26eb931c34072d6e01db4df192934d058a15dc"
+          },
+          "probe": "both",
+          "probe_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+        }
+      }
+    },
+    "sha256": "f67e3e136bd196656b6e4d0619855adc67223e8dd6417d8bc90a49f617a595ae"
+  },
+  ".cache/graph-memory-task08/08-both-reduced-graph.jsonl": {
+    "bytes": 2470751,
+    "header": {
+      "compatibility": {
+        "implementation": "cpython",
+        "python": [
+          3,
+          14,
+          4
+        ],
+        "schema": 8008,
+        "source_sha256": "1af4456f89a082090e8e0f840c9094d28a82cb00e63bf7a48fe2e5232affc380",
+        "task08": {
+          "hashes": {
+            "benchmarks.graph_artifact": "d1129ff34dbaeced6c96e022d2bc2d2ce3557c460577951c21f4254c87131777",
+            "clean_ioc.container": "c20311357fd7180a5a4cfecc7b26eb931c34072d6e01db4df192934d058a15dc"
+          },
+          "probe": "both",
+          "probe_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+        }
+      }
+    },
+    "sha256": "fb19276206a1f5a6438d58fc5955e9ee768ce3f9bbc26f6a2bbb42cf57eb7f20"
+  }
+}

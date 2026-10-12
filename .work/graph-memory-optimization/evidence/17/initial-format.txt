@@ -1,0 +1,4 @@
+Would reformat: .work/graph-memory-optimization/evidence/17/census.py
+Would reformat: .work/graph-memory-optimization/evidence/17/combined-census.py
+Would reformat: .work/graph-memory-optimization/evidence/17/screen.py
+3 files would be reformatted, 6 files already formatted

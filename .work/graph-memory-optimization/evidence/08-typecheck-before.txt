@@ -1,0 +1,174 @@
+error[unresolved-attribute]: Attribute `roots` is not defined on `None` in union `CompiledGraph | None`
+  --> .work/graph-memory-optimization/evidence/08-failure.py:58:23
+   |
+58 | result["roots"] = len(graph.roots)
+   |                       ^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `manifest` is not defined on `None` in union `CompiledGraph | None`
+  --> .work/graph-memory-optimization/evidence/08-failure.py:59:22
+   |
+59 | result["manifest"] = graph.manifest(all_roots=True).fingerprint
+   |                      ^^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `issues` is not defined on `None` in union `None | BuildReport`
+  --> .work/graph-memory-optimization/evidence/08-failure.py:60:45
+   |
+60 | result["issues"] = [issue.code for issue in report.issues]
+   |                                             ^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `explain_decorators` is not defined on `None` in union `CompiledGraph | None`
+  --> .work/graph-memory-optimization/evidence/08-failure.py:61:40
+   |
+61 | result["decorator_selected"] = sum(len(graph.explain_decorators(root.component).selected) for root in graph.roots)
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `roots` is not defined on `None` in union `CompiledGraph | None`
+  --> .work/graph-memory-optimization/evidence/08-failure.py:61:103
+   |
+61 | result["decorator_selected"] = sum(len(graph.explain_decorators(root.component).selected) for root in graph.roots)
+   |                                                                                                       ^^^^^^^^^^^
+
+error[invalid-argument-type]: Method `__getitem__` of type `bound method dict[int, object].__getitem__(key: int, /) -> object` cannot be called with key of type `Colliding` on object of type `dict[int, object]`
+  --> .work/graph-memory-optimization/evidence/08-mapping-checks.py:68:65
+   |
+68 |     assert outcome(lambda: mapping[special]) == outcome(lambda: reference[special])
+   |                                                                 ^^^^^^^^^
+
+error[invalid-argument-type]: Method `__getitem__` of type `bound method dict[int, object].__getitem__(key: int, /) -> object` cannot be called with key of type `Literal["1"]` on object of type `dict[int, object]`
+  --> .work/graph-memory-optimization/evidence/08-mapping-checks.py:68:65
+   |
+68 |     assert outcome(lambda: mapping[special]) == outcome(lambda: reference[special])
+   |                                                                 ^^^^^^^^^
+
+error[invalid-argument-type]: Method `__getitem__` of type `bound method dict[int, object].__getitem__(key: int, /) -> object` cannot be called with key of type `None` on object of type `dict[int, object]`
+  --> .work/graph-memory-optimization/evidence/08-mapping-checks.py:68:65
+   |
+68 |     assert outcome(lambda: mapping[special]) == outcome(lambda: reference[special])
+   |                                                                 ^^^^^^^^^
+
+error[invalid-argument-type]: Method `__getitem__` of type `bound method dict[int, object].__getitem__(key: int, /) -> object` cannot be called with key of type `float` on object of type `dict[int, object]`
+  --> .work/graph-memory-optimization/evidence/08-mapping-checks.py:68:65
+   |
+68 |     assert outcome(lambda: mapping[special]) == outcome(lambda: reference[special])
+   |                                                                 ^^^^^^^^^
+
+error[invalid-argument-type]: Method `__getitem__` of type `bound method dict[int, str].__getitem__(key: int, /) -> str` cannot be called with key of type `Colliding` on object of type `dict[int, str]`
+  --> .work/graph-memory-optimization/evidence/08-mapping-checks.py:68:65
+   |
+68 |     assert outcome(lambda: mapping[special]) == outcome(lambda: reference[special])
+   |                                                                 ^^^^^^^^^
+
+error[invalid-argument-type]: Method `__getitem__` of type `bound method dict[int, str].__getitem__(key: int, /) -> str` cannot be called with key of type `Literal["1"]` on object of type `dict[int, str]`
+  --> .work/graph-memory-optimization/evidence/08-mapping-checks.py:68:65
+   |
+68 |     assert outcome(lambda: mapping[special]) == outcome(lambda: reference[special])
+   |                                                                 ^^^^^^^^^
+
+error[invalid-argument-type]: Method `__getitem__` of type `bound method dict[int, str].__getitem__(key: int, /) -> str` cannot be called with key of type `None` on object of type `dict[int, str]`
+  --> .work/graph-memory-optimization/evidence/08-mapping-checks.py:68:65
+   |
+68 |     assert outcome(lambda: mapping[special]) == outcome(lambda: reference[special])
+   |                                                                 ^^^^^^^^^
+
+error[invalid-argument-type]: Method `__getitem__` of type `bound method dict[int, str].__getitem__(key: int, /) -> str` cannot be called with key of type `float` on object of type `dict[int, str]`
+  --> .work/graph-memory-optimization/evidence/08-mapping-checks.py:68:65
+   |
+68 |     assert outcome(lambda: mapping[special]) == outcome(lambda: reference[special])
+   |                                                                 ^^^^^^^^^
+
+error[invalid-assignment]: Invalid subscript assignment with key of type `Colliding | None | Literal["1"] | int | float` and value of type `Literal["special"]` on object of type `dict[int, str]`
+  --> .work/graph-memory-optimization/evidence/08-mapping-checks.py:69:24
+   |
+69 |     mapping[special] = reference[special] = "special"
+   |                        ^^^^^^^^^^-------^^^^^^^^^^^^^
+   |                                  |
+   |                                  Expected key of type `int`, got `Colliding | None | Literal["1"] | int | float`
+
+error[invalid-argument-type]: Argument is incorrect
+   --> .work/graph-memory-optimization/evidence/08-probe.py:364:44
+    |
+364 |                 fixture = Fixture(runtime, sources, {}, dict(TEMPLATE_CALLS))
+    |                                            ^^^^^^^ Expected `dict[str, str]`, found `dict[str | None, str]`
+info: element `None` of union `str | None` is not assignable to `str`
+
+error[unresolved-attribute]: Attribute `capacity` is not defined on `dict[Unknown, Unknown]` in union `dict[Unknown, Unknown] | Any`
+  --> .work/graph-memory-optimization/evidence/08-screens.py:53:32
+   |
+53 |                     "storage": mapping.capacity() if name == "compact" else {"shallow_bytes": sys.getsizeof(mapping)},
+   |                                ^^^^^^^^^^^^^^^^
+
+error[invalid-assignment]: Cannot assign to a subscript on an object of type `float`
+  --> .work/graph-memory-optimization/evidence/08-screens.py:62:17
+   |
+62 |                 row[name]["get_seconds_batches"] = batches
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+info: The full type of the subscripted object is `dict[str, int | float | Any | dict[str, int]] | int | float | Any | str`
+info: `float` does not have a `__setitem__` method.
+
+error[invalid-assignment]: Cannot assign to a subscript on an object of type `int`
+  --> .work/graph-memory-optimization/evidence/08-screens.py:62:17
+   |
+62 |                 row[name]["get_seconds_batches"] = batches
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+info: The full type of the subscripted object is `dict[str, int | float | Any | dict[str, int]] | int | float | Any | str`
+info: `int` does not have a `__setitem__` method.
+
+error[invalid-assignment]: Cannot assign to a subscript on an object of type `str`
+  --> .work/graph-memory-optimization/evidence/08-screens.py:62:17
+   |
+62 |                 row[name]["get_seconds_batches"] = batches
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+info: The full type of the subscripted object is `dict[str, int | float | Any | dict[str, int]] | int | float | Any | str`
+info: `str` does not have a `__setitem__` method.
+
+error[invalid-assignment]: Cannot assign to a subscript on an object of type `float`
+  --> .work/graph-memory-optimization/evidence/08-screens.py:63:17
+   |
+63 |                 row[name]["get_seconds_median"] = statistics.median(batches)
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+info: The full type of the subscripted object is `dict[str, int | float | Any | dict[str, int]] | int | float | Any | str`
+info: `float` does not have a `__setitem__` method.
+
+error[invalid-assignment]: Cannot assign to a subscript on an object of type `int`
+  --> .work/graph-memory-optimization/evidence/08-screens.py:63:17
+   |
+63 |                 row[name]["get_seconds_median"] = statistics.median(batches)
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+info: The full type of the subscripted object is `dict[str, int | float | Any | dict[str, int]] | int | float | Any | str`
+info: `int` does not have a `__setitem__` method.
+
+error[invalid-assignment]: Cannot assign to a subscript on an object of type `str`
+  --> .work/graph-memory-optimization/evidence/08-screens.py:63:17
+   |
+63 |                 row[name]["get_seconds_median"] = statistics.median(batches)
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+info: The full type of the subscripted object is `dict[str, int | float | Any | dict[str, int]] | int | float | Any | str`
+info: `str` does not have a `__setitem__` method.
+
+error[unresolved-attribute]: Attribute `raw_items` is not defined on `dict[Unknown, Unknown]` in union `dict[Unknown, Unknown] | Any`
+  --> .work/graph-memory-optimization/evidence/08-screens.py:71:35
+   |
+71 |                 for key, value in mappings["compact"].raw_items():
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `capacity` is not defined on `dict[Unknown, Unknown]` in union `dict[Unknown, Unknown] | Any`
+  --> .work/graph-memory-optimization/evidence/08-screens.py:77:39
+   |
+77 |             row["promoted_storage"] = mappings["compact"].capacity()
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[invalid-argument-type]: Argument to function `len` is incorrect
+   --> .work/graph-memory-optimization/evidence/08-screens.py:136:38
+    |
+136 |     result["physical_records"] = len(plan.graph._records)
+    |                                      ^^^^^^^^^^^^^^^^^^^ Expected `Sized`, found `dict[int, _ComponentRecord] | None`
+info: element `None` of union `dict[int, _ComponentRecord] | None` is not assignable to `Sized`
+info: └── type `None` is not assignable to protocol `Sized`
+info:     └── protocol member `__len__` is not defined on type `None`
+info: Function defined here
+    --> stdlib/builtins.pyi:4141:5
+     |
+4141 | def len(obj: Sized, /) -> int:
+     |     ^^^ ---------- Parameter declared here
+
+Found 25 diagnostics

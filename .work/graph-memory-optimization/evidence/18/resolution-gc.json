@@ -1,0 +1,1580 @@
+[
+  {
+    "policy": "before",
+    "control": "prepared",
+    "prepared": {
+      "rss_bytes": 404471808,
+      "peak_rss_bytes": 408666112
+    },
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "wall_seconds": [
+      0.014965541078709066,
+      0.009769957978278399,
+      0.009782415931113064,
+      0.009738583001308143,
+      0.009772708057425916,
+      0.010082332999445498,
+      0.009807249996811152,
+      0.009743041940964758
+    ],
+    "cpu_seconds": [
+      0.014967000000000397,
+      0.009771999999999892,
+      0.0097870000000011,
+      0.00973899999999972,
+      0.009772999999999143,
+      0.010082999999999842,
+      0.009807999999999595,
+      0.00974300000000028
+    ],
+    "cold_seconds": 0.014965541078709066,
+    "steady_median_seconds": 0.009772708057425916,
+    "cold_cpu_seconds": 0.014967000000000397,
+    "steady_median_cpu_seconds": 0.009772999999999143,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "gc_events": null,
+    "interpretation": "Diagnostic control; disabling GC is not an application recommendation",
+    "repeat": 1
+  },
+  {
+    "policy": "after",
+    "control": "prepared",
+    "prepared": {
+      "rss_bytes": 361693184,
+      "peak_rss_bytes": 362741760
+    },
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "wall_seconds": [
+      0.01801333308685571,
+      0.011830957955680788,
+      0.011396041023544967,
+      0.011701249983161688,
+      0.011090540909208357,
+      0.011179666966199875,
+      0.01102149998769164,
+      0.01077216595876962
+    ],
+    "cpu_seconds": [
+      0.018003999999999465,
+      0.011829000000000534,
+      0.011393999999999238,
+      0.011694999999999567,
+      0.011065999999999576,
+      0.011155999999999722,
+      0.011010999999999882,
+      0.010775999999999897
+    ],
+    "cold_seconds": 0.01801333308685571,
+    "steady_median_seconds": 0.011179666966199875,
+    "cold_cpu_seconds": 0.018003999999999465,
+    "steady_median_cpu_seconds": 0.011155999999999722,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "gc_events": null,
+    "interpretation": "Diagnostic control; disabling GC is not an application recommendation",
+    "repeat": 1
+  },
+  {
+    "policy": "after",
+    "control": "prepared",
+    "prepared": {
+      "rss_bytes": 360038400,
+      "peak_rss_bytes": 362135552
+    },
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "wall_seconds": [
+      0.01715229102410376,
+      0.01077966601587832,
+      0.010637209052219987,
+      0.011971874977461994,
+      0.011172291939146817,
+      0.011154582956805825,
+      0.011158582987263799,
+      0.011154082952998579
+    ],
+    "cpu_seconds": [
+      0.01714199999999977,
+      0.010765000000001024,
+      0.010624999999999218,
+      0.011965000000000003,
+      0.011176000000000741,
+      0.01115500000000047,
+      0.01116000000000028,
+      0.01115300000000019
+    ],
+    "cold_seconds": 0.01715229102410376,
+    "steady_median_seconds": 0.011154582956805825,
+    "cold_cpu_seconds": 0.01714199999999977,
+    "steady_median_cpu_seconds": 0.01115500000000047,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "gc_events": null,
+    "interpretation": "Diagnostic control; disabling GC is not an application recommendation",
+    "repeat": 2
+  },
+  {
+    "policy": "before",
+    "control": "prepared",
+    "prepared": {
+      "rss_bytes": 401162240,
+      "peak_rss_bytes": 405340160
+    },
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "wall_seconds": [
+      0.014612540951929986,
+      0.010129000060260296,
+      0.010104833985678852,
+      0.010037541971541941,
+      0.010063791065476835,
+      0.010063834022730589,
+      0.010078457999043167,
+      0.010053416015580297
+    ],
+    "cpu_seconds": [
+      0.014613999999999905,
+      0.010130999999999446,
+      0.01010500000000114,
+      0.01003799999999977,
+      0.01006800000000041,
+      0.01006800000000041,
+      0.01008200000000059,
+      0.01005699999999976
+    ],
+    "cold_seconds": 0.014612540951929986,
+    "steady_median_seconds": 0.010063834022730589,
+    "cold_cpu_seconds": 0.014613999999999905,
+    "steady_median_cpu_seconds": 0.01006800000000041,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "gc_events": null,
+    "interpretation": "Diagnostic control; disabling GC is not an application recommendation",
+    "repeat": 2
+  },
+  {
+    "policy": "before",
+    "control": "prepared",
+    "prepared": {
+      "rss_bytes": 403587072,
+      "peak_rss_bytes": 407781376
+    },
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "wall_seconds": [
+      0.014897333923727274,
+      0.009797582984901965,
+      0.010291500017046928,
+      0.010376541060395539,
+      0.010660875006578863,
+      0.009875999996438622,
+      0.010054957936517894,
+      0.010154499905183911
+    ],
+    "cpu_seconds": [
+      0.014901000000000053,
+      0.009799000000001001,
+      0.010292999999998997,
+      0.010378000000001109,
+      0.010657000000000139,
+      0.009880000000000777,
+      0.010055999999998733,
+      0.010158999999999807
+    ],
+    "cold_seconds": 0.014897333923727274,
+    "steady_median_seconds": 0.010154499905183911,
+    "cold_cpu_seconds": 0.014901000000000053,
+    "steady_median_cpu_seconds": 0.010158999999999807,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "gc_events": null,
+    "interpretation": "Diagnostic control; disabling GC is not an application recommendation",
+    "repeat": 3
+  },
+  {
+    "policy": "after",
+    "control": "prepared",
+    "prepared": {
+      "rss_bytes": 364756992,
+      "peak_rss_bytes": 365805568
+    },
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "wall_seconds": [
+      0.015370332985185087,
+      0.00981254200451076,
+      0.009852541028521955,
+      0.010047542047686875,
+      0.010049083968624473,
+      0.010082459077239037,
+      0.010048666968941689,
+      0.010015125037170947
+    ],
+    "cpu_seconds": [
+      0.015372000000001051,
+      0.009813999999998657,
+      0.009857000000000227,
+      0.010051000000000698,
+      0.010052999999999201,
+      0.010085999999999373,
+      0.01004999999999967,
+      0.010018000000000526
+    ],
+    "cold_seconds": 0.015370332985185087,
+    "steady_median_seconds": 0.010047542047686875,
+    "cold_cpu_seconds": 0.015372000000001051,
+    "steady_median_cpu_seconds": 0.01004999999999967,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "gc_events": null,
+    "interpretation": "Diagnostic control; disabling GC is not an application recommendation",
+    "repeat": 3
+  },
+  {
+    "policy": "before",
+    "control": "disabled",
+    "prepared": {
+      "rss_bytes": 403816448,
+      "peak_rss_bytes": 408010752
+    },
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "wall_seconds": [
+      0.011503249988891184,
+      0.009786500013433397,
+      0.009931124979630113,
+      0.010087999980896711,
+      0.010081542073749006,
+      0.010028082993812859,
+      0.010069207986816764,
+      0.010007207980379462
+    ],
+    "cpu_seconds": [
+      0.011504999999999654,
+      0.009788999999999604,
+      0.009935000000000471,
+      0.01008900000000068,
+      0.010085000000000122,
+      0.01003199999999893,
+      0.01007300000000022,
+      0.010006999999999877
+    ],
+    "cold_seconds": 0.011503249988891184,
+    "steady_median_seconds": 0.010028082993812859,
+    "cold_cpu_seconds": 0.011504999999999654,
+    "steady_median_cpu_seconds": 0.01003199999999893,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "gc_events": null,
+    "interpretation": "Diagnostic control; disabling GC is not an application recommendation",
+    "repeat": 1
+  },
+  {
+    "policy": "after",
+    "control": "disabled",
+    "prepared": {
+      "rss_bytes": 363511808,
+      "peak_rss_bytes": 364560384
+    },
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "wall_seconds": [
+      0.012286708108149469,
+      0.009881125064566731,
+      0.010073207900859416,
+      0.00986204098444432,
+      0.00979891698807478,
+      0.009818583959713578,
+      0.009853375027887523,
+      0.009806874906644225
+    ],
+    "cpu_seconds": [
+      0.012287999999999855,
+      0.00988399999999956,
+      0.01007700000000078,
+      0.009864000000000317,
+      0.009797000000000722,
+      0.009821999999999775,
+      0.00985399999999892,
+      0.009809999999999874
+    ],
+    "cold_seconds": 0.012286708108149469,
+    "steady_median_seconds": 0.009853375027887523,
+    "cold_cpu_seconds": 0.012287999999999855,
+    "steady_median_cpu_seconds": 0.00985399999999892,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "gc_events": null,
+    "interpretation": "Diagnostic control; disabling GC is not an application recommendation",
+    "repeat": 1
+  },
+  {
+    "policy": "after",
+    "control": "disabled",
+    "prepared": {
+      "rss_bytes": 366477312,
+      "peak_rss_bytes": 367525888
+    },
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "wall_seconds": [
+      0.01203091605566442,
+      0.009845125023275614,
+      0.009876540978439152,
+      0.009825540939345956,
+      0.009802708984352648,
+      0.00982283300254494,
+      0.009806666988879442,
+      0.0098591250134632
+    ],
+    "cpu_seconds": [
+      0.01203499999999913,
+      0.009847000000000605,
+      0.009881000000000029,
+      0.009830000000000894,
+      0.009805999999999315,
+      0.009822999999999027,
+      0.009809999999999874,
+      0.00986099999999901
+    ],
+    "cold_seconds": 0.01203091605566442,
+    "steady_median_seconds": 0.009825540939345956,
+    "cold_cpu_seconds": 0.01203499999999913,
+    "steady_median_cpu_seconds": 0.009830000000000894,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "gc_events": null,
+    "interpretation": "Diagnostic control; disabling GC is not an application recommendation",
+    "repeat": 2
+  },
+  {
+    "policy": "before",
+    "control": "disabled",
+    "prepared": {
+      "rss_bytes": 403734528,
+      "peak_rss_bytes": 407928832
+    },
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "wall_seconds": [
+      0.011980707990005612,
+      0.00977083295583725,
+      0.009811499970965087,
+      0.009748499956913292,
+      0.009747999953106046,
+      0.00975120801012963,
+      0.009746333002112806,
+      0.010016540996730328
+    ],
+    "cpu_seconds": [
+      0.011981999999999715,
+      0.009771999999999892,
+      0.009814999999999685,
+      0.009749000000001118,
+      0.009752000000000649,
+      0.009750999999999621,
+      0.00975000000000037,
+      0.010018000000000526
+    ],
+    "cold_seconds": 0.011980707990005612,
+    "steady_median_seconds": 0.00975120801012963,
+    "cold_cpu_seconds": 0.011981999999999715,
+    "steady_median_cpu_seconds": 0.009752000000000649,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "gc_events": null,
+    "interpretation": "Diagnostic control; disabling GC is not an application recommendation",
+    "repeat": 2
+  },
+  {
+    "policy": "before",
+    "control": "disabled",
+    "prepared": {
+      "rss_bytes": 403570688,
+      "peak_rss_bytes": 407764992
+    },
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "wall_seconds": [
+      0.011971250060014427,
+      0.009863624931313097,
+      0.009835875011049211,
+      0.010188999935053289,
+      0.01075258303899318,
+      0.010251792031340301,
+      0.010238208924420178,
+      0.009861833066679537
+    ],
+    "cpu_seconds": [
+      0.011976000000000653,
+      0.009866000000000597,
+      0.009839999999998739,
+      0.0101899999999997,
+      0.010755000000001402,
+      0.010256000000000043,
+      0.010233999999998744,
+      0.009866000000000597
+    ],
+    "cold_seconds": 0.011971250060014427,
+    "steady_median_seconds": 0.010188999935053289,
+    "cold_cpu_seconds": 0.011976000000000653,
+    "steady_median_cpu_seconds": 0.0101899999999997,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "gc_events": null,
+    "interpretation": "Diagnostic control; disabling GC is not an application recommendation",
+    "repeat": 3
+  },
+  {
+    "policy": "after",
+    "control": "disabled",
+    "prepared": {
+      "rss_bytes": 362971136,
+      "peak_rss_bytes": 365068288
+    },
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "wall_seconds": [
+      0.01204475003760308,
+      0.009873541072010994,
+      0.00986300001386553,
+      0.009851249982602894,
+      0.009858582983724773,
+      0.009846791974268854,
+      0.009816624922677875,
+      0.009818666032515466
+    ],
+    "cpu_seconds": [
+      0.012048000000000059,
+      0.009875999999998442,
+      0.009865000000001345,
+      0.009854999999999947,
+      0.009859000000000506,
+      0.009850000000000136,
+      0.009821000000000524,
+      0.009821999999999775
+    ],
+    "cold_seconds": 0.01204475003760308,
+    "steady_median_seconds": 0.009851249982602894,
+    "cold_cpu_seconds": 0.012048000000000059,
+    "steady_median_cpu_seconds": 0.009854999999999947,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "gc_events": null,
+    "interpretation": "Diagnostic control; disabling GC is not an application recommendation",
+    "repeat": 3
+  },
+  {
+    "policy": "before",
+    "control": "events",
+    "prepared": {
+      "rss_bytes": 403193856,
+      "peak_rss_bytes": 407388160
+    },
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "wall_seconds": [
+      0.017088832915760577,
+      0.00983200001064688,
+      0.009794999961741269,
+      0.009761958033777773,
+      0.009848290937952697,
+      0.009773959056474268,
+      0.00977554195560515,
+      0.0097550000064075
+    ],
+    "cpu_seconds": [
+      0.017090999999998857,
+      0.009826999999999586,
+      0.009798999999999225,
+      0.00976200000000027,
+      0.009852999999999668,
+      0.009777999999998954,
+      0.009776000000000451,
+      0.009757999999999711
+    ],
+    "cold_seconds": 0.017088832915760577,
+    "steady_median_seconds": 0.00977554195560515,
+    "cold_cpu_seconds": 0.017090999999998857,
+    "steady_median_cpu_seconds": 0.009777999999998954,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "gc_events": [
+      {
+        "iteration": 0,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      },
+      {
+        "iteration": 1,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      },
+      {
+        "iteration": 2,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      },
+      {
+        "iteration": 3,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      },
+      {
+        "iteration": 4,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      },
+      {
+        "iteration": 5,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      },
+      {
+        "iteration": 6,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      },
+      {
+        "iteration": 7,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      }
+    ],
+    "interpretation": "Separate intrusive GC observer; timings not accepted",
+    "repeat": 1
+  },
+  {
+    "policy": "after",
+    "control": "events",
+    "prepared": {
+      "rss_bytes": 362921984,
+      "peak_rss_bytes": 365019136
+    },
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "wall_seconds": [
+      0.015226082992739975,
+      0.00980320805683732,
+      0.009813333046622574,
+      0.009780833031982183,
+      0.009778082952834666,
+      0.009782208013348281,
+      0.009825667017139494,
+      0.009792207973077893
+    ],
+    "cpu_seconds": [
+      0.015228999999999715,
+      0.009805000000000064,
+      0.009814000000000433,
+      0.009781999999999513,
+      0.009779999999999234,
+      0.009786000000000072,
+      0.009828999999999866,
+      0.009793000000000163
+    ],
+    "cold_seconds": 0.015226082992739975,
+    "steady_median_seconds": 0.009792207973077893,
+    "cold_cpu_seconds": 0.015228999999999715,
+    "steady_median_cpu_seconds": 0.009793000000000163,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "gc_events": [
+      {
+        "iteration": 0,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      },
+      {
+        "iteration": 1,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      },
+      {
+        "iteration": 2,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      },
+      {
+        "iteration": 3,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      },
+      {
+        "iteration": 4,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      },
+      {
+        "iteration": 5,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      },
+      {
+        "iteration": 6,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      },
+      {
+        "iteration": 7,
+        "events": [
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "start",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          },
+          {
+            "phase": "stop",
+            "generation": 1,
+            "collected": 0,
+            "uncollectable": 0
+          }
+        ]
+      }
+    ],
+    "interpretation": "Separate intrusive GC observer; timings not accepted",
+    "repeat": 1
+  }
+]

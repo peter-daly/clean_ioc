@@ -1,0 +1,265 @@
+{
+  "activations": {
+    "branch": 682,
+    "endpoint": 2,
+    "endpoint_decorator": 2,
+    "leaf": 704,
+    "policy": 2,
+    "route_dependency": 10,
+    "route_source": 10,
+    "state": 9,
+    "worker": 22,
+    "worker_decorator": 44
+  },
+  "before": {
+    "peak_rss_bytes": 42926080,
+    "rss_bytes": 42565632
+  },
+  "build_seconds": 0.26935870898887515,
+  "diagnostics": true,
+  "eager_decorator_facts": false,
+  "graph": {
+    "activation_kinds": {
+      "collection": 4,
+      "constructor": 2038,
+      "deferred": 32,
+      "supplied": 294
+    },
+    "component_metadata": {
+      "definition_identity_patterns": 44,
+      "identity_patterns": 351,
+      "patterns_by_kind": {
+        "decorator": 4,
+        "managed_provider": 14,
+        "provider": 18,
+        "provider_map": 4,
+        "registration": 17,
+        "value": 294
+      },
+      "retained_definition_index_bytes": 0,
+      "shared_definition_bytes": 5280,
+      "shared_definition_objects": 44,
+      "unique_field_objects": {
+        "activation": 4,
+        "boundary": 1,
+        "build_args": 1,
+        "declared_service_type": 15,
+        "id": 349,
+        "implementation": 20,
+        "implementation_type": 20,
+        "kind": 6,
+        "lifespan": 3,
+        "name": 5,
+        "service_type": 27,
+        "tags": 1
+      }
+    },
+    "decorator_objects": {
+      "logical_outcomes_by_entry": {
+        "rejected": 7898,
+        "selected": 54
+      },
+      "logical_reason_codes_by_entry": {
+        "decorator-filter-matched": 54,
+        "decorator-filter-rejected": 2,
+        "template-target-not-selected": 7896
+      },
+      "outcomes": {
+        "rejected": 7898,
+        "selected": 54
+      },
+      "reason_codes": {
+        "decorator-filter-matched": 54,
+        "decorator-filter-rejected": 2,
+        "template-target-not-selected": 7896
+      },
+      "shallow_storage_bytes": {
+        "decision_tuples": 160432,
+        "decisions": 763392,
+        "explanations": 127232,
+        "template_facts": 1145088
+      },
+      "unique_objects": {
+        "decision_tuples": 2017,
+        "decisions": 7952,
+        "explanations": 1988,
+        "template_facts": 7952
+      },
+      "unique_patterns": 1988
+    },
+    "executable_helpers": {
+      "_CompiledDecorator": 36,
+      "_CompiledDependency": 240
+    },
+    "execution_step_kinds": {
+      "_ContextProviderStep": 14,
+      "_ManagedProviderStep": 14,
+      "_ProviderMapStep": 8,
+      "_ProviderStep": 18,
+      "_ScopedRegistrationStep": 25,
+      "_SingletonRegistrationStep": 34,
+      "_TransientRegistrationStep": 50,
+      "_ValueStep": 84
+    },
+    "logical_graph_visits": 1264,
+    "metadata_entries": {
+      "census_definitions": 27,
+      "census_sources": 0,
+      "decorator_explanations": 1988,
+      "generic_explanations": 0,
+      "occurrence_explanations": 2216,
+      "parameter_explanations": 1180,
+      "root_candidates": 18
+    },
+    "physical_records": 2368,
+    "provider_view_contexts": 14,
+    "record_kinds": {
+      "decorator": 54,
+      "managed_provider": 14,
+      "provider": 18,
+      "provider_map": 4,
+      "registration": 1984,
+      "value": 294
+    },
+    "selected_registrations": 21,
+    "shallow_storage_bytes": {
+      "component_records": 416768,
+      "execution_steps": 22600,
+      "link_tuples": 77424,
+      "occurrence_integers": 66808,
+      "origin_indexes": 73808,
+      "record_index": 73808,
+      "registration_objects": 3192
+    },
+    "unique_execution_steps": 247,
+    "unique_origins": 21,
+    "unique_registration_objects": 19
+  },
+  "inspection": {
+    "before": {
+      "peak_rss_bytes": 51544064,
+      "rss_bytes": 51544064,
+      "traced_peak_bytes": 184815,
+      "traced_retained_bytes": 2456
+    },
+    "explanation_sample_size": 128,
+    "passes": [
+      {
+        "after_census": {
+          "peak_rss_bytes": 57704448,
+          "rss_bytes": 56655872,
+          "traced_peak_bytes": 4411393,
+          "traced_retained_bytes": 1252200
+        },
+        "after_explanations": {
+          "peak_rss_bytes": 51724288,
+          "rss_bytes": 51724288,
+          "traced_peak_bytes": 506583,
+          "traced_retained_bytes": 324224
+        },
+        "after_manifest": {
+          "peak_rss_bytes": 58605568,
+          "rss_bytes": 58605568,
+          "traced_peak_bytes": 4990778,
+          "traced_retained_bytes": 3188121
+        },
+        "after_traversal": {
+          "peak_rss_bytes": 57704448,
+          "rss_bytes": 56655872,
+          "traced_peak_bytes": 4411393,
+          "traced_retained_bytes": 1252928
+        },
+        "census_seconds": 0.13533949991688132,
+        "explain_seconds": 0.012172083021141589,
+        "manifest_fingerprint": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+        "manifest_seconds": 0.08372029196470976,
+        "pass": "first",
+        "sample_decisions": 512,
+        "traversal_seconds": 0.013381416909396648,
+        "traversal_visits": 1264
+      },
+      {
+        "after_census": {
+          "peak_rss_bytes": 59981824,
+          "rss_bytes": 59441152,
+          "traced_peak_bytes": 5367932,
+          "traced_retained_bytes": 3189041
+        },
+        "after_explanations": {
+          "peak_rss_bytes": 58605568,
+          "rss_bytes": 58605568,
+          "traced_peak_bytes": 4990778,
+          "traced_retained_bytes": 3188705
+        },
+        "after_manifest": {
+          "peak_rss_bytes": 60833792,
+          "rss_bytes": 60833792,
+          "traced_peak_bytes": 5367932,
+          "traced_retained_bytes": 3190130
+        },
+        "after_traversal": {
+          "peak_rss_bytes": 59981824,
+          "rss_bytes": 59441152,
+          "traced_peak_bytes": 5367932,
+          "traced_retained_bytes": 3189497
+        },
+        "census_seconds": 0.08795391605235636,
+        "explain_seconds": 0.0014122499851509929,
+        "manifest_fingerprint": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+        "manifest_seconds": 2.6333029381930828e-05,
+        "pass": "repeated",
+        "sample_decisions": 512,
+        "traversal_seconds": 0.013852458912879229,
+        "traversal_visits": 1264
+      }
+    ]
+  },
+  "instrumentation": "none",
+  "lazy_activations": {
+    "endpoint": 2,
+    "endpoint_decorator": 2,
+    "route_dependency": 2,
+    "route_source": 2
+  },
+  "machine": "arm64",
+  "pid": 47340,
+  "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "prepared": {
+    "peak_rss_bytes": 49922048,
+    "rss_bytes": 49922048
+  },
+  "python": "3.14.4",
+  "resolve_seconds": 0.0029504999984055758,
+  "resolved": {
+    "peak_rss_bytes": 49922048,
+    "rss_bytes": 49922048
+  },
+  "routes": 2,
+  "source": {
+    "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? docs/graph-memory-fixture.md\n?? tests/test_graph_memory_fixture.py\n?? tests/test_shared_component_definitions.py\n",
+    "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "c8bc3c7b631241f256b0325d925bc21c4a80595d9e5b47460404af3c6cf5e6fa",
+      "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+      "clean_ioc/components.py": "1778cf2598e54d2f87f9dd271535e2f586893dec370ef3c2066f1d156696ce0d",
+      "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+    }
+  },
+  "template_calls": {
+    "generated_worker_to_endpoint_decorator": 2,
+    "generated_worker_to_source": 2,
+    "policy_to_worker_decorator": 2,
+    "source_to_generated_dependency": 2
+  },
+  "validated": {
+    "leaves": 704,
+    "managed_scopes": 8,
+    "ordinary_scopes": 1,
+    "payload_bytes": 90112,
+    "source_map_calls": 4,
+    "tree_objects": 1386,
+    "workers": 22
+  }
+}

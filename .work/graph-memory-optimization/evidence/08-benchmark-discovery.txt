@@ -1,0 +1,534 @@
+/Users/peter.daly/WS/pete/clean_ioc/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+                             Discovered Benchmarks                              
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
+┃ Case        ┃ Benchmark   ┃ Metric ┃ Tags        ┃ Settings    ┃ Parameters  ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='abse… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='cons… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='cons… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='regi… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='abse… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='cons… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='cons… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='regi… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='abse… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='cons… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='cons… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='regi… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='abse… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='cons… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='cons… │
+│ chained-pr… │ single-dep… │ time   │ preference… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ mode='regi… │
+│ chained-pr… │ provider-u… │ time   │ preference… │ 20×3;       │             │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ chained-pr… │ collection… │ time   │ preference… │ 20×3;       │             │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ chained-pr… │ direct-pyt… │ time   │ preference… │ 20×20000;   │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ chained-pr… │ cached-root │ time   │ preference… │ 20×20000;   │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ chained-pr… │ frozen-inj… │ time   │ preference… │ 20×5000;    │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ chained-pr… │ frozen-inj… │ time   │ preference… │ 20×5000;    │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ chained-pr… │ explicit-f… │ time   │ preference… │ 20×5000;    │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ chained-pr… │ collection… │ time   │ preference… │ 20×1000;    │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiled-r… │ direct-pyt… │ time   │ core,       │ 20×20000;   │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiled-r… │ resolve-pr… │ time   │ core,       │ 20×20000;   │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiled-r… │ resolve-ca… │ time   │ core,       │ 20×20000;   │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiled-r… │ resolve-tr… │ time   │ core,       │ 20×20000;   │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiled-r… │ resolve-fi… │ time   │ core,       │ 20×20000;   │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiled-r… │ create-sco… │ time   │ core,       │ 20×20000;   │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiled-r… │ resolve-re… │ time   │ core,       │ 20×20000;   │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiled-r… │ resolve-tr… │ time   │ core,       │ 20×20000;   │ depth=1     │
+│             │             │        │ runtime,    │ adaptive=F… │             │
+│             │             │        │ scaling     │ isolation=… │             │
+│ compiled-r… │ resolve-tr… │ time   │ core,       │ 20×20000;   │ depth=5     │
+│             │             │        │ runtime,    │ adaptive=F… │             │
+│             │             │        │ scaling     │ isolation=… │             │
+│ compiled-r… │ resolve-tr… │ time   │ core,       │ 20×20000;   │ depth=20    │
+│             │             │        │ runtime,    │ adaptive=F… │             │
+│             │             │        │ scaling     │ isolation=… │             │
+│ compiled-r… │ resolve-tr… │ time   │ core,       │ 20×20000;   │ depth=50    │
+│             │             │        │ runtime,    │ adaptive=F… │             │
+│             │             │        │ scaling     │ isolation=… │             │
+│ compiled-b… │ build-five… │ time   │ core, build │ 20×100;     │             │
+│             │             │        │             │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiled-b… │ build-five… │ time   │ core, build │ 20×100;     │             │
+│             │             │        │             │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiled-b… │ build-scop… │ time   │ core, build │ 20×100;     │             │
+│             │             │        │             │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiled-b… │ build-open… │ time   │ core, build │ 20×100;     │             │
+│             │             │        │             │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiled-b… │ build-five… │ time   │ core,       │ 20×100;     │ scenario='… │
+│             │             │        │ build,      │ adaptive=F… │             │
+│             │             │        │ compiler-f… │ isolation=… │             │
+│ compiled-b… │ build-five… │ time   │ core,       │ 20×100;     │ scenario='… │
+│             │             │        │ build,      │ adaptive=F… │             │
+│             │             │        │ compiler-f… │ isolation=… │             │
+│ compiled-b… │ build-five… │ time   │ core,       │ 20×100;     │ scenario='… │
+│             │             │        │ build,      │ adaptive=F… │             │
+│             │             │        │ compiler-f… │ isolation=… │             │
+│ compiled-b… │ build-five… │ time   │ core,       │ 20×100;     │ scenario='… │
+│             │             │        │ build,      │ adaptive=F… │             │
+│             │             │        │ compiler-f… │ isolation=… │             │
+│ compiled-b… │ build-five… │ time   │ core,       │ 20×100;     │ scenario='… │
+│             │             │        │ build,      │ adaptive=F… │             │
+│             │             │        │ compiler-f… │ isolation=… │             │
+│ compiled-b… │ build-five… │ time   │ core,       │ 20×100;     │ scenario='… │
+│             │             │        │ build,      │ adaptive=F… │             │
+│             │             │        │ compiler-f… │ isolation=… │             │
+│ compiler-v… │ run-deferr… │ time   │ core,       │ 20×500;     │             │
+│             │             │        │ tooling,    │ adaptive=F… │             │
+│             │             │        │ compiler-f… │ isolation=… │             │
+│             │             │        │ validation  │             │             │
+│ compiler-v… │ run-deferr… │ time   │ core,       │ 20×500;     │             │
+│             │             │        │ tooling,    │ adaptive=F… │             │
+│             │             │        │ compiler-f… │ isolation=… │             │
+│             │             │        │ validation  │             │             │
+│ compiler-t… │ create-sem… │ time   │ core,       │ 20×500;     │             │
+│             │             │        │ tooling     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-t… │ diff-ident… │ time   │ core,       │ 20×500;     │             │
+│             │             │        │ tooling     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-t… │ diff-singl… │ time   │ core,       │ 20×500;     │             │
+│             │             │        │ tooling     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-t… │ create-res… │ time   │ core,       │ 20×500;     │             │
+│             │             │        │ tooling     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiled-a… │ resolve-fi… │ memory │ core,       │ 20×20000;   │             │
+│             │             │        │ memory      │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiled-a… │ create-sco… │ memory │ core,       │ 20×20000;   │             │
+│             │             │        │ memory      │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-d… │ fresh       │ time   │ compiler-o… │ 20×8;       │ shape='wid… │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-d… │ fresh       │ time   │ compiler-o… │ 20×8;       │ shape='dia… │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-d… │ fresh       │ time   │ compiler-o… │ 20×8;       │ shape='gen… │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-d… │ fresh       │ time   │ compiler-o… │ 20×8;       │ shape='col… │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-d… │ fresh       │ time   │ compiler-o… │ 20×8;       │ shape='tem… │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-d… │ fresh       │ time   │ compiler-o… │ 20×8;       │ shape='man… │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-b… │ wide-24     │ time   │ compiler-o… │ 20×8;       │             │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-b… │ diamond-de… │ time   │ compiler-o… │ 20×8;       │             │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-b… │ generic-8-… │ time   │ compiler-o… │ 20×8;       │             │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-b… │ collection… │ time   │ compiler-o… │ 20×8;       │             │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-b… │ template-12 │ time   │ compiler-o… │ 20×8;       │             │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-b… │ managed-wa… │ time   │ compiler-o… │ 20×8;       │             │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-r… │ three-fres… │ time   │ compiler-o… │ 20×3;       │ changed=Fa… │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-r… │ three-fres… │ time   │ compiler-o… │ 20×3;       │ changed=Tr… │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-r… │ fresh-over… │ time   │ compiler-o… │ 20×8;       │ changed=Fa… │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-r… │ fresh-over… │ time   │ compiler-o… │ 20×8;       │ changed=Tr… │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ compiler-m… │ three-vari… │ time   │ compiler-o… │ 20×2;       │             │
+│             │             │        │ build,      │ adaptive=F… │             │
+│             │             │        │ matrix      │ isolation=… │             │
+│ fastapi-fi… │ native-dep… │ time   │ fastapi,    │ 30×500;     │             │
+│             │             │        │ integratio… │ adaptive=T… │             │
+│             │             │        │ request     │ isolation=… │             │
+│ fastapi-fi… │ clean-ioc   │ time   │ fastapi,    │ 30×500;     │             │
+│             │             │        │ integratio… │ adaptive=T… │             │
+│             │             │        │ request     │ isolation=… │             │
+│ existing-l… │ cached-cla… │ time   │ runtime,    │ 20×20000;   │             │
+│             │             │        │ alias-regr… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ existing-l… │ cached-cla… │ time   │ runtime,    │ 20×20000;   │             │
+│             │             │        │ alias-regr… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ existing-l… │ cached-clo… │ time   │ runtime,    │ 20×20000;   │             │
+│             │             │        │ alias-regr… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ existing-l… │ cached-uni… │ time   │ runtime,    │ 20×20000;   │             │
+│             │             │        │ alias-regr… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ existing-l… │ provider-r… │ time   │ runtime,    │ 20×20000;   │             │
+│             │             │        │ alias-regr… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ existing-l… │ collection… │ time   │ runtime,    │ 20×20000;   │             │
+│             │             │        │ alias-regr… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ existing-l… │ has-compon… │ time   │ runtime,    │ 20×20000;   │             │
+│             │             │        │ alias-regr… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ managed-ex… │ batch-of-1… │ time   │             │ 20×1000;    │ path='reso… │
+│             │             │        │             │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ managed-ex… │ batch-of-1… │ time   │             │ 20×1000;    │ path='prov… │
+│             │             │        │             │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ managed-ex… │ batch-of-1… │ time   │             │ 20×1000;    │ path='scop… │
+│             │             │        │             │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ managed-ex… │ batch-of-1… │ time   │             │ 20×1000;    │ path='per-… │
+│             │             │        │             │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ managed-pr… │ batch-of-1… │ time   │ managed-pr… │ 20×100;     │ lifespan='… │
+│             │             │        │ runtime     │ adaptive=F… │ observed=F… │
+│             │             │        │             │ isolation=… │             │
+│ managed-pr… │ batch-of-1… │ time   │ managed-pr… │ 20×100;     │ lifespan='… │
+│             │             │        │ runtime     │ adaptive=F… │ observed=T… │
+│             │             │        │             │ isolation=… │             │
+│ managed-pr… │ batch-of-1… │ time   │ managed-pr… │ 20×100;     │ lifespan='… │
+│             │             │        │ runtime     │ adaptive=F… │ observed=F… │
+│             │             │        │             │ isolation=… │             │
+│ managed-pr… │ batch-of-1… │ time   │ managed-pr… │ 20×100;     │ lifespan='… │
+│             │             │        │ runtime     │ adaptive=F… │ observed=T… │
+│             │             │        │             │ isolation=… │             │
+│ managed-pr… │ batch-of-1… │ time   │ managed-pr… │ 20×100;     │ observed=F… │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ managed-pr… │ batch-of-1… │ time   │ managed-pr… │ 20×100;     │ observed=T… │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ managed-pr… │ batch-of-1… │ time   │ managed-pr… │ 20×100;     │ observed=F… │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ managed-pr… │ batch-of-1… │ time   │ managed-pr… │ 20×100;     │ observed=T… │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ managed-pr… │ batch-of-1… │ time   │ managed-pr… │ 20×100;     │ observed=F… │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ managed-pr… │ batch-of-1… │ time   │ managed-pr… │ 20×100;     │ observed=T… │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ managed-pr… │ batch-of-1… │ time   │ managed-pr… │ 20×100;     │ observed=F… │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ managed-pr… │ batch-of-1… │ time   │ managed-pr… │ 20×100;     │ observed=T… │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ parent-pre… │ single-dep… │ time   │ parent-pre… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ scored=Fal… │
+│ parent-pre… │ single-dep… │ time   │ parent-pre… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ scored=True │
+│ parent-pre… │ single-dep… │ time   │ parent-pre… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ scored=Fal… │
+│ parent-pre… │ single-dep… │ time   │ parent-pre… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ scored=True │
+│ parent-pre… │ single-dep… │ time   │ parent-pre… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ scored=Fal… │
+│ parent-pre… │ single-dep… │ time   │ parent-pre… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ scored=True │
+│ parent-pre… │ single-dep… │ time   │ parent-pre… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ scored=Fal… │
+│ parent-pre… │ single-dep… │ time   │ parent-pre… │ 20×3;       │ parent_cou… │
+│             │             │        │ build       │ adaptive=F… │ candidate_… │
+│             │             │        │             │ isolation=… │ scored=True │
+│ parent-pre… │ provider-u… │ time   │ parent-pre… │ 20×3;       │             │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ parent-pre… │ collection… │ time   │ parent-pre… │ 20×3;       │             │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ parent-pre… │ direct-pyt… │ time   │ parent-pre… │ 20×20000;   │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ parent-pre… │ default-ca… │ time   │ parent-pre… │ 20×20000;   │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ parent-pre… │ explicit-n… │ time   │ parent-pre… │ 20×500;     │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ parent-pre… │ or-root-32… │ time   │ parent-pre… │ 20×500;     │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ parent-pre… │ or-collect… │ time   │ parent-pre… │ 20×500;     │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ parent-pre… │ default-co… │ time   │ parent-pre… │ 20×500;     │             │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ per-call-s… │ batch-of-1… │ time   │ per-call,   │ 20×100;     │ mode='manu… │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ per-call-s… │ batch-of-1… │ time   │ per-call,   │ 20×100;     │ mode='per_… │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ per-call-a… │ batch-of-1… │ time   │ per-call,   │ 20×100;     │ mode='manu… │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ per-call-a… │ batch-of-1… │ time   │ per-call,   │ 20×100;     │ mode='per_… │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ per-call-b… │ build-scop… │ time   │ per-call,   │ 20×100;     │ mode='manu… │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ per-call-b… │ build-scop… │ time   │ per-call,   │ 20×100;     │ mode='per_… │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ chained-pr… │ first-stag… │ time   │ preference… │ 20×3;       │ length=1    │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ chained-pr… │ first-stag… │ time   │ preference… │ 20×3;       │ length=8    │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ chained-pr… │ first-stag… │ time   │ preference… │ 20×3;       │ length=64   │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ provider-m… │ acquire[1]  │ time   │ runtime,    │ 20×10000;   │ size=1      │
+│             │             │        │ provider-m… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ provider-m… │ acquire[10] │ time   │ runtime,    │ 20×10000;   │ size=10     │
+│             │             │        │ provider-m… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ provider-m… │ acquire[10… │ time   │ runtime,    │ 20×10000;   │ size=100    │
+│             │             │        │ provider-m… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ provider-m… │ lookup[1]   │ time   │ runtime,    │ 20×10000;   │ size=1      │
+│             │             │        │ provider-m… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ provider-m… │ lookup[10]  │ time   │ runtime,    │ 20×10000;   │ size=10     │
+│             │             │        │ provider-m… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ provider-m… │ lookup[100] │ time   │ runtime,    │ 20×10000;   │ size=100    │
+│             │             │        │ provider-m… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ provider-m… │ invoke      │ time   │ runtime,    │ 20×10000;   │ lifespan='… │
+│             │             │        │ provider-m… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ provider-m… │ invoke      │ time   │ runtime,    │ 20×10000;   │ lifespan='… │
+│             │             │        │ provider-m… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ provider-m… │ compile[1]  │ time   │ build,      │ 20×5;       │ size=1      │
+│             │             │        │ provider-m… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ provider-m… │ compile[10] │ time   │ build,      │ 20×5;       │ size=10     │
+│             │             │        │ provider-m… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ nested      │ time   │ build,      │ 20×10;      │ mode='patt… │
+│             │             │        │ registrati… │ adaptive=F… │ depth=1     │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ nested      │ time   │ build,      │ 20×10;      │ mode='patt… │
+│             │             │        │ registrati… │ adaptive=F… │ depth=3     │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ nested      │ time   │ build,      │ 20×10;      │ mode='patt… │
+│             │             │        │ registrati… │ adaptive=F… │ depth=6     │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ nested      │ time   │ build,      │ 20×10;      │ mode='expl… │
+│             │             │        │ registrati… │ adaptive=F… │ depth=1     │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ nested      │ time   │ build,      │ 20×10;      │ mode='expl… │
+│             │             │        │ registrati… │ adaptive=F… │ depth=3     │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ nested      │ time   │ build,      │ 20×10;      │ mode='expl… │
+│             │             │        │ registrati… │ adaptive=F… │ depth=6     │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ overlappin… │ time   │ build,      │ 20×10;      │ overlap=0   │
+│             │             │        │ registrati… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ overlappin… │ time   │ build,      │ 20×10;      │ overlap=5   │
+│             │             │        │ registrati… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ overlappin… │ time   │ build,      │ 20×10;      │ overlap=20  │
+│             │             │        │ registrati… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ matching-s… │ time   │ build,      │ 20×10;      │ count=1     │
+│             │             │        │ registrati… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ matching-s… │ time   │ build,      │ 20×10;      │ count=5     │
+│             │             │        │ registrati… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ matching-s… │ time   │ build,      │ 20×10;      │ count=20    │
+│             │             │        │ registrati… │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ frozen-res… │ time   │ runtime,    │ 20×20000;   │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='patt… │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ frozen-res… │ time   │ runtime,    │ 20×20000;   │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='expl… │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ frozen-res… │ time   │ runtime,    │ 20×20000;   │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='patt… │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ frozen-res… │ time   │ runtime,    │ 20×20000;   │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='expl… │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ source-wor… │ time   │ build,      │ 20×3;       │ mode='expl… │
+│             │             │        │ registrati… │ adaptive=F… │ count=1     │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ source-wor… │ time   │ build,      │ 20×3;       │ mode='expl… │
+│             │             │        │ registrati… │ adaptive=F… │ count=10    │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ source-wor… │ time   │ build,      │ 20×3;       │ mode='expl… │
+│             │             │        │ registrati… │ adaptive=F… │ count=100   │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ source-wor… │ time   │ build,      │ 20×3;       │ mode='temp… │
+│             │             │        │ registrati… │ adaptive=F… │ count=1     │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ source-wor… │ time   │ build,      │ 20×3;       │ mode='temp… │
+│             │             │        │ registrati… │ adaptive=F… │ count=10    │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ source-wor… │ time   │ build,      │ 20×3;       │ mode='temp… │
+│             │             │        │ registrati… │ adaptive=F… │ count=100   │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ resolve-wo… │ time   │ runtime,    │ 20×20000;   │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='expl… │
+│             │             │        │             │ isolation=… │ count=1     │
+│ registrati… │ resolve-wo… │ time   │ runtime,    │ 20×20000;   │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='expl… │
+│             │             │        │             │ isolation=… │ count=100   │
+│ registrati… │ resolve-wo… │ time   │ runtime,    │ 20×20000;   │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='temp… │
+│             │             │        │             │ isolation=… │ count=1     │
+│ registrati… │ resolve-wo… │ time   │ runtime,    │ 20×20000;   │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='temp… │
+│             │             │        │             │ isolation=… │ count=100   │
+│ registrati… │ resolve-wo… │ time   │ runtime,    │ 20×20000;   │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='expl… │
+│             │             │        │             │ isolation=… │ count=1     │
+│ registrati… │ resolve-wo… │ time   │ runtime,    │ 20×20000;   │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='expl… │
+│             │             │        │             │ isolation=… │ count=100   │
+│ registrati… │ resolve-wo… │ time   │ runtime,    │ 20×20000;   │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='temp… │
+│             │             │        │             │ isolation=… │ count=1     │
+│ registrati… │ resolve-wo… │ time   │ runtime,    │ 20×20000;   │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='temp… │
+│             │             │        │             │ isolation=… │ count=100   │
+│ registrati… │ resolve-10… │ time   │ runtime,    │ 20×1000;    │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='expl… │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ resolve-10… │ time   │ runtime,    │ 20×1000;    │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='temp… │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ resolve-10… │ time   │ runtime,    │ 20×1000;    │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='expl… │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ resolve-10… │ time   │ runtime,    │ 20×1000;    │ lifespan='… │
+│             │             │        │ registrati… │ adaptive=F… │ mode='temp… │
+│             │             │        │             │ isolation=… │             │
+│ registrati… │ source-dep… │ time   │ build,      │ 20×3;       │ mode='expl… │
+│             │             │        │ registrati… │ adaptive=F… │ count=1     │
+│             │             │        │ parent      │ isolation=… │             │
+│ registrati… │ source-dep… │ time   │ build,      │ 20×3;       │ mode='expl… │
+│             │             │        │ registrati… │ adaptive=F… │ count=10    │
+│             │             │        │ parent      │ isolation=… │             │
+│ registrati… │ source-dep… │ time   │ build,      │ 20×3;       │ mode='expl… │
+│             │             │        │ registrati… │ adaptive=F… │ count=100   │
+│             │             │        │ parent      │ isolation=… │             │
+│ registrati… │ source-dep… │ time   │ build,      │ 20×3;       │ mode='temp… │
+│             │             │        │ registrati… │ adaptive=F… │ count=1     │
+│             │             │        │ parent      │ isolation=… │             │
+│ registrati… │ source-dep… │ time   │ build,      │ 20×3;       │ mode='temp… │
+│             │             │        │ registrati… │ adaptive=F… │ count=10    │
+│             │             │        │ parent      │ isolation=… │             │
+│ registrati… │ source-dep… │ time   │ build,      │ 20×3;       │ mode='temp… │
+│             │             │        │ registrati… │ adaptive=F… │ count=100   │
+│             │             │        │ parent      │ isolation=… │             │
+│ warmup-cac… │ batch-of-1… │ time   │ warmup,     │ 20×100;     │ observed=F… │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ warmup-cac… │ batch-of-1… │ time   │ warmup,     │ 20×100;     │ observed=T… │
+│             │             │        │ runtime     │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ warmup-bui… │ compile_pl… │ time   │ warmup,     │ 20×10;      │ declared=F… │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ warmup-bui… │ compile_pl… │ time   │ warmup,     │ 20×10;      │ declared=T… │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+│ warmup-bui… │ cold_activ… │ time   │ warmup,     │ 20×10;      │             │
+│             │             │        │ build       │ adaptive=F… │             │
+│             │             │        │             │ isolation=… │             │
+└─────────────┴─────────────┴────────┴─────────────┴─────────────┴─────────────┘

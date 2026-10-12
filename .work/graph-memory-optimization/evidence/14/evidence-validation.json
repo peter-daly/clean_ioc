@@ -1,0 +1,27 @@
+{
+  "checks": [
+    {
+      "variant": "run",
+      "before_samples": 6,
+      "after_samples": 6,
+      "same_fixture_results_graph_inventory_callbacks": true,
+      "final_source_matches": true
+    },
+    {
+      "variant": "rich-run",
+      "before_samples": 6,
+      "after_samples": 6,
+      "same_fixture_results_graph_inventory_callbacks": true,
+      "final_source_matches": true
+    },
+    {
+      "variant": "analysis",
+      "before_samples": 6,
+      "after_samples": 6,
+      "same_fixture_results_graph_inventory_callbacks": true,
+      "final_source_matches": true
+    }
+  ],
+  "valid": true,
+  "allowed_representation_sizes": "16 bytes per weakref-capable definition; 8 per graph"
+}

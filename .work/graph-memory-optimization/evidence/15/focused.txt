@@ -1,0 +1,19 @@
+............................F...........................                 [100%]
+=================================== FAILURES ===================================
+__________ test_sparse_or_reverse_indexes_keep_bounded_backing[keys1] __________
+
+keys = range(300, 0, -1)
+
+    @pytest.mark.parametrize("keys", (range(-300, 0), range(300, 0, -1), range(0, 10000, 20), (10**100, -(10**100))))
+    def test_sparse_or_reverse_indexes_keep_bounded_backing(keys):
+        index = _CompactIndex()
+        for key in keys:
+            index[key] = key
+>       assert index._dict is not None
+E       assert None is not None
+E        +  where None = <clean_ioc._compact_index._CompactIndex object at 0x1094c0a40>._dict
+
+tests/test_compact_compilation_indexes.py:110: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_compact_compilation_indexes.py::test_sparse_or_reverse_indexes_keep_bounded_backing[keys1]
+1 failed, 55 passed in 3.44s

@@ -1,0 +1,2224 @@
+{
+  "05-before": {
+    "file": "05-before.json",
+    "medians": {
+      "build_seconds": 11.282602541032247,
+      "prepared": {
+        "peak_rss_bytes": 139247616,
+        "rss_bytes": 139247616,
+        "traced_peak_bytes": 77152555,
+        "traced_retained_bytes": 40296340
+      },
+      "resolve_seconds": 0.023187790997326374,
+      "resolved": {
+        "peak_rss_bytes": 139247616,
+        "rss_bytes": 139247616,
+        "traced_peak_bytes": 77152555,
+        "traced_retained_bytes": 41473553
+      }
+    },
+    "normal_samples": 3,
+    "traced_samples": 3,
+    "options": {
+      "diagnostics": false
+    },
+    "normal_prepared_rss_range_bytes": [
+      137232384,
+      140050432
+    ],
+    "normal_build_seconds_range": [
+      11.21777991601266,
+      11.320352790993638
+    ],
+    "normal_resolve_seconds_range": [
+      0.022637665970250964,
+      0.023356333025731146
+    ],
+    "graph": {
+      "activation_kinds": {
+        "collection": 16,
+        "constructor": 57298,
+        "deferred": 218,
+        "supplied": 31026
+      },
+      "component_metadata": {
+        "definition_identity_patterns": 116,
+        "identity_patterns": 31311,
+        "patterns_by_kind": {
+          "decorator": 10,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 41,
+          "value": 31026
+        },
+        "retained_definition_index_bytes": 0,
+        "shared_definition_bytes": 13920,
+        "shared_definition_objects": 116,
+        "unique_field_objects": {
+          "activation": 4,
+          "boundary": 1,
+          "build_args": 1,
+          "declared_service_type": 15,
+          "id": 31297,
+          "implementation": 20,
+          "implementation_type": 20,
+          "kind": 6,
+          "lifespan": 3,
+          "name": 11,
+          "service_type": 45,
+          "tags": 1
+        }
+      },
+      "decorator_objects": {
+        "logical_outcomes_by_entry": {
+          "rejected": 564428,
+          "selected": 792
+        },
+        "logical_reason_codes_by_entry": {
+          "decorator-filter-matched": 792,
+          "decorator-filter-rejected": 56,
+          "template-target-not-selected": 564372
+        },
+        "outcomes": {
+          "rejected": 406,
+          "selected": 24
+        },
+        "reason_codes": {
+          "decorator-filter-matched": 24,
+          "decorator-filter-rejected": 56,
+          "template-target-not-selected": 350
+        },
+        "shallow_storage_bytes": {
+          "decision_tuples": 6320,
+          "decisions": 41280,
+          "explanations": 3167984,
+          "template_facts": 61920
+        },
+        "unique_objects": {
+          "decision_tuples": 60,
+          "decisions": 430,
+          "explanations": 56565,
+          "template_facts": 430
+        },
+        "unique_patterns": 43
+      },
+      "executable_helpers": {
+        "_CompiledDecorator": 240,
+        "_CompiledDependency": 1740
+      },
+      "execution_step_kinds": {
+        "_ContextProviderStep": 152,
+        "_ManagedProviderStep": 50,
+        "_ProviderMapStep": 32,
+        "_ProviderStep": 168,
+        "_ScopedRegistrationStep": 193,
+        "_SingletonRegistrationStep": 226,
+        "_TransientRegistrationStep": 326,
+        "_ValueStep": 618
+      },
+      "logical_graph_visits": 8932,
+      "metadata_entries": {
+        "census_definitions": 0,
+        "census_sources": 0,
+        "decorator_explanations": 56522,
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0,
+        "root_candidates": 18
+      },
+      "physical_records": 88558,
+      "provider_view_contexts": 50,
+      "record_kinds": {
+        "decorator": 792,
+        "managed_provider": 50,
+        "provider": 168,
+        "provider_map": 16,
+        "registration": 56506,
+        "value": 31026
+      },
+      "selected_registrations": 51,
+      "shallow_storage_bytes": {
+        "component_records": 15586208,
+        "execution_steps": 158104,
+        "link_tuples": 2653968,
+        "occurrence_integers": 2481424,
+        "origin_indexes": 5242960,
+        "record_index": 5242960,
+        "registration_objects": 7224
+      },
+      "unique_execution_steps": 1765,
+      "unique_origins": 45,
+      "unique_registration_objects": 43
+    },
+    "retained_graph_inventory": null
+  },
+  "05-final-full": {
+    "file": "05-final-full.json",
+    "medians": {
+      "build_seconds": 11.010629041935317,
+      "prepared": {
+        "peak_rss_bytes": 140673024,
+        "rss_bytes": 140673024,
+        "traced_peak_bytes": 77142345,
+        "traced_retained_bytes": 40297366
+      },
+      "resolve_seconds": 0.02243554196320474,
+      "resolved": {
+        "peak_rss_bytes": 140673024,
+        "rss_bytes": 140673024,
+        "traced_peak_bytes": 77142345,
+        "traced_retained_bytes": 41474877
+      }
+    },
+    "normal_samples": 3,
+    "traced_samples": 3,
+    "options": {
+      "explain_metadata": true,
+      "diagnostics": false,
+      "allow_scope_builders": false,
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      }
+    },
+    "normal_prepared_rss_range_bytes": [
+      139018240,
+      140967936
+    ],
+    "normal_build_seconds_range": [
+      11.009283083956689,
+      11.03058462496847
+    ],
+    "normal_resolve_seconds_range": [
+      0.022232457995414734,
+      0.022579750046133995
+    ],
+    "graph": {
+      "activation_kinds": {
+        "collection": 16,
+        "constructor": 57298,
+        "deferred": 218,
+        "supplied": 31026
+      },
+      "component_metadata": {
+        "definition_identity_patterns": 116,
+        "identity_patterns": 31311,
+        "patterns_by_kind": {
+          "decorator": 10,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 41,
+          "value": 31026
+        },
+        "retained_definition_index_bytes": 0,
+        "shared_definition_bytes": 13920,
+        "shared_definition_objects": 116,
+        "unique_field_objects": {
+          "activation": 4,
+          "boundary": 1,
+          "build_args": 1,
+          "declared_service_type": 15,
+          "id": 31297,
+          "implementation": 20,
+          "implementation_type": 20,
+          "kind": 6,
+          "lifespan": 3,
+          "name": 11,
+          "service_type": 45,
+          "tags": 1
+        }
+      },
+      "decorator_objects": {
+        "logical_outcomes_by_entry": {
+          "rejected": 564428,
+          "selected": 792
+        },
+        "logical_reason_codes_by_entry": {
+          "decorator-filter-matched": 792,
+          "decorator-filter-rejected": 56,
+          "template-target-not-selected": 564372
+        },
+        "outcomes": {
+          "rejected": 406,
+          "selected": 24
+        },
+        "reason_codes": {
+          "decorator-filter-matched": 24,
+          "decorator-filter-rejected": 56,
+          "template-target-not-selected": 350
+        },
+        "shallow_storage_bytes": {
+          "decision_tuples": 6320,
+          "decisions": 41280,
+          "explanations": 3167984,
+          "template_facts": 61920
+        },
+        "unique_objects": {
+          "decision_tuples": 60,
+          "decisions": 430,
+          "explanations": 56565,
+          "template_facts": 430
+        },
+        "unique_patterns": 43
+      },
+      "executable_helpers": {
+        "_CompiledDecorator": 240,
+        "_CompiledDependency": 1740
+      },
+      "execution_step_kinds": {
+        "_ContextProviderStep": 152,
+        "_ManagedProviderStep": 50,
+        "_ProviderMapStep": 32,
+        "_ProviderStep": 168,
+        "_ScopedRegistrationStep": 193,
+        "_SingletonRegistrationStep": 226,
+        "_TransientRegistrationStep": 326,
+        "_ValueStep": 618
+      },
+      "logical_graph_visits": 8932,
+      "metadata_entries": {
+        "census_definitions": 0,
+        "census_sources": 0,
+        "decorator_explanations": 56522,
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0,
+        "root_candidates": 18
+      },
+      "physical_records": 88558,
+      "provider_view_contexts": 50,
+      "record_kinds": {
+        "decorator": 792,
+        "managed_provider": 50,
+        "provider": 168,
+        "provider_map": 16,
+        "registration": 56506,
+        "value": 31026
+      },
+      "registration_carrier_kinds": {
+        "_Registration": 43
+      },
+      "retained_execution_composition": {
+        "decorator_definitions": 240,
+        "decorator_dependency_settings": 240,
+        "registration_dependency_settings": 124
+      },
+      "retained_plan_fields": {
+        "_blueprint": {
+          "entries": null,
+          "shallow_bytes": 16,
+          "type": "NoneType"
+        },
+        "architecture_roots": {
+          "entries": 26,
+          "shallow_bytes": 256,
+          "type": "tuple"
+        },
+        "area_root_candidates": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "build_args": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "build_report": {
+          "entries": null,
+          "shallow_bytes": 72,
+          "type": "BuildReport"
+        },
+        "census_definitions": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "census_ids": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "census_sources": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "compiled_graph": {
+          "entries": null,
+          "shallow_bytes": 240,
+          "type": "CompiledGraph"
+        },
+        "compiler_issues": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "decorator_explanations": {
+          "entries": 56522,
+          "shallow_bytes": 2621528,
+          "type": "mappingproxy"
+        },
+        "default_root_groups": {
+          "entries": 14,
+          "shallow_bytes": 632,
+          "type": "dict"
+        },
+        "default_roots": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "dict"
+        },
+        "diagnostics": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "ensured_import_modules": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "explain_metadata": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "fallback_ids": {
+          "entries": 0,
+          "shallow_bytes": 216,
+          "type": "frozenset"
+        },
+        "generic_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "graph": {
+          "entries": null,
+          "shallow_bytes": 64,
+          "type": "_ComponentGraph"
+        },
+        "managed_provider_roots": {
+          "entries": 4,
+          "shallow_bytes": 224,
+          "type": "mappingproxy"
+        },
+        "occurrence_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "occurrence_layers": {
+          "entries": 88558,
+          "shallow_bytes": 48,
+          "type": "_OccurrenceLayers"
+        },
+        "occurrence_origins": {
+          "entries": 88558,
+          "shallow_bytes": 5242960,
+          "type": "mappingproxy"
+        },
+        "parameter_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "provider_roots": {
+          "entries": 4,
+          "shallow_bytes": 224,
+          "type": "mappingproxy"
+        },
+        "root_candidates": {
+          "entries": 18,
+          "shallow_bytes": 632,
+          "type": "mappingproxy"
+        },
+        "roots": {
+          "entries": 14,
+          "shallow_bytes": 632,
+          "type": "dict"
+        },
+        "selected_registrations": {
+          "entries": 51,
+          "shallow_bytes": 456,
+          "type": "tuple"
+        },
+        "slots": {
+          "entries": 0,
+          "shallow_bytes": 216,
+          "type": "frozenset"
+        },
+        "unreachable_checked": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "unreachable_issue_offset": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "int"
+        },
+        "validation_rules": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "warmup_fingerprint": {
+          "entries": null,
+          "shallow_bytes": 41,
+          "type": "str"
+        },
+        "warmup_infos": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "warmup_steps": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        }
+      },
+      "selected_registrations": 51,
+      "shallow_storage_bytes": {
+        "component_records": 15586208,
+        "execution_steps": 158104,
+        "link_tuples": 2653968,
+        "occurrence_integers": 2481424,
+        "origin_indexes": 5242960,
+        "record_index": 5242960,
+        "registration_objects": 7224
+      },
+      "unique_execution_steps": 1765,
+      "unique_origins": 45,
+      "unique_registration_objects": 43
+    },
+    "retained_graph_inventory": {
+      "captured_views": 0,
+      "graphs": 1,
+      "records": 88558,
+      "saved_views_in_primary_graph": 0,
+      "saved_views_in_separate_snapshots": 0
+    }
+  },
+  "05-final-reduced": {
+    "file": "05-final-reduced.json",
+    "medians": {
+      "build_seconds": 10.870548458071426,
+      "prepared": {
+        "peak_rss_bytes": 135741440,
+        "rss_bytes": 135741440,
+        "traced_peak_bytes": 76382056,
+        "traced_retained_bytes": 3247818
+      },
+      "resolve_seconds": 0.014286375022493303,
+      "resolved": {
+        "peak_rss_bytes": 135741440,
+        "rss_bytes": 135741440,
+        "traced_peak_bytes": 76382056,
+        "traced_retained_bytes": 4424930
+      }
+    },
+    "normal_samples": 3,
+    "traced_samples": 3,
+    "options": {
+      "explain_metadata": false,
+      "diagnostics": false,
+      "allow_scope_builders": false,
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      }
+    },
+    "normal_prepared_rss_range_bytes": [
+      135708672,
+      135741440
+    ],
+    "normal_build_seconds_range": [
+      10.841220790985972,
+      10.889916458982043
+    ],
+    "normal_resolve_seconds_range": [
+      0.01421612489502877,
+      0.015368249965831637
+    ],
+    "graph": {
+      "activation_kinds": {
+        "collection": 16,
+        "constructor": 8130,
+        "deferred": 218,
+        "supplied": 618
+      },
+      "component_metadata": {
+        "definition_identity_patterns": 116,
+        "identity_patterns": 903,
+        "patterns_by_kind": {
+          "decorator": 10,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 41,
+          "value": 618
+        },
+        "retained_definition_index_bytes": 0,
+        "shared_definition_bytes": 13920,
+        "shared_definition_objects": 116,
+        "unique_field_objects": {
+          "activation": 4,
+          "boundary": 1,
+          "build_args": 1,
+          "declared_service_type": 15,
+          "id": 889,
+          "implementation": 20,
+          "implementation_type": 20,
+          "kind": 6,
+          "lifespan": 3,
+          "name": 11,
+          "service_type": 45,
+          "tags": 1
+        }
+      },
+      "decorator_objects": {
+        "logical_outcomes_by_entry": {},
+        "logical_reason_codes_by_entry": {},
+        "outcomes": {},
+        "reason_codes": {},
+        "shallow_storage_bytes": {
+          "decision_tuples": 0,
+          "decisions": 0,
+          "explanations": 0,
+          "template_facts": 0
+        },
+        "unique_objects": {
+          "decision_tuples": 0,
+          "decisions": 0,
+          "explanations": 0,
+          "template_facts": 0
+        },
+        "unique_patterns": 0
+      },
+      "executable_helpers": {
+        "_CompiledDecorator": 240,
+        "_CompiledDependency": 1740
+      },
+      "execution_step_kinds": {
+        "_ContextProviderStep": 152,
+        "_ManagedProviderStep": 50,
+        "_ProviderMapStep": 32,
+        "_ProviderStep": 168,
+        "_ScopedRegistrationStep": 193,
+        "_SingletonRegistrationStep": 226,
+        "_TransientRegistrationStep": 326,
+        "_ValueStep": 618
+      },
+      "logical_graph_visits": null,
+      "metadata_entries": {
+        "census_definitions": 0,
+        "census_sources": 0,
+        "decorator_explanations": 0,
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0,
+        "root_candidates": 0
+      },
+      "physical_records": 8982,
+      "provider_view_contexts": 50,
+      "record_kinds": {
+        "decorator": 232,
+        "managed_provider": 50,
+        "provider": 168,
+        "provider_map": 16,
+        "registration": 7898,
+        "value": 618
+      },
+      "registration_carrier_kinds": {
+        "_RuntimeRegistration": 43
+      },
+      "retained_execution_composition": {
+        "decorator_definitions": 0,
+        "decorator_dependency_settings": 0,
+        "registration_dependency_settings": 0
+      },
+      "retained_plan_fields": {
+        "_blueprint": {
+          "entries": null,
+          "shallow_bytes": 16,
+          "type": "NoneType"
+        },
+        "architecture_roots": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "area_root_candidates": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "build_args": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "build_report": {
+          "entries": null,
+          "shallow_bytes": 72,
+          "type": "BuildReport"
+        },
+        "census_definitions": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "census_ids": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "census_sources": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "compiled_graph": {
+          "entries": null,
+          "shallow_bytes": 16,
+          "type": "NoneType"
+        },
+        "compiler_issues": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "decorator_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "default_root_groups": {
+          "entries": 14,
+          "shallow_bytes": 632,
+          "type": "dict"
+        },
+        "default_roots": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "dict"
+        },
+        "diagnostics": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "ensured_import_modules": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "explain_metadata": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "fallback_ids": {
+          "entries": 0,
+          "shallow_bytes": 216,
+          "type": "frozenset"
+        },
+        "generic_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "graph": {
+          "entries": null,
+          "shallow_bytes": 64,
+          "type": "_ComponentGraph"
+        },
+        "managed_provider_roots": {
+          "entries": 4,
+          "shallow_bytes": 224,
+          "type": "mappingproxy"
+        },
+        "occurrence_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "occurrence_layers": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "occurrence_origins": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "parameter_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "provider_roots": {
+          "entries": 4,
+          "shallow_bytes": 224,
+          "type": "mappingproxy"
+        },
+        "root_candidates": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "roots": {
+          "entries": 14,
+          "shallow_bytes": 632,
+          "type": "dict"
+        },
+        "selected_registrations": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "slots": {
+          "entries": 0,
+          "shallow_bytes": 216,
+          "type": "frozenset"
+        },
+        "unreachable_checked": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "unreachable_issue_offset": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "int"
+        },
+        "validation_rules": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "warmup_fingerprint": {
+          "entries": null,
+          "shallow_bytes": 41,
+          "type": "str"
+        },
+        "warmup_infos": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "warmup_steps": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        }
+      },
+      "selected_registrations": 0,
+      "shallow_storage_bytes": {
+        "component_records": 1580832,
+        "execution_steps": 158104,
+        "link_tuples": 301520,
+        "occurrence_integers": 253744,
+        "origin_indexes": 128,
+        "record_index": 294992,
+        "registration_objects": 3096
+      },
+      "unique_execution_steps": 1765,
+      "unique_origins": 0,
+      "unique_registration_objects": 43
+    },
+    "retained_graph_inventory": {
+      "captured_views": 0,
+      "graphs": 1,
+      "records": 8982,
+      "saved_views_in_primary_graph": 0,
+      "saved_views_in_separate_snapshots": 0
+    }
+  },
+  "05-final-composition": {
+    "file": "05-final-composition.json",
+    "medians": {
+      "build_seconds": 10.933394500054419,
+      "prepared": {
+        "peak_rss_bytes": 135757824,
+        "rss_bytes": 135757824,
+        "traced_peak_bytes": 76382137,
+        "traced_retained_bytes": 3437994
+      },
+      "resolve_seconds": 0.014366959105245769,
+      "resolved": {
+        "peak_rss_bytes": 135757824,
+        "rss_bytes": 135757824,
+        "traced_peak_bytes": 76382137,
+        "traced_retained_bytes": 4615263
+      }
+    },
+    "normal_samples": 3,
+    "traced_samples": 3,
+    "options": {
+      "explain_metadata": false,
+      "diagnostics": false,
+      "allow_scope_builders": true,
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      }
+    },
+    "normal_prepared_rss_range_bytes": [
+      134381568,
+      136052736
+    ],
+    "normal_build_seconds_range": [
+      10.912852415931411,
+      10.979339875048026
+    ],
+    "normal_resolve_seconds_range": [
+      0.014036334003321826,
+      0.014446708955802023
+    ],
+    "graph": {
+      "activation_kinds": {
+        "collection": 16,
+        "constructor": 8130,
+        "deferred": 218,
+        "supplied": 618
+      },
+      "component_metadata": {
+        "definition_identity_patterns": 116,
+        "identity_patterns": 903,
+        "patterns_by_kind": {
+          "decorator": 10,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 41,
+          "value": 618
+        },
+        "retained_definition_index_bytes": 0,
+        "shared_definition_bytes": 13920,
+        "shared_definition_objects": 116,
+        "unique_field_objects": {
+          "activation": 4,
+          "boundary": 1,
+          "build_args": 1,
+          "declared_service_type": 15,
+          "id": 889,
+          "implementation": 20,
+          "implementation_type": 20,
+          "kind": 6,
+          "lifespan": 3,
+          "name": 11,
+          "service_type": 45,
+          "tags": 1
+        }
+      },
+      "decorator_objects": {
+        "logical_outcomes_by_entry": {},
+        "logical_reason_codes_by_entry": {},
+        "outcomes": {},
+        "reason_codes": {},
+        "shallow_storage_bytes": {
+          "decision_tuples": 0,
+          "decisions": 0,
+          "explanations": 0,
+          "template_facts": 0
+        },
+        "unique_objects": {
+          "decision_tuples": 0,
+          "decisions": 0,
+          "explanations": 0,
+          "template_facts": 0
+        },
+        "unique_patterns": 0
+      },
+      "executable_helpers": {
+        "_CompiledDecorator": 240,
+        "_CompiledDependency": 1740
+      },
+      "execution_step_kinds": {
+        "_ContextProviderStep": 152,
+        "_ManagedProviderStep": 50,
+        "_ProviderMapStep": 32,
+        "_ProviderStep": 168,
+        "_ScopedRegistrationStep": 193,
+        "_SingletonRegistrationStep": 226,
+        "_TransientRegistrationStep": 326,
+        "_ValueStep": 618
+      },
+      "logical_graph_visits": null,
+      "metadata_entries": {
+        "census_definitions": 0,
+        "census_sources": 0,
+        "decorator_explanations": 0,
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0,
+        "root_candidates": 0
+      },
+      "physical_records": 8982,
+      "provider_view_contexts": 50,
+      "record_kinds": {
+        "decorator": 232,
+        "managed_provider": 50,
+        "provider": 168,
+        "provider_map": 16,
+        "registration": 7898,
+        "value": 618
+      },
+      "registration_carrier_kinds": {
+        "_RuntimeRegistration": 43
+      },
+      "retained_execution_composition": {
+        "decorator_definitions": 0,
+        "decorator_dependency_settings": 0,
+        "registration_dependency_settings": 0
+      },
+      "retained_plan_fields": {
+        "_blueprint": {
+          "entries": null,
+          "shallow_bytes": 64,
+          "type": "_Blueprint"
+        },
+        "architecture_roots": {
+          "entries": 26,
+          "shallow_bytes": 256,
+          "type": "tuple"
+        },
+        "area_root_candidates": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "build_args": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "build_report": {
+          "entries": null,
+          "shallow_bytes": 72,
+          "type": "BuildReport"
+        },
+        "census_definitions": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "census_ids": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "census_sources": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "compiled_graph": {
+          "entries": null,
+          "shallow_bytes": 16,
+          "type": "NoneType"
+        },
+        "compiler_issues": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "decorator_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "default_root_groups": {
+          "entries": 14,
+          "shallow_bytes": 632,
+          "type": "dict"
+        },
+        "default_roots": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "dict"
+        },
+        "diagnostics": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "ensured_import_modules": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "explain_metadata": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "fallback_ids": {
+          "entries": 0,
+          "shallow_bytes": 216,
+          "type": "frozenset"
+        },
+        "generic_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "graph": {
+          "entries": null,
+          "shallow_bytes": 64,
+          "type": "_ComponentGraph"
+        },
+        "managed_provider_roots": {
+          "entries": 4,
+          "shallow_bytes": 224,
+          "type": "mappingproxy"
+        },
+        "occurrence_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "occurrence_layers": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "occurrence_origins": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "parameter_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "provider_roots": {
+          "entries": 4,
+          "shallow_bytes": 224,
+          "type": "mappingproxy"
+        },
+        "root_candidates": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "roots": {
+          "entries": 14,
+          "shallow_bytes": 632,
+          "type": "dict"
+        },
+        "selected_registrations": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "slots": {
+          "entries": 0,
+          "shallow_bytes": 216,
+          "type": "frozenset"
+        },
+        "unreachable_checked": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "unreachable_issue_offset": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "int"
+        },
+        "validation_rules": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "warmup_fingerprint": {
+          "entries": null,
+          "shallow_bytes": 41,
+          "type": "str"
+        },
+        "warmup_infos": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "warmup_steps": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        }
+      },
+      "selected_registrations": 0,
+      "shallow_storage_bytes": {
+        "component_records": 1580832,
+        "execution_steps": 158104,
+        "link_tuples": 301520,
+        "occurrence_integers": 253744,
+        "origin_indexes": 128,
+        "record_index": 294992,
+        "registration_objects": 3096
+      },
+      "unique_execution_steps": 1765,
+      "unique_origins": 0,
+      "unique_registration_objects": 43
+    },
+    "retained_graph_inventory": {
+      "captured_views": 0,
+      "graphs": 1,
+      "records": 8982,
+      "saved_views_in_primary_graph": 0,
+      "saved_views_in_separate_snapshots": 0
+    }
+  },
+  "05-final-caller-owned": {
+    "file": "05-final-caller-owned.json",
+    "medians": {
+      "build_seconds": 10.97682312503457,
+      "prepared": {
+        "peak_rss_bytes": 137510912,
+        "rss_bytes": 137510912,
+        "traced_peak_bytes": 78795719,
+        "traced_retained_bytes": 5784532
+      },
+      "resolve_seconds": 0.015134833985939622,
+      "resolved": {
+        "peak_rss_bytes": 137510912,
+        "rss_bytes": 137510912,
+        "traced_peak_bytes": 78795719,
+        "traced_retained_bytes": 6962069
+      }
+    },
+    "normal_samples": 3,
+    "traced_samples": 3,
+    "options": {
+      "explain_metadata": false,
+      "diagnostics": false,
+      "allow_scope_builders": false,
+      "ownership": {
+        "captured_selection_views": true,
+        "retained_builder": true
+      }
+    },
+    "normal_prepared_rss_range_bytes": [
+      137101312,
+      138395648
+    ],
+    "normal_build_seconds_range": [
+      10.869113291963004,
+      11.041327124927193
+    ],
+    "normal_resolve_seconds_range": [
+      0.015078208060003817,
+      0.015164750046096742
+    ],
+    "graph": {
+      "activation_kinds": {
+        "collection": 16,
+        "constructor": 8130,
+        "deferred": 218,
+        "supplied": 618
+      },
+      "component_metadata": {
+        "definition_identity_patterns": 116,
+        "identity_patterns": 903,
+        "patterns_by_kind": {
+          "decorator": 10,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 41,
+          "value": 618
+        },
+        "retained_definition_index_bytes": 0,
+        "shared_definition_bytes": 13920,
+        "shared_definition_objects": 116,
+        "unique_field_objects": {
+          "activation": 4,
+          "boundary": 1,
+          "build_args": 1,
+          "declared_service_type": 15,
+          "id": 889,
+          "implementation": 20,
+          "implementation_type": 20,
+          "kind": 6,
+          "lifespan": 3,
+          "name": 11,
+          "service_type": 45,
+          "tags": 1
+        }
+      },
+      "decorator_objects": {
+        "logical_outcomes_by_entry": {},
+        "logical_reason_codes_by_entry": {},
+        "outcomes": {},
+        "reason_codes": {},
+        "shallow_storage_bytes": {
+          "decision_tuples": 0,
+          "decisions": 0,
+          "explanations": 0,
+          "template_facts": 0
+        },
+        "unique_objects": {
+          "decision_tuples": 0,
+          "decisions": 0,
+          "explanations": 0,
+          "template_facts": 0
+        },
+        "unique_patterns": 0
+      },
+      "executable_helpers": {
+        "_CompiledDecorator": 240,
+        "_CompiledDependency": 1740
+      },
+      "execution_step_kinds": {
+        "_ContextProviderStep": 152,
+        "_ManagedProviderStep": 50,
+        "_ProviderMapStep": 32,
+        "_ProviderStep": 168,
+        "_ScopedRegistrationStep": 193,
+        "_SingletonRegistrationStep": 226,
+        "_TransientRegistrationStep": 326,
+        "_ValueStep": 618
+      },
+      "logical_graph_visits": null,
+      "metadata_entries": {
+        "census_definitions": 0,
+        "census_sources": 0,
+        "decorator_explanations": 0,
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0,
+        "root_candidates": 0
+      },
+      "physical_records": 8982,
+      "provider_view_contexts": 50,
+      "record_kinds": {
+        "decorator": 232,
+        "managed_provider": 50,
+        "provider": 168,
+        "provider_map": 16,
+        "registration": 7898,
+        "value": 618
+      },
+      "registration_carrier_kinds": {
+        "_RuntimeRegistration": 43
+      },
+      "retained_execution_composition": {
+        "decorator_definitions": 0,
+        "decorator_dependency_settings": 0,
+        "registration_dependency_settings": 0
+      },
+      "retained_plan_fields": {
+        "_blueprint": {
+          "entries": null,
+          "shallow_bytes": 16,
+          "type": "NoneType"
+        },
+        "architecture_roots": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "area_root_candidates": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "build_args": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "build_report": {
+          "entries": null,
+          "shallow_bytes": 72,
+          "type": "BuildReport"
+        },
+        "census_definitions": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "census_ids": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "census_sources": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "compiled_graph": {
+          "entries": null,
+          "shallow_bytes": 16,
+          "type": "NoneType"
+        },
+        "compiler_issues": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "decorator_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "default_root_groups": {
+          "entries": 14,
+          "shallow_bytes": 632,
+          "type": "dict"
+        },
+        "default_roots": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "dict"
+        },
+        "diagnostics": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "ensured_import_modules": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "explain_metadata": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "fallback_ids": {
+          "entries": 0,
+          "shallow_bytes": 216,
+          "type": "frozenset"
+        },
+        "generic_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "graph": {
+          "entries": null,
+          "shallow_bytes": 64,
+          "type": "_ComponentGraph"
+        },
+        "managed_provider_roots": {
+          "entries": 4,
+          "shallow_bytes": 224,
+          "type": "mappingproxy"
+        },
+        "occurrence_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "occurrence_layers": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "occurrence_origins": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "parameter_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "provider_roots": {
+          "entries": 4,
+          "shallow_bytes": 224,
+          "type": "mappingproxy"
+        },
+        "root_candidates": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "roots": {
+          "entries": 14,
+          "shallow_bytes": 632,
+          "type": "dict"
+        },
+        "selected_registrations": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "slots": {
+          "entries": 0,
+          "shallow_bytes": 216,
+          "type": "frozenset"
+        },
+        "unreachable_checked": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "unreachable_issue_offset": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "int"
+        },
+        "validation_rules": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "warmup_fingerprint": {
+          "entries": null,
+          "shallow_bytes": 41,
+          "type": "str"
+        },
+        "warmup_infos": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "warmup_steps": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        }
+      },
+      "selected_registrations": 0,
+      "shallow_storage_bytes": {
+        "component_records": 1580832,
+        "execution_steps": 158104,
+        "link_tuples": 301520,
+        "occurrence_integers": 253744,
+        "origin_indexes": 128,
+        "record_index": 294992,
+        "registration_objects": 3096
+      },
+      "unique_execution_steps": 1765,
+      "unique_origins": 0,
+      "unique_registration_objects": 43
+    },
+    "retained_graph_inventory": {
+      "captured_views": 320,
+      "graphs": 9,
+      "records": 16086,
+      "saved_views_in_primary_graph": 256,
+      "saved_views_in_separate_snapshots": 64
+    }
+  },
+  "05-diagnostics-full": {
+    "file": "05-diagnostics-full.json",
+    "medians": {
+      "build_seconds": 8.478270416962914,
+      "prepared": {
+        "peak_rss_bytes": 372621312,
+        "rss_bytes": 372621312,
+        "traced_peak_bytes": 300785539,
+        "traced_retained_bytes": 263163080
+      },
+      "resolve_seconds": 0.11262108304072171,
+      "resolved": {
+        "peak_rss_bytes": 372621312,
+        "rss_bytes": 372621312,
+        "traced_peak_bytes": 300785539,
+        "traced_retained_bytes": 264340397
+      }
+    },
+    "normal_samples": 3,
+    "traced_samples": 3,
+    "options": {
+      "explain_metadata": true,
+      "diagnostics": true,
+      "allow_scope_builders": false,
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      }
+    },
+    "normal_prepared_rss_range_bytes": [
+      372277248,
+      372686848
+    ],
+    "normal_build_seconds_range": [
+      8.465733167016879,
+      8.525178874959238
+    ],
+    "normal_resolve_seconds_range": [
+      0.11233249993529171,
+      0.11575599992647767
+    ],
+    "graph": {
+      "activation_kinds": {
+        "collection": 16,
+        "constructor": 57298,
+        "deferred": 218,
+        "supplied": 31026
+      },
+      "component_metadata": {
+        "definition_identity_patterns": 116,
+        "identity_patterns": 31311,
+        "patterns_by_kind": {
+          "decorator": 10,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 41,
+          "value": 31026
+        },
+        "retained_definition_index_bytes": 0,
+        "shared_definition_bytes": 13920,
+        "shared_definition_objects": 116,
+        "unique_field_objects": {
+          "activation": 4,
+          "boundary": 1,
+          "build_args": 1,
+          "declared_service_type": 15,
+          "id": 31297,
+          "implementation": 20,
+          "implementation_type": 20,
+          "kind": 6,
+          "lifespan": 3,
+          "name": 11,
+          "service_type": 45,
+          "tags": 1
+        }
+      },
+      "decorator_objects": {
+        "logical_outcomes_by_entry": {
+          "rejected": 564428,
+          "selected": 792
+        },
+        "logical_reason_codes_by_entry": {
+          "decorator-filter-matched": 792,
+          "decorator-filter-rejected": 56,
+          "template-target-not-selected": 564372
+        },
+        "outcomes": {
+          "rejected": 564428,
+          "selected": 792
+        },
+        "reason_codes": {
+          "decorator-filter-matched": 792,
+          "decorator-filter-rejected": 56,
+          "template-target-not-selected": 564372
+        },
+        "shallow_storage_bytes": {
+          "decision_tuples": 7254064,
+          "decisions": 54261120,
+          "explanations": 3617408,
+          "template_facts": 81391680
+        },
+        "unique_objects": {
+          "decision_tuples": 56923,
+          "decisions": 565220,
+          "explanations": 56522,
+          "template_facts": 565220
+        },
+        "unique_patterns": 56522
+      },
+      "executable_helpers": {
+        "_CompiledDecorator": 240,
+        "_CompiledDependency": 1740
+      },
+      "execution_step_kinds": {
+        "_ContextProviderStep": 152,
+        "_ManagedProviderStep": 50,
+        "_ProviderMapStep": 32,
+        "_ProviderStep": 168,
+        "_ScopedRegistrationStep": 193,
+        "_SingletonRegistrationStep": 226,
+        "_TransientRegistrationStep": 326,
+        "_ValueStep": 618
+      },
+      "logical_graph_visits": 8932,
+      "metadata_entries": {
+        "census_definitions": 57,
+        "census_sources": 0,
+        "decorator_explanations": 56522,
+        "generic_explanations": 0,
+        "occurrence_explanations": 61790,
+        "parameter_explanations": 44362,
+        "root_candidates": 18
+      },
+      "physical_records": 88558,
+      "provider_view_contexts": 50,
+      "record_kinds": {
+        "decorator": 792,
+        "managed_provider": 50,
+        "provider": 168,
+        "provider_map": 16,
+        "registration": 56506,
+        "value": 31026
+      },
+      "registration_carrier_kinds": {
+        "_Registration": 43
+      },
+      "retained_execution_composition": {
+        "decorator_definitions": 240,
+        "decorator_dependency_settings": 240,
+        "registration_dependency_settings": 124
+      },
+      "retained_plan_fields": {
+        "_blueprint": {
+          "entries": null,
+          "shallow_bytes": 16,
+          "type": "NoneType"
+        },
+        "architecture_roots": {
+          "entries": 26,
+          "shallow_bytes": 256,
+          "type": "tuple"
+        },
+        "area_root_candidates": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "build_args": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "build_report": {
+          "entries": null,
+          "shallow_bytes": 72,
+          "type": "BuildReport"
+        },
+        "census_definitions": {
+          "entries": 57,
+          "shallow_bytes": 504,
+          "type": "tuple"
+        },
+        "census_ids": {
+          "entries": 57,
+          "shallow_bytes": 1584,
+          "type": "mappingproxy"
+        },
+        "census_sources": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "compiled_graph": {
+          "entries": null,
+          "shallow_bytes": 240,
+          "type": "CompiledGraph"
+        },
+        "compiler_issues": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "decorator_explanations": {
+          "entries": 56522,
+          "shallow_bytes": 2621528,
+          "type": "mappingproxy"
+        },
+        "default_root_groups": {
+          "entries": 14,
+          "shallow_bytes": 632,
+          "type": "dict"
+        },
+        "default_roots": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "dict"
+        },
+        "diagnostics": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "ensured_import_modules": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "explain_metadata": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "fallback_ids": {
+          "entries": 0,
+          "shallow_bytes": 216,
+          "type": "frozenset"
+        },
+        "generic_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "graph": {
+          "entries": null,
+          "shallow_bytes": 64,
+          "type": "_ComponentGraph"
+        },
+        "managed_provider_roots": {
+          "entries": 4,
+          "shallow_bytes": 224,
+          "type": "mappingproxy"
+        },
+        "occurrence_explanations": {
+          "entries": 61790,
+          "shallow_bytes": 2621528,
+          "type": "mappingproxy"
+        },
+        "occurrence_layers": {
+          "entries": 88558,
+          "shallow_bytes": 48,
+          "type": "_OccurrenceLayers"
+        },
+        "occurrence_origins": {
+          "entries": 88558,
+          "shallow_bytes": 5242960,
+          "type": "mappingproxy"
+        },
+        "parameter_explanations": {
+          "entries": 44362,
+          "shallow_bytes": 2621528,
+          "type": "mappingproxy"
+        },
+        "provider_roots": {
+          "entries": 4,
+          "shallow_bytes": 224,
+          "type": "mappingproxy"
+        },
+        "root_candidates": {
+          "entries": 18,
+          "shallow_bytes": 632,
+          "type": "mappingproxy"
+        },
+        "roots": {
+          "entries": 14,
+          "shallow_bytes": 632,
+          "type": "dict"
+        },
+        "selected_registrations": {
+          "entries": 51,
+          "shallow_bytes": 456,
+          "type": "tuple"
+        },
+        "slots": {
+          "entries": 0,
+          "shallow_bytes": 216,
+          "type": "frozenset"
+        },
+        "unreachable_checked": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "unreachable_issue_offset": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "int"
+        },
+        "validation_rules": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "warmup_fingerprint": {
+          "entries": null,
+          "shallow_bytes": 41,
+          "type": "str"
+        },
+        "warmup_infos": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "warmup_steps": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        }
+      },
+      "selected_registrations": 51,
+      "shallow_storage_bytes": {
+        "component_records": 15586208,
+        "execution_steps": 158104,
+        "link_tuples": 2653968,
+        "occurrence_integers": 2481424,
+        "origin_indexes": 5242960,
+        "record_index": 5242960,
+        "registration_objects": 7224
+      },
+      "unique_execution_steps": 1765,
+      "unique_origins": 45,
+      "unique_registration_objects": 43
+    },
+    "retained_graph_inventory": {
+      "captured_views": 0,
+      "graphs": 1,
+      "records": 88558,
+      "saved_views_in_primary_graph": 0,
+      "saved_views_in_separate_snapshots": 0
+    }
+  },
+  "05-diagnostics-reduced": {
+    "file": "05-diagnostics-reduced.json",
+    "medians": {
+      "build_seconds": 8.38355141703505,
+      "prepared": {
+        "peak_rss_bytes": 368934912,
+        "rss_bytes": 367886336,
+        "traced_peak_bytes": 304145085,
+        "traced_retained_bytes": 3247639
+      },
+      "resolve_seconds": 0.015002542058937252,
+      "resolved": {
+        "peak_rss_bytes": 368934912,
+        "rss_bytes": 367886336,
+        "traced_peak_bytes": 304145085,
+        "traced_retained_bytes": 4425113
+      }
+    },
+    "normal_samples": 3,
+    "traced_samples": 3,
+    "options": {
+      "explain_metadata": false,
+      "diagnostics": true,
+      "allow_scope_builders": false,
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      }
+    },
+    "normal_prepared_rss_range_bytes": [
+      367869952,
+      371474432
+    ],
+    "normal_build_seconds_range": [
+      8.377080000005662,
+      8.442323333001696
+    ],
+    "normal_resolve_seconds_range": [
+      0.014892166014760733,
+      0.015518625034019351
+    ],
+    "graph": {
+      "activation_kinds": {
+        "collection": 16,
+        "constructor": 8130,
+        "deferred": 218,
+        "supplied": 618
+      },
+      "component_metadata": {
+        "definition_identity_patterns": 116,
+        "identity_patterns": 903,
+        "patterns_by_kind": {
+          "decorator": 10,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 41,
+          "value": 618
+        },
+        "retained_definition_index_bytes": 0,
+        "shared_definition_bytes": 13920,
+        "shared_definition_objects": 116,
+        "unique_field_objects": {
+          "activation": 4,
+          "boundary": 1,
+          "build_args": 1,
+          "declared_service_type": 15,
+          "id": 889,
+          "implementation": 20,
+          "implementation_type": 20,
+          "kind": 6,
+          "lifespan": 3,
+          "name": 11,
+          "service_type": 45,
+          "tags": 1
+        }
+      },
+      "decorator_objects": {
+        "logical_outcomes_by_entry": {},
+        "logical_reason_codes_by_entry": {},
+        "outcomes": {},
+        "reason_codes": {},
+        "shallow_storage_bytes": {
+          "decision_tuples": 0,
+          "decisions": 0,
+          "explanations": 0,
+          "template_facts": 0
+        },
+        "unique_objects": {
+          "decision_tuples": 0,
+          "decisions": 0,
+          "explanations": 0,
+          "template_facts": 0
+        },
+        "unique_patterns": 0
+      },
+      "executable_helpers": {
+        "_CompiledDecorator": 240,
+        "_CompiledDependency": 1740
+      },
+      "execution_step_kinds": {
+        "_ContextProviderStep": 152,
+        "_ManagedProviderStep": 50,
+        "_ProviderMapStep": 32,
+        "_ProviderStep": 168,
+        "_ScopedRegistrationStep": 193,
+        "_SingletonRegistrationStep": 226,
+        "_TransientRegistrationStep": 326,
+        "_ValueStep": 618
+      },
+      "logical_graph_visits": null,
+      "metadata_entries": {
+        "census_definitions": 0,
+        "census_sources": 0,
+        "decorator_explanations": 0,
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0,
+        "root_candidates": 0
+      },
+      "physical_records": 8982,
+      "provider_view_contexts": 50,
+      "record_kinds": {
+        "decorator": 232,
+        "managed_provider": 50,
+        "provider": 168,
+        "provider_map": 16,
+        "registration": 7898,
+        "value": 618
+      },
+      "registration_carrier_kinds": {
+        "_RuntimeRegistration": 43
+      },
+      "retained_execution_composition": {
+        "decorator_definitions": 0,
+        "decorator_dependency_settings": 0,
+        "registration_dependency_settings": 0
+      },
+      "retained_plan_fields": {
+        "_blueprint": {
+          "entries": null,
+          "shallow_bytes": 16,
+          "type": "NoneType"
+        },
+        "architecture_roots": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "area_root_candidates": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "build_args": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "build_report": {
+          "entries": null,
+          "shallow_bytes": 72,
+          "type": "BuildReport"
+        },
+        "census_definitions": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "census_ids": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "census_sources": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "compiled_graph": {
+          "entries": null,
+          "shallow_bytes": 16,
+          "type": "NoneType"
+        },
+        "compiler_issues": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "decorator_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "default_root_groups": {
+          "entries": 14,
+          "shallow_bytes": 632,
+          "type": "dict"
+        },
+        "default_roots": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "dict"
+        },
+        "diagnostics": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "ensured_import_modules": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "explain_metadata": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "fallback_ids": {
+          "entries": 0,
+          "shallow_bytes": 216,
+          "type": "frozenset"
+        },
+        "generic_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "graph": {
+          "entries": null,
+          "shallow_bytes": 64,
+          "type": "_ComponentGraph"
+        },
+        "managed_provider_roots": {
+          "entries": 4,
+          "shallow_bytes": 224,
+          "type": "mappingproxy"
+        },
+        "occurrence_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "occurrence_layers": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "occurrence_origins": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "parameter_explanations": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "provider_roots": {
+          "entries": 4,
+          "shallow_bytes": 224,
+          "type": "mappingproxy"
+        },
+        "root_candidates": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        },
+        "roots": {
+          "entries": 14,
+          "shallow_bytes": 632,
+          "type": "dict"
+        },
+        "selected_registrations": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "slots": {
+          "entries": 0,
+          "shallow_bytes": 216,
+          "type": "frozenset"
+        },
+        "unreachable_checked": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "bool"
+        },
+        "unreachable_issue_offset": {
+          "entries": null,
+          "shallow_bytes": 28,
+          "type": "int"
+        },
+        "validation_rules": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "warmup_fingerprint": {
+          "entries": null,
+          "shallow_bytes": 41,
+          "type": "str"
+        },
+        "warmup_infos": {
+          "entries": 0,
+          "shallow_bytes": 48,
+          "type": "tuple"
+        },
+        "warmup_steps": {
+          "entries": 0,
+          "shallow_bytes": 64,
+          "type": "mappingproxy"
+        }
+      },
+      "selected_registrations": 0,
+      "shallow_storage_bytes": {
+        "component_records": 1580832,
+        "execution_steps": 158104,
+        "link_tuples": 301520,
+        "occurrence_integers": 253744,
+        "origin_indexes": 128,
+        "record_index": 294992,
+        "registration_objects": 3096
+      },
+      "unique_execution_steps": 1765,
+      "unique_origins": 0,
+      "unique_registration_objects": 43
+    },
+    "retained_graph_inventory": {
+      "captured_views": 0,
+      "graphs": 1,
+      "records": 8982,
+      "saved_views_in_primary_graph": 0,
+      "saved_views_in_separate_snapshots": 0
+    }
+  },
+  "verification": {
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81",
+      "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+      "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211"
+    },
+    "all_final_runs_same_source": true,
+    "source_matches_current": true,
+    "independent_resolution_results_equal_all_final_groups": true,
+    "template_callback_and_activation_counts_equal_all_final_groups": true,
+    "full_mode_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+    "full_inspection_passes": 12,
+    "reduced_inspection_attempts": 36,
+    "no_reconstruction_on_disabled_inspection": true
+  }
+}

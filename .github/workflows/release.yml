@@ -10,7 +10,6 @@ permissions:
 jobs:
   release:
     name: Release
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
@@ -26,8 +25,77 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Extract version from pyproject.toml
-        run: echo "PACKAGE_VERSION=$(uv version --short)" >> "$GITHUB_ENV"
+      - name: Validate release version and source branch
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: |
+          PACKAGE_VERSION="$(uv version --short)"
+          echo "PACKAGE_VERSION=${PACKAGE_VERSION}" >> "$GITHUB_ENV"
+          export PACKAGE_VERSION
+
+          uv run --no-project --with packaging python - <<'PY'
+          import os
+          from pathlib import Path
+
+          from packaging.version import InvalidVersion, Version
+
+          raw_version = os.environ["PACKAGE_VERSION"]
+          release_ref = os.environ["RELEASE_REF"]
+
+          try:
+              version = Version(raw_version)
+          except InvalidVersion as error:
+              raise SystemExit(f"Package version {raw_version!r} is not valid PEP 440: {error}") from error
+
+          if str(version) != raw_version or len(version.release) != 3:
+              raise SystemExit(
+                  f"Package version {raw_version!r} must use canonical X.Y.Z PEP 440 form"
+              )
+
+          prerelease_phase = version.pre[0] if version.pre is not None else None
+          supported_prerelease = (
+              prerelease_phase in {"a", "b", "rc"}
+              and not version.is_devrelease
+              and version.post is None
+              and version.local is None
+          )
+          stable = (
+              not version.is_prerelease
+              and not version.is_devrelease
+              and version.post is None
+              and version.local is None
+          )
+
+          if not stable and not supported_prerelease:
+              raise SystemExit(
+                  "Releases must be stable X.Y.Z versions or alpha, beta, or release-candidate versions"
+              )
+          if release_ref != "refs/heads/main" and not supported_prerelease:
+              raise SystemExit(
+                  f"Stable version {raw_version} cannot be released from {release_ref}; "
+                  "non-main releases must be alpha, beta, or release candidates"
+              )
+
+          with Path(os.environ["GITHUB_ENV"]).open("a", encoding="utf-8") as environment:
+              environment.write(f"IS_PRERELEASE={'true' if supported_prerelease else 'false'}\n")
+
+          print(f"Validated {raw_version} from {release_ref}")
+          PY
+
+      - name: Check release does not already exist
+        run: |
+          if git rev-parse "v${PACKAGE_VERSION}" >/dev/null 2>&1; then
+            echo "Tag v${PACKAGE_VERSION} already exists; refusing to republish."
+            exit 1
+          fi
+
+      - name: Install development dependencies
+        if: github.event_name == 'workflow_dispatch'
+        run: uv sync --all-groups
+
+      - name: Run release checks
+        if: github.event_name == 'workflow_dispatch'
+        run: make ci
 
       - name: Publish package on PyPI
         run: |
@@ -41,10 +109,25 @@ jobs:
 
       - name: Create and push Git tag
         run: |
-          if git rev-parse "v${PACKAGE_VERSION}" >/dev/null 2>&1; then
-            echo "Tag v${PACKAGE_VERSION} already exists; skipping."
+          git tag "v${PACKAGE_VERSION}"
+          git push origin "v${PACKAGE_VERSION}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${PACKAGE_VERSION}" >/dev/null 2>&1; then
+            echo "Release v${PACKAGE_VERSION} already exists; skipping."
             exit 0
           fi
 
-          git tag "v${PACKAGE_VERSION}"
-          git push origin "v${PACKAGE_VERSION}"
+          release_args=(
+            "v${PACKAGE_VERSION}"
+            --title "Clean IoC v${PACKAGE_VERSION}"
+            --generate-notes
+          )
+          if [[ "${IS_PRERELEASE}" == "true" ]]; then
+            release_args+=(--prerelease)
+          fi
+
+          gh release create "${release_args[@]}" dist/*

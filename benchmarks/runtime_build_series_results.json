@@ -1,0 +1,2743 @@
+{
+  "method": "Alternating frozen installed wheels and matching Cop source snapshots; three normal fresh processes per application/stage, one separately instrumented worker process per stage. Build timing/tracing excludes app imports and configuration but includes get_container composition; peak RSS covers the whole process.",
+  "comparisons": [
+    {
+      "step": 1,
+      "source_artifact": "step1-comparison.json",
+      "source_sha256": "67a3b1b79d87ad1f713a1bb3b3bb975525db5dfe8b1068c5b2a15bd5e6d8b3a8",
+      "stages": [
+        {
+          "stage": "baseline",
+          "manifest": {
+            "stage": "baseline",
+            "app_source_hash": "c67f1ef4c2aed3e1af389a71060ed6f7dbd63f8d699580e215f4c64c2d4afe99",
+            "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+            "clean_ioc_tracked_diff_sha256": "881502c7ec2d2693a5ef9f2e3968b8091c5b5d64855a68bb69ff3189625e9554",
+            "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+            "bark_core_tracked_diff_sha256": "c1cd240797f3e883f4d773e1cea52403a411a8bf827cbd0655f8910b244c77fe",
+            "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+            "cop_tracked_diff_sha256": "e1fc3b1229540df5346f68d1eec117e0a3b41fe1ba1a166893982b5b0b49f035",
+            "source_provenance": "Baseline diff captured before step1 edits; dependency wheel bytes are authoritative. App snapshot contains pinned Cop source plus previously authorized composition changes.",
+            "wheels": {
+              "clean_ioc": {
+                "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+                "sha256": "4e0d2fd53eafcfc9d03837b58b6f2d59e0d14c88e1405a0240b22dd7174d7749"
+              },
+              "bark_core": {
+                "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+                "sha256": "047d046561f219b331cd812feb2c52fe9883de070226e1b4ed602222012bf758"
+              }
+            }
+          },
+          "summaries": {
+            "api": {
+              "median_seconds": 0.7657247920287773,
+              "peak_rss_mib_range": [
+                235.203125,
+                252.65625
+              ],
+              "physical_records": [
+                11910
+              ]
+            },
+            "worker": {
+              "median_seconds": 5.40758958295919,
+              "peak_rss_mib_range": [
+                408.75,
+                437.046875
+              ],
+              "physical_records": [
+                91570
+              ],
+              "traced_peak_bytes": 199227060,
+              "traced_after_gc_bytes": 68233327
+            }
+          },
+          "samples": [
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.7640159170841798,
+              "peak_rss_bytes": 264929280,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 11910,
+              "provider_views": 3220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "baseline",
+              "sample": 1
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 5.557105249958113,
+              "peak_rss_bytes": 434716672,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 91570,
+              "provider_views": 4220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "baseline",
+              "sample": 1
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.7657247920287773,
+              "peak_rss_bytes": 247709696,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 11910,
+              "provider_views": 3220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "baseline",
+              "sample": 2
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 5.40758958295919,
+              "peak_rss_bytes": 428605440,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 91570,
+              "provider_views": 4220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "baseline",
+              "sample": 2
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.7899978749919683,
+              "peak_rss_bytes": 246628352,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 11910,
+              "provider_views": 3220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "baseline",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 5.383312207995914,
+              "peak_rss_bytes": 458276864,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 91570,
+              "provider_views": 4220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "baseline",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "tracemalloc",
+              "seconds": 38.66770920797717,
+              "peak_rss_bytes": 528728064,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 91570,
+              "provider_views": 4220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "traced_after_build_bytes": 185056142,
+              "traced_peak_bytes": 199227060,
+              "traced_after_gc_bytes": 68233327,
+              "stage": "baseline",
+              "sample": 1
+            }
+          ]
+        },
+        {
+          "stage": "step1",
+          "manifest": {
+            "stage": "step1",
+            "app_source_hash": "c67f1ef4c2aed3e1af389a71060ed6f7dbd63f8d699580e215f4c64c2d4afe99",
+            "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+            "clean_ioc_tracked_diff_sha256": "bfaa64b435be7e2a028a0c21c4f558e0acbd213ae2a68f493757f2ade080c84f",
+            "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+            "bark_core_tracked_diff_sha256": "c1cd240797f3e883f4d773e1cea52403a411a8bf827cbd0655f8910b244c77fe",
+            "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+            "cop_tracked_diff_sha256": "e1fc3b1229540df5346f68d1eec117e0a3b41fe1ba1a166893982b5b0b49f035",
+            "wheels": {
+              "clean_ioc": {
+                "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+                "sha256": "3dd1855e4df932af7f7fb5ad79c80918462997b9e9935054a71ec8b441594947"
+              },
+              "bark_core": {
+                "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+                "sha256": "047d046561f219b331cd812feb2c52fe9883de070226e1b4ed602222012bf758"
+              }
+            }
+          },
+          "summaries": {
+            "api": {
+              "median_seconds": 0.739237624919042,
+              "peak_rss_mib_range": [
+                234.296875,
+                236.25
+              ],
+              "physical_records": [
+                10032
+              ]
+            },
+            "worker": {
+              "median_seconds": 5.21568866702728,
+              "peak_rss_mib_range": [
+                396.125,
+                496.03125
+              ],
+              "physical_records": [
+                66225
+              ],
+              "traced_peak_bytes": 187140166,
+              "traced_after_gc_bytes": 53074157
+            }
+          },
+          "samples": [
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.7896359170554206,
+              "peak_rss_bytes": 245678080,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 10032,
+              "provider_views": 3220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step1",
+              "sample": 1
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 5.277384458924644,
+              "peak_rss_bytes": 520126464,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 66225,
+              "provider_views": 4220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step1",
+              "sample": 1
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.739237624919042,
+              "peak_rss_bytes": 247627776,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 10032,
+              "provider_views": 3220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step1",
+              "sample": 2
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 5.21568866702728,
+              "peak_rss_bytes": 415367168,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 66225,
+              "provider_views": 4220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step1",
+              "sample": 2
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.7315160420257598,
+              "peak_rss_bytes": 247726080,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 10032,
+              "provider_views": 3220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step1",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 5.143942040973343,
+              "peak_rss_bytes": 478871552,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 66225,
+              "provider_views": 4220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step1",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "tracemalloc",
+              "seconds": 38.20764583302662,
+              "peak_rss_bytes": 514965504,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 66225,
+              "provider_views": 4220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "traced_after_build_bytes": 159058588,
+              "traced_peak_bytes": 187140166,
+              "traced_after_gc_bytes": 53074157,
+              "stage": "step1",
+              "sample": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "source_artifact": "step2-comparison.json",
+      "source_sha256": "a3396cda243b98ad56e3211f8f7a446345f2176728e2325eae5cc37a0b4482ba",
+      "stages": [
+        {
+          "stage": "step1",
+          "manifest": {
+            "stage": "step1",
+            "app_source_hash": "c67f1ef4c2aed3e1af389a71060ed6f7dbd63f8d699580e215f4c64c2d4afe99",
+            "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+            "clean_ioc_tracked_diff_sha256": "bfaa64b435be7e2a028a0c21c4f558e0acbd213ae2a68f493757f2ade080c84f",
+            "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+            "bark_core_tracked_diff_sha256": "c1cd240797f3e883f4d773e1cea52403a411a8bf827cbd0655f8910b244c77fe",
+            "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+            "cop_tracked_diff_sha256": "e1fc3b1229540df5346f68d1eec117e0a3b41fe1ba1a166893982b5b0b49f035",
+            "wheels": {
+              "clean_ioc": {
+                "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+                "sha256": "3dd1855e4df932af7f7fb5ad79c80918462997b9e9935054a71ec8b441594947"
+              },
+              "bark_core": {
+                "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+                "sha256": "047d046561f219b331cd812feb2c52fe9883de070226e1b4ed602222012bf758"
+              }
+            }
+          },
+          "summaries": {
+            "api": {
+              "median_seconds": 0.7629639169899747,
+              "peak_rss_mib_range": [
+                234.140625,
+                238.171875
+              ],
+              "physical_records": [
+                10032
+              ]
+            },
+            "worker": {
+              "median_seconds": 5.26409541699104,
+              "peak_rss_mib_range": [
+                396.15625,
+                437.5
+              ],
+              "physical_records": [
+                66225
+              ],
+              "traced_peak_bytes": 187139483,
+              "traced_after_gc_bytes": 53074137
+            }
+          },
+          "samples": [
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.7685995409265161,
+              "peak_rss_bytes": 249741312,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 10032,
+              "provider_views": 3220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step1",
+              "sample": 1
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 5.260960457962938,
+              "peak_rss_bytes": 458752000,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 66225,
+              "provider_views": 4220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step1",
+              "sample": 1
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.7629639169899747,
+              "peak_rss_bytes": 245514240,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 10032,
+              "provider_views": 3220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step1",
+              "sample": 2
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 5.26409541699104,
+              "peak_rss_bytes": 415399936,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 66225,
+              "provider_views": 4220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step1",
+              "sample": 2
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.7270927919307724,
+              "peak_rss_bytes": 249217024,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 10032,
+              "provider_views": 3220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step1",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 5.297509833937511,
+              "peak_rss_bytes": 458702848,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 66225,
+              "provider_views": 4220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step1",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "tracemalloc",
+              "seconds": 38.69205312500708,
+              "peak_rss_bytes": 515473408,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 66225,
+              "provider_views": 4220,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "traced_after_build_bytes": 159058664,
+              "traced_peak_bytes": 187139483,
+              "traced_after_gc_bytes": 53074137,
+              "stage": "step1",
+              "sample": 1
+            }
+          ]
+        },
+        {
+          "stage": "step2",
+          "manifest": {
+            "stage": "step2",
+            "app_source_hash": "59facbff18b71973f930e1a27a9706225fef09d2e318f9a0da86564f71eed7a9",
+            "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+            "clean_ioc_tracked_diff_sha256": "7367aea24d49330c1c963966a1b8e8f3f7433ff3b02825a04b8fd77858169862",
+            "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+            "bark_core_tracked_diff_sha256": "c1cd240797f3e883f4d773e1cea52403a411a8bf827cbd0655f8910b244c77fe",
+            "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+            "cop_tracked_diff_sha256": "3e0c9d6ac71045c703106649df25675134d6015804bd0224b4ed8f73ecee02bc",
+            "wheels": {
+              "clean_ioc": {
+                "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+                "sha256": "d1c24b886910a463b55e0f1ad24dfc52850500b50c6bfbf06e8a4ee41681ac5c"
+              },
+              "bark_core": {
+                "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+                "sha256": "047d046561f219b331cd812feb2c52fe9883de070226e1b4ed602222012bf758"
+              }
+            }
+          },
+          "summaries": {
+            "api": {
+              "median_seconds": 0.4613919159164652,
+              "peak_rss_mib_range": [
+                225.03125,
+                227.234375
+              ],
+              "physical_records": [
+                5240
+              ]
+            },
+            "worker": {
+              "median_seconds": 4.239437167067081,
+              "peak_rss_mib_range": [
+                384.171875,
+                455.96875
+              ],
+              "physical_records": [
+                59353
+              ],
+              "traced_peak_bytes": 187139768,
+              "traced_after_gc_bytes": 43301429
+            }
+          },
+          "samples": [
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.482016250025481,
+              "peak_rss_bytes": 236011520,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 5240,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step2",
+              "sample": 1
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 4.137739583035,
+              "peak_rss_bytes": 410648576,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 59353,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step2",
+              "sample": 1
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.441922124940902,
+              "peak_rss_bytes": 238272512,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 5240,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step2",
+              "sample": 2
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 4.239437167067081,
+              "peak_rss_bytes": 478117888,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 59353,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step2",
+              "sample": 2
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.4613919159164652,
+              "peak_rss_bytes": 235962368,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 5240,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step2",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 4.244408958940767,
+              "peak_rss_bytes": 402833408,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 59353,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step2",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "tracemalloc",
+              "seconds": 33.111859792028554,
+              "peak_rss_bytes": 448626688,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 59353,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "traced_after_build_bytes": 149281781,
+              "traced_peak_bytes": 187139768,
+              "traced_after_gc_bytes": 43301429,
+              "stage": "step2",
+              "sample": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "source_artifact": "step3-comparison.json",
+      "source_sha256": "70deaa36c6468b8ec881f8e7d5245cd90a2a002a288eeb22d6de10b80ee33790",
+      "stages": [
+        {
+          "stage": "step2",
+          "manifest": {
+            "stage": "step2",
+            "app_source_hash": "59facbff18b71973f930e1a27a9706225fef09d2e318f9a0da86564f71eed7a9",
+            "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+            "clean_ioc_tracked_diff_sha256": "7367aea24d49330c1c963966a1b8e8f3f7433ff3b02825a04b8fd77858169862",
+            "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+            "bark_core_tracked_diff_sha256": "c1cd240797f3e883f4d773e1cea52403a411a8bf827cbd0655f8910b244c77fe",
+            "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+            "cop_tracked_diff_sha256": "3e0c9d6ac71045c703106649df25675134d6015804bd0224b4ed8f73ecee02bc",
+            "wheels": {
+              "clean_ioc": {
+                "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+                "sha256": "d1c24b886910a463b55e0f1ad24dfc52850500b50c6bfbf06e8a4ee41681ac5c"
+              },
+              "bark_core": {
+                "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+                "sha256": "047d046561f219b331cd812feb2c52fe9883de070226e1b4ed602222012bf758"
+              }
+            }
+          },
+          "summaries": {
+            "api": {
+              "median_seconds": 0.4713371249381453,
+              "peak_rss_mib_range": [
+                224.296875,
+                230.703125
+              ],
+              "physical_records": [
+                5240
+              ]
+            },
+            "worker": {
+              "median_seconds": 4.377915917080827,
+              "peak_rss_mib_range": [
+                389.734375,
+                466.484375
+              ],
+              "physical_records": [
+                59353
+              ],
+              "traced_peak_bytes": 187136182,
+              "traced_after_gc_bytes": 43309316
+            }
+          },
+          "samples": [
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.46283112501259893,
+              "peak_rss_bytes": 241909760,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 5240,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step2",
+              "sample": 1
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 4.328499792027287,
+              "peak_rss_bytes": 489144320,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 59353,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step2",
+              "sample": 1
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.4713371249381453,
+              "peak_rss_bytes": 236027904,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 5240,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step2",
+              "sample": 2
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 4.507889000000432,
+              "peak_rss_bytes": 408666112,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 59353,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step2",
+              "sample": 2
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.5031807909253985,
+              "peak_rss_bytes": 235192320,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 5240,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step2",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 4.377915917080827,
+              "peak_rss_bytes": 431734784,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 59353,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step2",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "tracemalloc",
+              "seconds": 33.53656887507532,
+              "peak_rss_bytes": 445415424,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 59353,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "traced_after_build_bytes": 149289668,
+              "traced_peak_bytes": 187136182,
+              "traced_after_gc_bytes": 43309316,
+              "stage": "step2",
+              "sample": 1
+            }
+          ]
+        },
+        {
+          "stage": "step3",
+          "manifest": {
+            "stage": "step3",
+            "app_source_hash": "59facbff18b71973f930e1a27a9706225fef09d2e318f9a0da86564f71eed7a9",
+            "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+            "clean_ioc_tracked_diff_sha256": "817665e382d95841f3c3d2c2bd5d00eeca56aee294ea2d44f1fe5196338e6e7a",
+            "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+            "bark_core_tracked_diff_sha256": "e4b361159f69fac81552a94930fc21c8721cd5a39b1181f1b281ecad6288fe6f",
+            "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+            "cop_tracked_diff_sha256": "3e0c9d6ac71045c703106649df25675134d6015804bd0224b4ed8f73ecee02bc",
+            "wheels": {
+              "clean_ioc": {
+                "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+                "sha256": "27803660b15d2f1d334792857164d399089b96bbf252c637554c820fdf5b2fa4"
+              },
+              "bark_core": {
+                "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+                "sha256": "c48697d371ac93d97f462235e64330f25dc11e7b64be46e6d6150585379550eb"
+              }
+            }
+          },
+          "summaries": {
+            "api": {
+              "median_seconds": 0.35562841698993,
+              "peak_rss_mib_range": [
+                216.703125,
+                220.546875
+              ],
+              "physical_records": [
+                3528
+              ]
+            },
+            "worker": {
+              "median_seconds": 3.893924208008684,
+              "peak_rss_mib_range": [
+                383.3125,
+                417.46875
+              ],
+              "physical_records": [
+                51827
+              ],
+              "traced_peak_bytes": 187138117,
+              "traced_after_gc_bytes": 39401131
+            }
+          },
+          "samples": [
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.35562841698993,
+              "peak_rss_bytes": 227426304,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step3",
+              "sample": 1
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.893924208008684,
+              "peak_rss_bytes": 401932288,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step3",
+              "sample": 1
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.35728125006426126,
+              "peak_rss_bytes": 227229696,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step3",
+              "sample": 2
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.9170130839338526,
+              "peak_rss_bytes": 437747712,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step3",
+              "sample": 2
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.3437317500356585,
+              "peak_rss_bytes": 231260160,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step3",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.798696208978072,
+              "peak_rss_bytes": 404799488,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step3",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "tracemalloc",
+              "seconds": 30.03177512495313,
+              "peak_rss_bytes": 494452736,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "traced_after_build_bytes": 100544651,
+              "traced_peak_bytes": 187138117,
+              "traced_after_gc_bytes": 39401131,
+              "stage": "step3",
+              "sample": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": 4,
+      "source_artifact": "step4-comparison.json",
+      "source_sha256": "8643b5261c34f7c85770d6d8ef796b454d0d61dad3e4b4b6e4b6f7d3a614db39",
+      "stages": [
+        {
+          "stage": "step3",
+          "manifest": {
+            "stage": "step3",
+            "app_source_hash": "59facbff18b71973f930e1a27a9706225fef09d2e318f9a0da86564f71eed7a9",
+            "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+            "clean_ioc_tracked_diff_sha256": "817665e382d95841f3c3d2c2bd5d00eeca56aee294ea2d44f1fe5196338e6e7a",
+            "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+            "bark_core_tracked_diff_sha256": "e4b361159f69fac81552a94930fc21c8721cd5a39b1181f1b281ecad6288fe6f",
+            "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+            "cop_tracked_diff_sha256": "3e0c9d6ac71045c703106649df25675134d6015804bd0224b4ed8f73ecee02bc",
+            "wheels": {
+              "clean_ioc": {
+                "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+                "sha256": "27803660b15d2f1d334792857164d399089b96bbf252c637554c820fdf5b2fa4"
+              },
+              "bark_core": {
+                "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+                "sha256": "c48697d371ac93d97f462235e64330f25dc11e7b64be46e6d6150585379550eb"
+              }
+            }
+          },
+          "summaries": {
+            "api": {
+              "median_seconds": 0.34792225004639477,
+              "peak_rss_mib_range": [
+                216.828125,
+                220.765625
+              ],
+              "physical_records": [
+                3528
+              ]
+            },
+            "worker": {
+              "median_seconds": 3.9162304579513147,
+              "peak_rss_mib_range": [
+                380.609375,
+                395.640625
+              ],
+              "physical_records": [
+                51827
+              ],
+              "traced_peak_bytes": 187134591,
+              "traced_after_gc_bytes": 39403812
+            }
+          },
+          "samples": [
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.35034524998627603,
+              "peak_rss_bytes": 231489536,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step3",
+              "sample": 1
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.8481328750494868,
+              "peak_rss_bytes": 399097856,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step3",
+              "sample": 1
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.34792225004639477,
+              "peak_rss_bytes": 227360768,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step3",
+              "sample": 2
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.92083333292976,
+              "peak_rss_bytes": 400785408,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step3",
+              "sample": 2
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.34404650004580617,
+              "peak_rss_bytes": 227475456,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step3",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.9162304579513147,
+              "peak_rss_bytes": 414859264,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step3",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "tracemalloc",
+              "seconds": 29.549351791036315,
+              "peak_rss_bytes": 497598464,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "traced_after_build_bytes": 100545617,
+              "traced_peak_bytes": 187134591,
+              "traced_after_gc_bytes": 39403812,
+              "stage": "step3",
+              "sample": 1
+            }
+          ]
+        },
+        {
+          "stage": "step4",
+          "manifest": {
+            "stage": "step4",
+            "app_source_hash": "755791f458d96ea64001efcf56987fb4c5a682c94956e5cf9d86213b905b3752",
+            "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+            "clean_ioc_tracked_diff_sha256": "4c53d1d8a9e30cfa44031ac3cd7d8a38a797446011b4485103e6d6b78c9df630",
+            "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+            "bark_core_tracked_diff_sha256": "30cde82495632e2b86f96d9382699f07ca00d6efccf7023eff7bf6f8ba47434b",
+            "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+            "cop_tracked_diff_sha256": "4d51b8005c30c9c3cda531ad84f87459639b1bcb63cdc223992136f413974b0e",
+            "wheels": {
+              "clean_ioc": {
+                "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+                "sha256": "0d95a134c793af7d88b22621fd222b73a40ba81dbd6d8e7ea814ca4f54b5f27b"
+              },
+              "bark_core": {
+                "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+                "sha256": "c48697d371ac93d97f462235e64330f25dc11e7b64be46e6d6150585379550eb"
+              }
+            }
+          },
+          "summaries": {
+            "api": {
+              "median_seconds": 0.3701292920159176,
+              "peak_rss_mib_range": [
+                216.828125,
+                217.03125
+              ],
+              "physical_records": [
+                3528
+              ]
+            },
+            "worker": {
+              "median_seconds": 3.8611258330056444,
+              "peak_rss_mib_range": [
+                383.21875,
+                392.328125
+              ],
+              "physical_records": [
+                51827
+              ],
+              "traced_peak_bytes": 187137888,
+              "traced_after_gc_bytes": 38527365
+            }
+          },
+          "samples": [
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.37055612495169044,
+              "peak_rss_bytes": 227557376,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step4",
+              "sample": 1
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.830675874953158,
+              "peak_rss_bytes": 401833984,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step4",
+              "sample": 1
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.3701292920159176,
+              "peak_rss_bytes": 227360768,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step4",
+              "sample": 2
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.8611258330056444,
+              "peak_rss_bytes": 411385856,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step4",
+              "sample": 2
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.3612314580241218,
+              "peak_rss_bytes": 227573760,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step4",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.951990250032395,
+              "peak_rss_bytes": 405045248,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step4",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "tracemalloc",
+              "seconds": 29.668357542017475,
+              "peak_rss_bytes": 499089408,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "traced_after_build_bytes": 100099161,
+              "traced_peak_bytes": 187137888,
+              "traced_after_gc_bytes": 38527365,
+              "stage": "step4",
+              "sample": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": 5,
+      "source_artifact": "step5-comparison.json",
+      "source_sha256": "67cbbd951b577e99e853604226923427b18b8fe815bfa449b07fbd7e9b70f249",
+      "stages": [
+        {
+          "stage": "step4",
+          "manifest": {
+            "stage": "step4",
+            "app_source_hash": "755791f458d96ea64001efcf56987fb4c5a682c94956e5cf9d86213b905b3752",
+            "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+            "clean_ioc_tracked_diff_sha256": "4c53d1d8a9e30cfa44031ac3cd7d8a38a797446011b4485103e6d6b78c9df630",
+            "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+            "bark_core_tracked_diff_sha256": "30cde82495632e2b86f96d9382699f07ca00d6efccf7023eff7bf6f8ba47434b",
+            "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+            "cop_tracked_diff_sha256": "4d51b8005c30c9c3cda531ad84f87459639b1bcb63cdc223992136f413974b0e",
+            "wheels": {
+              "clean_ioc": {
+                "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+                "sha256": "0d95a134c793af7d88b22621fd222b73a40ba81dbd6d8e7ea814ca4f54b5f27b"
+              },
+              "bark_core": {
+                "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+                "sha256": "c48697d371ac93d97f462235e64330f25dc11e7b64be46e6d6150585379550eb"
+              }
+            }
+          },
+          "summaries": {
+            "api": {
+              "median_seconds": 0.35171183303464204,
+              "peak_rss_mib_range": [
+                216.09375,
+                218.890625
+              ],
+              "physical_records": [
+                3528
+              ]
+            },
+            "worker": {
+              "median_seconds": 3.914153333986178,
+              "peak_rss_mib_range": [
+                380.84375,
+                386.03125
+              ],
+              "physical_records": [
+                51827
+              ],
+              "traced_peak_bytes": 187135460,
+              "traced_after_gc_bytes": 38523889
+            }
+          },
+          "samples": [
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.33622299996204674,
+              "peak_rss_bytes": 229523456,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step4",
+              "sample": 1
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.8629174169618636,
+              "peak_rss_bytes": 402423808,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step4",
+              "sample": 1
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.35171183303464204,
+              "peak_rss_bytes": 226590720,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step4",
+              "sample": 2
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.914153333986178,
+              "peak_rss_bytes": 404783104,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step4",
+              "sample": 2
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.3601392920827493,
+              "peak_rss_bytes": 227540992,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step4",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.9631927909795195,
+              "peak_rss_bytes": 399343616,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step4",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "tracemalloc",
+              "seconds": 30.10408787499182,
+              "peak_rss_bytes": 494452736,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "traced_after_build_bytes": 100095756,
+              "traced_peak_bytes": 187135460,
+              "traced_after_gc_bytes": 38523889,
+              "stage": "step4",
+              "sample": 1
+            }
+          ]
+        },
+        {
+          "stage": "step5",
+          "manifest": {
+            "stage": "step5",
+            "app_source_hash": "486f6bc116db8442b950a43972ff92f69cae1c9943dee9eb08a0ca72dd1347a1",
+            "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+            "clean_ioc_tracked_diff_sha256": "67ea43322b93f32a1ba9e80b3d80a44e3c8c977989a7f611934f817d9f8e424c",
+            "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+            "bark_core_tracked_diff_sha256": "30cde82495632e2b86f96d9382699f07ca00d6efccf7023eff7bf6f8ba47434b",
+            "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+            "cop_tracked_diff_sha256": "f270852043ee468757bda4fa8fabc0f77b021e59aef4ea8751165ef841283a21",
+            "wheels": {
+              "clean_ioc": {
+                "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+                "sha256": "8e35ee7c5a34e0db3db0c5b7417f9f528fa281f0171a3e3546a663f30fe6adb9"
+              },
+              "bark_core": {
+                "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+                "sha256": "c48697d371ac93d97f462235e64330f25dc11e7b64be46e6d6150585379550eb"
+              }
+            }
+          },
+          "summaries": {
+            "api": {
+              "median_seconds": 0.3496258750092238,
+              "peak_rss_mib_range": [
+                217.671875,
+                222.03125
+              ],
+              "physical_records": [
+                3528
+              ]
+            },
+            "worker": {
+              "median_seconds": 3.9767323749838397,
+              "peak_rss_mib_range": [
+                387.546875,
+                439.171875
+              ],
+              "physical_records": [
+                51827
+              ],
+              "traced_peak_bytes": 187136683,
+              "traced_after_gc_bytes": 38473328
+            }
+          },
+          "samples": [
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.35092820797581226,
+              "peak_rss_bytes": 228245504,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step5",
+              "sample": 1
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.9965128749608994,
+              "peak_rss_bytes": 406372352,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step5",
+              "sample": 1
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.3496258750092238,
+              "peak_rss_bytes": 231718912,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step5",
+              "sample": 2
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.9134186250157654,
+              "peak_rss_bytes": 460505088,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step5",
+              "sample": 2
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.34305779193527997,
+              "peak_rss_bytes": 232816640,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step5",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.9767323749838397,
+              "peak_rss_bytes": 438075392,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step5",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "tracemalloc",
+              "seconds": 30.156530125066638,
+              "peak_rss_bytes": 494125056,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "traced_after_build_bytes": 100045163,
+              "traced_peak_bytes": 187136683,
+              "traced_after_gc_bytes": 38473328,
+              "stage": "step5",
+              "sample": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": 6,
+      "source_artifact": "step6-comparison.json",
+      "source_sha256": "b3e56f5d20dfd83f0e0556b485d8e17500588ee99fb97caa3a415e323335b157",
+      "stages": [
+        {
+          "stage": "step5",
+          "manifest": {
+            "stage": "step5",
+            "app_source_hash": "486f6bc116db8442b950a43972ff92f69cae1c9943dee9eb08a0ca72dd1347a1",
+            "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+            "clean_ioc_tracked_diff_sha256": "67ea43322b93f32a1ba9e80b3d80a44e3c8c977989a7f611934f817d9f8e424c",
+            "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+            "bark_core_tracked_diff_sha256": "30cde82495632e2b86f96d9382699f07ca00d6efccf7023eff7bf6f8ba47434b",
+            "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+            "cop_tracked_diff_sha256": "f270852043ee468757bda4fa8fabc0f77b021e59aef4ea8751165ef841283a21",
+            "wheels": {
+              "clean_ioc": {
+                "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+                "sha256": "8e35ee7c5a34e0db3db0c5b7417f9f528fa281f0171a3e3546a663f30fe6adb9"
+              },
+              "bark_core": {
+                "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+                "sha256": "c48697d371ac93d97f462235e64330f25dc11e7b64be46e6d6150585379550eb"
+              }
+            }
+          },
+          "summaries": {
+            "api": {
+              "median_seconds": 0.3404466250212863,
+              "peak_rss_mib_range": [
+                217.03125,
+                222.984375
+              ],
+              "physical_records": [
+                3528
+              ]
+            },
+            "worker": {
+              "median_seconds": 3.7869479169603437,
+              "peak_rss_mib_range": [
+                386.078125,
+                421.96875
+              ],
+              "physical_records": [
+                51827
+              ],
+              "traced_peak_bytes": 187137877,
+              "traced_after_gc_bytes": 38468007
+            }
+          },
+          "samples": [
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.338635417050682,
+              "peak_rss_bytes": 233816064,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step5",
+              "sample": 1
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.8086352499667555,
+              "peak_rss_bytes": 442466304,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step5",
+              "sample": 1
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.34420849999878556,
+              "peak_rss_bytes": 227573760,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step5",
+              "sample": 2
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.7869479169603437,
+              "peak_rss_bytes": 435552256,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step5",
+              "sample": 2
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.3404466250212863,
+              "peak_rss_bytes": 227950592,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step5",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.7701217089779675,
+              "peak_rss_bytes": 404832256,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step5",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "tracemalloc",
+              "seconds": 28.949919042061083,
+              "peak_rss_bytes": 463028224,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "traced_after_build_bytes": 100037872,
+              "traced_peak_bytes": 187137877,
+              "traced_after_gc_bytes": 38468007,
+              "stage": "step5",
+              "sample": 1
+            }
+          ]
+        },
+        {
+          "stage": "step6",
+          "manifest": {
+            "stage": "step6",
+            "app_source_hash": "03e92831c52227a55aeb7fee5534647559251b47f2e747727e3c10e81207b2d3",
+            "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+            "clean_ioc_tracked_diff_sha256": "8c4909cca9f193b30630fcdffe93de0dbae465b6b0d12e3f6cb259d020091e9e",
+            "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+            "bark_core_tracked_diff_sha256": "30cde82495632e2b86f96d9382699f07ca00d6efccf7023eff7bf6f8ba47434b",
+            "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+            "cop_tracked_diff_sha256": "c788a82ec8bd268670e684cd7174264da556fe839608e9fc739e03f9b3efad4c",
+            "wheels": {
+              "clean_ioc": {
+                "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+                "sha256": "0ee5ac2bf2573da9a4dd630bc3552f40a28e03c531d7ce4fe0406f7b2ad04cd9"
+              },
+              "bark_core": {
+                "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+                "sha256": "c48697d371ac93d97f462235e64330f25dc11e7b64be46e6d6150585379550eb"
+              }
+            }
+          },
+          "summaries": {
+            "api": {
+              "median_seconds": 0.34508320898748934,
+              "peak_rss_mib_range": [
+                218.796875,
+                223.390625
+              ],
+              "physical_records": [
+                3528
+              ]
+            },
+            "worker": {
+              "median_seconds": 3.799308417015709,
+              "peak_rss_mib_range": [
+                381.875,
+                424.84375
+              ],
+              "physical_records": [
+                51827
+              ],
+              "traced_peak_bytes": 187138235,
+              "traced_after_gc_bytes": 38477628
+            }
+          },
+          "samples": [
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.3500148330349475,
+              "peak_rss_bytes": 229425152,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step6",
+              "sample": 1
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.804449209012091,
+              "peak_rss_bytes": 400998400,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step6",
+              "sample": 1
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.34508320898748934,
+              "peak_rss_bytes": 234242048,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step6",
+              "sample": 2
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.799308417015709,
+              "peak_rss_bytes": 400424960,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step6",
+              "sample": 2
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.3406499159755185,
+              "peak_rss_bytes": 230916096,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step6",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.7627574580255896,
+              "peak_rss_bytes": 445480960,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step6",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "tracemalloc",
+              "seconds": 28.687287083012052,
+              "peak_rss_bytes": 498712576,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "traced_after_build_bytes": 100049448,
+              "traced_peak_bytes": 187138235,
+              "traced_after_gc_bytes": 38477628,
+              "stage": "step6",
+              "sample": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": 7,
+      "source_artifact": "step7-comparison.json",
+      "source_sha256": "289071552265d45ea815d3ed8f7c15d1bfd8f58a0793215bfba41f20f57c563b",
+      "stages": [
+        {
+          "stage": "step6",
+          "manifest": {
+            "stage": "step6",
+            "app_source_hash": "03e92831c52227a55aeb7fee5534647559251b47f2e747727e3c10e81207b2d3",
+            "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+            "clean_ioc_tracked_diff_sha256": "8c4909cca9f193b30630fcdffe93de0dbae465b6b0d12e3f6cb259d020091e9e",
+            "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+            "bark_core_tracked_diff_sha256": "30cde82495632e2b86f96d9382699f07ca00d6efccf7023eff7bf6f8ba47434b",
+            "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+            "cop_tracked_diff_sha256": "c788a82ec8bd268670e684cd7174264da556fe839608e9fc739e03f9b3efad4c",
+            "wheels": {
+              "clean_ioc": {
+                "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+                "sha256": "0ee5ac2bf2573da9a4dd630bc3552f40a28e03c531d7ce4fe0406f7b2ad04cd9"
+              },
+              "bark_core": {
+                "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+                "sha256": "c48697d371ac93d97f462235e64330f25dc11e7b64be46e6d6150585379550eb"
+              }
+            }
+          },
+          "summaries": {
+            "api": {
+              "median_seconds": 0.33094679191708565,
+              "peak_rss_mib_range": [
+                218.59375,
+                224.28125
+              ],
+              "physical_records": [
+                3528
+              ]
+            },
+            "worker": {
+              "median_seconds": 3.766081582987681,
+              "peak_rss_mib_range": [
+                382.40625,
+                386.15625
+              ],
+              "physical_records": [
+                51827
+              ],
+              "traced_peak_bytes": 187126382,
+              "traced_after_gc_bytes": 38466893
+            }
+          },
+          "samples": [
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.33094679191708565,
+              "peak_rss_bytes": 235175936,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step6",
+              "sample": 1
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.794898582971655,
+              "peak_rss_bytes": 400982016,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step6",
+              "sample": 1
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.3301780839683488,
+              "peak_rss_bytes": 233144320,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step6",
+              "sample": 2
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.766081582987681,
+              "peak_rss_bytes": 404914176,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step6",
+              "sample": 2
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.3323722090572119,
+              "peak_rss_bytes": 229212160,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step6",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.7470533750019968,
+              "peak_rss_bytes": 401358848,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step6",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "tracemalloc",
+              "seconds": 27.872850625077263,
+              "peak_rss_bytes": 493256704,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "traced_after_build_bytes": 100038608,
+              "traced_peak_bytes": 187126382,
+              "traced_after_gc_bytes": 38466893,
+              "stage": "step6",
+              "sample": 1
+            }
+          ]
+        },
+        {
+          "stage": "step7",
+          "manifest": {
+            "stage": "step7",
+            "app_source_hash": "03e92831c52227a55aeb7fee5534647559251b47f2e747727e3c10e81207b2d3",
+            "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+            "clean_ioc_tracked_diff_sha256": "3c4b307fa983a307f6e50bb64e0a2deac3d927f6cadcadbde2258f2551706754",
+            "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+            "bark_core_tracked_diff_sha256": "30cde82495632e2b86f96d9382699f07ca00d6efccf7023eff7bf6f8ba47434b",
+            "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+            "cop_tracked_diff_sha256": "c788a82ec8bd268670e684cd7174264da556fe839608e9fc739e03f9b3efad4c",
+            "wheels": {
+              "clean_ioc": {
+                "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+                "sha256": "2828273554efd910ef99ff8c008b58b42590aa7a8579b1206bda469a080f4b7a"
+              },
+              "bark_core": {
+                "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+                "sha256": "c48697d371ac93d97f462235e64330f25dc11e7b64be46e6d6150585379550eb"
+              }
+            }
+          },
+          "summaries": {
+            "api": {
+              "median_seconds": 0.3132103329990059,
+              "peak_rss_mib_range": [
+                207.515625,
+                211.1875
+              ],
+              "physical_records": [
+                3528
+              ]
+            },
+            "worker": {
+              "median_seconds": 3.399977417080663,
+              "peak_rss_mib_range": [
+                218.84375,
+                219.78125
+              ],
+              "physical_records": [
+                51827
+              ],
+              "traced_peak_bytes": 55537218,
+              "traced_after_gc_bytes": 38469996
+            }
+          },
+          "samples": [
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.3132103329990059,
+              "peak_rss_bytes": 221446144,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step7",
+              "sample": 1
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.411530000041239,
+              "peak_rss_bytes": 229474304,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step7",
+              "sample": 1
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.31416433304548264,
+              "peak_rss_bytes": 219774976,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step7",
+              "sample": 2
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.3640380420256406,
+              "peak_rss_bytes": 230457344,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step7",
+              "sample": 2
+            },
+            {
+              "app": "api",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 0.31205212499480695,
+              "peak_rss_bytes": 217595904,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 3528,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step7",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "none",
+              "seconds": 3.399977417080663,
+              "peak_rss_bytes": 230211584,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "stage": "step7",
+              "sample": 3
+            },
+            {
+              "app": "worker",
+              "diagnostics": "default",
+              "instrumentation": "tracemalloc",
+              "seconds": 27.29998649994377,
+              "peak_rss_bytes": 304365568,
+              "python": "3.14.4",
+              "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+              "clean_ioc": "2.0.0rc2",
+              "bark_core": "1.0.0b1",
+              "physical_records": 51827,
+              "provider_views": 0,
+              "sidecar_counts": {
+                "occurrence_explanations": 0,
+                "parameter_explanations": 0,
+                "generic_explanations": 0
+              },
+              "traced_after_build_bytes": 40131440,
+              "traced_peak_bytes": 55537218,
+              "traced_after_gc_bytes": 38469996,
+              "stage": "step7",
+              "sample": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

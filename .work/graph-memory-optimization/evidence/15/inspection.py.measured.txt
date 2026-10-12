@@ -1,0 +1,99 @@
+"""Bounded rich-rule public inspection cost, separate from build samples."""
+
+import gc
+import json
+import sys
+import time
+import tracemalloc
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+from source_loader import LOADED, install
+
+install(sys.argv[1])
+from benchmarks import graph_memory_fixture as fixture
+from benchmarks.graph_memory_evidence import source_provenance
+from clean_ioc import ContainerBuilder
+from clean_ioc._compact_index import _CompactIndex
+
+results = []
+original = ContainerBuilder.build
+
+
+def rule(context):
+    graph = context.graph
+    components = []
+    for visit in graph.walk():
+        if graph._component_evidence(graph._decorator_explanations, visit.component) is not None:
+            components.append(visit.component)
+            if len(components) == 64:
+                break
+
+    def capacities():
+        output = {}
+        for name in ("_occurrence_origins", "_decorator_explanations"):
+            backing = gc.get_referents(getattr(graph, name))[0]
+            output[name] = (
+                backing.capacity() if type(backing) is _CompactIndex else {"shallow_bytes": sys.getsizeof(backing)}
+            )
+        return output
+
+    before = capacities()
+    calls = dict(fixture.TEMPLATE_CALLS)
+    tracemalloc.start()
+    gc.collect()
+    start_current, _ = tracemalloc.get_traced_memory()
+    passes = []
+    for label in ("first", "repeated"):
+        started = time.perf_counter()
+        decisions = 0
+        for component in components:
+            explanation = graph.explain_decorators(component)
+            decisions += len(explanation.selected) + len(explanation.rejected)
+        del explanation
+        seconds = time.perf_counter() - started
+        gc.collect()
+        current, peak = tracemalloc.get_traced_memory()
+        passes.append(
+            {"label": label, "seconds": seconds, "decisions": decisions, "retained_bytes": current, "peak_bytes": peak}
+        )
+    tracemalloc.stop()
+    assert fixture.TEMPLATE_CALLS == calls  # noqa: S101
+    results.append(
+        {
+            "before": before,
+            "after": capacities(),
+            "components": len(components),
+            "start_retained_bytes": start_current,
+            "passes": passes,
+        }
+    )
+    return ()
+
+
+def build(self, **kwargs):
+    self.add_validation_rule(rule)
+    return original(self, **kwargs)
+
+
+ContainerBuilder.build = build
+if sys.argv[2] == "analysis":
+    ContainerBuilder.build = original
+runtime = fixture.build(2, mode="analysis" if sys.argv[2] == "analysis" else "run").runtime
+if sys.argv[2] == "analysis":
+    from types import SimpleNamespace
+
+    rule(SimpleNamespace(graph=runtime.graph))
+runtime.__exit__(None, None, None)
+print(
+    json.dumps(
+        {
+            "policy": sys.argv[1],
+            "variant": sys.argv[2],
+            "loaded": LOADED,
+            "source": source_provenance(),
+            "inspection": results,
+        },
+        indent=2,
+    )
+)

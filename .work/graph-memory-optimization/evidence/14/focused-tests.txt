@@ -1,0 +1,78 @@
+.....................FF................................................. [ 43%]
+........................................................................ [ 86%]
+.......................                                                  [100%]
+=================================== FAILURES ===================================
+__ test_failed_build_releases_weak_pools_when_error_owners_are_released[run] ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10778afd0>
+mode = 'run'
+
+    @pytest.mark.parametrize("mode", ("run", "analysis"))
+    def test_failed_build_releases_weak_pools_when_error_owners_are_released(monkeypatch, mode):
+        from clean_ioc import ContainerBuilder
+    
+        references = []
+        original = _ComponentGraph.__init__
+    
+        def graph_init(self):
+            original(self)
+            references.append(weakref.ref(self._definitions.definitions))
+    
+        monkeypatch.setattr(_ComponentGraph, "__init__", graph_init)
+    
+        class Service:
+            pass
+    
+        def fail(component):
+            raise RuntimeError("deliberate callback failure")
+    
+        builder = ContainerBuilder()
+        builder.set_provider_roots(())
+        builder.register(Service, when=fail)
+        with pytest.raises(Exception) as caught:
+            builder.build(mode=mode)
+>       assert "deliberate callback failure" in str(caught.value)
+E       AssertionError: assert 'deliberate callback failure' in 'Container build failed with 1 error.\n- [compile-error] Compilation failed [compile-error]. (tests.test_shared_draft_definitions.test_failed_build_releases_weak_pools_when_error_owners_are_released.<locals>.Service)'
+E        +  where 'Container build failed with 1 error.\n- [compile-error] Compilation failed [compile-error]. (tests.test_shared_draft_definitions.test_failed_build_releases_weak_pools_when_error_owners_are_released.<locals>.Service)' = str(ContainerBuildError('Container build failed with 1 error.\n- [compile-error] Compilation failed [compile-error]. (tests.test_shared_draft_definitions.test_failed_build_releases_weak_pools_when_error_owners_are_released.<locals>.Service)'))
+E        +    where ContainerBuildError('Container build failed with 1 error.\n- [compile-error] Compilation failed [compile-error]. (tests.test_shared_draft_definitions.test_failed_build_releases_weak_pools_when_error_owners_are_released.<locals>.Service)') = <ExceptionInfo ContainerBuildError('Container build failed with 1 error.\n- [compile-error] Compilation failed [compil...red_draft_definitions.test_failed_build_releases_weak_pools_when_error_owners_are_released.<locals>.Service)') tblen=5>.value
+
+tests/test_shared_draft_definitions.py:214: AssertionError
+_ test_failed_build_releases_weak_pools_when_error_owners_are_released[analysis] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1079149d0>
+mode = 'analysis'
+
+    @pytest.mark.parametrize("mode", ("run", "analysis"))
+    def test_failed_build_releases_weak_pools_when_error_owners_are_released(monkeypatch, mode):
+        from clean_ioc import ContainerBuilder
+    
+        references = []
+        original = _ComponentGraph.__init__
+    
+        def graph_init(self):
+            original(self)
+            references.append(weakref.ref(self._definitions.definitions))
+    
+        monkeypatch.setattr(_ComponentGraph, "__init__", graph_init)
+    
+        class Service:
+            pass
+    
+        def fail(component):
+            raise RuntimeError("deliberate callback failure")
+    
+        builder = ContainerBuilder()
+        builder.set_provider_roots(())
+        builder.register(Service, when=fail)
+        with pytest.raises(Exception) as caught:
+            builder.build(mode=mode)
+>       assert "deliberate callback failure" in str(caught.value)
+E       AssertionError: assert 'deliberate callback failure' in 'Container build failed with 1 error.\n- [compile-error] Compilation failed [compile-error]. (tests.test_shared_draft_definitions.test_failed_build_releases_weak_pools_when_error_owners_are_released.<locals>.Service)'
+E        +  where 'Container build failed with 1 error.\n- [compile-error] Compilation failed [compile-error]. (tests.test_shared_draft_definitions.test_failed_build_releases_weak_pools_when_error_owners_are_released.<locals>.Service)' = str(ContainerBuildError('Container build failed with 1 error.\n- [compile-error] Compilation failed [compile-error]. (tests.test_shared_draft_definitions.test_failed_build_releases_weak_pools_when_error_owners_are_released.<locals>.Service)'))
+E        +    where ContainerBuildError('Container build failed with 1 error.\n- [compile-error] Compilation failed [compile-error]. (tests.test_shared_draft_definitions.test_failed_build_releases_weak_pools_when_error_owners_are_released.<locals>.Service)') = <ExceptionInfo ContainerBuildError('Container build failed with 1 error.\n- [compile-error] Compilation failed [compil...red_draft_definitions.test_failed_build_releases_weak_pools_when_error_owners_are_released.<locals>.Service)') tblen=5>.value
+
+tests/test_shared_draft_definitions.py:214: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_shared_draft_definitions.py::test_failed_build_releases_weak_pools_when_error_owners_are_released[run]
+FAILED tests/test_shared_draft_definitions.py::test_failed_build_releases_weak_pools_when_error_owners_are_released[analysis]
+2 failed, 165 passed in 4.35s

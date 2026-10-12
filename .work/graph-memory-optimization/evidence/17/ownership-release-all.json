@@ -1,0 +1,34 @@
+{
+  "policy": "release-all",
+  "source": {
+    "clean_ioc.container": "a96316223d23d90728919ce3590c19044f8ba1e3d812c1de41fe7a6c3fa4041d"
+  },
+  "events": [
+    {
+      "event": "discarded opaque released",
+      "graph_frozen": false,
+      "selected_tags_normalized": false,
+      "selected_dependency": 2
+    },
+    {
+      "event": "freeze begin",
+      "opaque_alive": false
+    },
+    {
+      "event": "freeze end",
+      "opaque_alive": false,
+      "released_drafts": [
+        3,
+        1
+      ]
+    },
+    {
+      "event": "returned",
+      "released_drafts": [
+        3,
+        1,
+        2
+      ]
+    }
+  ]
+}

@@ -1,0 +1,446 @@
+"""Task 06 process-local probes; never modifies imported production source files.
+
+Run from repository root using .venv/bin/python. See 06-result.md for commands.
+"""
+
+import argparse
+import ast
+import asyncio
+import collections
+import gc
+import hashlib
+import inspect
+import json
+import statistics
+import subprocess
+import sys
+import textwrap
+import time
+import tracemalloc
+import weakref
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT))
+
+from benchmarks import graph_memory_evidence as evidence  # noqa: E402
+from clean_ioc import components as components  # noqa: E402
+from clean_ioc import container as runtime  # noqa: E402
+
+
+def replace_function(owner, name, transform):
+    original = getattr(owner, name)
+    source = textwrap.dedent(inspect.getsource(original))
+    changed = transform(source)
+    if changed == source:
+        raise RuntimeError(f"Probe failed to modify {name}")
+    namespace = dict(original.__globals__)
+    exec(compile(changed, f"<06-probe:{name}>", "exec"), namespace)  # noqa: S102
+    setattr(owner, name, namespace[name])
+    return hashlib.sha256(changed.encode()).hexdigest()
+
+
+def install_probe(name):
+    hashes = {}
+    if name in ("snapshot-reuse", "snapshot-intern"):
+
+        def change(source):
+            if name == "snapshot-reuse":
+                source = source.replace(
+                    "records[key] = replace(record, decorator_ids=())",
+                    "records[key] = replace(record, decorator_ids=()) if record.decorator_ids else record",
+                )
+            if name == "snapshot-intern":
+                source = source.replace(
+                    "pending = [component.occurrence_id]",
+                    "definitions = {}\n    pending = [component.occurrence_id]",
+                ).replace(
+                    "record = value if isinstance(value, _ComponentRecord) else value.freeze()",
+                    "record = (value if isinstance(value, _ComponentRecord) else "
+                    "value.freeze(definitions) if isinstance(value, _ComponentDraft) else value.freeze())",
+                )
+            return source
+
+        hashes["_undecorated_component_view"] = replace_function(components, "_undecorated_component_view", change)
+        runtime._undecorated_component_view = components._undecorated_component_view
+    elif name == "intern-template-facts":
+        original = runtime._Compiler.__init__
+
+        def init(compiler, *args, **kwargs):
+            original(compiler, *args, **kwargs)
+            compiler._06_template_facts = {}
+
+        runtime._Compiler.__init__ = init
+
+        def change_decorators(source):
+            tree = ast.parse(source)
+
+            class Capture(ast.NodeTransformer):
+                def visit_FunctionDef(self, node):  # noqa: N802
+                    if node.name != "template_fact":
+                        return self.generic_visit(node)
+                    result = node.body[-1].value
+                    for keyword in result.keywords:
+                        if keyword.arg == "target_occurrence_id":
+                            keyword.value = ast.parse(
+                                "core.occurrence_id if self._diagnostics else 0", mode="eval"
+                            ).body
+                    prefix = ast.parse(
+                        "key = (id(candidate), id(target), id(core.service_type), id(target_registration), self._area)\n"
+                        "cached = self._06_template_facts.get(key) if not self._diagnostics else None\n"
+                        "if cached is not None:\n    return cached[-1]\n"
+                    ).body
+                    suffix = ast.parse(
+                        "if not self._diagnostics:\n"
+                        "    self._06_template_facts[key] = "
+                        "(candidate, target, core.service_type, target_registration, fact)\n"
+                        "return fact\n"
+                    ).body
+                    node.body = [
+                        *prefix,
+                        *node.body[:-1],
+                        ast.Assign(targets=[ast.Name(id="fact", ctx=ast.Store())], value=result),
+                        *suffix,
+                    ]
+                    return node
+
+                def visit_Assign(self, node):  # noqa: N802
+                    if (
+                        isinstance(node.value, ast.Call)
+                        and isinstance(node.value.func, ast.Attribute)
+                        and node.value.func.attr == "_capture_decorator_pattern"
+                    ):
+                        return [*ast.parse("self._06_capture_target = core.occurrence_id").body, node]
+                    return self.generic_visit(node)
+
+            return ast.unparse(ast.fix_missing_locations(Capture().visit(tree)))
+
+        def change_capture(source):
+            return source.replace(
+                "if decision.template is None\n",
+                "if decision.template is None or decision.template.target_occurrence_id == 0\n",
+            ).replace("next(iter(targets)), explanation.path", "self._06_capture_target, explanation.path")
+
+        hashes["_compile_decorators"] = replace_function(runtime._Compiler, "_compile_decorators", change_decorators)
+        hashes["_capture_decorator_pattern"] = replace_function(
+            runtime._Compiler, "_capture_decorator_pattern", change_capture
+        )
+    elif name == "weak-activation-cache":
+        original = runtime._Compiler.__init__
+
+        def init(compiler, *args, **kwargs):
+            original(compiler, *args, **kwargs)
+            compiler._activation_templates = weakref.WeakValueDictionary()
+
+        runtime._Compiler.__init__ = init
+        hashes["_Compiler.__init__"] = hashlib.sha256(inspect.getsource(init).encode()).hexdigest()
+    elif name == "release-source-graphs":
+        hashes["_expand_registration_templates"] = replace_function(
+            runtime,
+            "_expand_registration_templates",
+            lambda source: source.replace(
+                "component=core,", "component=core if inputs.get('explain_metadata', True) else None,"
+            ),
+        )
+        hashes["_expand_decorator_templates"] = replace_function(
+            runtime,
+            "_expand_decorator_templates",
+            lambda source: source.replace("component=core,", "component=core if explain_metadata else None,"),
+        )
+    elif name == "no-decorator-evidence":
+        # Deliberately unsafe ceiling probe: build rules/failure graphs can need these facts.
+        def change(source):
+            tree = ast.parse(source)
+
+            class Guard(ast.NodeTransformer):
+                def visit_Expr(self, node):  # noqa: N802
+                    self.generic_visit(node)
+                    call = node.value
+                    if (
+                        isinstance(call, ast.Call)
+                        and isinstance(call.func, ast.Attribute)
+                        and isinstance(call.func.value, ast.Name)
+                        and call.func.value.id == "decisions"
+                        and call.func.attr == "append"
+                    ):
+                        return ast.If(
+                            test=ast.parse("self._diagnostics or self._explain_metadata", mode="eval").body,
+                            body=[node],
+                            orelse=[],
+                        )
+                    return node
+
+            return ast.unparse(ast.fix_missing_locations(Guard().visit(tree)))
+
+        hashes["_compile_decorators"] = replace_function(runtime._Compiler, "_compile_decorators", change)
+    elif name != "baseline":
+        raise ValueError(name)
+    return hashes
+
+
+class Observer:
+    def __init__(self, count=False):
+        self.events = []
+        self.compilers = []
+        self.created = collections.Counter()
+        self.count = count
+        self.started = time.perf_counter()
+        self.current_phase = []
+        self.snapshot_peak = {}
+        original_snapshot = runtime._undecorated_component_view
+
+        def snapshot(component):
+            before, previous_peak = tracemalloc.get_traced_memory()
+            result = original_snapshot(component)
+            after, peak = tracemalloc.get_traced_memory()
+            if peak > previous_peak and peak > self.snapshot_peak.get("peak_bytes", 0):
+                self.snapshot_peak = {
+                    "before_bytes": before,
+                    "after_bytes": after,
+                    "peak_bytes": peak,
+                    "source_drafts": len(component._graph._drafts),
+                    "source_records": len(component._graph._records or {}),
+                    "snapshot_records": len(result._graph._records or {}),
+                }
+            return result
+
+        runtime._undecorated_component_view = snapshot
+        original = runtime._Compiler.__init__
+
+        def init(compiler, *args, **kwargs):
+            original(compiler, *args, **kwargs)
+            self.compilers.append(weakref.ref(compiler))
+
+        runtime._Compiler.__init__ = init
+        if count:
+            for cls in (
+                components._ComponentDraft,
+                components._ComponentRecord,
+                components._ComponentDefinition,
+                runtime.CandidateDecision,
+                runtime.TemplateDecision,
+                runtime.CompilationExplanation,
+                runtime._RemappedDecoratorExplanation,
+                runtime._ExplanationCloneContext,
+                runtime._RegistrationStep,
+                runtime._CompiledDependency,
+            ):
+                self.wrap_constructor(cls)
+            original_clone = runtime._Compiler._clone_component_tree
+
+            def clone(compiler, *args, **kwargs):
+                self.created["clone_calls"] += 1
+                return original_clone(compiler, *args, **kwargs)
+
+            runtime._Compiler._clone_component_tree = clone
+        for name in (
+            "_expand_registration_templates",
+            "_expand_decorator_templates",
+            "_prepare_boundary_visibility",
+            "_finalize_plan",
+            "_compile_warmup_plans",
+            "_prune_orphan_registrations",
+            "_retain_runtime_graph",
+            "_reduce_explanation_metadata",
+            "_compile_with_report",
+        ):
+            self.wrap(runtime, name)
+        self.wrap(runtime._Compiler, "compile", primary=True)
+        self.wrap(runtime.ContainerBuilder, "_compilation_snapshot")
+        self.wrap(components._ComponentGraph, "freeze", freeze=True)
+
+    def wrap_constructor(self, cls):
+        original = cls.__init__
+
+        def init(value, *args, **kwargs):
+            self.created[cls.__name__] += 1
+            original(value, *args, **kwargs)
+
+        cls.__init__ = init
+
+    def sample(self, label, carriers=()):
+        current, peak = tracemalloc.get_traced_memory()
+        event = {
+            "event": label,
+            "seconds": time.perf_counter() - self.started,
+            "live_bytes": current,
+            "segment_peak_bytes": peak,
+            "created": dict(self.created),
+            "compilers": [],
+        }
+        graphs = {}
+        for carrier in carriers:
+            blueprint = getattr(carrier, "_blueprint", None)
+            if isinstance(carrier, runtime._Blueprint):
+                blueprint = carrier
+            for selection in getattr(blueprint, "template_selections", ()):
+                if selection.component is not None:
+                    graphs[id(selection.component._graph)] = selection.component._graph
+            for selection in getattr(carrier, "selections", ()):
+                if selection.component is not None:
+                    graphs[id(selection.component._graph)] = selection.component._graph
+            graph = getattr(carrier, "graph", None)
+            if isinstance(graph, components._ComponentGraph):
+                graphs[id(graph)] = graph
+        for ref in self.compilers:
+            compiler = ref()
+            if compiler is None:
+                continue
+            graph = compiler.graph
+            graphs[id(graph)] = graph
+            for selection in compiler.blueprint.template_selections:
+                if selection.component is not None:
+                    graphs[id(selection.component._graph)] = selection.component._graph
+            event["compilers"].append(
+                {
+                    "phase": compiler._profile_phase,
+                    "drafts": len(graph._drafts),
+                    "records": len(graph._records or {}),
+                    "views": len(graph._views),
+                    "indexes": {
+                        key: {"entries": len(value), "shallow_bytes": sys.getsizeof(value)}
+                        for key, value in vars(compiler).items()
+                        if isinstance(value, (dict, list, set))
+                    },
+                }
+            )
+        event["known_graphs"] = len(graphs)
+        event["known_drafts"] = sum(len(graph._drafts) for graph in graphs.values())
+        event["known_records"] = sum(len(graph._records or {}) for graph in graphs.values())
+        if self.count:
+            kinds = (
+                components._ComponentDraft,
+                components._ComponentRecord,
+                components._ComponentDefinition,
+                components._ComponentGraph,
+                runtime.CandidateDecision,
+                runtime.TemplateDecision,
+                runtime.CompilationExplanation,
+                runtime._RemappedDecoratorExplanation,
+            )
+            event["gc_live_counts"] = dict(
+                collections.Counter(type(value).__name__ for value in gc.get_objects() if type(value) in kinds)
+            )
+        self.events.append(event)
+        # No graph/snapshot references retained in event records. Reset only the
+        # observer's segment high-water mark; ordinary samples never reset it.
+        tracemalloc.reset_peak()
+
+    def wrap(self, owner, name, primary=False, freeze=False):
+        original = getattr(owner, name)
+
+        def wrapped(*args, **kwargs):
+            if primary and args[0]._profile_phase != "primary compilation":
+                return original(*args, **kwargs)
+            if freeze and len(args[0]._drafts) < 1000:
+                return original(*args, **kwargs)
+            self.sample(name + ":begin", args)
+            result = original(*args, **kwargs)
+            self.sample(name + ":end", (*args, result))
+            return result
+
+        setattr(owner, name, wrapped)
+
+
+async def observe(args):
+    observer = Observer(count=args.mode == "count")
+    tracemalloc.start()
+    observer.sample("fixture_import:begin")
+    from benchmarks import graph_memory_fixture as fixture_module
+
+    observer.sample("fixture_import:end")
+    fixture = fixture_module.build(
+        args.routes, diagnostics=args.diagnostics, explain_metadata=args.full, allow_scope_builders=args.overlays
+    )
+    observer.sample("build:return_before_gc")
+    gc.collect()
+    observer.sample("build:after_gc")
+    tracemalloc.stop()
+    result = {
+        "events": observer.events,
+        "snapshot_peak": observer.snapshot_peak,
+        "created": dict(observer.created),
+        "graph": evidence.census(fixture.runtime),
+        "template_calls": dict(fixture_module.TEMPLATE_CALLS),
+    }
+    await fixture.runtime.__aexit__(None, None, None)
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("mode", choices=("measure", "repeat", "timeline", "count", "pytest"))
+    parser.add_argument("--probe", default="baseline")
+    parser.add_argument("--routes", type=int, default=8)
+    parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--heap", action="store_true")
+    parser.add_argument("--diagnostics", action="store_true")
+    parser.add_argument("--full", action="store_true")
+    parser.add_argument("--overlays", action="store_true")
+    parser.add_argument("--output", type=Path)
+    args, remainder = parser.parse_known_args()
+    if args.mode == "repeat":
+        runs = []
+        for repeat in range(args.repeats):
+            for heap in (False, True):
+                command = [sys.executable, __file__, "measure", "--probe", args.probe, "--routes", str(args.routes)]
+                command += [
+                    option
+                    for enabled, option in (
+                        (heap, "--heap"),
+                        (args.diagnostics, "--diagnostics"),
+                        (args.full, "--full"),
+                        (args.overlays, "--overlays"),
+                    )
+                    if enabled
+                ]
+                run = json.loads(subprocess.check_output(command, text=True))  # noqa: S603
+                run["repeat"] = repeat + 1
+                runs.append(run)
+                print(f"{args.probe} {repeat + 1} {'traced' if heap else 'normal'} done", file=sys.stderr)
+        normal = [run for run in runs if run["instrumentation"] == "none"]
+        traced = [run for run in runs if run["instrumentation"] == "tracemalloc"]
+        medians = {key: statistics.median(run[key] for run in normal) for key in ("build_seconds", "resolve_seconds")}
+        for stage in ("prepared", "resolved"):
+            medians[stage] = {
+                **{
+                    key: statistics.median(run[stage][key] for run in normal) for key in ("rss_bytes", "peak_rss_bytes")
+                },
+                **{
+                    key: statistics.median(run[stage][key] for run in traced)
+                    for key in ("traced_retained_bytes", "traced_peak_bytes")
+                },
+            }
+        result = {"runs": runs, "medians": medians}
+    else:
+        hashes = install_probe(args.probe)
+        if args.mode == "pytest":
+            import pytest
+
+            raise SystemExit(pytest.main(remainder))
+        if args.mode in ("timeline", "count"):
+            result = asyncio.run(observe(args))
+        else:
+            result = asyncio.run(
+                evidence.measure(
+                    args.routes,
+                    args.heap,
+                    args.diagnostics,
+                    explain_metadata=args.full,
+                    allow_scope_builders=args.overlays,
+                )
+            )
+        result["transformed_function_sha256"] = hashes
+    result["probe"] = args.probe
+    result["options"] = {key: value for key, value in vars(args).items() if key != "output"}
+    result["source"] = evidence.source_provenance()
+    result["probe_source_sha256"] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    encoded = json.dumps(result, indent=2, sort_keys=True) + "\n"
+    if args.output:
+        args.output.write_text(encoded)
+    else:
+        print(encoded)
+
+
+if __name__ == "__main__":
+    main()

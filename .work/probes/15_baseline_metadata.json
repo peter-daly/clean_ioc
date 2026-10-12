@@ -1,0 +1,10 @@
+{
+  "snapshot": ".benchbro/chained-preferences.0uxthurn/base",
+  "snapshot_metadata": ".benchbro/chained-preferences.0uxthurn/baseline-metadata.json",
+  "baseline": "completed uncommitted item14 implementation, not HEAD alone",
+  "before_sha256": {
+    ".work/probes/15_before.json": "077044baaf973192823cc2c5c706deced4c5c0afd4c0a71e219ad8a9c908d8ee",
+    ".work/probes/15_context_before.json": "b3f5905671d380d978fe0fa82b594cedee7fe7bdc6fd7c5baefe1dd74b417087"
+  },
+  "command": "PYTHONPATH=<snapshot> .venv/bin/python .work/probes/15_<probe>.py before <exclusive-output>"
+}

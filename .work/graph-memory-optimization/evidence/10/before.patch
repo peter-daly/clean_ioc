@@ -1,0 +1,475 @@
+diff --git a/.work/README.md b/.work/README.md
+index 240518c..45e36f1 100644
+--- a/.work/README.md
++++ b/.work/README.md
+@@ -101,6 +101,17 @@ implementation review; production adoption is not approved.** Shared sources,
+ prior evidence and parked pre-compilation work are unchanged. Repository checks
+ pass with one narrowly documented prior Task 08 evidence E501 exception.
+ 
++The graph-memory plan now also tracks [tasks 10–18](graph-memory-optimization/README.md#run-and-analysis-workstream--agreed-direction),
++added on 2026-10-10. The agreed target is exactly two build modes, **run** and
++**analysis**, replacing fine-grained build policy switches. New work covers the
++mode/migration contract, mandatory validation and failure evidence, direct compact
++selection facts, activation-cache lifetimes, shared drafts, compact tables,
++snapshot sharing, intermediate-occurrence release and combined acceptance tests.
++The maintainer has authorized sequential subagent execution at the recorded
++reasoning efforts; task 10 is active and later items await their turn. Design
++gates are resolved as part of that work. The current uncommitted consumer
++validation fix is separate and must be preserved.
++
+ ## Pre-compilation
+ 
+ The [pre-compilation plan](pre-compilation/README.md), created on 2026-10-09,
+diff --git a/.work/graph-memory-optimization/README.md b/.work/graph-memory-optimization/README.md
+index 980c8d6..2797b3b 100644
+--- a/.work/graph-memory-optimization/README.md
++++ b/.work/graph-memory-optimization/README.md
+@@ -8,11 +8,11 @@ The [retest after task 05](artifact-retest-post05.md) compares full and reduced
+ artifacts using the same current runtime in separate compile/export/load processes.
+ 
+ Created: 2026-10-08\
+-Status: Tasks 01 and 02 retained; 03 pruning declined; 04 reverted; 05 retained; 06, 07 and 08 investigations complete; 09 refinement complete; isolated prototype retained.
++Status: Tasks 01–09 have recorded outcomes. Sequential execution of 10–18 authorized on 2026-10-10; task 10 active, 11–18 queued.
+ 
+ Reduce the memory retained by the compiled output graph while preserving
+ resolution, ownership, filtering, inspection and diagnostic behaviour. Measure
+-compilation peak memory and build time alongside retained memory. These nine
++compilation peak memory and build time alongside retained memory. These
+ tasks follow the investigation using the large graph fixture with registration
+ templates, decorator templates, providers and maps.
+ 
+@@ -51,6 +51,96 @@ memory measurements before deciding production readiness.
+ | 07 | [Investigate object layout and avoidable allocation](07-object-layout-and-allocation.md) | Complete — investigation only | GPT-6.1 Sol (`gpt-6.1-sol`), medium reasoning; [result](07-result.md), [inventory](07-inventory.md) |
+ | 08 | [Investigate compact indexes](08-compact-indexes.md) | Complete — investigation only; refine | GPT-6.1 Sol (`gpt-6.1-sol`), high reasoning; [result](08-result.md), [inventory](08-inventory.md) |
+ | 09 | [Refine compact indexes and verify dictionary compatibility](09-refine-compact-indexes.md) | Complete — isolated prototype retained; not production adopted | GPT-6.1 Sol (`gpt-6.1-sol`), medium reasoning; [result](09-result.md), [inventory](09-inventory.md) |
++| 10 | [Replace fine-grained build switches with run and analysis modes](10-run-and-analysis-modes.md) | Ready for design; implementation not ready | Accepted two-mode direction; settle defaults, migration and overlays |
++| 11 | [Define validation requirements and minimum failure evidence](11-validation-and-failure-contract.md) | Ready for investigation; implementation not ready | 10 contract; preserve mandatory rules and consumer discovery |
++| 12 | [Construct compact selection facts directly](12-direct-compact-selection-facts.md) | Ready for investigation; implementation not ready | 06 fact-interning probe; 10–11 for integration |
++| 13 | [Shorten activation-cache ownership](13-activation-cache-lifetimes.md) | Ready for investigation; implementation not ready | 06 conservative cache and lifetime counterexamples |
++| 14 | [Share component definitions in mutable drafts](14-shared-draft-definitions.md) | Ready for investigation; implementation not ready | 02 and 07 mutation inventory; definition ownership design |
++| 15 | [Compact temporary indexes and relationship tables](15-compact-compilation-tables.md) | Ready for investigation; implementation not ready | 09 corrected index prototype; separate wider table design |
++| 16 | [Reduce callback snapshot copying](16-callback-snapshot-sharing.md) | Ready for investigation; implementation not ready | 06 snapshot results; escaped-view lifetime contract |
++| 17 | [Release completed intermediate occurrences earlier](17-intermediate-occurrence-lifetimes.md) | Not ready — lifetime and validation design required | 10–11 and consumer/liveness inventory |
++| 18 | [Verify both modes and combined compiler-memory gains](18-mode-equivalence-and-memory-acceptance.md) | Baseline planning ready; final acceptance blocked | 10–11 and each optimization selected for integration |
++
++## Run and analysis workstream — agreed direction
++
++On 2026-10-10 the maintainer requested exactly two build modes: **run** and
++**analysis**, replacing fine-grained build policy options. This is a change to
++the intended public API, not a request to add presets alongside permanent
++per-feature overrides. The names and direction are agreed; the API spelling,
++default, migration and remaining capability decisions belong to task 10.
++
++- Run builds construct and retain the minimum required for correct application
++  resolution, discovery, ownership, cleanup and mandatory validation. Reduce
++  temporary construction and lifetime as well as successful-runtime retention.
++- Analysis builds provide the complete supported inspection, explanation,
++  diagnostic and full-validation workflow. They still do not activate application
++  constructors or replay callbacks to manufacture evidence.
++- Both use the same dependency-selection and execution semantics. Preserve the
++  selected-registration catalogue, including selected dependency-only/deferred
++  registrations and decorators. Never recreate public roots merely for discovery.
++- Mandatory structural checks and build-mode rules remain effective. Registered
++  validation-only rules must not prevent a run build. Full validation uses a fresh
++  analysis build; discarded capabilities fail clearly on a run runtime.
++- Older tasks describe historical fine-grained flags and their compatibility
++  contracts. Preserve those records; tasks 10–11 define their explicit successor.
++  Do not claim the proposed modes already exist.
++
++The maintainer subsequently authorized work on tasks 10–18 sequentially, with
++one subagent per task using its recorded reasoning effort. Task 10 is assigned
++to `/root/graph_memory_task_10` at high effort; tasks 11–18 await their turn.
++The coordinating agent reviews each outcome and carries decisions into the next
++task. Resolve design gates during the work rather than treating the earlier
++planning-only status as a standing prohibition. Preserve safety and explicit
++evidence requirements; an optimization may still conclude with refine or drop.
++This execution request does not include a commit, version bump, push or release.
++Parked pre-compilation work remains parked; check existing artifact experiments
++only where a representation or API change affects them.
++
++### Recommended reasoning effort
++
++These recommendations apply when each new task is assigned; they do not select
++a model, assign an agent or change the task's readiness gate.
++
++| Task | Effort | Reason |
++| --- | --- | --- |
++| 10 — Run and analysis modes | High (`high`) | Public capability, default and migration decisions across tooling and overlays |
++| 11 — Validation and failure contract | Extra high (`xhigh`) | Safety-critical evidence requirements and compatibility with arbitrary callbacks |
++| 12 — Direct compact selection facts | High (`high`) | Preserve contextual facts and failure semantics while removing allocations |
++| 13 — Activation-cache lifetimes | Extra high (`xhigh`) | Subtle observable ownership, weak-reference and derived-value lifetime hazards |
++| 14 — Shared draft definitions | High (`high`) | Copy-on-write correctness across mutations, identity and pool lifetimes |
++| 15 — Compact compilation tables | High (`high`) | Mapping compatibility, sparse storage and representation tradeoffs |
++| 16 — Callback snapshot sharing | High (`high`) | Stable escaped views and bounded sharing without retained-history chains |
++| 17 — Intermediate-occurrence lifetimes | Extra high (`xhigh`) | Architectural last-consumer reasoning across graph-wide validation and callbacks |
++| 18 — Mode equivalence and memory acceptance | High (`high`) | Cross-feature equivalence, reliable measurement and combined regression assessment |
++
++### Baseline and evidence boundaries
++
++Start from the current checkout, not an archived probe installed as production.
++At planning time HEAD is `34d1ea0` (2.0.0rc4), with an uncommitted fix accepting
++validation-only rule registrations in reduced builds. RC4 already preserves
++`selected_registrations`; the local validation fix has passed 2,163 tests and
++repository checks. Record the exact revision and working changes again when work
++starts, and preserve this unrelated consumer fix.
++
++The recent eight-route object census, with diagnostics and scope builders off,
++has 88,558 full versus 8,982 reduced records, 1,765 retained execution steps and
++51 discovery entries in either mode. Across either build it constructs about
++90,250 drafts, 1.13 million candidate decisions and 1.13 million template facts;
++the primary activation cache has about 31,025 entries. These are object counts,
++not new RSS/timing measurements. Tasks 06–09 contain historical measured probes,
++including failed approaches; none establishes combined savings or adoption.
++
++### Sequence
++
++1. Define the public mode/capability and migration contract in 10; audit validation
++   and evidence consumers in 11. Capture a fresh baseline using 18's protocol.
++2. Investigate 12–16 separately. Cache ownership (13) and draft representation
++   (14) target live peak; direct facts (12) primarily target allocation churn.
++   Task 15 starts from the corrected index work rather than repeating task 08.
++3. Proceed with 17 only after lifetime and graph-wide validation obligations are
++   explicit. It is a deeper architectural change, not automatic pruning.
++4. Integrate only accepted candidates and finish 18 against the combined source.
++   Standalone improvements are not additive estimates of the combined result.
+ 
+ Tasks 01–08 have recorded outcomes. Task 06 was completed by Astra with high
+ reasoning on 2026-10-09; production optimization remains unimplemented. Task 07
+diff --git a/CHANGES.rst b/CHANGES.rst
+index e604db4..cce22e4 100644
+--- a/CHANGES.rst
++++ b/CHANGES.rst
+@@ -1,6 +1,11 @@
+ Unreleased
+ ----------
+ 
++    Allow registered validation-only rules with explain_metadata=False. Keep
++    mandatory structural and build-mode checks, discard deferred validation
++    from reduced runtimes, and use fresh metadata-enabled builds for full
++    validation. Reduced runtime validation_report() remains unavailable.
++
+ 
+ 2.0.0rc4
+ --------
+diff --git a/clean_ioc/container.py b/clean_ioc/container.py
+index c81ddc1..c64be74 100644
+--- a/clean_ioc/container.py
++++ b/clean_ioc/container.py
+@@ -13186,7 +13186,11 @@ class Scope(_RuntimeOwner):
+         return self._plan.build_report
+ 
+     def validation_report(self) -> BuildReport:
+-        """Return build/deferred reachability findings and fresh validate-only rules."""
++        """Return build/deferred reachability findings and fresh validate-only rules.
++
++        Requires a runtime built with explanation metadata. For reduced
++        production runtimes, use a fresh builder with explain_metadata=True.
++        """
+ 
+         validation_rule_issues = _run_validation_rules(
+             self.graph,
+@@ -14288,8 +14292,6 @@ class _BuilderBase:
+                 )
+             inputs["diagnostics"] = diagnostics
+             inputs["explain_metadata"] = explain_metadata
+-            if not explain_metadata and any(rule.mode == "validation" for rule in blueprint.validation_rules):
+-                raise ValueError("explain-metadata-disabled: validation-only rules require explain_metadata=True")
+             inputs["provider_roots"] = requested_providers
+             result = _compile_with_report(
+                 blueprint,
+@@ -15470,8 +15472,9 @@ class ContainerBuilder(_WarmupBuilder):
+         validation, warmup planning and optional instrumentation. Runtime root
+         Components and their relationships remain usable by filters. Discarded
+         build-time views expire; the frozen selected_registrations catalogue
+-        remains available. Graph reports and validation-only rules require
+-        metadata. Deferred unreachable warnings
++        remains available. Validation-only rules may be registered but do not
++        run during build. Graph reports, validation-only checks and deferred
++        unreachable warnings require a fresh build retaining metadata; they
+         cannot be requested later in this mode. Reduced parents require reduced
+         overlays. Diagnostics still capture truthful failed-build evidence.
+ 
+@@ -15593,8 +15596,9 @@ class ScopeBuilder(_WarmupBuilder):
+         validation, warmup planning and optional instrumentation. Runtime root
+         Components and their relationships remain usable by filters. Discarded
+         build-time views expire; the frozen selected_registrations catalogue
+-        remains available. Graph reports and validation-only rules require
+-        metadata. Deferred unreachable warnings
++        remains available. Validation-only rules may be registered but do not
++        run during build. Graph reports, validation-only checks and deferred
++        unreachable warnings require a fresh build retaining metadata; they
+         cannot be requested later in this mode. Reduced parents require reduced
+         overlays. Diagnostics still capture truthful failed-build evidence.
+ 
+diff --git a/docs/compiler-tooling.md b/docs/compiler-tooling.md
+index cb97b71..1ab3c4c 100644
+--- a/docs/compiler-tooling.md
++++ b/docs/compiler-tooling.md
+@@ -214,8 +214,13 @@ and `validation_report()` raise `RuntimeError` containing
+ `explain-metadata-disabled`. The scalar `build_report` remains available, including
+ its checked-root count and captured issues; its SARIF output has no retained graph
+ context. Build validation and build-mode rules always run before metadata is
+-released. Validation-only rules are incompatible with this option and cause a
+-clear `ValueError` before compilation. With `check_unreachable=False`, unreachable
++released. Registered validation-only rules do not run during application builds,
++including reduced builds. Their presence does not prevent metadata reduction.
++Use a fresh builder with `explain_metadata=True` and call `validation_report()`
++for full validation, or supply a factory returning an unbuilt builder to
++`clean-ioc check`. The CLI retains explanation metadata and enables diagnostics
++when it builds that target. It cannot restore discarded metadata on an existing
++reduced runtime. With `check_unreachable=False`, unreachable
+ warnings stay unchecked and cannot be requested later through `validation_report()`.
+ Use `check_unreachable=True` when those warnings are needed in the stored report.
+ 
+diff --git a/docs/custom-validation.md b/docs/custom-validation.md
+index e5775a9..eff6f05 100644
+--- a/docs/custom-validation.md
++++ b/docs/custom-validation.md
+@@ -102,6 +102,35 @@ The complete report starts with every stored `container.build_report` finding, i
+ from build rules, then adds the new validate-only results. Exact duplicate findings are removed across those two sources
+ within the new report, and the stored build report is never mutated.
+ 
++### Reduced production builds and separate validation
++
++Both rule modes can remain registered when production uses
++`build(explain_metadata=False, allow_scope_builders=False)`. Structural checks
++and build-mode rules still run before metadata is released. Validation-only
++rules remain unexecuted, and the reduced runtime discards their callbacks along
++with its inspection graph. `validation_report()` on that runtime raises
++`RuntimeError` containing `explain-metadata-disabled`; it cannot reconstruct
++the discarded graph or run validation-only checks.
++
++Use the same composition factory to create a fresh builder for validation:
++
++```python
++with application_builder().build(explain_metadata=False, allow_scope_builders=False) as production:
++    production.resolve(Application)
++
++with application_builder().build(explain_metadata=True, allow_scope_builders=False) as validation:
++    validation.validation_report().assert_valid()
++```
++
++Each `application_builder()` call must return a new unbuilt builder with the same
++rules registered: builders are single-use after a successful build. The second
++build runs the mandatory startup checks, and `validation_report()` then runs the
++validation-only rules. Set `diagnostics=True` for rules needing rich selection
++history, or use `clean-ioc check my_app.composition:application_builder`, which
++retains metadata and enables diagnostics when it builds a supplied builder.
++`allow_scope_builders=False` independently discards future overlay composition;
++it does not disable validation when explanation metadata is retained.
++
+ ### Strictness controls warnings, not rule execution
+ 
+ For a successfully built target, `clean-ioc check` always runs validation mode. It is strict by default, so unsuppressed
+diff --git a/tests/test_compact_runtime.py b/tests/test_compact_runtime.py
+index 0c40040..697b916 100644
+--- a/tests/test_compact_runtime.py
++++ b/tests/test_compact_runtime.py
+@@ -130,7 +130,8 @@ def test_compact_slots_aliases_warmup_managed_private_targets_and_cleanup(diagno
+ 
+ 
+ @pytest.mark.parametrize("diagnostics", [False, True])
+-def test_compact_validation_only_rules_remain_live_build_rules_and_import_facts_detach(diagnostics):
++@pytest.mark.parametrize("explain_metadata", [False, True])
++def test_compact_validation_rules_follow_metadata_mode_and_build_rules_detach(diagnostics, explain_metadata):
+     class Rule:
+         def __init__(self):
+             self.calls = 0
+@@ -149,13 +150,24 @@ def test_compact_validation_only_rules_remain_live_build_rules_and_import_facts_
+     builder.register(Service)
+     builder.add_validation_rule(build_rule)
+     builder.add_validation_rule(validation_rule, mode="validation")
+-    container = builder.build(allow_scope_builders=False, diagnostics=diagnostics, provider_roots=())
++    container = builder.build(
++        allow_scope_builders=False, diagnostics=diagnostics, explain_metadata=explain_metadata, provider_roots=()
++    )
+     assert build_rule.calls == 1
++    assert validation_rule.calls == 0
+     del build_rule, validation_rule, builder
+     gc.collect()
+     assert build_ref() is None
+-    assert validation_ref() is not None
+     assert container.ensured_import_modules == ("collections",)
++    if not explain_metadata:
++        assert validation_ref() is None
++        assert container._plan._blueprint is None
++        assert container._plan.validation_rules == ()
++        with pytest.raises(RuntimeError, match="explain-metadata-disabled"):
++            container.validation_report()
++        assert isinstance(container.resolve(Service), Service)
++        return
++    assert validation_ref() is not None
+     assert container.validation_report().is_valid
+     assert container.validation_report().is_valid
+     retained_rule = validation_ref()
+diff --git a/tests/test_optional_explanation_metadata.py b/tests/test_optional_explanation_metadata.py
+index e52392c..5608f9d 100644
+--- a/tests/test_optional_explanation_metadata.py
++++ b/tests/test_optional_explanation_metadata.py
+@@ -9,10 +9,12 @@ from benchmarks.graph_artifact import dump_graph
+ from benchmarks.graph_memory_fixture import build, resolve_workload, validate
+ from benchmarks.graph_reachability_audit import audit
+ from clean_ioc import (
++    BuildIssue,
+     CompilationProfiler,
+     ContainerBuilder,
+     ContainerBuildError,
+     Instrumentation,
++    IssueSeverity,
+     Provider,
+     ResolutionProfiler,
+     WarmupPlan,
+@@ -156,14 +158,130 @@ def test_build_rules_run_before_reduction_and_saved_graphs_expire(diagnostics):
+         assert isinstance(runtime.resolve(Consumer), Wrapper)
+ 
+ 
+-def test_validation_only_rules_explicitly_require_metadata_and_do_not_consume_builder():
++@pytest.mark.parametrize("diagnostics", [False, True])
++@pytest.mark.parametrize("allow_scope_builders", [False, True])
++@pytest.mark.parametrize("boundary", [False, True])
++def test_validation_only_rules_allow_reduced_production_and_fresh_full_validation(
++    diagnostics, allow_scope_builders, boundary, monkeypatch
++):
++    calls = []
++    build_warning = BuildIssue("startup-warning", IssueSeverity.warning, "Startup advisory")
++    validation_error = BuildIssue("validation-policy", IssueSeverity.error, "Validation policy failed")
++
++    def build_rule(context):
++        assert context.graph.roots
++        calls.append("build")
++        return (build_warning,)
++
++    def validation_rule(context):
++        assert tuple(context.graph.walk())
++        calls.append("validation")
++        return (validation_error,)
++
++    def create_builder():
++        builder = composition()
++        target = builder.create_boundary("private") if boundary else builder
++        if boundary:
++            target.register(Leaf)
++        target.add_validation_rule(build_rule)
++        target.add_validation_rule(validation_rule, mode="validation")
++        return builder
++
++    with create_builder().build(
++        explain_metadata=False, allow_scope_builders=allow_scope_builders, diagnostics=diagnostics
++    ) as runtime:
++        assert calls == ["build"]
++        assert runtime.build_report.issues == (build_warning,)
++        assert runtime._plan.validation_rules == ()
++        assert runtime._plan.compiled_graph is None
++        assert runtime._plan.build_report._graph is None
++        if not allow_scope_builders:
++            assert runtime._plan._blueprint is None
++        assert isinstance(runtime.resolve(Consumer), Wrapper)
++
++        def unexpected(*args, **kwargs):
++            pytest.fail("Reduced validation must not recompile or invoke validation callbacks")
++
++        with monkeypatch.context() as patch:
++            patch.setattr("clean_ioc.container._compile_with_report", unexpected)
++            patch.setattr("clean_ioc.container._run_validation_rules", unexpected)
++            with runtime.new_scope() as scope:
++                for owner in (runtime, scope):
++                    for _ in range(2):
++                        with pytest.raises(RuntimeError, match="explain-metadata-disabled"):
++                            owner.validation_report()
++        assert calls == ["build"]
++
++    with create_builder().build(
++        explain_metadata=True, allow_scope_builders=allow_scope_builders, diagnostics=diagnostics
++    ) as validation:
++        assert calls == ["build", "build"]
++        assert validation.graph.roots
++        for count in (1, 2):
++            report = validation.validation_report()
++            assert report.issues == (build_warning, validation_error)
++            assert not report.is_valid
++            assert validation.build_report.issues == (build_warning,)
++            assert calls == ["build", "build", *(["validation"] * count)]
++
++
++@pytest.mark.parametrize("diagnostics", [False, True])
++def test_validation_only_rules_do_not_bypass_build_errors_in_reduced_mode(diagnostics):
++    calls = []
++    reject = True
++
++    def build_rule(context):
++        assert context.graph.roots
++        calls.append("build")
++        return (BuildIssue("required-policy", IssueSeverity.error, "Startup policy failed"),) if reject else ()
++
++    def validation_rule(context):
++        calls.append("validation")
++        return ()
++
+     builder = composition()
+-    builder.add_validation_rule(lambda context: (), mode="validation")
+-    with pytest.raises(ValueError, match="validation-only rules require explain_metadata=True"):
+-        builder.build(explain_metadata=False)
++    builder.add_validation_rule(build_rule)
++    builder.add_validation_rule(validation_rule, mode="validation")
++    with pytest.raises(ContainerBuildError) as caught:
++        builder.build(explain_metadata=False, allow_scope_builders=False, diagnostics=diagnostics)
++    assert caught.value.report is not None
++    assert [issue.code for issue in caught.value.report.errors] == ["required-policy"]
++    assert calls == ["build"]
+     assert not builder._built
+-    with builder.build() as runtime:
+-        assert runtime.validation_report().is_valid
++    reject = False
++    with builder.build(explain_metadata=False, allow_scope_builders=False, diagnostics=diagnostics) as runtime:
++        assert runtime.build_report.is_valid
++        assert isinstance(runtime.resolve(Consumer), Wrapper)
++    assert calls == ["build", "build"]
++
++
++@pytest.mark.parametrize("parent_metadata", [False, True])
++def test_reduced_overlay_accepts_inherited_and_local_validation_only_rules(parent_metadata):
++    calls = []
++    builder = composition()
++    builder.add_validation_rule(lambda context: calls.append("parent-build") or ())
++    builder.add_validation_rule(lambda context: calls.append("parent-validation") or (), mode="validation")
++    with builder.build(explain_metadata=parent_metadata) as parent:
++        assert calls == ["parent-build"]
++        calls.clear()
++        child_builder = parent.new_scope_builder()
++        child_builder.add_validation_rule(lambda context: calls.append("child-build") or ())
++        child_builder.add_validation_rule(lambda context: calls.append("child-validation") or (), mode="validation")
++        with child_builder.build(explain_metadata=False, allow_scope_builders=False) as child:
++            assert calls == ["parent-build", "child-build"]
++            assert isinstance(child.resolve(Consumer), Wrapper)
++            assert child._plan.validation_rules == ()
++            assert child._plan._blueprint is None
++            with pytest.raises(RuntimeError, match="explain-metadata-disabled"):
++                child.validation_report()
++        assert calls == ["parent-build", "child-build"]
++        if parent_metadata:
++            assert parent.validation_report().is_valid
++            assert calls == ["parent-build", "child-build", "parent-validation"]
++        else:
++            with pytest.raises(RuntimeError, match="explain-metadata-disabled"):
++                parent.validation_report()
++            assert calls == ["parent-build", "child-build"]
+ 
+ 
+ @pytest.mark.parametrize("diagnostics", [False, True])
+@@ -171,6 +289,8 @@ def test_validation_only_rules_explicitly_require_metadata_and_do_not_consume_bu
+ def test_failed_builds_preserve_requested_diagnostics(diagnostics, explain_metadata):
+     builder = ContainerBuilder()
+     builder.register(Consumer)
++    calls = []
++    builder.add_validation_rule(lambda context: calls.append("validation") or (), mode="validation")
+     with pytest.raises(ContainerBuildError) as caught:
+         builder.build(diagnostics=diagnostics, explain_metadata=explain_metadata)
+     error = caught.value
+@@ -182,6 +302,7 @@ def test_failed_builds_preserve_requested_diagnostics(diagnostics, explain_metad
+     builder.register(Leaf)
+     with builder.build(explain_metadata=explain_metadata) as runtime:
+         assert isinstance(runtime.resolve(Consumer).leaf, Leaf)
++    assert calls == []
+ 
+ 
+ @pytest.mark.parametrize("explain_metadata", [False, True])

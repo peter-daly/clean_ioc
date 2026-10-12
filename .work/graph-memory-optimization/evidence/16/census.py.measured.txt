@@ -1,0 +1,110 @@
+# ruff: noqa: E402, S101
+"""Intrusive creation/live census; no measured timings or bytes come from it."""
+
+import gc
+import json
+import sys
+from collections import Counter
+from pathlib import Path
+
+from source_loader import LOADED, install
+
+policy, variant = sys.argv[1:]
+install(policy)
+from clean_ioc import ContainerBuilder, components, container
+
+counts = {}
+snapshots = set()
+snapshot_counts = Counter()
+phases = []
+
+
+def observe(cls):
+    name = cls.__name__
+    count = counts.setdefault(name, Counter())
+    original = cls.__init__
+
+    def init(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        count["created"] += 1
+        count["live"] += 1
+        count["maximum_live"] = max(count["maximum_live"], count["live"])
+
+    def delete(self):
+        count["live"] -= 1
+        if cls is components._ComponentGraph and id(self) in snapshots:
+            snapshots.remove(id(self))
+            snapshot_counts["live"] -= 1
+
+    cls.__init__ = init
+    cls.__del__ = delete
+
+
+for cls in (
+    components._ComponentRecord,
+    components._ComponentDraft,
+    components._ComponentDefinition,
+    components._ComponentGraph,
+):
+    observe(cls)
+original_snapshot = container._undecorated_component_view
+
+
+def snapshot(component):
+    result = original_snapshot(component)
+    snapshots.add(id(result._graph))
+    snapshot_counts["created"] += 1
+    snapshot_counts["live"] += 1
+    snapshot_counts["maximum_live"] = max(snapshot_counts["maximum_live"], snapshot_counts["live"])
+    snapshot_counts["published_records"] += len(result._graph._records)
+    return result
+
+
+container._undecorated_component_view = snapshot
+original_compile = container._Compiler.compile
+
+
+def compile_graph(self, *args, **kwargs):
+    result = original_compile(self, *args, **kwargs)
+    phases.append(
+        {
+            "phase": self._profile_phase,
+            "counts": {k: dict(v) for k, v in counts.items()},
+            "snapshots": dict(snapshot_counts),
+        }
+    )
+    return result
+
+
+container._Compiler.compile = compile_graph
+original_build = ContainerBuilder.build
+retained = []
+
+
+def build(self, **kwargs):
+    result = original_build(self, **kwargs)
+    gc.collect()
+    retained.append({"counts": {k: dict(v) for k, v in counts.items()}, "snapshots": dict(snapshot_counts)})
+    return result
+
+
+ContainerBuilder.build = build
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "12"))
+from measure import sample
+
+result = sample(variant, False)
+gc.collect()
+print(
+    json.dumps(
+        {
+            "policy": policy,
+            "source": LOADED,
+            "counts_after_teardown": counts,
+            "snapshots_after_teardown": snapshot_counts,
+            "phases": phases,
+            "retained": retained,
+            "graph": result["graph"],
+        },
+        indent=2,
+    )
+)

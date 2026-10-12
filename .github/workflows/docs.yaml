@@ -7,6 +7,7 @@ on:
     paths:
       - "docs/**"
       - "mkdocs.yml"
+      - "clean_ioc/**"
 
 permissions:
   id-token: write # This is required for actions/deploy-pages
@@ -33,7 +34,7 @@ jobs:
           uv sync --group dev
 
       - name: Build docs site
-        run: uv run mkdocs build
+        run: uv run mkdocs build --strict
 
       - name: Upload site to artifacts
         uses: actions/upload-pages-artifact@v3

@@ -1,0 +1,866 @@
+[
+  {
+    "wall_seconds": [
+      0.010023832903243601,
+      0.009833332966081798,
+      0.009811292053200305,
+      0.00982825004030019,
+      0.009876166004687548,
+      0.009852790972217917,
+      0.009927958948537707,
+      0.009770583012141287
+    ],
+    "cpu_seconds": [
+      0.0100289999999994,
+      0.009833999999999676,
+      0.009815000000001461,
+      0.009828999999999866,
+      0.009877000000001246,
+      0.009856000000000975,
+      0.009931999999999164,
+      0.009769999999999612
+    ],
+    "cold_seconds": 0.010023832903243601,
+    "steady_median_seconds": 0.009833332966081798,
+    "cold_cpu_seconds": 0.0100289999999994,
+    "steady_median_cpu_seconds": 0.009833999999999676,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "policy": "before",
+    "variant": "run",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 1
+  },
+  {
+    "wall_seconds": [
+      0.010067665949463844,
+      0.009811666095629334,
+      0.009757249965332448,
+      0.009752416983246803,
+      0.009814999997615814,
+      0.00973920791875571,
+      0.009742542053572834,
+      0.009739209082908928
+    ],
+    "cpu_seconds": [
+      0.010071999999999193,
+      0.009812999999999406,
+      0.0097580000000006,
+      0.00975400000000004,
+      0.009812000000000154,
+      0.00973899999999972,
+      0.009746000000000699,
+      0.009741
+    ],
+    "cold_seconds": 0.010067665949463844,
+    "steady_median_seconds": 0.009752416983246803,
+    "cold_cpu_seconds": 0.010071999999999193,
+    "steady_median_cpu_seconds": 0.00975400000000004,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "policy": "after",
+    "variant": "run",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 1
+  },
+  {
+    "wall_seconds": [
+      0.009938000002875924,
+      0.00972529104910791,
+      0.009701083996333182,
+      0.00970283302012831,
+      0.0097172079840675,
+      0.00974374997895211,
+      0.009706291952170432,
+      0.009725040988996625
+    ],
+    "cpu_seconds": [
+      0.009941999999999673,
+      0.00972599999999968,
+      0.009704999999999409,
+      0.009706999999999688,
+      0.009720999999999869,
+      0.00974800000000009,
+      0.009710000000000107,
+      0.009724000000000288
+    ],
+    "cold_seconds": 0.009938000002875924,
+    "steady_median_seconds": 0.0097172079840675,
+    "cold_cpu_seconds": 0.009941999999999673,
+    "steady_median_cpu_seconds": 0.009720999999999869,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "policy": "after",
+    "variant": "run",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 2
+  },
+  {
+    "wall_seconds": [
+      0.010096582933329046,
+      0.009785290923900902,
+      0.009792458033189178,
+      0.00978229206521064,
+      0.009827875066548586,
+      0.009807125083170831,
+      0.009800124913454056,
+      0.00978912494610995
+    ],
+    "cpu_seconds": [
+      0.010099999999999554,
+      0.009786000000000072,
+      0.009797000000000722,
+      0.009782999999998765,
+      0.009828999999999866,
+      0.009807999999999595,
+      0.009800999999999505,
+      0.009788999999999604
+    ],
+    "cold_seconds": 0.010096582933329046,
+    "steady_median_seconds": 0.009792458033189178,
+    "cold_cpu_seconds": 0.010099999999999554,
+    "steady_median_cpu_seconds": 0.009797000000000722,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "policy": "before",
+    "variant": "run",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 2
+  },
+  {
+    "wall_seconds": [
+      0.010188999935053289,
+      0.009744499926455319,
+      0.009721082984469831,
+      0.009720625006593764,
+      0.009756917017512023,
+      0.009744292008690536,
+      0.009717416018247604,
+      0.009747958043590188
+    ],
+    "cpu_seconds": [
+      0.010191000000000727,
+      0.00974599999999981,
+      0.009721000000000757,
+      0.00972099999999898,
+      0.009757999999999711,
+      0.00974800000000009,
+      0.00972299999999926,
+      0.009750999999999621
+    ],
+    "cold_seconds": 0.010188999935053289,
+    "steady_median_seconds": 0.009744292008690536,
+    "cold_cpu_seconds": 0.010191000000000727,
+    "steady_median_cpu_seconds": 0.00974599999999981,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "policy": "before",
+    "variant": "run",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 3
+  },
+  {
+    "wall_seconds": [
+      0.010006916942074895,
+      0.010335333063267171,
+      0.010697833029553294,
+      0.0100962920114398,
+      0.009806792018935084,
+      0.009807208087295294,
+      0.009773749974556267,
+      0.009758915985003114
+    ],
+    "cpu_seconds": [
+      0.010010000000000296,
+      0.010332000000000008,
+      0.01068300000000022,
+      0.010099999999999554,
+      0.009811000000000014,
+      0.009809999999999874,
+      0.009774000000000171,
+      0.009759999999999991
+    ],
+    "cold_seconds": 0.010006916942074895,
+    "steady_median_seconds": 0.009807208087295294,
+    "cold_cpu_seconds": 0.010010000000000296,
+    "steady_median_cpu_seconds": 0.009811000000000014,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "policy": "after",
+    "variant": "run",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 3
+  },
+  {
+    "wall_seconds": [
+      0.010271499981172383,
+      0.009911458007991314,
+      0.009821375017054379,
+      0.009812459000386298,
+      0.009781791944988072,
+      0.009820790961384773,
+      0.009792791097424924,
+      0.00979212496895343
+    ],
+    "cpu_seconds": [
+      0.010277000000000314,
+      0.009915999999998704,
+      0.009822000000001552,
+      0.009812999999999406,
+      0.009782999999998765,
+      0.009824000000000055,
+      0.009797000000000722,
+      0.009797000000000722
+    ],
+    "cold_seconds": 0.010271499981172383,
+    "steady_median_seconds": 0.009812459000386298,
+    "cold_cpu_seconds": 0.010277000000000314,
+    "steady_median_cpu_seconds": 0.009812999999999406,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "policy": "before",
+    "variant": "rich-run",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 1
+  },
+  {
+    "wall_seconds": [
+      0.010160750010982156,
+      0.009841916966252029,
+      0.009775083046406507,
+      0.009746041963808239,
+      0.009709167061373591,
+      0.009747083066031337,
+      0.009765167022123933,
+      0.009748333017341793
+    ],
+    "cpu_seconds": [
+      0.010165999999999897,
+      0.009843000000000046,
+      0.009778999999999982,
+      0.00974599999999981,
+      0.009711000000001135,
+      0.009750999999999621,
+      0.009767000000000081,
+      0.009749000000001118
+    ],
+    "cold_seconds": 0.010160750010982156,
+    "steady_median_seconds": 0.009748333017341793,
+    "cold_cpu_seconds": 0.010165999999999897,
+    "steady_median_cpu_seconds": 0.009750999999999621,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "policy": "after",
+    "variant": "rich-run",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 1
+  },
+  {
+    "wall_seconds": [
+      0.010158916935324669,
+      0.009842874947935343,
+      0.009716625092551112,
+      0.009710957994684577,
+      0.009729458950459957,
+      0.009726999909617007,
+      0.009742708993144333,
+      0.009714334039017558
+    ],
+    "cpu_seconds": [
+      0.010163000000000366,
+      0.009844000000001074,
+      0.009719000000000477,
+      0.009714999999999918,
+      0.00972999999999935,
+      0.009731000000000378,
+      0.00974300000000028,
+      0.00971799999999945
+    ],
+    "cold_seconds": 0.010158916935324669,
+    "steady_median_seconds": 0.009726999909617007,
+    "cold_cpu_seconds": 0.010163000000000366,
+    "steady_median_cpu_seconds": 0.00972999999999935,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "policy": "after",
+    "variant": "rich-run",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 2
+  },
+  {
+    "wall_seconds": [
+      0.010256709065288305,
+      0.009836832992732525,
+      0.009800124913454056,
+      0.00978995906189084,
+      0.009801249951124191,
+      0.00984858290757984,
+      0.00978541700169444,
+      0.009782333974726498
+    ],
+    "cpu_seconds": [
+      0.010260999999999854,
+      0.009838000000000235,
+      0.009804000000000812,
+      0.009793999999999414,
+      0.009804000000000812,
+      0.009848999999999108,
+      0.009786000000000072,
+      0.009786000000000072
+    ],
+    "cold_seconds": 0.010256709065288305,
+    "steady_median_seconds": 0.009800124913454056,
+    "cold_cpu_seconds": 0.010260999999999854,
+    "steady_median_cpu_seconds": 0.009804000000000812,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "policy": "before",
+    "variant": "rich-run",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 2
+  },
+  {
+    "wall_seconds": [
+      0.010318708955310285,
+      0.009906875086016953,
+      0.00984487496316433,
+      0.009863957995548844,
+      0.009848207933828235,
+      0.009848374989815056,
+      0.009905582992359996,
+      0.009864665917120874
+    ],
+    "cpu_seconds": [
+      0.010324000000000666,
+      0.009913000000000949,
+      0.009848999999999108,
+      0.009865000000001345,
+      0.00985199999999864,
+      0.009852000000000416,
+      0.00990700000000011,
+      0.009869000000000128
+    ],
+    "cold_seconds": 0.010318708955310285,
+    "steady_median_seconds": 0.009863957995548844,
+    "cold_cpu_seconds": 0.010324000000000666,
+    "steady_median_cpu_seconds": 0.009865000000001345,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "policy": "before",
+    "variant": "rich-run",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 3
+  },
+  {
+    "wall_seconds": [
+      0.010199417010881007,
+      0.009821667103096843,
+      0.009762958041392267,
+      0.009767583920620382,
+      0.009749582968652248,
+      0.009735082974657416,
+      0.009774083038792014,
+      0.009752291021868587
+    ],
+    "cpu_seconds": [
+      0.010204000000001656,
+      0.009824000000000055,
+      0.009763999999998774,
+      0.009771999999999892,
+      0.009749999999998593,
+      0.009740000000000748,
+      0.009774000000000171,
+      0.0097529999999999
+    ],
+    "cold_seconds": 0.010199417010881007,
+    "steady_median_seconds": 0.009762958041392267,
+    "cold_cpu_seconds": 0.010204000000001656,
+    "steady_median_cpu_seconds": 0.009763999999998774,
+    "validated": {
+      "workers": 124,
+      "tree_objects": 7812,
+      "leaves": 3968,
+      "payload_bytes": 507904,
+      "ordinary_scopes": 1,
+      "managed_scopes": 26,
+      "source_map_calls": 64
+    },
+    "policy": "after",
+    "variant": "rich-run",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 3
+  },
+  {
+    "wall_seconds": [
+      0.002054832992143929,
+      0.0019166250713169575,
+      0.0018968329532071948,
+      0.0018979579908773303,
+      0.0019001669716089964,
+      0.0018936670385301113,
+      0.001913042040541768,
+      0.0018995420541614294
+    ],
+    "cpu_seconds": [
+      0.002058999999999922,
+      0.0019180000000000863,
+      0.0018970000000000375,
+      0.0018979999999999553,
+      0.0019010000000000415,
+      0.0018939999999999513,
+      0.0019130000000000535,
+      0.0019000000000000128
+    ],
+    "cold_seconds": 0.002054832992143929,
+    "steady_median_seconds": 0.0018995420541614294,
+    "cold_cpu_seconds": 0.002058999999999922,
+    "steady_median_cpu_seconds": 0.0019000000000000128,
+    "validated": {
+      "workers": 22,
+      "tree_objects": 1386,
+      "leaves": 704,
+      "payload_bytes": 90112,
+      "ordinary_scopes": 1,
+      "managed_scopes": 8,
+      "source_map_calls": 4
+    },
+    "policy": "before",
+    "variant": "analysis",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 1
+  },
+  {
+    "wall_seconds": [
+      0.00222566700540483,
+      0.002039666986092925,
+      0.0019842080073431134,
+      0.0018839159747585654,
+      0.0018871249631047249,
+      0.0019822920439764857,
+      0.001965375035069883,
+      0.0020050419261679053
+    ],
+    "cpu_seconds": [
+      0.0022290000000000365,
+      0.0020419999999999883,
+      0.0019859999999999323,
+      0.0018850000000000255,
+      0.0018889999999999185,
+      0.0019820000000000393,
+      0.0019700000000000273,
+      0.0020060000000000633
+    ],
+    "cold_seconds": 0.00222566700540483,
+    "steady_median_seconds": 0.0019822920439764857,
+    "cold_cpu_seconds": 0.0022290000000000365,
+    "steady_median_cpu_seconds": 0.0019820000000000393,
+    "validated": {
+      "workers": 22,
+      "tree_objects": 1386,
+      "leaves": 704,
+      "payload_bytes": 90112,
+      "ordinary_scopes": 1,
+      "managed_scopes": 8,
+      "source_map_calls": 4
+    },
+    "policy": "after",
+    "variant": "analysis",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 1
+  },
+  {
+    "wall_seconds": [
+      0.0021105000050738454,
+      0.0022264589788392186,
+      0.001911083934828639,
+      0.001904957927763462,
+      0.0018935000989586115,
+      0.0018917919369414449,
+      0.0021177500020712614,
+      0.0019000410102307796
+    ],
+    "cpu_seconds": [
+      0.002118999999999982,
+      0.0022020000000000373,
+      0.0019120000000000248,
+      0.0019060000000000743,
+      0.0018979999999999553,
+      0.0018960000000000088,
+      0.0021139999999999493,
+      0.0019000000000000128
+    ],
+    "cold_seconds": 0.0021105000050738454,
+    "steady_median_seconds": 0.001904957927763462,
+    "cold_cpu_seconds": 0.002118999999999982,
+    "steady_median_cpu_seconds": 0.0019060000000000743,
+    "validated": {
+      "workers": 22,
+      "tree_objects": 1386,
+      "leaves": 704,
+      "payload_bytes": 90112,
+      "ordinary_scopes": 1,
+      "managed_scopes": 8,
+      "source_map_calls": 4
+    },
+    "policy": "after",
+    "variant": "analysis",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 2
+  },
+  {
+    "wall_seconds": [
+      0.0021007079631090164,
+      0.002043167012743652,
+      0.00202112493570894,
+      0.0020279590971767902,
+      0.001966457930393517,
+      0.00207612500526011,
+      0.0019790000515058637,
+      0.0020382090006023645
+    ],
+    "cpu_seconds": [
+      0.0021039999999999948,
+      0.0020449999999999635,
+      0.0020219999999999683,
+      0.0020289999999999475,
+      0.001967000000000052,
+      0.0020689999999999875,
+      0.0019799999999999818,
+      0.002039000000000013
+    ],
+    "cold_seconds": 0.0021007079631090164,
+    "steady_median_seconds": 0.0020279590971767902,
+    "cold_cpu_seconds": 0.0021039999999999948,
+    "steady_median_cpu_seconds": 0.0020289999999999475,
+    "validated": {
+      "workers": 22,
+      "tree_objects": 1386,
+      "leaves": 704,
+      "payload_bytes": 90112,
+      "ordinary_scopes": 1,
+      "managed_scopes": 8,
+      "source_map_calls": 4
+    },
+    "policy": "before",
+    "variant": "analysis",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 2
+  },
+  {
+    "wall_seconds": [
+      0.0021197920432314277,
+      0.001909000100567937,
+      0.0019019169267266989,
+      0.0018917500274255872,
+      0.0019103330560028553,
+      0.0019003329798579216,
+      0.0019074579467996955,
+      0.0018918330315500498
+    ],
+    "cpu_seconds": [
+      0.0021240000000000148,
+      0.0019139999999999713,
+      0.0019019999999999593,
+      0.0018920000000000048,
+      0.0019139999999999713,
+      0.001902999999999988,
+      0.0019080000000000208,
+      0.0018920000000000048
+    ],
+    "cold_seconds": 0.0021197920432314277,
+    "steady_median_seconds": 0.0019019169267266989,
+    "cold_cpu_seconds": 0.0021240000000000148,
+    "steady_median_cpu_seconds": 0.001902999999999988,
+    "validated": {
+      "workers": 22,
+      "tree_objects": 1386,
+      "leaves": 704,
+      "payload_bytes": 90112,
+      "ordinary_scopes": 1,
+      "managed_scopes": 8,
+      "source_map_calls": 4
+    },
+    "policy": "before",
+    "variant": "analysis",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 3
+  },
+  {
+    "wall_seconds": [
+      0.0021989999804645777,
+      0.0020171250216662884,
+      0.0019774590618908405,
+      0.0019688329193741083,
+      0.001898083952255547,
+      0.0018811669433489442,
+      0.001914125052280724,
+      0.0019658749224618077
+    ],
+    "cpu_seconds": [
+      0.0022020000000000373,
+      0.002018999999999993,
+      0.001979000000000064,
+      0.0019689999999999985,
+      0.001898999999999984,
+      0.001883000000000079,
+      0.001915,
+      0.0019699999999999163
+    ],
+    "cold_seconds": 0.0021989999804645777,
+    "steady_median_seconds": 0.0019658749224618077,
+    "cold_cpu_seconds": 0.0022020000000000373,
+    "steady_median_cpu_seconds": 0.0019689999999999985,
+    "validated": {
+      "workers": 22,
+      "tree_objects": 1386,
+      "leaves": 704,
+      "payload_bytes": 90112,
+      "ordinary_scopes": 1,
+      "managed_scopes": 8,
+      "source_map_calls": 4
+    },
+    "policy": "after",
+    "variant": "analysis",
+    "kind": "normal",
+    "workload": "resolution",
+    "executed_source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+      "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+      "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    "repeat": 3
+  }
+]

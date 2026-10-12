@@ -1,0 +1,26 @@
+[
+  {
+    "path": "/Users/peter.daly/WS/pete/clean_ioc/.cache/graph-memory-task09/09-baseline-full-graph.jsonl",
+    "bytes": 29484023,
+    "sha256": "43a3a9ae2728af1a7d127623724d67a70076803f0cfe0ea1c0fc573d8afc8224",
+    "schema": 7
+  },
+  {
+    "path": "/Users/peter.daly/WS/pete/clean_ioc/.cache/graph-memory-task09/09-baseline-reduced-graph.jsonl",
+    "bytes": 2470435,
+    "sha256": "df812e52861400ba29b4cdb0e6a9af91dea7d9bb5f083f6c128dfc4b9a2dcce2",
+    "schema": 7
+  },
+  {
+    "path": "/Users/peter.daly/WS/pete/clean_ioc/.cache/graph-memory-task09/09-both-full-graph.jsonl",
+    "bytes": 29484349,
+    "sha256": "176a387fdc7790c967137737d862a83ad6a8df876dae093940befa1f0d34e748",
+    "schema": 8009
+  },
+  {
+    "path": "/Users/peter.daly/WS/pete/clean_ioc/.cache/graph-memory-task09/09-both-reduced-graph.jsonl",
+    "bytes": 2470751,
+    "sha256": "776b462e90908910afc5afdbcaf81a548fa850d2cf4a92deafb1589333a7e7e3",
+    "schema": 8009
+  }
+]

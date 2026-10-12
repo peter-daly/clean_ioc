@@ -1,0 +1,95 @@
+{
+  "accepted_task12": {
+    "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+    "branch": "version2",
+    "sha256": {
+      "clean_ioc/container.py": "e66c3ba5d438698c4fb53ced32e29b2e7d20f014d74d7519485053c2218f6866",
+      "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "tests/test_graph_memory_fixture.py": "e4ac8263c509353b0f6ec499870024a05e72759337cd585323d0979274a659e4",
+      "tests/test_direct_selection_facts.py": "7771df0ef9764ee573db6ef15d80afb89b3dd8090b9b97eb277dee26f482665c",
+      "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+      ".work/graph-memory-optimization/evidence/12/measure.py": "b37cf520032337ce6ed264135ecd5c5493863a2df5cb8692f3732a5ca53857e5",
+      ".work/graph-memory-optimization/evidence/12/census.py": "a6e27308d1692870304151feba7bce57c993afb0eb930c6a4d167a0c3fc10e95",
+      ".work/graph-memory-optimization/evidence/12/inspection.py": "5dcefa0871342c1bb434099b514da0d87c9585b6acd53df9de60997fa3c7a5eb"
+    },
+    "settings": {
+      "run": {
+        "mode": "run",
+        "routes": 8,
+        "rule": null
+      },
+      "rich-run": {
+        "mode": "run",
+        "routes": 8,
+        "rule": "measure.rich_rule asserts context.graph.diagnostics_enabled, returns no findings"
+      },
+      "analysis": {
+        "mode": "analysis",
+        "routes": 2,
+        "rule": null
+      },
+      "processes": "3 fresh untraced and 3 separate traced, serial per variant",
+      "provider_roots": "four fixture declarations",
+      "retained_builder": false,
+      "captured_selection_views": false,
+      "observers": "none except separate tracemalloc processes"
+    },
+    "version": "2.0.0rc4",
+    "census_note": "Final census adds shallow key-member, entry and identity-owner tuple storage columns; baseline census snapshot preserved separately. No timing/measurement-policy change.",
+    "acceptance": "Root accepted scoped KEEP for CPU/churn; rich payload sharing deferred; +0.300MiB traced peak, no memory reduction."
+  },
+  "hash_checks": {
+    "clean_ioc/container.py": {
+      "expected": "e66c3ba5d438698c4fb53ced32e29b2e7d20f014d74d7519485053c2218f6866",
+      "actual": "e66c3ba5d438698c4fb53ced32e29b2e7d20f014d74d7519485053c2218f6866"
+    },
+    "benchmarks/graph_memory_evidence.py": {
+      "expected": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+      "actual": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c"
+    },
+    "tests/test_graph_memory_fixture.py": {
+      "expected": "e4ac8263c509353b0f6ec499870024a05e72759337cd585323d0979274a659e4",
+      "actual": "e4ac8263c509353b0f6ec499870024a05e72759337cd585323d0979274a659e4"
+    },
+    "tests/test_direct_selection_facts.py": {
+      "expected": "7771df0ef9764ee573db6ef15d80afb89b3dd8090b9b97eb277dee26f482665c",
+      "actual": "7771df0ef9764ee573db6ef15d80afb89b3dd8090b9b97eb277dee26f482665c"
+    },
+    "clean_ioc/components.py": {
+      "expected": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "actual": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94"
+    },
+    "clean_ioc/tooling.py": {
+      "expected": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "actual": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c"
+    },
+    "clean_ioc/selection_census.py": {
+      "expected": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "actual": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5"
+    },
+    "benchmarks/graph_memory_fixture.py": {
+      "expected": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+      "actual": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+    },
+    ".work/graph-memory-optimization/evidence/12/measure.py": {
+      "expected": "b37cf520032337ce6ed264135ecd5c5493863a2df5cb8692f3732a5ca53857e5",
+      "actual": "b37cf520032337ce6ed264135ecd5c5493863a2df5cb8692f3732a5ca53857e5"
+    },
+    ".work/graph-memory-optimization/evidence/12/census.py": {
+      "expected": "a6e27308d1692870304151feba7bce57c993afb0eb930c6a4d167a0c3fc10e95",
+      "actual": "a6e27308d1692870304151feba7bce57c993afb0eb930c6a4d167a0c3fc10e95"
+    },
+    ".work/graph-memory-optimization/evidence/12/inspection.py": {
+      "expected": "5dcefa0871342c1bb434099b514da0d87c9585b6acd53df9de60997fa3c7a5eb",
+      "actual": "5dcefa0871342c1bb434099b514da0d87c9585b6acd53df9de60997fa3c7a5eb"
+    }
+  },
+  "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+  "executable": "/Users/peter.daly/WS/pete/clean_ioc/.venv/bin/python",
+  "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+  "baseline_reuse": ".work/graph-memory-optimization/evidence/12/after.json"
+}

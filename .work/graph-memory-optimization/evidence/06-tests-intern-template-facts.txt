@@ -1,0 +1,144 @@
+........................................................................ [ 18%]
+..........F............................................................. [ 36%]
+........................................................................ [ 54%]
+........................................................................ [ 72%]
+........................................................................ [ 90%]
+...................................F                                     [100%]
+=================================== FAILURES ===================================
+__ test_when_snapshot_reused_recursive_undecoration_parent_context_and_scale ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a93a210>
+
+    def test_when_snapshot_reused_recursive_undecoration_parent_context_and_scale(monkeypatch):
+        import clean_ioc.container as implementation
+    
+        class Dependency:
+            pass
+    
+        class DecoratedDependency:
+            def __init__(self, inner: Dependency, resource: SecondResource):
+                self.inner = inner
+    
+        class DependentTarget(Target):
+            def __init__(self, dependency: Dependency, resource: FirstResource):
+                pass
+    
+        class Consumer:
+            def __init__(self, target: Target):
+                pass
+    
+        builder = ContainerBuilder()
+        # Unrelated completed roots must not leak into an occurrence snapshot.
+        for index in range(80):
+            builder.register(Source, name=str(index))
+        builder.register(FirstResource)
+        builder.register(SecondResource)
+        builder.register(Dependency)
+        builder.register_decorator(Dependency, DecoratedDependency)
+        target_id = builder.register(Target, DependentTarget)
+        builder.register(Consumer)
+        views = []
+        original = implementation._undecorated_component_view
+        snapshots = []
+    
+        def snapshot(core):
+            value = original(core)
+            snapshots.append(value)
+            return value
+    
+        monkeypatch.setattr(implementation, "_undecorated_component_view", snapshot)
+    
+        def predicate(component):
+            views.append(component)
+            assert component.id == target_id
+            assert component.has_dependant_service_type(FirstResource)
+            assert not component.has_dependant_service_type(SecondResource)
+            assert all(not node.decorators for node in component.descendants())
+            if component.parent is not None:
+                assert component.parent.implementation_type is Consumer
+                assert component.argument == "target"
+            assert len(component._graph._records) < 12
+            return False
+    
+        for _ in range(2):
+            builder.register_decorator_template(
+                for_each=Source,
+                source_filter=cf.with_name("0"),
+                template=lambda _: DecoratorTemplate(
+                    DerivedServices(Target),
+                    Wrapper,
+                    when=predicate,
+                ),
+            )
+        ordinary_saw = []
+        builder.register_decorator(
+            Target,
+            Wrapper,
+            arguments={"source": Source()},
+            when=lambda core: ordinary_saw.append(core.has_dependant_service_type(SecondResource)) or False,
+        )
+        container = builder.build()
+>       assert snapshots
+E       assert []
+
+tests/test_decorator_template_compilation.py:578: AssertionError
+__ test_compact_fixture_matches_eager_manifests_and_complete_decorator_facts ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a2556a0>
+
+    def test_compact_fixture_matches_eager_manifests_and_complete_decorator_facts(monkeypatch):
+        from dataclasses import asdict
+        from uuid import UUID
+    
+        from clean_ioc.container import _Compiler, _ExplanationCloneContext
+    
+        def snapshot():
+            case = fixture.build(1)
+            with case.runtime:
+                graph = case.runtime.graph
+                identities = {}
+    
+                def normalize(value):
+                    if isinstance(value, str):
+                        try:
+                            UUID(value)
+                        except ValueError:
+                            return value
+                        return identities.setdefault(value, f"identity:{len(identities)}")
+                    if isinstance(value, dict):
+                        return {key: normalize(item) for key, item in value.items()}
+                    if isinstance(value, (tuple, list)):
+                        return tuple(map(normalize, value))
+                    return value
+    
+                facts = []
+                for visit in graph.walk():
+                    component = visit.component
+                    if graph._component_evidence(graph._decorator_explanations, component) is None:
+                        continue
+                    explanation = graph.explain_decorators(component)
+                    facts.append(
+                        (
+                            component.occurrence_id,
+                            explanation.subject,
+                            normalize(tuple(asdict(decision) for decision in explanation.selected)),
+                            normalize(tuple(asdict(decision) for decision in explanation.rejected)),
+                        )
+                    )
+                return graph.manifest(all_roots=True).to_json(), facts
+    
+        compact = snapshot()
+        monkeypatch.setattr(_Compiler, "_capture_decorator_pattern", lambda _self, explanation: explanation)
+        monkeypatch.setattr(_ExplanationCloneContext, "remap_decorators", _ExplanationCloneContext.remap)
+>       assert snapshot() == compact
+E       assert ('{\n  "bound... ...})), ...]) == ('{\n  "bound... ...})), ...])
+E         
+E         At index 1 diff: [(1, 'Decorators for benchmarks.graph_memory_fixture.Policy', (), ({'component_id': 'identity:0', 'outcome': <DecisionOutcome.rejected: 'rejected'>, 'reason_codes': ('template-target-not-selected',), 'reason': "The target registration did not satisfy the template's service selector", 'origin': {'kind': 'decorator-template', 'location': {'module': 'benchmarks.graph_memory_fixture', 'symbol': 'build', 'path': 'benchmarks/graph_memory_fixture.py', 'line': 222}, 'layer': 'root', 'bundle_path': (), 'definition_id': 'identity:1', 'boundary': None}, 'template'...
+E         
+E         ...Full output truncated (2 lines hidden), use '-vv' to show
+
+tests/test_graph_memory_fixture.py:189: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_decorator_template_compilation.py::test_when_snapshot_reused_recursive_undecoration_parent_context_and_scale
+FAILED tests/test_graph_memory_fixture.py::test_compact_fixture_matches_eager_manifests_and_complete_decorator_facts
+2 failed, 394 passed in 9.95s

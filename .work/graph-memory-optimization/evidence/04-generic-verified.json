@@ -1,0 +1,56 @@
+{
+  "before": {
+    "peak_rss_bytes": 138117120,
+    "rss_bytes": 138117120,
+    "traced_peak_bytes": 185526,
+    "traced_retained_bytes": 3167
+  },
+  "callbacks_unchanged": true,
+  "passes": [
+    {
+      "initialized_projection_slots": 256,
+      "memory": {
+        "peak_rss_bytes": 138117120,
+        "rss_bytes": 138117120,
+        "traced_peak_bytes": 185750,
+        "traced_retained_bytes": 3399
+      },
+      "pass": "first",
+      "seconds": 0.00037408294156193733
+    },
+    {
+      "initialized_projection_slots": 256,
+      "memory": {
+        "peak_rss_bytes": 138117120,
+        "rss_bytes": 138117120,
+        "traced_peak_bytes": 186294,
+        "traced_retained_bytes": 3951
+      },
+      "pass": "repeated",
+      "seconds": 0.00011374999303370714
+    }
+  ],
+  "retained_graph_inventory": [
+    {
+      "occurrence_objects": 88558,
+      "primary": true,
+      "projection_objects": 24633,
+      "remapping_entries": 24633,
+      "subtree_contexts": 391
+    }
+  ],
+  "sample": 256,
+  "source": {
+    "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n M tests/test_graph_artifact_experiment.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_artifact_evidence.py\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? benchmarks/graph_reachability_audit.py\n?? benchmarks/graph_subtree_experiment.py\n?? clean_ioc/_component_subtrees.py\n?? docs/graph-memory-fixture.md\n?? tests/test_contextual_subtrees.py\n?? tests/test_graph_memory_fixture.py\n?? tests/test_graph_reachability_audit.py\n?? tests/test_shared_component_definitions.py\n",
+    "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "6a4b40b37a61aba503382526c99b244e56278532774b7d6ddce59a4d155894a5",
+      "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+      "clean_ioc/_component_subtrees.py": "4e083e821d84a6ac37cfa62e7f6a3c8bd244ce35e0d412c4dc8fc49a72eb1346",
+      "clean_ioc/components.py": "81a54da74f53539dcbe33de050737bb6ff72b21c1675ff1bd137e3a387d5e88f",
+      "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+    }
+  }
+}

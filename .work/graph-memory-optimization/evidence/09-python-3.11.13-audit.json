@@ -1,0 +1,10 @@
+{
+  "checks": 103,
+  "states": [
+    "initial",
+    "compact",
+    "promoted",
+    "sparse"
+  ],
+  "shared_backing": true
+}

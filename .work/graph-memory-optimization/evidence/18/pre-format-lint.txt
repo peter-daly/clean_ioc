@@ -1,0 +1,2 @@
+.work/graph-memory-optimization/evidence/18/verify_extras.py:28:121: E501 Line too long (136 > 120)
+Found 1 error.

@@ -1,0 +1,328 @@
+"""Public run/analysis capability, composition and validation contracts."""
+
+import inspect
+from typing import Any, cast
+
+import pytest
+
+from clean_ioc import (
+    BuildIssue,
+    BuildMatrix,
+    BuildVariant,
+    CompilationProfiler,
+    ContainerBuilder,
+    ContainerBuildError,
+    IssueSeverity,
+    Provider,
+    ScopeBuilder,
+)
+from clean_ioc.cli import _load_scope, main
+
+
+class Leaf:
+    pass
+
+
+class Service:
+    def __init__(self, leaf: Leaf):
+        self.leaf = leaf
+
+
+def composition():
+    builder = ContainerBuilder()
+    builder.register(Leaf, lifespan="singleton", root_policy="dependency_only")
+    builder.register(Service)
+    return builder
+
+
+def test_default_run_retains_execution_discovery_and_ordinary_scopes():
+    with composition().build() as runtime:
+        assert runtime.build_mode == "run"
+        assert not runtime.explain_metadata_enabled
+        assert not runtime.allow_scope_builders
+        assert runtime._plan._blueprint is None
+        assert runtime._plan.compiled_graph is None
+        assert {item.implementation_type for item in runtime.selected_registrations} == {Leaf, Service}
+        with runtime.new_scope() as child:
+            assert child.build_mode == "run"
+            assert child.selected_registrations is runtime.selected_registrations
+            assert child.resolve(Service).leaf is runtime.resolve(Service).leaf
+        for operation in (lambda: runtime.graph, runtime.validation_report, runtime.new_scope_builder):
+            with pytest.raises(RuntimeError, match="analysis"):
+                operation()
+        with pytest.raises(RuntimeError, match="analysis"):
+            ScopeBuilder(runtime)
+
+
+@pytest.mark.parametrize("mode", [None, True, False, 0, [], "", "RUN", "custom"])
+def test_invalid_modes_leave_both_builders_and_profiler_untouched(mode):
+    profile = CompilationProfiler()
+    with composition().build(mode="analysis") as parent:
+        for builder in (composition(), parent.new_scope_builder()):
+            with pytest.raises(ValueError, match="mode must be"):
+                builder.build(mode=cast(Any, mode), profile=profile)
+            assert not builder._built
+            assert not profile.report().spans
+            with builder.build() as child:
+                assert child.build_mode == "run"
+
+
+@pytest.mark.parametrize(
+    "option",
+    [
+        "diagnostics",
+        "explain_metadata",
+        "check_unreachable",
+        "aggregate_errors",
+        "clean_orphans",
+        "allow_scope_builders",
+        "provider_roots",
+    ],
+)
+@pytest.mark.parametrize("mode", ["run", "analysis"])
+def test_removed_flags_never_override_modes(option, mode):
+    with composition().build(mode="analysis") as parent:
+        for builder in (composition(), parent.new_scope_builder()):
+            with pytest.raises(TypeError, match="Removed.*" + option):
+                builder.build(mode=mode, **{option: False})
+            assert not builder._built
+            assert option not in inspect.signature(builder.build).parameters
+
+
+@pytest.mark.parametrize("child_mode", ["run", "analysis"])
+def test_analysis_parent_supports_both_overlay_modes_without_mutating_parent(child_mode):
+    with composition().build(mode="analysis") as parent:
+        original = parent.resolve(Service).leaf
+        manifest = parent.graph.manifest(all_roots=True).fingerprint
+        with parent.new_scope_builder().build(mode=child_mode) as child:
+            assert child.build_mode == child_mode
+            assert child.resolve(Service).leaf is original
+            assert child.allow_scope_builders is (child_mode == "analysis")
+            if child_mode == "analysis":
+                with child.new_scope_builder().build() as nested:
+                    assert nested.resolve(Service).leaf is original
+            else:
+                with pytest.raises(RuntimeError, match="analysis"):
+                    child.new_scope_builder()
+        assert parent.graph.manifest(all_roots=True).fingerprint == manifest
+
+
+@pytest.mark.parametrize("mode", ["run", "analysis"])
+def test_provider_declarations_capture_replace_and_validate_without_changing_injection(mode):
+    builder = composition()
+    values = [Provider[Service]]
+    assert builder.set_provider_roots(values) is builder
+    values.clear()
+    with pytest.raises(TypeError, match="provider annotations"):
+        builder.set_provider_roots([Service])
+    with builder.build(mode=mode) as runtime:
+        assert isinstance(runtime.resolve(Provider[Service])(), Service)
+        with pytest.raises(Exception, match="single-use"):
+            builder.set_provider_roots(None)
+    builder = composition().set_provider_roots([Provider[Service]])
+    builder.set_provider_roots(None).set_provider_roots(())
+    with builder.build(mode=mode) as runtime:
+        assert not runtime.has_component(Provider[Service])
+        assert isinstance(runtime.resolve(Service), Service)
+    with composition().set_provider_roots(()).build(mode="analysis") as parent:
+        with parent.new_scope_builder().build(mode=mode) as child:
+            assert child.has_component(Provider[Service])
+        with parent.new_scope_builder().set_provider_roots(()).build(mode=mode) as child:
+            assert not child.has_component(Provider[Service])
+
+
+def test_analysis_validates_orphans_without_expanding_public_roots_or_discovery():
+    class Orphan:
+        pass
+
+    catalogues = []
+    for mode in ("run", "analysis"):
+        builder = composition().set_provider_roots(())
+        builder.register(Orphan, root_policy="dependency_only")
+        with builder.build(mode=mode) as runtime:
+            assert not runtime.has_component(Orphan)
+            assert isinstance(runtime.resolve(Service).leaf, Leaf)
+            catalogues.append([item.implementation_type for item in runtime.selected_registrations])
+            if mode == "analysis":
+                assert any(visit.component.service_type is Orphan for visit in runtime.graph.walk())
+                assert runtime.graph.selection_census(all_roots=True)
+    assert catalogues[0] == catalogues[1] == [Service, Leaf]
+
+
+def test_invalid_unused_orphan_is_an_analysis_only_failure():
+    class Missing:
+        pass
+
+    class Orphan:
+        def __init__(self, missing: Missing):
+            pass
+
+    for mode in ("run", "analysis"):
+        builder = composition()
+        builder.register(Orphan, root_policy="dependency_only")
+        if mode == "analysis":
+            with pytest.raises(ContainerBuildError):
+                builder.build(mode=mode)
+            assert not builder._built
+        else:
+            with builder.build(mode=mode) as runtime:
+                assert isinstance(runtime.resolve(Service), Service)
+
+
+@pytest.mark.parametrize("mode", ["run", "analysis"])
+def test_build_rules_get_rich_temporary_evidence_and_full_validation_is_explicit(mode):
+    calls = []
+    saved = []
+    builder = composition()
+
+    def required(context):
+        calls.append("build")
+        assert context.graph.diagnostics_enabled
+        assert context.graph.selection_census(all_roots=True)
+        assert context.graph.explain(Service).selected
+        saved.append(context.graph)
+        return ()
+
+    def full(context):
+        calls.append("validation")
+        assert context.graph.manifest(all_roots=True)
+        return (BuildIssue("full-policy", IssueSeverity.error, "Deliberate validation issue"),)
+
+    builder.add_validation_rule(required)
+    builder.add_validation_rule(full, mode="validation")
+    with builder.build(mode=mode) as runtime:
+        assert calls == ["build"]
+        assert runtime.build_report.is_valid
+        if mode == "analysis":
+            for count in (1, 2):
+                assert not runtime.validation_report().is_valid
+                assert calls == ["build", *(["validation"] * count)]
+        else:
+            assert not runtime._plan.validation_rules
+            assert not runtime._plan.diagnostics
+            with pytest.raises(RuntimeError, match="analysis"):
+                runtime.validation_report()
+            with pytest.raises(RuntimeError, match="explain-metadata-disabled"):
+                saved[0].manifest()
+            assert calls == ["build"]
+
+
+@pytest.mark.parametrize("mode", ["run", "analysis"])
+def test_mandatory_rule_failures_keep_builder_retryable(mode):
+    builder = composition()
+    reject = True
+
+    def required(context):
+        return (BuildIssue("mandatory", IssueSeverity.error, "Rejected"),) if reject else ()
+
+    builder.add_validation_rule(required)
+    builder.add_validation_rule(lambda _: pytest.fail("validation-only rule ran"), mode="validation")
+    with pytest.raises(ContainerBuildError, match="mandatory"):
+        builder.build(mode=mode)
+    assert not builder._built
+    reject = False
+    with builder.build(mode=mode) as runtime:
+        assert isinstance(runtime.resolve(Service), Service)
+
+
+def test_cli_and_matrix_each_run_validation_once(monkeypatch, capsys):
+    calls = []
+
+    def factory():
+        builder = composition()
+        builder.add_validation_rule(lambda _: calls.append("build") or ())
+        builder.add_validation_rule(lambda _: calls.append("validation") or (), mode="validation")
+        return builder
+
+    monkeypatch.setattr("clean_ioc.cli._load_object", lambda _: factory)
+    assert main(["check", "example:builder", "--no-strict"]) == 0
+    assert calls == ["build", "validation"]
+    capsys.readouterr()
+    calls.clear()
+    report = BuildMatrix([BuildVariant("one", factory)], reference="one").check()
+    assert report.is_valid
+    assert calls == ["build", "validation"]
+
+
+def test_cli_never_rebuilds_a_run_runtime(monkeypatch):
+    with composition().build() as runtime:
+        monkeypatch.setattr("clean_ioc.cli._load_object", lambda _: runtime)
+        with pytest.raises(RuntimeError, match="analysis"):
+            _load_scope("example:runtime")
+
+
+@pytest.mark.parametrize("mode", ["run", "analysis"])
+async def test_public_modes_preserve_rich_fixture_templates_maps_and_cleanup(mode):
+    from benchmarks.graph_memory_fixture import build, resolve_workload, validate
+
+    fixture = build(2, mode=mode)
+    async with fixture.runtime:
+        held = await resolve_workload(fixture)
+        try:
+            assert validate(fixture, held)
+            assert fixture.runtime.build_mode == mode
+        finally:
+            await held.scope.__aexit__(None, None, None)
+
+
+@pytest.mark.parametrize("before_public,after_public", [(False, True), (True, False)])
+def test_analysis_manifests_classify_public_root_promotion_and_demotion(before_public, after_public):
+    from clean_ioc import ChangeRisk, GraphChangeKind, GraphManifest
+
+    def graph(public):
+        builder = ContainerBuilder().set_provider_roots(())
+        builder.register(Leaf, root_policy="resolvable" if public else "dependency_only")
+        builder.register(Service, root_policy="entrypoint")
+        return builder.build(mode="analysis")
+
+    with graph(before_public) as before, graph(after_public) as after:
+        old = before.graph.manifest(all_roots=True)
+        new = after.graph.manifest(all_roots=True)
+        assert old.fingerprint != new.fingerprint
+        assert GraphManifest.from_json(new.to_json()).fingerprint == new.fingerprint
+        root = next(root for root in after.graph.roots if root.requested_type is Leaf)
+        assert root.resolvable is after_public
+        diff = after.graph.diff(old, all_roots=True)
+        expected = GraphChangeKind.root_added if after_public else GraphChangeKind.root_removed
+        change = next(change for change in diff.semantic_changes if change.kind is expected)
+        assert change.fields == ("resolvable",)
+        assert change.risk is (ChangeRisk.medium if after_public else ChangeRisk.high)
+        assert {item.implementation_type for item in before.selected_registrations} == {Leaf, Service}
+        assert {item.implementation_type for item in after.selected_registrations} == {Leaf, Service}
+        assert before.validation_report().is_valid
+        assert after.validation_report().is_valid
+
+
+def test_manifest_resolvability_is_boolean_and_root_only():
+    import copy
+
+    from clean_ioc import GraphManifest
+
+    with composition().set_provider_roots(()).build(mode="analysis") as runtime:
+        data = runtime.graph.manifest(all_roots=True).to_dict()
+        invalid_root = copy.deepcopy(data)
+        invalid_root["roots"][0]["resolvable"] = "no"
+        with pytest.raises(ValueError, match="resolvable must be a boolean"):
+            GraphManifest.from_json(GraphManifest(invalid_root).to_json())
+        invalid_child = copy.deepcopy(data)
+        invalid_child["roots"][0]["dependencies"][0]["resolvable"] = False
+        with pytest.raises(ValueError, match="resolvable is only valid on root nodes"):
+            GraphManifest.from_json(GraphManifest(invalid_child).to_json())
+
+
+def test_public_run_artifact_subset_roundtrips_without_inspection(tmp_path):
+    from benchmarks.graph_artifact import dump_graph, load_graph
+    from benchmarks.graph_artifact_fixture import Leaf as ArtifactLeaf
+
+    builder = ContainerBuilder().set_provider_roots(())
+    builder.register(ArtifactLeaf)
+    runtime = builder.build()
+    with runtime:
+        target = tmp_path / "run.jsonl"
+        dump_graph(runtime, target)
+        with load_graph(target) as loaded:
+            assert loaded.build_mode == "run"
+            assert loaded.selected_registrations == runtime.selected_registrations
+            assert isinstance(loaded.resolve(ArtifactLeaf), ArtifactLeaf)
+            with pytest.raises(RuntimeError, match="analysis"):
+                _ = loaded.graph

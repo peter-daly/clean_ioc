@@ -1,0 +1,94 @@
+{
+  "after_inspection": {
+    "decorator_explanations": {
+      "shallow_bytes": 2621528
+    },
+    "occurrence_origins": {
+      "shallow_bytes": 5242960
+    }
+  },
+  "before_inspection": {
+    "decorator_explanations": {
+      "shallow_bytes": 2621528
+    },
+    "occurrence_origins": {
+      "shallow_bytes": 5242960
+    }
+  },
+  "compatibility": {
+    "hashes": {
+      "clean_ioc.container": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc"
+    },
+    "probe": "baseline",
+    "probe_sha256": "7f025feef3ab3c2ef7593ac8e9434ca06f4e24817935fcaad860221b9d802753"
+  },
+  "inspection": {
+    "before": {
+      "peak_rss_bytes": 141344768,
+      "rss_bytes": 141344768,
+      "traced_peak_bytes": 185526,
+      "traced_retained_bytes": 3167
+    },
+    "explanation_sample_size": 128,
+    "passes": [
+      {
+        "after_explanations": {
+          "peak_rss_bytes": 141393920,
+          "rss_bytes": 141393920,
+          "traced_peak_bytes": 710566,
+          "traced_retained_bytes": 528215
+        },
+        "after_manifest": {
+          "peak_rss_bytes": 161906688,
+          "rss_bytes": 161906688,
+          "traced_peak_bytes": 26876827,
+          "traced_retained_bytes": 14207902
+        },
+        "after_traversal": {
+          "peak_rss_bytes": 141393920,
+          "rss_bytes": 141393920,
+          "traced_peak_bytes": 711286,
+          "traced_retained_bytes": 528943
+        },
+        "explain_seconds": 0.09171879105269909,
+        "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+        "manifest_seconds": 0.5477915829978883,
+        "pass": "first",
+        "sample_decisions": 1280,
+        "traversal_seconds": 0.08604220801498741,
+        "traversal_visits": 8932
+      },
+      {
+        "after_explanations": {
+          "peak_rss_bytes": 161906688,
+          "rss_bytes": 161906688,
+          "traced_peak_bytes": 26876827,
+          "traced_retained_bytes": 14208486
+        },
+        "after_manifest": {
+          "peak_rss_bytes": 164806656,
+          "rss_bytes": 164806656,
+          "traced_peak_bytes": 26878140,
+          "traced_retained_bytes": 14209383
+        },
+        "after_traversal": {
+          "peak_rss_bytes": 161906688,
+          "rss_bytes": 161906688,
+          "traced_peak_bytes": 26876827,
+          "traced_retained_bytes": 14208942
+        },
+        "explain_seconds": 0.02615716599393636,
+        "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+        "manifest_seconds": 4.170800093561411e-05,
+        "pass": "repeated",
+        "sample_decisions": 1280,
+        "traversal_seconds": 0.0861295840004459,
+        "traversal_visits": 8932
+      }
+    ]
+  },
+  "mode": "inspection",
+  "physical_records": 88558,
+  "probe": "baseline",
+  "script_sha256": "45d69e4aa7399ccae060e51e447009da01ac59153f43d3b34160aa6b074ce94d"
+}

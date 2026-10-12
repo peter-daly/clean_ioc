@@ -1,0 +1,193 @@
+{
+  "cases": [
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": false,
+      "kind": "object",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": true,
+      "kind": "object",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": false,
+      "kind": "object",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": true,
+      "kind": "object",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": false,
+      "kind": "string-subclass",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": true,
+      "kind": "string-subclass",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": false,
+      "kind": "string-subclass",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": true,
+      "kind": "string-subclass",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": false,
+      "kind": "container",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": true,
+      "kind": "container",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": false,
+      "kind": "container",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": true,
+      "kind": "container",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "key",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": false,
+      "kind": "map-key",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "key",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": true,
+      "kind": "map-key",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "key",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": false,
+      "kind": "map-key",
+      "resolved_argument": false
+    },
+    {
+      "calls": [
+        "key",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": true,
+      "kind": "map-key",
+      "resolved_argument": false
+    }
+  ],
+  "probe": "weak-activation-cache",
+  "source": {
+    "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n?? .work/graph-memory-optimization/06-avoid-metadata-creation.md\n?? .work/graph-memory-optimization/06-inventory.md\n?? .work/graph-memory-optimization/06-result.md\n?? .work/graph-memory-optimization/evidence/06-allocator-stats.txt\n?? .work/graph-memory-optimization/evidence/06-allocator.json\n?? .work/graph-memory-optimization/evidence/06-allocator.py\n?? .work/graph-memory-optimization/evidence/06-baseline.json\n?? .work/graph-memory-optimization/evidence/06-cache-lifetime.py\n?? .work/graph-memory-optimization/evidence/06-cache-strong.json\n?? .work/graph-memory-optimization/evidence/06-cache-weak.json\n?? .work/graph-memory-optimization/evidence/06-count-baseline.json\n?? .work/graph-memory-optimization/evidence/06-count-intern-template-facts.json\n?? .work/graph-memory-optimization/evidence/06-final-check-exit-codes.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-baseline-full.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-baseline-reduced.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-intern-template-facts-full.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-intern-template-facts-reduced.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-scalar-weak-cache-full.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-scalar-weak-cache-reduced.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-weak-activation-cache-full.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-weak-activation-cache-reduced.json\n?? .work/graph-memory-optimization/evidence/06-full-tests-intern-template-facts.txt\n?? .work/graph-memory-optimization/evidence/06-full-tests-scalar-weak-cache.txt\n?? .work/graph-memory-optimization/evidence/06-full-tests-weak-activation-cache.txt\n?? .work/graph-memory-optimization/evidence/06-payload-baseline.json\n?? .work/graph-memory-optimization/evidence/06-payload-lifetime.py\n?? .work/graph-memory-optimization/evidence/06-payload-scalar-weak-cache.json\n?? .work/graph-memory-optimization/evidence/06-payload-weak-cache.json\n?? .work/graph-memory-optimization/evidence/06-probe-small-original.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-timeline-original.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v1.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v2.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v3.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v4-typed.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v4.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe.py\n?? .work/graph-memory-optimization/evidence/06-repeat-baseline.json\n?? .work/graph-memory-optimization/evidence/06-repeat-intern-template-facts.json\n?? .work/graph-memory-optimization/evidence/06-repeat-scalar-weak-cache.json\n?? .work/graph-memory-optimization/evidence/06-repeat-weak-activation-cache.json\n?? .work/graph-memory-optimization/evidence/06-screen-no-decorator-evidence-heap.json\n?? .work/graph-memory-optimization/evidence/06-screen-no-decorator-evidence-normal.json\n?? .work/graph-memory-optimization/evidence/06-screen-release-source-graphs-heap.json\n?? .work/graph-memory-optimization/evidence/06-screen-release-source-graphs-normal.json\n?? .work/graph-memory-optimization/evidence/06-screen-snapshot-intern-heap.json\n?? .work/graph-memory-optimization/evidence/06-screen-snapshot-intern-normal.json\n?? .work/graph-memory-optimization/evidence/06-screen-snapshot-reuse-heap.json\n?? .work/graph-memory-optimization/evidence/06-screen-snapshot-reuse-normal.json\n?? .work/graph-memory-optimization/evidence/06-semantics-baseline.json\n?? .work/graph-memory-optimization/evidence/06-semantics-intern-template-facts.json\n?? .work/graph-memory-optimization/evidence/06-semantics-no-decorator-evidence.json\n?? .work/graph-memory-optimization/evidence/06-semantics-release-source-graphs.json\n?? .work/graph-memory-optimization/evidence/06-semantics-snapshot-intern.json\n?? .work/graph-memory-optimization/evidence/06-semantics-snapshot-reuse.json\n?? .work/graph-memory-optimization/evidence/06-semantics-weak-activation-cache.json\n?? .work/graph-memory-optimization/evidence/06-semantics.py\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-no-decorator-evidence.json\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-release-source-graphs.json\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-snapshot-intern.json\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-snapshot-reuse.json\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-weak-activation-cache.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-baseline.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-intern-template-facts.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-no-decorator-evidence.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-release-source-graphs.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-scalar-weak-cache.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-snapshot-intern.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-snapshot-reuse.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-weak-activation-cache.json\n?? .work/graph-memory-optimization/evidence/06-test-exit-codes.json\n?? .work/graph-memory-optimization/evidence/06-tests-intern-template-facts-corrected.txt\n?? .work/graph-memory-optimization/evidence/06-tests-intern-template-facts.txt\n?? .work/graph-memory-optimization/evidence/06-tests-no-decorator-evidence.txt\n?? .work/graph-memory-optimization/evidence/06-tests-release-source-graphs.txt\n?? .work/graph-memory-optimization/evidence/06-tests-snapshot-intern.txt\n?? .work/graph-memory-optimization/evidence/06-tests-snapshot-reuse.txt\n?? .work/graph-memory-optimization/evidence/06-tests-weak-activation-cache.txt\n?? .work/graph-memory-optimization/evidence/06-timeline-diagnostics.json\n?? .work/graph-memory-optimization/evidence/06-timeline.json\n?? .work/graph-memory-optimization/evidence/06-tooling-format.txt\n?? .work/graph-memory-optimization/evidence/06-tooling-lint.txt\n?? .work/graph-memory-optimization/evidence/06-tooling-types-initial.txt\n?? .work/graph-memory-optimization/evidence/06-tooling-types.txt\n?? .work/graph-memory-optimization/evidence/06-value-kinds-baseline.json\n?? .work/graph-memory-optimization/evidence/06-value-kinds-plain-weak.json\n?? .work/graph-memory-optimization/evidence/06-value-kinds.py\n?? .work/pre-compilation/\n",
+    "revision": "d51b6f569e67891e72e022b35aa5590c1c0fda46",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81",
+      "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+      "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211"
+    }
+  }
+}

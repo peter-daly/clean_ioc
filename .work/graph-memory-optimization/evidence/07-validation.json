@@ -1,0 +1,14 @@
+{
+  "checks": "passed",
+  "probes": [
+    "baseline",
+    "slots",
+    "prelookup",
+    "indexes"
+  ],
+  "normal_processes_per_probe": 5,
+  "traced_processes_per_probe": 3,
+  "lifetime_cases_per_probe": 16,
+  "unchanged_source_files": 191,
+  "index_compatibility": "eight artifact failures and numeric-equivalent non-int lookup limitation remain"
+}

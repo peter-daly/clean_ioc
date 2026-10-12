@@ -1,0 +1,94 @@
+{
+  "source": {
+    "revision": "2679234a152144f6ad3549d1f6b817fd490f3e1c",
+    "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M benchmarks/graph_artifact.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_reachability_audit.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compiler-tooling.md\n M docs/graph-artifact-experiment.md\n?? .work/graph-memory-optimization/05-inventory.md\n?? .work/graph-memory-optimization/05-optional-explanation-metadata.md\n?? .work/graph-memory-optimization/evidence/05-audit-composition.json\n?? .work/graph-memory-optimization/evidence/05-audit-reduced.json\n?? .work/graph-memory-optimization/evidence/05-before.json\n?? .work/graph-memory-optimization/evidence/05-capture-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-checks.json\n?? .work/graph-memory-optimization/evidence/05-comparison.json\n?? .work/graph-memory-optimization/evidence/05-diagnostics-full.json\n?? .work/graph-memory-optimization/evidence/05-diagnostics-reduced.json\n?? .work/graph-memory-optimization/evidence/05-discard-facts-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-draft-pruning-8.json\n?? .work/graph-memory-optimization/evidence/05-final-caller-owned.json\n?? .work/graph-memory-optimization/evidence/05-final-composition.json\n?? .work/graph-memory-optimization/evidence/05-final-full.json\n?? .work/graph-memory-optimization/evidence/05-final-reduced.json\n?? .work/graph-memory-optimization/evidence/05-full.json\n?? .work/graph-memory-optimization/evidence/05-prototype-2.json\n?? .work/graph-memory-optimization/evidence/05-prototype-8.json\n?? .work/graph-memory-optimization/evidence/05-prototype-phases.json\n?? .work/graph-memory-optimization/evidence/05-reduced-caller-owned.json\n?? .work/graph-memory-optimization/evidence/05-reduced-composition.json\n?? .work/graph-memory-optimization/evidence/05-reduced.json\n?? benchmarks/graph_resolution_only_checks.py\n?? tests/test_optional_explanation_metadata.py\n",
+    "source_sha256": {
+      "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+      "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+      "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81"
+    }
+  },
+  "routes": 2,
+  "diagnostics": false,
+  "audit_source_sha256": "e0377e7f9665d61f71a7269c5a7e863a6e5633b303ccba95c6eafb9ead10e103",
+  "audit": {
+    "audit_seconds": 0.047865625005215406,
+    "explain_metadata": false,
+    "expired_external_or_inspection_ids": 8,
+    "physical_records": 1278,
+    "graph_count_including_inherited_execution_graphs": 3,
+    "all_graph_physical_records": 2154,
+    "overlapping_reachability": {
+      "public_roots": {
+        "physical_records": 1264,
+        "logical_ids": 1264
+      },
+      "provider_roots": {
+        "physical_records": 158,
+        "logical_ids": 758
+      },
+      "managed_provider_roots": {
+        "physical_records": 1272,
+        "logical_ids": 2536
+      },
+      "warmup_roots": {
+        "physical_records": 0,
+        "logical_ids": 0
+      },
+      "architecture_roots": {
+        "physical_records": 0,
+        "logical_ids": 0
+      },
+      "public_graph_roots": {
+        "physical_records": 0,
+        "logical_ids": 0
+      },
+      "execution_components_including_map_targets": {
+        "physical_records": 1264,
+        "logical_ids": 1264
+      },
+      "eligible_root_candidates": {
+        "physical_records": 0,
+        "logical_ids": 0
+      },
+      "rejected_root_candidates": {
+        "physical_records": 0,
+        "logical_ids": 0
+      },
+      "evidence_index_owners": {
+        "physical_records": 0,
+        "logical_ids": 0
+      },
+      "contextual_view_sources_and_parents": {
+        "physical_records": 1278,
+        "logical_ids": 2992
+      },
+      "externally_retained_components": {
+        "physical_records": 1102,
+        "logical_ids": 1986
+      },
+      "captured_template_source_graphs": {
+        "physical_records": 0,
+        "logical_ids": 0
+      }
+    },
+    "disjoint_categories": {
+      "public_relationship_closure": 1264,
+      "additional_execution_or_other_roots": 14,
+      "additional_candidate_evidence": 0,
+      "additional_explanation_evidence": 0,
+      "additional_view_sources": 0,
+      "outside_all_audited_roots": 0
+    },
+    "externally_reachable_outside_runtime_roots": 0,
+    "outside_runtime_roots_by_kind": {},
+    "outside_runtime_root_sample_ids": [],
+    "outside_roots_by_kind": {},
+    "missing_graph_qualified_links": [],
+    "outside_roots_occurrence_ids": [],
+    "captured_selection_view_count": 20
+  }
+}

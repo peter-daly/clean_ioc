@@ -1,0 +1,25 @@
+{
+  "bark-unit": {
+    "tests": 6069,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 29,
+    "passed": 6040
+  },
+  "cop-unit": {
+    "tests": 504,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 0,
+    "passed": 504
+  },
+  "cop-integration": {
+    "tests": 64,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 0,
+    "passed": 64
+  },
+  "source_stable": true,
+  "performance_measurement": "Deferred to task25; existing capacity correctness assertions unchanged."
+}

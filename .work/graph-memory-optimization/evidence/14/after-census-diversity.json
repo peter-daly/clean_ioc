@@ -1,0 +1,95 @@
+{
+  "policy": "after",
+  "variant": "diversity",
+  "counts": {
+    "_ComponentDefinition": {
+      "constructed": 2000,
+      "live": 0,
+      "maximum_live": 2000
+    },
+    "_ComponentDraft": {
+      "constructed": 2000,
+      "live": 0,
+      "maximum_live": 2000
+    },
+    "_ComponentRecord": {
+      "constructed": 2000,
+      "live": 0,
+      "maximum_live": 2000
+    }
+  },
+  "after_build": [
+    {
+      "_ComponentDefinition": {
+        "constructed": 2000,
+        "live": 2000,
+        "maximum_live": 2000
+      },
+      "_ComponentDraft": {
+        "constructed": 2000,
+        "live": 0,
+        "maximum_live": 2000
+      },
+      "_ComponentRecord": {
+        "constructed": 2000,
+        "live": 2000,
+        "maximum_live": 2000
+      }
+    }
+  ],
+  "graphs": [
+    {
+      "phase": "before-runtime-retention",
+      "drafts": 2000,
+      "draft_shallow_bytes": 352000,
+      "definition_shallow_bytes": 272000,
+      "live_definitions": 2000,
+      "tag_tuples": 1,
+      "ordered_tag_patterns": 1,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 2000,
+      "pool_key_bytes": 272000,
+      "pool_key_integer_bytes": 704000,
+      "pool_weakref_bytes": 176000,
+      "pool_table_bytes": 73808,
+      "pool_wrapper_bytes": 376
+    },
+    {
+      "phase": "freeze",
+      "drafts": 2000,
+      "draft_shallow_bytes": 352000,
+      "definition_shallow_bytes": 272000,
+      "live_definitions": 2000,
+      "tag_tuples": 1,
+      "ordered_tag_patterns": 1,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 2000,
+      "pool_key_bytes": 272000,
+      "pool_key_integer_bytes": 704000,
+      "pool_weakref_bytes": 176000,
+      "pool_table_bytes": 73808,
+      "pool_wrapper_bytes": 376
+    },
+    {
+      "phase": "before-runtime-retention",
+      "drafts": 0,
+      "draft_shallow_bytes": 0,
+      "definition_shallow_bytes": 0,
+      "live_definitions": 0,
+      "tag_tuples": 0,
+      "ordered_tag_patterns": 0,
+      "nonempty_tag_drafts": 0,
+      "pool_entries": 0,
+      "pool_key_bytes": 0,
+      "pool_key_integer_bytes": 0,
+      "pool_weakref_bytes": 0,
+      "pool_table_bytes": 73808,
+      "pool_wrapper_bytes": 376
+    }
+  ],
+  "pool": {
+    "calls": 2000,
+    "maximum_entries_one_pool": 2000
+  },
+  "graph": null
+}

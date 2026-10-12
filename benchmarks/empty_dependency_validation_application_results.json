@@ -1,0 +1,388 @@
+{
+  "experiment": "step7-empty-dependency-name-validation-actual-cop",
+  "manifests": {
+    "step6": {
+      "app_source_hash": "03e92831c52227a55aeb7fee5534647559251b47f2e747727e3c10e81207b2d3",
+      "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+      "bark_core_tracked_diff_sha256": "30cde82495632e2b86f96d9382699f07ca00d6efccf7023eff7bf6f8ba47434b",
+      "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+      "clean_ioc_tracked_diff_sha256": "8c4909cca9f193b30630fcdffe93de0dbae465b6b0d12e3f6cb259d020091e9e",
+      "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+      "cop_tracked_diff_sha256": "c788a82ec8bd268670e684cd7174264da556fe839608e9fc739e03f9b3efad4c",
+      "stage": "step6",
+      "wheels": {
+        "bark_core": {
+          "sha256": "c48697d371ac93d97f462235e64330f25dc11e7b64be46e6d6150585379550eb"
+        },
+        "clean_ioc": {
+          "sha256": "0ee5ac2bf2573da9a4dd630bc3552f40a28e03c531d7ce4fe0406f7b2ad04cd9"
+        }
+      }
+    },
+    "step7": {
+      "app_source_hash": "03e92831c52227a55aeb7fee5534647559251b47f2e747727e3c10e81207b2d3",
+      "bark_core_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+      "bark_core_tracked_diff_sha256": "30cde82495632e2b86f96d9382699f07ca00d6efccf7023eff7bf6f8ba47434b",
+      "clean_ioc_head": "3d576f10427d506b414889af21ad95291c39cccf",
+      "clean_ioc_tracked_diff_sha256": "3c4b307fa983a307f6e50bb64e0a2deac3d927f6cadcadbde2258f2551706754",
+      "cop_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+      "cop_tracked_diff_sha256": "c788a82ec8bd268670e684cd7174264da556fe839608e9fc739e03f9b3efad4c",
+      "stage": "step7",
+      "wheels": {
+        "bark_core": {
+          "sha256": "c48697d371ac93d97f462235e64330f25dc11e7b64be46e6d6150585379550eb"
+        },
+        "clean_ioc": {
+          "sha256": "2828273554efd910ef99ff8c008b58b42590aa7a8579b1206bda469a080f4b7a"
+        }
+      }
+    }
+  },
+  "methodology": "Three uninstrumented samples per application/stage and one separate traced worker sample per stage; unchanged Cop source and Bark wheel; installed frozen Clean IoC wheels.",
+  "samples": [
+    {
+      "app": "api",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "diagnostics": "default",
+      "instrumentation": "none",
+      "peak_rss_bytes": 235175936,
+      "physical_records": 3528,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_views": 0,
+      "python": "3.14.4",
+      "sample": 1,
+      "seconds": 0.33094679191708565,
+      "sidecar_counts": {
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0
+      },
+      "stage": "step6"
+    },
+    {
+      "app": "worker",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "diagnostics": "default",
+      "instrumentation": "none",
+      "peak_rss_bytes": 400982016,
+      "physical_records": 51827,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_views": 0,
+      "python": "3.14.4",
+      "sample": 1,
+      "seconds": 3.794898582971655,
+      "sidecar_counts": {
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0
+      },
+      "stage": "step6"
+    },
+    {
+      "app": "api",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "diagnostics": "default",
+      "instrumentation": "none",
+      "peak_rss_bytes": 221446144,
+      "physical_records": 3528,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_views": 0,
+      "python": "3.14.4",
+      "sample": 1,
+      "seconds": 0.3132103329990059,
+      "sidecar_counts": {
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0
+      },
+      "stage": "step7"
+    },
+    {
+      "app": "worker",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "diagnostics": "default",
+      "instrumentation": "none",
+      "peak_rss_bytes": 229474304,
+      "physical_records": 51827,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_views": 0,
+      "python": "3.14.4",
+      "sample": 1,
+      "seconds": 3.411530000041239,
+      "sidecar_counts": {
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0
+      },
+      "stage": "step7"
+    },
+    {
+      "app": "api",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "diagnostics": "default",
+      "instrumentation": "none",
+      "peak_rss_bytes": 219774976,
+      "physical_records": 3528,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_views": 0,
+      "python": "3.14.4",
+      "sample": 2,
+      "seconds": 0.31416433304548264,
+      "sidecar_counts": {
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0
+      },
+      "stage": "step7"
+    },
+    {
+      "app": "worker",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "diagnostics": "default",
+      "instrumentation": "none",
+      "peak_rss_bytes": 230457344,
+      "physical_records": 51827,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_views": 0,
+      "python": "3.14.4",
+      "sample": 2,
+      "seconds": 3.3640380420256406,
+      "sidecar_counts": {
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0
+      },
+      "stage": "step7"
+    },
+    {
+      "app": "api",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "diagnostics": "default",
+      "instrumentation": "none",
+      "peak_rss_bytes": 233144320,
+      "physical_records": 3528,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_views": 0,
+      "python": "3.14.4",
+      "sample": 2,
+      "seconds": 0.3301780839683488,
+      "sidecar_counts": {
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0
+      },
+      "stage": "step6"
+    },
+    {
+      "app": "worker",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "diagnostics": "default",
+      "instrumentation": "none",
+      "peak_rss_bytes": 404914176,
+      "physical_records": 51827,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_views": 0,
+      "python": "3.14.4",
+      "sample": 2,
+      "seconds": 3.766081582987681,
+      "sidecar_counts": {
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0
+      },
+      "stage": "step6"
+    },
+    {
+      "app": "api",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "diagnostics": "default",
+      "instrumentation": "none",
+      "peak_rss_bytes": 229212160,
+      "physical_records": 3528,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_views": 0,
+      "python": "3.14.4",
+      "sample": 3,
+      "seconds": 0.3323722090572119,
+      "sidecar_counts": {
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0
+      },
+      "stage": "step6"
+    },
+    {
+      "app": "worker",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "diagnostics": "default",
+      "instrumentation": "none",
+      "peak_rss_bytes": 401358848,
+      "physical_records": 51827,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_views": 0,
+      "python": "3.14.4",
+      "sample": 3,
+      "seconds": 3.7470533750019968,
+      "sidecar_counts": {
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0
+      },
+      "stage": "step6"
+    },
+    {
+      "app": "api",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "diagnostics": "default",
+      "instrumentation": "none",
+      "peak_rss_bytes": 217595904,
+      "physical_records": 3528,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_views": 0,
+      "python": "3.14.4",
+      "sample": 3,
+      "seconds": 0.31205212499480695,
+      "sidecar_counts": {
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0
+      },
+      "stage": "step7"
+    },
+    {
+      "app": "worker",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "diagnostics": "default",
+      "instrumentation": "none",
+      "peak_rss_bytes": 230211584,
+      "physical_records": 51827,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_views": 0,
+      "python": "3.14.4",
+      "sample": 3,
+      "seconds": 3.399977417080663,
+      "sidecar_counts": {
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0
+      },
+      "stage": "step7"
+    },
+    {
+      "app": "worker",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "diagnostics": "default",
+      "instrumentation": "tracemalloc",
+      "peak_rss_bytes": 493256704,
+      "physical_records": 51827,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_views": 0,
+      "python": "3.14.4",
+      "sample": 1,
+      "seconds": 27.872850625077263,
+      "sidecar_counts": {
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0
+      },
+      "stage": "step6",
+      "traced_after_build_bytes": 100038608,
+      "traced_after_gc_bytes": 38466893,
+      "traced_peak_bytes": 187126382
+    },
+    {
+      "app": "worker",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "diagnostics": "default",
+      "instrumentation": "tracemalloc",
+      "peak_rss_bytes": 304365568,
+      "physical_records": 51827,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_views": 0,
+      "python": "3.14.4",
+      "sample": 1,
+      "seconds": 27.29998649994377,
+      "sidecar_counts": {
+        "generic_explanations": 0,
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0
+      },
+      "stage": "step7",
+      "traced_after_build_bytes": 40131440,
+      "traced_after_gc_bytes": 38469996,
+      "traced_peak_bytes": 55537218
+    }
+  ],
+  "signature_parser_counts": {
+    "after": [
+      {
+        "count": 8,
+        "implementation": null,
+        "nonempty_dependencies": null,
+        "target": "object"
+      },
+      {
+        "count": 1,
+        "implementation": null,
+        "nonempty_dependencies": null,
+        "target": "list"
+      }
+    ],
+    "after_evidence_stage": "step7",
+    "before": [
+      {
+        "count": 1996,
+        "implementation": "UtcDatetimeProvider",
+        "nonempty_dependencies": false,
+        "target": "object"
+      },
+      {
+        "count": 550,
+        "implementation": "ResolveQueueNameFromHeader",
+        "nonempty_dependencies": false,
+        "target": "object"
+      },
+      {
+        "count": 253,
+        "implementation": "HeaderBasedPrefixResolver",
+        "nonempty_dependencies": false,
+        "target": "object"
+      },
+      {
+        "count": 8,
+        "implementation": null,
+        "nonempty_dependencies": null,
+        "target": "object"
+      },
+      {
+        "count": 4,
+        "implementation": "SystemMonotonicClock",
+        "nonempty_dependencies": false,
+        "target": "object"
+      },
+      {
+        "count": 1,
+        "implementation": null,
+        "nonempty_dependencies": null,
+        "target": "list"
+      }
+    ],
+    "before_evidence_stage": "earlier baseline signature probe (step4)",
+    "instrumentation": "temporary builtin signature parser wrapper; diagnostic only",
+    "probe_script_sha256": "31dba235321e7ef73c01c297548cab74e5c2fd2831ed6a6d263ec68d4cb9e28f"
+  }
+}

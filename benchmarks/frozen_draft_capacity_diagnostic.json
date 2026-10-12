@@ -1,0 +1,596 @@
+{
+  "baseline_peak_rss": 172294144,
+  "lines": [
+    {
+      "bytes": 13267712,
+      "count": 51827,
+      "source": "clean_ioc/components.py:162"
+    },
+    {
+      "bytes": 2621464,
+      "count": 1,
+      "source": "clean_ioc/container.py:6923"
+    },
+    {
+      "bytes": 2621464,
+      "count": 1,
+      "source": "clean_ioc/components.py:255"
+    },
+    {
+      "bytes": 2621464,
+      "count": 1,
+      "source": "clean_ioc/components.py:226"
+    },
+    {
+      "bytes": 2097432,
+      "count": 3,
+      "source": "clean_ioc/tooling.py:1892"
+    },
+    {
+      "bytes": 1868280,
+      "count": 12843,
+      "source": "clean_ioc/container.py:8323"
+    },
+    {
+      "bytes": 1650272,
+      "count": 51571,
+      "source": "clean_ioc/container.py:6884"
+    },
+    {
+      "bytes": 1304640,
+      "count": 27180,
+      "source": "clean_ioc/container.py:8732"
+    },
+    {
+      "bytes": 1036592,
+      "count": 16527,
+      "source": "clean_ioc/container.py:8736"
+    },
+    {
+      "bytes": 897680,
+      "count": 14172,
+      "source": "clean_ioc/container.py:8737"
+    },
+    {
+      "bytes": 773376,
+      "count": 16112,
+      "source": "clean_ioc/components.py:227"
+    },
+    {
+      "bytes": 534374,
+      "count": 4639,
+      "source": "clean_ioc/container.py:9908"
+    },
+    {
+      "bytes": 464216,
+      "count": 8057,
+      "source": "clean_ioc/container.py:8663"
+    },
+    {
+      "bytes": 445344,
+      "count": 4639,
+      "source": "clean_ioc/container.py:9903"
+    },
+    {
+      "bytes": 418800,
+      "count": 3490,
+      "source": "annotationlib.py:1011"
+    },
+    {
+      "bytes": 406433,
+      "count": 3547,
+      "source": "clean_ioc/container.py:10106"
+    },
+    {
+      "bytes": 342584,
+      "count": 3540,
+      "source": "clean_ioc/_legacy.py:144"
+    },
+    {
+      "bytes": 337584,
+      "count": 3246,
+      "source": "clean_ioc/container.py:3923"
+    },
+    {
+      "bytes": 259784,
+      "count": 4639,
+      "source": "clean_ioc/container.py:9906"
+    },
+    {
+      "bytes": 233712,
+      "count": 3246,
+      "source": "clean_ioc/container.py:10091"
+    },
+    {
+      "bytes": 233712,
+      "count": 3246,
+      "source": "clean_ioc/container.py:3932"
+    },
+    {
+      "bytes": 227008,
+      "count": 3547,
+      "source": "clean_ioc/container.py:10105"
+    },
+    {
+      "bytes": 212815,
+      "count": 2715,
+      "source": "clean_ioc/container.py:9349"
+    },
+    {
+      "bytes": 207744,
+      "count": 3246,
+      "source": "clean_ioc/container.py:3922"
+    },
+    {
+      "bytes": 189168,
+      "count": 3378,
+      "source": "clean_ioc/container.py:10108"
+    },
+    {
+      "bytes": 189168,
+      "count": 3378,
+      "source": "clean_ioc/container.py:8316"
+    },
+    {
+      "bytes": 181776,
+      "count": 3246,
+      "source": "clean_ioc/container.py:10118"
+    },
+    {
+      "bytes": 157072,
+      "count": 1608,
+      "source": "clean_ioc/container.py:9377"
+    },
+    {
+      "bytes": 147480,
+      "count": 1,
+      "source": "clean_ioc/container.py:10114"
+    },
+    {
+      "bytes": 144000,
+      "count": 3000,
+      "source": "clean_ioc/container.py:5911"
+    },
+    {
+      "bytes": 127088,
+      "count": 667,
+      "source": "copyreg.py:104"
+    },
+    {
+      "bytes": 126492,
+      "count": 920,
+      "source": "<frozen importlib._bootstrap_external>:511"
+    },
+    {
+      "bytes": 99896,
+      "count": 1201,
+      "source": "clean_ioc/container.py:9269"
+    },
+    {
+      "bytes": 90240,
+      "count": 1350,
+      "source": "clean_ioc/container.py:9373"
+    },
+    {
+      "bytes": 86056,
+      "count": 620,
+      "source": "clean_ioc/container.py:5608"
+    },
+    {
+      "bytes": 80345,
+      "count": 1343,
+      "source": "clean_ioc/container.py:9318"
+    },
+    {
+      "bytes": 75426,
+      "count": 1201,
+      "source": "clean_ioc/container.py:9245"
+    },
+    {
+      "bytes": 72052,
+      "count": 620,
+      "source": "clean_ioc/container.py:9412"
+    },
+    {
+      "bytes": 71376,
+      "count": 1088,
+      "source": "clean_ioc/container.py:9374"
+    },
+    {
+      "bytes": 65832,
+      "count": 219,
+      "source": "<frozen abc>:106"
+    },
+    {
+      "bytes": 59840,
+      "count": 374,
+      "source": "clean_ioc/container.py:8501"
+    },
+    {
+      "bytes": 55000,
+      "count": 1000,
+      "source": "typing.py:1160"
+    },
+    {
+      "bytes": 54560,
+      "count": 620,
+      "source": "clean_ioc/container.py:9408"
+    },
+    {
+      "bytes": 53624,
+      "count": 279,
+      "source": "<frozen posixpath>:545"
+    },
+    {
+      "bytes": 51604,
+      "count": 388,
+      "source": "clean_ioc/container.py:7173"
+    }
+  ],
+  "objects": {
+    "clean_ioc._decorator_templates.RegistrationInfo": 332,
+    "clean_ioc._legacy.Dependency": 3638,
+    "clean_ioc._legacy.Lifespan": 4,
+    "clean_ioc._legacy._Registration": 269,
+    "clean_ioc._legacy_configuration.DependencySettings": 3638,
+    "clean_ioc._legacy_configuration._Empty": 1,
+    "clean_ioc._legacy_configuration._RemoveDependencySetting": 1,
+    "clean_ioc._legacy_configuration._Unknown": 1,
+    "clean_ioc.arguments._FixedArgument": 41,
+    "clean_ioc.arguments._Inject": 1,
+    "clean_ioc.arguments._Remove": 1,
+    "clean_ioc.arguments._SelectArgument": 57,
+    "clean_ioc.component_filters.ComponentSelector": 9,
+    "clean_ioc.component_filters._SelectorAlias": 1,
+    "clean_ioc.component_filters._StructuredPredicate": 39,
+    "clean_ioc.components.Component": 16112,
+    "clean_ioc.components.ComponentActivation": 7,
+    "clean_ioc.components.ComponentKind": 11,
+    "clean_ioc.components.RuntimeOwnerKind": 5,
+    "clean_ioc.components._ComponentGraph": 1,
+    "clean_ioc.components._ComponentRecord": 51827,
+    "clean_ioc.container.Container": 1,
+    "clean_ioc.container._CleanupOwnerDescriptor": 3002,
+    "clean_ioc.container._CollectionStep": 1608,
+    "clean_ioc.container._CompiledDecorator": 3246,
+    "clean_ioc.container._CompiledDependency": 27568,
+    "clean_ioc.container._Coordinator": 1,
+    "clean_ioc.container._DecoratorActivation": 3246,
+    "clean_ioc.container._DecoratorDefinition": 9,
+    "clean_ioc.container._DecoratorUnset": 1,
+    "clean_ioc.container._OccurrenceLayers": 1,
+    "clean_ioc.container._PerCallStep": 6,
+    "clean_ioc.container._PerCallTargetRegistrationStep": 6,
+    "clean_ioc.container._PerResolutionRegistrationStep": 7449,
+    "clean_ioc.container._PlanSet": 1,
+    "clean_ioc.container._ProviderMapStep": 381,
+    "clean_ioc.container._ProviderStep": 388,
+    "clean_ioc.container._RootPlan": 210,
+    "clean_ioc.container._ScopeStep": 384,
+    "clean_ioc.container._ScopedRegistrationStep": 3492,
+    "clean_ioc.container._SingletonRegistrationStep": 1514,
+    "clean_ioc.container._TransientRegistrationStep": 1,
+    "clean_ioc.container._ValidationRuleDefinition": 1,
+    "clean_ioc.container._ValueStep": 1201,
+    "clean_ioc.graph_analysis.ActivationScenario": 3,
+    "clean_ioc.graph_analysis.ContextualCacheCertainty": 3,
+    "clean_ioc.metadata.Tag": 17,
+    "clean_ioc.provider_maps.ProviderMapGroup": 1,
+    "clean_ioc.semantic_diff.ChangeRisk": 3,
+    "clean_ioc.semantic_diff.GraphChangeKind": 23,
+    "clean_ioc.sentinels._Undefined": 1,
+    "clean_ioc.service_groups.ServiceGroup": 1,
+    "clean_ioc.tooling.BuildIssue": 620,
+    "clean_ioc.tooling.BuildReport": 1,
+    "clean_ioc.tooling.CandidateDecision": 4849,
+    "clean_ioc.tooling.CompilationExplanation": 3547,
+    "clean_ioc.tooling.CompiledGraph": 1,
+    "clean_ioc.tooling.DecisionOutcome": 3,
+    "clean_ioc.tooling.DefinitionOrigin": 279,
+    "clean_ioc.tooling.GraphRoot": 252,
+    "clean_ioc.tooling.IssueSeverity": 2,
+    "clean_ioc.tooling.PartialState": 4,
+    "clean_ioc.tooling.SourceLocation": 279,
+    "clean_ioc.tooling._CandidateRecord": 210
+  },
+  "record_fields": {
+    "_generic_mapping": {
+      "identities": 1,
+      "shallow_bytes": 16,
+      "types": {
+        "NoneType": 51827
+      }
+    },
+    "activation": {
+      "identities": 7,
+      "shallow_bytes": 738,
+      "types": {
+        "ComponentActivation": 51827
+      }
+    },
+    "argument": {
+      "identities": 97,
+      "shallow_bytes": 5378,
+      "types": {
+        "NoneType": 4364,
+        "str": 47463
+      }
+    },
+    "boundary": {
+      "identities": 1,
+      "shallow_bytes": 16,
+      "types": {
+        "NoneType": 51827
+      }
+    },
+    "build_args": {
+      "identities": 1,
+      "shallow_bytes": 40,
+      "types": {
+        "mappingproxy": 51827
+      }
+    },
+    "cache_owner": {
+      "identities": 5,
+      "shallow_bytes": 521,
+      "types": {
+        "RuntimeOwnerKind": 51827
+      }
+    },
+    "cleanup_owner": {
+      "identities": 3,
+      "shallow_bytes": 309,
+      "types": {
+        "RuntimeOwnerKind": 51827
+      }
+    },
+    "declared_service_type": {
+      "identities": 213,
+      "shallow_bytes": 156920,
+      "types": {
+        "ABCMeta": 1412,
+        "GenericAlias": 586,
+        "ModelMetaclass": 3696,
+        "NoneType": 9025,
+        "SagaMeta": 371,
+        "Union": 564,
+        "_CallableGenericAlias": 6,
+        "_GenericAlias": 1775,
+        "_ProtocolMeta": 17661,
+        "type": 16731
+      }
+    },
+    "decorated_id": {
+      "identities": 3379,
+      "shallow_bytes": 94600,
+      "types": {
+        "NoneType": 48449,
+        "int": 3378
+      }
+    },
+    "decorator_ids": {
+      "identities": 3379,
+      "shallow_bytes": 189216,
+      "types": {
+        "tuple": 51827
+      }
+    },
+    "dependency_ids": {
+      "identities": 26710,
+      "shallow_bytes": 1634552,
+      "types": {
+        "tuple": 51827
+      }
+    },
+    "id": {
+      "identities": 5925,
+      "shallow_bytes": 441596,
+      "types": {
+        "str": 51827
+      }
+    },
+    "implementation": {
+      "identities": 209,
+      "shallow_bytes": 195056,
+      "types": {
+        "ABCMeta": 1793,
+        "SagaMeta": 371,
+        "_GenericAlias": 929,
+        "_ProtocolMeta": 13573,
+        "function": 20761,
+        "type": 14400
+      }
+    },
+    "implementation_type": {
+      "identities": 146,
+      "shallow_bytes": 240760,
+      "types": {
+        "ABCMeta": 1799,
+        "ModelMetaclass": 3696,
+        "SagaMeta": 371,
+        "_ProtocolMeta": 19871,
+        "type": 26090
+      }
+    },
+    "kind": {
+      "identities": 8,
+      "shallow_bytes": 862,
+      "types": {
+        "ComponentKind": 51827
+      }
+    },
+    "lifespan": {
+      "identities": 4,
+      "shallow_bytes": 202,
+      "types": {
+        "str": 51827
+      }
+    },
+    "manages_cleanup": {
+      "identities": 2,
+      "shallow_bytes": 56,
+      "types": {
+        "bool": 51827
+      }
+    },
+    "name": {
+      "identities": 12,
+      "shallow_bytes": 687,
+      "types": {
+        "NoneType": 47338,
+        "str": 4489
+      }
+    },
+    "occurrence_id": {
+      "identities": 51827,
+      "shallow_bytes": 1451156,
+      "types": {
+        "int": 51827
+      }
+    },
+    "owner_id": {
+      "identities": 1619,
+      "shallow_bytes": 45320,
+      "types": {
+        "NoneType": 50209,
+        "int": 1618
+      }
+    },
+    "ownership_reason": {
+      "identities": 10,
+      "shallow_bytes": 951,
+      "types": {
+        "str": 51827
+      }
+    },
+    "parent_id": {
+      "identities": 26710,
+      "shallow_bytes": 747868,
+      "types": {
+        "NoneType": 215,
+        "int": 51612
+      }
+    },
+    "position": {
+      "identities": 2,
+      "shallow_bytes": 44,
+      "types": {
+        "NoneType": 48449,
+        "int": 3378
+      }
+    },
+    "pre_configuration_ids": {
+      "identities": 1,
+      "shallow_bytes": 48,
+      "types": {
+        "tuple": 51827
+      }
+    },
+    "provider_mode": {
+      "identities": 2,
+      "shallow_bytes": 62,
+      "types": {
+        "NoneType": 51058,
+        "str": 769
+      }
+    },
+    "requires_async": {
+      "identities": 2,
+      "shallow_bytes": 56,
+      "types": {
+        "bool": 51827
+      }
+    },
+    "service_type": {
+      "identities": 372,
+      "shallow_bytes": 250392,
+      "types": {
+        "ABCMeta": 1412,
+        "GenericAlias": 3687,
+        "ModelMetaclass": 3696,
+        "SagaMeta": 371,
+        "Union": 803,
+        "_CallableGenericAlias": 6,
+        "_GenericAlias": 2337,
+        "_ProtocolMeta": 19291,
+        "type": 20224
+      }
+    },
+    "tags": {
+      "identities": 10,
+      "shallow_bytes": 600,
+      "types": {
+        "tuple": 51827
+      }
+    }
+  },
+  "records": 51827,
+  "sizes": {
+    "clean_ioc._decorator_templates.RegistrationInfo": 23904,
+    "clean_ioc._legacy.Dependency": 378352,
+    "clean_ioc._legacy.Lifespan": 1456,
+    "clean_ioc._legacy._Registration": 96840,
+    "clean_ioc._legacy_configuration.DependencySettings": 523872,
+    "clean_ioc._legacy_configuration._Empty": 344,
+    "clean_ioc._legacy_configuration._RemoveDependencySetting": 344,
+    "clean_ioc._legacy_configuration._Unknown": 344,
+    "clean_ioc.arguments._FixedArgument": 1640,
+    "clean_ioc.arguments._Inject": 32,
+    "clean_ioc.arguments._Remove": 32,
+    "clean_ioc.arguments._SelectArgument": 3192,
+    "clean_ioc.component_filters.ComponentSelector": 792,
+    "clean_ioc.component_filters._SelectorAlias": 136,
+    "clean_ioc.component_filters._StructuredPredicate": 6240,
+    "clean_ioc.components.Component": 773376,
+    "clean_ioc.components.ComponentActivation": 2474,
+    "clean_ioc.components.ComponentKind": 3572,
+    "clean_ioc.components.RuntimeOwnerKind": 1841,
+    "clean_ioc.components._ComponentGraph": 56,
+    "clean_ioc.components._ComponentRecord": 13267712,
+    "clean_ioc.container.Container": 344,
+    "clean_ioc.container._CleanupOwnerDescriptor": 144096,
+    "clean_ioc.container._CollectionStep": 231552,
+    "clean_ioc.container._CompiledDecorator": 233712,
+    "clean_ioc.container._CompiledDependency": 1323264,
+    "clean_ioc.container._Coordinator": 344,
+    "clean_ioc.container._DecoratorActivation": 233712,
+    "clean_ioc.container._DecoratorDefinition": 1080,
+    "clean_ioc.container._DecoratorUnset": 32,
+    "clean_ioc.container._OccurrenceLayers": 48,
+    "clean_ioc.container._PerCallStep": 1968,
+    "clean_ioc.container._PerCallTargetRegistrationStep": 2256,
+    "clean_ioc.container._PerResolutionRegistrationStep": 1430208,
+    "clean_ioc.container._PlanSet": 304,
+    "clean_ioc.container._ProviderMapStep": 76200,
+    "clean_ioc.container._ProviderStep": 58976,
+    "clean_ioc.container._RootPlan": 11760,
+    "clean_ioc.container._ScopeStep": 52224,
+    "clean_ioc.container._ScopedRegistrationStep": 670464,
+    "clean_ioc.container._SingletonRegistrationStep": 290688,
+    "clean_ioc.container._TransientRegistrationStep": 392,
+    "clean_ioc.container._ValidationRuleDefinition": 56,
+    "clean_ioc.container._ValueStep": 153728,
+    "clean_ioc.graph_analysis.ActivationScenario": 1160,
+    "clean_ioc.graph_analysis.ContextualCacheCertainty": 1174,
+    "clean_ioc.metadata.Tag": 816,
+    "clean_ioc.provider_maps.ProviderMapGroup": 56,
+    "clean_ioc.semantic_diff.ChangeRisk": 1144,
+    "clean_ioc.semantic_diff.GraphChangeKind": 5423,
+    "clean_ioc.sentinels._Undefined": 344,
+    "clean_ioc.service_groups.ServiceGroup": 48,
+    "clean_ioc.tooling.BuildIssue": 54560,
+    "clean_ioc.tooling.BuildReport": 72,
+    "clean_ioc.tooling.CandidateDecision": 465504,
+    "clean_ioc.tooling.CompilationExplanation": 227008,
+    "clean_ioc.tooling.CompiledGraph": 232,
+    "clean_ioc.tooling.DecisionOutcome": 1155,
+    "clean_ioc.tooling.DefinitionOrigin": 22320,
+    "clean_ioc.tooling.GraphRoot": 14112,
+    "clean_ioc.tooling.IssueSeverity": 782,
+    "clean_ioc.tooling.PartialState": 1510,
+    "clean_ioc.tooling.SourceLocation": 17856,
+    "clean_ioc.tooling._CandidateRecord": 11760
+  },
+  "traced_peak": 55548685,
+  "traced_retained": 38482378
+}

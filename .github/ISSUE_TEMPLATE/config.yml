@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://peter-daly.github.io/clean_ioc/
+    about: Check the guides and examples before opening an issue.
+  - name: Private security report
+    url: https://github.com/peter-daly/clean_ioc/security/advisories/new
+    about: Report suspected vulnerabilities privately.

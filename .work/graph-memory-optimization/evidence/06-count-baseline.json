@@ -1,0 +1,2515 @@
+{
+  "created": {
+    "CandidateDecision": 1130498,
+    "CompilationExplanation": 56565,
+    "TemplateDecision": 1130440,
+    "_CompiledDependency": 61220,
+    "_ComponentDefinition": 92104,
+    "_ComponentDraft": 90250,
+    "_ComponentRecord": 194306,
+    "_ExplanationCloneContext": 488,
+    "_RegistrationStep": 56708,
+    "_RemappedDecoratorExplanation": 56522,
+    "clone_calls": 1352
+  },
+  "events": [
+    {
+      "compilers": [],
+      "created": {},
+      "event": "fixture_import:begin",
+      "gc_live_counts": {},
+      "known_drafts": 0,
+      "known_graphs": 0,
+      "known_records": 0,
+      "live_bytes": 40,
+      "seconds": 3.866699989885092e-05,
+      "segment_peak_bytes": 40
+    },
+    {
+      "compilers": [],
+      "created": {},
+      "event": "fixture_import:end",
+      "gc_live_counts": {},
+      "known_drafts": 0,
+      "known_graphs": 0,
+      "known_records": 0,
+      "live_bytes": 115659,
+      "seconds": 0.008375833043828607,
+      "segment_peak_bytes": 215533
+    },
+    {
+      "compilers": [],
+      "created": {},
+      "event": "_compilation_snapshot:begin",
+      "gc_live_counts": {},
+      "known_drafts": 0,
+      "known_graphs": 0,
+      "known_records": 0,
+      "live_bytes": 245614,
+      "seconds": 0.025338000035844743,
+      "segment_peak_bytes": 271547
+    },
+    {
+      "compilers": [],
+      "created": {},
+      "event": "_compilation_snapshot:end",
+      "gc_live_counts": {},
+      "known_drafts": 0,
+      "known_graphs": 0,
+      "known_records": 0,
+      "live_bytes": 268520,
+      "seconds": 0.030591958086006343,
+      "segment_peak_bytes": 270486
+    },
+    {
+      "compilers": [],
+      "created": {},
+      "event": "_compile_with_report:begin",
+      "gc_live_counts": {},
+      "known_drafts": 0,
+      "known_graphs": 0,
+      "known_records": 0,
+      "live_bytes": 269131,
+      "seconds": 0.035404167021624744,
+      "segment_peak_bytes": 269416
+    },
+    {
+      "compilers": [],
+      "created": {},
+      "event": "_expand_registration_templates:begin",
+      "gc_live_counts": {},
+      "known_drafts": 0,
+      "known_graphs": 0,
+      "known_records": 0,
+      "live_bytes": 270504,
+      "seconds": 0.04061995807569474,
+      "segment_peak_bytes": 272827
+    },
+    {
+      "compilers": [],
+      "created": {},
+      "event": "_prepare_boundary_visibility:begin",
+      "gc_live_counts": {},
+      "known_drafts": 0,
+      "known_graphs": 0,
+      "known_records": 0,
+      "live_bytes": 312683,
+      "seconds": 0.04708487505558878,
+      "segment_peak_bytes": 327800
+    },
+    {
+      "compilers": [],
+      "created": {},
+      "event": "_prepare_boundary_visibility:end",
+      "gc_live_counts": {},
+      "known_drafts": 0,
+      "known_graphs": 0,
+      "known_records": 0,
+      "live_bytes": 313508,
+      "seconds": 0.051903125015087426,
+      "segment_peak_bytes": 313635
+    },
+    {
+      "compilers": [],
+      "created": {
+        "_ComponentDefinition": 16,
+        "_ComponentDraft": 16,
+        "_ComponentRecord": 16
+      },
+      "event": "_expand_registration_templates:end",
+      "gc_live_counts": {
+        "_ComponentDefinition": 16,
+        "_ComponentGraph": 16,
+        "_ComponentRecord": 16
+      },
+      "known_drafts": 0,
+      "known_graphs": 16,
+      "known_records": 16,
+      "live_bytes": 556447,
+      "seconds": 0.07625383301638067,
+      "segment_peak_bytes": 639068
+    },
+    {
+      "compilers": [],
+      "created": {
+        "_ComponentDefinition": 16,
+        "_ComponentDraft": 16,
+        "_ComponentRecord": 16
+      },
+      "event": "_prepare_boundary_visibility:begin",
+      "gc_live_counts": {
+        "_ComponentDefinition": 16,
+        "_ComponentGraph": 16,
+        "_ComponentRecord": 16
+      },
+      "known_drafts": 0,
+      "known_graphs": 16,
+      "known_records": 16,
+      "live_bytes": 593234,
+      "seconds": 0.08381858305074275,
+      "segment_peak_bytes": 627479
+    },
+    {
+      "compilers": [],
+      "created": {
+        "_ComponentDefinition": 16,
+        "_ComponentDraft": 16,
+        "_ComponentRecord": 16
+      },
+      "event": "_prepare_boundary_visibility:end",
+      "gc_live_counts": {
+        "_ComponentDefinition": 16,
+        "_ComponentGraph": 16,
+        "_ComponentRecord": 16
+      },
+      "known_drafts": 0,
+      "known_graphs": 16,
+      "known_records": 16,
+      "live_bytes": 594003,
+      "seconds": 0.08890087506733835,
+      "segment_peak_bytes": 594890
+    },
+    {
+      "compilers": [],
+      "created": {
+        "_ComponentDefinition": 16,
+        "_ComponentDraft": 16,
+        "_ComponentRecord": 16
+      },
+      "event": "_expand_decorator_templates:begin",
+      "gc_live_counts": {
+        "_ComponentDefinition": 16,
+        "_ComponentGraph": 16,
+        "_ComponentRecord": 16
+      },
+      "known_drafts": 0,
+      "known_graphs": 16,
+      "known_records": 16,
+      "live_bytes": 602613,
+      "seconds": 0.09439275006297976,
+      "segment_peak_bytes": 604651
+    },
+    {
+      "compilers": [],
+      "created": {
+        "_CompiledDependency": 298,
+        "_ComponentDefinition": 172,
+        "_ComponentDraft": 1692,
+        "_ComponentRecord": 1692,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 194,
+        "clone_calls": 1352
+      },
+      "event": "_expand_decorator_templates:end",
+      "gc_live_counts": {
+        "_ComponentDefinition": 172,
+        "_ComponentGraph": 26,
+        "_ComponentRecord": 1692
+      },
+      "known_drafts": 0,
+      "known_graphs": 26,
+      "known_records": 1692,
+      "live_bytes": 1121226,
+      "seconds": 0.5981409170199186,
+      "segment_peak_bytes": 1178450
+    },
+    {
+      "compilers": [],
+      "created": {
+        "_CompiledDependency": 298,
+        "_ComponentDefinition": 172,
+        "_ComponentDraft": 1692,
+        "_ComponentRecord": 1692,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 194,
+        "clone_calls": 1352
+      },
+      "event": "_prepare_boundary_visibility:begin",
+      "gc_live_counts": {
+        "_ComponentDefinition": 172,
+        "_ComponentGraph": 26,
+        "_ComponentRecord": 1692
+      },
+      "known_drafts": 0,
+      "known_graphs": 26,
+      "known_records": 1692,
+      "live_bytes": 1175361,
+      "seconds": 0.6067388330120593,
+      "segment_peak_bytes": 1192642
+    },
+    {
+      "compilers": [],
+      "created": {
+        "_CompiledDependency": 298,
+        "_ComponentDefinition": 172,
+        "_ComponentDraft": 1692,
+        "_ComponentRecord": 1692,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 194,
+        "clone_calls": 1352
+      },
+      "event": "_prepare_boundary_visibility:end",
+      "gc_live_counts": {
+        "_ComponentDefinition": 172,
+        "_ComponentGraph": 26,
+        "_ComponentRecord": 1692
+      },
+      "known_drafts": 0,
+      "known_graphs": 26,
+      "known_records": 1692,
+      "live_bytes": 1176218,
+      "seconds": 0.6119319170247763,
+      "segment_peak_bytes": 1177961
+    },
+    {
+      "compilers": [
+        {
+          "drafts": 0,
+          "indexes": {
+            "_activation_templates": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_anchored_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_anchored_singletons": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiled_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiling_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_decorator_patterns": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_early_rejected_root_services": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_factory_pattern_bindings": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_factory_result_types": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_fallback_component_ids": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_frames": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_invariant_subplans": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_managed_adapter_memo": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_managed_adapter_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_managed_provider_roots": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_partial_back_references": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_partial_candidate_labels": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_partial_candidates": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_declaration_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_pattern_requests": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_pattern_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_patterns": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_provider_view_depths": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_service_target_cache": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_dependency_annotations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_factories": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_registration_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_service_groups": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_stack": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_subplan_registrations": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "decision_history": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "decorator_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "generic_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "issues": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "occurrence_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "origins": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "parameter_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "root_candidates": {
+              "entries": 0,
+              "shallow_bytes": 64
+            }
+          },
+          "phase": "primary compilation",
+          "records": 0,
+          "views": 0
+        }
+      ],
+      "created": {
+        "_CompiledDependency": 298,
+        "_ComponentDefinition": 172,
+        "_ComponentDraft": 1692,
+        "_ComponentRecord": 1692,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 194,
+        "clone_calls": 1352
+      },
+      "event": "compile:begin",
+      "gc_live_counts": {
+        "_ComponentDefinition": 172,
+        "_ComponentGraph": 27,
+        "_ComponentRecord": 1692
+      },
+      "known_drafts": 0,
+      "known_graphs": 27,
+      "known_records": 1692,
+      "live_bytes": 1179668,
+      "seconds": 0.6171575000043958,
+      "segment_peak_bytes": 1180150
+    },
+    {
+      "compilers": [
+        {
+          "drafts": 88558,
+          "indexes": {
+            "_activation_templates": {
+              "entries": 31025,
+              "shallow_bytes": 1310800
+            },
+            "_anchored_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_anchored_singletons": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiled_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiling_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_decorator_patterns": {
+              "entries": 43,
+              "shallow_bytes": 2264
+            },
+            "_early_rejected_root_services": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_factory_pattern_bindings": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_factory_result_types": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_fallback_component_ids": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_frames": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_invariant_subplans": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_managed_adapter_memo": {
+              "entries": 1539,
+              "shallow_bytes": 73808
+            },
+            "_managed_adapter_sources": {
+              "entries": 26,
+              "shallow_bytes": 1168
+            },
+            "_managed_provider_roots": {
+              "entries": 4,
+              "shallow_bytes": 224
+            },
+            "_partial_back_references": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_partial_candidate_labels": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_partial_candidates": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_declaration_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_pattern_requests": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_pattern_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_patterns": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_provider_view_depths": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_service_target_cache": {
+              "entries": 114,
+              "shallow_bytes": 4688
+            },
+            "_specialized_dependency_annotations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_factories": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_registration_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_service_groups": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_stack": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_subplan_registrations": {
+              "entries": 56522,
+              "shallow_bytes": 499960
+            },
+            "decision_history": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "decorator_explanations": {
+              "entries": 56522,
+              "shallow_bytes": 2621528
+            },
+            "generic_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "issues": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "occurrence_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "origins": {
+              "entries": 88558,
+              "shallow_bytes": 5242960
+            },
+            "parameter_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "root_candidates": {
+              "entries": 18,
+              "shallow_bytes": 632
+            }
+          },
+          "phase": "primary compilation",
+          "records": 0,
+          "views": 50
+        }
+      ],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 91988,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 185324,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "compile:end",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 172,
+        "_ComponentDraft": 88558,
+        "_ComponentGraph": 27,
+        "_ComponentRecord": 1692,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 88558,
+      "known_graphs": 27,
+      "known_records": 1692,
+      "live_bytes": 74923996,
+      "seconds": 88.05042945803143,
+      "segment_peak_bytes": 76482866
+    },
+    {
+      "compilers": [
+        {
+          "drafts": 88558,
+          "indexes": {
+            "_activation_templates": {
+              "entries": 31025,
+              "shallow_bytes": 1310800
+            },
+            "_anchored_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_anchored_singletons": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiled_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiling_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_decorator_patterns": {
+              "entries": 43,
+              "shallow_bytes": 2264
+            },
+            "_early_rejected_root_services": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_factory_pattern_bindings": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_factory_result_types": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_fallback_component_ids": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_frames": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_invariant_subplans": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_managed_adapter_memo": {
+              "entries": 1539,
+              "shallow_bytes": 73808
+            },
+            "_managed_adapter_sources": {
+              "entries": 26,
+              "shallow_bytes": 1168
+            },
+            "_managed_provider_roots": {
+              "entries": 4,
+              "shallow_bytes": 224
+            },
+            "_partial_back_references": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_partial_candidate_labels": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_partial_candidates": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_declaration_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_pattern_requests": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_pattern_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_patterns": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_provider_view_depths": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_service_target_cache": {
+              "entries": 114,
+              "shallow_bytes": 4688
+            },
+            "_specialized_dependency_annotations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_factories": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_registration_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_service_groups": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_stack": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_subplan_registrations": {
+              "entries": 56522,
+              "shallow_bytes": 499960
+            },
+            "decision_history": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "decorator_explanations": {
+              "entries": 56522,
+              "shallow_bytes": 2621528
+            },
+            "generic_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "issues": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "occurrence_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "origins": {
+              "entries": 88558,
+              "shallow_bytes": 5242960
+            },
+            "parameter_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "root_candidates": {
+              "entries": 18,
+              "shallow_bytes": 632
+            }
+          },
+          "phase": "primary compilation",
+          "records": 0,
+          "views": 50
+        }
+      ],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 91988,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 185324,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "_finalize_plan:begin",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 172,
+        "_ComponentDraft": 88558,
+        "_ComponentGraph": 27,
+        "_ComponentRecord": 1692,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 88558,
+      "known_graphs": 27,
+      "known_records": 1692,
+      "live_bytes": 74926876,
+      "seconds": 88.12048362498172,
+      "segment_peak_bytes": 74929223
+    },
+    {
+      "compilers": [
+        {
+          "drafts": 88558,
+          "indexes": {
+            "_activation_templates": {
+              "entries": 31025,
+              "shallow_bytes": 1310800
+            },
+            "_anchored_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_anchored_singletons": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiled_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiling_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_decorator_patterns": {
+              "entries": 43,
+              "shallow_bytes": 2264
+            },
+            "_early_rejected_root_services": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_factory_pattern_bindings": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_factory_result_types": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_fallback_component_ids": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_frames": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_invariant_subplans": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_managed_adapter_memo": {
+              "entries": 1539,
+              "shallow_bytes": 73808
+            },
+            "_managed_adapter_sources": {
+              "entries": 26,
+              "shallow_bytes": 1168
+            },
+            "_managed_provider_roots": {
+              "entries": 4,
+              "shallow_bytes": 224
+            },
+            "_partial_back_references": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_partial_candidate_labels": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_partial_candidates": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_declaration_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_pattern_requests": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_pattern_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_patterns": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_provider_view_depths": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_service_target_cache": {
+              "entries": 114,
+              "shallow_bytes": 4688
+            },
+            "_specialized_dependency_annotations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_factories": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_registration_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_service_groups": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_stack": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_subplan_registrations": {
+              "entries": 56522,
+              "shallow_bytes": 499960
+            },
+            "decision_history": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "decorator_explanations": {
+              "entries": 56522,
+              "shallow_bytes": 2621528
+            },
+            "generic_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "issues": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "occurrence_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "origins": {
+              "entries": 88558,
+              "shallow_bytes": 5242960
+            },
+            "parameter_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "root_candidates": {
+              "entries": 18,
+              "shallow_bytes": 632
+            }
+          },
+          "phase": "primary compilation",
+          "records": 0,
+          "views": 50
+        }
+      ],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 91988,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 185324,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "_finalize_plan:end",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 172,
+        "_ComponentDraft": 88558,
+        "_ComponentGraph": 27,
+        "_ComponentRecord": 1692,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 88558,
+      "known_graphs": 27,
+      "known_records": 1692,
+      "live_bytes": 74941028,
+      "seconds": 88.1878920000745,
+      "segment_peak_bytes": 74943537
+    },
+    {
+      "compilers": [
+        {
+          "drafts": 88558,
+          "indexes": {
+            "_activation_templates": {
+              "entries": 31025,
+              "shallow_bytes": 1310800
+            },
+            "_anchored_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_anchored_singletons": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiled_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiling_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_decorator_patterns": {
+              "entries": 43,
+              "shallow_bytes": 2264
+            },
+            "_early_rejected_root_services": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_factory_pattern_bindings": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_factory_result_types": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_fallback_component_ids": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_frames": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_invariant_subplans": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_managed_adapter_memo": {
+              "entries": 1539,
+              "shallow_bytes": 73808
+            },
+            "_managed_adapter_sources": {
+              "entries": 26,
+              "shallow_bytes": 1168
+            },
+            "_managed_provider_roots": {
+              "entries": 4,
+              "shallow_bytes": 224
+            },
+            "_partial_back_references": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_partial_candidate_labels": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_partial_candidates": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_declaration_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_pattern_requests": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_pattern_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_patterns": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_provider_view_depths": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_service_target_cache": {
+              "entries": 114,
+              "shallow_bytes": 4688
+            },
+            "_specialized_dependency_annotations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_factories": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_registration_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_service_groups": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_stack": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_subplan_registrations": {
+              "entries": 56522,
+              "shallow_bytes": 499960
+            },
+            "decision_history": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "decorator_explanations": {
+              "entries": 56522,
+              "shallow_bytes": 2621528
+            },
+            "generic_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "issues": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "occurrence_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "origins": {
+              "entries": 88558,
+              "shallow_bytes": 5242960
+            },
+            "parameter_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "root_candidates": {
+              "entries": 18,
+              "shallow_bytes": 632
+            }
+          },
+          "phase": "primary compilation",
+          "records": 0,
+          "views": 50
+        }
+      ],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 91988,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 185324,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "_compile_warmup_plans:begin",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 172,
+        "_ComponentDraft": 88558,
+        "_ComponentGraph": 27,
+        "_ComponentRecord": 1692,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 88558,
+      "known_graphs": 27,
+      "known_records": 1692,
+      "live_bytes": 74950728,
+      "seconds": 88.25437283306383,
+      "segment_peak_bytes": 74952628
+    },
+    {
+      "compilers": [
+        {
+          "drafts": 88558,
+          "indexes": {
+            "_activation_templates": {
+              "entries": 31025,
+              "shallow_bytes": 1310800
+            },
+            "_anchored_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_anchored_singletons": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiled_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiling_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_decorator_patterns": {
+              "entries": 43,
+              "shallow_bytes": 2264
+            },
+            "_early_rejected_root_services": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_factory_pattern_bindings": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_factory_result_types": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_fallback_component_ids": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_frames": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_invariant_subplans": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_managed_adapter_memo": {
+              "entries": 1539,
+              "shallow_bytes": 73808
+            },
+            "_managed_adapter_sources": {
+              "entries": 26,
+              "shallow_bytes": 1168
+            },
+            "_managed_provider_roots": {
+              "entries": 4,
+              "shallow_bytes": 224
+            },
+            "_partial_back_references": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_partial_candidate_labels": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_partial_candidates": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_declaration_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_pattern_requests": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_pattern_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_patterns": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_provider_view_depths": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_service_target_cache": {
+              "entries": 114,
+              "shallow_bytes": 4688
+            },
+            "_specialized_dependency_annotations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_factories": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_registration_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_service_groups": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_stack": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_subplan_registrations": {
+              "entries": 56522,
+              "shallow_bytes": 499960
+            },
+            "decision_history": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "decorator_explanations": {
+              "entries": 56522,
+              "shallow_bytes": 2621528
+            },
+            "generic_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "issues": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "occurrence_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "origins": {
+              "entries": 88558,
+              "shallow_bytes": 5242960
+            },
+            "parameter_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "root_candidates": {
+              "entries": 18,
+              "shallow_bytes": 632
+            }
+          },
+          "phase": "primary compilation",
+          "records": 0,
+          "views": 50
+        }
+      ],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 91988,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 185324,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "_compile_warmup_plans:end",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 172,
+        "_ComponentDraft": 88558,
+        "_ComponentGraph": 27,
+        "_ComponentRecord": 1692,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 88558,
+      "known_graphs": 27,
+      "known_records": 1692,
+      "live_bytes": 74960674,
+      "seconds": 88.32043316704221,
+      "segment_peak_bytes": 74962576
+    },
+    {
+      "compilers": [
+        {
+          "drafts": 88558,
+          "indexes": {
+            "_activation_templates": {
+              "entries": 31025,
+              "shallow_bytes": 1310800
+            },
+            "_anchored_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_anchored_singletons": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiled_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiling_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_decorator_patterns": {
+              "entries": 43,
+              "shallow_bytes": 2264
+            },
+            "_early_rejected_root_services": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_factory_pattern_bindings": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_factory_result_types": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_fallback_component_ids": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_frames": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_invariant_subplans": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_managed_adapter_memo": {
+              "entries": 1539,
+              "shallow_bytes": 73808
+            },
+            "_managed_adapter_sources": {
+              "entries": 26,
+              "shallow_bytes": 1168
+            },
+            "_managed_provider_roots": {
+              "entries": 4,
+              "shallow_bytes": 224
+            },
+            "_partial_back_references": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_partial_candidate_labels": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_partial_candidates": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_declaration_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_pattern_requests": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_pattern_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_patterns": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_provider_view_depths": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_service_target_cache": {
+              "entries": 114,
+              "shallow_bytes": 4688
+            },
+            "_specialized_dependency_annotations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_factories": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_registration_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_service_groups": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_stack": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_subplan_registrations": {
+              "entries": 56522,
+              "shallow_bytes": 499960
+            },
+            "decision_history": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "decorator_explanations": {
+              "entries": 56522,
+              "shallow_bytes": 2621528
+            },
+            "generic_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "issues": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "occurrence_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "origins": {
+              "entries": 88558,
+              "shallow_bytes": 5242960
+            },
+            "parameter_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "root_candidates": {
+              "entries": 18,
+              "shallow_bytes": 632
+            }
+          },
+          "phase": "primary compilation",
+          "records": 0,
+          "views": 50
+        }
+      ],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 91988,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 185324,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "_prune_orphan_registrations:begin",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 172,
+        "_ComponentDraft": 88558,
+        "_ComponentGraph": 27,
+        "_ComponentRecord": 1692,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 88558,
+      "known_graphs": 27,
+      "known_records": 1692,
+      "live_bytes": 74970748,
+      "seconds": 88.38633500004653,
+      "segment_peak_bytes": 74972642
+    },
+    {
+      "compilers": [
+        {
+          "drafts": 88558,
+          "indexes": {
+            "_activation_templates": {
+              "entries": 31025,
+              "shallow_bytes": 1310800
+            },
+            "_anchored_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_anchored_singletons": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiled_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_compiling_pre_configurations": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_decorator_patterns": {
+              "entries": 43,
+              "shallow_bytes": 2264
+            },
+            "_early_rejected_root_services": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_factory_pattern_bindings": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_factory_result_types": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_fallback_component_ids": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_frames": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_invariant_subplans": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_managed_adapter_memo": {
+              "entries": 1539,
+              "shallow_bytes": 73808
+            },
+            "_managed_adapter_sources": {
+              "entries": 26,
+              "shallow_bytes": 1168
+            },
+            "_managed_provider_roots": {
+              "entries": 4,
+              "shallow_bytes": 224
+            },
+            "_partial_back_references": {
+              "entries": 0,
+              "shallow_bytes": 216
+            },
+            "_partial_candidate_labels": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_partial_candidates": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_declaration_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_partial_edges": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_pattern_requests": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_pattern_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_patterns": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_provider_view_depths": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_service_target_cache": {
+              "entries": 114,
+              "shallow_bytes": 4688
+            },
+            "_specialized_dependency_annotations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_factories": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_registration_sources": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_specialized_service_groups": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "_stack": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "_subplan_registrations": {
+              "entries": 56522,
+              "shallow_bytes": 499960
+            },
+            "decision_history": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "decorator_explanations": {
+              "entries": 56522,
+              "shallow_bytes": 2621528
+            },
+            "generic_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "issues": {
+              "entries": 0,
+              "shallow_bytes": 56
+            },
+            "occurrence_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "origins": {
+              "entries": 88558,
+              "shallow_bytes": 5242960
+            },
+            "parameter_explanations": {
+              "entries": 0,
+              "shallow_bytes": 64
+            },
+            "root_candidates": {
+              "entries": 18,
+              "shallow_bytes": 632
+            }
+          },
+          "phase": "primary compilation",
+          "records": 0,
+          "views": 50
+        }
+      ],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 91988,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 185324,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "_prune_orphan_registrations:end",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 172,
+        "_ComponentDraft": 88558,
+        "_ComponentGraph": 27,
+        "_ComponentRecord": 1692,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 88558,
+      "known_graphs": 27,
+      "known_records": 1692,
+      "live_bytes": 74982060,
+      "seconds": 88.50912066700403,
+      "segment_peak_bytes": 75024908
+    },
+    {
+      "compilers": [],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 91988,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 185324,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "_compile_with_report:end",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 172,
+        "_ComponentDraft": 88558,
+        "_ComponentGraph": 27,
+        "_ComponentRecord": 1692,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 88558,
+      "known_graphs": 27,
+      "known_records": 1692,
+      "live_bytes": 48248302,
+      "seconds": 88.60033375001512,
+      "segment_peak_bytes": 74994540
+    },
+    {
+      "compilers": [],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 91988,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 185324,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "_retain_runtime_graph:begin",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 172,
+        "_ComponentDraft": 88558,
+        "_ComponentGraph": 27,
+        "_ComponentRecord": 1692,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 88558,
+      "known_graphs": 1,
+      "known_records": 0,
+      "live_bytes": 48249922,
+      "seconds": 88.64674137497786,
+      "segment_peak_bytes": 48252262
+    },
+    {
+      "compilers": [],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 91988,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 185324,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "freeze:begin",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 172,
+        "_ComponentDraft": 88558,
+        "_ComponentGraph": 27,
+        "_ComponentRecord": 1692,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 0,
+      "known_graphs": 0,
+      "known_records": 0,
+      "live_bytes": 52297302,
+      "seconds": 89.00661500007845,
+      "segment_peak_bytes": 52533785
+    },
+    {
+      "compilers": [],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 92104,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 194306,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "freeze:end",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 288,
+        "_ComponentDraft": 88558,
+        "_ComponentGraph": 27,
+        "_ComponentRecord": 10674,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 0,
+      "known_graphs": 0,
+      "known_records": 0,
+      "live_bytes": 53906241,
+      "seconds": 89.25188600004185,
+      "segment_peak_bytes": 54316550
+    },
+    {
+      "compilers": [],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 92104,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 194306,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "_retain_runtime_graph:end",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 288,
+        "_ComponentGraph": 27,
+        "_ComponentRecord": 10674,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 0,
+      "known_graphs": 1,
+      "known_records": 8982,
+      "live_bytes": 18791304,
+      "seconds": 89.31881158298347,
+      "segment_peak_bytes": 53907209
+    },
+    {
+      "compilers": [],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 92104,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 194306,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "_reduce_explanation_metadata:begin",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 116,
+        "_ComponentGraph": 1,
+        "_ComponentRecord": 8982,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 0,
+      "known_graphs": 1,
+      "known_records": 8982,
+      "live_bytes": 18258215,
+      "seconds": 89.34688995801844,
+      "segment_peak_bytes": 18792464
+    },
+    {
+      "compilers": [],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 92104,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 194306,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "_retain_runtime_graph:begin",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 116,
+        "_ComponentGraph": 1,
+        "_ComponentRecord": 8982,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 0,
+      "known_graphs": 1,
+      "known_records": 8982,
+      "live_bytes": 18259251,
+      "seconds": 89.37220316706225,
+      "segment_peak_bytes": 18259375
+    },
+    {
+      "compilers": [],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 92104,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 194306,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "_retain_runtime_graph:end",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 116,
+        "_ComponentGraph": 1,
+        "_ComponentRecord": 8982,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 0,
+      "known_graphs": 1,
+      "known_records": 8982,
+      "live_bytes": 18261617,
+      "seconds": 89.71436241699848,
+      "segment_peak_bytes": 22531375
+    },
+    {
+      "compilers": [],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 92104,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 194306,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "_reduce_explanation_metadata:end",
+      "gc_live_counts": {
+        "CandidateDecision": 488,
+        "CompilationExplanation": 43,
+        "TemplateDecision": 430,
+        "_ComponentDefinition": 116,
+        "_ComponentGraph": 1,
+        "_ComponentRecord": 8982,
+        "_RemappedDecoratorExplanation": 56522
+      },
+      "known_drafts": 0,
+      "known_graphs": 1,
+      "known_records": 8982,
+      "live_bytes": 18129828,
+      "seconds": 89.77711683302186,
+      "segment_peak_bytes": 19004452
+    },
+    {
+      "compilers": [],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 92104,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 194306,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "build:return_before_gc",
+      "gc_live_counts": {
+        "_ComponentDefinition": 116,
+        "_ComponentGraph": 1,
+        "_ComponentRecord": 8982
+      },
+      "known_drafts": 0,
+      "known_graphs": 0,
+      "known_records": 0,
+      "live_bytes": 4394308,
+      "seconds": 89.81553970801178,
+      "segment_peak_bytes": 18132300
+    },
+    {
+      "compilers": [],
+      "created": {
+        "CandidateDecision": 1130498,
+        "CompilationExplanation": 56565,
+        "TemplateDecision": 1130440,
+        "_CompiledDependency": 61220,
+        "_ComponentDefinition": 92104,
+        "_ComponentDraft": 90250,
+        "_ComponentRecord": 194306,
+        "_ExplanationCloneContext": 488,
+        "_RegistrationStep": 56708,
+        "_RemappedDecoratorExplanation": 56522,
+        "clone_calls": 1352
+      },
+      "event": "build:after_gc",
+      "gc_live_counts": {
+        "_ComponentDefinition": 116,
+        "_ComponentGraph": 1,
+        "_ComponentRecord": 8982
+      },
+      "known_drafts": 0,
+      "known_graphs": 0,
+      "known_records": 0,
+      "live_bytes": 3349489,
+      "seconds": 89.8299716670299,
+      "segment_peak_bytes": 4395258
+    }
+  ],
+  "graph": {
+    "activation_kinds": {
+      "collection": 16,
+      "constructor": 8130,
+      "deferred": 218,
+      "supplied": 618
+    },
+    "component_metadata": {
+      "definition_identity_patterns": 116,
+      "identity_patterns": 903,
+      "patterns_by_kind": {
+        "decorator": 10,
+        "managed_provider": 50,
+        "provider": 168,
+        "provider_map": 16,
+        "registration": 41,
+        "value": 618
+      },
+      "retained_definition_index_bytes": 0,
+      "shared_definition_bytes": 13920,
+      "shared_definition_objects": 116,
+      "unique_field_objects": {
+        "activation": 4,
+        "boundary": 1,
+        "build_args": 1,
+        "declared_service_type": 15,
+        "id": 889,
+        "implementation": 20,
+        "implementation_type": 20,
+        "kind": 6,
+        "lifespan": 3,
+        "name": 11,
+        "service_type": 45,
+        "tags": 1
+      }
+    },
+    "decorator_objects": {
+      "logical_outcomes_by_entry": {},
+      "logical_reason_codes_by_entry": {},
+      "outcomes": {},
+      "reason_codes": {},
+      "shallow_storage_bytes": {
+        "decision_tuples": 0,
+        "decisions": 0,
+        "explanations": 0,
+        "template_facts": 0
+      },
+      "unique_objects": {
+        "decision_tuples": 0,
+        "decisions": 0,
+        "explanations": 0,
+        "template_facts": 0
+      },
+      "unique_patterns": 0
+    },
+    "executable_helpers": {
+      "_CompiledDecorator": 240,
+      "_CompiledDependency": 1740
+    },
+    "execution_step_kinds": {
+      "_ContextProviderStep": 152,
+      "_ManagedProviderStep": 50,
+      "_ProviderMapStep": 32,
+      "_ProviderStep": 168,
+      "_ScopedRegistrationStep": 193,
+      "_SingletonRegistrationStep": 226,
+      "_TransientRegistrationStep": 326,
+      "_ValueStep": 618
+    },
+    "logical_graph_visits": null,
+    "metadata_entries": {
+      "census_definitions": 0,
+      "census_sources": 0,
+      "decorator_explanations": 0,
+      "generic_explanations": 0,
+      "occurrence_explanations": 0,
+      "parameter_explanations": 0,
+      "root_candidates": 0
+    },
+    "physical_records": 8982,
+    "provider_view_contexts": 50,
+    "record_kinds": {
+      "decorator": 232,
+      "managed_provider": 50,
+      "provider": 168,
+      "provider_map": 16,
+      "registration": 7898,
+      "value": 618
+    },
+    "registration_carrier_kinds": {
+      "_RuntimeRegistration": 43
+    },
+    "retained_execution_composition": {
+      "decorator_definitions": 0,
+      "decorator_dependency_settings": 0,
+      "registration_dependency_settings": 0
+    },
+    "retained_plan_fields": {
+      "_blueprint": {
+        "entries": null,
+        "shallow_bytes": 16,
+        "type": "NoneType"
+      },
+      "architecture_roots": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "area_root_candidates": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "build_args": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "build_report": {
+        "entries": null,
+        "shallow_bytes": 72,
+        "type": "BuildReport"
+      },
+      "census_definitions": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "census_ids": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "census_sources": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "compiled_graph": {
+        "entries": null,
+        "shallow_bytes": 16,
+        "type": "NoneType"
+      },
+      "compiler_issues": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "decorator_explanations": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "default_root_groups": {
+        "entries": 14,
+        "shallow_bytes": 632,
+        "type": "dict"
+      },
+      "default_roots": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "dict"
+      },
+      "diagnostics": {
+        "entries": null,
+        "shallow_bytes": 28,
+        "type": "bool"
+      },
+      "ensured_import_modules": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "explain_metadata": {
+        "entries": null,
+        "shallow_bytes": 28,
+        "type": "bool"
+      },
+      "fallback_ids": {
+        "entries": 0,
+        "shallow_bytes": 216,
+        "type": "frozenset"
+      },
+      "generic_explanations": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "graph": {
+        "entries": null,
+        "shallow_bytes": 64,
+        "type": "_ComponentGraph"
+      },
+      "managed_provider_roots": {
+        "entries": 4,
+        "shallow_bytes": 224,
+        "type": "mappingproxy"
+      },
+      "occurrence_explanations": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "occurrence_layers": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "occurrence_origins": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "parameter_explanations": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "provider_roots": {
+        "entries": 4,
+        "shallow_bytes": 224,
+        "type": "mappingproxy"
+      },
+      "root_candidates": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "roots": {
+        "entries": 14,
+        "shallow_bytes": 632,
+        "type": "dict"
+      },
+      "selected_registrations": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "slots": {
+        "entries": 0,
+        "shallow_bytes": 216,
+        "type": "frozenset"
+      },
+      "unreachable_checked": {
+        "entries": null,
+        "shallow_bytes": 28,
+        "type": "bool"
+      },
+      "unreachable_issue_offset": {
+        "entries": null,
+        "shallow_bytes": 28,
+        "type": "int"
+      },
+      "validation_rules": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "warmup_fingerprint": {
+        "entries": null,
+        "shallow_bytes": 41,
+        "type": "str"
+      },
+      "warmup_infos": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "warmup_steps": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      }
+    },
+    "selected_registrations": 0,
+    "shallow_storage_bytes": {
+      "component_records": 1580832,
+      "execution_steps": 158104,
+      "link_tuples": 301520,
+      "occurrence_integers": 253744,
+      "origin_indexes": 128,
+      "record_index": 294992,
+      "registration_objects": 3096
+    },
+    "unique_execution_steps": 1765,
+    "unique_origins": 0,
+    "unique_registration_objects": 43
+  },
+  "options": {
+    "diagnostics": false,
+    "full": false,
+    "heap": false,
+    "mode": "count",
+    "overlays": false,
+    "probe": "baseline",
+    "repeats": 3,
+    "routes": 8
+  },
+  "probe": "baseline",
+  "probe_source_sha256": "539c1a96bc90218a7af6fa0667a0361bb3414e7da5f0f1d7f1a9dbc5d692199e",
+  "snapshot_peak": {
+    "after_bytes": 68736589,
+    "before_bytes": 68415365,
+    "peak_bytes": 68738693,
+    "snapshot_records": 959,
+    "source_drafts": 86746,
+    "source_records": 0
+  },
+  "source": {
+    "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n?? .work/graph-memory-optimization/06-avoid-metadata-creation.md\n?? .work/graph-memory-optimization/06-inventory.md\n?? .work/graph-memory-optimization/evidence/06-allocator.py\n?? .work/graph-memory-optimization/evidence/06-baseline.json\n?? .work/graph-memory-optimization/evidence/06-probe.py\n?? .work/graph-memory-optimization/evidence/06-small-no-decorator-evidence.json\n?? .work/graph-memory-optimization/evidence/06-small-release-source-graphs.json\n?? .work/graph-memory-optimization/evidence/06-small-snapshot-intern.json\n?? .work/graph-memory-optimization/evidence/06-small-snapshot-reuse.json\n?? .work/graph-memory-optimization/evidence/06-small-weak-activation-cache.json\n?? .work/graph-memory-optimization/evidence/06-timeline.json\n?? .work/pre-compilation/\n",
+    "revision": "d51b6f569e67891e72e022b35aa5590c1c0fda46",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81",
+      "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+      "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211"
+    }
+  },
+  "template_calls": {
+    "generated_worker_to_endpoint_decorator": 8,
+    "generated_worker_to_source": 8,
+    "policy_to_worker_decorator": 2,
+    "source_to_generated_dependency": 8
+  },
+  "transformed_function_sha256": {}
+}

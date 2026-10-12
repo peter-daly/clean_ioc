@@ -1,0 +1,440 @@
+{
+  "comparison": "same compiler/runtime wheel, optional diagnostics off versus on",
+  "samples_per_application_per_mode": 3,
+  "order": "off/on, on/off, off/on; fresh process for every sample",
+  "sanitization": "Only measurements, version/platform metadata and artifact hashes are retained. Local installation/configuration paths, process IDs, logs and settings are omitted.",
+  "wheels_sha256": {
+    "clean_ioc_runtime_measurements_and_unit_linux_checks": "265368cd1deb04fc28ae38b155eb67046270e3dafa4ed8af8309892edec39e57",
+    "clean_ioc_cli_amendment": "4e0d2fd53eafcfc9d03837b58b6f2d59e0d14c88e1405a0240b22dd7174d7749",
+    "bark_core": "047d046561f219b331cd812feb2c52fe9883de070226e1b4ed602222012bf758"
+  },
+  "compiler_source_hashes_unchanged_by_cli_amendment": true,
+  "runtime_samples": [
+    {
+      "app": "api",
+      "diagnostics": "off",
+      "instrumentation": "none",
+      "seconds": 0.7491802499862388,
+      "peak_rss_bytes": 245497856,
+      "python": "3.14.4",
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "clean_ioc": "2.0.0rc2",
+      "bark_core": "1.0.0b1",
+      "physical_records": 11910,
+      "provider_views": 3220,
+      "sidecar_counts": {
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0,
+        "generic_explanations": 0
+      },
+      "sample": 1
+    },
+    {
+      "app": "worker",
+      "diagnostics": "off",
+      "instrumentation": "none",
+      "seconds": 5.449238625005819,
+      "peak_rss_bytes": 430292992,
+      "python": "3.14.4",
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "clean_ioc": "2.0.0rc2",
+      "bark_core": "1.0.0b1",
+      "physical_records": 91570,
+      "provider_views": 4220,
+      "sidecar_counts": {
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0,
+        "generic_explanations": 0
+      },
+      "sample": 1
+    },
+    {
+      "app": "api",
+      "diagnostics": "on",
+      "instrumentation": "none",
+      "seconds": 0.8111062499228865,
+      "peak_rss_bytes": 215678976,
+      "python": "3.14.4",
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "clean_ioc": "2.0.0rc2",
+      "bark_core": "1.0.0b1",
+      "physical_records": 11910,
+      "provider_views": 3220,
+      "sidecar_counts": {
+        "occurrence_explanations": 7917,
+        "parameter_explanations": 2445,
+        "generic_explanations": 785
+      },
+      "sample": 1
+    },
+    {
+      "app": "worker",
+      "diagnostics": "on",
+      "instrumentation": "none",
+      "seconds": 6.200192625052296,
+      "peak_rss_bytes": 530907136,
+      "python": "3.14.4",
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "clean_ioc": "2.0.0rc2",
+      "bark_core": "1.0.0b1",
+      "physical_records": 91570,
+      "provider_views": 4220,
+      "sidecar_counts": {
+        "occurrence_explanations": 60066,
+        "parameter_explanations": 28218,
+        "generic_explanations": 4657
+      },
+      "sample": 1
+    },
+    {
+      "app": "api",
+      "diagnostics": "on",
+      "instrumentation": "none",
+      "seconds": 0.8119876249693334,
+      "peak_rss_bytes": 220151808,
+      "python": "3.14.4",
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "clean_ioc": "2.0.0rc2",
+      "bark_core": "1.0.0b1",
+      "physical_records": 11910,
+      "provider_views": 3220,
+      "sidecar_counts": {
+        "occurrence_explanations": 7917,
+        "parameter_explanations": 2445,
+        "generic_explanations": 785
+      },
+      "sample": 2
+    },
+    {
+      "app": "worker",
+      "diagnostics": "on",
+      "instrumentation": "none",
+      "seconds": 6.318478917004541,
+      "peak_rss_bytes": 492568576,
+      "python": "3.14.4",
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "clean_ioc": "2.0.0rc2",
+      "bark_core": "1.0.0b1",
+      "physical_records": 91570,
+      "provider_views": 4220,
+      "sidecar_counts": {
+        "occurrence_explanations": 60066,
+        "parameter_explanations": 28218,
+        "generic_explanations": 4657
+      },
+      "sample": 2
+    },
+    {
+      "app": "api",
+      "diagnostics": "off",
+      "instrumentation": "none",
+      "seconds": 0.7443736250279471,
+      "peak_rss_bytes": 209321984,
+      "python": "3.14.4",
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "clean_ioc": "2.0.0rc2",
+      "bark_core": "1.0.0b1",
+      "physical_records": 11910,
+      "provider_views": 3220,
+      "sidecar_counts": {
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0,
+        "generic_explanations": 0
+      },
+      "sample": 2
+    },
+    {
+      "app": "worker",
+      "diagnostics": "off",
+      "instrumentation": "none",
+      "seconds": 5.422854957985692,
+      "peak_rss_bytes": 429817856,
+      "python": "3.14.4",
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "clean_ioc": "2.0.0rc2",
+      "bark_core": "1.0.0b1",
+      "physical_records": 91570,
+      "provider_views": 4220,
+      "sidecar_counts": {
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0,
+        "generic_explanations": 0
+      },
+      "sample": 2
+    },
+    {
+      "app": "api",
+      "diagnostics": "off",
+      "instrumentation": "none",
+      "seconds": 0.7804477079771459,
+      "peak_rss_bytes": 209387520,
+      "python": "3.14.4",
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "clean_ioc": "2.0.0rc2",
+      "bark_core": "1.0.0b1",
+      "physical_records": 11910,
+      "provider_views": 3220,
+      "sidecar_counts": {
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0,
+        "generic_explanations": 0
+      },
+      "sample": 3
+    },
+    {
+      "app": "worker",
+      "diagnostics": "off",
+      "instrumentation": "none",
+      "seconds": 5.390516374958679,
+      "peak_rss_bytes": 450543616,
+      "python": "3.14.4",
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "clean_ioc": "2.0.0rc2",
+      "bark_core": "1.0.0b1",
+      "physical_records": 91570,
+      "provider_views": 4220,
+      "sidecar_counts": {
+        "occurrence_explanations": 0,
+        "parameter_explanations": 0,
+        "generic_explanations": 0
+      },
+      "sample": 3
+    },
+    {
+      "app": "api",
+      "diagnostics": "on",
+      "instrumentation": "none",
+      "seconds": 0.8083727500634268,
+      "peak_rss_bytes": 220495872,
+      "python": "3.14.4",
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "clean_ioc": "2.0.0rc2",
+      "bark_core": "1.0.0b1",
+      "physical_records": 11910,
+      "provider_views": 3220,
+      "sidecar_counts": {
+        "occurrence_explanations": 7917,
+        "parameter_explanations": 2445,
+        "generic_explanations": 785
+      },
+      "sample": 3
+    },
+    {
+      "app": "worker",
+      "diagnostics": "on",
+      "instrumentation": "none",
+      "seconds": 6.191020790953189,
+      "peak_rss_bytes": 515833856,
+      "python": "3.14.4",
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "clean_ioc": "2.0.0rc2",
+      "bark_core": "1.0.0b1",
+      "physical_records": 91570,
+      "provider_views": 4220,
+      "sidecar_counts": {
+        "occurrence_explanations": 60066,
+        "parameter_explanations": 28218,
+        "generic_explanations": 4657
+      },
+      "sample": 3
+    }
+  ],
+  "completed_checks": {
+    "clean_ioc_full_ci": {
+      "tests_passed": 1842,
+      "warnings": 1
+    },
+    "cli_amendment_focused_tests": {
+      "tests_passed": 247
+    },
+    "bark_unit": {
+      "passed": 5941,
+      "skipped": 26,
+      "seconds": 88.74
+    },
+    "cop_unit": {
+      "passed": 494,
+      "seconds": 39.54
+    },
+    "cop_integration": {
+      "passed": 64,
+      "seconds": 393.48,
+      "exit_code": 0,
+      "wheel": "clean_ioc_cli_amendment",
+      "catalogue_capacity_cases_passed_unchanged": [
+        "reviewed",
+        "plus50",
+        "plus75",
+        "plus500"
+      ],
+      "access_deletion_inventory_workflows_passed": true,
+      "hosts_ready": 5,
+      "existing_host_startup_timeout_seconds": 120
+    }
+  },
+  "linux_reference_startup": [
+    {
+      "app": "api",
+      "runner": "gunicorn",
+      "reference_base": "python:3.14.4-slim",
+      "architecture": "linux/arm64",
+      "configured_image": false,
+      "timeout_seconds": 120,
+      "memory_limit_bytes": 536870912,
+      "cpu_limit": 0.1,
+      "ready": true,
+      "readiness_seconds": 89.38836216693744,
+      "observed_seconds": 89.38847508397885,
+      "memory_peak_bytes": 357036032,
+      "memory_current_bytes": 354357248,
+      "memory_max_bytes": 536870912,
+      "memory_swap_max_bytes": 0,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "cpu_max": "10000 100000",
+      "cpu_stat": {
+        "usage_usec": 9015350,
+        "user_usec": 8139807,
+        "system_usec": 875542,
+        "nice_usec": 0,
+        "nr_periods": 901,
+        "nr_throttled": 901,
+        "throttled_usec": 84212952,
+        "nr_bursts": 0,
+        "burst_usec": 0
+      },
+      "oom_killed": false
+    },
+    {
+      "app": "worker",
+      "runner": "gunicorn",
+      "reference_base": "python:3.14.4-slim",
+      "architecture": "linux/arm64",
+      "configured_image": false,
+      "timeout_seconds": 120,
+      "memory_limit_bytes": 536870912,
+      "cpu_limit": 0.1,
+      "ready": false,
+      "readiness_seconds": null,
+      "observed_seconds": 121.52891758398619,
+      "memory_peak_bytes": 536870912,
+      "memory_current_bytes": 533164032,
+      "memory_max_bytes": 536870912,
+      "memory_swap_max_bytes": 0,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 112,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "cpu_max": "10000 100000",
+      "cpu_stat": {
+        "usage_usec": 12481243,
+        "user_usec": 11312112,
+        "system_usec": 1169131,
+        "nice_usec": 0,
+        "nr_periods": 1248,
+        "nr_throttled": 1247,
+        "throttled_usec": 119526139,
+        "nr_bursts": 0,
+        "burst_usec": 0
+      },
+      "oom_killed": false
+    }
+  ],
+  "configured_image_blocker": "Original configured Python lacks the _zstd extension module (from compression import zstd fails); reference-image results do not establish configured-image acceptance.",
+  "pending_checks": [],
+  "resource_limits_timeouts_assertions_releases_locks_changed": false,
+  "worker_heap_comparison": {
+    "wheel": "clean_ioc_cli_amendment",
+    "method": "Fresh process per mode. Tracemalloc starts after imports/configuration and includes builder composition plus compilation. Retained comparison uses after-GC bytes; immediate after-build values have different GC timing. Instrumented elapsed time/RSS are not normal performance samples.",
+    "samples": [
+      {
+        "app": "worker",
+        "diagnostics": "off",
+        "instrumentation": "tracemalloc",
+        "seconds": 38.7807563750539,
+        "peak_rss_bytes": 486604800,
+        "python": "3.14.4",
+        "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+        "clean_ioc": "2.0.0rc2",
+        "bark_core": "1.0.0b1",
+        "physical_records": 91570,
+        "provider_views": 4220,
+        "sidecar_counts": {
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "generic_explanations": 0
+        },
+        "traced_after_build_bytes": 185164137,
+        "traced_peak_bytes": 199334062,
+        "traced_after_gc_bytes": 68232121
+      },
+      {
+        "app": "worker",
+        "diagnostics": "on",
+        "instrumentation": "tracemalloc",
+        "seconds": 46.53739874996245,
+        "peak_rss_bytes": 576667648,
+        "python": "3.14.4",
+        "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+        "clean_ioc": "2.0.0rc2",
+        "bark_core": "1.0.0b1",
+        "physical_records": 91570,
+        "provider_views": 4220,
+        "sidecar_counts": {
+          "occurrence_explanations": 60066,
+          "parameter_explanations": 28218,
+          "generic_explanations": 4657
+        },
+        "traced_after_build_bytes": 124882747,
+        "traced_peak_bytes": 258330036,
+        "traced_after_gc_bytes": 123192875
+      }
+    ],
+    "retained_after_gc_saved_bytes": 54960754,
+    "retained_after_gc_reduction_percent": 44.61358175137969,
+    "traced_peak_saved_bytes": 58995974,
+    "traced_peak_reduction_percent": 22.83744271997856
+  },
+  "source_hashes_between_wheels": {
+    "final": {
+      "clean_ioc/container.py": "9d8a36ac081874df3a2d1f39066ee7dc24ea32b4d1f4f99ff22bb4d1532ed306",
+      "clean_ioc/tooling.py": "ffcb155b0e7787dc1015fec06f12d26fab5359e9aaf31a6b5959e265f0438446",
+      "clean_ioc/matrix.py": "09de8de8f6acfe7944e646357af9c04b3b7a944ed25b2305cb773fb6ef507881",
+      "clean_ioc/sarif.py": "2708d34ee9d3d9e8d6028524e8d336171fc6a6a204fc100c6151d0325dd90da3",
+      "clean_ioc/cli.py": "c74f8e7cf76098569c317fdf851f01698ac57e596a36fc0e90317dae8059c983"
+    },
+    "final-cli": {
+      "clean_ioc/container.py": "9d8a36ac081874df3a2d1f39066ee7dc24ea32b4d1f4f99ff22bb4d1532ed306",
+      "clean_ioc/tooling.py": "ffcb155b0e7787dc1015fec06f12d26fab5359e9aaf31a6b5959e265f0438446",
+      "clean_ioc/matrix.py": "09de8de8f6acfe7944e646357af9c04b3b7a944ed25b2305cb773fb6ef507881",
+      "clean_ioc/sarif.py": "2708d34ee9d3d9e8d6028524e8d336171fc6a6a204fc100c6151d0325dd90da3",
+      "clean_ioc/cli.py": "347736e0fae67b0385b43de761c456d1071d0af10fa19c7fa5ac6623d5040e8d"
+    }
+  },
+  "worker_runtime_medians": {
+    "by_mode": {
+      "off": {
+        "seconds": 5.422854957985692,
+        "peak_rss_bytes": 430292992
+      },
+      "on": {
+        "seconds": 6.200192625052296,
+        "peak_rss_bytes": 515833856
+      }
+    },
+    "elapsed_reduction_percent": 12.537314791248889,
+    "peak_rss_reduction_percent": 16.583026299072547
+  }
+}

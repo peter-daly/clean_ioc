@@ -1,0 +1,1322 @@
+[
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89610,
+    "policy": "before",
+    "mode": "run",
+    "kind": "normal",
+    "source": {
+      "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf"
+    },
+    "build_seconds": 0.0318705840036273,
+    "first_inspection_seconds": 0.0007080419454723597,
+    "second_inspection_seconds": 0.0005672499537467957,
+    "prepared": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44040192
+    },
+    "first_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44040192
+    },
+    "second_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44040192
+    },
+    "only_saved": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44040192
+    },
+    "released": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44040192
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "when": 64,
+        "position": 64,
+        "source": 1
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 0
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89613,
+    "policy": "after",
+    "mode": "run",
+    "kind": "normal",
+    "source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f"
+    },
+    "build_seconds": 0.03139187500346452,
+    "first_inspection_seconds": 0.00070583401247859,
+    "second_inspection_seconds": 0.0005723339272662997,
+    "prepared": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44498944
+    },
+    "first_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44498944
+    },
+    "second_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44498944
+    },
+    "only_saved": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44498944
+    },
+    "released": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44498944
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "when": 64,
+        "position": 64,
+        "source": 1
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 0
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89616,
+    "policy": "before",
+    "mode": "run",
+    "kind": "heap",
+    "source": {
+      "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf"
+    },
+    "build_seconds": 0.18146008299663663,
+    "first_inspection_seconds": 0.0022807500790804625,
+    "second_inspection_seconds": 0.001986999996006489,
+    "prepared": {
+      "retained": 362570,
+      "peak": 1700764,
+      "peak_rss": 45531136
+    },
+    "first_inspection": {
+      "retained": 423051,
+      "peak": 1700764,
+      "peak_rss": 45531136
+    },
+    "second_inspection": {
+      "retained": 483603,
+      "peak": 1700764,
+      "peak_rss": 45531136
+    },
+    "only_saved": {
+      "retained": 253398,
+      "peak": 1700764,
+      "peak_rss": 45531136
+    },
+    "released": {
+      "retained": 57705,
+      "peak": 1700764,
+      "peak_rss": 45531136
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "source": 1,
+        "when": 64,
+        "position": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 0
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89619,
+    "policy": "after",
+    "mode": "run",
+    "kind": "heap",
+    "source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f"
+    },
+    "build_seconds": 0.18723083299119025,
+    "first_inspection_seconds": 0.0023733749985694885,
+    "second_inspection_seconds": 0.002077167038805783,
+    "prepared": {
+      "retained": 364507,
+      "peak": 1702528,
+      "peak_rss": 45826048
+    },
+    "first_inspection": {
+      "retained": 424988,
+      "peak": 1702528,
+      "peak_rss": 45826048
+    },
+    "second_inspection": {
+      "retained": 485540,
+      "peak": 1702528,
+      "peak_rss": 45826048
+    },
+    "only_saved": {
+      "retained": 255272,
+      "peak": 1702528,
+      "peak_rss": 45826048
+    },
+    "released": {
+      "retained": 59579,
+      "peak": 1702528,
+      "peak_rss": 45826048
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "when": 64,
+        "source": 1,
+        "position": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 0
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89627,
+    "policy": "after",
+    "mode": "run",
+    "kind": "normal",
+    "source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f"
+    },
+    "build_seconds": 0.03428770799655467,
+    "first_inspection_seconds": 0.0006977089215070009,
+    "second_inspection_seconds": 0.0005599999567493796,
+    "prepared": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44351488
+    },
+    "first_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44351488
+    },
+    "second_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44351488
+    },
+    "only_saved": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44351488
+    },
+    "released": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44351488
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "source": 1,
+        "position": 64,
+        "when": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 1
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89658,
+    "policy": "before",
+    "mode": "run",
+    "kind": "normal",
+    "source": {
+      "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf"
+    },
+    "build_seconds": 0.033595292014069855,
+    "first_inspection_seconds": 0.0007437090389430523,
+    "second_inspection_seconds": 0.0005870000459253788,
+    "prepared": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44171264
+    },
+    "first_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44171264
+    },
+    "second_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44171264
+    },
+    "only_saved": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44187648
+    },
+    "released": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44187648
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "position": 64,
+        "source": 1,
+        "when": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 1
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89661,
+    "policy": "after",
+    "mode": "run",
+    "kind": "heap",
+    "source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f"
+    },
+    "build_seconds": 0.18932291597593576,
+    "first_inspection_seconds": 0.0023874579928815365,
+    "second_inspection_seconds": 0.0020872909808531404,
+    "prepared": {
+      "retained": 362302,
+      "peak": 1700260,
+      "peak_rss": 45465600
+    },
+    "first_inspection": {
+      "retained": 422783,
+      "peak": 1700260,
+      "peak_rss": 45465600
+    },
+    "second_inspection": {
+      "retained": 483335,
+      "peak": 1700260,
+      "peak_rss": 45465600
+    },
+    "only_saved": {
+      "retained": 253130,
+      "peak": 1700260,
+      "peak_rss": 45465600
+    },
+    "released": {
+      "retained": 57437,
+      "peak": 1700260,
+      "peak_rss": 45465600
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "source": 1,
+        "when": 64,
+        "position": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 1
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89664,
+    "policy": "before",
+    "mode": "run",
+    "kind": "heap",
+    "source": {
+      "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf"
+    },
+    "build_seconds": 0.20000570907723159,
+    "first_inspection_seconds": 0.0023804580559954047,
+    "second_inspection_seconds": 0.0020756670273840427,
+    "prepared": {
+      "retained": 362515,
+      "peak": 1700890,
+      "peak_rss": 46432256
+    },
+    "first_inspection": {
+      "retained": 422996,
+      "peak": 1700890,
+      "peak_rss": 46432256
+    },
+    "second_inspection": {
+      "retained": 483548,
+      "peak": 1700890,
+      "peak_rss": 46432256
+    },
+    "only_saved": {
+      "retained": 253288,
+      "peak": 1700890,
+      "peak_rss": 46432256
+    },
+    "released": {
+      "retained": 57595,
+      "peak": 1700890,
+      "peak_rss": 46432256
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "when": 64,
+        "position": 64,
+        "source": 1
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 1
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89672,
+    "policy": "before",
+    "mode": "run",
+    "kind": "normal",
+    "source": {
+      "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf"
+    },
+    "build_seconds": 0.03183387499302626,
+    "first_inspection_seconds": 0.0007262500002980232,
+    "second_inspection_seconds": 0.0005592911038547754,
+    "prepared": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44023808
+    },
+    "first_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44023808
+    },
+    "second_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44023808
+    },
+    "only_saved": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44023808
+    },
+    "released": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44023808
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "when": 64,
+        "position": 64,
+        "source": 1
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 2
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89675,
+    "policy": "after",
+    "mode": "run",
+    "kind": "normal",
+    "source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f"
+    },
+    "build_seconds": 0.031067083938978612,
+    "first_inspection_seconds": 0.0006969170644879341,
+    "second_inspection_seconds": 0.0005714580183848739,
+    "prepared": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44171264
+    },
+    "first_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44171264
+    },
+    "second_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44171264
+    },
+    "only_saved": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44171264
+    },
+    "released": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44171264
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "position": 64,
+        "when": 64,
+        "source": 1
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 2
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89678,
+    "policy": "before",
+    "mode": "run",
+    "kind": "heap",
+    "source": {
+      "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf"
+    },
+    "build_seconds": 0.18699262500740588,
+    "first_inspection_seconds": 0.002279208041727543,
+    "second_inspection_seconds": 0.0019937080796808004,
+    "prepared": {
+      "retained": 363019,
+      "peak": 1701150,
+      "peak_rss": 45793280
+    },
+    "first_inspection": {
+      "retained": 423437,
+      "peak": 1701150,
+      "peak_rss": 45793280
+    },
+    "second_inspection": {
+      "retained": 483989,
+      "peak": 1701150,
+      "peak_rss": 45793280
+    },
+    "only_saved": {
+      "retained": 253721,
+      "peak": 1701150,
+      "peak_rss": 45793280
+    },
+    "released": {
+      "retained": 58028,
+      "peak": 1701150,
+      "peak_rss": 45793280
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "when": 64,
+        "source": 1,
+        "position": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 2
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89709,
+    "policy": "after",
+    "mode": "run",
+    "kind": "heap",
+    "source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f"
+    },
+    "build_seconds": 0.18594658293295652,
+    "first_inspection_seconds": 0.0024588340893387794,
+    "second_inspection_seconds": 0.0021153329871594906,
+    "prepared": {
+      "retained": 362688,
+      "peak": 1701016,
+      "peak_rss": 46006272
+    },
+    "first_inspection": {
+      "retained": 423169,
+      "peak": 1701016,
+      "peak_rss": 46006272
+    },
+    "second_inspection": {
+      "retained": 483721,
+      "peak": 1701016,
+      "peak_rss": 46006272
+    },
+    "only_saved": {
+      "retained": 253516,
+      "peak": 1701016,
+      "peak_rss": 46006272
+    },
+    "released": {
+      "retained": 57823,
+      "peak": 1701016,
+      "peak_rss": 46006272
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "position": 64,
+        "source": 1,
+        "when": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 2
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89717,
+    "policy": "before",
+    "mode": "analysis",
+    "kind": "normal",
+    "source": {
+      "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf"
+    },
+    "build_seconds": 0.0330194589914754,
+    "first_inspection_seconds": 0.0007349580992013216,
+    "second_inspection_seconds": 0.0005820828955620527,
+    "prepared": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44646400
+    },
+    "first_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44646400
+    },
+    "second_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44646400
+    },
+    "only_saved": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44646400
+    },
+    "released": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44646400
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "when": 64,
+        "source": 1,
+        "position": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 0
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89720,
+    "policy": "after",
+    "mode": "analysis",
+    "kind": "normal",
+    "source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f"
+    },
+    "build_seconds": 0.03219187504146248,
+    "first_inspection_seconds": 0.0007087499834597111,
+    "second_inspection_seconds": 0.0005696670850738883,
+    "prepared": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44285952
+    },
+    "first_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44285952
+    },
+    "second_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44285952
+    },
+    "only_saved": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44285952
+    },
+    "released": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44285952
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "source": 1,
+        "when": 64,
+        "position": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 0
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89723,
+    "policy": "before",
+    "mode": "analysis",
+    "kind": "heap",
+    "source": {
+      "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf"
+    },
+    "build_seconds": 0.19901212502736598,
+    "first_inspection_seconds": 0.0023537499364465475,
+    "second_inspection_seconds": 0.002032583928667009,
+    "prepared": {
+      "retained": 789301,
+      "peak": 1814075,
+      "peak_rss": 45416448
+    },
+    "first_inspection": {
+      "retained": 849719,
+      "peak": 1814075,
+      "peak_rss": 45416448
+    },
+    "second_inspection": {
+      "retained": 910271,
+      "peak": 1814075,
+      "peak_rss": 45416448
+    },
+    "only_saved": {
+      "retained": 239890,
+      "peak": 1814075,
+      "peak_rss": 45416448
+    },
+    "released": {
+      "retained": 44197,
+      "peak": 1814075,
+      "peak_rss": 45416448
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "when": 64,
+        "position": 64,
+        "source": 1
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 0
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89726,
+    "policy": "after",
+    "mode": "analysis",
+    "kind": "heap",
+    "source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f"
+    },
+    "build_seconds": 0.19299470901023597,
+    "first_inspection_seconds": 0.0024020839482545853,
+    "second_inspection_seconds": 0.002077832934446633,
+    "prepared": {
+      "retained": 788529,
+      "peak": 1813059,
+      "peak_rss": 45727744
+    },
+    "first_inspection": {
+      "retained": 849010,
+      "peak": 1813059,
+      "peak_rss": 45727744
+    },
+    "second_inspection": {
+      "retained": 909562,
+      "peak": 1813059,
+      "peak_rss": 45727744
+    },
+    "only_saved": {
+      "retained": 239181,
+      "peak": 1813059,
+      "peak_rss": 45760512
+    },
+    "released": {
+      "retained": 43488,
+      "peak": 1813059,
+      "peak_rss": 45760512
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "when": 64,
+        "position": 64,
+        "source": 1
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 0
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89734,
+    "policy": "after",
+    "mode": "analysis",
+    "kind": "normal",
+    "source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f"
+    },
+    "build_seconds": 0.03239620802924037,
+    "first_inspection_seconds": 0.0007087080739438534,
+    "second_inspection_seconds": 0.0005727499956265092,
+    "prepared": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44744704
+    },
+    "first_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44744704
+    },
+    "second_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44744704
+    },
+    "only_saved": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44744704
+    },
+    "released": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44744704
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "when": 64,
+        "source": 1,
+        "position": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 1
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89764,
+    "policy": "before",
+    "mode": "analysis",
+    "kind": "normal",
+    "source": {
+      "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf"
+    },
+    "build_seconds": 0.03266358305700123,
+    "first_inspection_seconds": 0.000730833038687706,
+    "second_inspection_seconds": 0.0005861669778823853,
+    "prepared": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44171264
+    },
+    "first_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44187648
+    },
+    "second_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44204032
+    },
+    "only_saved": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44220416
+    },
+    "released": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44220416
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "when": 64,
+        "source": 1,
+        "position": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 1
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89767,
+    "policy": "after",
+    "mode": "analysis",
+    "kind": "heap",
+    "source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f"
+    },
+    "build_seconds": 0.19135099998675287,
+    "first_inspection_seconds": 0.0026125420117750764,
+    "second_inspection_seconds": 0.002243415918201208,
+    "prepared": {
+      "retained": 788088,
+      "peak": 1812870,
+      "peak_rss": 45547520
+    },
+    "first_inspection": {
+      "retained": 848569,
+      "peak": 1812870,
+      "peak_rss": 45547520
+    },
+    "second_inspection": {
+      "retained": 909058,
+      "peak": 1812870,
+      "peak_rss": 45547520
+    },
+    "only_saved": {
+      "retained": 238677,
+      "peak": 1812870,
+      "peak_rss": 45563904
+    },
+    "released": {
+      "retained": 42984,
+      "peak": 1812870,
+      "peak_rss": 45563904
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "when": 64,
+        "source": 1,
+        "position": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 1
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89770,
+    "policy": "before",
+    "mode": "analysis",
+    "kind": "heap",
+    "source": {
+      "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf"
+    },
+    "build_seconds": 0.20347637496888638,
+    "first_inspection_seconds": 0.002346334047615528,
+    "second_inspection_seconds": 0.0020798329496756196,
+    "prepared": {
+      "retained": 788718,
+      "peak": 1813752,
+      "peak_rss": 45842432
+    },
+    "first_inspection": {
+      "retained": 849136,
+      "peak": 1813752,
+      "peak_rss": 45842432
+    },
+    "second_inspection": {
+      "retained": 909688,
+      "peak": 1813752,
+      "peak_rss": 45858816
+    },
+    "only_saved": {
+      "retained": 239181,
+      "peak": 1813752,
+      "peak_rss": 45875200
+    },
+    "released": {
+      "retained": 43488,
+      "peak": 1813752,
+      "peak_rss": 45875200
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "source": 1,
+        "position": 64,
+        "when": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 1
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89780,
+    "policy": "before",
+    "mode": "analysis",
+    "kind": "normal",
+    "source": {
+      "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf"
+    },
+    "build_seconds": 0.03261570795439184,
+    "first_inspection_seconds": 0.0007105419645085931,
+    "second_inspection_seconds": 0.0005654169945046306,
+    "prepared": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44204032
+    },
+    "first_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44204032
+    },
+    "second_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44204032
+    },
+    "only_saved": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44204032
+    },
+    "released": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44204032
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "source": 1,
+        "when": 64,
+        "position": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 2
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89783,
+    "policy": "after",
+    "mode": "analysis",
+    "kind": "normal",
+    "source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f"
+    },
+    "build_seconds": 0.032109999912790954,
+    "first_inspection_seconds": 0.0007041249191388488,
+    "second_inspection_seconds": 0.0005698750028386712,
+    "prepared": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44662784
+    },
+    "first_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44662784
+    },
+    "second_inspection": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44662784
+    },
+    "only_saved": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44662784
+    },
+    "released": {
+      "retained": 0,
+      "peak": 0,
+      "peak_rss": 44662784
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "source": 1,
+        "position": 64,
+        "when": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 2
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89786,
+    "policy": "before",
+    "mode": "analysis",
+    "kind": "heap",
+    "source": {
+      "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf"
+    },
+    "build_seconds": 0.1972276249434799,
+    "first_inspection_seconds": 0.0023179169511422515,
+    "second_inspection_seconds": 0.0020315840374678373,
+    "prepared": {
+      "retained": 788907,
+      "peak": 1813563,
+      "peak_rss": 45498368
+    },
+    "first_inspection": {
+      "retained": 849325,
+      "peak": 1813563,
+      "peak_rss": 45498368
+    },
+    "second_inspection": {
+      "retained": 909877,
+      "peak": 1813563,
+      "peak_rss": 45498368
+    },
+    "only_saved": {
+      "retained": 239433,
+      "peak": 1813563,
+      "peak_rss": 45514752
+    },
+    "released": {
+      "retained": 43740,
+      "peak": 1813563,
+      "peak_rss": 45514752
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "source": 1,
+        "when": 64,
+        "position": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 2
+  },
+  {
+    "python": "3.14.4",
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "pid": 89817,
+    "policy": "after",
+    "mode": "analysis",
+    "kind": "heap",
+    "source": {
+      "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f"
+    },
+    "build_seconds": 0.19909495790489018,
+    "first_inspection_seconds": 0.0023777090245857835,
+    "second_inspection_seconds": 0.002088041976094246,
+    "prepared": {
+      "retained": 788852,
+      "peak": 1813508,
+      "peak_rss": 46563328
+    },
+    "first_inspection": {
+      "retained": 849270,
+      "peak": 1813508,
+      "peak_rss": 46563328
+    },
+    "second_inspection": {
+      "retained": 909822,
+      "peak": 1813508,
+      "peak_rss": 46563328
+    },
+    "only_saved": {
+      "retained": 239315,
+      "peak": 1813508,
+      "peak_rss": 46579712
+    },
+    "released": {
+      "retained": 43622,
+      "peak": 1813508,
+      "peak_rss": 46579712
+    },
+    "counts": {
+      "saved_views": 193,
+      "graphs": 129,
+      "records": 194,
+      "definitions": 131,
+      "calls": {
+        "source": 1,
+        "position": 64,
+        "when": 64
+      }
+    },
+    "remaining": {
+      "graphs": 0,
+      "records": 0
+    },
+    "repeat": 2
+  }
+]

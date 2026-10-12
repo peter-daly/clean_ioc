@@ -1,0 +1,101 @@
+{
+  "differential_checks": 10093,
+  "capacity": [
+    {
+      "case": "dense",
+      "entries": 10000,
+      "dense_length": 10000,
+      "sparse_entries": 0,
+      "promoted": false,
+      "eligible": false,
+      "shallow_bytes": 170488,
+      "after_deletion": {
+        "entries": 1,
+        "dense_length": 0,
+        "sparse_entries": 0,
+        "promoted": true,
+        "eligible": false,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "case": "gapped",
+      "entries": 10000,
+      "dense_length": 0,
+      "sparse_entries": 0,
+      "promoted": true,
+      "eligible": false,
+      "shallow_bytes": 295064,
+      "after_deletion": {
+        "entries": 1,
+        "dense_length": 0,
+        "sparse_entries": 0,
+        "promoted": true,
+        "eligible": false,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "case": "reverse",
+      "entries": 10000,
+      "dense_length": 0,
+      "sparse_entries": 0,
+      "promoted": true,
+      "eligible": false,
+      "shallow_bytes": 295064,
+      "after_deletion": {
+        "entries": 1,
+        "dense_length": 0,
+        "sparse_entries": 0,
+        "promoted": true,
+        "eligible": false,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "case": "negative",
+      "entries": 10000,
+      "dense_length": 0,
+      "sparse_entries": 0,
+      "promoted": true,
+      "eligible": false,
+      "shallow_bytes": 295064,
+      "after_deletion": {
+        "entries": 1,
+        "dense_length": 0,
+        "sparse_entries": 0,
+        "promoted": true,
+        "eligible": false,
+        "shallow_bytes": 295064
+      }
+    },
+    {
+      "case": "huge",
+      "entries": 10000,
+      "dense_length": 0,
+      "sparse_entries": 0,
+      "promoted": true,
+      "eligible": false,
+      "shallow_bytes": 295064,
+      "after_deletion": {
+        "entries": 1,
+        "dense_length": 0,
+        "sparse_entries": 0,
+        "promoted": true,
+        "eligible": false,
+        "shallow_bytes": 295064
+      }
+    }
+  ],
+  "conversion_seconds": 0.4173887079814449,
+  "conversion_retained_peak": [
+    1423936,
+    1424076
+  ],
+  "promotion_seconds": 0.04535337502602488,
+  "promotion_retained_peak": [
+    5243096,
+    9288736
+  ],
+  "codec_sharing": true
+}

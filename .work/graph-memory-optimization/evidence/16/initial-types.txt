@@ -1,0 +1,81 @@
+error[invalid-argument-type]: Argument to function `len` is incorrect
+  --> .work/graph-memory-optimization/evidence/16/census.py:59:49
+   |
+59 |     snapshot_counts["published_records"] += len(result._graph._records)
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^ Expected `Sized`, found `dict[int, _ComponentRecord] | None`
+info: element `None` of union `dict[int, _ComponentRecord] | None` is not assignable to `Sized`
+info: └── type `None` is not assignable to protocol `Sized`
+info:     └── protocol member `__len__` is not defined on type `None`
+info: Function defined here
+    --> stdlib/builtins.pyi:4141:5
+     |
+4141 | def len(obj: Sized, /) -> int:
+     |     ^^^ ---------- Parameter declared here
+
+error[invalid-assignment]: Object of type `def snapshot(component) -> Unknown` is not assignable to attribute `_undecorated_component_view` of type `def _undecorated_component_view(component: Component) -> Component`
+  --> .work/graph-memory-optimization/evidence/16/census.py:63:1
+   |
+63 | container._undecorated_component_view = snapshot
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[unresolved-import]: Cannot resolve imported module `measure`
+  --> .work/graph-memory-optimization/evidence/16/census.py:93:6
+   |
+93 | from measure import sample
+   |      ^^^^^^^
+info: Searched in the following paths during module resolution:
+info:   1. /Users/peter.daly/WS/pete/clean_ioc (first-party code)
+info:   2. vendored://stdlib (stdlib typeshed stubs vendored by ty)
+info:   3. /Users/peter.daly/WS/pete/clean_ioc/.venv/lib/python3.14/site-packages (site-packages)
+info: make sure your Python environment is properly configured: https://docs.astral.sh/ty/modules/#python-environment
+
+error[invalid-argument-type]: Argument to bound method `ContainerBuilder.build` is incorrect
+   --> .work/graph-memory-optimization/evidence/16/escaped.py:103:25
+    |
+103 | runtime = builder.build(mode=mode)
+    |                         ^^^^^^^^^ Expected `Literal["run", "analysis"]`, found `str`
+info: Method defined here
+     --> clean_ioc/container.py:15857:9
+      |
+15857 |     def build(
+      |         ^^^^^
+15858 |         self,
+15859 |         *,
+15860 |         mode: BuildMode = "run",
+      |         ----------------------- Parameter declared here
+
+error[unresolved-attribute]: Attribute `_generic_mapping` is not defined on `_ComponentDraft` in union `_ComponentDraft | _ComponentRecord | _ComponentViewRecord`
+  --> tests/test_callback_snapshot_sharing.py:36:16
+   |
+36 |         assert first._record._generic_mapping is second._record._generic_mapping is None
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `_generic_mapping` is not defined on `_ComponentDraft` in union `_ComponentDraft | _ComponentRecord | _ComponentViewRecord`
+  --> tests/test_callback_snapshot_sharing.py:36:50
+   |
+36 |         assert first._record._generic_mapping is second._record._generic_mapping is None
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `_generic_mapping` is not defined on `_ComponentDraft` in union `_ComponentDraft | _ComponentRecord | _ComponentViewRecord`
+  --> tests/test_callback_snapshot_sharing.py:38:16
+   |
+38 |         assert second._record._generic_mapping is None
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[invalid-argument-type]: Argument to `set.__init__` is incorrect
+  --> tests/test_callback_snapshot_sharing.py:64:16
+   |
+64 |     assert set(snapshot._graph._records) == {1, 2, 3, 5}
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^ Expected `Iterable[int]`, found `dict[int, _ComponentRecord] | None`
+info: element `None` of union `dict[int, _ComponentRecord] | None` is not assignable to `Iterable[int]`
+info: └── type `None` is not assignable to protocol `Iterable[int]`
+info:     └── protocol member `__iter__` is not defined on type `None`
+info: Matching overload defined here
+    --> stdlib/builtins.pyi:3317:9
+     |
+3317 |     def __init__(self, iterable: Iterable[_T], /) -> None: ...
+     |         ^^^^^^^^       ---------------------- Parameter declared here
+info: Non-matching overloads for bound method `__init__`:
+info:   (self) -> None
+
+Found 8 diagnostics

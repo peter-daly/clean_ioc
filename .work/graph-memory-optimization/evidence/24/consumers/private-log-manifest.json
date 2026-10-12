@@ -1,0 +1,47 @@
+{
+  "bark-unit.log": {
+    "private_path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/final-stable/bark-unit.log",
+    "sha256": "81ce24e25223f0364cc8e6571eb837b3f8cf8aee717892aeb2587ffff27e34cb",
+    "bytes": 12638
+  },
+  "bark-unit.xml": {
+    "private_path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/final-stable/bark-unit.xml",
+    "sha256": "a614baa3fd4aa81a1711118213051a0db8883e41e31e3aa10215aadd65d2bde2",
+    "bytes": 2361490
+  },
+  "cop-integration-driver.log": {
+    "private_path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/final-stable/cop-integration-driver.log",
+    "sha256": "3225ea14d4c7b0fb9bbca33bd857b91b89375a735605e23dc99281134d1ab3dc",
+    "bytes": 593
+  },
+  "cop-integration.log": {
+    "private_path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/final-stable/cop-integration.log",
+    "sha256": "737b52eb57d78ccf1095ff348ad514664c285eed164873ba6c66dcf9986739ac",
+    "bytes": 983
+  },
+  "cop-integration.xml": {
+    "private_path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/final-stable/cop-integration.xml",
+    "sha256": "a4a427ba6dccee5ba1e245db77b645340995baf0ec6c8cabb18206c8406ad6ba",
+    "bytes": 10256
+  },
+  "cop-unit.log": {
+    "private_path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/final-stable/cop-unit.log",
+    "sha256": "c1653b996b44713501f19787967bd0c1ff29680c620cbabe7b486fc6579a1a31",
+    "bytes": 1468
+  },
+  "cop-unit.xml": {
+    "private_path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/final-stable/cop-unit.xml",
+    "sha256": "456a0ae43edaf8f18c2ad94bfa2fab8ea95441830f96a8276dba43d65756cdd6",
+    "bytes": 76105
+  },
+  "integration-localstack.log": {
+    "private_path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/final-stable/integration-localstack.log",
+    "sha256": "51342df94d68089017d7ddb2ff64a57f3b989de5c144914de6b84f0cf1858018",
+    "bytes": 4854651
+  },
+  "integration-tls-proxy.log": {
+    "private_path": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/final-stable/integration-tls-proxy.log",
+    "sha256": "029267d31d619eacf6fe2b6f42f970e530056424d181feb695aac14a551c1916",
+    "bytes": 318
+  }
+}

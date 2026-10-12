@@ -1,0 +1,2735 @@
+{
+  "eager_decorator_facts": false,
+  "medians": {
+    "build_seconds": 11.010629041935317,
+    "prepared": {
+      "peak_rss_bytes": 140673024,
+      "rss_bytes": 140673024,
+      "traced_peak_bytes": 77142345,
+      "traced_retained_bytes": 40297366
+    },
+    "resolve_seconds": 0.02243554196320474,
+    "resolved": {
+      "peak_rss_bytes": 140673024,
+      "rss_bytes": 140673024,
+      "traced_peak_bytes": 77142345,
+      "traced_retained_bytes": 41474877
+    }
+  },
+  "repeats": 3,
+  "routes": 8,
+  "runs": [
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "allow_scope_builders": false,
+      "before": {
+        "peak_rss_bytes": 43696128,
+        "rss_bytes": 43352064
+      },
+      "build_seconds": 11.03058462496847,
+      "diagnostics": false,
+      "eager_decorator_facts": false,
+      "explain_metadata": true,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "component_metadata": {
+          "definition_identity_patterns": 116,
+          "identity_patterns": 31311,
+          "patterns_by_kind": {
+            "decorator": 10,
+            "managed_provider": 50,
+            "provider": 168,
+            "provider_map": 16,
+            "registration": 41,
+            "value": 31026
+          },
+          "retained_definition_index_bytes": 0,
+          "shared_definition_bytes": 13920,
+          "shared_definition_objects": 116,
+          "unique_field_objects": {
+            "activation": 4,
+            "boundary": 1,
+            "build_args": 1,
+            "declared_service_type": 15,
+            "id": 31297,
+            "implementation": 20,
+            "implementation_type": 20,
+            "kind": 6,
+            "lifespan": 3,
+            "name": 11,
+            "service_type": 45,
+            "tags": 1
+          }
+        },
+        "decorator_objects": {
+          "logical_outcomes_by_entry": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "logical_reason_codes_by_entry": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "outcomes": {
+            "rejected": 406,
+            "selected": 24
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 24,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 350
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 6320,
+            "decisions": 41280,
+            "explanations": 3167984,
+            "template_facts": 61920
+          },
+          "unique_objects": {
+            "decision_tuples": 60,
+            "decisions": 430,
+            "explanations": 56565,
+            "template_facts": 430
+          },
+          "unique_patterns": 43
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "logical_graph_visits": 8932,
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "registration_carrier_kinds": {
+          "_Registration": 43
+        },
+        "retained_execution_composition": {
+          "decorator_definitions": 240,
+          "decorator_dependency_settings": 240,
+          "registration_dependency_settings": 124
+        },
+        "retained_plan_fields": {
+          "_blueprint": {
+            "entries": null,
+            "shallow_bytes": 16,
+            "type": "NoneType"
+          },
+          "architecture_roots": {
+            "entries": 26,
+            "shallow_bytes": 256,
+            "type": "tuple"
+          },
+          "area_root_candidates": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "build_args": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "build_report": {
+            "entries": null,
+            "shallow_bytes": 72,
+            "type": "BuildReport"
+          },
+          "census_definitions": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "census_ids": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "census_sources": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "compiled_graph": {
+            "entries": null,
+            "shallow_bytes": 240,
+            "type": "CompiledGraph"
+          },
+          "compiler_issues": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "decorator_explanations": {
+            "entries": 56522,
+            "shallow_bytes": 2621528,
+            "type": "mappingproxy"
+          },
+          "default_root_groups": {
+            "entries": 14,
+            "shallow_bytes": 632,
+            "type": "dict"
+          },
+          "default_roots": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "dict"
+          },
+          "diagnostics": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "ensured_import_modules": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "explain_metadata": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "fallback_ids": {
+            "entries": 0,
+            "shallow_bytes": 216,
+            "type": "frozenset"
+          },
+          "generic_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "graph": {
+            "entries": null,
+            "shallow_bytes": 64,
+            "type": "_ComponentGraph"
+          },
+          "managed_provider_roots": {
+            "entries": 4,
+            "shallow_bytes": 224,
+            "type": "mappingproxy"
+          },
+          "occurrence_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "occurrence_layers": {
+            "entries": 88558,
+            "shallow_bytes": 48,
+            "type": "_OccurrenceLayers"
+          },
+          "occurrence_origins": {
+            "entries": 88558,
+            "shallow_bytes": 5242960,
+            "type": "mappingproxy"
+          },
+          "parameter_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "provider_roots": {
+            "entries": 4,
+            "shallow_bytes": 224,
+            "type": "mappingproxy"
+          },
+          "root_candidates": {
+            "entries": 18,
+            "shallow_bytes": 632,
+            "type": "mappingproxy"
+          },
+          "roots": {
+            "entries": 14,
+            "shallow_bytes": 632,
+            "type": "dict"
+          },
+          "selected_registrations": {
+            "entries": 51,
+            "shallow_bytes": 456,
+            "type": "tuple"
+          },
+          "slots": {
+            "entries": 0,
+            "shallow_bytes": 216,
+            "type": "frozenset"
+          },
+          "unreachable_checked": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "unreachable_issue_offset": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "int"
+          },
+          "validation_rules": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "warmup_fingerprint": {
+            "entries": null,
+            "shallow_bytes": 41,
+            "type": "str"
+          },
+          "warmup_infos": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "warmup_steps": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          }
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 15586208,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "inspection": {
+        "before": {
+          "peak_rss_bytes": 148340736,
+          "rss_bytes": 147324928,
+          "traced_peak_bytes": 184815,
+          "traced_retained_bytes": 2488
+        },
+        "explanation_sample_size": 128,
+        "passes": [
+          {
+            "after_explanations": {
+              "peak_rss_bytes": 148340736,
+              "rss_bytes": 147390464,
+              "traced_peak_bytes": 710039,
+              "traced_retained_bytes": 527712
+            },
+            "after_manifest": {
+              "peak_rss_bytes": 167575552,
+              "rss_bytes": 167575552,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14207399
+            },
+            "after_traversal": {
+              "peak_rss_bytes": 148340736,
+              "rss_bytes": 147390464,
+              "traced_peak_bytes": 710767,
+              "traced_retained_bytes": 528440
+            },
+            "explain_seconds": 0.09962350002024323,
+            "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+            "manifest_seconds": 0.5514665000373498,
+            "pass": "first",
+            "sample_decisions": 1280,
+            "traversal_seconds": 0.09262695803772658,
+            "traversal_visits": 8932
+          },
+          {
+            "after_explanations": {
+              "peak_rss_bytes": 167575552,
+              "rss_bytes": 167575552,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14207983
+            },
+            "after_manifest": {
+              "peak_rss_bytes": 168607744,
+              "rss_bytes": 168607744,
+              "traced_peak_bytes": 26877637,
+              "traced_retained_bytes": 14208880
+            },
+            "after_traversal": {
+              "peak_rss_bytes": 167575552,
+              "rss_bytes": 167575552,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14208439
+            },
+            "explain_seconds": 0.030940249911509454,
+            "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+            "manifest_seconds": 1.5958095900714397e-05,
+            "pass": "repeated",
+            "sample_decisions": 1280,
+            "traversal_seconds": 0.09212620893958956,
+            "traversal_visits": 8932
+          }
+        ]
+      },
+      "instrumentation": "none",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 64270,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 140673024,
+        "rss_bytes": 140673024
+      },
+      "python": "3.14.4",
+      "repeat": 1,
+      "resolve_seconds": 0.02243554196320474,
+      "resolved": {
+        "peak_rss_bytes": 140673024,
+        "rss_bytes": 140673024
+      },
+      "retained_graph_inventory": {
+        "captured_views": 0,
+        "graphs": 1,
+        "records": 88558,
+        "saved_views_in_primary_graph": 0,
+        "saved_views_in_separate_snapshots": 0
+      },
+      "routes": 8,
+      "source": {
+        "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M benchmarks/graph_artifact.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_reachability_audit.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compiler-tooling.md\n M docs/graph-artifact-experiment.md\n?? .work/graph-memory-optimization/05-inventory.md\n?? .work/graph-memory-optimization/05-optional-explanation-metadata.md\n?? .work/graph-memory-optimization/evidence/05-before.json\n?? .work/graph-memory-optimization/evidence/05-capture-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-discard-facts-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-draft-pruning-8.json\n?? .work/graph-memory-optimization/evidence/05-full.json\n?? .work/graph-memory-optimization/evidence/05-prototype-2.json\n?? .work/graph-memory-optimization/evidence/05-prototype-8.json\n?? .work/graph-memory-optimization/evidence/05-prototype-phases.json\n?? .work/graph-memory-optimization/evidence/05-reduced-caller-owned.json\n?? .work/graph-memory-optimization/evidence/05-reduced-composition.json\n?? .work/graph-memory-optimization/evidence/05-reduced.json\n?? benchmarks/graph_resolution_only_checks.py\n?? tests/test_optional_explanation_metadata.py\n",
+        "revision": "2679234a152144f6ad3549d1f6b817fd490f3e1c",
+        "source_sha256": {
+          "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81",
+          "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+          "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+          "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+          "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+          "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211"
+        }
+      },
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "allow_scope_builders": false,
+      "before": {
+        "peak_rss_bytes": 44072960,
+        "rss_bytes": 43728896
+      },
+      "build_seconds": 76.84385620791,
+      "diagnostics": false,
+      "eager_decorator_facts": false,
+      "explain_metadata": true,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "component_metadata": {
+          "definition_identity_patterns": 116,
+          "identity_patterns": 31311,
+          "patterns_by_kind": {
+            "decorator": 10,
+            "managed_provider": 50,
+            "provider": 168,
+            "provider_map": 16,
+            "registration": 41,
+            "value": 31026
+          },
+          "retained_definition_index_bytes": 0,
+          "shared_definition_bytes": 13920,
+          "shared_definition_objects": 116,
+          "unique_field_objects": {
+            "activation": 4,
+            "boundary": 1,
+            "build_args": 1,
+            "declared_service_type": 15,
+            "id": 31297,
+            "implementation": 20,
+            "implementation_type": 20,
+            "kind": 6,
+            "lifespan": 3,
+            "name": 11,
+            "service_type": 45,
+            "tags": 1
+          }
+        },
+        "decorator_objects": {
+          "logical_outcomes_by_entry": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "logical_reason_codes_by_entry": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "outcomes": {
+            "rejected": 406,
+            "selected": 24
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 24,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 350
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 6320,
+            "decisions": 41280,
+            "explanations": 3167984,
+            "template_facts": 61920
+          },
+          "unique_objects": {
+            "decision_tuples": 60,
+            "decisions": 430,
+            "explanations": 56565,
+            "template_facts": 430
+          },
+          "unique_patterns": 43
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "logical_graph_visits": 8932,
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "registration_carrier_kinds": {
+          "_Registration": 43
+        },
+        "retained_execution_composition": {
+          "decorator_definitions": 240,
+          "decorator_dependency_settings": 240,
+          "registration_dependency_settings": 124
+        },
+        "retained_plan_fields": {
+          "_blueprint": {
+            "entries": null,
+            "shallow_bytes": 16,
+            "type": "NoneType"
+          },
+          "architecture_roots": {
+            "entries": 26,
+            "shallow_bytes": 256,
+            "type": "tuple"
+          },
+          "area_root_candidates": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "build_args": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "build_report": {
+            "entries": null,
+            "shallow_bytes": 72,
+            "type": "BuildReport"
+          },
+          "census_definitions": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "census_ids": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "census_sources": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "compiled_graph": {
+            "entries": null,
+            "shallow_bytes": 240,
+            "type": "CompiledGraph"
+          },
+          "compiler_issues": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "decorator_explanations": {
+            "entries": 56522,
+            "shallow_bytes": 2621528,
+            "type": "mappingproxy"
+          },
+          "default_root_groups": {
+            "entries": 14,
+            "shallow_bytes": 632,
+            "type": "dict"
+          },
+          "default_roots": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "dict"
+          },
+          "diagnostics": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "ensured_import_modules": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "explain_metadata": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "fallback_ids": {
+            "entries": 0,
+            "shallow_bytes": 216,
+            "type": "frozenset"
+          },
+          "generic_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "graph": {
+            "entries": null,
+            "shallow_bytes": 64,
+            "type": "_ComponentGraph"
+          },
+          "managed_provider_roots": {
+            "entries": 4,
+            "shallow_bytes": 224,
+            "type": "mappingproxy"
+          },
+          "occurrence_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "occurrence_layers": {
+            "entries": 88558,
+            "shallow_bytes": 48,
+            "type": "_OccurrenceLayers"
+          },
+          "occurrence_origins": {
+            "entries": 88558,
+            "shallow_bytes": 5242960,
+            "type": "mappingproxy"
+          },
+          "parameter_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "provider_roots": {
+            "entries": 4,
+            "shallow_bytes": 224,
+            "type": "mappingproxy"
+          },
+          "root_candidates": {
+            "entries": 18,
+            "shallow_bytes": 632,
+            "type": "mappingproxy"
+          },
+          "roots": {
+            "entries": 14,
+            "shallow_bytes": 632,
+            "type": "dict"
+          },
+          "selected_registrations": {
+            "entries": 51,
+            "shallow_bytes": 456,
+            "type": "tuple"
+          },
+          "slots": {
+            "entries": 0,
+            "shallow_bytes": 216,
+            "type": "frozenset"
+          },
+          "unreachable_checked": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "unreachable_issue_offset": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "int"
+          },
+          "validation_rules": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "warmup_fingerprint": {
+            "entries": null,
+            "shallow_bytes": 41,
+            "type": "str"
+          },
+          "warmup_infos": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "warmup_steps": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          }
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 15586208,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "inspection": {
+        "before": {
+          "peak_rss_bytes": 200687616,
+          "rss_bytes": 199639040,
+          "traced_peak_bytes": 184815,
+          "traced_retained_bytes": 2488
+        },
+        "explanation_sample_size": 128,
+        "passes": [
+          {
+            "after_explanations": {
+              "peak_rss_bytes": 200687616,
+              "rss_bytes": 199639040,
+              "traced_peak_bytes": 710039,
+              "traced_retained_bytes": 527712
+            },
+            "after_manifest": {
+              "peak_rss_bytes": 215056384,
+              "rss_bytes": 215056384,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14207399
+            },
+            "after_traversal": {
+              "peak_rss_bytes": 200687616,
+              "rss_bytes": 199639040,
+              "traced_peak_bytes": 710767,
+              "traced_retained_bytes": 528440
+            },
+            "explain_seconds": 0.09948025003541261,
+            "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+            "manifest_seconds": 0.5495250830426812,
+            "pass": "first",
+            "sample_decisions": 1280,
+            "traversal_seconds": 0.09261183300986886,
+            "traversal_visits": 8932
+          },
+          {
+            "after_explanations": {
+              "peak_rss_bytes": 215056384,
+              "rss_bytes": 215056384,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14207983
+            },
+            "after_manifest": {
+              "peak_rss_bytes": 216039424,
+              "rss_bytes": 216039424,
+              "traced_peak_bytes": 26877637,
+              "traced_retained_bytes": 14208880
+            },
+            "after_traversal": {
+              "peak_rss_bytes": 215056384,
+              "rss_bytes": 215056384,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14208439
+            },
+            "explain_seconds": 0.028215041966177523,
+            "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+            "manifest_seconds": 3.524997737258673e-05,
+            "pass": "repeated",
+            "sample_decisions": 1280,
+            "traversal_seconds": 0.09280433296225965,
+            "traversal_visits": 8932
+          }
+        ]
+      },
+      "instrumentation": "tracemalloc",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 64478,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 198033408,
+        "rss_bytes": 198033408,
+        "traced_peak_bytes": 77142327,
+        "traced_retained_bytes": 40297474
+      },
+      "python": "3.14.4",
+      "repeat": 1,
+      "resolve_seconds": 0.052179250051267445,
+      "resolved": {
+        "peak_rss_bytes": 198049792,
+        "rss_bytes": 198049792,
+        "traced_peak_bytes": 77142327,
+        "traced_retained_bytes": 41474877
+      },
+      "retained_graph_inventory": {
+        "captured_views": 0,
+        "graphs": 1,
+        "records": 88558,
+        "saved_views_in_primary_graph": 0,
+        "saved_views_in_separate_snapshots": 0
+      },
+      "routes": 8,
+      "source": {
+        "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M benchmarks/graph_artifact.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_reachability_audit.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compiler-tooling.md\n M docs/graph-artifact-experiment.md\n?? .work/graph-memory-optimization/05-inventory.md\n?? .work/graph-memory-optimization/05-optional-explanation-metadata.md\n?? .work/graph-memory-optimization/evidence/05-before.json\n?? .work/graph-memory-optimization/evidence/05-capture-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-discard-facts-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-draft-pruning-8.json\n?? .work/graph-memory-optimization/evidence/05-full.json\n?? .work/graph-memory-optimization/evidence/05-prototype-2.json\n?? .work/graph-memory-optimization/evidence/05-prototype-8.json\n?? .work/graph-memory-optimization/evidence/05-prototype-phases.json\n?? .work/graph-memory-optimization/evidence/05-reduced-caller-owned.json\n?? .work/graph-memory-optimization/evidence/05-reduced-composition.json\n?? .work/graph-memory-optimization/evidence/05-reduced.json\n?? benchmarks/graph_resolution_only_checks.py\n?? tests/test_optional_explanation_metadata.py\n",
+        "revision": "2679234a152144f6ad3549d1f6b817fd490f3e1c",
+        "source_sha256": {
+          "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81",
+          "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+          "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+          "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+          "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+          "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211"
+        }
+      },
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "allow_scope_builders": false,
+      "before": {
+        "peak_rss_bytes": 44646400,
+        "rss_bytes": 44302336
+      },
+      "build_seconds": 11.009283083956689,
+      "diagnostics": false,
+      "eager_decorator_facts": false,
+      "explain_metadata": true,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "component_metadata": {
+          "definition_identity_patterns": 116,
+          "identity_patterns": 31311,
+          "patterns_by_kind": {
+            "decorator": 10,
+            "managed_provider": 50,
+            "provider": 168,
+            "provider_map": 16,
+            "registration": 41,
+            "value": 31026
+          },
+          "retained_definition_index_bytes": 0,
+          "shared_definition_bytes": 13920,
+          "shared_definition_objects": 116,
+          "unique_field_objects": {
+            "activation": 4,
+            "boundary": 1,
+            "build_args": 1,
+            "declared_service_type": 15,
+            "id": 31297,
+            "implementation": 20,
+            "implementation_type": 20,
+            "kind": 6,
+            "lifespan": 3,
+            "name": 11,
+            "service_type": 45,
+            "tags": 1
+          }
+        },
+        "decorator_objects": {
+          "logical_outcomes_by_entry": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "logical_reason_codes_by_entry": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "outcomes": {
+            "rejected": 406,
+            "selected": 24
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 24,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 350
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 6320,
+            "decisions": 41280,
+            "explanations": 3167984,
+            "template_facts": 61920
+          },
+          "unique_objects": {
+            "decision_tuples": 60,
+            "decisions": 430,
+            "explanations": 56565,
+            "template_facts": 430
+          },
+          "unique_patterns": 43
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "logical_graph_visits": 8932,
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "registration_carrier_kinds": {
+          "_Registration": 43
+        },
+        "retained_execution_composition": {
+          "decorator_definitions": 240,
+          "decorator_dependency_settings": 240,
+          "registration_dependency_settings": 124
+        },
+        "retained_plan_fields": {
+          "_blueprint": {
+            "entries": null,
+            "shallow_bytes": 16,
+            "type": "NoneType"
+          },
+          "architecture_roots": {
+            "entries": 26,
+            "shallow_bytes": 256,
+            "type": "tuple"
+          },
+          "area_root_candidates": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "build_args": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "build_report": {
+            "entries": null,
+            "shallow_bytes": 72,
+            "type": "BuildReport"
+          },
+          "census_definitions": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "census_ids": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "census_sources": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "compiled_graph": {
+            "entries": null,
+            "shallow_bytes": 240,
+            "type": "CompiledGraph"
+          },
+          "compiler_issues": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "decorator_explanations": {
+            "entries": 56522,
+            "shallow_bytes": 2621528,
+            "type": "mappingproxy"
+          },
+          "default_root_groups": {
+            "entries": 14,
+            "shallow_bytes": 632,
+            "type": "dict"
+          },
+          "default_roots": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "dict"
+          },
+          "diagnostics": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "ensured_import_modules": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "explain_metadata": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "fallback_ids": {
+            "entries": 0,
+            "shallow_bytes": 216,
+            "type": "frozenset"
+          },
+          "generic_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "graph": {
+            "entries": null,
+            "shallow_bytes": 64,
+            "type": "_ComponentGraph"
+          },
+          "managed_provider_roots": {
+            "entries": 4,
+            "shallow_bytes": 224,
+            "type": "mappingproxy"
+          },
+          "occurrence_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "occurrence_layers": {
+            "entries": 88558,
+            "shallow_bytes": 48,
+            "type": "_OccurrenceLayers"
+          },
+          "occurrence_origins": {
+            "entries": 88558,
+            "shallow_bytes": 5242960,
+            "type": "mappingproxy"
+          },
+          "parameter_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "provider_roots": {
+            "entries": 4,
+            "shallow_bytes": 224,
+            "type": "mappingproxy"
+          },
+          "root_candidates": {
+            "entries": 18,
+            "shallow_bytes": 632,
+            "type": "mappingproxy"
+          },
+          "roots": {
+            "entries": 14,
+            "shallow_bytes": 632,
+            "type": "dict"
+          },
+          "selected_registrations": {
+            "entries": 51,
+            "shallow_bytes": 456,
+            "type": "tuple"
+          },
+          "slots": {
+            "entries": 0,
+            "shallow_bytes": 216,
+            "type": "frozenset"
+          },
+          "unreachable_checked": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "unreachable_issue_offset": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "int"
+          },
+          "validation_rules": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "warmup_fingerprint": {
+            "entries": null,
+            "shallow_bytes": 41,
+            "type": "str"
+          },
+          "warmup_infos": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "warmup_steps": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          }
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 15586208,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "inspection": {
+        "before": {
+          "peak_rss_bytes": 145784832,
+          "rss_bytes": 144752640,
+          "traced_peak_bytes": 184815,
+          "traced_retained_bytes": 2488
+        },
+        "explanation_sample_size": 128,
+        "passes": [
+          {
+            "after_explanations": {
+              "peak_rss_bytes": 145784832,
+              "rss_bytes": 144818176,
+              "traced_peak_bytes": 710039,
+              "traced_retained_bytes": 527712
+            },
+            "after_manifest": {
+              "peak_rss_bytes": 164888576,
+              "rss_bytes": 164888576,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14207399
+            },
+            "after_traversal": {
+              "peak_rss_bytes": 145784832,
+              "rss_bytes": 144818176,
+              "traced_peak_bytes": 710767,
+              "traced_retained_bytes": 528440
+            },
+            "explain_seconds": 0.10075387498363853,
+            "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+            "manifest_seconds": 0.5492059160023928,
+            "pass": "first",
+            "sample_decisions": 1280,
+            "traversal_seconds": 0.1003645840100944,
+            "traversal_visits": 8932
+          },
+          {
+            "after_explanations": {
+              "peak_rss_bytes": 164888576,
+              "rss_bytes": 164888576,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14207983
+            },
+            "after_manifest": {
+              "peak_rss_bytes": 165937152,
+              "rss_bytes": 165937152,
+              "traced_peak_bytes": 26877637,
+              "traced_retained_bytes": 14208880
+            },
+            "after_traversal": {
+              "peak_rss_bytes": 164888576,
+              "rss_bytes": 164888576,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14208439
+            },
+            "explain_seconds": 0.028710832935757935,
+            "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+            "manifest_seconds": 2.9875081963837147e-05,
+            "pass": "repeated",
+            "sample_decisions": 1280,
+            "traversal_seconds": 0.09355429199058563,
+            "traversal_visits": 8932
+          }
+        ]
+      },
+      "instrumentation": "none",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 65624,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 139018240,
+        "rss_bytes": 139018240
+      },
+      "python": "3.14.4",
+      "repeat": 2,
+      "resolve_seconds": 0.022579750046133995,
+      "resolved": {
+        "peak_rss_bytes": 139018240,
+        "rss_bytes": 139018240
+      },
+      "retained_graph_inventory": {
+        "captured_views": 0,
+        "graphs": 1,
+        "records": 88558,
+        "saved_views_in_primary_graph": 0,
+        "saved_views_in_separate_snapshots": 0
+      },
+      "routes": 8,
+      "source": {
+        "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M benchmarks/graph_artifact.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_reachability_audit.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compiler-tooling.md\n M docs/graph-artifact-experiment.md\n?? .work/graph-memory-optimization/05-inventory.md\n?? .work/graph-memory-optimization/05-optional-explanation-metadata.md\n?? .work/graph-memory-optimization/evidence/05-before.json\n?? .work/graph-memory-optimization/evidence/05-capture-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-discard-facts-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-draft-pruning-8.json\n?? .work/graph-memory-optimization/evidence/05-full.json\n?? .work/graph-memory-optimization/evidence/05-prototype-2.json\n?? .work/graph-memory-optimization/evidence/05-prototype-8.json\n?? .work/graph-memory-optimization/evidence/05-prototype-phases.json\n?? .work/graph-memory-optimization/evidence/05-reduced-caller-owned.json\n?? .work/graph-memory-optimization/evidence/05-reduced-composition.json\n?? .work/graph-memory-optimization/evidence/05-reduced.json\n?? benchmarks/graph_resolution_only_checks.py\n?? tests/test_optional_explanation_metadata.py\n",
+        "revision": "2679234a152144f6ad3549d1f6b817fd490f3e1c",
+        "source_sha256": {
+          "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81",
+          "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+          "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+          "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+          "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+          "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211"
+        }
+      },
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "allow_scope_builders": false,
+      "before": {
+        "peak_rss_bytes": 43958272,
+        "rss_bytes": 43614208
+      },
+      "build_seconds": 76.99805633409414,
+      "diagnostics": false,
+      "eager_decorator_facts": false,
+      "explain_metadata": true,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "component_metadata": {
+          "definition_identity_patterns": 116,
+          "identity_patterns": 31311,
+          "patterns_by_kind": {
+            "decorator": 10,
+            "managed_provider": 50,
+            "provider": 168,
+            "provider_map": 16,
+            "registration": 41,
+            "value": 31026
+          },
+          "retained_definition_index_bytes": 0,
+          "shared_definition_bytes": 13920,
+          "shared_definition_objects": 116,
+          "unique_field_objects": {
+            "activation": 4,
+            "boundary": 1,
+            "build_args": 1,
+            "declared_service_type": 15,
+            "id": 31297,
+            "implementation": 20,
+            "implementation_type": 20,
+            "kind": 6,
+            "lifespan": 3,
+            "name": 11,
+            "service_type": 45,
+            "tags": 1
+          }
+        },
+        "decorator_objects": {
+          "logical_outcomes_by_entry": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "logical_reason_codes_by_entry": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "outcomes": {
+            "rejected": 406,
+            "selected": 24
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 24,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 350
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 6320,
+            "decisions": 41280,
+            "explanations": 3167984,
+            "template_facts": 61920
+          },
+          "unique_objects": {
+            "decision_tuples": 60,
+            "decisions": 430,
+            "explanations": 56565,
+            "template_facts": 430
+          },
+          "unique_patterns": 43
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "logical_graph_visits": 8932,
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "registration_carrier_kinds": {
+          "_Registration": 43
+        },
+        "retained_execution_composition": {
+          "decorator_definitions": 240,
+          "decorator_dependency_settings": 240,
+          "registration_dependency_settings": 124
+        },
+        "retained_plan_fields": {
+          "_blueprint": {
+            "entries": null,
+            "shallow_bytes": 16,
+            "type": "NoneType"
+          },
+          "architecture_roots": {
+            "entries": 26,
+            "shallow_bytes": 256,
+            "type": "tuple"
+          },
+          "area_root_candidates": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "build_args": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "build_report": {
+            "entries": null,
+            "shallow_bytes": 72,
+            "type": "BuildReport"
+          },
+          "census_definitions": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "census_ids": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "census_sources": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "compiled_graph": {
+            "entries": null,
+            "shallow_bytes": 240,
+            "type": "CompiledGraph"
+          },
+          "compiler_issues": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "decorator_explanations": {
+            "entries": 56522,
+            "shallow_bytes": 2621528,
+            "type": "mappingproxy"
+          },
+          "default_root_groups": {
+            "entries": 14,
+            "shallow_bytes": 632,
+            "type": "dict"
+          },
+          "default_roots": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "dict"
+          },
+          "diagnostics": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "ensured_import_modules": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "explain_metadata": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "fallback_ids": {
+            "entries": 0,
+            "shallow_bytes": 216,
+            "type": "frozenset"
+          },
+          "generic_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "graph": {
+            "entries": null,
+            "shallow_bytes": 64,
+            "type": "_ComponentGraph"
+          },
+          "managed_provider_roots": {
+            "entries": 4,
+            "shallow_bytes": 224,
+            "type": "mappingproxy"
+          },
+          "occurrence_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "occurrence_layers": {
+            "entries": 88558,
+            "shallow_bytes": 48,
+            "type": "_OccurrenceLayers"
+          },
+          "occurrence_origins": {
+            "entries": 88558,
+            "shallow_bytes": 5242960,
+            "type": "mappingproxy"
+          },
+          "parameter_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "provider_roots": {
+            "entries": 4,
+            "shallow_bytes": 224,
+            "type": "mappingproxy"
+          },
+          "root_candidates": {
+            "entries": 18,
+            "shallow_bytes": 632,
+            "type": "mappingproxy"
+          },
+          "roots": {
+            "entries": 14,
+            "shallow_bytes": 632,
+            "type": "dict"
+          },
+          "selected_registrations": {
+            "entries": 51,
+            "shallow_bytes": 456,
+            "type": "tuple"
+          },
+          "slots": {
+            "entries": 0,
+            "shallow_bytes": 216,
+            "type": "frozenset"
+          },
+          "unreachable_checked": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "unreachable_issue_offset": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "int"
+          },
+          "validation_rules": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "warmup_fingerprint": {
+            "entries": null,
+            "shallow_bytes": 41,
+            "type": "str"
+          },
+          "warmup_infos": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "warmup_steps": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          }
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 15586208,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "inspection": {
+        "before": {
+          "peak_rss_bytes": 199507968,
+          "rss_bytes": 198459392,
+          "traced_peak_bytes": 184815,
+          "traced_retained_bytes": 2488
+        },
+        "explanation_sample_size": 128,
+        "passes": [
+          {
+            "after_explanations": {
+              "peak_rss_bytes": 199507968,
+              "rss_bytes": 198459392,
+              "traced_peak_bytes": 710039,
+              "traced_retained_bytes": 527712
+            },
+            "after_manifest": {
+              "peak_rss_bytes": 217137152,
+              "rss_bytes": 217137152,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14207399
+            },
+            "after_traversal": {
+              "peak_rss_bytes": 199507968,
+              "rss_bytes": 198459392,
+              "traced_peak_bytes": 710767,
+              "traced_retained_bytes": 528440
+            },
+            "explain_seconds": 0.09943995799403638,
+            "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+            "manifest_seconds": 0.5501162500586361,
+            "pass": "first",
+            "sample_decisions": 1280,
+            "traversal_seconds": 0.09324499999638647,
+            "traversal_visits": 8932
+          },
+          {
+            "after_explanations": {
+              "peak_rss_bytes": 217137152,
+              "rss_bytes": 217137152,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14207983
+            },
+            "after_manifest": {
+              "peak_rss_bytes": 218120192,
+              "rss_bytes": 218120192,
+              "traced_peak_bytes": 26877637,
+              "traced_retained_bytes": 14208880
+            },
+            "after_traversal": {
+              "peak_rss_bytes": 217137152,
+              "rss_bytes": 217137152,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14208439
+            },
+            "explain_seconds": 0.02861224999651313,
+            "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+            "manifest_seconds": 3.783300053328276e-05,
+            "pass": "repeated",
+            "sample_decisions": 1280,
+            "traversal_seconds": 0.09267008292954415,
+            "traversal_visits": 8932
+          }
+        ]
+      },
+      "instrumentation": "tracemalloc",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 65861,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 198623232,
+        "rss_bytes": 198623232,
+        "traced_peak_bytes": 77142345,
+        "traced_retained_bytes": 40297366
+      },
+      "python": "3.14.4",
+      "repeat": 2,
+      "resolve_seconds": 0.051132582942955196,
+      "resolved": {
+        "peak_rss_bytes": 198639616,
+        "rss_bytes": 198639616,
+        "traced_peak_bytes": 77142345,
+        "traced_retained_bytes": 41474895
+      },
+      "retained_graph_inventory": {
+        "captured_views": 0,
+        "graphs": 1,
+        "records": 88558,
+        "saved_views_in_primary_graph": 0,
+        "saved_views_in_separate_snapshots": 0
+      },
+      "routes": 8,
+      "source": {
+        "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M benchmarks/graph_artifact.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_reachability_audit.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compiler-tooling.md\n M docs/graph-artifact-experiment.md\n?? .work/graph-memory-optimization/05-inventory.md\n?? .work/graph-memory-optimization/05-optional-explanation-metadata.md\n?? .work/graph-memory-optimization/evidence/05-before.json\n?? .work/graph-memory-optimization/evidence/05-capture-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-discard-facts-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-draft-pruning-8.json\n?? .work/graph-memory-optimization/evidence/05-full.json\n?? .work/graph-memory-optimization/evidence/05-prototype-2.json\n?? .work/graph-memory-optimization/evidence/05-prototype-8.json\n?? .work/graph-memory-optimization/evidence/05-prototype-phases.json\n?? .work/graph-memory-optimization/evidence/05-reduced-caller-owned.json\n?? .work/graph-memory-optimization/evidence/05-reduced-composition.json\n?? .work/graph-memory-optimization/evidence/05-reduced.json\n?? benchmarks/graph_resolution_only_checks.py\n?? tests/test_optional_explanation_metadata.py\n",
+        "revision": "2679234a152144f6ad3549d1f6b817fd490f3e1c",
+        "source_sha256": {
+          "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81",
+          "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+          "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+          "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+          "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+          "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211"
+        }
+      },
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "allow_scope_builders": false,
+      "before": {
+        "peak_rss_bytes": 44023808,
+        "rss_bytes": 43696128
+      },
+      "build_seconds": 11.010629041935317,
+      "diagnostics": false,
+      "eager_decorator_facts": false,
+      "explain_metadata": true,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "component_metadata": {
+          "definition_identity_patterns": 116,
+          "identity_patterns": 31311,
+          "patterns_by_kind": {
+            "decorator": 10,
+            "managed_provider": 50,
+            "provider": 168,
+            "provider_map": 16,
+            "registration": 41,
+            "value": 31026
+          },
+          "retained_definition_index_bytes": 0,
+          "shared_definition_bytes": 13920,
+          "shared_definition_objects": 116,
+          "unique_field_objects": {
+            "activation": 4,
+            "boundary": 1,
+            "build_args": 1,
+            "declared_service_type": 15,
+            "id": 31297,
+            "implementation": 20,
+            "implementation_type": 20,
+            "kind": 6,
+            "lifespan": 3,
+            "name": 11,
+            "service_type": 45,
+            "tags": 1
+          }
+        },
+        "decorator_objects": {
+          "logical_outcomes_by_entry": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "logical_reason_codes_by_entry": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "outcomes": {
+            "rejected": 406,
+            "selected": 24
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 24,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 350
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 6320,
+            "decisions": 41280,
+            "explanations": 3167984,
+            "template_facts": 61920
+          },
+          "unique_objects": {
+            "decision_tuples": 60,
+            "decisions": 430,
+            "explanations": 56565,
+            "template_facts": 430
+          },
+          "unique_patterns": 43
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "logical_graph_visits": 8932,
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "registration_carrier_kinds": {
+          "_Registration": 43
+        },
+        "retained_execution_composition": {
+          "decorator_definitions": 240,
+          "decorator_dependency_settings": 240,
+          "registration_dependency_settings": 124
+        },
+        "retained_plan_fields": {
+          "_blueprint": {
+            "entries": null,
+            "shallow_bytes": 16,
+            "type": "NoneType"
+          },
+          "architecture_roots": {
+            "entries": 26,
+            "shallow_bytes": 256,
+            "type": "tuple"
+          },
+          "area_root_candidates": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "build_args": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "build_report": {
+            "entries": null,
+            "shallow_bytes": 72,
+            "type": "BuildReport"
+          },
+          "census_definitions": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "census_ids": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "census_sources": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "compiled_graph": {
+            "entries": null,
+            "shallow_bytes": 240,
+            "type": "CompiledGraph"
+          },
+          "compiler_issues": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "decorator_explanations": {
+            "entries": 56522,
+            "shallow_bytes": 2621528,
+            "type": "mappingproxy"
+          },
+          "default_root_groups": {
+            "entries": 14,
+            "shallow_bytes": 632,
+            "type": "dict"
+          },
+          "default_roots": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "dict"
+          },
+          "diagnostics": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "ensured_import_modules": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "explain_metadata": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "fallback_ids": {
+            "entries": 0,
+            "shallow_bytes": 216,
+            "type": "frozenset"
+          },
+          "generic_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "graph": {
+            "entries": null,
+            "shallow_bytes": 64,
+            "type": "_ComponentGraph"
+          },
+          "managed_provider_roots": {
+            "entries": 4,
+            "shallow_bytes": 224,
+            "type": "mappingproxy"
+          },
+          "occurrence_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "occurrence_layers": {
+            "entries": 88558,
+            "shallow_bytes": 48,
+            "type": "_OccurrenceLayers"
+          },
+          "occurrence_origins": {
+            "entries": 88558,
+            "shallow_bytes": 5242960,
+            "type": "mappingproxy"
+          },
+          "parameter_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "provider_roots": {
+            "entries": 4,
+            "shallow_bytes": 224,
+            "type": "mappingproxy"
+          },
+          "root_candidates": {
+            "entries": 18,
+            "shallow_bytes": 632,
+            "type": "mappingproxy"
+          },
+          "roots": {
+            "entries": 14,
+            "shallow_bytes": 632,
+            "type": "dict"
+          },
+          "selected_registrations": {
+            "entries": 51,
+            "shallow_bytes": 456,
+            "type": "tuple"
+          },
+          "slots": {
+            "entries": 0,
+            "shallow_bytes": 216,
+            "type": "frozenset"
+          },
+          "unreachable_checked": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "unreachable_issue_offset": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "int"
+          },
+          "validation_rules": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "warmup_fingerprint": {
+            "entries": null,
+            "shallow_bytes": 41,
+            "type": "str"
+          },
+          "warmup_infos": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "warmup_steps": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          }
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 15586208,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "inspection": {
+        "before": {
+          "peak_rss_bytes": 147980288,
+          "rss_bytes": 146931712,
+          "traced_peak_bytes": 184815,
+          "traced_retained_bytes": 2488
+        },
+        "explanation_sample_size": 128,
+        "passes": [
+          {
+            "after_explanations": {
+              "peak_rss_bytes": 147980288,
+              "rss_bytes": 146980864,
+              "traced_peak_bytes": 710039,
+              "traced_retained_bytes": 527712
+            },
+            "after_manifest": {
+              "peak_rss_bytes": 168640512,
+              "rss_bytes": 168640512,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14207399
+            },
+            "after_traversal": {
+              "peak_rss_bytes": 147980288,
+              "rss_bytes": 146980864,
+              "traced_peak_bytes": 710767,
+              "traced_retained_bytes": 528440
+            },
+            "explain_seconds": 0.09997858304996043,
+            "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+            "manifest_seconds": 0.5513350409455597,
+            "pass": "first",
+            "sample_decisions": 1280,
+            "traversal_seconds": 0.09321154200006276,
+            "traversal_visits": 8932
+          },
+          {
+            "after_explanations": {
+              "peak_rss_bytes": 168640512,
+              "rss_bytes": 168640512,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14207983
+            },
+            "after_manifest": {
+              "peak_rss_bytes": 169672704,
+              "rss_bytes": 169672704,
+              "traced_peak_bytes": 26877637,
+              "traced_retained_bytes": 14208880
+            },
+            "after_traversal": {
+              "peak_rss_bytes": 168640512,
+              "rss_bytes": 168640512,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14208439
+            },
+            "explain_seconds": 0.028384707984514534,
+            "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+            "manifest_seconds": 1.737498678267002e-05,
+            "pass": "repeated",
+            "sample_decisions": 1280,
+            "traversal_seconds": 0.09541900001931936,
+            "traversal_visits": 8932
+          }
+        ]
+      },
+      "instrumentation": "none",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 67003,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 140967936,
+        "rss_bytes": 140967936
+      },
+      "python": "3.14.4",
+      "repeat": 3,
+      "resolve_seconds": 0.022232457995414734,
+      "resolved": {
+        "peak_rss_bytes": 140967936,
+        "rss_bytes": 140967936
+      },
+      "retained_graph_inventory": {
+        "captured_views": 0,
+        "graphs": 1,
+        "records": 88558,
+        "saved_views_in_primary_graph": 0,
+        "saved_views_in_separate_snapshots": 0
+      },
+      "routes": 8,
+      "source": {
+        "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M benchmarks/graph_artifact.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_reachability_audit.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compiler-tooling.md\n M docs/graph-artifact-experiment.md\n?? .work/graph-memory-optimization/05-inventory.md\n?? .work/graph-memory-optimization/05-optional-explanation-metadata.md\n?? .work/graph-memory-optimization/evidence/05-before.json\n?? .work/graph-memory-optimization/evidence/05-capture-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-discard-facts-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-draft-pruning-8.json\n?? .work/graph-memory-optimization/evidence/05-full.json\n?? .work/graph-memory-optimization/evidence/05-prototype-2.json\n?? .work/graph-memory-optimization/evidence/05-prototype-8.json\n?? .work/graph-memory-optimization/evidence/05-prototype-phases.json\n?? .work/graph-memory-optimization/evidence/05-reduced-caller-owned.json\n?? .work/graph-memory-optimization/evidence/05-reduced-composition.json\n?? .work/graph-memory-optimization/evidence/05-reduced.json\n?? benchmarks/graph_resolution_only_checks.py\n?? tests/test_optional_explanation_metadata.py\n",
+        "revision": "2679234a152144f6ad3549d1f6b817fd490f3e1c",
+        "source_sha256": {
+          "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81",
+          "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+          "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+          "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+          "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+          "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211"
+        }
+      },
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "allow_scope_builders": false,
+      "before": {
+        "peak_rss_bytes": 43843584,
+        "rss_bytes": 43499520
+      },
+      "build_seconds": 77.29049237503204,
+      "diagnostics": false,
+      "eager_decorator_facts": false,
+      "explain_metadata": true,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "component_metadata": {
+          "definition_identity_patterns": 116,
+          "identity_patterns": 31311,
+          "patterns_by_kind": {
+            "decorator": 10,
+            "managed_provider": 50,
+            "provider": 168,
+            "provider_map": 16,
+            "registration": 41,
+            "value": 31026
+          },
+          "retained_definition_index_bytes": 0,
+          "shared_definition_bytes": 13920,
+          "shared_definition_objects": 116,
+          "unique_field_objects": {
+            "activation": 4,
+            "boundary": 1,
+            "build_args": 1,
+            "declared_service_type": 15,
+            "id": 31297,
+            "implementation": 20,
+            "implementation_type": 20,
+            "kind": 6,
+            "lifespan": 3,
+            "name": 11,
+            "service_type": 45,
+            "tags": 1
+          }
+        },
+        "decorator_objects": {
+          "logical_outcomes_by_entry": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "logical_reason_codes_by_entry": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "outcomes": {
+            "rejected": 406,
+            "selected": 24
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 24,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 350
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 6320,
+            "decisions": 41280,
+            "explanations": 3167984,
+            "template_facts": 61920
+          },
+          "unique_objects": {
+            "decision_tuples": 60,
+            "decisions": 430,
+            "explanations": 56565,
+            "template_facts": 430
+          },
+          "unique_patterns": 43
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "logical_graph_visits": 8932,
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "registration_carrier_kinds": {
+          "_Registration": 43
+        },
+        "retained_execution_composition": {
+          "decorator_definitions": 240,
+          "decorator_dependency_settings": 240,
+          "registration_dependency_settings": 124
+        },
+        "retained_plan_fields": {
+          "_blueprint": {
+            "entries": null,
+            "shallow_bytes": 16,
+            "type": "NoneType"
+          },
+          "architecture_roots": {
+            "entries": 26,
+            "shallow_bytes": 256,
+            "type": "tuple"
+          },
+          "area_root_candidates": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "build_args": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "build_report": {
+            "entries": null,
+            "shallow_bytes": 72,
+            "type": "BuildReport"
+          },
+          "census_definitions": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "census_ids": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "census_sources": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "compiled_graph": {
+            "entries": null,
+            "shallow_bytes": 240,
+            "type": "CompiledGraph"
+          },
+          "compiler_issues": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "decorator_explanations": {
+            "entries": 56522,
+            "shallow_bytes": 2621528,
+            "type": "mappingproxy"
+          },
+          "default_root_groups": {
+            "entries": 14,
+            "shallow_bytes": 632,
+            "type": "dict"
+          },
+          "default_roots": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "dict"
+          },
+          "diagnostics": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "ensured_import_modules": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "explain_metadata": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "fallback_ids": {
+            "entries": 0,
+            "shallow_bytes": 216,
+            "type": "frozenset"
+          },
+          "generic_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "graph": {
+            "entries": null,
+            "shallow_bytes": 64,
+            "type": "_ComponentGraph"
+          },
+          "managed_provider_roots": {
+            "entries": 4,
+            "shallow_bytes": 224,
+            "type": "mappingproxy"
+          },
+          "occurrence_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "occurrence_layers": {
+            "entries": 88558,
+            "shallow_bytes": 48,
+            "type": "_OccurrenceLayers"
+          },
+          "occurrence_origins": {
+            "entries": 88558,
+            "shallow_bytes": 5242960,
+            "type": "mappingproxy"
+          },
+          "parameter_explanations": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          },
+          "provider_roots": {
+            "entries": 4,
+            "shallow_bytes": 224,
+            "type": "mappingproxy"
+          },
+          "root_candidates": {
+            "entries": 18,
+            "shallow_bytes": 632,
+            "type": "mappingproxy"
+          },
+          "roots": {
+            "entries": 14,
+            "shallow_bytes": 632,
+            "type": "dict"
+          },
+          "selected_registrations": {
+            "entries": 51,
+            "shallow_bytes": 456,
+            "type": "tuple"
+          },
+          "slots": {
+            "entries": 0,
+            "shallow_bytes": 216,
+            "type": "frozenset"
+          },
+          "unreachable_checked": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "bool"
+          },
+          "unreachable_issue_offset": {
+            "entries": null,
+            "shallow_bytes": 28,
+            "type": "int"
+          },
+          "validation_rules": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "warmup_fingerprint": {
+            "entries": null,
+            "shallow_bytes": 41,
+            "type": "str"
+          },
+          "warmup_infos": {
+            "entries": 0,
+            "shallow_bytes": 48,
+            "type": "tuple"
+          },
+          "warmup_steps": {
+            "entries": 0,
+            "shallow_bytes": 64,
+            "type": "mappingproxy"
+          }
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 15586208,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "inspection": {
+        "before": {
+          "peak_rss_bytes": 200998912,
+          "rss_bytes": 199966720,
+          "traced_peak_bytes": 184815,
+          "traced_retained_bytes": 2488
+        },
+        "explanation_sample_size": 128,
+        "passes": [
+          {
+            "after_explanations": {
+              "peak_rss_bytes": 200998912,
+              "rss_bytes": 199966720,
+              "traced_peak_bytes": 710039,
+              "traced_retained_bytes": 527712
+            },
+            "after_manifest": {
+              "peak_rss_bytes": 215334912,
+              "rss_bytes": 215334912,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14207399
+            },
+            "after_traversal": {
+              "peak_rss_bytes": 200998912,
+              "rss_bytes": 199966720,
+              "traced_peak_bytes": 710767,
+              "traced_retained_bytes": 528440
+            },
+            "explain_seconds": 0.10767924995161593,
+            "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+            "manifest_seconds": 0.586549749947153,
+            "pass": "first",
+            "sample_decisions": 1280,
+            "traversal_seconds": 0.09946804190985858,
+            "traversal_visits": 8932
+          },
+          {
+            "after_explanations": {
+              "peak_rss_bytes": 215334912,
+              "rss_bytes": 215334912,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14207983
+            },
+            "after_manifest": {
+              "peak_rss_bytes": 216317952,
+              "rss_bytes": 216317952,
+              "traced_peak_bytes": 26877637,
+              "traced_retained_bytes": 14208880
+            },
+            "after_traversal": {
+              "peak_rss_bytes": 215334912,
+              "rss_bytes": 215334912,
+              "traced_peak_bytes": 26876324,
+              "traced_retained_bytes": 14208439
+            },
+            "explain_seconds": 0.02924470801372081,
+            "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+            "manifest_seconds": 3.424996975809336e-05,
+            "pass": "repeated",
+            "sample_decisions": 1280,
+            "traversal_seconds": 0.0928867079783231,
+            "traversal_visits": 8932
+          }
+        ]
+      },
+      "instrumentation": "tracemalloc",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 67221,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 198868992,
+        "rss_bytes": 198868992,
+        "traced_peak_bytes": 77142377,
+        "traced_retained_bytes": 40297264
+      },
+      "python": "3.14.4",
+      "repeat": 3,
+      "resolve_seconds": 0.05465733306482434,
+      "resolved": {
+        "peak_rss_bytes": 198885376,
+        "rss_bytes": 198885376,
+        "traced_peak_bytes": 77142377,
+        "traced_retained_bytes": 41474551
+      },
+      "retained_graph_inventory": {
+        "captured_views": 0,
+        "graphs": 1,
+        "records": 88558,
+        "saved_views_in_primary_graph": 0,
+        "saved_views_in_separate_snapshots": 0
+      },
+      "routes": 8,
+      "source": {
+        "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M benchmarks/graph_artifact.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_reachability_audit.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compiler-tooling.md\n M docs/graph-artifact-experiment.md\n?? .work/graph-memory-optimization/05-inventory.md\n?? .work/graph-memory-optimization/05-optional-explanation-metadata.md\n?? .work/graph-memory-optimization/evidence/05-before.json\n?? .work/graph-memory-optimization/evidence/05-capture-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-discard-facts-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-draft-pruning-8.json\n?? .work/graph-memory-optimization/evidence/05-full.json\n?? .work/graph-memory-optimization/evidence/05-prototype-2.json\n?? .work/graph-memory-optimization/evidence/05-prototype-8.json\n?? .work/graph-memory-optimization/evidence/05-prototype-phases.json\n?? .work/graph-memory-optimization/evidence/05-reduced-caller-owned.json\n?? .work/graph-memory-optimization/evidence/05-reduced-composition.json\n?? .work/graph-memory-optimization/evidence/05-reduced.json\n?? benchmarks/graph_resolution_only_checks.py\n?? tests/test_optional_explanation_metadata.py\n",
+        "revision": "2679234a152144f6ad3549d1f6b817fd490f3e1c",
+        "source_sha256": {
+          "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81",
+          "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+          "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+          "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+          "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+          "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211"
+        }
+      },
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    }
+  ]
+}

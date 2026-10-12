@@ -1,0 +1,22 @@
+[
+  {
+    "path": "clean_ioc/container.py",
+    "sha256": "d99aa4edbd26d70b908dec17632d0353e66df62c763695a3941f5e5d2a641760"
+  },
+  {
+    "path": "clean_ioc/_decorator_templates.py",
+    "sha256": "880061f94c9c1740eafac748a4386025e46d750a6ff23c2f7101ce5a5c9fe7c8"
+  },
+  {
+    "path": "clean_ioc/_registration_templates.py",
+    "sha256": "72347f09c015eda319a312e50b2c18916ebe23da715acb169ffa821ec6be078b"
+  },
+  {
+    "path": "tests/test_decorator_template_diagnostics.py",
+    "sha256": "b7b309907a4825cbd56d288acff1180408f86b324c13dbb204dec58008940862"
+  },
+  {
+    "path": "tests/test_registration_templates.py",
+    "sha256": "8e6808c9cf860d9b595d5319bb5f4caaf6931839e07c8f68265ce16721fbbb6b"
+  }
+]

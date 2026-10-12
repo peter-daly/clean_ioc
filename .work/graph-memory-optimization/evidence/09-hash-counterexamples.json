@@ -1,0 +1,103 @@
+{
+  "counterexamples": [
+    {
+      "operation": "setdefault",
+      "dict": {
+        "outcome": "success",
+        "hash_calls": 1
+      },
+      "integrated_compact": {
+        "outcome": "success",
+        "hash_calls": 1
+      },
+      "native_delegation": {
+        "outcome": "success",
+        "hash_calls": 1
+      }
+    },
+    {
+      "operation": "pop",
+      "dict": {
+        "outcome": "success",
+        "hash_calls": 1
+      },
+      "integrated_compact": {
+        "outcome": "success",
+        "hash_calls": 1
+      },
+      "native_delegation": {
+        "outcome": "success",
+        "hash_calls": 1
+      }
+    },
+    {
+      "operation": "copy",
+      "dict": {
+        "outcome": "success",
+        "hash_calls": 0
+      },
+      "integrated_compact": {
+        "outcome": "success",
+        "hash_calls": 0
+      },
+      "native_delegation": {
+        "outcome": "success",
+        "hash_calls": 0
+      }
+    },
+    {
+      "operation": "equality",
+      "dict": {
+        "outcome": "success",
+        "hash_calls": 0
+      },
+      "integrated_compact": {
+        "outcome": "success",
+        "hash_calls": 0
+      },
+      "native_delegation": {
+        "outcome": "success",
+        "hash_calls": 0
+      }
+    },
+    {
+      "operation": "update",
+      "dict": {
+        "outcome": "success",
+        "hash_calls": 0
+      },
+      "integrated_compact": {
+        "outcome": "success",
+        "hash_calls": 0
+      },
+      "native_delegation": {
+        "outcome": "success",
+        "hash_calls": 0
+      }
+    },
+    {
+      "operation": "public-proxy-equality-with-int-equivalent-key",
+      "dict": {
+        "outcome": "success",
+        "hash_calls": 0
+      },
+      "integrated_compact": {
+        "outcome": "success",
+        "hash_calls": 0
+      },
+      "native_delegation": {
+        "outcome": "success",
+        "hash_calls": 0
+      }
+    }
+  ],
+  "implication": "All six native outcomes/hash counts match the exact class installed in compiler and codec.",
+  "compatibility": {
+    "probe": "both",
+    "hashes": {
+      "benchmarks.graph_artifact": "4883ca467fa8d2d9f141ce1964c5a6549e78d2dce737faa43350e0f6cc77cc34",
+      "clean_ioc.container": "bf0eb01858f391479b82858aa982df25ea5777675055c9c86587fd0f50c8dfa7"
+    },
+    "probe_sha256": "95048c57af51588e8e47cd69f06459c6e5101245930f216720ab4db002763962"
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "all_behaviour_signatures_equal": true,
+  "artifact_experiment_hashes": {
+    "/Users/peter.daly/WS/pete/clean_ioc/benchmarks/graph_artifact.py": "b3ed4495a180f7288563911752be0baa6404d9e83f9b6db3e2cd928dc84a73c6",
+    "/Users/peter.daly/WS/pete/clean_ioc/benchmarks/graph_artifact_evidence.py": "436a405b2300315f5671cadee73bbde594abf30738b3752d5905b0a5a646b818",
+    "/Users/peter.daly/WS/pete/clean_ioc/benchmarks/graph_memory_artifact_evidence.py": "d99b65fc06065aa819887f6e48252ea4f38fd1b0edf4948afd9a2205e75ed423"
+  },
+  "compile_to_load_reductions": {
+    "full": {
+      "peak_rss_reduction_percent": 11.49020987220073,
+      "prepare_time_reduction_percent": 89.68897019771266,
+      "prepared_rss_reduction_percent": 29.651776292648613
+    },
+    "reduced": {
+      "peak_rss_reduction_percent": 62.68182373792934,
+      "prepare_time_reduction_percent": 98.98382417749949,
+      "prepared_rss_reduction_percent": 62.926292629262925
+    }
+  },
+  "date": "2026-10-09",
+  "full_size_processes": 36,
+  "loader_compilation_disabled_and_template_calls_zero": true,
+  "metadata_mode": {
+    "full": {
+      "artifact_bytes": 29484023,
+      "execution_steps": 1765,
+      "graph_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+      "medians": {
+        "compile": {
+          "prepare_seconds": 11.5906778749777,
+          "prepared": {
+            "peak_rss_bytes": 139739136,
+            "rss_bytes": 139739136,
+            "traced_peak_bytes": 77140946,
+            "traced_retained_bytes": 40297594
+          },
+          "resolve_seconds": 0.02554404200054705,
+          "resolved": {
+            "peak_rss_bytes": 139755520,
+            "rss_bytes": 139739136,
+            "traced_peak_bytes": 77140946,
+            "traced_retained_bytes": 41475039
+          }
+        },
+        "export": {
+          "export_seconds": 1.695719625102356,
+          "exported": {
+            "peak_rss_bytes": 165199872,
+            "rss_bytes": 153026560,
+            "traced_peak_bytes": 89565473,
+            "traced_retained_bytes": 40317606
+          },
+          "prepare_seconds": 11.637132167001255,
+          "prepared": {
+            "peak_rss_bytes": 140394496,
+            "rss_bytes": 140394496,
+            "traced_peak_bytes": 77140890,
+            "traced_retained_bytes": 40297719
+          },
+          "resolve_seconds": 0.02450675005093217,
+          "resolved": {
+            "peak_rss_bytes": 165199872,
+            "rss_bytes": 153026560,
+            "traced_peak_bytes": 89565473,
+            "traced_retained_bytes": 41495359
+          }
+        },
+        "load": {
+          "prepare_seconds": 1.1951182499760762,
+          "prepared": {
+            "peak_rss_bytes": 123682816,
+            "rss_bytes": 98304000,
+            "traced_peak_bytes": 69769784,
+            "traced_retained_bytes": 39911555
+          },
+          "resolve_seconds": 0.022101458045654,
+          "resolved": {
+            "peak_rss_bytes": 123682816,
+            "rss_bytes": 98615296,
+            "traced_peak_bytes": 69769784,
+            "traced_retained_bytes": 41089969
+          }
+        }
+      },
+      "physical_records": 88558,
+      "runtime_link_fingerprint": "d90c78c0d4bb88a063c8d62c87e50906489328573632fa4d698db4b3829c5278",
+      "serialized_objects": 320113,
+      "shared_definitions": 116
+    },
+    "reduced": {
+      "artifact_bytes": 2470435,
+      "execution_steps": 1765,
+      "graph_fingerprint": null,
+      "medians": {
+        "compile": {
+          "prepare_seconds": 11.345116707962006,
+          "prepared": {
+            "peak_rss_bytes": 134037504,
+            "rss_bytes": 134037504,
+            "traced_peak_bytes": 76380165,
+            "traced_retained_bytes": 3248035
+          },
+          "resolve_seconds": 0.015276583028025925,
+          "resolved": {
+            "peak_rss_bytes": 134053888,
+            "rss_bytes": 134037504,
+            "traced_peak_bytes": 76380165,
+            "traced_retained_bytes": 4424832
+          }
+        },
+        "export": {
+          "export_seconds": 0.15871754195541143,
+          "exported": {
+            "peak_rss_bytes": 134037504,
+            "rss_bytes": 134037504,
+            "traced_peak_bytes": 76380407,
+            "traced_retained_bytes": 3260267
+          },
+          "prepare_seconds": 11.41505187493749,
+          "prepared": {
+            "peak_rss_bytes": 133922816,
+            "rss_bytes": 133922816,
+            "traced_peak_bytes": 76380407,
+            "traced_retained_bytes": 3247631
+          },
+          "resolve_seconds": 0.01469524996355176,
+          "resolved": {
+            "peak_rss_bytes": 134037504,
+            "rss_bytes": 134037504,
+            "traced_peak_bytes": 76380407,
+            "traced_retained_bytes": 4437863
+          }
+        },
+        "load": {
+          "prepare_seconds": 0.11528633302077651,
+          "prepared": {
+            "peak_rss_bytes": 50020352,
+            "rss_bytes": 49692672,
+            "traced_peak_bytes": 6231402,
+            "traced_retained_bytes": 3158579
+          },
+          "resolve_seconds": 0.013814582955092192,
+          "resolved": {
+            "peak_rss_bytes": 50020352,
+            "rss_bytes": 49922048,
+            "traced_peak_bytes": 6231402,
+            "traced_retained_bytes": 4337074
+          }
+        }
+      },
+      "physical_records": 8982,
+      "runtime_link_fingerprint": "e807598d969c71f16066ea1cf0badac3743343f304c3193a0581cf24593fe2a0",
+      "serialized_objects": 30999,
+      "shared_definitions": 116
+    }
+  },
+  "schema": 7,
+  "source_hashes": {
+    "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81",
+    "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+    "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+    "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+    "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+    "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211"
+  },
+  "source_hashes_identical_and_verified": true,
+  "within_mode_graph_links_and_counts_equal": true
+}

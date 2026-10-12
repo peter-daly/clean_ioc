@@ -1,0 +1,186 @@
+{
+  "task09_probe_sha256": "95048c57af51588e8e47cd69f06459c6e5101245930f216720ab4db002763962",
+  "rows": {
+    "hostile-class-eq": {
+      "dict": {
+        "value": "False"
+      },
+      "task09": {
+        "exception": "RuntimeError"
+      },
+      "task15": {
+        "value": "False"
+      }
+    },
+    "hostile-class-update": {
+      "dict": {
+        "exception": "TypeError"
+      },
+      "task09": {
+        "exception": "RuntimeError"
+      },
+      "task15": {
+        "exception": "TypeError"
+      }
+    },
+    "hostile-class-union": {
+      "dict": {
+        "exception": "TypeError"
+      },
+      "task09": {
+        "exception": "RuntimeError"
+      },
+      "task15": {
+        "exception": "TypeError"
+      }
+    },
+    "keyword-dunder": {
+      "dict": {
+        "exception": "TypeError"
+      },
+      "task09": {
+        "value": "1"
+      },
+      "task15": {
+        "exception": "TypeError"
+      }
+    },
+    "native-NotImplemented": {
+      "dict": {
+        "value": "NotImplemented"
+      },
+      "task09": {
+        "value": "False"
+      },
+      "task15": {
+        "value": "NotImplemented"
+      }
+    },
+    "self-update-keyword": {
+      "dict": {
+        "value": "None"
+      },
+      "task09": {
+        "exception": "TypeError"
+      },
+      "task15": {
+        "value": "None"
+      }
+    },
+    "reentrant-set": {
+      "dict": {
+        "result": {
+          "value": "None"
+        },
+        "entries": 128,
+        "value126": "inserted"
+      },
+      "task09": {
+        "result": {
+          "value": "None"
+        },
+        "entries": 128,
+        "value126": "changed"
+      },
+      "task15": {
+        "result": {
+          "value": "None"
+        },
+        "entries": 128,
+        "value126": "inserted"
+      }
+    },
+    "reentrant-get": {
+      "dict": {
+        "result": {
+          "value": "'changed'"
+        },
+        "entries": 128,
+        "value126": "changed"
+      },
+      "task09": {
+        "result": {
+          "value": "126"
+        },
+        "entries": 128,
+        "value126": "changed"
+      },
+      "task15": {
+        "result": {
+          "value": "'changed'"
+        },
+        "entries": 128,
+        "value126": "changed"
+      }
+    },
+    "reentrant-getitem": {
+      "dict": {
+        "result": {
+          "value": "'changed'"
+        },
+        "entries": 128,
+        "value126": "changed"
+      },
+      "task09": {
+        "result": {
+          "value": "126"
+        },
+        "entries": 128,
+        "value126": "changed"
+      },
+      "task15": {
+        "result": {
+          "value": "'changed'"
+        },
+        "entries": 128,
+        "value126": "changed"
+      }
+    },
+    "reentrant-contains": {
+      "dict": {
+        "result": {
+          "value": "True"
+        },
+        "entries": 128,
+        "value126": "changed"
+      },
+      "task09": {
+        "result": {
+          "value": "True"
+        },
+        "entries": 128,
+        "value126": "changed"
+      },
+      "task15": {
+        "result": {
+          "value": "True"
+        },
+        "entries": 128,
+        "value126": "changed"
+      }
+    },
+    "reentrant-set-new": {
+      "dict": {
+        "result": {
+          "value": "None"
+        },
+        "entries": 129,
+        "value126": "changed"
+      },
+      "task09": {
+        "result": {
+          "value": "None"
+        },
+        "entries": 128,
+        "value126": "changed"
+      },
+      "task15": {
+        "result": {
+          "value": "None"
+        },
+        "entries": 129,
+        "value126": "changed"
+      }
+    }
+  }
+}

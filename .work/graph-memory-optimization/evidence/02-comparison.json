@@ -1,0 +1,80 @@
+{
+  "additional_after_source_sha256": {
+    "benchmarks/graph_artifact.py": "0eb5efa53440354cc7a73d4364c6a1820cc1076055f5e972fe828352b64caee1",
+    "tests/test_shared_component_definitions.py": "fe96aeb78eac3f78d4ea2faf5063f2db139e0bc3ab52b5da943289a4b3e0adb5"
+  },
+  "after_definition_bytes": 13920,
+  "after_definition_count": 116,
+  "after_medians": {
+    "build_seconds": 11.291077082976699,
+    "prepared": {
+      "peak_rss_bytes": 139034624,
+      "rss_bytes": 139034624,
+      "traced_peak_bytes": 77153004,
+      "traced_retained_bytes": 40296860
+    },
+    "resolve_seconds": 0.024326625047251582,
+    "resolved": {
+      "peak_rss_bytes": 139034624,
+      "rss_bytes": 139034624,
+      "traced_peak_bytes": 77153004,
+      "traced_retained_bytes": 41474167
+    }
+  },
+  "after_record_bytes": 15586208,
+  "before_medians": {
+    "build_seconds": 11.519930084003136,
+    "prepared": {
+      "peak_rss_bytes": 137936896,
+      "rss_bytes": 137936896,
+      "traced_peak_bytes": 84117555,
+      "traced_retained_bytes": 47367391
+    },
+    "resolve_seconds": 0.026810707990080118,
+    "resolved": {
+      "peak_rss_bytes": 137936896,
+      "rss_bytes": 137936896,
+      "traced_peak_bytes": 84117555,
+      "traced_retained_bytes": 48544997
+    }
+  },
+  "before_record_bytes": 22670848,
+  "checks": {
+    "activations": true,
+    "all_other_graph_counts_and_storage": true,
+    "inspection_retained_allocations": true,
+    "lazy_activations": true,
+    "manifest_fingerprint_and_public_traversal": true,
+    "metadata_equivalence_patterns": true,
+    "same_fixture_source": true,
+    "stable_after_hashes": true,
+    "stable_before_hashes": true,
+    "template_calls": true,
+    "validated": true
+  },
+  "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+  "source_after": {
+    "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? docs/graph-memory-fixture.md\n?? tests/test_graph_memory_fixture.py\n?? tests/test_shared_component_definitions.py\n",
+    "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "c8bc3c7b631241f256b0325d925bc21c4a80595d9e5b47460404af3c6cf5e6fa",
+      "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+      "clean_ioc/components.py": "1778cf2598e54d2f87f9dd271535e2f586893dec370ef3c2066f1d156696ce0d",
+      "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+    }
+  },
+  "source_before": {
+    "local_changes": " M .work/README.md\n M benchmarks/README.md\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? docs/graph-memory-fixture.md\n?? tests/test_graph_memory_fixture.py\n",
+    "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "e3289d55862db97e9eb5c4f04a4b75ed91af4f5eac3c1e2d8afe2f2c76ffe9c9",
+      "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+      "clean_ioc/components.py": "a9b6f43bcd62ab417d8a5e980a3303e0c711d764e943ccf758059c90d66528bb",
+      "clean_ioc/container.py": "1b907bd28fe0d745ce653f33354d3aee03df67320ef41912f11f5b4874c33d74",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+    }
+  }
+}

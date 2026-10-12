@@ -1,0 +1,15 @@
+{
+  "uv.lock": "435b9a204c9a8776eb9d38e4a3b1cafbf664e7b32a85396676db293140aa2cd6",
+  "examples/__init__.py": "5ad868114185d656cbb4b747d5bc72b70444250d3c61d0ef6897a47c95afd59f",
+  "examples/asgi_health_checks/README.md": "8127787d917e86ee0859d6fd5ac7dcdd0001409657a86b3bfda364785f69ec2e",
+  "examples/asgi_health_checks/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "examples/asgi_health_checks/main.py": "307dbe2072462ad4cf0bfebf94b7877cda5d8a8ac5e96ec2f59d02eb166af385",
+  "examples/asgi_health_checks/test_app.py": "f26566332eb03d93912a71d1b2aced8a17faa7ede3a359ef99629f007eacdc4b",
+  "examples/fastapi_clean_architecture/README.md": "672244dba7f7ec2c975abd12aa0446a7a092bf822583c07a9f0daea9dbd40fe9",
+  "examples/fastapi_clean_architecture/__init__.py": "c0f5cdd7670f4091161d386dd57a9eabcf3f7dbda21c007dced2e78b424a1573",
+  "examples/fastapi_clean_architecture/application.py": "3f7e69e83cb289977ca18e2cac5f49d9c28e3b159b16ebfde60337b0e92b83c5",
+  "examples/fastapi_clean_architecture/domain.py": "04f99b532d006d8712bf6d4b523c48271029bd42d9439527927c71e5a39512de",
+  "examples/fastapi_clean_architecture/infrastructure.py": "0bed151029fddbc55d3b24264b6e57802e3a4745f1165a57fc58c1b8a15f42d2",
+  "examples/fastapi_clean_architecture/main.py": "291ad78c7ea55717e0e06365eb6091720fbf2756d92001c33bae203339d611e7",
+  "examples/fastapi_clean_architecture/test_app.py": "94075620762677cc764f5d73d3641da6ad22af53183d8868ffdb782756825926"
+}

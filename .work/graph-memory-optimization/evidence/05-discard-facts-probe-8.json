@@ -1,0 +1,183 @@
+{
+  "source": {
+    "revision": "2679234a152144f6ad3549d1f6b817fd490f3e1c",
+    "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M benchmarks/graph_artifact.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_reachability_audit.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/tooling.py\n?? .work/graph-memory-optimization/05-optional-explanation-metadata.md\n?? .work/graph-memory-optimization/evidence/05-before.json\n?? .work/graph-memory-optimization/evidence/05-capture-probe-8.json\n?? .work/graph-memory-optimization/evidence/05-draft-pruning-8.json\n?? .work/graph-memory-optimization/evidence/05-prototype-2.json\n?? .work/graph-memory-optimization/evidence/05-prototype-8.json\n?? .work/graph-memory-optimization/evidence/05-prototype-phases.json\n?? tests/test_optional_explanation_metadata.py\n",
+    "source_sha256": {
+      "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc/container.py": "7099c0dd51d0e40d85ce687ddb7b0d9102eee7ea4c5f9a8a8854c08966be3795",
+      "clean_ioc/tooling.py": "62457ded465fa199b99d777f1e8de751eabfb63132c66273d3edb18feceee94f",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+      "benchmarks/graph_memory_evidence.py": "c4df01b28592d690e30fa296d1d1a4277f5b44793cea9a431296df8731078290"
+    }
+  },
+  "routes": 8,
+  "diagnostics": false,
+  "explain_metadata": false,
+  "allow_scope_builders": false,
+  "ownership": {
+    "retained_builder": false,
+    "captured_selection_views": false
+  },
+  "instrumentation": "none",
+  "python": "3.14.4",
+  "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "pid": 36677,
+  "before": {
+    "rss_bytes": 48939008,
+    "peak_rss_bytes": 49332224
+  },
+  "build_seconds": 10.873996832990088,
+  "prepared": {
+    "rss_bytes": 134201344,
+    "peak_rss_bytes": 134201344
+  },
+  "template_calls": {
+    "source_to_generated_dependency": 8,
+    "generated_worker_to_source": 8,
+    "policy_to_worker_decorator": 2,
+    "generated_worker_to_endpoint_decorator": 8
+  },
+  "resolve_seconds": 0.01609579101204872,
+  "resolved": {
+    "rss_bytes": 134201344,
+    "peak_rss_bytes": 134201344
+  },
+  "validated": {
+    "workers": 124,
+    "tree_objects": 7812,
+    "leaves": 3968,
+    "payload_bytes": 507904,
+    "ordinary_scopes": 1,
+    "managed_scopes": 26,
+    "source_map_calls": 64
+  },
+  "lazy_activations": {
+    "route_dependency": 8,
+    "route_source": 8,
+    "endpoint": 8,
+    "endpoint_decorator": 8
+  },
+  "activations": {
+    "route_dependency": 34,
+    "route_source": 34,
+    "endpoint": 8,
+    "endpoint_decorator": 8,
+    "state": 27,
+    "leaf": 3968,
+    "branch": 3844,
+    "worker": 124,
+    "policy": 2,
+    "worker_decorator": 248
+  },
+  "graph": {
+    "decorator_objects": {
+      "unique_objects": {
+        "explanations": 0,
+        "decisions": 0,
+        "template_facts": 0,
+        "decision_tuples": 0
+      },
+      "unique_patterns": 0,
+      "logical_outcomes_by_entry": {},
+      "logical_reason_codes_by_entry": {},
+      "shallow_storage_bytes": {
+        "explanations": 0,
+        "decisions": 0,
+        "template_facts": 0,
+        "decision_tuples": 0
+      },
+      "outcomes": {},
+      "reason_codes": {}
+    },
+    "component_metadata": {
+      "identity_patterns": 903,
+      "definition_identity_patterns": 116,
+      "patterns_by_kind": {
+        "registration": 41,
+        "value": 618,
+        "provider": 168,
+        "decorator": 10,
+        "provider_map": 16,
+        "managed_provider": 50
+      },
+      "unique_field_objects": {
+        "id": 889,
+        "service_type": 45,
+        "implementation": 20,
+        "implementation_type": 20,
+        "lifespan": 3,
+        "name": 11,
+        "tags": 1,
+        "build_args": 1,
+        "kind": 6,
+        "activation": 4,
+        "boundary": 1,
+        "declared_service_type": 15
+      },
+      "shared_definition_objects": 116,
+      "shared_definition_bytes": 13920,
+      "retained_definition_index_bytes": 0
+    },
+    "physical_records": 8982,
+    "logical_graph_visits": null,
+    "provider_view_contexts": 50,
+    "record_kinds": {
+      "registration": 7898,
+      "value": 618,
+      "provider": 168,
+      "decorator": 232,
+      "provider_map": 16,
+      "managed_provider": 50
+    },
+    "activation_kinds": {
+      "constructor": 8130,
+      "supplied": 618,
+      "deferred": 218,
+      "collection": 16
+    },
+    "unique_execution_steps": 1765,
+    "execution_step_kinds": {
+      "_ManagedProviderStep": 50,
+      "_TransientRegistrationStep": 326,
+      "_SingletonRegistrationStep": 226,
+      "_ValueStep": 618,
+      "_ScopedRegistrationStep": 193,
+      "_ContextProviderStep": 152,
+      "_ProviderMapStep": 32,
+      "_ProviderStep": 168
+    },
+    "unique_registration_objects": 43,
+    "executable_helpers": {
+      "_CompiledDecorator": 240,
+      "_CompiledDependency": 1740
+    },
+    "selected_registrations": 0,
+    "unique_origins": 0,
+    "shallow_storage_bytes": {
+      "component_records": 1580832,
+      "record_index": 294992,
+      "link_tuples": 301520,
+      "occurrence_integers": 253744,
+      "origin_indexes": 128,
+      "execution_steps": 158104,
+      "registration_objects": 7224
+    },
+    "metadata_entries": {
+      "occurrence_explanations": 0,
+      "parameter_explanations": 0,
+      "generic_explanations": 0,
+      "decorator_explanations": 0,
+      "root_candidates": 0,
+      "census_sources": 0,
+      "census_definitions": 0
+    }
+  },
+  "retained_graph_inventory": {
+    "graphs": 1,
+    "records": 8982,
+    "captured_views": 0
+  },
+  "evidence_local_patch": "create decorator decisions but do not store their explanation index"
+}

@@ -1,0 +1,1 @@
+Original task06 script rejected removed public build flags under task10 contract. Preserved original script; task15 wrapper changes only builder.build to builder._build for this labeled historical lifetime comparison.

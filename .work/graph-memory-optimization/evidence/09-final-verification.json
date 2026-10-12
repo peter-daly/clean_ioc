@@ -1,0 +1,15 @@
+{
+  "counts": {
+    "build": 16,
+    "full": 16,
+    "diagnostics": 12,
+    "failure": 12,
+    "artifact": 48
+  },
+  "unique_processes": 104,
+  "single_final_probe_hash": "95048c57af51588e8e47cd69f06459c6e5101245930f216720ab4db002763962",
+  "semantics_equivalent": true,
+  "artifact_schema_headers_checked": true,
+  "operation_audit_checks": 103,
+  "lifetime_cases": 16
+}

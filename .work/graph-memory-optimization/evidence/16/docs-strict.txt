@@ -1,0 +1,48 @@
+
+[31m │  ⚠  Warning from the Material for MkDocs team[0m
+[31m │[0m
+[31m │[0m  MkDocs 2.0, the underlying framework of Material for MkDocs,
+[31m │[0m  will introduce backward-incompatible changes, including:
+[31m │[0m
+[31m │  × [0mAll plugins will stop working – the plugin system has been removed
+[31m │  × [0mAll theme overrides will break – the theming system has been rewritten
+[31m │  × [0mNo migration path exists – existing projects cannot be upgraded
+[31m │  × [0mClosed contribution model – community members can't report bugs
+[31m │  × [0mCurrently unlicensed – unsuitable for production use
+[31m │[0m
+[31m │[0m  Our full analysis:
+[31m │[0m
+[31m │[0m  [4mhttps://squidfunk.github.io/mkdocs-material/blog/2026/02/18/mkdocs-2.0/[0m
+[0m
+INFO    -  DeprecationWarning: Importing from 'mkdocs_autorefs.plugin' is deprecated. Import directly from 'mkdocs_autorefs' instead.
+  File "/Users/peter.daly/WS/pete/clean_ioc/.venv/lib/python3.14/site-packages/mkdocstrings/plugin.py", line 29, in <module>
+    from mkdocs_autorefs.plugin import AutorefsPlugin
+  File "/Users/peter.daly/WS/pete/clean_ioc/.venv/lib/python3.14/site-packages/mkdocs_autorefs/plugin.py", line 12, in __getattr__
+    warnings.warn(
+
+INFO    -  DeprecationWarning: Setting a fallback anchor function is deprecated and will be removed in a future release.
+  File "/Users/peter.daly/WS/pete/clean_ioc/.venv/lib/python3.14/site-packages/mkdocstrings/plugin.py", line 188, in on_config
+    autorefs.get_fallback_anchor = self.handlers.get_anchors
+  File "/Users/peter.daly/WS/pete/clean_ioc/.venv/lib/python3.14/site-packages/mkdocs_autorefs/_internal/plugin.py", line 576, in get_fallback_anchor
+    warn(
+
+INFO    -  Cleaning site directory
+INFO    -  Building documentation to directory: /Users/peter.daly/WS/pete/clean_ioc/site
+INFO    -  The following pages exist in the docs directory, but are not included in the "nav" configuration:
+  - compact-runtime-evidence.md
+  - compiler-combined-evidence.md
+  - declared-provider-roots-evidence.md
+  - deferred-advisories-evidence.md
+  - diagnostic-names-evidence.md
+  - early-rejection-records-evidence.md
+  - empty-dependency-validation-evidence.md
+  - failure-aggregation-evidence.md
+  - frozen-draft-capacity-evidence.md
+  - graph-artifact-experiment.md
+  - graph-memory-fixture.md
+  - invariant-subplan-evidence.md
+  - optional-diagnostics-evidence.md
+  - runtime-build-series-evidence.md
+  - selected-registration-catalogue-evidence.md
+INFO    -  Doc file 'runtime-build-series-evidence.md' contains an absolute link '/Users/peter.daly/WS/bark/bark-core/docs/evidence/host-build-options/README.md', it was left as is.
+INFO    -  Documentation built in 0.79 seconds

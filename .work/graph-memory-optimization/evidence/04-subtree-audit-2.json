@@ -1,0 +1,344 @@
+{
+  "activations": {
+    "branch": 682,
+    "endpoint": 2,
+    "endpoint_decorator": 2,
+    "leaf": 704,
+    "policy": 2,
+    "route_dependency": 10,
+    "route_source": 10,
+    "state": 9,
+    "worker": 22,
+    "worker_decorator": 44
+  },
+  "before": {
+    "peak_rss_bytes": 44679168,
+    "rss_bytes": 44335104
+  },
+  "build_seconds": 0.2906631249934435,
+  "diagnostics": false,
+  "graph": {
+    "activation_kinds": {
+      "collection": 4,
+      "constructor": 2038,
+      "deferred": 32,
+      "supplied": 294
+    },
+    "component_metadata": {
+      "definition_identity_patterns": 44,
+      "identity_patterns": 351,
+      "patterns_by_kind": {
+        "decorator": 4,
+        "managed_provider": 14,
+        "provider": 18,
+        "provider_map": 4,
+        "registration": 17,
+        "value": 294
+      },
+      "retained_definition_index_bytes": 0,
+      "shared_definition_bytes": 5280,
+      "shared_definition_objects": 44,
+      "unique_field_objects": {
+        "activation": 4,
+        "boundary": 1,
+        "build_args": 1,
+        "declared_service_type": 15,
+        "id": 349,
+        "implementation": 20,
+        "implementation_type": 20,
+        "kind": 6,
+        "lifespan": 3,
+        "name": 5,
+        "service_type": 27,
+        "tags": 1
+      }
+    },
+    "decorator_objects": {
+      "logical_outcomes_by_entry": {
+        "rejected": 7898,
+        "selected": 54
+      },
+      "logical_reason_codes_by_entry": {
+        "decorator-filter-matched": 54,
+        "decorator-filter-rejected": 2,
+        "template-target-not-selected": 7896
+      },
+      "outcomes": {
+        "rejected": 70,
+        "selected": 6
+      },
+      "reason_codes": {
+        "decorator-filter-matched": 6,
+        "decorator-filter-rejected": 2,
+        "template-target-not-selected": 68
+      },
+      "shallow_storage_bytes": {
+        "decision_tuples": 1760,
+        "decisions": 7296,
+        "explanations": 112544,
+        "template_facts": 10944
+      },
+      "unique_objects": {
+        "decision_tuples": 24,
+        "decisions": 76,
+        "explanations": 2007,
+        "template_facts": 76
+      },
+      "unique_patterns": 19
+    },
+    "executable_helpers": {
+      "_CompiledDecorator": 36,
+      "_CompiledDependency": 240
+    },
+    "execution_step_kinds": {
+      "_ContextProviderStep": 14,
+      "_ManagedProviderStep": 14,
+      "_ProviderMapStep": 8,
+      "_ProviderStep": 18,
+      "_ScopedRegistrationStep": 25,
+      "_SingletonRegistrationStep": 34,
+      "_TransientRegistrationStep": 50,
+      "_ValueStep": 84
+    },
+    "logical_graph_visits": 1264,
+    "metadata_entries": {
+      "census_definitions": 0,
+      "census_sources": 0,
+      "decorator_explanations": 1988,
+      "generic_explanations": 0,
+      "occurrence_explanations": 0,
+      "parameter_explanations": 0,
+      "root_candidates": 18
+    },
+    "physical_records": 2368,
+    "provider_view_contexts": 14,
+    "record_kinds": {
+      "decorator": 54,
+      "managed_provider": 14,
+      "provider": 18,
+      "provider_map": 4,
+      "registration": 1984,
+      "value": 294
+    },
+    "selected_registrations": 21,
+    "shallow_storage_bytes": {
+      "component_records": 416768,
+      "execution_steps": 22600,
+      "link_tuples": 77424,
+      "occurrence_integers": 66808,
+      "origin_indexes": 73808,
+      "record_index": 73808,
+      "registration_objects": 3192
+    },
+    "unique_execution_steps": 247,
+    "unique_origins": 21,
+    "unique_registration_objects": 19
+  },
+  "instrumentation": "none",
+  "lazy_activations": {
+    "endpoint": 2,
+    "endpoint_decorator": 2,
+    "route_dependency": 2,
+    "route_source": 2
+  },
+  "machine": "arm64",
+  "pid": 30829,
+  "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "prepared": {
+    "peak_rss_bytes": 47251456,
+    "rss_bytes": 47251456
+  },
+  "python": "3.14.4",
+  "resolve_seconds": 0.0024471250362694263,
+  "resolved": {
+    "peak_rss_bytes": 47251456,
+    "rss_bytes": 47251456
+  },
+  "routes": 2,
+  "source": {
+    "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n M tests/test_graph_artifact_experiment.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_artifact_evidence.py\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? benchmarks/graph_reachability_audit.py\n?? benchmarks/graph_subtree_experiment.py\n?? docs/graph-memory-fixture.md\n?? tests/test_graph_memory_fixture.py\n?? tests/test_graph_reachability_audit.py\n?? tests/test_shared_component_definitions.py\n",
+    "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "c8bc3c7b631241f256b0325d925bc21c4a80595d9e5b47460404af3c6cf5e6fa",
+      "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+      "clean_ioc/components.py": "1778cf2598e54d2f87f9dd271535e2f586893dec370ef3c2066f1d156696ce0d",
+      "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+    }
+  },
+  "subtree_experiment": [
+    {
+      "added_shallow_bytes": 0,
+      "contexts": 0,
+      "net_shallow_bytes_upper_bound": 0,
+      "physical_input_records": 1,
+      "projection_records": 0,
+      "rejections": {},
+      "remaining_concrete_records": 1,
+      "remapping_entries": 0,
+      "removed_shallow_bytes_upper_bound": 0,
+      "seconds": 0.000280416919849813,
+      "strict_eligible_occurrences": 1,
+      "strict_repeated_occurrences": 0,
+      "strict_shapes": 1,
+      "structural_shapes": 1,
+      "structurally_repeated_occurrences": 0
+    },
+    {
+      "added_shallow_bytes": 0,
+      "contexts": 0,
+      "net_shallow_bytes_upper_bound": 0,
+      "physical_input_records": 1,
+      "projection_records": 0,
+      "rejections": {},
+      "remaining_concrete_records": 1,
+      "remapping_entries": 0,
+      "removed_shallow_bytes_upper_bound": 0,
+      "seconds": 2.2834050469100475e-05,
+      "strict_eligible_occurrences": 1,
+      "strict_repeated_occurrences": 0,
+      "strict_shapes": 1,
+      "structural_shapes": 1,
+      "structurally_repeated_occurrences": 0
+    },
+    {
+      "added_shallow_bytes": 0,
+      "contexts": 0,
+      "net_shallow_bytes_upper_bound": 0,
+      "physical_input_records": 1,
+      "projection_records": 0,
+      "rejections": {},
+      "remaining_concrete_records": 1,
+      "remapping_entries": 0,
+      "removed_shallow_bytes_upper_bound": 0,
+      "seconds": 1.637497916817665e-05,
+      "strict_eligible_occurrences": 1,
+      "strict_repeated_occurrences": 0,
+      "strict_shapes": 1,
+      "structural_shapes": 1,
+      "structurally_repeated_occurrences": 0
+    },
+    {
+      "added_shallow_bytes": 0,
+      "contexts": 0,
+      "net_shallow_bytes_upper_bound": 0,
+      "physical_input_records": 1,
+      "projection_records": 0,
+      "rejections": {},
+      "remaining_concrete_records": 1,
+      "remapping_entries": 0,
+      "removed_shallow_bytes_upper_bound": 0,
+      "seconds": 1.3791956007480621e-05,
+      "strict_eligible_occurrences": 1,
+      "strict_repeated_occurrences": 0,
+      "strict_shapes": 1,
+      "structural_shapes": 1,
+      "structurally_repeated_occurrences": 0
+    },
+    {
+      "added_shallow_bytes": 0,
+      "contexts": 0,
+      "net_shallow_bytes_upper_bound": 0,
+      "physical_input_records": 2,
+      "projection_records": 0,
+      "rejections": {},
+      "remaining_concrete_records": 2,
+      "remapping_entries": 0,
+      "removed_shallow_bytes_upper_bound": 0,
+      "seconds": 2.183392643928528e-05,
+      "strict_eligible_occurrences": 2,
+      "strict_repeated_occurrences": 0,
+      "strict_shapes": 2,
+      "structural_shapes": 2,
+      "structurally_repeated_occurrences": 0
+    },
+    {
+      "added_shallow_bytes": 0,
+      "contexts": 0,
+      "net_shallow_bytes_upper_bound": 0,
+      "physical_input_records": 2,
+      "projection_records": 0,
+      "rejections": {},
+      "remaining_concrete_records": 2,
+      "remapping_entries": 0,
+      "removed_shallow_bytes_upper_bound": 0,
+      "seconds": 1.8749968148767948e-05,
+      "strict_eligible_occurrences": 2,
+      "strict_repeated_occurrences": 0,
+      "strict_shapes": 2,
+      "structural_shapes": 2,
+      "structurally_repeated_occurrences": 0
+    },
+    {
+      "added_shallow_bytes": 3056,
+      "contexts": 2,
+      "net_shallow_bytes_upper_bound": 3120,
+      "physical_input_records": 77,
+      "projection_records": 30,
+      "rejections": {},
+      "remaining_concrete_records": 47,
+      "remapping_entries": 30,
+      "removed_shallow_bytes_upper_bound": 6176,
+      "seconds": 0.00037016591522842646,
+      "strict_eligible_occurrences": 77,
+      "strict_repeated_occurrences": 52,
+      "strict_shapes": 25,
+      "structural_shapes": 11,
+      "structurally_repeated_occurrences": 66
+    },
+    {
+      "added_shallow_bytes": 3056,
+      "contexts": 2,
+      "net_shallow_bytes_upper_bound": 3120,
+      "physical_input_records": 77,
+      "projection_records": 30,
+      "rejections": {},
+      "remaining_concrete_records": 47,
+      "remapping_entries": 30,
+      "removed_shallow_bytes_upper_bound": 6176,
+      "seconds": 0.0003622090443968773,
+      "strict_eligible_occurrences": 77,
+      "strict_repeated_occurrences": 52,
+      "strict_shapes": 25,
+      "structural_shapes": 11,
+      "structurally_repeated_occurrences": 66
+    },
+    {
+      "added_shallow_bytes": 146200,
+      "contexts": 25,
+      "net_shallow_bytes_upper_bound": 180600,
+      "physical_input_records": 2368,
+      "projection_records": 1575,
+      "rejections": {
+        "decorators-or-preconfiguration": 28,
+        "non-registration-or-value": 90,
+        "view-or-missing-record": 14
+      },
+      "remaining_concrete_records": 793,
+      "remapping_entries": 1575,
+      "removed_shallow_bytes_upper_bound": 326800,
+      "seconds": 0.010148125002160668,
+      "strict_eligible_occurrences": 2250,
+      "strict_repeated_occurrences": 1651,
+      "strict_shapes": 599,
+      "structural_shapes": 36,
+      "structurally_repeated_occurrences": 2346
+    }
+  ],
+  "template_calls": {
+    "generated_worker_to_endpoint_decorator": 2,
+    "generated_worker_to_source": 2,
+    "policy_to_worker_decorator": 2,
+    "source_to_generated_dependency": 2
+  },
+  "validated": {
+    "leaves": 704,
+    "managed_scopes": 8,
+    "ordinary_scopes": 1,
+    "payload_bytes": 90112,
+    "source_map_calls": 4,
+    "tree_objects": 1386,
+    "workers": 22
+  }
+}

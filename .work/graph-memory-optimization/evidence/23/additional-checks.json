@@ -1,0 +1,22 @@
+[
+  {
+    "check": "Bark real-rule correctness",
+    "command": [
+      "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/bark-env/bin/python",
+      ".work/graph-memory-optimization/evidence/23/bark_rules_correctness.py"
+    ],
+    "cwd": "/Users/peter.daly/WS/pete/clean_ioc",
+    "stdout": ".work/graph-memory-optimization/evidence/23/bark-rules-correctness.json",
+    "exit_code": 0
+  },
+  {
+    "check": "isolated task-relative patch reconstruction",
+    "command": [
+      ".venv/bin/python",
+      ".work/graph-memory-optimization/evidence/23/package_evidence.py"
+    ],
+    "cwd": "/Users/peter.daly/WS/pete/clean_ioc",
+    "result": ".work/graph-memory-optimization/evidence/23/reproduction.json",
+    "exit_code": 0
+  }
+]

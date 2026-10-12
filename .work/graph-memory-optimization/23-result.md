@@ -1,0 +1,30 @@
+# Task 23 — Runtime features and external composition
+
+Date: 2026-10-10. Implementation and focused verification complete; scoped coordinator review accepted. No commit, push, release, consumer edit or performance measurement.
+
+Coordinator review inspected compact observation, capture/restore ownership, public handle matching, independent result runtimes and feature tests. All 62 source/patch hash entries match the reviewed workspace. Task 21's feature integration gate is accepted; task 24 remains responsible for full public migration and consumer verification.
+
+Ordinary and overlay builds now instrument emitted execution directly. `_observe_execution_bridge` is removed: profiling no longer constructs `_PlanSet`, `CompiledGraph`, a manifest, graph index, sharing report or validation context. Warmup-only, profiling-only and combined builds pass constructor sentinels, including retained composition, inherited rules and compilation profiling. This completes task21's previously deferred optional-feature implementation gate, subject to review.
+
+`Composition` is public. `retain_composition()` returns the same pending external handle before admission; successful executable capture seals it. `analyse()` captures `result.composition`, including when an inspection-only failure leaves execution complete. `ScopeBuilder(parent, composition=...)` requires a live parent with the matching realized plan identity. Ordinary descendants inherit that identity. Layered overlays may retain their own handle. `new_scope_builder()` and the private `_from_blueprint`/result-blueprint seam are removed.
+
+The handle owns immutable declaration records, original shallow build inputs and realized registration/discovery facts. It reconstructs fresh private library carriers for an active overlay builder. Application values, instances, callback closures and map keys keep their identities. It has no resource cleanup or context-manager API, analysis graph or report. Runtime plans hold only their existing small identity, never a handle or declaration snapshot. Dropping handles preserves emitted children; active builders/results remain independent owners. Root analysis test runtimes keep independent singleton/preconfiguration state; inherited parent anchors and cleanup owners remain borrowed.
+
+Observation exports intentionally change: `ProfileRecord.execution_id`, `ResolutionProfile.executions` and `cache_group`/`cache_groups` replace graph fingerprint/sharing terminology. Compact `component:<occurrence>` paths have separate display labels; preconfiguration cache caller records distinguish request occurrences from physical activation owners. Each observation installation receives a unique identity, including separate test runtimes from one analysis. Warmup reports expose `plan_id`, with SARIF `executionPlanId`. These are process-local execution identities, not semantic manifest fingerprints or cross-process comparison keys. Optional catalogs, labels, caller mappings and counters retain data and have a cost; no saving is claimed.
+
+- **406 tests passed** in the live workspace and the isolated task22-source plus task23-patch reconstruction. This includes the prior 337 checks, all 31 migrated profiling tests, 24 new feature/Composition cases and 14 existing warmup cases. [Exact checks](evidence/23/verification.json), [live log](evidence/23/pytest-final.log), [reconstruction](evidence/23/reproduction.json), [reconstructed log](evidence/23/reproduced-pytest.log).
+- Lint, formatting and type checks passed for changed source/tests. [Lint](evidence/23/ruff-final.log), [format](evidence/23/format-final.log), [types](evidence/23/ty-final.log).
+- Both unchanged real Bark validators still run zero times during build and once each during analysis; all three UoW/SQL fixtures preserve expected findings. [Proof/import hashes](evidence/23/bark-rules-correctness.json), [command record](evidence/23/additional-checks.json).
+
+Coverage preserves warmup order/repeats and transient/per-resolution/scoped caches; local missing/ambiguous binding errors; sync refusal of async activation/cleanup; failure aggregation, cancellation and cleanup; provider maps, slots, managed acquisitions and per-call scopes; parent observation/anchor ownership; immutable handles, opaque identities and weak ownership; failed admission/emission; inspection-only failure; and no source allocation when retention is unrequested. Profiling tests retain activation, cache, concurrency and cleanup assertions while migrating identifiers. The closed-scope guard test now exercises the public explicit composition constructor.
+
+## Identity and reproduction
+
+- Pre-task compiler SHA-256: `5f610d45def38d9c536bb557650a1dd70d50eb721c0a32a3fd481f351c04f51b`.
+- Final compiler SHA-256: `e81406c5c439144e618a6891ec64450c5107ba7e4fc5b69bd75a8314a98dc28e`.
+- [Task-relative patch](evidence/23/task23.patch) SHA-256: `0775ba00bec71fcdd643fb3ba7b493e46bd336bcc2538d69cab4c7a9716c3814`.
+- [Before/after and package hashes](evidence/23/source-manifest.json), [before manifest](evidence/23/before-manifest.json), [source locations](evidence/23/source-symbols.json). Fourteen captured files reconstruct byte-for-byte; thirteen actually changed, while the warmup test source snapshot is unchanged. All 47 package Python files match.
+
+Run `.venv/bin/python .work/graph-memory-optimization/evidence/23/verify.py` for the focused gate. The packaging script records exact isolated test/import paths and refuses to overwrite its recorded patch. Reconstruction copies only small package/test source trees and reuses the preserved environment.
+
+Task24 still owns the whole-suite migration, remaining old runtime inspection/convenience properties and private compiler harness, full documentation/CLI/consumer migration and old warmup report assertions. Experimental artifacts remain unsupported. All memory/timing/population comparisons, retained composition costs and temporary overlap remain task25 work. Prior dirty work, baselines and earlier evidence are preserved.

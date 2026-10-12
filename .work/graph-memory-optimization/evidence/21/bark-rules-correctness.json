@@ -1,0 +1,52 @@
+{
+  "correctness_only": true,
+  "imports": [
+    {
+      "path": "/Users/peter.daly/WS/pete/clean_ioc/clean_ioc/container.py",
+      "sha256": "d99aa4edbd26d70b908dec17632d0353e66df62c763695a3941f5e5d2a641760"
+    },
+    {
+      "path": "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/bark-source/bark_core/unit_of_work/bundles.py",
+      "sha256": "f75cd80539d9d45a0dcf2eab7881729a3f91891454c418688bd1d23ee818360c"
+    },
+    {
+      "path": "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/bark-source/tests/unit/bundles/test_unit_of_work.py",
+      "sha256": "0ab45f3ea46ef7f489085c58185fca038036a49460eebbccb69cfa5c0ad64ec7"
+    }
+  ],
+  "results": [
+    {
+      "fixture": "wrong_lifespan",
+      "build_calls": 0,
+      "analysis_calls": [
+        "validate_unit_of_work_graph",
+        "validate_unit_of_work_graph_on_validation"
+      ],
+      "errors": [
+        "uow-scope-mismatch"
+      ]
+    },
+    {
+      "fixture": "wrong_sql_write",
+      "build_calls": 0,
+      "analysis_calls": [
+        "validate_unit_of_work_graph",
+        "validate_unit_of_work_graph_on_validation"
+      ],
+      "errors": [
+        "uow-sqlalchemy-write-without-boundary"
+      ]
+    },
+    {
+      "fixture": "wrong_sql_begin",
+      "build_calls": 0,
+      "analysis_calls": [
+        "validate_unit_of_work_graph",
+        "validate_unit_of_work_graph_on_validation"
+      ],
+      "errors": [
+        "uow-sqlalchemy-begin-inside-boundary"
+      ]
+    }
+  ]
+}

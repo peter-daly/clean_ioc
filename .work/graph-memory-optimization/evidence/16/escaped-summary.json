@@ -1,0 +1,427 @@
+{
+  "counts": {
+    "saved_views": 193,
+    "graphs": 129,
+    "records": 194,
+    "definitions": 131,
+    "calls": {
+      "when": 64,
+      "position": 64,
+      "source": 1
+    }
+  },
+  "summary": {
+    "run": {
+      "before": {
+        "build_seconds": {
+          "median": 0.0318705840036273,
+          "min": 0.03183387499302626,
+          "max": 0.033595292014069855
+        },
+        "first_inspection_seconds": {
+          "median": 0.0007262500002980232,
+          "min": 0.0007080419454723597,
+          "max": 0.0007437090389430523
+        },
+        "second_inspection_seconds": {
+          "median": 0.0005672499537467957,
+          "min": 0.0005592911038547754,
+          "max": 0.0005870000459253788
+        },
+        "prepared": {
+          "retained": {
+            "median": 362570,
+            "min": 362515,
+            "max": 363019
+          },
+          "peak": {
+            "median": 1700890,
+            "min": 1700764,
+            "max": 1701150
+          },
+          "peak_rss": {
+            "median": 44040192,
+            "min": 44023808,
+            "max": 44171264
+          }
+        },
+        "first_inspection": {
+          "retained": {
+            "median": 423051,
+            "min": 422996,
+            "max": 423437
+          },
+          "peak": {
+            "median": 1700890,
+            "min": 1700764,
+            "max": 1701150
+          },
+          "peak_rss": {
+            "median": 44040192,
+            "min": 44023808,
+            "max": 44171264
+          }
+        },
+        "second_inspection": {
+          "retained": {
+            "median": 483603,
+            "min": 483548,
+            "max": 483989
+          },
+          "peak": {
+            "median": 1700890,
+            "min": 1700764,
+            "max": 1701150
+          },
+          "peak_rss": {
+            "median": 44040192,
+            "min": 44023808,
+            "max": 44171264
+          }
+        },
+        "only_saved": {
+          "retained": {
+            "median": 253398,
+            "min": 253288,
+            "max": 253721
+          },
+          "peak": {
+            "median": 1700890,
+            "min": 1700764,
+            "max": 1701150
+          },
+          "peak_rss": {
+            "median": 44040192,
+            "min": 44023808,
+            "max": 44187648
+          }
+        },
+        "released": {
+          "retained": {
+            "median": 57705,
+            "min": 57595,
+            "max": 58028
+          },
+          "peak": {
+            "median": 1700890,
+            "min": 1700764,
+            "max": 1701150
+          },
+          "peak_rss": {
+            "median": 44040192,
+            "min": 44023808,
+            "max": 44187648
+          }
+        }
+      },
+      "after": {
+        "build_seconds": {
+          "median": 0.03139187500346452,
+          "min": 0.031067083938978612,
+          "max": 0.03428770799655467
+        },
+        "first_inspection_seconds": {
+          "median": 0.0006977089215070009,
+          "min": 0.0006969170644879341,
+          "max": 0.00070583401247859
+        },
+        "second_inspection_seconds": {
+          "median": 0.0005714580183848739,
+          "min": 0.0005599999567493796,
+          "max": 0.0005723339272662997
+        },
+        "prepared": {
+          "retained": {
+            "median": 362688,
+            "min": 362302,
+            "max": 364507
+          },
+          "peak": {
+            "median": 1701016,
+            "min": 1700260,
+            "max": 1702528
+          },
+          "peak_rss": {
+            "median": 44351488,
+            "min": 44171264,
+            "max": 44498944
+          }
+        },
+        "first_inspection": {
+          "retained": {
+            "median": 423169,
+            "min": 422783,
+            "max": 424988
+          },
+          "peak": {
+            "median": 1701016,
+            "min": 1700260,
+            "max": 1702528
+          },
+          "peak_rss": {
+            "median": 44351488,
+            "min": 44171264,
+            "max": 44498944
+          }
+        },
+        "second_inspection": {
+          "retained": {
+            "median": 483721,
+            "min": 483335,
+            "max": 485540
+          },
+          "peak": {
+            "median": 1701016,
+            "min": 1700260,
+            "max": 1702528
+          },
+          "peak_rss": {
+            "median": 44351488,
+            "min": 44171264,
+            "max": 44498944
+          }
+        },
+        "only_saved": {
+          "retained": {
+            "median": 253516,
+            "min": 253130,
+            "max": 255272
+          },
+          "peak": {
+            "median": 1701016,
+            "min": 1700260,
+            "max": 1702528
+          },
+          "peak_rss": {
+            "median": 44351488,
+            "min": 44171264,
+            "max": 44498944
+          }
+        },
+        "released": {
+          "retained": {
+            "median": 57823,
+            "min": 57437,
+            "max": 59579
+          },
+          "peak": {
+            "median": 1701016,
+            "min": 1700260,
+            "max": 1702528
+          },
+          "peak_rss": {
+            "median": 44351488,
+            "min": 44171264,
+            "max": 44498944
+          }
+        }
+      }
+    },
+    "analysis": {
+      "before": {
+        "build_seconds": {
+          "median": 0.03266358305700123,
+          "min": 0.03261570795439184,
+          "max": 0.0330194589914754
+        },
+        "first_inspection_seconds": {
+          "median": 0.000730833038687706,
+          "min": 0.0007105419645085931,
+          "max": 0.0007349580992013216
+        },
+        "second_inspection_seconds": {
+          "median": 0.0005820828955620527,
+          "min": 0.0005654169945046306,
+          "max": 0.0005861669778823853
+        },
+        "prepared": {
+          "retained": {
+            "median": 788907,
+            "min": 788718,
+            "max": 789301
+          },
+          "peak": {
+            "median": 1813752,
+            "min": 1813563,
+            "max": 1814075
+          },
+          "peak_rss": {
+            "median": 44204032,
+            "min": 44171264,
+            "max": 44646400
+          }
+        },
+        "first_inspection": {
+          "retained": {
+            "median": 849325,
+            "min": 849136,
+            "max": 849719
+          },
+          "peak": {
+            "median": 1813752,
+            "min": 1813563,
+            "max": 1814075
+          },
+          "peak_rss": {
+            "median": 44204032,
+            "min": 44187648,
+            "max": 44646400
+          }
+        },
+        "second_inspection": {
+          "retained": {
+            "median": 909877,
+            "min": 909688,
+            "max": 910271
+          },
+          "peak": {
+            "median": 1813752,
+            "min": 1813563,
+            "max": 1814075
+          },
+          "peak_rss": {
+            "median": 44204032,
+            "min": 44204032,
+            "max": 44646400
+          }
+        },
+        "only_saved": {
+          "retained": {
+            "median": 239433,
+            "min": 239181,
+            "max": 239890
+          },
+          "peak": {
+            "median": 1813752,
+            "min": 1813563,
+            "max": 1814075
+          },
+          "peak_rss": {
+            "median": 44220416,
+            "min": 44204032,
+            "max": 44646400
+          }
+        },
+        "released": {
+          "retained": {
+            "median": 43740,
+            "min": 43488,
+            "max": 44197
+          },
+          "peak": {
+            "median": 1813752,
+            "min": 1813563,
+            "max": 1814075
+          },
+          "peak_rss": {
+            "median": 44220416,
+            "min": 44204032,
+            "max": 44646400
+          }
+        }
+      },
+      "after": {
+        "build_seconds": {
+          "median": 0.03219187504146248,
+          "min": 0.032109999912790954,
+          "max": 0.03239620802924037
+        },
+        "first_inspection_seconds": {
+          "median": 0.0007087080739438534,
+          "min": 0.0007041249191388488,
+          "max": 0.0007087499834597111
+        },
+        "second_inspection_seconds": {
+          "median": 0.0005698750028386712,
+          "min": 0.0005696670850738883,
+          "max": 0.0005727499956265092
+        },
+        "prepared": {
+          "retained": {
+            "median": 788529,
+            "min": 788088,
+            "max": 788852
+          },
+          "peak": {
+            "median": 1813059,
+            "min": 1812870,
+            "max": 1813508
+          },
+          "peak_rss": {
+            "median": 44662784,
+            "min": 44285952,
+            "max": 44744704
+          }
+        },
+        "first_inspection": {
+          "retained": {
+            "median": 849010,
+            "min": 848569,
+            "max": 849270
+          },
+          "peak": {
+            "median": 1813059,
+            "min": 1812870,
+            "max": 1813508
+          },
+          "peak_rss": {
+            "median": 44662784,
+            "min": 44285952,
+            "max": 44744704
+          }
+        },
+        "second_inspection": {
+          "retained": {
+            "median": 909562,
+            "min": 909058,
+            "max": 909822
+          },
+          "peak": {
+            "median": 1813059,
+            "min": 1812870,
+            "max": 1813508
+          },
+          "peak_rss": {
+            "median": 44662784,
+            "min": 44285952,
+            "max": 44744704
+          }
+        },
+        "only_saved": {
+          "retained": {
+            "median": 239181,
+            "min": 238677,
+            "max": 239315
+          },
+          "peak": {
+            "median": 1813059,
+            "min": 1812870,
+            "max": 1813508
+          },
+          "peak_rss": {
+            "median": 44662784,
+            "min": 44285952,
+            "max": 44744704
+          }
+        },
+        "released": {
+          "retained": {
+            "median": 43488,
+            "min": 42984,
+            "max": 43622
+          },
+          "peak": {
+            "median": 1813059,
+            "min": 1812870,
+            "max": 1813508
+          },
+          "peak_rss": {
+            "median": 44662784,
+            "min": 44285952,
+            "max": 44744704
+          }
+        }
+      }
+    }
+  }
+}

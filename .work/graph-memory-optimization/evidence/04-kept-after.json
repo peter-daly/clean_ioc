@@ -1,0 +1,1199 @@
+{
+  "eager_decorator_facts": false,
+  "medians": {
+    "build_seconds": 11.195471208076924,
+    "prepared": {
+      "peak_rss_bytes": 141754368,
+      "rss_bytes": 141737984,
+      "traced_peak_bytes": 77670544,
+      "traced_retained_bytes": 37508938
+    },
+    "resolve_seconds": 0.021813667030073702,
+    "resolved": {
+      "peak_rss_bytes": 141754368,
+      "rss_bytes": 141754368,
+      "traced_peak_bytes": 77670544,
+      "traced_retained_bytes": 38686334
+    }
+  },
+  "repeats": 3,
+  "routes": 8,
+  "runs": [
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42516480,
+        "rss_bytes": 42156032
+      },
+      "build_seconds": 11.191814083023928,
+      "diagnostics": false,
+      "eager_decorator_facts": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "component_metadata": {
+          "definition_identity_patterns": 116,
+          "identity_patterns": 31311,
+          "patterns_by_kind": {
+            "decorator": 10,
+            "managed_provider": 50,
+            "provider": 168,
+            "provider_map": 16,
+            "registration": 41,
+            "value": 31026
+          },
+          "retained_definition_index_bytes": 0,
+          "shared_definition_bytes": 13920,
+          "shared_definition_objects": 116,
+          "unique_field_objects": {
+            "activation": 4,
+            "boundary": 1,
+            "build_args": 1,
+            "declared_service_type": 15,
+            "id": 31297,
+            "implementation": 20,
+            "implementation_type": 20,
+            "kind": 6,
+            "lifespan": 3,
+            "name": 11,
+            "service_type": 45,
+            "tags": 1
+          }
+        },
+        "concrete_component_records": 63925,
+        "contextual_projection_records": 24633,
+        "decorator_objects": {
+          "logical_outcomes_by_entry": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "logical_reason_codes_by_entry": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "outcomes": {
+            "rejected": 406,
+            "selected": 24
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 24,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 350
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 6320,
+            "decisions": 41280,
+            "explanations": 3167984,
+            "template_facts": 61920
+          },
+          "unique_objects": {
+            "decision_tuples": 60,
+            "decisions": 430,
+            "explanations": 56565,
+            "template_facts": 430
+          },
+          "unique_patterns": 43
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "logical_graph_visits": 8932,
+        "logical_occurrence_records": 88558,
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 12630248,
+          "execution_steps": 158104,
+          "link_tuples": 1878224,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224,
+          "subtree_contexts_and_maps": 922760
+        },
+        "subtree_remapping_entries": 24633,
+        "subtree_view_contexts": 391,
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "none",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 49544,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 141754368,
+        "rss_bytes": 141737984
+      },
+      "python": "3.14.4",
+      "repeat": 1,
+      "resolve_seconds": 0.022080875001847744,
+      "resolved": {
+        "peak_rss_bytes": 141754368,
+        "rss_bytes": 141754368
+      },
+      "routes": 8,
+      "source": {
+        "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n M tests/test_graph_artifact_experiment.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_artifact_evidence.py\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? benchmarks/graph_reachability_audit.py\n?? benchmarks/graph_subtree_experiment.py\n?? clean_ioc/_component_subtrees.py\n?? docs/graph-memory-fixture.md\n?? tests/test_contextual_subtrees.py\n?? tests/test_graph_memory_fixture.py\n?? tests/test_graph_reachability_audit.py\n?? tests/test_shared_component_definitions.py\n",
+        "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+        "source_sha256": {
+          "benchmarks/graph_memory_evidence.py": "6a4b40b37a61aba503382526c99b244e56278532774b7d6ddce59a4d155894a5",
+          "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+          "clean_ioc/_component_subtrees.py": "4e083e821d84a6ac37cfa62e7f6a3c8bd244ce35e0d412c4dc8fc49a72eb1346",
+          "clean_ioc/components.py": "81a54da74f53539dcbe33de050737bb6ff72b21c1675ff1bd137e3a387d5e88f",
+          "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+          "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+          "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+        }
+      },
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42745856,
+        "rss_bytes": 42401792
+      },
+      "build_seconds": 78.26344012503978,
+      "diagnostics": false,
+      "eager_decorator_facts": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "component_metadata": {
+          "definition_identity_patterns": 116,
+          "identity_patterns": 31311,
+          "patterns_by_kind": {
+            "decorator": 10,
+            "managed_provider": 50,
+            "provider": 168,
+            "provider_map": 16,
+            "registration": 41,
+            "value": 31026
+          },
+          "retained_definition_index_bytes": 0,
+          "shared_definition_bytes": 13920,
+          "shared_definition_objects": 116,
+          "unique_field_objects": {
+            "activation": 4,
+            "boundary": 1,
+            "build_args": 1,
+            "declared_service_type": 15,
+            "id": 31297,
+            "implementation": 20,
+            "implementation_type": 20,
+            "kind": 6,
+            "lifespan": 3,
+            "name": 11,
+            "service_type": 45,
+            "tags": 1
+          }
+        },
+        "concrete_component_records": 63925,
+        "contextual_projection_records": 24633,
+        "decorator_objects": {
+          "logical_outcomes_by_entry": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "logical_reason_codes_by_entry": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "outcomes": {
+            "rejected": 406,
+            "selected": 24
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 24,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 350
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 6320,
+            "decisions": 41280,
+            "explanations": 3167984,
+            "template_facts": 61920
+          },
+          "unique_objects": {
+            "decision_tuples": 60,
+            "decisions": 430,
+            "explanations": 56565,
+            "template_facts": 430
+          },
+          "unique_patterns": 43
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "logical_graph_visits": 8932,
+        "logical_occurrence_records": 88558,
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 12630248,
+          "execution_steps": 158104,
+          "link_tuples": 1878224,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224,
+          "subtree_contexts_and_maps": 922760
+        },
+        "subtree_remapping_entries": 24633,
+        "subtree_view_contexts": 391,
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "tracemalloc",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 49727,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 200130560,
+        "rss_bytes": 200130560,
+        "traced_peak_bytes": 77670544,
+        "traced_retained_bytes": 37508948
+      },
+      "python": "3.14.4",
+      "repeat": 1,
+      "resolve_seconds": 0.052057583001442254,
+      "resolved": {
+        "peak_rss_bytes": 200146944,
+        "rss_bytes": 200146944,
+        "traced_peak_bytes": 77670544,
+        "traced_retained_bytes": 38686547
+      },
+      "routes": 8,
+      "source": {
+        "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n M tests/test_graph_artifact_experiment.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_artifact_evidence.py\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? benchmarks/graph_reachability_audit.py\n?? benchmarks/graph_subtree_experiment.py\n?? clean_ioc/_component_subtrees.py\n?? docs/graph-memory-fixture.md\n?? tests/test_contextual_subtrees.py\n?? tests/test_graph_memory_fixture.py\n?? tests/test_graph_reachability_audit.py\n?? tests/test_shared_component_definitions.py\n",
+        "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+        "source_sha256": {
+          "benchmarks/graph_memory_evidence.py": "6a4b40b37a61aba503382526c99b244e56278532774b7d6ddce59a4d155894a5",
+          "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+          "clean_ioc/_component_subtrees.py": "4e083e821d84a6ac37cfa62e7f6a3c8bd244ce35e0d412c4dc8fc49a72eb1346",
+          "clean_ioc/components.py": "81a54da74f53539dcbe33de050737bb6ff72b21c1675ff1bd137e3a387d5e88f",
+          "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+          "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+          "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+        }
+      },
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42942464,
+        "rss_bytes": 42598400
+      },
+      "build_seconds": 11.195471208076924,
+      "diagnostics": false,
+      "eager_decorator_facts": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "component_metadata": {
+          "definition_identity_patterns": 116,
+          "identity_patterns": 31311,
+          "patterns_by_kind": {
+            "decorator": 10,
+            "managed_provider": 50,
+            "provider": 168,
+            "provider_map": 16,
+            "registration": 41,
+            "value": 31026
+          },
+          "retained_definition_index_bytes": 0,
+          "shared_definition_bytes": 13920,
+          "shared_definition_objects": 116,
+          "unique_field_objects": {
+            "activation": 4,
+            "boundary": 1,
+            "build_args": 1,
+            "declared_service_type": 15,
+            "id": 31297,
+            "implementation": 20,
+            "implementation_type": 20,
+            "kind": 6,
+            "lifespan": 3,
+            "name": 11,
+            "service_type": 45,
+            "tags": 1
+          }
+        },
+        "concrete_component_records": 63925,
+        "contextual_projection_records": 24633,
+        "decorator_objects": {
+          "logical_outcomes_by_entry": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "logical_reason_codes_by_entry": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "outcomes": {
+            "rejected": 406,
+            "selected": 24
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 24,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 350
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 6320,
+            "decisions": 41280,
+            "explanations": 3167984,
+            "template_facts": 61920
+          },
+          "unique_objects": {
+            "decision_tuples": 60,
+            "decisions": 430,
+            "explanations": 56565,
+            "template_facts": 430
+          },
+          "unique_patterns": 43
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "logical_graph_visits": 8932,
+        "logical_occurrence_records": 88558,
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 12630248,
+          "execution_steps": 158104,
+          "link_tuples": 1878224,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224,
+          "subtree_contexts_and_maps": 922760
+        },
+        "subtree_remapping_entries": 24633,
+        "subtree_view_contexts": 391,
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "none",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 50842,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 143572992,
+        "rss_bytes": 143572992
+      },
+      "python": "3.14.4",
+      "repeat": 2,
+      "resolve_seconds": 0.021813667030073702,
+      "resolved": {
+        "peak_rss_bytes": 143572992,
+        "rss_bytes": 143572992
+      },
+      "routes": 8,
+      "source": {
+        "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n M tests/test_graph_artifact_experiment.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_artifact_evidence.py\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? benchmarks/graph_reachability_audit.py\n?? benchmarks/graph_subtree_experiment.py\n?? clean_ioc/_component_subtrees.py\n?? docs/graph-memory-fixture.md\n?? tests/test_contextual_subtrees.py\n?? tests/test_graph_memory_fixture.py\n?? tests/test_graph_reachability_audit.py\n?? tests/test_shared_component_definitions.py\n",
+        "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+        "source_sha256": {
+          "benchmarks/graph_memory_evidence.py": "6a4b40b37a61aba503382526c99b244e56278532774b7d6ddce59a4d155894a5",
+          "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+          "clean_ioc/_component_subtrees.py": "4e083e821d84a6ac37cfa62e7f6a3c8bd244ce35e0d412c4dc8fc49a72eb1346",
+          "clean_ioc/components.py": "81a54da74f53539dcbe33de050737bb6ff72b21c1675ff1bd137e3a387d5e88f",
+          "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+          "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+          "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+        }
+      },
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42631168,
+        "rss_bytes": 42287104
+      },
+      "build_seconds": 78.37343008292373,
+      "diagnostics": false,
+      "eager_decorator_facts": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "component_metadata": {
+          "definition_identity_patterns": 116,
+          "identity_patterns": 31311,
+          "patterns_by_kind": {
+            "decorator": 10,
+            "managed_provider": 50,
+            "provider": 168,
+            "provider_map": 16,
+            "registration": 41,
+            "value": 31026
+          },
+          "retained_definition_index_bytes": 0,
+          "shared_definition_bytes": 13920,
+          "shared_definition_objects": 116,
+          "unique_field_objects": {
+            "activation": 4,
+            "boundary": 1,
+            "build_args": 1,
+            "declared_service_type": 15,
+            "id": 31297,
+            "implementation": 20,
+            "implementation_type": 20,
+            "kind": 6,
+            "lifespan": 3,
+            "name": 11,
+            "service_type": 45,
+            "tags": 1
+          }
+        },
+        "concrete_component_records": 63925,
+        "contextual_projection_records": 24633,
+        "decorator_objects": {
+          "logical_outcomes_by_entry": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "logical_reason_codes_by_entry": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "outcomes": {
+            "rejected": 406,
+            "selected": 24
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 24,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 350
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 6320,
+            "decisions": 41280,
+            "explanations": 3167984,
+            "template_facts": 61920
+          },
+          "unique_objects": {
+            "decision_tuples": 60,
+            "decisions": 430,
+            "explanations": 56565,
+            "template_facts": 430
+          },
+          "unique_patterns": 43
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "logical_graph_visits": 8932,
+        "logical_occurrence_records": 88558,
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 12630248,
+          "execution_steps": 158104,
+          "link_tuples": 1878224,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224,
+          "subtree_contexts_and_maps": 922760
+        },
+        "subtree_remapping_entries": 24633,
+        "subtree_view_contexts": 391,
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "tracemalloc",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 51061,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 202178560,
+        "rss_bytes": 202178560,
+        "traced_peak_bytes": 77670696,
+        "traced_retained_bytes": 37508901
+      },
+      "python": "3.14.4",
+      "repeat": 2,
+      "resolve_seconds": 0.05018554104026407,
+      "resolved": {
+        "peak_rss_bytes": 202194944,
+        "rss_bytes": 202194944,
+        "traced_peak_bytes": 77670696,
+        "traced_retained_bytes": 38686334
+      },
+      "routes": 8,
+      "source": {
+        "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n M tests/test_graph_artifact_experiment.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_artifact_evidence.py\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? benchmarks/graph_reachability_audit.py\n?? benchmarks/graph_subtree_experiment.py\n?? clean_ioc/_component_subtrees.py\n?? docs/graph-memory-fixture.md\n?? tests/test_contextual_subtrees.py\n?? tests/test_graph_memory_fixture.py\n?? tests/test_graph_reachability_audit.py\n?? tests/test_shared_component_definitions.py\n",
+        "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+        "source_sha256": {
+          "benchmarks/graph_memory_evidence.py": "6a4b40b37a61aba503382526c99b244e56278532774b7d6ddce59a4d155894a5",
+          "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+          "clean_ioc/_component_subtrees.py": "4e083e821d84a6ac37cfa62e7f6a3c8bd244ce35e0d412c4dc8fc49a72eb1346",
+          "clean_ioc/components.py": "81a54da74f53539dcbe33de050737bb6ff72b21c1675ff1bd137e3a387d5e88f",
+          "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+          "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+          "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+        }
+      },
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42795008,
+        "rss_bytes": 42434560
+      },
+      "build_seconds": 11.230042208102532,
+      "diagnostics": false,
+      "eager_decorator_facts": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "component_metadata": {
+          "definition_identity_patterns": 116,
+          "identity_patterns": 31311,
+          "patterns_by_kind": {
+            "decorator": 10,
+            "managed_provider": 50,
+            "provider": 168,
+            "provider_map": 16,
+            "registration": 41,
+            "value": 31026
+          },
+          "retained_definition_index_bytes": 0,
+          "shared_definition_bytes": 13920,
+          "shared_definition_objects": 116,
+          "unique_field_objects": {
+            "activation": 4,
+            "boundary": 1,
+            "build_args": 1,
+            "declared_service_type": 15,
+            "id": 31297,
+            "implementation": 20,
+            "implementation_type": 20,
+            "kind": 6,
+            "lifespan": 3,
+            "name": 11,
+            "service_type": 45,
+            "tags": 1
+          }
+        },
+        "concrete_component_records": 63925,
+        "contextual_projection_records": 24633,
+        "decorator_objects": {
+          "logical_outcomes_by_entry": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "logical_reason_codes_by_entry": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "outcomes": {
+            "rejected": 406,
+            "selected": 24
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 24,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 350
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 6320,
+            "decisions": 41280,
+            "explanations": 3167984,
+            "template_facts": 61920
+          },
+          "unique_objects": {
+            "decision_tuples": 60,
+            "decisions": 430,
+            "explanations": 56565,
+            "template_facts": 430
+          },
+          "unique_patterns": 43
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "logical_graph_visits": 8932,
+        "logical_occurrence_records": 88558,
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 12630248,
+          "execution_steps": 158104,
+          "link_tuples": 1878224,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224,
+          "subtree_contexts_and_maps": 922760
+        },
+        "subtree_remapping_entries": 24633,
+        "subtree_view_contexts": 391,
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "none",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 52174,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 139739136,
+        "rss_bytes": 139739136
+      },
+      "python": "3.14.4",
+      "repeat": 3,
+      "resolve_seconds": 0.021720875054597855,
+      "resolved": {
+        "peak_rss_bytes": 139739136,
+        "rss_bytes": 139739136
+      },
+      "routes": 8,
+      "source": {
+        "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n M tests/test_graph_artifact_experiment.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_artifact_evidence.py\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? benchmarks/graph_reachability_audit.py\n?? benchmarks/graph_subtree_experiment.py\n?? clean_ioc/_component_subtrees.py\n?? docs/graph-memory-fixture.md\n?? tests/test_contextual_subtrees.py\n?? tests/test_graph_memory_fixture.py\n?? tests/test_graph_reachability_audit.py\n?? tests/test_shared_component_definitions.py\n",
+        "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+        "source_sha256": {
+          "benchmarks/graph_memory_evidence.py": "6a4b40b37a61aba503382526c99b244e56278532774b7d6ddce59a4d155894a5",
+          "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+          "clean_ioc/_component_subtrees.py": "4e083e821d84a6ac37cfa62e7f6a3c8bd244ce35e0d412c4dc8fc49a72eb1346",
+          "clean_ioc/components.py": "81a54da74f53539dcbe33de050737bb6ff72b21c1675ff1bd137e3a387d5e88f",
+          "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+          "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+          "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+        }
+      },
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42762240,
+        "rss_bytes": 42401792
+      },
+      "build_seconds": 80.37015770794824,
+      "diagnostics": false,
+      "eager_decorator_facts": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "component_metadata": {
+          "definition_identity_patterns": 116,
+          "identity_patterns": 31311,
+          "patterns_by_kind": {
+            "decorator": 10,
+            "managed_provider": 50,
+            "provider": 168,
+            "provider_map": 16,
+            "registration": 41,
+            "value": 31026
+          },
+          "retained_definition_index_bytes": 0,
+          "shared_definition_bytes": 13920,
+          "shared_definition_objects": 116,
+          "unique_field_objects": {
+            "activation": 4,
+            "boundary": 1,
+            "build_args": 1,
+            "declared_service_type": 15,
+            "id": 31297,
+            "implementation": 20,
+            "implementation_type": 20,
+            "kind": 6,
+            "lifespan": 3,
+            "name": 11,
+            "service_type": 45,
+            "tags": 1
+          }
+        },
+        "concrete_component_records": 63925,
+        "contextual_projection_records": 24633,
+        "decorator_objects": {
+          "logical_outcomes_by_entry": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "logical_reason_codes_by_entry": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "outcomes": {
+            "rejected": 406,
+            "selected": 24
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 24,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 350
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 6320,
+            "decisions": 41280,
+            "explanations": 3167984,
+            "template_facts": 61920
+          },
+          "unique_objects": {
+            "decision_tuples": 60,
+            "decisions": 430,
+            "explanations": 56565,
+            "template_facts": 430
+          },
+          "unique_patterns": 43
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "logical_graph_visits": 8932,
+        "logical_occurrence_records": 88558,
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 12630248,
+          "execution_steps": 158104,
+          "link_tuples": 1878224,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224,
+          "subtree_contexts_and_maps": 922760
+        },
+        "subtree_remapping_entries": 24633,
+        "subtree_view_contexts": 391,
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "tracemalloc",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 52355,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 200835072,
+        "rss_bytes": 200835072,
+        "traced_peak_bytes": 77670544,
+        "traced_retained_bytes": 37508938
+      },
+      "python": "3.14.4",
+      "repeat": 3,
+      "resolve_seconds": 0.057349749957211316,
+      "resolved": {
+        "peak_rss_bytes": 200851456,
+        "rss_bytes": 200851456,
+        "traced_peak_bytes": 77670544,
+        "traced_retained_bytes": 38686261
+      },
+      "routes": 8,
+      "source": {
+        "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n M tests/test_graph_artifact_experiment.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_artifact_evidence.py\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? benchmarks/graph_reachability_audit.py\n?? benchmarks/graph_subtree_experiment.py\n?? clean_ioc/_component_subtrees.py\n?? docs/graph-memory-fixture.md\n?? tests/test_contextual_subtrees.py\n?? tests/test_graph_memory_fixture.py\n?? tests/test_graph_reachability_audit.py\n?? tests/test_shared_component_definitions.py\n",
+        "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+        "source_sha256": {
+          "benchmarks/graph_memory_evidence.py": "6a4b40b37a61aba503382526c99b244e56278532774b7d6ddce59a4d155894a5",
+          "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+          "clean_ioc/_component_subtrees.py": "4e083e821d84a6ac37cfa62e7f6a3c8bd244ce35e0d412c4dc8fc49a72eb1346",
+          "clean_ioc/components.py": "81a54da74f53539dcbe33de050737bb6ff72b21c1675ff1bd137e3a387d5e88f",
+          "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+          "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+          "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+        }
+      },
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    }
+  ]
+}

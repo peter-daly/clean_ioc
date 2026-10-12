@@ -1,0 +1,856 @@
+{
+  "phase": "before",
+  "rows": [
+    {
+      "id": "P1",
+      "order": [
+        "A",
+        "B",
+        "C"
+      ],
+      "winners": {
+        "Client": "C"
+      },
+      "root": "C",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P4",
+      "order": [
+        "A",
+        "B",
+        "C"
+      ],
+      "winners": {
+        "Europe": "C",
+        "America": "C"
+      },
+      "root": "C",
+      "warnings": [
+        "ambiguous-selection",
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P1",
+      "order": [
+        "A",
+        "C",
+        "B"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "B",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P4",
+      "order": [
+        "A",
+        "C",
+        "B"
+      ],
+      "winners": {
+        "Europe": "B",
+        "America": "B"
+      },
+      "root": "B",
+      "warnings": [
+        "ambiguous-selection",
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P1",
+      "order": [
+        "B",
+        "A",
+        "C"
+      ],
+      "winners": {
+        "Client": "C"
+      },
+      "root": "C",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P4",
+      "order": [
+        "B",
+        "A",
+        "C"
+      ],
+      "winners": {
+        "Europe": "C",
+        "America": "C"
+      },
+      "root": "C",
+      "warnings": [
+        "ambiguous-selection",
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P1",
+      "order": [
+        "B",
+        "C",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P4",
+      "order": [
+        "B",
+        "C",
+        "A"
+      ],
+      "winners": {
+        "Europe": "A",
+        "America": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection",
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P1",
+      "order": [
+        "C",
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "B",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P4",
+      "order": [
+        "C",
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Europe": "B",
+        "America": "B"
+      },
+      "root": "B",
+      "warnings": [
+        "ambiguous-selection",
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P1",
+      "order": [
+        "C",
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P4",
+      "order": [
+        "C",
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Europe": "A",
+        "America": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection",
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P2",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "B",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P3",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P5",
+      "order": [
+        "A",
+        "B"
+      ],
+      "error": [
+        "provider-ambiguous-component"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P5-tie",
+      "order": [
+        "A",
+        "B"
+      ],
+      "error": [
+        "provider-ambiguous-component"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P5",
+      "order": [
+        "A",
+        "B"
+      ],
+      "error": [
+        "provider-ambiguous-component"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P5-tie",
+      "order": [
+        "A",
+        "B"
+      ],
+      "error": [
+        "provider-ambiguous-component"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P6-later",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "B",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P6-earlier",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "B",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P6-missing",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "B",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G1",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "B",
+      "warnings": [],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G2",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "B",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G2-numeric",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "B",
+      "warnings": [],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G3",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G4-collection",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Many": [
+          "B",
+          "A"
+        ]
+      },
+      "root": "B",
+      "warnings": [],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "C1-all-true",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "B",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "C1-all-false",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "B",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "C2-hard",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "B",
+      "warnings": [],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "C2-numeric",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "B",
+      "warnings": [],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "R1-prefix",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "B",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "R1-extended",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "B",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "R2",
+      "order": [
+        "A",
+        "B"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "B",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P2",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P3",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P5",
+      "order": [
+        "B",
+        "A"
+      ],
+      "error": [
+        "provider-ambiguous-component"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P5-tie",
+      "order": [
+        "B",
+        "A"
+      ],
+      "error": [
+        "provider-ambiguous-component"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P5",
+      "order": [
+        "B",
+        "A"
+      ],
+      "error": [
+        "provider-ambiguous-component"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P5-tie",
+      "order": [
+        "B",
+        "A"
+      ],
+      "error": [
+        "provider-ambiguous-component"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P6-later",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P6-earlier",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "P6-missing",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G1",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "B"
+      },
+      "root": "A",
+      "warnings": [],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G2",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G2-numeric",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G3",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G4-collection",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Many": [
+          "A",
+          "B"
+        ]
+      },
+      "root": "A",
+      "warnings": [],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "C1-all-true",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "C1-all-false",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "C2-hard",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "C2-numeric",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "R1-prefix",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "R1-extended",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "R2",
+      "order": [
+        "B",
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [
+        "ambiguous-selection"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "C1-single",
+      "order": [
+        "A"
+      ],
+      "winners": {
+        "Client": "A"
+      },
+      "root": "A",
+      "warnings": [],
+      "observations": [],
+      "callback_count": 0
+    }
+  ]
+}

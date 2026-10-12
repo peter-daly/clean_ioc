@@ -1,0 +1,112 @@
+{
+  "phase": "after",
+  "rows": [
+    {
+      "id": "G4-provider-map",
+      "result": {
+        "members": [
+          "B",
+          "A"
+        ],
+        "values": [
+          "B",
+          "A"
+        ]
+      },
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G4-duplicate-key",
+      "errors": [
+        "provider-map-duplicate-key"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G4-boundary-cardinality",
+      "errors": [
+        "boundary-expose-ambiguous"
+      ],
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G5-boundary-mask",
+      "result": "B",
+      "observations": [],
+      "callback_count": 0
+    },
+    {
+      "id": "G5-alias-public-view",
+      "result": "A",
+      "observations": [
+        {
+          "candidate": "constant_<__main__.B object at 0x108d003e0>",
+          "parent": "<class '__main__.PublicClient'>",
+          "value": false
+        },
+        {
+          "candidate": "A",
+          "parent": "<class '__main__.PublicClient'>",
+          "value": true
+        }
+      ],
+      "callback_count": 2
+    },
+    {
+      "id": "G5-provider-immediate",
+      "errors": [
+        "provider-ambiguous-component"
+      ],
+      "observations": [
+        {
+          "candidate": "A",
+          "parent": "clean_ioc.providers.Provider[__main__.Policy]",
+          "value": false
+        },
+        {
+          "candidate": "A",
+          "parent": "clean_ioc.providers.Provider[__main__.Policy]",
+          "value": false
+        }
+      ],
+      "callback_count": 2
+    },
+    {
+      "id": "G5-provider-nested",
+      "result": "A",
+      "observations": [
+        {
+          "candidate": "A",
+          "parent": "clean_ioc.providers.Provider[__main__.Policy]",
+          "value": true
+        }
+      ],
+      "callback_count": 1
+    },
+    {
+      "id": "G5-overlay",
+      "result": {
+        "original": "A",
+        "anchored_same": true,
+        "new": "B",
+        "runtime_callback_count": 0
+      },
+      "observations": [
+        {
+          "candidate": "A",
+          "parent": "<class '__main__.Frozen'>",
+          "value": true
+        },
+        {
+          "candidate": "A",
+          "parent": "<class '__main__.Client'>",
+          "value": true
+        }
+      ],
+      "callback_count": 2
+    }
+  ]
+}

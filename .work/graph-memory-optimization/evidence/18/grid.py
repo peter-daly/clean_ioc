@@ -1,0 +1,130 @@
+"""Counterbalanced fresh-process combined build, resolution and diversity controls."""
+
+# ruff: noqa: E402, S101, S603
+import asyncio
+import gc
+import json
+import statistics
+import subprocess
+import sys
+import time
+import tracemalloc
+from pathlib import Path
+
+from source_loader import LOADED, install
+
+
+def rich_rule(context):
+    assert context.graph.diagnostics_enabled
+    return ()
+
+
+def prepare(policy, variant):
+    install(policy)
+    from clean_ioc import ContainerBuilder
+
+    if variant == "rich-run":
+        original = ContainerBuilder.build
+
+        def build(self, **kwargs):
+            self.add_validation_rule(rich_rule)
+            return original(self, **kwargs)
+
+        ContainerBuilder.build = build
+
+
+async def sample(policy, variant, kind, workload):
+    prepare(policy, variant)
+    from benchmarks.graph_memory_evidence import _memory, measure
+
+    mode = "analysis" if variant == "analysis" else "run"
+    if workload == "build":
+        return await measure(2 if mode == "analysis" else 8, kind == "heap", False, build_mode=mode)
+    if workload == "resolution":
+        from benchmarks.graph_memory_fixture import ACTIVATIONS, build, resolve_workload, validate
+
+        fixture = build(2 if mode == "analysis" else 8, mode=mode)
+        elapsed, cpu, results = [], [], []
+        for _ in range(8):
+            ACTIVATIONS.clear()
+            started_cpu, started = time.process_time(), time.perf_counter()
+            held = await resolve_workload(fixture)
+            elapsed.append(time.perf_counter() - started)
+            cpu.append(time.process_time() - started_cpu)
+            results.append(validate(fixture, held))
+            await held.scope.__aexit__(None, None, None)
+            del held
+        await fixture.runtime.__aexit__(None, None, None)
+        assert all(result == results[0] for result in results)
+        return {
+            "wall_seconds": elapsed,
+            "cpu_seconds": cpu,
+            "cold_seconds": elapsed[0],
+            "steady_median_seconds": statistics.median(elapsed[1:]),
+            "cold_cpu_seconds": cpu[0],
+            "steady_median_cpu_seconds": statistics.median(cpu[1:]),
+            "validated": results[0],
+        }
+    if workload == "diversity":
+        from clean_ioc import ContainerBuilder
+
+        if kind == "heap":
+            tracemalloc.start()
+        started = time.perf_counter()
+        builder = ContainerBuilder()
+        services = [type(f"Service{index}", (), {}) for index in range(2000)]
+        for service in services:
+            builder.register(service)
+        builder.set_provider_roots(())
+        runtime = builder.build(mode=mode)
+        seconds = time.perf_counter() - started
+        del builder
+        gc.collect()
+        result = {"build_seconds": seconds, "prepared": _memory(kind == "heap"), "services": len(services)}
+        if kind == "heap":
+            tracemalloc.stop()
+        started = time.perf_counter()
+        for service in services:
+            assert type(runtime.resolve(service)) is service
+        result["resolve_seconds"] = time.perf_counter() - started
+        runtime.__exit__(None, None, None)
+        return result
+    raise ValueError(workload)
+
+
+if __name__ == "__main__":
+    if sys.argv[1] == "sample":
+        policy, variant, kind, workload = sys.argv[2:]
+        row = asyncio.run(sample(policy, variant, kind, workload))
+        row.update(policy=policy, variant=variant, kind=kind, workload=workload, executed_source=LOADED)
+        print(json.dumps(row))
+    else:
+        if len(sys.argv) != 3:
+            raise SystemExit("Usage: grid.py build|resolution|diversity OUTPUT_DIRECTORY")
+        workload = sys.argv[1]
+        output = Path(sys.argv[2])
+        output.mkdir(parents=True, exist_ok=True)
+        if (output / f"{workload}.json").exists():
+            raise FileExistsError("Use a fresh output file; accepted evidence must not be overwritten")
+        rows = []
+        for variant in ("run", "rich-run", "analysis"):
+            for repeat in range(3):
+                for kind in ("normal",) if workload == "resolution" else ("normal", "heap"):
+                    for policy in ("before", "after") if repeat % 2 == 0 else ("after", "before"):
+                        row = json.loads(
+                            subprocess.check_output(
+                                [sys.executable, __file__, "sample", policy, variant, kind, workload], text=True
+                            )
+                        )
+                        row["repeat"] = repeat + 1
+                        rows.append(row)
+                        (output / f"{workload}.json").write_text(json.dumps(rows, indent=2) + "\n")
+                        print(
+                            workload,
+                            variant,
+                            repeat + 1,
+                            kind,
+                            policy,
+                            row.get("build_seconds", row.get("cold_seconds")),
+                            flush=True,
+                        )

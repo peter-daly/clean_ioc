@@ -1,0 +1,88 @@
+{
+  "run": [
+    {
+      "kind": "normal",
+      "build_seconds": 0.5786884169792756,
+      "traced_retained_bytes": null,
+      "traced_peak_bytes": null,
+      "peak_rss_bytes": 84967424,
+      "rss_bytes": 84967424,
+      "services": 2000,
+      "resolve_seconds": 0.006370750023052096,
+      "source_sha256": {
+        "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf",
+        "clean_ioc.container": "317b5fdc607ffe86ed5356e70592b391f66c77e57568eb5250b2e659ac8a9ca7"
+      }
+    },
+    {
+      "kind": "heap",
+      "build_seconds": 6.3373772910563275,
+      "traced_retained_bytes": 7243564,
+      "traced_peak_bytes": 27354539,
+      "peak_rss_bytes": 100335616,
+      "rss_bytes": 100335616,
+      "services": 2000,
+      "resolve_seconds": 0.013729708036407828,
+      "source_sha256": {
+        "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf",
+        "clean_ioc.container": "317b5fdc607ffe86ed5356e70592b391f66c77e57568eb5250b2e659ac8a9ca7"
+      }
+    },
+    {
+      "kind": "normal",
+      "build_seconds": 0.5881774170557037,
+      "traced_retained_bytes": null,
+      "traced_peak_bytes": null,
+      "peak_rss_bytes": 84738048,
+      "rss_bytes": 84738048,
+      "services": 2000,
+      "resolve_seconds": 0.0071289160987362266,
+      "source_sha256": {
+        "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf",
+        "clean_ioc.container": "317b5fdc607ffe86ed5356e70592b391f66c77e57568eb5250b2e659ac8a9ca7"
+      }
+    },
+    {
+      "kind": "heap",
+      "build_seconds": 6.229824916925281,
+      "traced_retained_bytes": 7245824,
+      "traced_peak_bytes": 27354539,
+      "peak_rss_bytes": 100319232,
+      "rss_bytes": 100335616,
+      "services": 2000,
+      "resolve_seconds": 0.013423083000816405,
+      "source_sha256": {
+        "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf",
+        "clean_ioc.container": "317b5fdc607ffe86ed5356e70592b391f66c77e57568eb5250b2e659ac8a9ca7"
+      }
+    },
+    {
+      "kind": "normal",
+      "build_seconds": 0.5798352910205722,
+      "traced_retained_bytes": null,
+      "traced_peak_bytes": null,
+      "peak_rss_bytes": 84901888,
+      "rss_bytes": 84901888,
+      "services": 2000,
+      "resolve_seconds": 0.0064272909658029675,
+      "source_sha256": {
+        "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf",
+        "clean_ioc.container": "317b5fdc607ffe86ed5356e70592b391f66c77e57568eb5250b2e659ac8a9ca7"
+      }
+    },
+    {
+      "kind": "heap",
+      "build_seconds": 6.193378165946342,
+      "traced_retained_bytes": 7238528,
+      "traced_peak_bytes": 27354539,
+      "peak_rss_bytes": 99483648,
+      "rss_bytes": 99500032,
+      "services": 2000,
+      "resolve_seconds": 0.013304624939337373,
+      "source_sha256": {
+        "clean_ioc.components": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf",
+        "clean_ioc.container": "317b5fdc607ffe86ed5356e70592b391f66c77e57568eb5250b2e659ac8a9ca7"
+      }
+    }
+  ]
+}

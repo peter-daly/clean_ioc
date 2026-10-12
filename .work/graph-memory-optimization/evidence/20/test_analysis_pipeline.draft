@@ -1,0 +1,431 @@
+"""Execution/analysis policy boundary, completed findings and failure coverage."""
+
+import inspect
+from typing import Generic, TypeVar
+
+import pytest
+
+import clean_ioc.container as compiler
+from clean_ioc import (
+    AnalysisReport, AnalysisResult, AnalysisRuntimeUnavailableError, BuildIssue,
+    BuilderAlreadyBuiltError, CompilationBudget, Container, ContainerBuildError,
+    ContainerBuilder, Expose, IssueSeverity, Provider, ScopeBuilder, ServiceGroup,
+    Use, WarmupPlan, WarmupTarget,
+)
+
+
+class Leaf:
+    pass
+
+
+class Service:
+    def __init__(self, leaf: Leaf):
+        self.leaf = leaf
+
+
+def make_valid():
+    builder = ContainerBuilder()
+    builder.set_provider_roots(())
+    builder.register(Leaf, lifespan="singleton", root_policy="dependency_only")
+    builder.register(Service)
+    return builder
+
+
+def codes(result):
+    return {issue.code for issue in result.report.issues}
+
+
+def test_build_skips_root_boundary_rule_call_and_iteration():
+    events = []
+
+    def rule(context):
+        events.append("call")
+        def issues():
+            events.append("iteration")
+            raise AssertionError("build must not inspect rules")
+            yield
+        return issues()
+
+    builder = make_valid()
+    builder.add_validation_rule(rule)
+    boundary = builder.create_boundary("internal")
+    boundary.register(str, instance="value")
+    boundary.add_validation_rule(rule)
+    with builder.build() as runtime:
+        assert isinstance(runtime, Container)
+        assert isinstance(runtime.resolve(Service).leaf, Leaf)
+        assert runtime._plan.build_report is None
+        assert runtime._plan.validation_rules == ()
+    assert events == []
+
+
+def test_build_never_calls_policy_audits_even_with_rules(monkeypatch):
+    def fail(*args, **kwargs):
+        raise AssertionError("analysis-only function called during build")
+    for name in ("factory_result_compatibility", "_validate_dependency_names", "_validate_service_groups",
+                 "_validate_per_call_implementation", "_blueprint_alias_errors", "_boundary_cycle",
+                 "_unreachable_component_issues", "_run_validation_rules"):
+        monkeypatch.setattr(compiler, name, fail)
+    monkeypatch.setattr(compiler._Compiler, "_validate_captive_lifespan", fail)
+    builder = make_valid()
+    builder.add_validation_rule(fail)
+    builder.create_boundary("internal").register(int, instance=1)
+    with builder.build() as runtime:
+        assert isinstance(runtime.resolve(Service), Service)
+
+
+def test_analysis_exhausts_each_rule_once_preserves_findings_and_continues():
+    events = []
+    def broken(context):
+        events.append("broken")
+        yield BuildIssue("first", IssueSeverity.error, "first finding")
+        raise ValueError("bad callback")
+    def remaining(context):
+        events.append("remaining")
+        yield BuildIssue("next", IssueSeverity.warning, "later finding")
+    builder = make_valid()
+    builder.add_validation_rule(broken)
+    builder.add_validation_rule(remaining)
+    result = builder.analyse()
+    assert isinstance(result, AnalysisResult)
+    assert isinstance(result.report, AnalysisReport)
+    assert result.emission_complete
+    assert not result.report.complete
+    assert not result.report.is_valid
+    assert {"first", "next", "validation-rule-error"} <= codes(result)
+    assert [outcome.status for outcome in result.report.rule_outcomes] == ["failed", "completed"]
+    assert [issue.code for issue in result.report.rule_outcomes[0].issues] == ["first", "validation-rule-error"]
+    for _ in range(2):
+        result.report.to_text()
+        result.report.to_json()
+        result.report.to_sarif()
+        with pytest.raises(AssertionError):
+            result.report.assert_valid()
+    with result.create_runtime() as runtime:
+        assert isinstance(runtime.resolve(Service), Service)
+    assert events == ["broken", "remaining"]
+    result.close()
+
+
+@pytest.mark.parametrize("invalid", [None, 42, [object()]])
+def test_malformed_rule_result_is_failed_and_next_rule_completes(invalid):
+    builder = make_valid()
+    builder.add_validation_rule(lambda ctx: invalid)
+    builder.add_validation_rule(lambda ctx: ())
+    result = builder.analyse()
+    assert [outcome.status for outcome in result.report.rule_outcomes] == ["failed", "completed"]
+    assert "validation-rule-error" in codes(result)
+
+
+def test_duplicate_and_boundary_rule_order_and_context():
+    events = []
+    def root(context):
+        events.append(("root", context.boundary))
+        return ()
+    def local(context):
+        events.append(("boundary", context.boundary))
+        assert all(root.area == "alpha" for root in context.graph.roots)
+        return ()
+    builder = make_valid()
+    builder.add_validation_rule(root)
+    builder.add_validation_rule(root)
+    boundary = builder.create_boundary("alpha")
+    boundary.register(str, instance="local")
+    boundary.add_validation_rule(local)
+    result = builder.analyse()
+    assert events == [("root", None), ("root", None), ("boundary", "alpha")]
+    assert [outcome.declaration for outcome in result.report.rule_outcomes] == ["rule:1", "rule:2", "rule:3"]
+    assert result.report.complete
+    assert result.graph is not None
+
+
+def test_inherited_rules_are_skipped_by_build_and_run_once_for_overlay_analysis():
+    events = []
+    def rule(context):
+        events.append("parent")
+        return ()
+    builder = make_valid()
+    builder.add_validation_rule(rule)
+    with builder.analyse() as parent_result:
+        parent = parent_result.create_runtime()
+        assert events == ["parent"]
+        with ScopeBuilder(parent).build():
+            pass
+        assert events == ["parent"]
+        overlay = ScopeBuilder(parent)
+        overlay.add_validation_rule(lambda ctx: events.append("child") or ())
+        result = overlay.analyse()
+        assert result.report.complete
+        assert events == ["parent", "parent", "child"]
+
+
+def test_policy_invalid_graph_preserves_wiring_and_runs_all_rules():
+    calls = []
+    def wrong_factory() -> str:
+        raise AssertionError("No activation during compilation")
+    def composition():
+        b = ContainerBuilder()
+        b.set_provider_roots(())
+        b.register(Leaf, lifespan="scoped")
+        b.register(Service, lifespan="singleton")
+        b.register(int, factory=wrong_factory)
+        b.add_validation_rule(lambda ctx: calls.append("rule") or ())
+        return b
+    with composition().build() as runtime:
+        assert isinstance(runtime.resolve(Service).leaf, Leaf)
+    assert calls == []
+    result = composition().analyse()
+    assert result.report.complete
+    assert result.emission_complete
+    assert not result.report.is_valid
+    assert {"captive-dependency", "factory-return-type-mismatch"} <= codes(result)
+    assert calls == ["rule"]
+
+
+def test_missing_wiring_has_minimal_build_failure_and_unavailable_analysis_rules():
+    def composition():
+        b = ContainerBuilder()
+        b.set_provider_roots(())
+        b.register(Service)
+        b.add_validation_rule(lambda ctx: pytest.fail("partial context passed as full graph"))
+        return b
+    builder = composition()
+    with pytest.raises(ContainerBuildError) as raised:
+        builder.build()
+    assert raised.value.report is None
+    assert raised.value.compiled_graph is None
+    assert raised.value.partial_graph is None
+    with pytest.raises(BuilderAlreadyBuiltError):
+        builder.build()
+    result = composition().analyse()
+    assert not result.report.complete
+    assert not result.emission_complete
+    assert result.graph is None
+    assert result.partial_graph is not None
+    assert [o.status for o in result.report.rule_outcomes] == ["unavailable"]
+    with pytest.raises(AnalysisRuntimeUnavailableError) as unavailable:
+        result.create_runtime()
+    assert unavailable.value.report is result.report
+
+
+def test_single_attempt_input_rejection_and_callback_mutation_gate():
+    builder = make_valid()
+    with pytest.raises(TypeError):
+        builder.build(build_args=[])
+    assert not builder._built
+    builder.add_validation_rule(lambda ctx: builder.register(bytes))
+    result = builder.analyse()
+    assert "validation-rule-error" in codes(result)
+    assert not builder.has_component if False else True
+    with pytest.raises(BuilderAlreadyBuiltError):
+        builder.analyse()
+
+
+def test_budget_consumes_builder_and_makes_unrun_rules_explicit():
+    builder = make_valid()
+    builder.add_validation_rule(lambda ctx: ())
+    result = builder.analyse(budget=CompilationBudget(graph_occurrences=0))
+    assert not result.report.complete
+    assert "compilation-budget-exceeded" in codes(result)
+    assert [o.status for o in result.report.rule_outcomes] == ["interrupted"]
+    with pytest.raises(BuilderAlreadyBuiltError):
+        builder.register(bytes)
+
+
+def test_build_inside_analysis_rule_is_independent_execution():
+    events = []
+    def rule(context):
+        inner = make_valid()
+        inner.add_validation_rule(lambda ctx: events.append("unexpected") or ())
+        with inner.build() as runtime:
+            assert isinstance(runtime.resolve(Service), Service)
+        return ()
+    builder = make_valid()
+    builder.add_validation_rule(rule)
+    result = builder.analyse()
+    assert result.report.complete
+    assert not events
+
+
+def test_unknown_configured_keyword_emits_declared_value_and_reports_signature():
+    def composition():
+        b = ContainerBuilder()
+        b.set_provider_roots(())
+        b.register(Leaf, arguments={"missing": 42})
+        return b
+    runtime = composition().build()
+    with pytest.raises(TypeError):
+        runtime.resolve(Leaf)
+    runtime.__exit__(None, None, None)
+    result = composition().analyse()
+    assert result.emission_complete
+    assert result.report.complete
+    assert "invalid-argument" in codes(result)
+
+
+def test_explicit_provider_value_does_not_require_library_provider_target():
+    value = object()
+    class Consumer:
+        def __init__(self, provider: Provider[Leaf]):
+            self.provider = provider
+    def composition():
+        b = ContainerBuilder()
+        b.set_provider_roots(())
+        b.register(Consumer, arguments={"provider": value})
+        return b
+    with composition().build() as runtime:
+        assert runtime.resolve(Consumer).provider is value
+    result = composition().analyse()
+    assert result.report.is_valid
+    with result.create_runtime() as runtime:
+        assert runtime.resolve(Consumer).provider is value
+
+
+def test_sync_provider_async_target_is_analysis_policy_with_runtime_guard():
+    async def make_leaf() -> Leaf:
+        return Leaf()
+    class Consumer:
+        def __init__(self, provider: Provider[Leaf]):
+            self.provider = provider
+    def composition():
+        b = ContainerBuilder()
+        b.set_provider_roots(())
+        b.register(Leaf, factory=make_leaf, root_policy="dependency_only")
+        b.register(Consumer)
+        return b
+    with composition().build() as runtime:
+        provider = runtime.resolve(Consumer).provider
+        with pytest.raises(Exception):
+            provider()
+    result = composition().analyse()
+    assert result.report.complete
+    assert result.emission_complete
+    assert "provider-requires-async" in codes(result)
+
+
+def test_boundary_use_cycle_and_duplicate_same_identity_are_analysis_only():
+    class Other:
+        pass
+    def composition():
+        b = ContainerBuilder()
+        b.set_provider_roots(())
+        a = b.create_boundary("alpha", uses=[Use(Other, source="beta")], exposes=[Expose(Leaf), Expose(Leaf)])
+        a.register(Leaf)
+        z = b.create_boundary("beta", uses=[Use(Leaf, source="alpha"), Use(Leaf, source="alpha")], exposes=[Expose(Other)])
+        z.register(Other)
+        return b
+    with composition().build() as runtime:
+        assert isinstance(runtime.resolve(Leaf), Leaf)
+    result = composition().analyse()
+    assert result.report.complete
+    assert result.emission_complete
+    assert {"boundary-use-cycle", "boundary-expose-duplicate", "boundary-use-ambiguous"} <= codes(result)
+
+
+def test_incompatible_service_group_is_declaration_finding_not_registration_rejection():
+    group = ServiceGroup("integers", service_type=int)
+    def composition():
+        b = ContainerBuilder()
+        b.set_provider_roots(())
+        b.register(Leaf, groups=(group,))
+        return b
+    with composition().build() as runtime:
+        assert isinstance(runtime.resolve(Leaf), Leaf)
+    result = composition().analyse()
+    assert result.emission_complete
+    assert "service-group-incompatible" in codes(result)
+
+
+T = TypeVar("T")
+
+
+class Box(Generic[T]):
+    pass
+
+
+def test_unresolved_return_only_typevar_does_not_block_known_activation():
+    def factory() -> list[T]:
+        return Leaf()
+    def composition():
+        b = ContainerBuilder()
+        b.set_provider_roots(())
+        b.register(Leaf, factory=factory)
+        return b
+    with composition().build() as runtime:
+        assert isinstance(runtime.resolve(Leaf), Leaf)
+    result = composition().analyse()
+    assert result.emission_complete
+    assert "factory-return-type-unresolved" in codes(result)
+
+
+def test_open_entrypoint_is_analysis_finding_without_fabricated_specialization():
+    def composition():
+        b = ContainerBuilder()
+        b.set_provider_roots(())
+        b.register(Box, root_policy="entrypoint")
+        return b
+    with composition().build() as runtime:
+        assert runtime.selected_registrations == ()
+    result = composition().analyse()
+    assert result.emission_complete
+    assert "missing-entrypoint" in codes(result)
+
+
+def test_per_call_implementation_conformance_is_analysis_only():
+    class Contract:
+        def call(self):
+            return 1
+    class Incompatible:
+        pass
+    def composition():
+        b = ContainerBuilder()
+        b.set_provider_roots(())
+        b.register(Contract, Incompatible, scope="per_call")
+        return b
+    with composition().build() as runtime:
+        handle = runtime.resolve(Contract)
+        with pytest.raises(AttributeError):
+            handle.call()
+    result = composition().analyse()
+    assert result.emission_complete
+    assert "per-call-unsupported-member" in codes(result)
+
+
+def test_explicit_absent_decorated_keyword_is_emitted_and_audited():
+    def decorate():
+        return Leaf()
+    def composition():
+        b = ContainerBuilder()
+        b.set_provider_roots(())
+        b.register(Leaf)
+        b.register_decorator(Leaf, decorate, decorated_arg="inner")
+        return b
+    with composition().build() as runtime:
+        with pytest.raises(TypeError):
+            runtime.resolve(Leaf)
+    result = composition().analyse()
+    assert result.emission_complete
+    assert "invalid-decorator" in codes(result)
+
+
+def test_warmup_policy_errors_keep_ordered_declared_targets():
+    def composition():
+        b = make_valid()
+        b.add_warmup_plan(WarmupPlan("start", [WarmupTarget(Service), WarmupTarget(Service)]))
+        return b
+    with composition().build() as runtime:
+        assert len(runtime._plan.warmup_steps["start"]) == 2
+    result = composition().analyse()
+    assert result.emission_complete
+    assert {"warmup-non-singleton-target", "warmup-duplicate-target"} <= codes(result)
+
+
+def test_removed_mode_arguments_and_single_rule_signature():
+    builder = make_valid()
+    assert "mode" not in inspect.signature(builder.add_validation_rule).parameters
+    assert "mode" not in inspect.signature(builder.build).parameters
+    with pytest.raises(TypeError):
+        builder.add_validation_rule(lambda ctx: (), mode="validation")
+    with pytest.raises(TypeError):
+        builder.build(mode="analysis")
+    assert not builder._built

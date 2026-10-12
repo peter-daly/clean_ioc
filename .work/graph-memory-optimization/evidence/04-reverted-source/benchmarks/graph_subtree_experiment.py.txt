@@ -1,0 +1,228 @@
+"""Offline task-04 prototype: positive occurrence IDs with explicit subtree maps.
+
+Not installed in the compiler. Scalar equivalence uses captured referent identity;
+selection evidence remains in each occurrence's existing sidecars.
+"""
+
+import argparse
+import asyncio
+import json
+import sys
+import time
+from collections import Counter
+from dataclasses import dataclass, replace
+from pathlib import Path
+from unittest.mock import patch
+
+from benchmarks.graph_memory_evidence import measure
+from clean_ioc.components import ComponentActivation, ComponentKind, _ComponentGraph, _ComponentRecord
+
+
+@dataclass(frozen=True, slots=True)
+class Context:
+    root: int
+    parent: int | None
+    remapping: dict[int, int]
+
+
+class Projection:
+    __slots__ = ("source", "context", "_generic_mapping")
+
+    def __init__(self, source, context, generic_mapping):
+        self.source = source
+        self.context = context
+        self._generic_mapping = generic_mapping
+
+    def __getattr__(self, name):
+        value = getattr(self.source, name)
+        if name == "occurrence_id":
+            return self.context.remapping[value]
+        if name == "parent_id":
+            return (
+                self.context.parent if self.source.occurrence_id == self.context.root else self.context.remapping[value]
+            )
+        if name == "dependency_ids":
+            return tuple(self.context.remapping[item] for item in value)
+        return value
+
+    def freeze(self):
+        return replace(
+            self.source,
+            occurrence_id=self.occurrence_id,
+            parent_id=self.parent_id,
+            dependency_ids=self.dependency_ids,
+            _generic_mapping=self._generic_mapping,
+        )
+
+
+def subtree_shapes(records):
+    """Reject non-tree/context-owning cases; return structural and strict shapes.
+
+    Keys contain only builtin integers/tuples, never application equality/hash.
+    Strict keys deliberately require the captured registration/value ID referent.
+    Views, decorators, preconfiguration, external owners and non-constructor
+    activations are excluded rather than guessed equivalent.
+    """
+    structural, strict, sizes, reasons = {}, {}, {}, Counter()
+    visiting = set()
+    shape_index, strict_index = {}, {}
+
+    def intern(index, key):
+        if key not in index:
+            index[key] = len(index) + 1
+        return index[key]
+
+    def walk(occurrence):
+        if occurrence in structural:
+            return
+        if occurrence in visiting:
+            raise ValueError("Dependency cycle in captured graph")
+        record = records.get(occurrence)
+        if not isinstance(record, _ComponentRecord):
+            structural[occurrence] = strict[occurrence] = 0
+            sizes[occurrence] = 0
+            reasons["view-or-missing-record"] += 1
+            return
+        visiting.add(occurrence)
+        for child in record.dependency_ids:
+            walk(child)
+        children = tuple(structural[child] for child in record.dependency_ids)
+        structural[occurrence] = intern(shape_index, (id(record.kind), id(record.service_type), children))
+        reason = None
+        if record.kind not in (ComponentKind.registration, ComponentKind.value):
+            reason = "non-registration-or-value"
+        elif record.activation not in (ComponentActivation.constructor, ComponentActivation.supplied):
+            reason = "non-constructor-or-supplied"
+        elif record.owner_id is not None or record.decorated_id is not None:
+            reason = "owner-or-decorated-link"
+        elif record.decorator_ids or record.pre_configuration_ids:
+            reason = "decorators-or-preconfiguration"
+        elif len(set(record.dependency_ids)) != len(record.dependency_ids):
+            reason = "repeated-child"
+        elif any(records[child].parent_id != occurrence for child in record.dependency_ids if child in records):
+            reason = "non-tree-parent"
+        elif any(strict[child] == 0 for child in record.dependency_ids):
+            reason = "ineligible-child"
+        if reason:
+            reasons[reason] += 1
+            strict[occurrence] = sizes[occurrence] = 0
+        else:
+            scalar = tuple(
+                id(getattr(record, name))
+                for name in (
+                    "_definition",
+                    "id",
+                    "requires_async",
+                    "manages_cleanup",
+                    "cache_owner",
+                    "cleanup_owner",
+                    "ownership_reason",
+                    "provider_mode",
+                    "position",
+                    "argument",
+                )
+            )
+            strict[occurrence] = intern(strict_index, (scalar, tuple(strict[child] for child in record.dependency_ids)))
+            sizes[occurrence] = 1 + sum(sizes[child] for child in record.dependency_ids)
+        visiting.remove(occurrence)
+
+    for occurrence in records:
+        walk(occurrence)
+    return structural, strict, sizes, dict(reasons)
+
+
+def experiment(graph, *, apply=False):
+    """Map disjoint repeated trees only; source and target contexts never nest."""
+    started = time.perf_counter()
+    records = graph._records
+    if records is None:
+        raise ValueError("Freeze the graph first")
+    structural, strict, sizes, reasons = subtree_shapes(records)
+    groups = {}
+    for occurrence, shape in strict.items():
+        if shape and sizes[occurrence] >= 4:
+            groups.setdefault(shape, []).append(occurrence)
+    occupied, contexts, projections = set(), [], {}
+
+    def nodes(root):
+        result, pending = [], [root]
+        while pending:
+            occurrence = pending.pop()
+            result.append(occurrence)
+            pending.extend(reversed(records[occurrence].dependency_ids))
+        return result
+
+    for group in sorted(groups.values(), key=lambda items: sizes[items[0]], reverse=True):
+        if len(group) < 2:
+            continue
+        source_nodes = None
+        for root in group:
+            candidate = nodes(root)
+            if len(set(candidate)) != len(candidate) or occupied.intersection(candidate):
+                continue
+            if source_nodes is None:
+                source_nodes = candidate
+                occupied.update(candidate)
+                continue
+            mapping = dict(zip(source_nodes, candidate, strict=True))
+            context = Context(source_nodes[0], records[root].parent_id, mapping)
+            contexts.append(context)
+            for source, target in mapping.items():
+                projections[target] = Projection(records[source], context, records[target]._generic_mapping)
+            occupied.update(candidate)
+    # Identity-deduplicate nonempty tuples; retained empty tuples are shared.
+    tuples = {id(records[item].dependency_ids): records[item].dependency_ids for item in projections}
+    removed_bytes = sum(sys.getsizeof(records[item]) for item in projections)
+    removed_bytes += sum(sys.getsizeof(value) for value in tuples.values() if value)
+    added_bytes = sum(sys.getsizeof(value) for value in projections.values())
+    added_bytes += sum(sys.getsizeof(value) + sys.getsizeof(value.remapping) for value in contexts)
+    result = {
+        "physical_input_records": len(records),
+        "structural_shapes": len({structural[item] for item in records} - {0}),
+        "structurally_repeated_occurrences": sum(
+            count - 1 for count in Counter(structural[item] for item in records).values()
+        ),
+        "strict_shapes": len(set(strict.values()) - {0}),
+        "strict_eligible_occurrences": sum(value != 0 for value in strict.values()),
+        "strict_repeated_occurrences": sum(count - 1 for shape, count in Counter(strict.values()).items() if shape),
+        "rejections": reasons,
+        "contexts": len(contexts),
+        "projection_records": len(projections),
+        "remaining_concrete_records": len(records) - len(projections),
+        "remapping_entries": sum(len(value.remapping) for value in contexts),
+        "removed_shallow_bytes_upper_bound": removed_bytes,
+        "added_shallow_bytes": added_bytes,
+        "net_shallow_bytes_upper_bound": removed_bytes - added_bytes,
+        "seconds": time.perf_counter() - started,
+    }
+    if apply:
+        records.update(projections)
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--routes", type=int, default=8)
+    parser.add_argument("--heap", action="store_true")
+    parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--inspection", action="store_true")
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    observations = []
+    freeze = _ComponentGraph.freeze
+
+    def observed_freeze(graph):
+        freeze(graph)
+        observations.append(experiment(graph, apply=args.apply))
+
+    with (
+        patch("clean_ioc._component_subtrees.share_subtrees", lambda records: None),
+        patch.object(_ComponentGraph, "freeze", observed_freeze),
+    ):
+        result = asyncio.run(measure(args.routes, args.heap, False, args.inspection))
+    result["subtree_experiment"] = observations
+    args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+
+
+if __name__ == "__main__":
+    main()

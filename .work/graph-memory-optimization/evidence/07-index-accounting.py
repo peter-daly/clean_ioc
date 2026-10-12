@@ -1,0 +1,80 @@
+"""Standalone index conversion/storage/lookup screen; not a build saving."""
+
+# ruff: noqa: S101
+import gc
+import importlib.util
+import json
+import statistics
+import sys
+import time
+import tracemalloc
+from pathlib import Path
+from typing import Any
+
+path = Path(__file__).with_name("07-probe.py")
+spec = importlib.util.spec_from_file_location("task07_probe", path)
+if spec is None or spec.loader is None:
+    raise RuntimeError("Missing Task07 probe")
+probe = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(probe)
+probe.install("baseline")
+from benchmarks.graph_memory_fixture import build  # noqa: E402
+from clean_ioc import container  # noqa: E402
+
+original = container._Compiler.compile
+result: dict[str, Any] = {}
+
+
+def compile_primary(self, *args, **kwargs):
+    value = original(self, *args, **kwargs)
+    for name in ("origins", "decorator_explanations"):
+        mapping = getattr(self, name)
+        gc.collect()
+        tracemalloc.start()
+        started = time.perf_counter()
+        alternative = probe.IndexedMapping()
+        for key, item in mapping.items():
+            alternative[key] = item
+        conversion = time.perf_counter() - started
+        retained, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        keys = list(mapping)
+        assert list(alternative) == keys
+        assert all(alternative[key] is mapping[key] for key in keys)
+        times = {}
+        for label, candidate in (("dict", mapping), ("indexed", alternative)):
+            samples = []
+            for _ in range(3):
+                started = time.perf_counter()
+                for _ in range(5):
+                    for key in keys:
+                        candidate.get(key)
+                samples.append(time.perf_counter() - started)
+            times[label] = {
+                "seconds": samples,
+                "median_seconds": statistics.median(samples),
+                "lookups_per_sample": len(keys) * 5,
+            }
+        result[name] = {
+            "entries": len(mapping),
+            "dense_length": len(alternative._values),
+            "sparse_entries": len(alternative._sparse),
+            "dict_shallow_bytes": sys.getsizeof(mapping),
+            "indexed_total_shallow_bytes": sum(
+                sys.getsizeof(item)
+                for item in (alternative, alternative._values, alternative._keys, alternative._sparse)
+            ),
+            "conversion_seconds_traced": conversion,
+            "conversion_retained_bytes": retained,
+            "conversion_peak_bytes": peak,
+            "lookup": times,
+            "borrowed_referents": "same value/key identities; not charged twice",
+        }
+    return value
+
+
+container._Compiler.compile = compile_primary
+fixture = build(8, explain_metadata=False)
+fixture.runtime.__exit__(None, None, None)
+result["ownership"] = "original indexes and observer-only alternatives overlap; not a build-peak comparison"
+print(json.dumps(result, indent=2))

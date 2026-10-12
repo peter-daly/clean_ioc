@@ -1,0 +1,838 @@
+{
+  "medians": {
+    "build_seconds": 7.77723537501879,
+    "prepared": {
+      "peak_rss_bytes": 290619392,
+      "rss_bytes": 290619392,
+      "traced_peak_bytes": 233557372,
+      "traced_retained_bytes": 196290890
+    },
+    "resolve_seconds": 0.08020112500526011,
+    "resolved": {
+      "peak_rss_bytes": 290619392,
+      "rss_bytes": 290619392,
+      "traced_peak_bytes": 233557372,
+      "traced_retained_bytes": 197468441
+    }
+  },
+  "repeats": 3,
+  "routes": 8,
+  "runs": [
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42401792,
+        "rss_bytes": 42041344
+      },
+      "build_seconds": 7.612867124960758,
+      "diagnostics": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "decorator_objects": {
+          "outcomes": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 7254064,
+            "decisions": 54261120,
+            "explanations": 3617408,
+            "template_facts": 81391680
+          },
+          "unique_objects": {
+            "decision_tuples": 56923,
+            "decisions": 565220,
+            "explanations": 56522,
+            "template_facts": 565220
+          }
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 22670848,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "none",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 7993,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 287195136,
+        "rss_bytes": 287195136
+      },
+      "python": "3.14.4",
+      "repeat": 1,
+      "resolve_seconds": 0.08690608397591859,
+      "resolved": {
+        "peak_rss_bytes": 287195136,
+        "rss_bytes": 287195136
+      },
+      "routes": 8,
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 43024384,
+        "rss_bytes": 42663936
+      },
+      "build_seconds": 63.97012133302633,
+      "diagnostics": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "decorator_objects": {
+          "outcomes": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 7254064,
+            "decisions": 54261120,
+            "explanations": 3617408,
+            "template_facts": 81391680
+          },
+          "unique_objects": {
+            "decision_tuples": 56923,
+            "decisions": 565220,
+            "explanations": 56522,
+            "template_facts": 565220
+          }
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 22670848,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "tracemalloc",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 8136,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 441810944,
+        "rss_bytes": 441810944,
+        "traced_peak_bytes": 233557372,
+        "traced_retained_bytes": 196290890
+      },
+      "python": "3.14.4",
+      "repeat": 1,
+      "resolve_seconds": 0.10931162489578128,
+      "resolved": {
+        "peak_rss_bytes": 441827328,
+        "rss_bytes": 441827328,
+        "traced_peak_bytes": 233557372,
+        "traced_retained_bytes": 197468441
+      },
+      "routes": 8,
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42532864,
+        "rss_bytes": 42188800
+      },
+      "build_seconds": 7.77723537501879,
+      "diagnostics": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "decorator_objects": {
+          "outcomes": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 7254064,
+            "decisions": 54261120,
+            "explanations": 3617408,
+            "template_facts": 81391680
+          },
+          "unique_objects": {
+            "decision_tuples": 56923,
+            "decisions": 565220,
+            "explanations": 56522,
+            "template_facts": 565220
+          }
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 22670848,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "none",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 9119,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 292192256,
+        "rss_bytes": 292192256
+      },
+      "python": "3.14.4",
+      "repeat": 2,
+      "resolve_seconds": 0.0778016250114888,
+      "resolved": {
+        "peak_rss_bytes": 292192256,
+        "rss_bytes": 292192256
+      },
+      "routes": 8,
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42549248,
+        "rss_bytes": 42205184
+      },
+      "build_seconds": 64.4327956669731,
+      "diagnostics": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "decorator_objects": {
+          "outcomes": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 7254064,
+            "decisions": 54261120,
+            "explanations": 3617408,
+            "template_facts": 81391680
+          },
+          "unique_objects": {
+            "decision_tuples": 56923,
+            "decisions": 565220,
+            "explanations": 56522,
+            "template_facts": 565220
+          }
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 22670848,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "tracemalloc",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 9281,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 442892288,
+        "rss_bytes": 442892288,
+        "traced_peak_bytes": 233556971,
+        "traced_retained_bytes": 196290678
+      },
+      "python": "3.14.4",
+      "repeat": 2,
+      "resolve_seconds": 0.10976591694634408,
+      "resolved": {
+        "peak_rss_bytes": 442908672,
+        "rss_bytes": 442908672,
+        "traced_peak_bytes": 233556971,
+        "traced_retained_bytes": 197468292
+      },
+      "routes": 8,
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42516480,
+        "rss_bytes": 42172416
+      },
+      "build_seconds": 7.782219500048086,
+      "diagnostics": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "decorator_objects": {
+          "outcomes": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 7254064,
+            "decisions": 54261120,
+            "explanations": 3617408,
+            "template_facts": 81391680
+          },
+          "unique_objects": {
+            "decision_tuples": 56923,
+            "decisions": 565220,
+            "explanations": 56522,
+            "template_facts": 565220
+          }
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 22670848,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "none",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 10258,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 290619392,
+        "rss_bytes": 290619392
+      },
+      "python": "3.14.4",
+      "repeat": 3,
+      "resolve_seconds": 0.08020112500526011,
+      "resolved": {
+        "peak_rss_bytes": 290619392,
+        "rss_bytes": 290619392
+      },
+      "routes": 8,
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    },
+    {
+      "activations": {
+        "branch": 3844,
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "leaf": 3968,
+        "policy": 2,
+        "route_dependency": 34,
+        "route_source": 34,
+        "state": 27,
+        "worker": 124,
+        "worker_decorator": 248
+      },
+      "before": {
+        "peak_rss_bytes": 42614784,
+        "rss_bytes": 42270720
+      },
+      "build_seconds": 63.613626667065546,
+      "diagnostics": false,
+      "graph": {
+        "activation_kinds": {
+          "collection": 16,
+          "constructor": 57298,
+          "deferred": 218,
+          "supplied": 31026
+        },
+        "decorator_objects": {
+          "outcomes": {
+            "rejected": 564428,
+            "selected": 792
+          },
+          "reason_codes": {
+            "decorator-filter-matched": 792,
+            "decorator-filter-rejected": 56,
+            "template-target-not-selected": 564372
+          },
+          "shallow_storage_bytes": {
+            "decision_tuples": 7254064,
+            "decisions": 54261120,
+            "explanations": 3617408,
+            "template_facts": 81391680
+          },
+          "unique_objects": {
+            "decision_tuples": 56923,
+            "decisions": 565220,
+            "explanations": 56522,
+            "template_facts": 565220
+          }
+        },
+        "executable_helpers": {
+          "_CompiledDecorator": 240,
+          "_CompiledDependency": 1740
+        },
+        "execution_step_kinds": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 193,
+          "_SingletonRegistrationStep": 226,
+          "_TransientRegistrationStep": 326,
+          "_ValueStep": 618
+        },
+        "metadata_entries": {
+          "census_definitions": 0,
+          "census_sources": 0,
+          "decorator_explanations": 56522,
+          "generic_explanations": 0,
+          "occurrence_explanations": 0,
+          "parameter_explanations": 0,
+          "root_candidates": 18
+        },
+        "physical_records": 88558,
+        "provider_view_contexts": 50,
+        "record_kinds": {
+          "decorator": 792,
+          "managed_provider": 50,
+          "provider": 168,
+          "provider_map": 16,
+          "registration": 56506,
+          "value": 31026
+        },
+        "selected_registrations": 51,
+        "shallow_storage_bytes": {
+          "component_records": 22670848,
+          "execution_steps": 158104,
+          "link_tuples": 2653968,
+          "occurrence_integers": 2481424,
+          "origin_indexes": 5242960,
+          "record_index": 5242960,
+          "registration_objects": 7224
+        },
+        "unique_execution_steps": 1765,
+        "unique_origins": 45,
+        "unique_registration_objects": 43
+      },
+      "instrumentation": "tracemalloc",
+      "lazy_activations": {
+        "endpoint": 8,
+        "endpoint_decorator": 8,
+        "route_dependency": 8,
+        "route_source": 8
+      },
+      "machine": "arm64",
+      "pid": 10376,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepared": {
+        "peak_rss_bytes": 444579840,
+        "rss_bytes": 444579840,
+        "traced_peak_bytes": 233557737,
+        "traced_retained_bytes": 196291318
+      },
+      "python": "3.14.4",
+      "repeat": 3,
+      "resolve_seconds": 0.11757545894943178,
+      "resolved": {
+        "peak_rss_bytes": 444596224,
+        "rss_bytes": 444596224,
+        "traced_peak_bytes": 233557737,
+        "traced_retained_bytes": 197468877
+      },
+      "routes": 8,
+      "template_calls": {
+        "generated_worker_to_endpoint_decorator": 8,
+        "generated_worker_to_source": 8,
+        "policy_to_worker_decorator": 2,
+        "source_to_generated_dependency": 8
+      },
+      "validated": {
+        "leaves": 3968,
+        "managed_scopes": 26,
+        "ordinary_scopes": 1,
+        "payload_bytes": 507904,
+        "source_map_calls": 64,
+        "tree_objects": 7812,
+        "workers": 124
+      }
+    }
+  ]
+}

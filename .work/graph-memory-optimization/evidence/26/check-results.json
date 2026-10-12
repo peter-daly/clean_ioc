@@ -1,0 +1,71 @@
+{
+  "benchbro-final": {
+    "log": "benchbro-final.txt",
+    "result": "passed",
+    "sha256": "016e21111c9ec1fc897af33eaa59bd7460cd91450c38c25c1acc8c357ba20913"
+  },
+  "docs-final": {
+    "log": "docs-final.txt",
+    "result": "passed",
+    "sha256": "b8707197d1fc757721b6420e6faa8685295cc1c5bd9f49ac730da86439d5e2b0"
+  },
+  "fastapi-latest": {
+    "environment": {
+      "fastapi": "0.143.0",
+      "python": "3.12.11",
+      "starlette": "1.7.0"
+    },
+    "log": "fastapi-latest.txt",
+    "result": "passed",
+    "sha256": "74f7f77b38ffccde661ce938c22ccc40ca8db661ae0f60001841ebe4b170020d"
+  },
+  "fastapi-min": {
+    "environment": {
+      "fastapi": "0.121.0",
+      "python": "3.12.11",
+      "starlette": "0.49.3"
+    },
+    "log": "fastapi-min.txt",
+    "result": "passed",
+    "sha256": "776001338cc333c1b88dded71d0729417feffdab091dd065f7e7a839e34ce672"
+  },
+  "mkdocs": {
+    "log": "mkdocs.txt",
+    "result": "passed",
+    "sha256": "806319bb19763b039ade75ea3e8c1f3de3465d282f835ed16f56313297ca0de4"
+  },
+  "pipeline-final": {
+    "log": "pipeline-final.txt",
+    "result": "passed",
+    "sha256": "d7526a6df46a76377b4fcdb48c1d499606da2abd31b01c24bbd7e75bb3120624"
+  },
+  "pre-commit": {
+    "log": "pre-commit.txt",
+    "result": "passed",
+    "sha256": "64c9a4ec1d0cc21b91f6cfb9a06793b2a8d0a60961ce99ed51f841a3828e099c"
+  },
+  "python-311": {
+    "log": "ci-py311.txt",
+    "make_ci": "passed",
+    "sha256": "a3ad2a470b66720eaeff93a449663ddb65555bac2b5b69f27571ccee930cc34d",
+    "test_summary": "2517 passed, 8 skipped, 1 warning in 28.54s"
+  },
+  "python-312": {
+    "log": "ci-py312.txt",
+    "make_ci": "passed",
+    "sha256": "b47e79de5f4dd1f86a454b9faa00a18aba39e62a01ee6e5d681ab806083672b9",
+    "test_summary": "2522 passed, 3 skipped, 1 warning in 27.52s"
+  },
+  "python-313": {
+    "log": "ci-py313.txt",
+    "make_ci": "passed",
+    "sha256": "4003b77885086524bb4787ef0a46803a4a4d191fc6cf4bdd383968368fcfd63a",
+    "test_summary": "2525 passed, 1 warning in 31.96s"
+  },
+  "python-314": {
+    "log": "ci-py314.txt",
+    "make_ci": "passed",
+    "sha256": "2047a02a4ea36ee4882a261b441f6cd09803ed7556ffd869c72fb530208a2607",
+    "test_summary": "2525 passed, 1 warning in 33.12s"
+  }
+}

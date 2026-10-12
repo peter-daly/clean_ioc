@@ -1,0 +1,193 @@
+{
+  "cases": [
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": false,
+      "kind": "object",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": true,
+      "kind": "object",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": false,
+      "kind": "object",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": true,
+      "kind": "object",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": false,
+      "kind": "string-subclass",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": true,
+      "kind": "string-subclass",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": false,
+      "kind": "string-subclass",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": true,
+      "kind": "string-subclass",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": false,
+      "kind": "container",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": true,
+      "kind": "container",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": false,
+      "kind": "container",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "derive",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": true,
+      "kind": "container",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "key",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": false,
+      "kind": "map-key",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "key",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": false,
+      "explain_metadata": true,
+      "kind": "map-key",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "key",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": false,
+      "kind": "map-key",
+      "resolved_argument": true
+    },
+    {
+      "calls": [
+        "key",
+        "reject",
+        "observe"
+      ],
+      "diagnostics": true,
+      "explain_metadata": true,
+      "kind": "map-key",
+      "resolved_argument": true
+    }
+  ],
+  "probe": "baseline",
+  "source": {
+    "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n?? .work/graph-memory-optimization/08-compact-indexes.md\n?? .work/graph-memory-optimization/08-inventory.md\n?? .work/graph-memory-optimization/08-result.md\n?? .work/graph-memory-optimization/evidence/08-artifact-checks.py\n?? .work/graph-memory-optimization/evidence/08-baseline-benchmarks-graph_artifact-cpython-314.bin\n?? .work/graph-memory-optimization/evidence/08-baseline-benchmarks-graph_artifact.py.txt\n?? .work/graph-memory-optimization/evidence/08-baseline-clean_ioc-container-cpython-314.bin\n?? .work/graph-memory-optimization/evidence/08-baseline-clean_ioc-container.py.txt\n?? .work/graph-memory-optimization/evidence/08-both-benchmarks-graph_artifact-cpython-314.bin\n?? .work/graph-memory-optimization/evidence/08-both-benchmarks-graph_artifact.py.txt\n?? .work/graph-memory-optimization/evidence/08-both-clean_ioc-container-cpython-314.bin\n?? .work/graph-memory-optimization/evidence/08-both-clean_ioc-container.py.txt\n?? .work/graph-memory-optimization/evidence/08-build-runs.json\n?? .work/graph-memory-optimization/evidence/08-checks.sh\n?? .work/graph-memory-optimization/evidence/08-concurrency-check.txt\n?? .work/graph-memory-optimization/evidence/08-decorators-benchmarks-graph_artifact-cpython-314.bin\n?? .work/graph-memory-optimization/evidence/08-decorators-benchmarks-graph_artifact.py.txt\n?? .work/graph-memory-optimization/evidence/08-decorators-clean_ioc-container-cpython-314.bin\n?? .work/graph-memory-optimization/evidence/08-decorators-clean_ioc-container.py.txt\n?? .work/graph-memory-optimization/evidence/08-failure.py\n?? .work/graph-memory-optimization/evidence/08-inspection-baseline.json\n?? .work/graph-memory-optimization/evidence/08-inspection-both.json\n?? .work/graph-memory-optimization/evidence/08-inventory-baseline.json\n?? .work/graph-memory-optimization/evidence/08-inventory-both.json\n?? .work/graph-memory-optimization/evidence/08-lifetimes.json\n?? .work/graph-memory-optimization/evidence/08-mapping-checks.json\n?? .work/graph-memory-optimization/evidence/08-mapping-checks.py\n?? .work/graph-memory-optimization/evidence/08-origins-benchmarks-graph_artifact-cpython-314.bin\n?? .work/graph-memory-optimization/evidence/08-origins-benchmarks-graph_artifact.py.txt\n?? .work/graph-memory-optimization/evidence/08-origins-clean_ioc-container-cpython-314.bin\n?? .work/graph-memory-optimization/evidence/08-origins-clean_ioc-container.py.txt\n?? .work/graph-memory-optimization/evidence/08-pipeline.py\n?? .work/graph-memory-optimization/evidence/08-preliminary-build-runs.json\n?? .work/graph-memory-optimization/evidence/08-prepared.json\n?? .work/graph-memory-optimization/evidence/08-probe.py\n?? .work/graph-memory-optimization/evidence/08-run.py\n?? .work/graph-memory-optimization/evidence/08-screens.py\n?? .work/graph-memory-optimization/evidence/08-semantics-full-baseline.json\n?? .work/graph-memory-optimization/evidence/08-semantics-full-both.json\n?? .work/graph-memory-optimization/evidence/08-semantics-reduced-baseline.json\n?? .work/graph-memory-optimization/evidence/08-semantics-reduced-both.json\n?? .work/graph-memory-optimization/evidence/08-semantics.py\n?? .work/graph-memory-optimization/evidence/08-storage.json\n?? .work/graph-memory-optimization/evidence/08-v1-probe.py.txt\n",
+    "revision": "7b9a8415f6229b554ee1e8c4a926a089ad6f46e8",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81",
+      "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+      "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "before": {
+    "build_seconds": 7.77723537501879,
+    "prepared": {
+      "peak_rss_bytes": 290619392,
+      "rss_bytes": 290619392,
+      "traced_peak_bytes": 233557372,
+      "traced_retained_bytes": 196290890
+    },
+    "resolve_seconds": 0.08020112500526011,
+    "resolved": {
+      "peak_rss_bytes": 290619392,
+      "rss_bytes": 290619392,
+      "traced_peak_bytes": 233557372,
+      "traced_retained_bytes": 197468441
+    }
+  },
+  "after": {
+    "build_seconds": 11.51135449996218,
+    "prepared": {
+      "peak_rss_bytes": 141869056,
+      "rss_bytes": 141869056,
+      "traced_peak_bytes": 84117500,
+      "traced_retained_bytes": 47367354
+    },
+    "resolve_seconds": 0.025540541973896325,
+    "resolved": {
+      "peak_rss_bytes": 141869056,
+      "rss_bytes": 141869056,
+      "traced_peak_bytes": 84117500,
+      "traced_retained_bytes": 48545176
+    }
+  },
+  "preserved_counts_and_resolution": true,
+  "logical_outcomes_preserved": true,
+  "logical_reason_codes_preserved": true,
+  "logical_graph_visits": 8932,
+  "inspection_scope": "128 public explanations at eight routes; full diagnostics census at two routes; separate single fresh processes, tracing begun after build/resolve/census"
+}

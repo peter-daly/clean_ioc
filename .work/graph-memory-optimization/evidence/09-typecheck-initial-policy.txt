@@ -1,0 +1,7 @@
+error[unresolved-attribute]: Attribute `capacity` is not defined on `dict[Unknown, Unknown]` in union `dict[Unknown, Unknown] | Any`
+  --> .work/graph-memory-optimization/evidence/09-policy-checks.py:42:81
+   |
+42 |                     "shallow_bytes": sys.getsizeof(mapping) if cls is dict else mapping.capacity()["shallow_bytes"],
+   |                                                                                 ^^^^^^^^^^^^^^^^
+
+Found 1 diagnostic

@@ -1,0 +1,92 @@
+{
+  "correctness_only": true,
+  "discovery": {
+    "api": {
+      "build_calls": [],
+      "catalogues_match": true,
+      "graph_evidence": {
+        "decorators": 614,
+        "deferred_providers": 111,
+        "private_routes": 148
+      },
+      "selected": 245,
+      "verification_findings": {
+        "unreachable-component": 24
+      },
+      "verify_calls": [
+        "mandatory",
+        "deferred"
+      ]
+    },
+    "worker": {
+      "build_calls": [],
+      "catalogues_match": true,
+      "graph_evidence": {
+        "decorators": 4402,
+        "deferred_providers": 422,
+        "private_routes": 442
+      },
+      "selected": 332,
+      "verification_findings": {
+        "ambiguous-selection": 815,
+        "unreachable-component": 36
+      },
+      "verify_calls": [
+        "mandatory",
+        "deferred"
+      ]
+    }
+  },
+  "private_source_directory": "/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task26-consumers-ber20yko",
+  "rules": [
+    {
+      "build_calls": 0,
+      "errors": [
+        "uow-scope-mismatch"
+      ],
+      "fixture": "wrong_lifespan",
+      "verification_calls": [
+        "validate_unit_of_work_graph",
+        "validate_unit_of_work_graph_on_validation"
+      ]
+    },
+    {
+      "build_calls": 0,
+      "errors": [
+        "uow-sqlalchemy-write-without-boundary"
+      ],
+      "fixture": "wrong_sql_write",
+      "verification_calls": [
+        "validate_unit_of_work_graph",
+        "validate_unit_of_work_graph_on_validation"
+      ]
+    },
+    {
+      "build_calls": 0,
+      "errors": [
+        "uow-sqlalchemy-begin-inside-boundary"
+      ],
+      "fixture": "wrong_sql_begin",
+      "verification_calls": [
+        "validate_unit_of_work_graph",
+        "validate_unit_of_work_graph_on_validation"
+      ]
+    }
+  ],
+  "tests": {
+    "bark-unit": {
+      "errors": 0,
+      "failures": 0,
+      "passed": 6040,
+      "skipped": 29,
+      "tests": 6069
+    },
+    "cop-unit": {
+      "errors": 0,
+      "failures": 0,
+      "passed": 504,
+      "skipped": 0,
+      "tests": 504
+    }
+  }
+}

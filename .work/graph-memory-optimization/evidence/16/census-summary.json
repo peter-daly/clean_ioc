@@ -1,0 +1,200 @@
+{
+  "run": {
+    "before": [
+      {
+        "counts": {
+          "_ComponentRecord": {
+            "created": 194306,
+            "live": 8982,
+            "maximum_live": 10674
+          },
+          "_ComponentDraft": {
+            "created": 90250,
+            "live": 0,
+            "maximum_live": 88558
+          },
+          "_ComponentDefinition": {
+            "created": 304,
+            "live": 116,
+            "maximum_live": 288
+          },
+          "_ComponentGraph": {
+            "created": 427,
+            "live": 1,
+            "maximum_live": 29
+          }
+        },
+        "snapshots": {
+          "created": 400,
+          "live": 0,
+          "maximum_live": 2,
+          "published_records": 91816
+        }
+      }
+    ],
+    "after": [
+      {
+        "counts": {
+          "_ComponentRecord": {
+            "created": 102490,
+            "live": 8982,
+            "maximum_live": 10674
+          },
+          "_ComponentDraft": {
+            "created": 90250,
+            "live": 0,
+            "maximum_live": 88558
+          },
+          "_ComponentDefinition": {
+            "created": 304,
+            "live": 116,
+            "maximum_live": 288
+          },
+          "_ComponentGraph": {
+            "created": 427,
+            "live": 1,
+            "maximum_live": 29
+          }
+        },
+        "snapshots": {
+          "created": 400,
+          "live": 0,
+          "maximum_live": 2,
+          "published_records": 91816
+        }
+      }
+    ]
+  },
+  "rich-run": {
+    "before": [
+      {
+        "counts": {
+          "_ComponentRecord": {
+            "created": 194306,
+            "live": 8982,
+            "maximum_live": 10674
+          },
+          "_ComponentDraft": {
+            "created": 90250,
+            "live": 0,
+            "maximum_live": 88558
+          },
+          "_ComponentDefinition": {
+            "created": 304,
+            "live": 116,
+            "maximum_live": 288
+          },
+          "_ComponentGraph": {
+            "created": 427,
+            "live": 1,
+            "maximum_live": 29
+          }
+        },
+        "snapshots": {
+          "created": 400,
+          "live": 0,
+          "maximum_live": 2,
+          "published_records": 91816
+        }
+      }
+    ],
+    "after": [
+      {
+        "counts": {
+          "_ComponentRecord": {
+            "created": 102490,
+            "live": 8982,
+            "maximum_live": 10674
+          },
+          "_ComponentDraft": {
+            "created": 90250,
+            "live": 0,
+            "maximum_live": 88558
+          },
+          "_ComponentDefinition": {
+            "created": 304,
+            "live": 116,
+            "maximum_live": 288
+          },
+          "_ComponentGraph": {
+            "created": 427,
+            "live": 1,
+            "maximum_live": 29
+          }
+        },
+        "snapshots": {
+          "created": 400,
+          "live": 0,
+          "maximum_live": 2,
+          "published_records": 91816
+        }
+      }
+    ]
+  },
+  "analysis": {
+    "before": [
+      {
+        "counts": {
+          "_ComponentRecord": {
+            "created": 12079,
+            "live": 2847,
+            "maximum_live": 2847
+          },
+          "_ComponentDraft": {
+            "created": 2847,
+            "live": 0,
+            "maximum_live": 2685
+          },
+          "_ComponentDefinition": {
+            "created": 84,
+            "live": 80,
+            "maximum_live": 80
+          },
+          "_ComponentGraph": {
+            "created": 39,
+            "live": 9,
+            "maximum_live": 11
+          }
+        },
+        "snapshots": {
+          "created": 30,
+          "live": 0,
+          "maximum_live": 2,
+          "published_records": 4616
+        }
+      }
+    ],
+    "after": [
+      {
+        "counts": {
+          "_ComponentRecord": {
+            "created": 7463,
+            "live": 2847,
+            "maximum_live": 2847
+          },
+          "_ComponentDraft": {
+            "created": 2847,
+            "live": 0,
+            "maximum_live": 2685
+          },
+          "_ComponentDefinition": {
+            "created": 84,
+            "live": 80,
+            "maximum_live": 80
+          },
+          "_ComponentGraph": {
+            "created": 39,
+            "live": 9,
+            "maximum_live": 11
+          }
+        },
+        "snapshots": {
+          "created": 30,
+          "live": 0,
+          "maximum_live": 2,
+          "published_records": 4616
+        }
+      }
+    ]
+  }
+}

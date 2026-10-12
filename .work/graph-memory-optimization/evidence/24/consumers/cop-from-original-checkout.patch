@@ -1,0 +1,380 @@
+--- a/data_protection_cop/common/dependencies/build.py
++++ b/data_protection_cop/common/dependencies/build.py
+@@ -3,7 +3,4 @@
+ # The deployed hosts and direct builds share the same immutable compile choices.
+ CONTAINER_BUILD_OPTIONS = ContainerBuildOptions(
+     provider_roots=(),
+-    allow_scope_builders=False,
+-    check_unreachable=False,
+-    aggregate_errors=False,
+ )
+--- /dev/null
++++ b/tests/compiled_modes_probe.py
+@@ -0,0 +1,160 @@
++"""Fresh-process evidence for the actual Cop composition roots."""
++
++import importlib
++import json
++import sys
++from collections import Counter
++from contextlib import nullcontext
++from typing import get_args
++
++import bark_core.unit_of_work.bundles as uow
++from bark_core.application.commands.messaging import (
++    create_command_consumer_registry,
++    create_reply_consumer_registry,
++)
++from bark_core.application.compiled_dispatchers import (
++    _CommandRoute,
++    _EventRoute,
++    _QueryRoute,
++    _ReplyRoute,
++)
++from bark_core.bark_environment import DeploymentConfig
++from clean_ioc import ComponentActivation, ComponentKind
++
++from data_protection_cop.common.dependencies.build import CONTAINER_BUILD_OPTIONS
++
++
++def inspect_app(app):
++    config_module = importlib.import_module(f"data_protection_cop.apps.{app}.config")
++    config_type = getattr(config_module, f"{app.title()}Config")
++    values = {"bark": DeploymentConfig(env="local")}
++    if app == "api":
++        values["auth"] = {
++            "callers": [
++                {"name": "test", "api_key": "test", "permissions": ["inventory:read"]}
++            ]
++        }
++    config = config_type(**values)
++    get_builder = importlib.import_module(
++        f"data_protection_cop.apps.{app}.container"
++    ).get_builder
++    mandatory, deferred = (
++        uow.validate_unit_of_work_graph,
++        uow.validate_unit_of_work_graph_on_validation,
++    )
++    calls = []
++
++    def required(context):
++        calls.append("mandatory")
++        yield from mandatory(context)
++
++    def explicit(context):
++        calls.append("deferred")
++        yield from deferred(context)
++
++    uow.validate_unit_of_work_graph = required
++    uow.validate_unit_of_work_graph_on_validation = explicit
++    rows = []
++    for mode in ("run", "analysis"):
++        calls.clear()
++        builder = get_builder(config)
++        # Capture this builder's real declaration IDs, including decorators.
++        declared = {
++            registration.id
++            for registrations in builder._composition._registry._registrations.values()
++            for registration in registrations
++        } | {decorator.id for decorator in builder._decorators}
++        with (
++            (
++                CONTAINER_BUILD_OPTIONS.analyse(builder)
++                if mode == "analysis"
++                else nullcontext(None)
++            ) as analysis,
++            (
++                analysis.create_runtime()
++                if analysis is not None
++                else CONTAINER_BUILD_OPTIONS.build(builder)
++            ) as container,
++        ):
++            assert calls == (["mandatory", "deferred"] if mode == "analysis" else [])
++            selected = container.selected_registrations
++            assert {item.id for item in selected} <= declared
++            catalogue = sorted(
++                [
++                    (
++                        str(item.service_type),
++                        str(item.implementation_type),
++                        item.name,
++                        repr(item.tags),
++                    )
++                    for item in selected
++                ],
++                key=repr,
++            )
++            routes = {
++                route: [item for item in selected if item.service_type is route]
++                for route in (_CommandRoute, _EventRoute, _QueryRoute, _ReplyRoute)
++            }
++            assert all(not container.has_component(route) for route in routes)
++            assert not container._plan.provider_roots
++            with container.new_scope() as scope:
++                commands = create_command_consumer_registry(scope)
++                replies = create_reply_consumer_registry(scope)
++                commands.validate()
++                replies.validate()
++                command_types = sorted(str(item) for item in commands.command_types)
++                reply_types = sorted(str(item) for item in replies.reply_types)
++            graph_evidence = None
++            report = None if analysis is None else analysis.report
++            if mode == "analysis":
++                report = analysis.report
++                assert calls == ["mandatory", "deferred"]
++                graph_evidence = {
++                    "private_routes": sum(
++                        visit.component.service_type in routes
++                        for visit in analysis.graph.walk()
++                    ),
++                    "deferred_providers": sum(
++                        visit.component.kind is ComponentKind.provider
++                        and visit.component.activation is ComponentActivation.deferred
++                        for visit in analysis.graph.walk()
++                    ),
++                    "decorators": sum(
++                        visit.component.kind is ComponentKind.decorator
++                        for visit in analysis.graph.walk()
++                    ),
++                }
++            assert report is None or not report.errors, [
++                (i.code, i.message) for i in report.errors
++            ]
++            rows.append(
++                {
++                    "mode": mode,
++                    "catalogue": catalogue,
++                    "selected": len(selected),
++                    "roots": len(container.components),
++                    "commands": command_types,
++                    "replies": reply_types,
++                    "route_messages": {
++                        route.__name__: sorted(
++                            str(get_args(item.implementation_type)[0])
++                            for item in entries
++                        )
++                        for route, entries in routes.items()
++                    },
++                    "uow_calls": list(calls),
++                    "validation_findings": dict(
++                        Counter(
++                            issue.code
++                            for issue in (() if report is None else report.issues)
++                        )
++                    ),
++                    "graph_evidence": graph_evidence,
++                }
++            )
++    assert rows[0]["catalogue"] == rows[1]["catalogue"]
++    return rows
++
++
++if __name__ == "__main__":
++    print(json.dumps(inspect_app(sys.argv[1])))
+--- /dev/null
++++ b/tests/unit/test_compiled_build_modes.py
+@@ -0,0 +1,131 @@
++import json
++import subprocess
++import sys
++from contextlib import nullcontext
++from pathlib import Path
++from unittest.mock import create_autospec
++
++import pytest
++from bark_core.application.commands import CommandDispatcher
++from bark_core.bundles import unit_of_work_resource_tag
++
++from data_protection_cop.apps.api.container import get_builder as get_api_builder
++from data_protection_cop.apps.worker.container import get_builder
++from data_protection_cop.common.dependencies.build import CONTAINER_BUILD_OPTIONS
++from data_protection_cop.common.registrations.domain.commands import (
++    CreateServiceRegistrationCommand,
++)
++from data_protection_cop.common.registrations.domain.models import (
++    RegisteredDataProtectionService,
++)
++from data_protection_cop.common.registrations.domain.repository import (
++    ServiceRegistryRepository,
++)
++from tests.asgi import provide_http_connection
++from tests.unit.test_api_registrations import valid_api_config
++from tests.unit.test_worker_foundation import valid_worker_config
++
++
++@pytest.mark.parametrize("app", ["api", "worker"])
++def test_real_cop_modes_preserve_discovery_and_uow_validation(app):
++    # Subclass discovery must not see handlers defined by other collected tests.
++    result = subprocess.run(
++        [sys.executable, "-m", "tests.compiled_modes_probe", app],
++        cwd=Path(__file__).resolve().parents[2],
++        capture_output=True,
++        text=True,
++        check=True,
++    )
++    run, analysis = json.loads(result.stdout)
++    assert run["catalogue"] == analysis["catalogue"]
++    assert run["commands"] == analysis["commands"]
++    assert run["replies"] == analysis["replies"] == []
++    assert any("CreateInventoryRequestCommand" in name for name in run["commands"])
++    assert any(
++        "CreateServiceRegistrationCommand" in name
++        for name in run["route_messages"]["_CommandRoute"]
++    )
++    # Registration commands are routed locally but have no inbound wire type.
++    assert not any(
++        "CreateServiceRegistrationCommand" in name for name in run["commands"]
++    )
++    assert any(
++        "TerminateInventoryResultPartCommand" in name for name in run["commands"]
++    )
++    assert run["uow_calls"] == []
++    assert analysis["uow_calls"] == ["mandatory", "deferred"]
++    assert analysis["graph_evidence"]["private_routes"] > 0
++    assert analysis["graph_evidence"]["deferred_providers"] > 0
++    assert analysis["graph_evidence"]["decorators"] > 0
++    if app == "worker":
++        assert any(
++            "ServiceInventoryProgressChanged" in name
++            for name in run["route_messages"]["_EventRoute"]
++        )
++        assert any("_CopExecutorDecorator" in item[1] for item in run["catalogue"])
++    else:
++        assert any(
++            "GetInventoryQuery" in name for name in run["route_messages"]["_QueryRoute"]
++        )
++
++
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++def test_cop_modes_reject_transaction_resources_with_invalid_lifespan(mode):
++    class TransactionalResource:
++        pass
++
++    builder = get_builder(valid_worker_config())
++    builder.register(
++        TransactionalResource,
++        lifespan="transient",
++        tags=[unit_of_work_resource_tag(None)],
++    )
++    if mode == "run":
++        with CONTAINER_BUILD_OPTIONS.build(builder) as runtime:
++            assert runtime.resolve(TransactionalResource) is not None
++    else:
++        with CONTAINER_BUILD_OPTIONS.analyse(builder) as analysis:
++            assert "uow-scope-mismatch" in {
++                issue.code for issue in analysis.report.errors
++            }
++
++
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++async def test_api_modes_dispatch_through_the_real_decorated_registration_route(mode):
++    repository = create_autospec(
++        ServiceRegistryRepository, instance=True, spec_set=True
++    )
++    service = RegisteredDataProtectionService(
++        service_id="mode-test",
++        request_queue_name="mode-test-requests",
++        partition_key="v2",
++    )
++    repository.create.return_value = service
++    builder = get_api_builder(valid_api_config())
++    builder.register(ServiceRegistryRepository, instance=repository)
++
++    async with (
++        (
++            CONTAINER_BUILD_OPTIONS.analyse(builder)
++            if mode == "analysis"
++            else nullcontext(None)
++        ) as analysis,
++        (
++            analysis.create_runtime()
++            if analysis is not None
++            else CONTAINER_BUILD_OPTIONS.build(builder)
++        ) as container,
++    ):
++        async with container.new_scope() as scope:
++            provide_http_connection(scope)
++            dispatcher = await scope.resolve_async(CommandDispatcher)
++            command = CreateServiceRegistrationCommand(
++                service_id=service.service_id,
++                request_queue_name=service.request_queue_name,
++                partition_key=service.partition_key,
++            )
++            result = await dispatcher.dispatch(command)
++
++    repository.create.assert_awaited_once_with(service)
++    assert result.command is command
++    assert result.properties.partition_key == "v2"
+--- a/tests/unit/test_host_composition.py
++++ b/tests/unit/test_host_composition.py
+@@ -36,10 +36,10 @@
+     assert isinstance(container, Container)
+     assert CONTAINER_BUILD_OPTIONS.provider_roots == ()
+     assert not container._plan.provider_roots
+-    assert container._plan._blueprint is None
+-    assert container._plan.unreachable_checked is False
+-    assert container._plan.diagnostics is False
+-    assert container.build_report.is_valid
++    for name in ("graph", "build_report", "validation_report", "new_scope_builder"):
++        assert not hasattr(container, name)
++    for name in ("compiled_graph", "diagnostics", "_blueprint", "occurrence_layers"):
++        assert not hasattr(container._plan, name)
+     for service_type in (DaemonHealthRegistry, ScopedMultiDaemonRunner):
+         assert (
+             len(
+@@ -51,5 +51,5 @@
+             )
+             == 1
+         )
+-    with pytest.raises(RuntimeError, match="Scope builders are disabled"):
+-        container.new_scope_builder()
++    with container:
++        pass
+--- a/tests/unit/test_response_processor_foundation.py
++++ b/tests/unit/test_response_processor_foundation.py
+@@ -47,6 +47,7 @@
+     ServiceAccessRequestSagaState,
+     ServiceDeletionRequestSagaState,
+ )
++from data_protection_cop.common.dependencies.build import CONTAINER_BUILD_OPTIONS
+ from data_protection_cop.common.inventory.application.receive import (
+     InventoryAwareResponseProcessor,
+ )
+@@ -92,12 +93,7 @@
+         instance=create_autospec(SnsPublisher, spec_set=True, instance=True),
+     )
+ 
+-    container = container.build(
+-        provider_roots=(),
+-        allow_scope_builders=False,
+-        check_unreachable=False,
+-        aggregate_errors=False,
+-    )
++    container = CONTAINER_BUILD_OPTIONS.build(container)
+     assert isinstance(
+         container.resolve(DataProtectionResponseMessageMapper),
+         DataProtectionResponseMessageMapper,
+--- a/tests/unit/test_worker_foundation.py
++++ b/tests/unit/test_worker_foundation.py
+@@ -70,6 +70,7 @@
+     CreateServiceDeletionRequestCommand,
+     FinalizeServiceAccessRequestCommand,
+ )
++from data_protection_cop.common.dependencies.build import CONTAINER_BUILD_OPTIONS
+ from data_protection_cop.common.inventory.application.saga_models import (
+     InventoryResultPartSagaState,
+     InventorySessionSagaState,
+@@ -208,12 +209,7 @@
+         SnsPublisher,
+         instance=create_autospec(SnsPublisher, spec_set=True, instance=True),
+     )
+-    container = container.build(
+-        provider_roots=(),
+-        allow_scope_builders=False,
+-        check_unreachable=False,
+-        aggregate_errors=False,
+-    )
++    container = CONTAINER_BUILD_OPTIONS.build(container)
+     service_registry = await container.resolve_async(ServiceRegistryRepository)
+ 
+     assert isinstance(

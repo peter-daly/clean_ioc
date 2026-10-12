@@ -1,0 +1,853 @@
+............F...................................                         [100%]
+=================================== FAILURES ===================================
+_____ test_build_rules_run_before_reduction_and_saved_graphs_expire[False] _____
+
+blueprint = _Blueprint(layers=(_Layer(registry=<clean_ioc._legacy._Registry object at 0x10c5e06b0>, internal_ids=frozenset({'f13d3...}, fallback_ids=frozenset(), warmup_declarations=()),), boundaries=(), generated_decorators=(), template_selections=())
+build_args = mappingproxy({}), preview = False, preview_request = None
+anchored_singleton_steps = None, anchored_pre_configuration_steps = None
+anchored_owner_tokens = frozenset(), inherited_graph_sidecars = mappingproxy({})
+profile = None, budget_state = None, clean_orphans = True, diagnostics = False
+explain_metadata = False, provider_roots = None, check_unreachable = True
+aggregate_errors = True
+
+    def _compile_with_report(
+        blueprint: _Blueprint,
+        *,
+        build_args: Mapping[str, Any] = _EMPTY_BUILD_ARGS,
+        preview: bool = False,
+        preview_request: tuple[str, Any] | None = None,
+        anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
+        anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
+        anchored_owner_tokens: frozenset[str] = frozenset(),
+        inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
+        profile: CompilationProfiler | None = None,
+        budget_state: _BudgetState | None = None,
+        clean_orphans: bool = True,
+        diagnostics: bool = False,
+        explain_metadata: bool = True,
+        provider_roots: tuple[Any, ...] | None = None,
+        check_unreachable: bool = True,
+        aggregate_errors: bool = True,
+    ) -> _PlanSet:
+        compilation_inputs: _CompilationInputs = {
+            "build_args": build_args,
+            "budget_state": budget_state,
+            "anchored_owner_tokens": anchored_owner_tokens,
+            "inherited_graph_sidecars": inherited_graph_sidecars,
+            "diagnostics": diagnostics,
+            "explain_metadata": explain_metadata,
+            "provider_roots": provider_roots,
+        }
+        if anchored_singleton_steps is not None:
+            compilation_inputs["anchored_singleton_steps"] = anchored_singleton_steps
+        if anchored_pre_configuration_steps is not None:
+            compilation_inputs["anchored_pre_configuration_steps"] = anchored_pre_configuration_steps
+        _validate_warmup_declarations(blueprint)
+        alias_errors = (
+            _blueprint_alias_errors(blueprint)
+            if profile is None
+            else profile.call("alias and boundary preparation", "phase", _blueprint_alias_errors, blueprint)
+        )
+        entry_points = _declared_entry_point_labels(blueprint)
+        if alias_errors:
+            report = _alias_error_report(alias_errors)
+            census_definitions, census_ids = (
+                _census_inventory(blueprint) if diagnostics else ((), types.MappingProxyType({}))
+            )
+            raise ContainerBuildError(
+                report=report,
+                entry_points=entry_points,
+                partial_graph=(
+                    PartialGraph(
+                        (CompilationAttempt(None, issue_code=report.errors[0].code, witness_path=report.errors[0].path),)
+                    )
+                    if diagnostics
+                    else None
+                ),
+                census_definitions=census_definitions,
+                census_ids=census_ids,
+                diagnostics_enabled=diagnostics,
+            )
+        try:
+            if any(layer.registration_templates for layer in (*blueprint.layers, *(b.layer for b in blueprint.boundaries))):
+                blueprint = (
+                    _expand_registration_templates(blueprint, compilation_inputs)
+                    if profile is None
+                    else profile.call(
+                        "registration-template expansion",
+                        "phase",
+                        _expand_registration_templates,
+                        blueprint,
+                        compilation_inputs,
+                        profile=profile,
+                    )
+                )
+            if profile is None:
+                blueprint = _normalize_blueprint_aliases(blueprint)
+                blueprint = _prepare_boundary_visibility(
+                    blueprint, build_args=build_args, compilation_inputs=compilation_inputs
+                )
+            else:
+                blueprint = profile.call("alias and boundary preparation", "phase", _normalize_blueprint_aliases, blueprint)
+                blueprint = profile.call(
+                    "alias and boundary preparation",
+                    "phase",
+                    _prepare_boundary_visibility,
+                    blueprint,
+                    build_args=build_args,
+                    compilation_inputs=compilation_inputs,
+                )
+            _check_registration_template_sources(blueprint)
+            if profile is None:
+                expansion = _expand_decorator_templates(
+                    blueprint,
+                    build_args=build_args,
+                    anchored_singleton_steps=anchored_singleton_steps,
+                    anchored_pre_configuration_steps=anchored_pre_configuration_steps,
+                    anchored_owner_tokens=anchored_owner_tokens,
+                    inherited_graph_sidecars=inherited_graph_sidecars,
+                    diagnostics=diagnostics,
+                    explain_metadata=explain_metadata,
+                    provider_roots=provider_roots,
+                    budget_state=budget_state,
+                )
+            else:
+                expansion = profile.call(
+                    "decorator-template expansion",
+                    "phase",
+                    _expand_decorator_templates,
+                    blueprint,
+                    build_args=build_args,
+                    anchored_singleton_steps=anchored_singleton_steps,
+                    anchored_pre_configuration_steps=anchored_pre_configuration_steps,
+                    anchored_owner_tokens=anchored_owner_tokens,
+                    inherited_graph_sidecars=inherited_graph_sidecars,
+                    diagnostics=diagnostics,
+                    explain_metadata=explain_metadata,
+                    provider_roots=provider_roots,
+                    budget_state=budget_state,
+                    profile=profile,
+                )
+            expanded = replace(
+                blueprint,
+                generated_decorators=expansion.candidates,
+                template_selections=(*blueprint.template_selections, *expansion.selections),
+            )
+            if expansion.candidates:
+    
+                def check_expanded() -> _Blueprint:
+                    return _check_template_boundary_visibility(
+                        blueprint,
+                        _normalize_blueprint_aliases(expanded),
+                        build_args=build_args,
+                        candidates=expansion.candidates,
+                        compilation_inputs=compilation_inputs,
+                    )
+    
+                blueprint = (
+                    check_expanded()
+                    if profile is None
+                    else profile.call("alias and boundary preparation", "phase", check_expanded)
+                )
+            else:
+                blueprint = expanded
+        except TypeAliasNormalizationError as error:
+            report = _alias_error_report((error,))
+            census_definitions, census_ids = (
+                _census_inventory(blueprint) if diagnostics else ((), types.MappingProxyType({}))
+            )
+            raise ContainerBuildError(
+                report=report,
+                entry_points=entry_points,
+                partial_graph=(
+                    PartialGraph(
+                        (CompilationAttempt(None, issue_code=report.errors[0].code, witness_path=report.errors[0].path),)
+                    )
+                    if diagnostics
+                    else None
+                ),
+                census_definitions=census_definitions,
+                census_ids=census_ids,
+                diagnostics_enabled=diagnostics,
+            ) from error
+        except ContainerBuildError as error:
+            issue = BuildIssue(
+                code=error.code or "compile-error",
+                severity=IssueSeverity.error,
+                message=_safe_error_message(error),
+                root=(error.path[0] if error.path else None),
+                path=error.path,
+            )
+            report = BuildReport((issue,), checked_roots=0)
+            census_definitions, census_ids = (
+                _census_inventory(blueprint) if diagnostics else ((), types.MappingProxyType({}))
+            )
+            raise ContainerBuildError(
+                report=report,
+                entry_points=entry_points,
+                partial_graph=(
+                    PartialGraph((CompilationAttempt(None, issue_code=issue.code, witness_path=issue.path),))
+                    if diagnostics
+                    else None
+                ),
+                evidence=error.evidence,
+                census_definitions=census_definitions,
+                census_ids=census_ids,
+                diagnostics_enabled=diagnostics,
+            ) from error
+        compiler = _Compiler(
+            blueprint,
+            build_args=build_args,
+            anchored_singletons=anchored_singleton_steps,
+            anchored_pre_configurations=anchored_pre_configuration_steps,
+            anchored_owner_tokens=anchored_owner_tokens,
+            inherited_graph_sidecars=inherited_graph_sidecars,
+            budget_state=budget_state,
+            profile=profile,
+            diagnostics=diagnostics,
+            explain_metadata=explain_metadata,
+            provider_roots=provider_roots,
+        )
+        census_definitions, census_ids = _census_inventory(blueprint) if diagnostics else ((), types.MappingProxyType({}))
+        compiled: _PlanSet | None = None
+        try:
+            if preview_request is not None:
+                area, service_type = preview_request
+                compiled = compiler.compile((service_type,), area=area, include_boundaries=False)
+            else:
+                compiled = (
+                    compiler.compile(clean_orphans=clean_orphans)
+                    if profile is None
+                    else profile.call(
+                        "primary compilation", "phase", compiler.compile, clean_orphans=clean_orphans, attempt="primary"
+                    )
+                )
+            plan = replace(compiled, census_definitions=census_definitions, census_ids=census_ids)
+            if preview:
+                return plan
+            finalized = _compile_warmup_plans(
+>               _finalize_plan(plan, profile, budget_state, check_unreachable=check_unreachable), budget_state
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            )
+
+clean_ioc/container.py:12659: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+plan = _PlanSet(graph=<clean_ioc.components._ComponentGraph object at 0x10c6713c0>, roots={<class 'tests.test_optional_explan...), warmup_fingerprint='', selected_registrations=(), slots=frozenset(), ensured_import_modules=(), validation_rules=())
+profile = None, budget_state = None, check_unreachable = True
+
+    def _finalize_plan(
+        plan: _PlanSet,
+        profile: CompilationProfiler | None = None,
+        budget_state: _BudgetState | None = None,
+        *,
+        check_unreachable: bool = True,
+    ) -> _PlanSet:
+        all_roots = _graph_roots(plan)
+        entrypoints: list[GraphRoot] = []
+        issues: list[BuildIssue] = list(plan.compiler_issues)
+        if budget_state is not None:
+            # Share the live captured list so a later callback refusal preserves prior findings.
+            budget_state.preparation_findings.extend(budget_state.findings)
+            budget_state.findings = issues
+        known_root_selections: dict[tuple[str | None, Any, int], CompilationExplanation] = {}
+        census_root_selections: list[tuple[str | None, CompilationExplanation]] = []
+    
+        for request in plan.blueprint.entrypoints:
+            selection_filter = (
+                request.filter
+                if budget_state is None
+                else _budget_callback(
+                    request.filter,
+                    budget_state,
+                    "final validation",
+                    request.origin,
+                    path=(safe_definition(request.service_type),),
+                )
+            )
+            collection = _collection_request(request.service_type)
+            if collection is not None:
+                _, element_type = collection
+                explanation, selected_records = _recorded_root_selection(
+                    plan,
+                    element_type,
+                    selection_filter,
+                    collection=True,
+                )
+                if explanation is not None:
+                    known_root_selections[(None, element_type, id(request.filter))] = explanation
+                    census_root_selections.append((None, explanation))
+                matches = [GraphRoot(request.service_type, record.component, None) for record in selected_records]
+                if not matches:
+                    root_name = qualified_name(request.service_type)
+                    issues.append(
+                        BuildIssue(
+                            code="missing-entrypoint",
+                            severity=IssueSeverity.error,
+                            message=f"Marked entry point {root_name} has no matching compiled root",
+                            root=root_name,
+                            path=(root_name,),
+                        )
+                    )
+                    continue
+                entrypoints.extend(matches)
+                continue
+    
+            explanation, selected_records = _recorded_root_selection(
+                plan,
+                request.service_type,
+                selection_filter,
+                collection=False,
+            )
+            if explanation is not None:
+                known_root_selections[(None, request.service_type, id(request.filter))] = explanation
+                census_root_selections.append((None, explanation))
+            matches = [GraphRoot(request.service_type, record.component, None) for record in selected_records]
+            root_name = qualified_name(request.service_type)
+            if not matches:
+                issues.append(
+                    BuildIssue(
+                        code="missing-entrypoint",
+                        severity=IssueSeverity.error,
+                        message=f"Marked entry point {root_name} has no matching compiled root",
+                        root=root_name,
+                        path=(root_name,),
+                    )
+                )
+                continue
+            provider = _provider_request(request.service_type)
+            if len(matches) > 1:
+                issues.append(
+                    BuildIssue(
+                        code=("provider-ambiguous-component" if provider is not None else "ambiguous-selection"),
+                        severity=(IssueSeverity.error if provider is not None else IssueSeverity.warning),
+                        message=(
+                            f"Marked provider entry point {root_name} matches {len(matches)} targets"
+                            if provider is not None
+                            else f"Marked entry point {root_name} matches {len(matches)} roots; the first is selected"
+                        ),
+                        root=root_name,
+                        path=(root_name,),
+                    )
+                )
+            if provider is not None and provider[0] == "sync":
+                selected_id = matches[0].component.id
+                selected_plan = next(
+                    candidate for candidate in plan.roots[request.service_type] if candidate.component.id == selected_id
+                )
+                if isinstance(selected_plan.step, _ProviderStep) and (
+                    not selected_plan.step.target.sync_supported
+                    or (
+                        isinstance(selected_plan.step, _ManagedProviderStep)
+                        and not selected_plan.step.cleanup_sync_supported
+                    )
+                ):
+                    issues.append(
+                        BuildIssue(
+                            code=(
+                                "managed-provider-requires-async"
+                                if _is_managed_provider(request.service_type)
+                                else "provider-requires-async"
+                            ),
+                            severity=IssueSeverity.error,
+                            message=(
+                                f"Managed provider entry point {root_name} requires asynchronous activation or "
+                                "acquisition-owned cleanup; use AsyncManagedProvider"
+                                if _is_managed_provider(request.service_type)
+                                else f"Synchronous provider entry point {root_name} targets a component that "
+                                "requires asynchronous resolution"
+                            ),
+                            root=root_name,
+                            path=(root_name, qualified_name(provider[1])),
+                        )
+                    )
+            entrypoints.append(matches[0])
+    
+        for boundary in plan.blueprint.boundaries:
+            exposed_ids = {
+                target.registration_id for target in boundary.resolved_exposes if target.registration_id is not None
+            }
+            area_records = plan.area_root_candidates.get(boundary.name, {})
+            for request in boundary.layer.entrypoints:
+                selection_filter = (
+                    request.filter
+                    if budget_state is None
+                    else _budget_callback(
+                        request.filter,
+                        budget_state,
+                        "final validation",
+                        request.origin,
+                        path=(safe_definition(request.service_type),),
+                    )
+                )
+                collection = _collection_request(request.service_type)
+                candidate_type = request.service_type if collection is None else collection[1]
+                explanation, selected_records = _recorded_root_selection(
+                    plan,
+                    candidate_type,
+                    selection_filter,
+                    collection=collection is not None,
+                    records=area_records.get(candidate_type, ()),
+                )
+                if explanation is not None:
+                    known_root_selections[(boundary.name, candidate_type, id(request.filter))] = explanation
+                    census_root_selections.append((boundary.name, explanation))
+                selected_local = tuple(record for record in selected_records if record.component.boundary == boundary.name)
+                if len(selected_local) != len(selected_records):
+                    issues.append(
+                        BuildIssue(
+                            code="boundary-entrypoint-not-local",
+                            severity=IssueSeverity.error,
+                            message=(
+                                f"Boundary {boundary.name!r} entry point {qualified_name(request.service_type)} "
+                                "selects a component admitted through Use"
+                            ),
+                            root=qualified_name(request.service_type),
+                            path=(boundary.name, qualified_name(request.service_type)),
+                        )
+                    )
+                    continue
+                if not selected_local:
+                    issues.append(
+                        BuildIssue(
+                            code="boundary-entrypoint-not-local",
+                            severity=IssueSeverity.error,
+                            message=(
+                                f"Boundary {boundary.name!r} entry point {qualified_name(request.service_type)} "
+                                "does not select one local component"
+                            ),
+                            root=qualified_name(request.service_type),
+                            path=(boundary.name, qualified_name(request.service_type)),
+                        )
+                    )
+                    continue
+                if any(record.component.id not in exposed_ids for record in selected_local):
+                    issues.append(
+                        BuildIssue(
+                            code="boundary-entrypoint-not-exposed",
+                            severity=IssueSeverity.error,
+                            message=(
+                                f"Boundary {boundary.name!r} entry point {qualified_name(request.service_type)} "
+                                "must also be declared with Expose"
+                            ),
+                            root=qualified_name(request.service_type),
+                            path=(boundary.name, qualified_name(request.service_type)),
+                        )
+                    )
+                    continue
+                if collection is None and len(selected_local) > 1:
+                    issues.append(
+                        BuildIssue(
+                            code="ambiguous-selection",
+                            severity=IssueSeverity.warning,
+                            message=(
+                                f"Boundary {boundary.name!r} entry point {qualified_name(request.service_type)} "
+                                f"matches {len(selected_local)} local components; the first is selected"
+                            ),
+                            root=qualified_name(request.service_type),
+                            path=(boundary.name, qualified_name(request.service_type)),
+                        )
+                    )
+                    selected_local = selected_local[:1]
+                entrypoints.extend(
+                    GraphRoot(request.service_type, record.component, boundary.name) for record in selected_local
+                )
+    
+        boundary_contracts = tuple(
+            {
+                "name": boundary.name,
+                "exposures": [
+                    {
+                        "service": qualified_name(target.service_type),
+                        "name": target.name,
+                        "tags": [{"name": tag.name, "value": tag.value} for tag in sorted(target.tags, key=_tag_sort_key)],
+                        "source_service": qualified_name(target.source_service_type),
+                        "source_name": target.source_name,
+                        "source_tags": [
+                            {"name": tag.name, "value": tag.value} for tag in sorted(target.source_tags, key=_tag_sort_key)
+                        ],
+                    }
+                    for target in sorted(
+                        boundary.resolved_exposes,
+                        key=lambda item: (qualified_name(item.service_type), item.name or ""),
+                    )
+                ],
+                "uses": [
+                    {
+                        "source": target.source or "root",
+                        "service": qualified_name(target.service_type),
+                        "name": target.name,
+                        "tags": [{"name": tag.name, "value": tag.value} for tag in sorted(target.tags, key=_tag_sort_key)],
+                        "scope_slot": target.slot,
+                    }
+                    for target in sorted(
+                        boundary.resolved_uses,
+                        key=lambda item: (item.source or "", qualified_name(item.service_type), item.name or ""),
+                    )
+                ],
+            }
+            for boundary in sorted(plan.blueprint.boundaries, key=lambda item: item.name)
+        )
+        compiled_graph = CompiledGraph(
+            roots=all_roots,
+            diagnostics_enabled=plan.diagnostics,
+            _occurrence_origins=plan.occurrence_origins,
+            _fallback_ids=plan.fallback_ids,
+            build_args=plan.build_args,
+            entrypoints=tuple(entrypoints),
+            boundaries=boundary_contracts,
+            _root_candidates=plan.root_candidates,
+            _known_root_selections=types.MappingProxyType(known_root_selections),
+            _census_root_selections=tuple(census_root_selections),
+            _occurrence_explanations=plan.occurrence_explanations,
+            _decorator_explanations=plan.decorator_explanations,
+            _parameter_explanations=plan.parameter_explanations,
+            _generic_explanations=plan.generic_explanations,
+            _occurrence_layers=plan.occurrence_layers,
+            _template_source_decisions=tuple(
+                TemplateSourceDecision(
+                    template_id=item.template_id,
+                    source_registration_id=item.source.id,
+                    source_service=qualified_name(item.source.service_type),
+                    source_implementation=(
+                        None if item.source.implementation_type is None else qualified_name(item.source.implementation_type)
+                    ),
+                    source_bindings=item.source_bindings,
+                    filter_description=item.source_filter_description,
+                    selected=item.selected,
+                    generated_definition_id=item.generated_id,
+                    declaration_boundary=item.declaration_area,
+                    source_boundary=item.source_area,
+                    origin=item.origin,
+                )
+                for item in plan.blueprint.template_selections
+            ),
+            _census_definitions=plan.census_definitions,
+            _census_sources=plan.census_sources,
+            _census_ids=plan.census_ids,
+        )
+        # Retain only the position needed to recover eager finding order after
+        # deferred validation, including duplicate findings emitted by build rules.
+        unreachable_issue_offset = len(dict.fromkeys(issues))
+        if check_unreachable:
+            issues.extend(_unreachable_component_issues(compiled_graph))
+        built_in_issues = tuple(dict.fromkeys(issues))
+        validation_runner = (
+            _run_validation_rules
+            if budget_state is None
+            else partial(_run_budget_validation_rules, budget_state=budget_state)
+        )
+        if profile is None:
+            build_rule_issues = validation_runner(
+                compiled_graph,
+                (definition for definition in plan.blueprint.validation_rules if definition.mode == "build"),
+            )
+        else:
+            build_rule_issues = profile.call(
+                "final validation",
+                "phase",
+                validation_runner,
+                compiled_graph,
+                (definition for definition in plan.blueprint.validation_rules if definition.mode == "build"),
+                profile,
+            )
+    
+        deduplicated = tuple(dict.fromkeys((*built_in_issues, *build_rule_issues)))
+        report = BuildReport(deduplicated, checked_roots=len(all_roots), _graph=compiled_graph)
+        if not report.is_valid:
+>           raise ContainerBuildError(report=report, compiled_graph=compiled_graph)
+E           clean_ioc.container.ContainerBuildError: Container build failed with 1 error.
+E           - [validation-rule-error] Validation rule tests.test_optional_explanation_metadata.test_build_rules_run_before_reduction_and_saved_graphs_expire.<locals>.safety failed: ValueError: explain-decorators-not-recorded: no decorator decision exists for this occurrence
+
+clean_ioc/container.py:11508: ContainerBuildError
+
+The above exception was the direct cause of the following exception:
+
+diagnostics = False
+
+    @pytest.mark.parametrize("diagnostics", [False, True])
+    def test_build_rules_run_before_reduction_and_saved_graphs_expire(diagnostics):
+        builder = composition()
+        captured = []
+    
+        def safety(context):
+            graph = context.graph
+            root = next(root.component for root in graph.roots if root.requested_type is Consumer)
+            assert graph.explain_decorators(root).selected
+            assert graph.ownership_report().records
+            graph.manifest(all_roots=True)
+            captured.append((graph, root))
+            return ()
+    
+        builder.add_validation_rule(safety)
+>       with builder.build(explain_metadata=False, diagnostics=diagnostics) as runtime:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_optional_explanation_metadata.py:141: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+clean_ioc/container.py:15496: in build
+    plan = self._build_plan(
+clean_ioc/container.py:14294: in _build_plan
+    result = _compile_with_report(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+blueprint = _Blueprint(layers=(_Layer(registry=<clean_ioc._legacy._Registry object at 0x10c5e06b0>, internal_ids=frozenset({'f13d3...}, fallback_ids=frozenset(), warmup_declarations=()),), boundaries=(), generated_decorators=(), template_selections=())
+build_args = mappingproxy({}), preview = False, preview_request = None
+anchored_singleton_steps = None, anchored_pre_configuration_steps = None
+anchored_owner_tokens = frozenset(), inherited_graph_sidecars = mappingproxy({})
+profile = None, budget_state = None, clean_orphans = True, diagnostics = False
+explain_metadata = False, provider_roots = None, check_unreachable = True
+aggregate_errors = True
+
+    def _compile_with_report(
+        blueprint: _Blueprint,
+        *,
+        build_args: Mapping[str, Any] = _EMPTY_BUILD_ARGS,
+        preview: bool = False,
+        preview_request: tuple[str, Any] | None = None,
+        anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
+        anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
+        anchored_owner_tokens: frozenset[str] = frozenset(),
+        inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
+        profile: CompilationProfiler | None = None,
+        budget_state: _BudgetState | None = None,
+        clean_orphans: bool = True,
+        diagnostics: bool = False,
+        explain_metadata: bool = True,
+        provider_roots: tuple[Any, ...] | None = None,
+        check_unreachable: bool = True,
+        aggregate_errors: bool = True,
+    ) -> _PlanSet:
+        compilation_inputs: _CompilationInputs = {
+            "build_args": build_args,
+            "budget_state": budget_state,
+            "anchored_owner_tokens": anchored_owner_tokens,
+            "inherited_graph_sidecars": inherited_graph_sidecars,
+            "diagnostics": diagnostics,
+            "explain_metadata": explain_metadata,
+            "provider_roots": provider_roots,
+        }
+        if anchored_singleton_steps is not None:
+            compilation_inputs["anchored_singleton_steps"] = anchored_singleton_steps
+        if anchored_pre_configuration_steps is not None:
+            compilation_inputs["anchored_pre_configuration_steps"] = anchored_pre_configuration_steps
+        _validate_warmup_declarations(blueprint)
+        alias_errors = (
+            _blueprint_alias_errors(blueprint)
+            if profile is None
+            else profile.call("alias and boundary preparation", "phase", _blueprint_alias_errors, blueprint)
+        )
+        entry_points = _declared_entry_point_labels(blueprint)
+        if alias_errors:
+            report = _alias_error_report(alias_errors)
+            census_definitions, census_ids = (
+                _census_inventory(blueprint) if diagnostics else ((), types.MappingProxyType({}))
+            )
+            raise ContainerBuildError(
+                report=report,
+                entry_points=entry_points,
+                partial_graph=(
+                    PartialGraph(
+                        (CompilationAttempt(None, issue_code=report.errors[0].code, witness_path=report.errors[0].path),)
+                    )
+                    if diagnostics
+                    else None
+                ),
+                census_definitions=census_definitions,
+                census_ids=census_ids,
+                diagnostics_enabled=diagnostics,
+            )
+        try:
+            if any(layer.registration_templates for layer in (*blueprint.layers, *(b.layer for b in blueprint.boundaries))):
+                blueprint = (
+                    _expand_registration_templates(blueprint, compilation_inputs)
+                    if profile is None
+                    else profile.call(
+                        "registration-template expansion",
+                        "phase",
+                        _expand_registration_templates,
+                        blueprint,
+                        compilation_inputs,
+                        profile=profile,
+                    )
+                )
+            if profile is None:
+                blueprint = _normalize_blueprint_aliases(blueprint)
+                blueprint = _prepare_boundary_visibility(
+                    blueprint, build_args=build_args, compilation_inputs=compilation_inputs
+                )
+            else:
+                blueprint = profile.call("alias and boundary preparation", "phase", _normalize_blueprint_aliases, blueprint)
+                blueprint = profile.call(
+                    "alias and boundary preparation",
+                    "phase",
+                    _prepare_boundary_visibility,
+                    blueprint,
+                    build_args=build_args,
+                    compilation_inputs=compilation_inputs,
+                )
+            _check_registration_template_sources(blueprint)
+            if profile is None:
+                expansion = _expand_decorator_templates(
+                    blueprint,
+                    build_args=build_args,
+                    anchored_singleton_steps=anchored_singleton_steps,
+                    anchored_pre_configuration_steps=anchored_pre_configuration_steps,
+                    anchored_owner_tokens=anchored_owner_tokens,
+                    inherited_graph_sidecars=inherited_graph_sidecars,
+                    diagnostics=diagnostics,
+                    explain_metadata=explain_metadata,
+                    provider_roots=provider_roots,
+                    budget_state=budget_state,
+                )
+            else:
+                expansion = profile.call(
+                    "decorator-template expansion",
+                    "phase",
+                    _expand_decorator_templates,
+                    blueprint,
+                    build_args=build_args,
+                    anchored_singleton_steps=anchored_singleton_steps,
+                    anchored_pre_configuration_steps=anchored_pre_configuration_steps,
+                    anchored_owner_tokens=anchored_owner_tokens,
+                    inherited_graph_sidecars=inherited_graph_sidecars,
+                    diagnostics=diagnostics,
+                    explain_metadata=explain_metadata,
+                    provider_roots=provider_roots,
+                    budget_state=budget_state,
+                    profile=profile,
+                )
+            expanded = replace(
+                blueprint,
+                generated_decorators=expansion.candidates,
+                template_selections=(*blueprint.template_selections, *expansion.selections),
+            )
+            if expansion.candidates:
+    
+                def check_expanded() -> _Blueprint:
+                    return _check_template_boundary_visibility(
+                        blueprint,
+                        _normalize_blueprint_aliases(expanded),
+                        build_args=build_args,
+                        candidates=expansion.candidates,
+                        compilation_inputs=compilation_inputs,
+                    )
+    
+                blueprint = (
+                    check_expanded()
+                    if profile is None
+                    else profile.call("alias and boundary preparation", "phase", check_expanded)
+                )
+            else:
+                blueprint = expanded
+        except TypeAliasNormalizationError as error:
+            report = _alias_error_report((error,))
+            census_definitions, census_ids = (
+                _census_inventory(blueprint) if diagnostics else ((), types.MappingProxyType({}))
+            )
+            raise ContainerBuildError(
+                report=report,
+                entry_points=entry_points,
+                partial_graph=(
+                    PartialGraph(
+                        (CompilationAttempt(None, issue_code=report.errors[0].code, witness_path=report.errors[0].path),)
+                    )
+                    if diagnostics
+                    else None
+                ),
+                census_definitions=census_definitions,
+                census_ids=census_ids,
+                diagnostics_enabled=diagnostics,
+            ) from error
+        except ContainerBuildError as error:
+            issue = BuildIssue(
+                code=error.code or "compile-error",
+                severity=IssueSeverity.error,
+                message=_safe_error_message(error),
+                root=(error.path[0] if error.path else None),
+                path=error.path,
+            )
+            report = BuildReport((issue,), checked_roots=0)
+            census_definitions, census_ids = (
+                _census_inventory(blueprint) if diagnostics else ((), types.MappingProxyType({}))
+            )
+            raise ContainerBuildError(
+                report=report,
+                entry_points=entry_points,
+                partial_graph=(
+                    PartialGraph((CompilationAttempt(None, issue_code=issue.code, witness_path=issue.path),))
+                    if diagnostics
+                    else None
+                ),
+                evidence=error.evidence,
+                census_definitions=census_definitions,
+                census_ids=census_ids,
+                diagnostics_enabled=diagnostics,
+            ) from error
+        compiler = _Compiler(
+            blueprint,
+            build_args=build_args,
+            anchored_singletons=anchored_singleton_steps,
+            anchored_pre_configurations=anchored_pre_configuration_steps,
+            anchored_owner_tokens=anchored_owner_tokens,
+            inherited_graph_sidecars=inherited_graph_sidecars,
+            budget_state=budget_state,
+            profile=profile,
+            diagnostics=diagnostics,
+            explain_metadata=explain_metadata,
+            provider_roots=provider_roots,
+        )
+        census_definitions, census_ids = _census_inventory(blueprint) if diagnostics else ((), types.MappingProxyType({}))
+        compiled: _PlanSet | None = None
+        try:
+            if preview_request is not None:
+                area, service_type = preview_request
+                compiled = compiler.compile((service_type,), area=area, include_boundaries=False)
+            else:
+                compiled = (
+                    compiler.compile(clean_orphans=clean_orphans)
+                    if profile is None
+                    else profile.call(
+                        "primary compilation", "phase", compiler.compile, clean_orphans=clean_orphans, attempt="primary"
+                    )
+                )
+            plan = replace(compiled, census_definitions=census_definitions, census_ids=census_ids)
+            if preview:
+                return plan
+            finalized = _compile_warmup_plans(
+                _finalize_plan(plan, profile, budget_state, check_unreachable=check_unreachable), budget_state
+            )
+            retained = _prune_orphan_registrations(finalized) if clean_orphans else finalized
+            return replace(
+                retained,
+                selected_registrations=_selected_registration_catalogue(retained) if explain_metadata else (),
+            )
+        except Exception as error:
+            if compiled is not None and compiler.graph._records is None:
+                compiler.graph.freeze()
+            if isinstance(error, ContainerBuildError) and error.report is not None:
+>               raise ContainerBuildError(
+                    report=error.report,
+                    compiled_graph=error.compiled_graph,
+                    entry_points=entry_points,
+                    explanations=tuple(compiler.decision_history),
+                    partial_graph=(PartialGraph((compiler.partial_attempt(error),)) if diagnostics else None),
+                    evidence=error.evidence,
+                    census_definitions=census_definitions,
+                    census_ids=census_ids,
+                    census_sources=types.MappingProxyType(
+                        {
+                            **{key: value.id for key, value in compiler._specialized_registration_sources.items()},
+                            **compiler._pattern_sources,
+                        }
+                    ),
+                    census_attempts=tuple(compiler._partial_candidates),
+                    diagnostics_enabled=diagnostics,
+                ) from error
+E               clean_ioc.container.ContainerBuildError: Container build failed with 1 error.
+E               - [validation-rule-error] Validation rule tests.test_optional_explanation_metadata.test_build_rules_run_before_reduction_and_saved_graphs_expire.<locals>.safety failed: ValueError: explain-decorators-not-recorded: no decorator decision exists for this occurrence
+
+clean_ioc/container.py:12670: ContainerBuildError
+=========================== short test summary info ============================
+FAILED tests/test_optional_explanation_metadata.py::test_build_rules_run_before_reduction_and_saved_graphs_expire[False]
+1 failed, 47 passed in 2.81s

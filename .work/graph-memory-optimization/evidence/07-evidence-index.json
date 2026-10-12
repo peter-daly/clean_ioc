@@ -1,0 +1,461 @@
+{
+  "revision": "d51b6f569e67891e72e022b35aa5590c1c0fda46",
+  "task": "07",
+  "files": [
+    {
+      "path": ".work/graph-memory-optimization/07-inventory.md",
+      "bytes": 9802,
+      "sha256": "3308bc5579dec679e3bd1b0fa8c2c9713d14a5a1a5ea4a0ab63debb76525f52e"
+    },
+    {
+      "path": ".work/graph-memory-optimization/07-object-layout-and-allocation.md",
+      "bytes": 11501,
+      "sha256": "029b09ce0c9ae16e922505c58e2a82b78f0c5a91986c3b2186d0e99c583a2978"
+    },
+    {
+      "path": ".work/graph-memory-optimization/07-result.md",
+      "bytes": 18022,
+      "sha256": "d4d288dab38377a294525c2e8fb5fd3a0460efec02b43d7c66dc4a1b503e7c02"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-baseline-container.py.txt",
+      "bytes": 712049,
+      "sha256": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-baseline-cpython-314-container.code.bin",
+      "bytes": 935952,
+      "sha256": "cf49b41905e32667395ae32ee1b793fc6a944696e9736534589f087bd364b81c"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-example-test-exits.json",
+      "bytes": 51,
+      "sha256": "31d407c8e376a8689919b551c447837c717d932f4dd8cadcc18fbf2b58e67a6c"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-example-tests-indexes.txt",
+      "bytes": 602,
+      "sha256": "33f581400569d900bd85eb0a8b0caeb031fb48d72c8e867b8a70e2e95a989c3c"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-example-tests-prelookup.txt",
+      "bytes": 602,
+      "sha256": "87f82e399e75999ca5c4dc94ab232109d670a45ddadb4282806bb979268ad341"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-example-tests-slots.txt",
+      "bytes": 602,
+      "sha256": "f76455746fcecb408cf2acfb57d761218cac06561d5900efda35a3fe16ac8634"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-extended-comparison.json",
+      "bytes": 686492,
+      "sha256": "0b4170ec4e26d408bd81f60a19c7dac08c75d8de378243f41e0d431eff32f525"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-extra-normal.py",
+      "bytes": 1892,
+      "sha256": "172a9d57f9acb984c7a855f9bb31eca6b2dd4b232d000f1420fd4cb11219cada"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-full-test-exits.json",
+      "bytes": 51,
+      "sha256": "d59e1d3af20b69d65fc387db5a806e82d5918d6f53dc4e6dc5abe1bff43b3fb1"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-full-tests-indexes.txt",
+      "bytes": 33296,
+      "sha256": "33f2fbfa9dee120503b6ca24d14c590c6e2610cd27a240f9c317b2b12d731b27"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-full-tests-prelookup.txt",
+      "bytes": 2926,
+      "sha256": "ebe36238a5cb820da4c6b84f6c0fa5b569ca84cf380ddf05cefb49041e180a1f"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-full-tests-slots.txt",
+      "bytes": 2926,
+      "sha256": "2eb6e90867935c0e7b238d71e5e57d715b9a4359ed02ee523cf2ec89cfcc290b"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-index-accounting-final.json",
+      "bytes": 1873,
+      "sha256": "5818fde7bc9c95be039aa0a7d867c290c357634261d8edca5702ab9664650a9b"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-index-accounting-v1.py.txt",
+      "bytes": 2928,
+      "sha256": "cab70580214665a35b2c6dca702ebbd1cbad9296fb2434a6c9163520837fe102"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-index-accounting.json",
+      "bytes": 1872,
+      "sha256": "b85956b24801706cd6f249babd21be9d4346a3b2acffdb7d01a0853f25ecd434"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-index-accounting.py",
+      "bytes": 2967,
+      "sha256": "82f397997d6cd5eb64fd618cc2ed2c93bf4688eacf2a4097e9266e6d519db921"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-indexes-container.py.txt",
+      "bytes": 712083,
+      "sha256": "3c5379ea98eea6699ab0e12a1f64bc821e6163c161177266c9bbcf901a95be15"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-indexes-cpython-314-container.code.bin",
+      "bytes": 936009,
+      "sha256": "2c8e2e5e5a96f7a3809ecc1d0594dd55014ea0bb02578529d50cd2cd8a8f92c5"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-indexes-focused-tests.txt",
+      "bytes": 30549,
+      "sha256": "b3ac4f483453313824656361fab79efd0cce9b7b453a47486cafa260715d176a"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-inventory-baseline-initial.json",
+      "bytes": 41102,
+      "sha256": "389d29aa34e295d44b4a514755e5a067117f39d3428021b3ae4c86f90f1535e8"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-inventory-baseline.json",
+      "bytes": 47122,
+      "sha256": "58fd12731311c547e46da3cdfb60700911135d973e190f20e28b7137061416bb"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-inventory-indexes.json",
+      "bytes": 46401,
+      "sha256": "2566c04e7026a34b63f2600c560253103b42f6a4311551ba67239888d49af2c1"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-inventory-prelookup.json",
+      "bytes": 46340,
+      "sha256": "64511a4ff3f623de739d7fe7a8ecd073728ce3b6c896cea147a932a425366895"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-inventory-slots.json",
+      "bytes": 47156,
+      "sha256": "1d5e6b9a4cd5b1a2cbc72d62af4e3f93f7cc9548f54f3f7661ca34d82390ccab"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-layout-micro-baseline-314.json",
+      "bytes": 7388,
+      "sha256": "8f066d44bbd2800cf51138d7270ca70c4674761e1199f1c8bef671b15cb8a4fa"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-layout-micro-slots-311.json",
+      "bytes": 7363,
+      "sha256": "ebac5e23db730b835c8302cb014f86754b2a19f94173b72179e562a3c61c2d01"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-layout-micro-slots-312.json",
+      "bytes": 7366,
+      "sha256": "47ec9b5b4987ca2209b0c719f5628e967d055ee955bdf188ce15324669c80db0"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-layout-micro-slots-313.json",
+      "bytes": 7385,
+      "sha256": "745d8e6c6473135abb528c2c6de3038352f0351cb517444ef3fa9fd6a75ab042"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-layout-micro-slots-314.json",
+      "bytes": 7385,
+      "sha256": "810118396c693f5394dee904582bb20f450f932f9dbba502ad7510b032f9c698"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-layout-micro.py",
+      "bytes": 4256,
+      "sha256": "bb64c24eef0297c92105871549724663acaa87d12730b7b392eb5d46cec9884f"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-lifetimes-baseline.json",
+      "bytes": 14483,
+      "sha256": "f2e41ac9b7001f4fbfc85c5d634c871371b02e454defc9c998cdba1205a9bc67"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-lifetimes-indexes.json",
+      "bytes": 15163,
+      "sha256": "1c668016f62720194a2d8347baa750ad889c479855c2153688111fb0cf8f557e"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-lifetimes-prelookup.json",
+      "bytes": 14933,
+      "sha256": "b900b6b9540581913ee5abc4f64657484675f9eb77d177ea9c0b752a4cd1aaae"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-lifetimes-slots.json",
+      "bytes": 14709,
+      "sha256": "c8e5a1bf9cc479299266a468862a56e9652137f4fb3fd4f526e20eef97869a7c"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-mapping-checks.json",
+      "bytes": 226,
+      "sha256": "9c8013fecfea70ef51a66e9f71c4e551b8cab0488692f9df3d92950d16f88a34"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-mapping-checks.py",
+      "bytes": 1901,
+      "sha256": "4344a125046ec57176561255368d76c7d5cbdfdb6a57b942cce8c4ae9c9f5ba4"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-pool-accounting.json",
+      "bytes": 469,
+      "sha256": "91f25769ede663accb7bf5004646356b8b1cf0d25c2f316bf662f70b8a9a6f8b"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-pool-accounting.py",
+      "bytes": 2425,
+      "sha256": "e65f7eee63559fd6c461b4506eefe41b4b2c5122fa6fa8aced832efdd660c84f"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-prelookup-container.py.txt",
+      "bytes": 591041,
+      "sha256": "7248cb8b39277960c04d9a016e20b76d8fa3ec8a11cad3c21808138942330cd8"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-prelookup-cpython-314-container.code.bin",
+      "bytes": 978423,
+      "sha256": "944b3a2b3e1d645d619efbe8ee70e0ec40ea1db578abd7c5b88050ee80dfe766"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-prelookup-focused-tests.txt",
+      "bytes": 179,
+      "sha256": "ba870f5ed73a170e41293b042b55ddb8c19f0201add1bf3248fd207c930be63e"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-prepare.py",
+      "bytes": 1277,
+      "sha256": "1402b57fbda1839d668b9805f1e28fc7ee468a453f2c0d481e35962ef622796d"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-prepared-sources.json",
+      "bytes": 815,
+      "sha256": "188e80403ff7dc4ab108cfcb73c17e60e4dfdf25343c99734816872aba83c8cf"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-probe-source-loader.py.txt",
+      "bytes": 13942,
+      "sha256": "d728367a0094c6e170e400f8e015070300d10000b9c019d459ae51f5b5c76bc5"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-probe-v0.py.txt",
+      "bytes": 11518,
+      "sha256": "d275c8c83efc1746b25b68f4630021de932518302e914b8fdebcc95071e941db"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-probe-v1.py.txt",
+      "bytes": 11553,
+      "sha256": "aa51e9227ad3c60a7a0cf6b80060f76877f5d19b073e7ab934e31a5d36b2f408"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-probe-v2.py.txt",
+      "bytes": 11615,
+      "sha256": "765fd5ef95dbdbba4c75033ada175bd23714b392079e89afdd6813a6ecdc05e3"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-probe.py",
+      "bytes": 14464,
+      "sha256": "8fb174f5fe2861cdcd72bd933bd62226778e077b20609cd4e3df44600b39118e"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-repeat-baseline-initial.json",
+      "bytes": 113107,
+      "sha256": "8e76b831953883971b3f5c654203278efd560e6f492a99d97b77e8d5d62283d4"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-repeat-baseline-source-loader.json",
+      "bytes": 119392,
+      "sha256": "1cf6e8759973d5c4dbabb7b044f3f1880424814269fbebc161dbe5e3757aa872"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-repeat-baseline.json",
+      "bytes": 122864,
+      "sha256": "572b5d8ff0187a08106184f0eac4acc5383c7f7289cf6339b54b47525903b1a4"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-repeat-indexes.json",
+      "bytes": 124775,
+      "sha256": "b87e78669299ab7e818cd6702ccd9358746c306433d1ff9f155e050ee260600f"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-repeat-prelookup.json",
+      "bytes": 124374,
+      "sha256": "4d18a304f6a2a70e6203787ce3d97f7de3ea8106a40f71be6cfc5cb282761b5a"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-repeat-slots.json",
+      "bytes": 123755,
+      "sha256": "5958aedf1ef5a56b53944b5b037e14929508549ab81dfbffce4b86af7cc70508"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-resolution-baseline-1.json",
+      "bytes": 1639,
+      "sha256": "07864d55d7122a5e7691acafdf086ca2f43f811511eaaffc7b516f200f528ba8"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-resolution-baseline-2.json",
+      "bytes": 1640,
+      "sha256": "59384600bffc6dca98e99bc21879b6ab966da0932e8ae803364b3b0984fca983"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-resolution-baseline-3.json",
+      "bytes": 1642,
+      "sha256": "291e19c162b9f9f8e32710b6761eb60f0c267cd1c3270942dd36a805ee3cba48"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-resolution-prelookup-1.json",
+      "bytes": 1642,
+      "sha256": "eb4952d48ef3672dbb4d854a78b099d2cddf952b13d10b01ae654837fe522d98"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-resolution-prelookup-2.json",
+      "bytes": 1637,
+      "sha256": "f0b900bc3f6ee83755c5da3eb264aad75de90ef65a43eefd8674230a85df1549"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-resolution-prelookup-3.json",
+      "bytes": 1647,
+      "sha256": "53c05b6abd46608ed5472ab693be3cabf64c7959c0d2889084e4d94d66cd3d7c"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-resolution-slots-1.json",
+      "bytes": 1635,
+      "sha256": "4fea56c2fc62eab71e0945654e0d57ef6d9ef1508f599ea6bcdefbf9c1578a2d"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-resolution-slots-2.json",
+      "bytes": 1642,
+      "sha256": "b75ded1510cf63341aa668dd5cf17986ac983f67ea7461eb5fb1ee8e3ad571ba"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-resolution-slots-3.json",
+      "bytes": 1644,
+      "sha256": "871db4f8b9815a20973adc27d01bfc2ac14bc88970c9f56f367d43d61323f872"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-resolution-timing.py",
+      "bytes": 1739,
+      "sha256": "06831c6e8f74c277fb1ab3fbd140954e17368a4f1fcbbd3f3e4b4ea2e82ab4de"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-screen-bytecode-baseline.json",
+      "bytes": 18673,
+      "sha256": "65840ccdaefdc89fa836629afd8cdba26c57921e43c01b1d298063f523f52461"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-screen-indexes-8.json",
+      "bytes": 17818,
+      "sha256": "4416754f4f2e9e78b132b37313530e9b3d2f4c794d1bb8b5cd24280bcbe10d71"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-screen-indexes.json",
+      "bytes": 17174,
+      "sha256": "968b877813e7f51d69aa3436b6104adb2a58da8ae0569bf865123f4d88cabd04"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-screen-prelookup.json",
+      "bytes": 16871,
+      "sha256": "f0f199b01f283d664dc09fd71fa517a10bf8f53edb87da9a186a2307edc739f6"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-screen-slots.json",
+      "bytes": 16799,
+      "sha256": "2d8c2b66686637bd7d0a5da347875eed37c30025ed3af71b15fcc1d6861310b8"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-semantics-baseline-full.json",
+      "bytes": 19568,
+      "sha256": "255cb51f449f1e22dbea807b1532fc8565ef6209e4f20462e639b46da56505d2"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-semantics-baseline-reduced.json",
+      "bytes": 63616,
+      "sha256": "bb62011d140822b438499fb08861ace7356679d72e71d91b6041221f1ba10bd3"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-semantics-indexes-full.json",
+      "bytes": 20246,
+      "sha256": "49c7804da20cdd8c71b803306d7a19f140a0559b17e825f1f3bde1cd08a000d4"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-semantics-indexes-reduced.json",
+      "bytes": 64295,
+      "sha256": "1adcf9651e158a5ec50d80c4b57b19e02f8547a1af8474aef7b2d95366d4ac9a"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-semantics-prelookup-full.json",
+      "bytes": 20020,
+      "sha256": "1d837cbeda605a96d456795a8a450cd1b1e874f0f378e552bde00052c760c249"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-semantics-prelookup-reduced.json",
+      "bytes": 64067,
+      "sha256": "3ff88de02418dd65478b2a5622796c85d649a6756dad6f43ba09fe35db46f0a3"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-semantics-slots-full.json",
+      "bytes": 19788,
+      "sha256": "e9ee7bc9191d72363d762a4859c2948b1c356a1ed66e19c7cac39f0f969326b5"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-semantics-slots-reduced.json",
+      "bytes": 63839,
+      "sha256": "4831ff1c72a901b9a4003853a57c592b8b3c810b2e9a8ed57c16b13328e829bd"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-semantics.py",
+      "bytes": 571,
+      "sha256": "9243d43012f3c40ce0c8de93497351eeb94cfa3f1fd42ad908ce9e1b7b798674"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-slots-container.py.txt",
+      "bytes": 590557,
+      "sha256": "2077f7b40bf6538a0ec12838e3617c12ad75780132d40676303bb62756145845"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-slots-cpython-314-container.code.bin",
+      "bytes": 978282,
+      "sha256": "30f3ee7d13aaec656a2530c6d52ce01d937fb3ded17aa5973d3060c494632169"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-slots-focused-tests.txt",
+      "bytes": 179,
+      "sha256": "5fd93715c6157575ea01c4bd683721713881c793a29d9c4af12daa4d95ccd7e7"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-slots-python311-tests.txt",
+      "bytes": 179,
+      "sha256": "a7bc7dfa78b8bade849f98708172326617e2ecb2858d899a8468e10dc8e76588"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-slots-python312-tests.txt",
+      "bytes": 179,
+      "sha256": "e4ae29cd62f1a71202ce347f1458d0d4a66703dd05ecdcca6857eafed6f61b47"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-slots-python313-tests.txt",
+      "bytes": 179,
+      "sha256": "b20a64bda9153a25b2e50f9d9d3e98ecc770ee9f671f3b4ea51bd5bfee2ebc6e"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-source-check.json",
+      "bytes": 21181,
+      "sha256": "008426b3f0d8051d01c0eb0a1f098f2d5c80ae7afef91ba96cc4f2c88dff8a11"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-supported-python.json",
+      "bytes": 243,
+      "sha256": "8ed73340df86d81dc78b819121d078850e6c1acd09a4c4fd277205f728e5ce6d"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-validate.py",
+      "bytes": 3011,
+      "sha256": "5bfc0fa38d6e7e5f332533a66e28f5d4c70d87b86f6d1e586da1dcdaa4a46bdc"
+    },
+    {
+      "path": ".work/graph-memory-optimization/evidence/07-validation.json",
+      "bytes": 349,
+      "sha256": "750f30788deabf258709470df388feeaabb1700a719bc47cdaae60149638cf5f"
+    }
+  ]
+}
