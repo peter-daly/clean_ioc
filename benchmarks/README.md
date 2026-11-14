@@ -2,11 +2,74 @@
 
 The suite uses [BenchBro](https://github.com/peter-daly/benchbro) to measure repeat-level samples, report noise and confidence, and keep comparisons environment-aware.
 
-### Integration status
+### Historical integration status
 
-Task 24 checks benchmark discovery and functional fixture semantics only. Memory, timing and population comparisons
-are deferred to task 25. Historical result files and one-off toggle experiments retain their recorded meaning; retired
-entrypoints must not be treated as supported current APIs. No current performance gain is claimed here.
+Task 24 checked benchmark discovery and functional fixture semantics only, deferring memory, timing and population
+comparisons to task 25. Historical result files and one-off toggle experiments retain their recorded meaning; retired
+entrypoints must not be treated as supported current APIs. The current memory comparison below is a separate experiment.
+
+### Runtime and compilation memory
+
+`bench_runtime_memory.py` compares execution-step storage, scope cleanup storage,
+and graph-finalization allocations on the current build/verify API. Graph cases use
+the two-route template/provider/decorator fixture and include declarations, either
+`build()` or `verify()` plus `create_runtime()`, and normal close. Time and traced
+peak-allocation cases run separately with automatic garbage collection enabled.
+The scope allocation case holds 1,000 empty or resource-owning scopes at once;
+its session parent is warmed before tracing. Scope timing measures one complete
+create/resolve/close lifecycle. Scope cases disable automatic GC during measurement.
+
+Capture nine repeats after two warmups, with explicit ignored output paths:
+
+```sh
+uv run benchbro run benchmarks/bench_runtime_memory.py --fixed --repeats 9 --warmup 2 \
+  --no-compare --output-json .benchbro/runtime-memory/run-1.json \
+  --output-md .benchbro/runtime-memory/run-1.md
+uv run python -m benchmarks.runtime_memory_evidence --routes 4 --operation build \
+  > .benchbro/runtime-memory/heap-build-1.json
+uv run python -m benchmarks.runtime_memory_evidence --routes 4 --operation verify \
+  > .benchbro/runtime-memory/heap-verify-1.json
+```
+
+`runtime_memory_evidence.py` takes one fresh-process four-route sample with normal
+GC. Tracing starts after imports and includes declarations and compilation; retained
+bytes are sampled after GC while the runtime and, for verification, its report remain
+alive. Run each sample separately from timing, and repeat each revision with distinct
+output filenames. Keep fixture sources and the environment identical between revisions;
+the recorded environment is CPython 3.14.4 on macOS ARM64. Inspect repeat variation
+and unchanged-code drift before attributing timing changes. All memory figures here
+are Python allocations, not process RSS or application throughput.
+
+Measured 14 November 2026 against `7fbdd71` on `version2`, using the same interpreter,
+dependencies and fixture sources in both trees. The changes slot executable steps
+while preserving weak references, store cleanup callbacks in a list and run them in
+reverse order, avoid per-occurrence graph-ID tuples, and release temporary traversal
+sets before freezing. The build/verify separation is unchanged.
+
+| Traced memory workload | Before | After | Change |
+| --- | ---: | ---: | ---: |
+| 1,000 empty scopes, peak | 1,604,787 B | 896,395 B | -44.1% |
+| 1,000 resource-owning scopes, peak | 2,435,990 B | 1,624,350 B | -33.3% |
+| Two-route build, peak | 2,134,098 B | 1,872,345 B | -12.3% |
+| Two-route verify + runtime, peak | 8,240,954 B | 8,109,815 B | -1.6% |
+| Fresh four-route build, peak | 7,624,737 B | 6,905,603 B | -9.4% |
+| Fresh four-route runtime, retained after GC | 1,210,372 B | 1,178,352 B | -2.6% |
+
+BenchBro rows average two alternating before/after runs, each with nine repeats;
+fresh-process rows use the median of three samples per revision. Each fresh runtime
+retains 3,198 graph records and 31 selected registrations in both revisions.
+Build time averaged 125.99 to 126.39 ms (+0.3%); verify plus runtime averaged
+295.74 to 296.81 ms (+0.4%). Ordinary resolution and depth-1/5/20/50 chains showed
+no consistent material slowdown: the largest positive paired change was 1.7%.
+Those runtime checks used two runs of 15 repeats, five warmups and 5,000 iterations.
+Scope lifecycle timing averaged -0.3% empty and -1.1% with a resource. An initial
+exploratory resource-scope timing increase of 5.2% did not reproduce; that pass used
+disabled GC for graph allocations and is recorded separately from the table.
+
+The [results artifact](runtime_memory_results.json) includes every run's metrics,
+quality flags, fresh-process samples, environment and source hashes. These bounded
+fixtures establish allocation savings with small measured timing changes; they do
+not establish application RSS savings or gains on other Python versions.
 
 ### Large graph memory fixture
 

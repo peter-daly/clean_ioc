@@ -3201,6 +3201,8 @@ class _CompiledDependency:
 
 
 class _Step:
+    __slots__ = ("__weakref__",)
+
     sync_supported = True
 
     def resolve(self, context: _RuntimeResolutionContext) -> Any:
@@ -5170,6 +5172,8 @@ def _cache_profile_key(step: _RegistrationStep, context: _RuntimeResolutionConte
 class _ObservedRegistrationMixin:
     """Only compiled observed steps enter these methods."""
 
+    __slots__ = ()
+
     def _activate(self, context: _RuntimeResolutionContext) -> Any:
         step = cast(_RegistrationStep, self)
         profiler = context.scope._profiler
@@ -5314,6 +5318,8 @@ class _ObservedPerResolutionStep(_ObservedRegistrationMixin, _PerResolutionRegis
 
 
 class _ObservedScopedCacheMixin:
+    __slots__ = ()
+
     registration: legacy._Registration
 
     def resolve(self, context: _RuntimeResolutionContext) -> Any:
@@ -5815,6 +5821,9 @@ def _retain_runtime_graph(plan: _ExecutionPlan, *, include_architecture: bool = 
                 if not (isinstance(value, _ValueStep) and item.name == "value")
             )
 
+    # This identity index is no longer needed once all component seeds are known.
+    seen_objects.clear()
+
     # Filters may inspect ancestors and siblings as well as descendants. Follow
     # every captured relationship, including provider projections' physical
     # sources and their contextual parent. No callback or application value is
@@ -5837,9 +5846,12 @@ def _retain_runtime_graph(plan: _ExecutionPlan, *, include_architecture: bool = 
         seeds.extend(
             target for target in (record.parent_id, record.owner_id, record.decorated_id) if target is not None
         )
+    # Only physical IDs are needed for freezing; release the traversal index first.
+    seen_occurrences.clear()
     if plan.graph._records is None:
         drafts = plan.graph._drafts
         plan.graph._drafts = {occurrence: drafts.pop(occurrence) for occurrence in live}
+        live.clear()
         plan.graph.freeze()
     else:
         records = plan.graph._records
@@ -11995,7 +12007,7 @@ class _RuntimeOwner:
     def __init__(self) -> None:
         self._singletons: dict[str, Any] = {}
         self._coordinator = _Coordinator()
-        self._finalizers: deque[Callable[..., Any]] = deque()
+        self._finalizers: list[Callable[..., Any]] = []
         self._closed = False
         self._close_lock = threading.Lock()
 
@@ -12006,7 +12018,7 @@ class _RuntimeOwner:
     def _add_finalizer(self, finalizer: Callable[..., Any]) -> None:
         with self._close_lock:
             self._ensure_owner_open()
-            self._finalizers.appendleft(finalizer)
+            self._finalizers.append(finalizer)
 
     @staticmethod
     def _raise_cleanup_failures(failures: list[BaseException]) -> None:
@@ -12023,7 +12035,7 @@ class _RuntimeOwner:
             if self._closed:
                 return ()
             self._closed = True
-            finalizers = tuple(self._finalizers)
+            finalizers = tuple(reversed(self._finalizers))
             self._finalizers.clear()
             return finalizers
 
@@ -12254,7 +12266,7 @@ def _selected_registration_catalogue(plan: _ExecutionPlan) -> tuple[Registration
         for plans in groups.values()
         for root in plans
     )
-    visited: set[tuple[int, int]] = set()
+    visited: dict[_ComponentGraph, set[int]] = {}
     selected: dict[tuple[str, tuple[Any, ...]], RegistrationInfo] = {}
     pending = list(reversed(tuple(roots)))
     while pending:
@@ -12265,10 +12277,12 @@ def _selected_registration_catalogue(plan: _ExecutionPlan) -> tuple[Registration
         # metadata. Traverse their source once instead of expanding every view.
         while (view := graph.view_source(occurrence)) is not None:
             occurrence = view[1]
-        key = (id(graph), occurrence)
-        if key in visited:
+        occurrences = visited.get(graph)
+        if occurrences is None:
+            occurrences = visited[graph] = set()
+        if occurrence in occurrences:
             continue
-        visited.add(key)
+        occurrences.add(occurrence)
         component = Component(graph, occurrence)
         pending.extend(reversed((*component.dependencies, *component.pre_configurations, *component.decorators)))
         if component.kind not in (ComponentKind.registration, ComponentKind.decorator):

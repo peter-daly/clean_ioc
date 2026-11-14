@@ -3,7 +3,7 @@
 import gc
 import weakref
 from collections.abc import Mapping
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from typing import Generic, TypeVar
 
 import pytest
@@ -157,6 +157,32 @@ def test_overlay_catalogue_preserves_child_precedence_and_parent_public_alternat
     assert [item.id for item in container.selected_registrations if item.service_type is Service] == [parent_id]
     assert [item.id for item in child.selected_registrations if item.service_type is Service] == [child_id, parent_id]
     assert isinstance(child.resolve(Service), Child)
+
+
+def test_catalogue_distinguishes_graphs_with_matching_occurrence_ids_and_deduplicates_provider_views():
+    from clean_ioc.container import _selected_registration_catalogue
+
+    class Parent:
+        pass
+
+    class Child:
+        pass
+
+    parent_builder = ContainerBuilder().set_provider_roots((Provider[Parent],))
+    parent_id = parent_builder.register(Parent)
+    child_builder = ContainerBuilder().set_provider_roots((Provider[Child],))
+    child_id = child_builder.register(Child)
+    with parent_builder.build() as parent, child_builder.build() as child:
+        parent_root = parent._plan.roots[Parent][0]
+        child_root = child._plan.roots[Child][0]
+        assert parent_root.component.occurrence_id == child_root.component.occurrence_id
+        assert parent_root.component._graph is not child_root.component._graph
+        plan = replace(
+            child._plan,
+            roots={**parent._plan.roots, **child._plan.roots},
+            provider_roots={**parent._plan.provider_roots, **child._plan.provider_roots},
+        )
+        assert [item.id for item in _selected_registration_catalogue(plan)] == [parent_id, child_id]
 
 
 def test_unhashable_factory_has_static_metadata_without_retaining_instance_values(explain_metadata):
