@@ -1,0 +1,94 @@
+Item 23 final validation — 2026-10-16
+Baseline Git HEAD: 88a039ff7c1071d71ffccce24a859d23e76a9727
+Final source hashes: .work/23-source-hashes.json
+Branch: version2; local, uncommitted changes.
+
+Environment preparation (all succeeded; repository lockfile unchanged):
+  UV_PROJECT_ENVIRONMENT=/tmp/clean-ioc-slots-py311 uv sync --frozen --all-groups --python 3.11
+  UV_PROJECT_ENVIRONMENT=/tmp/clean-ioc-slots-py312 uv sync --frozen --all-groups --python 3.12
+  UV_PROJECT_ENVIRONMENT=/tmp/clean-ioc-slots-py313 uv sync --frozen --all-groups --python 3.13
+  Existing .venv: Python 3.14.4.
+
+Final complete CI (each exited 0 after all review-stage fixes):
+  make ci
+    Python 3.14.4: 2602 passed, 1 warning in 35.22 s.
+    Log: /tmp/unified-slots-final-ci314.log
+  UV_PROJECT_ENVIRONMENT=/tmp/clean-ioc-slots-py311 make ci
+    Python 3.11.13: 2594 passed, 8 skipped, 1 warning in 30.29 s.
+    Log: /tmp/unified-slots-final-ci311.log
+  UV_PROJECT_ENVIRONMENT=/tmp/clean-ioc-slots-py312 make ci
+    Python 3.12.11: 2599 passed, 3 skipped, 1 warning in 28.44 s.
+    Log: /tmp/unified-slots-final-ci312.log
+  UV_PROJECT_ENVIRONMENT=/tmp/clean-ioc-slots-py313 make ci
+    Python 3.13.5: 2602 passed, 1 warning in 33.35 s.
+    Log: /tmp/unified-slots-final-ci313.log
+
+Each make ci includes Ruff lint, Ruff format check, ty, full pytest,
+executable documentation validation and BenchBro discovery.
+The warning is the existing FastAPI/Starlette httpx deprecation.
+Version-gated existing tests account for skips. New unified-slot tests do not skip.
+
+Additional final checks:
+  uv run pytest -q tests/test_unified_slots.py
+    77 passed.
+  uv run pytest -q tests/test_unified_slots.py tests/test_type_alias_lookup_paths.py
+    92 passed after final provision-key lookup reuse.
+  uv run mkdocs build --strict
+    Exit 0; existing evidence-page/non-nav notices only.
+    Log: /tmp/unified-slots-final-docs.log
+  git diff --check
+    Exit 0.
+  Source SHA256 comparison against .work/23-source-hashes.json
+    Passed after final source/tests/docs changes.
+
+Independent review:
+  GPT-5.6 Sol high; .work/23-review.md; APPROVE / KEEP.
+  Six findings resolved, with final one-key-per-lookup delta confirmed.
+
+Cost evidence:
+  .work/23-slot-cost.py
+  .work/23-slot-cost-evidence.json
+  Final before/after pairs 3 and 4 correspond to reviewed final source.
+  Seven repeats of 100 builds / 10000 scope-or-resolution calls per sample,
+  same Python 3.14.4 interpreter and locked dependencies on this host.
+  Pair 3: before then after. Pair 4: after then before.
+  Microprobe only: no application workload, RSS, CPU-isolated/randomized
+  statistics, artifact loading, release, push or downstream consumer benchmark.
+
+API follow-up validation — 2026-10-16 (supersedes initial API spelling above)
+Current API: declare_slot(T, target="scoped"|"container").
+No declare_scope_slot method or accepted scope= declaration keyword.
+Original matrix/performance data/source hashes above are historical and intact.
+New source hashes: .work/23-target-source-hashes.json.
+
+Full check on the migrated source:
+  make ci
+    Exit 0 on Python 3.14.4: 2610 passed, 1 existing warning in 34.85 s.
+    Includes Ruff, formatting, ty, full pytest, executable documentation and
+    normal BenchBro benchmark discovery (benchmarks/bench_clean_ioc.py migrated).
+    Log: /tmp/unified-slots-target-ci.log
+  uv run pytest -q tests/test_unified_slots.py tests/ext/asgi tests/ext/fast_api
+    104 passed, one existing FastAPI/Starlette warning.
+    Includes 83 unified-slot cases and framework bundle/overlay coverage.
+  uv run python scripts/validate_docs_examples.py
+    Exit 0; all public guide examples validated.
+    Log: /tmp/unified-slots-target-docs-examples.log
+  uv run mkdocs build --strict
+    Exit 0; existing evidence-page/non-nav notices only.
+    Log: /tmp/unified-slots-target-docs.log
+  git diff --check
+    Exit 0.
+
+Full active source/docs/caller scan found only intentional old-name mentions:
+  CHANGES.rst and V1_TO_V2_UPGRADE.md explain removal;
+  tests/test_unified_slots.py asserts alias absence.
+Historical .work raw measurement/review snapshots remain unchanged.
+
+No Python matrix or performance rerun for this API-only follow-up. The initial
+matrix applies to the earlier source as recorded; no new performance claim.
+Focused independent review status is recorded separately in 23-target-review.md.
+
+Focused independent follow-up review completed:
+  GPT-5.6 Sol high; .work/23-target-review.md; APPROVE / KEEP.
+  One stale marketing demo call fixed/rechecked; no open findings.
+  Current source hashes verified against .work/23-target-source-hashes.json.

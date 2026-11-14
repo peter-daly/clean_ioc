@@ -504,7 +504,7 @@ def test_closed_scope_rejects_runtime_operations_and_saved_resolution_context():
         pass
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.register(Service, lifespan="transient")
     composition = builder.retain_composition()
     scope = builder.build().new_scope().provide(Request, Request())

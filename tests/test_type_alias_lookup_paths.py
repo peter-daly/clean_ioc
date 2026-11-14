@@ -59,8 +59,8 @@ def lookup_runtime_composition():
     builder.register(Repository[int], lifespan="singleton")
     builder.register(Service | Alternative, instance=Service())
     builder.register(ServiceId, instance=ServiceId("service"))
-    builder.declare_scope_slot(Request[int])
-    builder.declare_scope_slot(Request[int], name="named")
+    builder.declare_slot(Request[int], target="scoped")
+    builder.declare_slot(Request[int], name="named", target="scoped")
     composition = builder.retain_composition()
     container = builder.build()
     with container:
@@ -153,7 +153,7 @@ def test_compiled_slot_keys_bypass_normalization_and_keep_provision_rules(lookup
         with scope.new_scope() as child:
             assert child.has_provision(Request[int])
             assert child.has_provision(Request[int], "named")
-        assert scope.resolve(list[Request[int]]) == []
+        assert scope.resolve(list[Request[int]]) == [request]
     with pytest.raises(ScopeClosedError):
         scope.provide(Request[int], request)
 

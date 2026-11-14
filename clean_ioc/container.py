@@ -974,6 +974,32 @@ _IMPLEMENTATION_TYPE_UNSET = object()
 
 
 @dataclass(frozen=True, slots=True)
+class _SlotInput:
+    service_type: Any
+    scope: typing.Literal["container", "scoped"]
+    name: str | None
+    tags: tuple[legacy.Tag, ...]
+    binding: str | None
+
+    @property
+    def key(self) -> tuple[Any, ...]:
+        return ("binding", self.binding) if self.binding is not None else ("implicit", self.service_type, self.name)
+
+    @property
+    def description(self) -> str:
+        return f"{self.service_type!r} named {self.name!r} binding {self.binding!r}"
+
+
+@dataclass(frozen=True, slots=True)
+class _SlotDefinition(_SlotInput):
+    when: ComponentFilter | None
+    origin: _Origin
+
+    def runtime_input(self) -> _SlotInput:
+        return _SlotInput(self.service_type, self.scope, self.name, self.tags, self.binding)
+
+
+@dataclass(frozen=True, slots=True)
 class _Layer:
     registry: legacy._Registry
     internal_ids: frozenset[str]
@@ -992,7 +1018,7 @@ class _Layer:
     pre_configurations: tuple[_PreConfigurationDefinition, ...]
     pre_configuration_states: dict[str, _PreConfigurationState]
     slots: frozenset[tuple[Any, str | None]]
-    slot_origins: dict[tuple[Any, str | None], _Origin]
+    slot_declarations: tuple[_SlotDefinition, ...]
     entrypoints: tuple[_EntryPoint, ...]
     validation_rules: tuple[_ValidationRuleDefinition, ...]
     provider_maps: Mapping[str, _ProviderMapDefinition]
@@ -1022,6 +1048,7 @@ class _VisibilityTarget:
     source_name: str | None = None
     source_tags: tuple[legacy.Tag, ...] = ()
     slot: bool = False
+    slot_binding: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1166,33 +1193,29 @@ class _Blueprint:
     def registration_origin(self, registration_id: str, layer: _Layer) -> _Origin:
         return layer.registration_origins.get(registration_id, _SYNTHETIC_ORIGIN)
 
-    def slot_definitions(
-        self, service_type: Any, area: str | None = None
-    ) -> tuple[tuple[Any, str | None, _Origin], ...]:
-        found: list[tuple[Any, str | None, _Origin]] = []
-        seen: set[tuple[Any, str | None]] = set()
-        layers = self.layers if area is None else ()
-        for layer in layers:
-            for slot, origin in layer.slot_origins.items():
-                if slot in seen or slot[0] != service_type:
-                    continue
-                seen.add(slot)
-                found.append((slot[0], slot[1], origin))
-        if area is not None:
-            boundary = self.boundary(area)
-            if boundary is None:
-                return tuple(found)
-            for target in boundary.resolved_uses:
-                if not target.slot or target.service_type != service_type:
-                    continue
-                source_layers = self._root_layers_for(boundary)
-                for layer in source_layers:
-                    slot = (target.service_type, target.name)
-                    origin = layer.slot_origins.get(slot)
-                    if origin is not None and slot not in seen:
-                        seen.add(slot)
-                        found.append((slot[0], slot[1], origin))
-        return tuple(found)
+    @property
+    def slot_inputs(self) -> tuple[_SlotInput, ...]:
+        return tuple(slot.runtime_input() for layer in self.layers for slot in layer.slot_declarations)
+
+    def slot_definitions(self, service_type: Any, area: str | None = None) -> tuple[_SlotDefinition, ...]:
+        if area is None:
+            return tuple(
+                slot for layer in self.layers for slot in layer.slot_declarations if slot.service_type == service_type
+            )
+        boundary = self.boundary(area)
+        if boundary is None:
+            return ()
+        return tuple(
+            slot
+            for target in boundary.resolved_uses
+            if target.slot and target.service_type == service_type
+            for layer in self._root_layers_for(boundary)
+            for slot in layer.slot_declarations
+            if slot.service_type == service_type
+            and slot.name == target.name
+            and slot.binding == target.slot_binding
+            and slot.tags == target.tags
+        )
 
     def decorators(self, service_type: Any, area: str | None = None) -> list[tuple[_DecoratorDefinition, _Layer]]:
         found: list[tuple[_DecoratorDefinition, _Layer, int]] = []
@@ -1702,10 +1725,6 @@ def _normalize_layer_aliases(layer: _Layer) -> _Layer:
             normalized_registrations[canonical_key].append(registration)
     registry._registrations = defaultdict(deque, normalized_registrations)
     slots = frozenset((normalize_type_alias(service_type), name) for service_type, name in layer.slots)
-    slot_origins = {
-        (normalize_type_alias(service_type), name): origin
-        for (service_type, name), origin in layer.slot_origins.items()
-    }
     return replace(
         layer,
         registry=registry,
@@ -1736,12 +1755,100 @@ def _normalize_layer_aliases(layer: _Layer) -> _Layer:
             for definition in layer.pre_configurations
         ),
         slots=slots,
-        slot_origins=slot_origins,
+        slot_declarations=tuple(
+            replace(slot, service_type=normalize_type_alias(slot.service_type)) for slot in layer.slot_declarations
+        ),
         entrypoints=tuple(
             replace(entrypoint, service_type=normalize_type_alias(entrypoint.service_type))
             for entrypoint in layer.entrypoints
         ),
     )
+
+
+def _slot_declaration_error(
+    code: str,
+    message: str,
+    slot: _SlotDefinition,
+    other: _SlotDefinition | tuple[_SlotDefinition, ...] | None = None,
+    *,
+    path: tuple[str, ...] | None = None,
+) -> ContainerBuildError:
+    declarations = (slot, *other) if isinstance(other, tuple) else (slot,) if other is None else (other, slot)
+    details = "; ".join(
+        f"{item.description} target {item.scope!r} at {_source_evidence(item.origin.location)}" for item in declarations
+    )
+    path = path or (qualified_name(slot.service_type),)
+    return ContainerBuildError(
+        f"{message}: {details}",
+        code=code,
+        path=path,
+        evidence=tuple(
+            FailureEvidence(
+                "slot",
+                qualified_name(item.service_type),
+                message,
+                source_location=_source_evidence(item.origin.location),
+                witness=path,
+            )
+            for item in declarations
+        ),
+    )
+
+
+def _validate_slot_declarations(blueprint: _Blueprint) -> None:
+    bindings: dict[tuple[Any, ...], _SlotDefinition] = {}
+    unconditional: list[_SlotDefinition] = []
+    declarations = tuple(
+        slot
+        for layer in (*blueprint.layers, *(boundary.layer for boundary in blueprint.boundaries))
+        for slot in layer.slot_declarations
+    )
+    for slot in declarations:
+        if slot.scope == "container" and slot.origin.layer == "overlay":
+            raise _slot_declaration_error(
+                "overlay-container-slot-unsupported",
+                "Container slots must be declared on the root ContainerBuilder; "
+                "ScopeBuilder overlays may only add scoped slots",
+                slot,
+            )
+        previous = bindings.get(slot.key)
+        if previous is not None:
+            if previous.service_type != slot.service_type or previous.scope != slot.scope:
+                raise _slot_declaration_error(
+                    "slot-binding-incompatible",
+                    "Incompatible slot binding; service type and target must agree",
+                    slot,
+                    previous,
+                )
+            if slot.binding is None:
+                raise _slot_declaration_error(
+                    "duplicate-slot",
+                    "Duplicate implicit slot identity; use an explicit shared binding for views",
+                    slot,
+                    previous,
+                )
+        if slot.when is None:
+            identical = next(
+                (
+                    other
+                    for other in unconditional
+                    if other.key == slot.key and other.name == slot.name and other.tags == slot.tags
+                ),
+                None,
+            )
+            if identical is not None:
+                raise _slot_declaration_error("duplicate-slot", "Duplicate slot view", slot, identical)
+            unconditional.append(slot)
+        bindings.setdefault(slot.key, slot)
+    implicit = {(slot.service_type, slot.name): slot for slot in declarations if slot.binding is None}
+    for slot in declarations:
+        if slot.binding is not None and (slot.service_type, slot.name) in implicit:
+            raise _slot_declaration_error(
+                "slot-implicit-binding-conflict",
+                "Implicit slot identity conflicts with explicit binding; give each input an explicit binding",
+                slot,
+                implicit[slot.service_type, slot.name],
+            )
 
 
 def _normalize_blueprint_aliases(blueprint: _Blueprint) -> _Blueprint:
@@ -1766,7 +1873,9 @@ def _normalize_blueprint_aliases(blueprint: _Blueprint) -> _Blueprint:
         )
         for boundary in blueprint.boundaries
     )
-    return replace(blueprint, layers=layers, boundaries=boundaries)
+    normalized = replace(blueprint, layers=layers, boundaries=boundaries)
+    _validate_slot_declarations(normalized)
+    return normalized
 
 
 def _blueprint_alias_errors(blueprint: _Blueprint) -> tuple[TypeAliasNormalizationError, ...]:
@@ -2253,10 +2362,12 @@ def _prepare_boundary_visibility(
                     for registration, _ in _boundary_registrations(blueprint, source_layers, use.service_type)
                 )
                 targets.extend(
-                    _VisibilityTarget(None, slot_type, None, name, (), slot=True)
+                    _VisibilityTarget(
+                        None, slot.service_type, None, slot.name, slot.tags, slot=True, slot_binding=slot.binding
+                    )
                     for layer in source_layers
-                    for slot_type, name in layer.slots
-                    if slot_type == use.service_type
+                    for slot in layer.slot_declarations
+                    if slot.service_type == use.service_type
                 )
             else:
                 source = blueprint.boundary(use.source)
@@ -2356,11 +2467,18 @@ def _prepare_boundary_visibility(
                     code="boundary-use-not-found",
                     compilation_inputs=compilation_inputs,
                 )
-                slot_matches: list[tuple[Any, str | None]] = []
-                for layer in source_layers:
-                    for slot_type, name in layer.slots:
+                slot_matches: list[_SlotDefinition] = []
+                for layer in () if matches else source_layers:
+                    for slot in layer.slot_declarations:
+                        slot_type, name = slot.service_type, slot.name
                         if slot_type != use.service_type:
                             continue
+                        if slot.when is not None:
+                            raise ContainerBuildError(
+                                f"Boundary {boundary.name!r} cannot import conditional slot {slot.description}",
+                                code="boundary-conditional-slot-unsupported",
+                                path=(boundary.name, qualified_name(slot_type)),
+                            )
                         state = (compilation_inputs or {}).get("budget_state")
                         if state is not None:
                             state.occurrence("boundary preparation", depth=1, path=(safe_definition(slot_type),))
@@ -2372,16 +2490,18 @@ def _prepare_boundary_visibility(
                                 service_type=slot_type,
                                 implementation=_ProvidedStep,
                                 implementation_type=_ProvidedStep,
-                                lifespan="scoped",
+                                lifespan="singleton" if slot.scope == "container" else "scoped",
                                 name=name,
-                                tags=(),
+                                tags=slot.tags,
                                 build_args=build_args,
                                 kind=ComponentKind.scope_slot,
                                 activation=ComponentActivation.supplied,
+                                slot_binding=slot.binding,
                             )
                         )
                         if _preparation_filter(use.filter, component, compilation_inputs, "boundary preparation"):
-                            slot_matches.append((slot_type, name))
+                            if not any(other.key == slot.key for other in slot_matches):
+                                slot_matches.append(slot)
                 if len(matches) + len(slot_matches) == 0:
                     if defer_missing:
                         continue
@@ -2402,8 +2522,10 @@ def _prepare_boundary_visibility(
                         None, use.service_type, registration.id, registration.name, tuple(registration.tags)
                     )
                 else:
-                    slot_type, name = slot_matches[0]
-                    target = _VisibilityTarget(None, slot_type, None, name, (), slot=True)
+                    slot = slot_matches[0]
+                    target = _VisibilityTarget(
+                        None, slot.service_type, None, slot.name, slot.tags, slot=True, slot_binding=slot.binding
+                    )
             else:
                 source = blueprint.boundary(use.source)
                 if source is None or source.root_layer_offset < boundary.root_layer_offset:
@@ -2481,6 +2603,7 @@ def _prepare_boundary_visibility(
                 target.name,
                 target.tags,
                 target.slot,
+                target.slot_binding,
             )
             if key in selected_keys:
                 _analysis_issue(
@@ -3140,11 +3263,10 @@ class _ValueStep(_Step):
 
 @dataclass(frozen=True, slots=True)
 class _ProvidedStep(_Step):
-    service_type: Any
-    name: str | None
+    slot: _SlotInput
 
     def resolve(self, context: _RuntimeResolutionContext) -> Any:
-        return context.scope._find_provision(self.service_type, self.name)
+        return context.scope._find_provision(self.slot)
 
     async def resolve_async(self, context: _RuntimeResolutionContext) -> Any:
         return self.resolve(context)
@@ -3412,7 +3534,7 @@ class _ManagedAcquisition:
                 cast(_ObservedScope, owner)._request_labels,
                 owner._profile_paths,
             )
-        scope._resolution_started = True
+        scope._start_resolution()
         self._scope = scope
         return scope
 
@@ -3877,7 +3999,7 @@ def _per_call_proxy_type(service_type: Any, methods: tuple[tuple[str, Callable[.
                         owner._profiler, owner._profile_fingerprint, owner._request_labels, owner._profile_paths
                     )
                 async with invocation:
-                    invocation._resolution_started = True
+                    invocation._start_resolution()
                     context = (
                         _ObservedPerCallResolutionContext(invocation)
                         if observed
@@ -3914,7 +4036,7 @@ def _per_call_proxy_type(service_type: Any, methods: tuple[tuple[str, Callable[.
                         owner._profiler, owner._profile_fingerprint, owner._request_labels, owner._profile_paths
                     )
                 with invocation:
-                    invocation._resolution_started = True
+                    invocation._start_resolution()
                     context = (
                         _ObservedPerCallResolutionContext(invocation)
                         if observed
@@ -5369,10 +5491,23 @@ class _RootPlan:
     is_fallback: bool = False
 
 
+def _root_slot_input(plan: _RootPlan) -> _SlotInput | None:
+    step = plan.step
+    while isinstance(step, (_ProviderStep, _ObservedCallSiteStep)):
+        step = step.target
+    return step.slot if isinstance(step, _ProvidedStep) else None
+
+
 def _preferred_root_plans(plans: Iterable[_RootPlan]) -> tuple[_RootPlan, ...]:
     matching = tuple(plans)
-    ordinary = tuple(plan for plan in matching if not plan.is_fallback)
-    return ordinary or matching
+    registrations = tuple(plan for plan in matching if _root_slot_input(plan) is None)
+    if registrations:
+        ordinary = tuple(plan for plan in registrations if not plan.is_fallback)
+        return ordinary or registrations
+    bindings: dict[tuple[Any, ...], _RootPlan] = {}
+    for plan in matching:
+        bindings.setdefault(cast(_SlotInput, _root_slot_input(plan)).key, plan)
+    return tuple(bindings.values())
 
 
 @dataclass(frozen=True, slots=True)
@@ -5405,6 +5540,8 @@ class _ExecutionPlan:
     warmup_fingerprint: str = ""
     selected_registrations: tuple[RegistrationInfo, ...] = ()
     slots: frozenset[tuple[Any, str | None]] = frozenset()
+    slot_inputs: tuple[_SlotInput, ...] = ()
+    required_container_slots: tuple[_SlotInput, ...] = ()
     ensured_import_modules: tuple[str, ...] = ()
     identity: str = field(default_factory=lambda: str(uuid4()))
 
@@ -5792,6 +5929,7 @@ def _project_execution_plan(plan: _ExecutionPlan, *, clone_graph: bool = False) 
         "warmup_steps",
     ):
         values[name] = project(values[name])
+    values["required_container_slots"] = _required_container_slots(plan)
     projected = _ExecutionPlan(**values)
     if clone_graph:
         _retain_runtime_graph(projected)
@@ -5801,11 +5939,69 @@ def _project_execution_plan(plan: _ExecutionPlan, *, clone_graph: bool = False) 
     return projected
 
 
+def _required_container_slots(plan: _ExecutionPlan) -> tuple[_SlotInput, ...]:
+    if not any(slot.scope == "container" for slot in plan.slot_inputs):
+        return ()
+    required: dict[tuple[Any, ...], _SlotInput] = {}
+    pending: list[tuple[Any, bool]] = [(plan.roots, False), (plan.provider_roots, False), (plan.warmup_steps, False)]
+    seen: set[tuple[int, bool]] = set()
+    carriers = (
+        _RootPlan,
+        _Step,
+        _CompiledDependency,
+        _CompiledDecorator,
+        _CompiledPreConfiguration,
+        _CompiledResolutionRequest,
+    )
+    while pending:
+        value, managed_context = pending.pop()
+        identity = (id(value), managed_context)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        if isinstance(value, _ProvidedStep):
+            if value.slot.scope == "container":
+                required.setdefault(value.slot.key, value.slot)
+        elif isinstance(value, _ManagedProviderStep):
+            pending.append((value.target, True))
+        elif isinstance(value, _PerCallStep):
+            pending.append((value.target, False))
+        elif type(value) in (tuple, list):
+            pending.extend((item, managed_context) for item in value)
+        elif type(value) in (dict, types.MappingProxyType):
+            pending.extend((item, managed_context) for item in value.values())
+        elif isinstance(value, carriers) and not isinstance(value, _ValueStep):
+            if (
+                managed_context
+                and isinstance(value, _ScopeStep)
+                and value.requested_type in (ResolutionContext, legacy.CurrentGraph)
+            ):
+                # Managed ResolutionContext can activate already-compiled roots
+                # through these adapters. Unreachable conservative adapters,
+                # including architecture-only private roots, are not inputs.
+                pending.append((plan.managed_provider_roots, True))
+            pending.extend((getattr(value, item.name), managed_context) for item in fields(value))
+    return tuple(sorted(required.values(), key=lambda slot: slot.description))
+
+
+def _check_overlay_container_inputs(plan: _ExecutionPlan, parent: Scope | None) -> None:
+    if parent is None or not parent.container._container_inputs_sealed:
+        return
+    missing = [
+        slot.description for slot in _required_container_slots(plan) if slot.key not in parent.container._provisions
+    ]
+    if missing:
+        raise ContainerBuildError(
+            "Overlay requires unprovided sealed container slots: " + "; ".join(missing),
+            code="overlay-missing-container-slot",
+        )
+
+
 def _finalize_execution(plan: _ExecutionPlan) -> _ExecutionPlan:
     selected = _selected_registration_catalogue(plan)
     _retain_runtime_graph(plan)
     _release_execution_composition(plan)
-    return replace(plan, selected_registrations=selected)
+    return replace(plan, selected_registrations=selected, required_container_slots=_required_container_slots(plan))
 
 
 def _reduce_explanation_metadata(plan: _ExecutionPlan) -> _ExecutionPlan:
@@ -7098,6 +7294,12 @@ class _Compiler:
             if service_types is not None
             else (self.blueprint.root_service_types() if area is None else self.blueprint.service_types(area))
         )
+        if service_types is None and area is None:
+            selected_service_types.extend(
+                slot.service_type
+                for slot in self.blueprint.slot_inputs
+                if slot.service_type not in selected_service_types
+            )
         if self._patterns and service_types is None and area is None:
             declared = (
                 set(self.blueprint.service_types())
@@ -7138,6 +7340,16 @@ class _Compiler:
             roots[service_type] = tuple(
                 _RootPlan(component=candidate.component, step=candidate.step, is_fallback=candidate.is_fallback)
                 for candidate in eligible
+            )
+            slot_roots = self._matching_slots(service_type, all_components, None, None, deduplicate=False)
+            unnamed = {slot.key: slot for slot, component in slot_roots if component.name is None}
+            if len(unnamed) > 1 and not any(candidate.component.name is None for candidate in eligible):
+                conflicts = tuple(unnamed.values())
+                raise _slot_declaration_error(
+                    "ambiguous-slot", f"Ambiguous root slot {service_type!r}", conflicts[0], conflicts[1:]
+                )
+            roots[service_type] += tuple(
+                _RootPlan(component, _ProvidedStep(slot.runtime_input())) for slot, component in slot_roots
             )
             if self._capture_evidence:
                 records = tuple(
@@ -7236,6 +7448,7 @@ class _Compiler:
             provider_roots=types.MappingProxyType(provider_roots),
             managed_provider_roots=types.MappingProxyType(dict(self._managed_provider_roots)),
             slots=self.blueprint.slots,
+            slot_inputs=self.blueprint.slot_inputs,
             ensured_import_modules=tuple(
                 dict.fromkeys(
                     name
@@ -7353,6 +7566,8 @@ class _Compiler:
             warmup_infos=execution.warmup_infos,
             warmup_fingerprint=execution.warmup_fingerprint,
             identity=execution.identity,
+            slot_inputs=execution.slot_inputs,
+            required_container_slots=execution.required_container_slots,
             diagnostics=self._diagnostics,
             fallback_ids=frozenset(self._fallback_component_ids),
             roots=roots,
@@ -7505,6 +7720,16 @@ class _Compiler:
             parent=provider,
             origin=_synthetic_origin(),
         )
+        slots = (
+            self._matching_slots(target_type, default_component_filter, collection, None)
+            if self.blueprint.slot_definitions(target_type, self._area)
+            and not any(not isinstance(plan.step, _ProvidedStep) for plan in targets)
+            else ()
+        )
+        if self.blueprint.slot_definitions(target_type, self._area) and not any(
+            not isinstance(plan.step, _ProvidedStep) for plan in targets
+        ):
+            targets = tuple(_RootPlan(component, _ProvidedStep(slot.runtime_input())) for slot, component in slots)
         members = tuple(self._provider_view(plan.component, collection) for plan in targets)
         if self._profile is not None:
             self._profile.count("provider target views", len(members))
@@ -7536,6 +7761,54 @@ class _Compiler:
                 ),
             ),
         )
+
+    def _slot_provider_roots(
+        self, annotation: Any, mode: typing.Literal["sync", "async"], registrations: tuple[_RootPlan, ...]
+    ) -> tuple[_RootPlan, ...]:
+        service_type = get_args(annotation)[0]
+        plans: list[_RootPlan] = []
+        unnamed: dict[tuple[Any, ...], _SlotDefinition] = {}
+        for definition in self.blueprint.slot_definitions(service_type, self._area):
+            provider, draft = self._draft(
+                component_id=(
+                    f"provider-root:{self._qualified_name(annotation)}:{definition.binding or definition.name}"
+                ),
+                service_type=annotation,
+                implementation=get_origin(annotation),
+                lifespan="transient",
+                name=definition.name,
+                tags=definition.tags,
+                kind=ComponentKind.managed_provider if _is_managed_provider(annotation) else ComponentKind.provider,
+                activation=ComponentActivation.deferred,
+                parent=None,
+                provider_mode=mode,
+                origin=definition.origin,
+            )
+            matches = self._matching_slots(service_type, all_components, provider, None, definitions=(definition,))
+            if not matches:
+                continue
+            slot, component = matches[0]
+            if slot.name is None:
+                unnamed.setdefault(slot.key, slot)
+            draft.dependency_ids = (component.occurrence_id,)
+            plans.append(
+                _RootPlan(
+                    provider,
+                    (_ManagedProviderStep if _is_managed_provider(annotation) else _ProviderStep)(
+                        mode, _ProvidedStep(slot.runtime_input())
+                    ),
+                )
+            )
+        if len(unnamed) > 1 and not any(root.component.name is None for root in registrations):
+            conflicts = tuple(unnamed.values())
+            raise _slot_declaration_error(
+                "ambiguous-slot",
+                f"Ambiguous deferred root slot {service_type!r}",
+                conflicts[0],
+                conflicts[1:],
+                path=(self._qualified_name(annotation),),
+            )
+        return tuple(plans)
 
     def _compile_provider_roots(
         self,
@@ -7588,7 +7861,15 @@ class _Compiler:
             if _provider_request(service_type) is not None or _collection_request(service_type) is not None:
                 continue
             base_records = self.root_candidates.get(service_type, ())
-            if not target_plans and not base_records and service_type not in self._early_rejected_root_services:
+            slot_family = bool(self.blueprint.slot_definitions(service_type, self._area)) and not any(
+                not isinstance(plan.step, _ProvidedStep) for plan in target_plans
+            )
+            if (
+                not target_plans
+                and not base_records
+                and service_type not in self._early_rejected_root_services
+                and not slot_family
+            ):
                 # Dependency-only declarations do not create automatic provider
                 # families, including synthetic empty collection providers.
                 continue
@@ -7623,21 +7904,25 @@ class _Compiler:
                 )
                 if not include_scalar and not internal_scalar and not include_collections:
                     continue
+                registration_targets = tuple(plan for plan in target_plans if not isinstance(plan.step, _ProvidedStep))
                 plans = tuple(
                     replace(
                         self._provider_root_component(annotation, mode, plan.component, plan.step),
                         is_fallback=plan.is_fallback,
                     )
-                    for plan in target_plans
+                    for plan in registration_targets
                     if include_scalar or internal_scalar
                 )
+                if (include_scalar or internal_scalar) and self.blueprint.slot_definitions(service_type, self._area):
+                    plans += self._slot_provider_roots(annotation, mode, registration_targets)
                 if internal_scalar:
                     self._managed_provider_roots[annotation] = plans
                 if include_scalar:
                     provider_roots[annotation] = plans
                 if self._capture_evidence:
                     records: list[_CandidateRecord] = []
-                    for plan, target in zip(plans, target_plans, strict=True) if include_scalar else ():
+                    record_targets = tuple(_RootPlan(plan.component.dependencies[0], plan.step) for plan in plans)
+                    for plan, target in zip(plans, record_targets, strict=True) if include_scalar else ():
                         origin = origins.get(target.component.occurrence_id, _synthetic_origin())
                         records.append(
                             _CandidateRecord(
@@ -7659,7 +7944,11 @@ class _Compiler:
                     if include_scalar:
                         cast(dict[Any, tuple[_CandidateRecord, ...]], self.root_candidates)[annotation] = tuple(records)
 
-                unnamed_targets = _preferred_root_plans(plan for plan in target_plans if plan.component.name is None)
+                unnamed_targets = _preferred_root_plans(
+                    plan
+                    for plan in target_plans
+                    if plan.component.name is None and not isinstance(plan.step, _ProvidedStep)
+                )
                 for collection_type in (list, tuple, set):
                     collection_target = (
                         tuple[service_type, ...] if collection_type is tuple else collection_type[service_type]
@@ -9757,6 +10046,35 @@ class _Compiler:
             collection=True,
             explanation_component=component,
         )
+        if not candidates and definition.group is None:
+            selected_bindings: set[tuple[Any, ...]] = set()
+            for slot in self.blueprint.slot_definitions(target, self._area):
+                provider, _ = self._draft(
+                    component_id=f"provider-map-slot:{component.occurrence_id}:{slot.binding or slot.name}",
+                    service_type=provider_type,
+                    implementation=get_origin(provider_type),
+                    lifespan="transient",
+                    name=slot.name,
+                    tags=slot.tags,
+                    kind=ComponentKind.provider,
+                    activation=ComponentActivation.deferred,
+                    parent=component,
+                    provider_mode=mode,
+                    origin=slot.origin,
+                )
+                matches = self._matching_slots(target, definition.component_filter, provider, None, definitions=(slot,))
+                if matches and slot.key not in selected_bindings:
+                    selected_bindings.add(slot.key)
+                    candidates.append(
+                        _CompiledCandidate(
+                            matches[0][1],
+                            _ProvidedStep(slot.runtime_input()),
+                            slot.origin,
+                            True,
+                            ("slot-target-frozen",),
+                            "The slot binding is frozen for this provider map entry",
+                        )
+                    )
         indices: dict[Hashable, int] = {}
         dependencies: list[_CompiledDependency] = []
         child_ids: list[int] = []
@@ -9930,6 +10248,7 @@ class _Compiler:
             implementation_type=source.implementation_type,
         )
         draft.boundary = source.boundary
+        draft.slot_binding = source.slot_binding
         draft.cache_owner = source.cache_owner
         draft.cleanup_owner = source.cleanup_owner
         draft.ownership_reason = source.ownership_reason
@@ -10304,10 +10623,8 @@ class _Compiler:
             if current.kind in (ComponentKind.per_call_handle, ComponentKind.managed_provider):
                 return None
             current_path = (*path, current)
-            if (
-                current.lifespan == "scoped"
-                or current.kind is ComponentKind.scope_slot
-                or (current.kind is ComponentKind.runtime_context and current.service_type in forbidden_contexts)
+            if current.lifespan == "scoped" or (
+                current.kind is ComponentKind.runtime_context and current.service_type in forbidden_contexts
             ):
                 return current_path
             for child in current.dependencies:
@@ -10436,8 +10753,17 @@ class _Compiler:
                     collection=True,
                     explanation_component=collection,
                 )
-                collection_draft.dependency_ids = tuple(candidate.component.occurrence_id for candidate in candidates)
-                member_steps = tuple(candidate.step for candidate in candidates)
+                slot_members = (
+                    self._matching_slots(element_type, dependency.settings.filter, collection, dependency.name)
+                    if not candidates
+                    else ()
+                )
+                collection_draft.dependency_ids = tuple(
+                    candidate.component.occurrence_id for candidate in candidates
+                ) + tuple(component.occurrence_id for _, component in slot_members)
+                member_steps = tuple(candidate.step for candidate in candidates) + tuple(
+                    _ProvidedStep(slot.runtime_input()) for slot, _ in slot_members
+                )
                 target_step: _Step = _CollectionStep(
                     collection_type,
                     member_steps,
@@ -10491,8 +10817,8 @@ class _Compiler:
                             code="provider-missing-component",
                             path=self._current_path(element_type),
                         )
-                    name, target_component = slot
-                    target_step = _ProvidedStep(element_type, name)
+                    definition, target_component = slot
+                    target_step = _ProvidedStep(definition.runtime_input())
                 else:
                     if len(candidates) > 1:
                         raise ContainerBuildError(
@@ -10773,8 +11099,17 @@ class _Compiler:
                 collection=True,
                 explanation_component=collection,
             )
-            collection_draft.dependency_ids = tuple(candidate.component.occurrence_id for candidate in candidates)
-            member_steps = tuple(candidate.step for candidate in candidates)
+            slot_members = (
+                self._matching_slots(element_type, dependency.settings.filter, collection, dependency.name)
+                if not candidates
+                else ()
+            )
+            collection_draft.dependency_ids = tuple(
+                candidate.component.occurrence_id for candidate in candidates
+            ) + tuple(component.occurrence_id for _, component in slot_members)
+            member_steps = tuple(candidate.step for candidate in candidates) + tuple(
+                _ProvidedStep(slot.runtime_input()) for slot, _ in slot_members
+            )
             return self._dependency_alias_result(
                 (
                     _CollectionStep(
@@ -10827,9 +11162,9 @@ class _Compiler:
 
         slot = self._matching_slot(dependency.service_type, dependency.settings.filter, parent, dependency.name)
         if slot is not None:
-            name, component = slot
+            definition, component = slot
             return self._dependency_alias_result(
-                (_ProvidedStep(dependency.service_type, name), component),
+                (_ProvidedStep(definition.runtime_input()), component),
                 declared_type,
                 dependency.service_type,
             )
@@ -10859,54 +11194,100 @@ class _Compiler:
             else (),
         )
 
+    def _matching_slots(
+        self,
+        service_type: Any,
+        filter: ComponentFilter,
+        parent: Component | None,
+        argument: str | None,
+        *,
+        deduplicate: bool = True,
+        definitions: tuple[_SlotDefinition, ...] | None = None,
+    ) -> tuple[tuple[_SlotDefinition, Component], ...]:
+        matching: dict[tuple[Any, ...], tuple[_SlotDefinition, Component]] = {}
+        for slot in self.blueprint.slot_definitions(service_type, self._area) if definitions is None else definitions:
+            self._subplan_unsafe_epoch += 1
+            component, draft = self._draft(
+                component_id=f"slot:{slot.scope}:{slot.service_type!r}:{slot.binding!r}:{slot.name!r}",
+                service_type=slot.service_type,
+                implementation=_ProvidedStep,
+                lifespan="singleton" if slot.scope == "container" else "scoped",
+                name=slot.name,
+                tags=slot.tags,
+                kind=ComponentKind.scope_slot,
+                activation=ComponentActivation.supplied,
+                parent=parent,
+                argument=argument,
+                origin=slot.origin,
+            )
+            draft.slot_binding = slot.binding
+            self._admit_preparation(component.service_type, self.origins.get(component.occurrence_id))
+            eligible = filter(component)
+            if eligible and slot.when is not None:
+                eligible = slot.when(component)
+            if inspect.isawaitable(eligible):
+                if inspect.iscoroutine(eligible):
+                    eligible.close()
+                raise ContainerBuildError("Slot predicates must be synchronous", code="invalid-slot-predicate")
+            if not eligible:
+                continue
+            singleton = next(
+                (item for item in reversed(self._retention_frames()) if item.lifespan == legacy.Lifespan.singleton),
+                None,
+            )
+            if _analysis_active() and singleton is not None and slot.scope == "scoped":
+                _analysis_issue(
+                    ContainerBuildError(
+                        f"{_frame_description(singleton, self._qualified_name)} cannot retain scoped value "
+                        f"from scope slot {slot.description}",
+                        code="captive-runtime-scope",
+                        path=self._current_path(service_type),
+                    )
+                )
+            if self._diagnostics:
+                self._record_component_decision(
+                    component,
+                    subject=f"Slot for argument {argument!r}",
+                    code="selected-explicit-filter",
+                    reason=(
+                        f"The declared {slot.scope} slot binding {slot.binding!r} matched {_filter_description(filter)}"
+                    ),
+                    origin=slot.origin,
+                )
+            matching.setdefault(slot.key if deduplicate else (component.occurrence_id,), (slot, component))
+        return tuple(matching.values())
+
     def _matching_slot(
         self,
         service_type: Any,
         filter: ComponentFilter,
         parent: Component,
         argument: str,
-    ) -> tuple[str | None, Component] | None:
-        for slot_type, name, origin in self.blueprint.slot_definitions(service_type, self._area):
-            self._subplan_unsafe_epoch += 1
-            component, _ = self._draft(
-                component_id=f"slot:{slot_type!r}:{name}",
-                service_type=slot_type,
-                implementation=_ProvidedStep,
-                lifespan="scoped",
-                name=name,
-                tags=(),
-                kind=ComponentKind.scope_slot,
-                activation=ComponentActivation.supplied,
-                parent=parent,
-                argument=argument,
-                origin=origin,
+    ) -> tuple[_SlotDefinition, Component] | None:
+        matches = self._matching_slots(service_type, filter, parent, argument)
+        if len(matches) > 1:
+            descriptions = "; ".join(
+                f"{slot.description} at {_source_evidence(slot.origin.location)}" for slot, _ in matches
             )
-            self._admit_preparation(component.service_type, self.origins.get(component.occurrence_id))
-            if filter(component):
-                singleton = next(
-                    (item for item in reversed(self._retention_frames()) if item.lifespan == legacy.Lifespan.singleton),
-                    None,
+            raise ContainerBuildError(
+                f"Ambiguous slot for argument {argument!r} of {self._qualified_name(parent.implementation)}: "
+                f"{descriptions}",
+                code="ambiguous-slot",
+                path=self._current_path(service_type),
+                evidence=(
+                    FailureEvidence(
+                        "slot",
+                        self._qualified_name(service_type),
+                        "ambiguous slot bindings",
+                        parameter=argument,
+                        witness=self._current_path(service_type),
+                        source_location=_source_evidence(matches[0][0].origin.location),
+                    ),
                 )
-                if _analysis_active() and (singleton is not None):
-                    _analysis_issue(
-                        ContainerBuildError(
-                            f"{_frame_description(singleton, self._qualified_name)} cannot retain scoped value "
-                            f"from scope slot "
-                            f"{self._qualified_name(slot_type)}",
-                            code="captive-runtime-scope",
-                            path=self._current_path(slot_type),
-                        )
-                    )
-                if self._diagnostics:
-                    self._record_component_decision(
-                        component,
-                        subject=f"Scope slot for argument {argument!r}",
-                        code="selected-explicit-filter",
-                        reason=f"The declared scope slot matched {_filter_description(filter)}",
-                        origin=origin,
-                    )
-                return name, component
-        return None
+                if self._capture_evidence
+                else (),
+            )
+        return matches[0] if matches else None
 
     def _compile_pre_configurations(
         self,
@@ -13737,7 +14118,9 @@ def _materialize_blueprint_origins(blueprint: _Blueprint) -> _Blueprint:
         return replace(
             layer,
             registration_origins={key: _origin_evidence(value) for key, value in layer.registration_origins.items()},
-            slot_origins={key: _origin_evidence(value) for key, value in layer.slot_origins.items()},
+            slot_declarations=tuple(
+                replace(slot, origin=_origin_evidence(slot.origin)) for slot in layer.slot_declarations
+            ),
             decorators=records(layer.decorators),
             pre_configurations=records(layer.pre_configurations),
             entrypoints=records(layer.entrypoints),
@@ -14568,7 +14951,7 @@ class Scope(_RuntimeOwner):
         self._owned_token = owned_token
         self._inherit_scoped = inherit_scoped
         self._scoped: dict[str, Any] = {}
-        self._provisions: dict[tuple[Any, str | None], Any] = {}
+        self._provisions: dict[tuple[Any, ...], Any] = {}
         self._resolution_started = False
 
     def _ensure_open(self) -> None:
@@ -14612,7 +14995,8 @@ class Scope(_RuntimeOwner):
         self._ensure_open()
         roots = self._plan.warmup_steps[name]
         info = next(info for info in self._plan.warmup_infos if info.name == name)
-        self._resolution_started = True
+        if not self._resolution_started:
+            self._start_resolution()
         return info, roots
 
     def warmup(self, name: str) -> WarmupReport:
@@ -14701,31 +15085,49 @@ class Scope(_RuntimeOwner):
             return self.has_component(canonical_type, filter)
         return any(filter(_provider_selection_component(plan.component)) for plan in plans)
 
+    def has_slot(self, service_type: Any, name: str | None = None, *, binding: str | None = None) -> bool:
+        """Whether a matching declared input exists (without checking its value)."""
+        canonical = (
+            service_type
+            if any(slot.service_type == service_type for slot in self._plan.slot_inputs)
+            else normalize_type_alias(service_type)
+        )
+        return any(
+            slot.service_type == canonical
+            and ((binding is None and slot.name == name) or (binding is not None and slot.binding == binding))
+            for slot in self._plan.slot_inputs
+        )
+
     def has_scope_slot(self, service_type: Any, name: str | None = None) -> bool:
-        """Return whether this runtime can accept the supplied scope value."""
+        """Whether a scoped input with this canonical type and name is declared."""
+        canonical = (
+            service_type
+            if any(slot.service_type == service_type for slot in self._plan.slot_inputs)
+            else normalize_type_alias(service_type)
+        )
+        return any(
+            slot.service_type == canonical and slot.name == name and slot.scope == "scoped"
+            for slot in self._plan.slot_inputs
+        )
 
-        slots = self._plan.slots
-        return (service_type, name) in slots or (normalize_type_alias(service_type), name) in slots
-
-    def has_provision(self, service_type: Any, name: str | None = None) -> bool:
-        """Return whether this scope or one of its parents supplied a slot value."""
-
-        key = (service_type, name)
-        if key not in self._plan.slots:
-            key = (normalize_type_alias(service_type), name)
-        scope: Scope | None = self
-        while scope is not None:
-            if key in scope._provisions:
-                return True
-            scope = scope.parent
-        return False
+    def has_provision(self, service_type: Any, name: str | None = None, *, binding: str | None = None) -> bool:
+        """Whether the uniquely identified input has a supplied local or inherited value."""
+        if not self.has_slot(service_type, name, binding=binding):
+            return False
+        slot = self._slot_input(service_type, name, binding)
+        try:
+            self._find_provision(slot)
+        except ScopeProvisionError:
+            return False
+        return True
 
     def _select_root(self, service_type: Any, filter: ComponentFilter, *, managed: bool = False) -> _RootPlan:
         self._ensure_open()
         if filter is default_component_filter and not managed:
             plan = self._plan.default_roots.get(service_type)
             if plan is not None:
-                self._resolution_started = True
+                if not self._resolution_started:
+                    self._start_resolution()
                 return plan
 
         # The plan's keys are already canonical. Normalize only unknown spellings,
@@ -14738,15 +15140,25 @@ class Scope(_RuntimeOwner):
             if canonical_type is not service_type:
                 return self._select_root(canonical_type, filter, managed=managed)
 
-        self._resolution_started = True
+        if not self._resolution_started:
+            self._start_resolution()
         if plans is not None and filter is default_component_filter:
             plan = next((candidate for candidate in plans if candidate.component.name is None), None)
             if plan is not None:
                 return plan
         elif plans is not None:
             for plan in plans:
-                if filter(_provider_selection_component(plan.component)):
+                if _root_slot_input(plan) is None and filter(_provider_selection_component(plan.component)):
                     return plan
+            matching = _preferred_root_plans(
+                plan
+                for plan in plans
+                if _root_slot_input(plan) is not None and filter(_provider_selection_component(plan.component))
+            )
+            if len(matching) > 1:
+                raise ScopeProvisionError(f"Ambiguous root slot selection for {service_type!r}")
+            if matching:
+                return matching[0]
         if (service_type, None) in self._plan.slots:
             raise ScopeProvisionError(f"Scope slot {service_type!r} has no provided value")
         raise CannotResolveError(service_type)
@@ -14756,31 +15168,48 @@ class Scope(_RuntimeOwner):
         if filter is default_component_filter:
             plans = self._plan.default_root_groups.get(service_type)
             if plans is not None:
-                self._resolution_started = True
+                if not self._resolution_started:
+                    self._start_resolution()
                 return plans
             # Default collection selection does not synthesize groups of providers.
             if service_type in self._plan.provider_roots:
-                self._resolution_started = True
+                if not self._resolution_started:
+                    self._start_resolution()
                 return ()
         else:
             plans = self._plan.roots.get(service_type)
             if plans is None:
                 plans = self._plan.provider_roots.get(service_type)
             if plans is not None:
-                self._resolution_started = True
+                if not self._resolution_started:
+                    self._start_resolution()
                 ordinary = tuple(
                     plan
                     for plan in plans
-                    if not plan.is_fallback and filter(_provider_selection_component(plan.component))
+                    if not plan.is_fallback
+                    and _root_slot_input(plan) is None
+                    and filter(_provider_selection_component(plan.component))
                 )
-                return ordinary or tuple(
-                    plan for plan in plans if plan.is_fallback and filter(_provider_selection_component(plan.component))
+                if ordinary:
+                    return ordinary
+                fallback = tuple(
+                    plan
+                    for plan in plans
+                    if plan.is_fallback
+                    and _root_slot_input(plan) is None
+                    and filter(_provider_selection_component(plan.component))
+                )
+                return fallback or _preferred_root_plans(
+                    plan
+                    for plan in plans
+                    if _root_slot_input(plan) is not None and filter(_provider_selection_component(plan.component))
                 )
         if (service_type, None) not in self._plan.slots:
             canonical_type = normalize_type_alias(service_type)
             if canonical_type is not service_type:
                 return self._select_roots(canonical_type, filter)
-        self._resolution_started = True
+        if not self._resolution_started:
+            self._start_resolution()
         return ()
 
     def resolve(
@@ -14790,7 +15219,8 @@ class Scope(_RuntimeOwner):
     ) -> TService:
         self._ensure_open()
         if isinstance(service_type, type) and filter is default_component_filter:
-            self._resolution_started = True
+            if not self._resolution_started:
+                self._start_resolution()
             plan = self._plan.default_roots.get(service_type)
             if plan is None:
                 if (service_type, None) in self._plan.slots:
@@ -14825,7 +15255,8 @@ class Scope(_RuntimeOwner):
     ) -> TService:
         self._ensure_open()
         if isinstance(service_type, type) and filter is default_component_filter:
-            self._resolution_started = True
+            if not self._resolution_started:
+                self._start_resolution()
             plan = self._plan.default_roots.get(service_type)
             if plan is None:
                 if (service_type, None) in self._plan.slots:
@@ -14851,28 +15282,76 @@ class Scope(_RuntimeOwner):
         finally:
             context.finish()
 
-    def provide(self, service_type: TypeForm[TService], value: TService, name: str | None = None) -> Scope:
+    def _slot_input(self, service_type: Any, name: str | None, binding: str | None) -> _SlotInput:
+        canonical = (
+            service_type
+            if any(slot.service_type == service_type for slot in self._plan.slot_inputs)
+            else normalize_type_alias(service_type)
+        )
+        matches = {
+            slot.key: slot
+            for slot in self._plan.slot_inputs
+            if slot.service_type == canonical
+            and ((binding is None and slot.name == name) or (binding is not None and slot.binding == binding))
+        }
+        if not matches:
+            raise UndeclaredScopeSlotError(f"No slot declared for {service_type!r} named {name!r} binding {binding!r}")
+        if len(matches) != 1:
+            raise ScopeProvisionError(
+                f"Ambiguous provision for {service_type!r} named {name!r}; specify binding: "
+                + ", ".join(repr(slot.binding) for slot in matches.values())
+            )
+        return next(iter(matches.values()))
+
+    def check_ready(self) -> None:
+        """Report all missing required container inputs without activating or sealing values."""
         self._ensure_open()
-        key = (service_type, name)
-        if key not in self._plan.slots:
-            service_type = normalize_type_alias(service_type)
-            key = (service_type, name)
-        if key not in self._plan.slots:
-            raise UndeclaredScopeSlotError(f"No scope slot declared for {service_type!r} named {name!r}")
+        missing = [
+            slot.description
+            for slot in self._plan.required_container_slots
+            if slot.key not in self.container._provisions
+        ]
+        if missing:
+            raise ScopeProvisionError("Missing required container slots: " + "; ".join(missing))
+
+    def _start_resolution(self) -> None:
         if self._resolution_started:
-            raise ScopeProvisionError("Scope provisions are locked after resolution begins")
-        if key in self._provisions:
-            raise ScopeProvisionError(f"Scope slot {service_type!r} named {name!r} was already provided")
-        self._provisions[key] = value
+            return
+        self.check_ready()
+        self.container._container_inputs_sealed = True
+        self._resolution_started = True
+
+    def provide(
+        self,
+        service_type: TypeForm[TService],
+        value: TService,
+        name: str | None = None,
+        *,
+        binding: str | None = None,
+    ) -> Scope:
+        self._ensure_open()
+        slot = self._slot_input(service_type, name, binding)
+        if slot.scope == "container" and self is not self.container:
+            raise ScopeProvisionError(f"Container slot {slot.description} must be provided on its owning container")
+        if self._resolution_started or (slot.scope == "container" and self.container._container_inputs_sealed):
+            raise ScopeProvisionError(f"Slot provisions are locked after resolution begins: {slot.description}")
+        if slot.key in self._provisions:
+            raise ScopeProvisionError(f"Slot {slot.description} was already provided")
+        self._provisions[slot.key] = value
         return self
 
-    def _find_provision(self, service_type: Any, name: str | None) -> Any:
-        key = (service_type, name)
-        if key in self._provisions:
-            return self._provisions[key]
-        if self.parent is not None:
-            return self.parent._find_provision(service_type, name)
-        raise ScopeProvisionError(f"Scope slot {service_type!r} named {name!r} has no provided value")
+    def _find_provision(self, slot: _SlotInput) -> Any:
+        key = slot.key
+        if slot.scope == "container":
+            if key in self.container._provisions:
+                return self.container._provisions[key]
+        else:
+            scope: Scope | None = self
+            while scope is not None:
+                if key in scope._provisions:
+                    return scope._provisions[key]
+                scope = scope.parent
+        raise ScopeProvisionError(f"Slot {slot.description} has no provided value")
 
     def _find_scoped(self, component_id: str) -> tuple[bool, Any]:
         if component_id in self._scoped:
@@ -14915,6 +15394,7 @@ class Container(Scope):
         self.container = self
         self.parent = None
         self._owners = {root_owner_token: self}
+        self._container_inputs_sealed = False
         self._owned_token = root_owner_token
         self._inherit_scoped = False
         self._scoped = {}
@@ -15716,8 +16196,7 @@ class _BuilderBase:
         self._pre_configuration_states: dict[str, _PreConfigurationState] = {}
         self._next_pre_configuration_order = 0
         self._registration_discoveries: list[_RegistrationDiscovery] = []
-        self._slots: set[tuple[Any, str | None]] = set()
-        self._slot_origins: dict[tuple[Any, str | None], _Origin] = {}
+        self._slot_declarations: list[_SlotDefinition] = []
         self._entrypoints: list[_EntryPoint] = []
         self._warmup_declarations: list[tuple[WarmupPlan, _Source | None]] = []
         self._validation_rules: list[_ValidationRuleDefinition] = []
@@ -15783,8 +16262,7 @@ class _BuilderBase:
             "_pre_configurations",
             "_pre_configuration_states",
             "_registration_discoveries",
-            "_slots",
-            "_slot_origins",
+            "_slot_declarations",
             "_entrypoints",
             "_warmup_declarations",
             "_validation_rules",
@@ -15926,6 +16404,7 @@ class _BuilderBase:
             if operation is _compile_execution:
                 inputs["provider_roots"] = requested_providers
                 execution = operation(blueprint, profile=profile, composition=self._retained_composition, **inputs)
+                _check_overlay_container_inputs(execution, parent)
                 if state is not None:
                     state.check()
                 completed = True
@@ -15944,6 +16423,7 @@ class _BuilderBase:
             )
             if state is not None:
                 state.check()
+            _check_overlay_container_inputs(result, parent)
             runtime_blueprint = result.blueprint
             layers = (*runtime_blueprint.layers, *(boundary.layer for boundary in runtime_blueprint.boundaries))
             retained = replace(
@@ -15951,6 +16431,7 @@ class _BuilderBase:
                 explain_metadata=explain_metadata,
                 diagnostics=diagnostics,
                 slots=runtime_blueprint.slots,
+                slot_inputs=runtime_blueprint.slot_inputs,
                 ensured_import_modules=tuple(
                     dict.fromkeys(module_name for layer in layers for module_name in layer.ensured_import_modules)
                 ),
@@ -16265,8 +16746,8 @@ class _BuilderBase:
             removed_decorator_ids=frozenset(self._removed_decorator_ids),
             pre_configurations=tuple(self._pre_configurations),
             pre_configuration_states=dict(self._pre_configuration_states),
-            slots=frozenset(self._slots),
-            slot_origins=dict(self._slot_origins),
+            slots=frozenset((slot.service_type, slot.name) for slot in self._slot_declarations),
+            slot_declarations=tuple(self._slot_declarations),
             entrypoints=tuple(self._entrypoints),
             warmup_declarations=tuple(self._warmup_declarations),
             validation_rules=tuple(self._validation_rules),
@@ -17055,12 +17536,34 @@ class _BuilderBase:
         self._pre_configuration_states[definition_id] = _PreConfigurationState()
         return definition_id
 
-    def declare_scope_slot(self, service_type: TypeForm[Any], name: str | None = None) -> _BuilderBase:
+    def declare_slot(
+        self,
+        service_type: TypeForm[Any],
+        *,
+        target: typing.Literal["container", "scoped"],
+        name: str | None = None,
+        tags: Iterable[legacy.Tag] | None = None,
+        binding: str | None = None,
+        when: ComponentFilter | None = None,
+    ) -> _BuilderBase:
+        """Declare a caller-owned input whose binding is frozen during compilation."""
         self._assert_mutable()
+        if target not in ("container", "scoped"):
+            raise ValueError("slot target must be 'container' or 'scoped'")
+        if name is not None and not isinstance(name, str):
+            raise TypeError("slot name must be a string or None")
+        if binding is not None and (not isinstance(binding, str) or not binding):
+            raise ValueError("slot binding must be a non-empty string or None")
+        if when is not None and (not callable(when) or binding is None):
+            raise ValueError("a conditional slot requires a callable when and an explicit binding")
+        captured_tags = tuple(tags or ())
+        if not all(isinstance(tag, legacy.Tag) for tag in captured_tags):
+            raise TypeError("slot tags must contain Tag values")
         service_type = _composition_type(service_type)
-        slot = (service_type, name)
-        self._slots.add(slot)
-        self._slot_origins.setdefault(slot, self._definition_origin("scope-slot", None))
+        origin = self._definition_origin("container-slot" if target == "container" else "scope-slot", None)
+        self._slot_declarations.append(
+            _SlotDefinition(service_type, target, name, captured_tags, binding, when, origin)
+        )
         return self
 
     def mark_entrypoint(
@@ -17266,6 +17769,7 @@ class _VerificationRuntime:
             if (None if instrumentation is None else instrumentation.profiler) is not parent_profiler:
                 raise ValueError("overlay instrumentation must match its parent runtime")
         plan = _project_execution_plan(self._plan)
+        _check_overlay_container_inputs(plan, self._parent)
         if instrumentation is not None:
             plan, fingerprint, labels, paths = _observe_execution_plan(
                 plan,

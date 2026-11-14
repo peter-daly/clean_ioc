@@ -1,3 +1,18 @@
+Unreleased
+----------
+
+    Add declare_slot(..., target="container"|"scoped") for caller-owned inputs,
+    with names, tags, stable bindings and compiled contextual selection. Remove
+    declare_scope_slot() and the old scope= declaration keyword; target= is
+    required. Duplicate implicit declarations, including inherited redeclarations,
+    fail compilation. Framework bundles retain their once-per-class guard.
+    Reject ambiguous scalar slot wiring and
+    inconsistent bindings before build succeeds. Aggregate required container
+    inputs before resolution/warmup and seal them across descendant scopes.
+    Support slot roots and collection/provider-map fallback without changing
+    registration precedence. Scoped slots now fill otherwise empty collections.
+
+
 2.0.0rc6
 --------
 

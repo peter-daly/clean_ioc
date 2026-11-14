@@ -111,7 +111,7 @@ class Handler:
 
 
 builder = ContainerBuilder()
-builder.declare_scope_slot(RequestContext)
+builder.declare_slot(RequestContext, target="scoped")
 builder.register(Handler)
 container = builder.build()
 
@@ -120,14 +120,14 @@ with container.new_scope() as scope:
     handler = scope.resolve(Handler)
 ```
 
-The following slot invariants apply:
+Use `declare_slot(T, target="container")` for an application startup input shared
+by the container and every descendant. Container inputs must be supplied on the
+owning root before resolution or warmup starts anywhere below it. Scoped inputs
+inherit and can be overridden before the supplying scope starts resolving.
 
-- only `(type, name)` pairs declared by a builder may be provided;
-- one scope cannot provide the same slot twice;
-- all provisions lock when that scope begins resolution;
-- a nested scope inherits provisions and may override them before its own first resolve.
-
-These constraints keep the plan static while still supporting FastAPI requests, tenant IDs, trace contexts, and similar late-bound values.
+The [supplied slots guide](slots.md) covers stable bindings, names/tags,
+conditional selection, readiness checks, collection fallback, and overlay rules.
+Supplied values are caller-owned and are never entered or finalized by Clean IoC.
 
 ## ScopeBuilder overlays
 
@@ -190,7 +190,8 @@ unchanged. Build a new root when a key must be absent because overlays do not ha
 | --- | --- |
 | Same composition, new cache boundary | `new_scope()` |
 | Fresh scoped dependencies for each service method call | `register(..., scope="per_call")` |
-| Supply a request/framework value | `declare_scope_slot()` + `scope.provide()` |
+| Supply a request/framework value | `declare_slot(..., target="scoped")` + `scope.provide()` |
+| Supply an application startup instance | `declare_slot(..., target="container")` + `container.provide()` |
 | Change child registrations/decorators | `ScopeBuilder(parent, composition=handle)` + `build()` |
 | Change the application root | Create a new `ContainerBuilder` |
 

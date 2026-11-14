@@ -251,7 +251,7 @@ async def test_async_union_resource_and_provider_cleanup():
 
 def test_union_scope_slots_and_overlay_registration():
     def bundle(builder: ComponentBuilder):
-        builder.declare_scope_slot(Client)
+        builder.declare_slot(Client, target="scoped")
         builder.register(Consumer)
 
     builder = ContainerBuilder()

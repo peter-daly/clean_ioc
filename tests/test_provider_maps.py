@@ -373,7 +373,7 @@ def test_singleton_capture_rejects_scope_state_transitively(edge):
 
     builder = ContainerBuilder()
     if edge == "slot":
-        builder.declare_scope_slot(Scoped)
+        builder.declare_slot(Scoped, target="scoped")
     elif edge == "scoped":
         builder.register(Scoped, lifespan="scoped")
     builder.register(Service, lifespan="transient")
@@ -426,7 +426,7 @@ def test_slots_are_supplied_only_when_provider_is_called():
             self.request = request
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.register(Service)
     builder.register_provider_map(Service, key=lambda c: "s")
     with builder.build() as container:

@@ -724,7 +724,7 @@ def test_invocation_scope_provisions_lock_before_target_activation(during_constr
             self.scope.provide(Request, Request())
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.register(Service, Impl, scope="per_call")
     with builder.build() as container:
         with pytest.raises(ScopeProvisionError, match="locked"):

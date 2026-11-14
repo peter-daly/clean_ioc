@@ -283,7 +283,7 @@ def test_singleton_provider_rejects_transient_target_that_reaches_scope_slot():
             self.target = target
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(int)
+    builder.declare_slot(int, target="scoped")
     builder.register(Target, lifespan="transient")
     builder.register(Consumer, lifespan="singleton")
 

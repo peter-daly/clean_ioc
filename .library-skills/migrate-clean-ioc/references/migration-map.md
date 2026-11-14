@@ -15,7 +15,7 @@ V1 combines registration and resolution in `Container`. V2 composes with `Contai
 | `registration_filters` / `node_filters` | `component_filters` | One predicate vocabulary over compiled components. |
 | `registration_filter=` on decorators/pre-configurations | `when=` | Combine decorator registration and node conditions manually. |
 | `parent_node_filter=` | `when=cf.parent(...)` | Check parent and root semantics. |
-| `expect_to_be_scoped(T)` | `declare_scope_slot(T)` | Provide the value before resolution starts. |
+| `expect_to_be_scoped(T)` | `declare_slot(T, target="scoped")` | Provide the value before resolution starts. |
 | `register_generic_subclasses(..., fallback_type=F)` | `register_subclasses(...)` plus `register_fallback(T, F)` | Discovery happens before build. |
 | `register_generic_decorator(...)` | `register_decorator(...)` | Check open generic specialization. |
 | `add_container_to_app` / `add_*_to_scope` | `FastAPIBundle()` before build, then `install_fastapi` | Review the V2 FastAPI extension's public API. |

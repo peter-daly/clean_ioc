@@ -81,7 +81,7 @@ Apply all registrations, decorators, pre-configurations, discovery rules, patche
 | `container.register_decorator(...)` | `builder.register_decorator(...)` | Selection is evaluated against immutable component occurrences. |
 | decorator `registration_filter=` / `decorator_node_filter=` | `when=` | Combine both predicates into one component filter. |
 | `container.apply_bundle(bundle)` | `builder.apply_bundle(bundle)` | Type bundles against `ComponentBuilder`. |
-| `container.expect_to_be_scoped(T)` | `builder.declare_scope_slot(T)` | Declare every late-bound slot before build. |
+| `container.expect_to_be_scoped(T)` | `builder.declare_slot(T, target="scoped")` | Declare every late-bound slot before build. |
 | `container.has_registration(...)` | `builder.has_component(...)` | This previews compiled components. |
 | `get_registration_id(s)` | `get_component_id(s)` | IDs identify registrations; compiled occurrences also have `occurrence_id`. |
 | `resolve_dependency_graph(...)` | `result.graph` from `verify()` / `Component` | V2 exposes a static compiled graph, not a graph containing runtime instances. |
@@ -369,7 +369,7 @@ Declare the hole before build, then provide the value before the scope's first r
 
 ```python
 builder = ContainerBuilder()
-builder.declare_scope_slot(RequestContext)
+builder.declare_slot(RequestContext, target="scoped")
 builder.register(RequestHandler)
 container = builder.build()
 
@@ -377,6 +377,15 @@ with container.new_scope() as scope:
     scope.provide(RequestContext, current_request)
     handler = scope.resolve(RequestHandler)
 ```
+
+Use `declare_slot(T, target="scoped")` for request inputs and
+`declare_slot(T, target="container")` for application startup inputs. `target` is
+required. The earlier prerelease `declare_scope_slot()` method and `scope=`
+keyword were removed without compatibility aliases. Repeated implicit declarations,
+including an overlay redeclaring an inherited input, now fail compilation; declare
+the input once and inherit it. ASGI/FastAPI bundles already protect repeated
+application on the same builder. Apply them where their inputs are first declared,
+then let overlays inherit that setup. See [supplied slots](docs/slots.md).
 
 Only declared `(type, name)` slots may be provided. Duplicate provisions fail, and provisions lock once resolution starts. Nested ordinary scopes inherit provided values and may override them before their own first resolve.
 

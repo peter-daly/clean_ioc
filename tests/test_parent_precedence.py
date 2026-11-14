@@ -417,7 +417,7 @@ def test_scope_slot_fallback_and_per_call_target_use_frozen_plans():
         assert client.operation.run() == client.operation.run() == 1
 
     slots = ContainerBuilder()
-    slots.declare_scope_slot(Policy)
+    slots.declare_slot(Policy, target="scoped")
     slots.register(Policy, Preferred, parent_precedence=100, when=lambda component: False)
     slots.register(Deferred)
     with slots.build().new_scope().provide(Policy, Default()) as scope:

@@ -96,8 +96,11 @@ Verification also reports a singleton plan that retains a scoped component. Shor
 
 These analysis-only checks happen before user activation and cover constructors, factories, decorators, collections, component edges
 selected by argument policies, pre-configuration dependencies, and supplied scope slots. A singleton therefore cannot
-capture a late-bound request value declared with `declare_scope_slot()`. Captive paths are reported with the
+capture a late-bound request value declared with `declare_slot(T, target="scoped")`. Captive paths are reported with the
 `captive-runtime-scope` issue code; ordinary lifespan violations retain `captive-dependency`.
+Container inputs declared with `declare_slot(..., target="container")` may be
+captured by singletons. Both slot lifetimes keep supplied instances caller-owned;
+see [supplied slots](slots.md).
 
 `ResolutionContext` is effective `per_resolution` state. Scoped and singleton components cannot capture it, directly
 or through a transient, decorator, collection, argument policy, or pre-configuration; those failures use

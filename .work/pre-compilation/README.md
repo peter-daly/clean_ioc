@@ -18,7 +18,7 @@ motivate further work; they do not establish production readiness.
 
 | ID | Task | Readiness | What is needed next |
 | --- | --- | --- | --- |
-| 01 | [Unified container and scoped slots](01-unified-slots.md) | Not ready | Refine duplicate bindings, required inputs, ownership and overlay edge cases |
+| 01 | [Artifact integration for unified slots](01-unified-slots.md) | Not ready | Standalone item 23 and artifact format contract |
 | 02 | [Feature coverage and first supported subset](02-feature-coverage.md) | Ready for investigation only | Inventory actual execution paths and propose the first supported subset |
 | 03 | [Python symbols and generated runtime constructs](03-python-symbol-loading.md) | Not ready | Choose supported callable/type forms and generated-code reconstruction rules |
 | 04 | [Frozen execution plans and fresh runtime state](04-frozen-plan-runtime-state.md) | Not ready | Audit mutable state and define ownership and reconstruction contracts |
@@ -44,7 +44,10 @@ separate from assignment or authorization to start work:
 
 Agreed slot rules remain unchanged: a slot with `when` requires an explicit
 stable binding, and ambiguous slot selection must fail before build success.
-Task 01's readiness flag concerns its remaining edge cases, not those decisions.
+The ordinary slot feature and its remaining design decisions now belong to
+[standalone item 23](../23-unified-slots.md), created on 2026-10-16. Its ordinary
+implementation is now independently reviewed; see the [result](../23-result.md).
+It can ship without pre-compilation. Task 01 only integrates that contract with artifacts.
 
 The following recommendations still need review:
 
@@ -62,8 +65,9 @@ The following recommendations still need review:
 
 ## Suggested sequence and dependencies
 
-1. Complete task 02's inventory. Refine the slot contract in 01, symbol contract
-   in 03 and value policy in 05; task 04's read-only state audit can inform them.
+1. Complete task 02's inventory. Consume the slot contract from standalone item
+   23; refine the symbol contract in 03 and value policy in 05. Task 04's read-only
+   state audit can inform them. Task 01 reuses completed item 23; its artifact contract gates remain.
 2. Agree task 06's artifact contract using those findings. Define which fields
    describe the frozen plan and which require fresh runtime state. Task 04's
    audit feeds this design; its loader integration follows the agreed format.

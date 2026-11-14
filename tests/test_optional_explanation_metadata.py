@@ -342,7 +342,7 @@ def test_warmups_provisions_and_inherited_instrumentation_survive_reduction():
     profiler = ResolutionProfiler()
     compiler = CompilationProfiler()
     builder = composition()
-    builder.declare_scope_slot(int)
+    builder.declare_slot(int, target="scoped")
     builder.register(IntConsumer)
     builder.add_warmup_plan(WarmupPlan("startup", [WarmupTarget(Leaf)]))
     parent_composition = builder.retain_composition()

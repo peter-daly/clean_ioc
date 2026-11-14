@@ -3,7 +3,7 @@
 Created: 2026-10-09\
 Status: Not ready — required-input and startup lifecycle needs refinement\
 Assignment: Unassigned\
-Prerequisites: Slot contract in 01; state/format contracts in 04 and 06
+Prerequisites: Standalone slot contract in [item 23](../23-unified-slots.md); artifact integration in 01; state/format contracts in 04 and 06
 
 ## Outcome
 
@@ -13,11 +13,11 @@ Loading itself must not activate application services or acquire resources.
 
 ## Readiness and remaining decisions
 
-- Define what makes a container slot required: all exported roots, declared
-  startup roots, warmup targets, deferred providers or another frozen contract.
-  Coordinate with task 01; unused/request-only inputs must have deliberate rules.
-- Decide the public validation/startup entry points and when supplying values is
-  sealed. Preserve the agreed lock before first resolution/warmup through any
+- Reuse standalone item 23's required-container-input rules, including deferred
+  providers and warmup targets. Task 01 persists the resulting frozen contract;
+  loaded startup must not introduce different requiredness semantics.
+- Reuse item 23's normal provisioning/readiness entry points and sealing rules
+  when defining loaded startup transitions. Preserve the agreed lock before first resolution/warmup through any
   descendant; startup checks must not create an override path.
 - Specify retry behaviour after missing provisions, failed validation or failed
   warmup, using existing warmup semantics where applicable.

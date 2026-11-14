@@ -373,3 +373,10 @@ The installed application owns and closes the overlay. For request-specific valu
 ## Complete example
 
 See [`examples/fastapi_clean_architecture`](https://github.com/peter-daly/clean_ioc/tree/main/examples/fastapi_clean_architecture) for a framework-independent use case, scoped repository, singleton adapters, an audit decorator, startup validation, and endpoint resolution.
+
+Framework bundles declare scoped inputs with `declare_slot(..., target="scoped")`.
+Their once-per-class guard permits repeated application on one builder. Overlays
+inherit existing inputs and adapters; do not reapply the bundle in an overlay
+that already inherits it, or manually redeclare those inputs. Duplicate implicit
+slot declarations fail compilation. An overlay over a root without the bundle
+can install it normally.

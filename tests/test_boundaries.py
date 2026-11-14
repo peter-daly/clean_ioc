@@ -792,7 +792,7 @@ def test_root_scope_slot_can_be_used_but_private_slots_are_rejected():
         builder.register(Handler)
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.create_boundary("feature", uses=(Use.root(Request),), exposes=(Expose(Handler),)).apply_bundle(bundle)
     container = builder.build()
     request = Request()
@@ -800,7 +800,7 @@ def test_root_scope_slot_can_be_used_but_private_slots_are_rejected():
 
     private = ContainerBuilder()
     private.create_boundary("feature").apply_bundle(
-        lambda boundary_builder: boundary_builder.declare_scope_slot(Request)
+        lambda boundary_builder: boundary_builder.declare_slot(Request, target="scoped")
     )
     assert issue_code(private) == "boundary-scope-slot-unsupported"
 

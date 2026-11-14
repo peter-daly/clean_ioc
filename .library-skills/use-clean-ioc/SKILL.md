@@ -37,10 +37,10 @@ Do not attempt to mutate a `Container` or `Scope`.
 ## Choose the correct child API
 
 - `new_scope()` reuses the frozen plan and creates a cache/cleanup boundary. It never compiles.
-- Declare framework/request holes with `builder.declare_scope_slot(Type, name=None)`, then call `scope.provide(Type, value, name=None)` before resolution.
+- Declare framework/request holes with `builder.declare_slot(Type, name=None, target="scoped")`, then call `scope.provide(Type, value, name=None)` before resolution.
 - Use `ScopeBuilder(parent, composition=handle)` when child declarations differ. Request the external handle with `builder.retain_composition()` before building, or use `result.composition` from analysis with a runtime created from that result. A matching live parent is required. The handle retains declaration memory, has no close lifecycle, and is not retained by the runtime. Request a handle for each overlay that must support further composition.
 
-Slots must be declared, cannot be provided twice in one scope, and lock after resolution begins. Nested scopes inherit provisions and can override them before their own first resolve.
+Declare each implicit slot once, using required `target="scoped"` or `target="container"`. Redeclaring inherited inputs in an overlay fails compilation. Slots cannot be provided twice in one scope and lock after resolution begins. Nested scopes inherit provisions and can override them before their own first resolve.
 
 Singletons registered by `ScopeBuilder` belong to its built scope and descendants, not the root container.
 

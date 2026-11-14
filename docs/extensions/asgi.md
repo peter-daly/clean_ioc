@@ -78,3 +78,10 @@ that is all an application service requires.
 Health routes are deliberately not built into the extension. The
 [minimal ASGI health server](../examples/asgi-health-checks.md) implements `/health/liveness`,
 `/health/readiness`, and `/health/startup` as ordinary application routes over this boundary.
+
+Framework bundles declare scoped inputs with `declare_slot(..., target="scoped")`.
+Their once-per-class guard permits repeated application on one builder. Overlays
+inherit existing inputs and adapters; do not reapply the bundle in an overlay
+that already inherits it, or manually redeclare those inputs. Duplicate implicit
+slot declarations fail compilation. An overlay over a root without the bundle
+can install it normally.

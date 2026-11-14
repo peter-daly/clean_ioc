@@ -165,12 +165,26 @@ unassigned; no memory/startup comparison was run.
 ## Pre-compilation
 
 The [pre-compilation plan](pre-compilation/README.md), created on 2026-10-09,
-tracks nine tasks after the reduced-artifact experiment: unified slots, feature
+tracks nine tasks after the reduced-artifact experiment: slot artifact integration, feature
 coverage, Python symbol loading, fresh runtime state, build inputs and variants,
 artifact format and packaging, startup, profiling, and application validation.
 The feature inventory is ready for investigation; the implementation work is
 marked not ready where decisions or prerequisites remain. The agreed slot rules
 are preserved. This work is planning only and remains unassigned.
+
+On 2026-10-16, [item 23](23-unified-slots.md) extracts unified container and
+scoped slots as a standalone feature for ordinary builds. It can ship without
+pre-compilation; the artifact slot task depends on its contract. GPT-6.1 Sol
+high implemented it; separate Sol high review recommends APPROVE / KEEP.
+[Results](23-result.md) record full Python 3.11–3.14 CI, executable docs,
+77 slot cases, resolved review findings and measured additional compilation cost.
+No artifact integration or performance saving is claimed.
+
+The maintainer's item 23 follow-up removes the former slot shorthand and requires
+`declare_slot(..., target="scoped"|"container")`. It is implemented and separately
+[reviewed](23-target-review.md); current CI passes 2,610 tests on Python 3.14,
+including 83 slot cases. Initial matrix/cost evidence stays historical; the
+[results](23-result.md) append this superseding API contract and validation.
 
 ## Work items
 
@@ -198,6 +212,7 @@ are preserved. This work is planning only and remains unassigned.
 | 20 | [Compilation budgets](20-compilation-budgets.md) — implemented and independently reviewed; KEEP | P2 | Existing work counters, structured failures, and 05 diagnostic evidence |
 | 21 | [Test activation coverage](21-test-activation-coverage.md) — deferred; slice of 08 | P2 | 12 exact runtime observations and matching full graph catalog |
 | 22 | [Detailed activation tracing](22-detailed-activation-tracing.md) — deferred; slice of 08 | P2 | Existing observed plans, full graph catalog, and resource ownership proof |
+| 23 | [Unified container and scoped slots](23-unified-slots.md) — implemented and independently reviewed; APPROVE / KEEP | Unprioritized | Existing scoped provisions and contextual compilation; independent of pre-compilation |
 
 ## Recommended implementation sequence
 
@@ -236,12 +251,18 @@ measurement and equivalence investigations; item 20 followed the reviewed item 1
 Items 21–22 remain deferred. Item 21 can derive coverage from item
 12 without waiting for item 22. Item 08 remains the shared observation design; its remaining extensions are deferred.
 
+Item 23 is implemented independently of the pre-compilation plan. Artifact
+integration consumes its normal slot contract as a separate follow-on.
+
 ## Agent assignments and review
 
 Assign each work item to a Terra agent (`gpt-5.6-terra`) with **medium** reasoning for implementation.
 Have a separate Sol agent (`gpt-5.6-sol`) with **high** reasoning review each item's implementation against its plan,
 acceptance criteria, and the shared design rules below. Resolve review findings before marking the item complete.
 Schedule implementation according to the prerequisites and recommended sequence above.
+For item 23, the maintainer requested GPT-6.1 Sol (`gpt-6.1-sol`) with high
+reasoning for design refinement, implementation and verification. This overrides
+the default implementation assignment above; the independent review requirement remains.
 
 For items 09–11, the maintainer requested sequential implementation by a Sol agent at high reasoning, with a
 different Sol agent at high reasoning reviewing each item. This instruction supersedes the assignment above for those

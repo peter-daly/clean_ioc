@@ -34,7 +34,7 @@ Small, shallow graphs should still prefer manual wiring.
 Show a missing component failing at `build()` before constructors run. Add it, build successfully, then patch `DependencyNode` to raise if instantiated and resolve the service anyway. Finish with a FastAPI request slot:
 
 ```python
-builder.declare_scope_slot(RequestContext)
+builder.declare_slot(RequestContext, target="scoped")
 container = builder.build()
 
 scope = container.new_scope().provide(RequestContext, request_context)

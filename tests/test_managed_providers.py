@@ -166,7 +166,7 @@ def test_provisions_use_bound_owner_not_first_child_values():
             self.target = target
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Slot)
+    builder.declare_slot(Slot, target="scoped")
     builder.register(UsesSlot, lifespan="scoped")
     builder.register(Consumer, lifespan="singleton")
     with builder.build() as container:
@@ -192,7 +192,7 @@ def test_missing_provision_and_activation_failure_clean_up(composition):
         def __init__(self, resource: Resource, slot: Slot):
             pass
 
-    builder.declare_scope_slot(Slot)
+    builder.declare_slot(Slot, target="scoped")
     builder.register(Fails)
     with builder.build() as container:
         handle = container.resolve(ManagedProvider[Fails])

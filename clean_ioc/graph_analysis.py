@@ -975,8 +975,13 @@ def activation_report(
                     component,
                     path,
                     phase,
-                    "scope_slot",
-                    "A matching value must be supplied by the active scope",
+                    "container_slot" if component.lifespan == "singleton" else "scope_slot",
+                    (
+                        "A matching value must be supplied by the owning container"
+                        if component.lifespan == "singleton"
+                        else "A matching value must be supplied by the active scope"
+                    )
+                    + (f" (binding {component.slot_binding!r})" if component.slot_binding is not None else ""),
                 )
             )
             return
@@ -1462,11 +1467,16 @@ def _collect_obligation(
     if component.kind is ComponentKind.scope_slot:
         obligations.append(
             ActivationObligation(
-                "scope_slot",
+                "container_slot" if component.lifespan == "singleton" else "scope_slot",
                 reference.phase,
                 reference.path,
                 reference.service,
-                "runtime scope value must be provided",
+                (
+                    "container value must be provided"
+                    if component.lifespan == "singleton"
+                    else "runtime scope value must be provided"
+                )
+                + (f" (binding {component.slot_binding!r})" if component.slot_binding is not None else ""),
             )
         )
     if component.requires_async:

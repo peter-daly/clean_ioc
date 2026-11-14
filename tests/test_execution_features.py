@@ -428,7 +428,7 @@ def test_instrumented_overlay_slots_maps_managed_and_per_call_cleanup(monkeypatc
 
     group = ProviderMapGroup("resources", str, Resource)
     builder = ContainerBuilder().set_provider_roots((ManagedProvider[Resource],))
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.register(Resource, factory=resource, lifespan="scoped", contributes={group: "resource"})
     builder.register_provider_map(group)
     builder.register(Call, Target, scope="per_call")

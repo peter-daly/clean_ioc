@@ -366,7 +366,7 @@ def test_declared_scope_slots_are_provided_before_resolution_and_inherited():
             self.request = request
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.register(Handler)
     container = builder.build()
 

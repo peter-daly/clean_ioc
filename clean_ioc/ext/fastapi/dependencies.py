@@ -13,9 +13,9 @@ class FastAPIBundle(OnlyRunOncePerClassBundle):
 
     def apply(self, builder: ComponentBuilder) -> None:
         builder.apply_bundle(ASGIBundle())
-        builder.declare_scope_slot(HTTPConnection)
-        builder.declare_scope_slot(Request)
-        builder.declare_scope_slot(WebSocket)
+        builder.declare_slot(HTTPConnection, target="scoped")
+        builder.declare_slot(Request, target="scoped")
+        builder.declare_slot(WebSocket, target="scoped")
 
 
 __all__ = [

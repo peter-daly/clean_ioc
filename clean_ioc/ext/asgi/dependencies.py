@@ -62,8 +62,8 @@ class ASGIBundle(OnlyRunOncePerClassBundle):
     """Declare the boundary components supplied by ``CleanIocMiddleware``."""
 
     def apply(self, builder: ComponentBuilder) -> None:
-        builder.declare_scope_slot(ASGIConnection)
-        builder.declare_scope_slot(ResponseHeaderWriter)
+        builder.declare_slot(ASGIConnection, target="scoped")
+        builder.declare_slot(ResponseHeaderWriter, target="scoped")
         builder.register(RequestHeaderReader, lifespan="scoped")
 
 

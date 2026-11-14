@@ -228,7 +228,7 @@ def test_unknown_execution_forms_and_decorated_steps_stay_strong_without_content
         unknown,
         step_with(unknown),
         step_with(code._CollectionStep(list, (plain,), True)),
-        step_with(code._ProvidedStep(Target, None)),
+        step_with(code._ProvidedStep(code._SlotInput(Target, "scoped", None, (), None))),
         step_with(code._ProviderStep("sync", plain, None)),
         replace(plain, decorators=(Hostile(),)),
         replace(plain, pre_configurations=(Hostile(),)),

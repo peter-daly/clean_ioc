@@ -103,6 +103,7 @@ class _ComponentDefinition:
     activation: ComponentActivation
     boundary: str | None
     declared_service_type: Any | None
+    slot_binding: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,6 +166,10 @@ class _ComponentRecord:
     @property
     def boundary(self) -> str | None:
         return self._definition.boundary
+
+    @property
+    def slot_binding(self) -> str | None:
+        return self._definition.slot_binding
 
     @property
     def declared_service_type(self) -> Any | None:
@@ -251,6 +256,7 @@ class _ComponentDraft:
         pre_configuration_ids: tuple[int, ...] = (),
         boundary: Any = _DRAFT_FIELD_UNSET,
         declared_service_type: Any = _DRAFT_FIELD_UNSET,
+        slot_binding: Any = _DRAFT_FIELD_UNSET,
         *,
         _definition: _ComponentDefinition | None = None,
         _definitions: _DraftDefinitionPool | None = None,
@@ -267,6 +273,7 @@ class _ComponentDraft:
             activation,
             boundary,
             declared_service_type,
+            slot_binding,
         )
         if _definition is not None:
             values = tuple(
@@ -278,6 +285,7 @@ class _ComponentDraft:
                 *values[:9],
                 None if boundary is _DRAFT_FIELD_UNSET else boundary,
                 None if declared_service_type is _DRAFT_FIELD_UNSET else declared_service_type,
+                None if slot_binding is _DRAFT_FIELD_UNSET else slot_binding,
             )
             if any(value is _DRAFT_FIELD_UNSET for value in values):
                 raise TypeError("A new component draft requires all definition fields")
@@ -391,6 +399,14 @@ class _ComponentDraft:
         self._replace_definition("boundary", value)
 
     @property
+    def slot_binding(self) -> str | None:
+        return self._definition.slot_binding
+
+    @slot_binding.setter
+    def slot_binding(self, value: str | None) -> None:
+        self._replace_definition("slot_binding", value)
+
+    @property
     def declared_service_type(self) -> Any | None:
         return self._definition.declared_service_type
 
@@ -446,6 +462,7 @@ _DEFINITION_FIELDS = (
     "activation",
     "boundary",
     "declared_service_type",
+    "slot_binding",
 )
 
 
@@ -631,6 +648,11 @@ class Component:
     @property
     def service_type(self) -> Any:
         return self._record.service_type
+
+    @property
+    def slot_binding(self) -> str | None:
+        """Application-defined input binding; None for implicit slots and other components."""
+        return self._record.slot_binding
 
     @property
     def declared_service_type(self) -> Any:
@@ -1086,7 +1108,16 @@ class ComponentBuilder(Protocol):
         continue_on_failure: bool = False,
     ) -> str: ...
 
-    def declare_scope_slot(self, service_type: TypeForm[Any], name: str | None = None) -> Any: ...
+    def declare_slot(
+        self,
+        service_type: TypeForm[Any],
+        *,
+        target: Literal["container", "scoped"],
+        name: str | None = None,
+        tags: Iterable[Tag] | None = None,
+        binding: str | None = None,
+        when: ComponentFilter | None = None,
+    ) -> Any: ...
 
     def mark_entrypoint(
         self,

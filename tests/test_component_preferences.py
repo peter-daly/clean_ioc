@@ -646,7 +646,7 @@ def test_declared_context_helpers_and_slots_keep_root_selection():
     assert type(container.resolve(Alias)) is B
     assert type(container.resolve(Alias, filter=cf.with_name("context"))) is B
     slots = ContainerBuilder()
-    slots.declare_scope_slot(Policy)
+    slots.declare_slot(Policy, target="scoped")
     slots.register(Policy, A, when=never, prefer=prefer(explode))
     slots.register(Deferred, arguments={"policy": select(prefer=prefer(explode))})
     with slots.build().new_scope().provide(Policy, B()) as scope:

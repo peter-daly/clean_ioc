@@ -154,7 +154,7 @@ def test_contextual_descendant_argument_paths_do_not_reuse_the_parent(policy):
     arguments = {"value": derive(derived_value)} if policy == "derive" else None
     builder.register(contextual, arguments=arguments, root_policy="dependency_only")
     if policy == "slot":
-        builder.declare_scope_slot(Leaf)
+        builder.declare_slot(Leaf, target="scoped")
     routes: list[Any] = []
     for index in range(3):
 

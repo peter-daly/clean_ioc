@@ -39,7 +39,8 @@ The default filter selects unnamed registrations. Use
 `WarmupTarget(Client, filter=cf.with_name("primary"))` or an ID filter for named
 selection. Each target must bind exactly one visible resolvable registration after
 normal fallback and nearest overlay-layer selection. Multiple matching registrations
-in that layer are ambiguous. Collections, slots, dependency-only registrations,
+in that layer are ambiguous. Container slots may be direct startup targets; their
+values must be supplied before warmup. Collections, scoped slots, dependency-only registrations,
 and provider handles are not direct warmup targets. Analysis reports non-singleton warmup policy violations; build emits
 ordered executable transient targets and repeated targets without performing that audit.
 
@@ -149,3 +150,7 @@ messages, tracebacks, resources, configured values and runtime IDs are omitted.
 Reports do not infer nested throw sites or distinguish cached successes as
 “already warm”. The opt-in runtime profiler observes requests, activation, caches,
 waits and eventual cleanup through its existing identities and counters.
+
+Container inputs required by any frozen public/deferred target are checked together
+before warmup starts. Missing inputs raise `ScopeProvisionError` before any target
+executes, leaving provisioning open for repair. See [supplied slots](slots.md).

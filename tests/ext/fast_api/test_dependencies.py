@@ -420,3 +420,34 @@ def test_install_fastapi_cannot_be_applied_twice():
 
     with pytest.raises(FastAPIIntegrationError, match="already installed"):
         install_fastapi(app, container)
+
+
+def test_framework_bundles_share_asgi_setup_and_overlays_inherit_without_redeclaration():
+    from clean_ioc.ext.asgi import ASGIBundle
+
+    builder = ContainerBuilder()
+    composition = builder.retain_composition()
+    builder.apply_bundle(ASGIBundle())
+    builder.apply_bundle(FastAPIBundle())
+    builder.apply_bundle(ASGIBundle())
+    builder.apply_bundle(FastAPIBundle())
+    container = builder.build()
+    overlay = ScopeBuilder(container, composition=composition).build()
+    assert overlay.has_scope_slot(Request)
+    assert overlay.has_scope_slot(WebSocket)
+    assert overlay.has_scope_slot(ResponseHeaderWriter)
+    assert len([component for component in overlay.components if component.service_type is RequestHeaderReader]) == 1
+
+
+def test_reapplying_framework_bundle_in_inheriting_overlay_rejects_duplicate_inputs():
+    from clean_ioc import ContainerBuildError
+
+    builder = ContainerBuilder()
+    composition = builder.retain_composition()
+    builder.apply_bundle(FastAPIBundle())
+    container = builder.build()
+    overlay = ScopeBuilder(container, composition=composition)
+    overlay.apply_bundle(FastAPIBundle())
+    with pytest.raises(ContainerBuildError) as failure:
+        overlay.build()
+    assert failure.value.code == "duplicate-slot"

@@ -28,6 +28,7 @@ nav:
   - Decorator templates: decorator-templates.md
   - Registration templates: registration-templates.md
   - Scopes: scopes.md
+  - Supplied Slots: slots.md
   - Pre-Configurations: pre-configurations.md
   - Bundles: bundles.md
   - Boundaries: boundaries.md

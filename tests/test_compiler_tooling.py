@@ -249,7 +249,7 @@ def test_activation_report_separates_provider_target_slots_and_async_causes():
             self.provider = provider
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.register(AsyncLeaf, factory=make_leaf)
     builder.register(Application)
     report = present(builder.verify().graph).activation_report(Application)
@@ -377,7 +377,7 @@ def test_complete_component_graph_includes_special_injection_edges_and_redacts_v
         return "compiled-secret"
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.register(
         Application,
         arguments={"configured": derive(configured_value)},
@@ -831,7 +831,7 @@ def test_graph_walk_preserves_paths_across_every_compiled_edge_kind():
 
     builder = ContainerBuilder()
     builder.register(Plugin, lifespan="singleton")
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.register(Service, arguments={"configured": "fixed"})
     builder.register_decorator(Service, Decorator, decorated_arg="child")
     builder.pre_configure(Service, configure)
@@ -1433,7 +1433,7 @@ def test_singleton_owned_paths_cannot_capture_supplied_scope_slots(edge):
         pass
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
 
     if edge == "constructor":
 
@@ -1493,7 +1493,7 @@ def test_shorter_lived_components_may_capture_supplied_scope_slots(owner_lifespa
             self.request = request
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.register(Service, lifespan=owner_lifespan)
     container = builder.build()
 
@@ -1989,7 +1989,7 @@ def test_activation_report_keeps_provider_target_obligations_deferred():
             self.leaf = leaf
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.register(AsyncLeaf, factory=create_leaf)
     builder.register(Root)
     graph = builder.verify().graph
@@ -2863,7 +2863,7 @@ def test_explain_occurrences_captures_origins_bundles_argument_policies_and_appl
 
     def bundle(builder):
         builder.register(Dependency)
-        builder.declare_scope_slot(Request)
+        builder.declare_slot(Request, target="scoped")
         builder.register(
             Service,
             arguments={"configured": derive(lambda _: "secret")},

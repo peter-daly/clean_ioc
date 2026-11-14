@@ -262,7 +262,7 @@ def test_rejected_scope_slot_is_distinct_from_missing_declaration():
             pass
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.register(Root, arguments={"request": select(cf.with_name("unavailable"))})
     raised_analysis = builder.verify()
     assert not raised_analysis.is_valid

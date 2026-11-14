@@ -275,7 +275,7 @@ failures can be logged and suppressed with `continue_on_failure=True`; other fai
 An ordinary scope reuses the compiled plan:
 
 ```python
-builder.declare_scope_slot(RequestContext)
+builder.declare_slot(RequestContext, target="scoped")
 builder.register(RequestHandler)
 container = builder.build()
 
@@ -283,6 +283,11 @@ with container.new_scope() as scope:
     scope.provide(RequestContext, current_request)
     handler = scope.resolve(RequestHandler)
 ```
+
+Use `declare_slot(T, target="container")` for startup instances shared with every
+descendant. The `target` keyword is required. Declare inputs once; repeating an
+implicit declaration, including in an overlay, fails compilation. See
+[supplied slots](docs/slots.md) for stable bindings and readiness checks.
 
 Slots represent values that are unavailable during root compilation, such as request or framework context. Only declared
 slots may be provided. Duplicate provisions are rejected, and provisions lock when resolution starts. Nested scopes

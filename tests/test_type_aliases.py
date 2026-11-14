@@ -226,7 +226,7 @@ def test_aliases_work_for_scope_slots_and_boundary_contracts():
         builder.register(HandlerAlias)
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     boundary = builder.create_boundary(
         "feature",
         uses=(Use.root(RequestAlias),),

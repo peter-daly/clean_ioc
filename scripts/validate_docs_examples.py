@@ -104,7 +104,7 @@ def validate_lifespans_slots_and_overlays() -> None:
             self.request = request
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.register(Handler)
     composition = builder.retain_composition()
     container = builder.build()
@@ -578,11 +578,20 @@ def validate_compilation_budget_guide() -> None:
         exec(compile(snippet, f"{guide} example {index}", "exec"), {"__name__": "__main__"})  # noqa: S102
 
 
+def validate_slots_guide() -> None:
+    guide = Path(__file__).resolve().parents[1] / "docs" / "slots.md"
+    snippets = re.findall(r"```python\n(.*?)\n```", guide.read_text(), flags=re.DOTALL)
+    assert len(snippets) == 3  # noqa: S101
+    for index, snippet in enumerate(snippets, start=1):
+        exec(compile(snippet, f"{guide} example {index}", "exec"), {"__name__": "__main__"})  # noqa: S102
+
+
 def main() -> None:
     validate_build_and_resolution()
     validate_failed_builder_requires_fresh_composition()
     validate_components_and_filters()
     validate_lifespans_slots_and_overlays()
+    validate_slots_guide()
     validate_generics_and_decorators()
     validate_factories_and_cleanup()
     validate_union_factory()

@@ -229,7 +229,7 @@ def overlay_parent():
 @system(scope="session")
 def request_scope() -> Scope:
     builder = build_graph_builder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.register(RequestHandler)
     return builder.build().new_scope().provide(Request, Request())
 

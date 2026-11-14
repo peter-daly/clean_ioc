@@ -93,7 +93,7 @@ def test_compact_slots_aliases_warmup_managed_private_targets_and_cleanup(diagno
             events.append("closed")
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(slot_alias)
+    builder.declare_slot(slot_alias, target="scoped")
     builder.register(SlotConsumer)
     private = builder.create_boundary("private", exposes=[Expose(Runner)])
     private.register(Resource, factory=resource, lifespan="scoped")

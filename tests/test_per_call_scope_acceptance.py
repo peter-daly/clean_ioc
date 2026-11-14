@@ -182,7 +182,7 @@ def test_direct_child_handle_inherits_scope_slots_and_expires_with_child():
             return self.request.name
 
     builder = ContainerBuilder()
-    builder.declare_scope_slot(Request)
+    builder.declare_slot(Request, target="scoped")
     builder.register(Operation, Implementation, scope="per_call")
 
     with builder.build() as container:
