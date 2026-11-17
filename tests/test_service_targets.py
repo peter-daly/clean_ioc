@@ -1,8 +1,10 @@
 """Concrete registered-service selection without decorator-template activation."""
 
+import gc
 import re
 import sys
 import types
+import weakref
 from collections.abc import Callable
 from dataclasses import FrozenInstanceError
 from typing import Any, Generic, ParamSpec, Protocol, TypeVar, TypeVarTuple, cast
@@ -250,10 +252,19 @@ def test_pattern_request_retains_original_registration_id_and_enforces_fixed_con
     builder = ContainerBuilder()
     registration_id = builder.register_pattern(Service[list[T]], factory=make, groups=[group])
     compiler = compiler_for(builder)
-    target = selected(compiler, group, registration_id, Service[list[int]], specialize=True)
-    assert target == selected(compiler, DerivedServices(Service), registration_id, Service[list[int]], specialize=True)
+    requested = Service[list[int]]
+    target = selected(compiler, group, registration_id, requested, specialize=True)
+    assert target == selected(compiler, DerivedServices(Service), registration_id, requested, specialize=True)
     assert target is not None and target.registration_id == registration_id
-    assert target.requested_service_type == Service[list[int]]
+    assert target.requested_service_type is requested
+
+    definition = compiler.blueprint.registration_definition(registration_id)
+    assert definition is not None
+    specialized = compiler._specialize_registration(*definition, requested)
+    compiler._specialized_service_groups[specialized.id] = frozenset()
+    assert selected(compiler, group, registration_id, requested, specialize=True) is None
+    compiler._specialized_service_groups[specialized.id] = frozenset({group})
+    assert selected(compiler, group, registration_id, requested, specialize=True) is target
 
     class Consumer:
         def __init__(self, value: Service[list[int]]):
@@ -643,6 +654,47 @@ def test_cached_projection_keeps_group_layer_request_and_compiler_identity(monke
     assert len(calls) == 6
     assert selected(compiler_for(builder), group, registration_id, Contract[int, str]) == first
     assert len(calls) == 7
+
+
+def test_negative_target_cache_owns_identity_inputs_only_for_the_compilation(monkeypatch):
+    import clean_ioc.container as implementation
+
+    class EphemeralGroup(ServiceGroup):
+        pass
+
+    class Request:
+        def __hash__(self):
+            raise AssertionError("A target-cache key must not hash the request")
+
+        def __eq__(self, other):
+            raise AssertionError("A target-cache key must not compare the request")
+
+    builder = ContainerBuilder()
+    registration_id = builder.register(Contract, factory=Contract)
+    compiler = compiler_for(builder)
+    calls = 0
+    original = implementation._select_service_target
+
+    def count(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(implementation, "_select_service_target", count)
+    selector = EphemeralGroup("nonmember", service_type=Contract)
+    request = Request()
+    selector_ref, request_ref = weakref.ref(selector), weakref.ref(request)
+    assert selected(compiler, selector, registration_id, request) is None
+    assert selected(compiler, selector, registration_id, request) is None
+    assert selected(compiler, selector, registration_id, Request()) is None
+    assert calls == 2
+
+    del selector, request
+    gc.collect()
+    assert selector_ref() is not None and request_ref() is not None
+    del compiler
+    gc.collect()
+    assert selector_ref() is None and request_ref() is None
 
 
 def test_cached_projection_does_not_merge_same_named_selector_typevars():

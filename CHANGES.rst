@@ -1,6 +1,10 @@
 Unreleased
 ----------
 
+
+2.0.0rc7
+--------
+
     Add declare_slot(..., target="container"|"scoped") for caller-owned inputs,
     with names, tags, stable bindings and compiled contextual selection. Remove
     declare_scope_slot() and the old scope= declaration keyword; target= is
@@ -11,6 +15,12 @@ Unreleased
     inputs before resolution/warmup and seal them across descendant scopes.
     Support slot roots and collection/provider-map fallback without changing
     registration precedence. Scoped slots now fill otherwise empty collections.
+
+    Reduce allocation overhead during compilation, including runtime plan
+    finalization and repeated service-target selection.
+
+    Add Python 3.15 to the required CI matrix. Keep unresolved forward type
+    aliases available for build-time resolution on Python 3.15.
 
 
 2.0.0rc6

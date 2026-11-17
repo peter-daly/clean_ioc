@@ -6323,6 +6323,7 @@ def _scalar_activation_closure(step: _Step) -> bool:
 _EMPTY_EVIDENCE: Mapping[Any, Any] = types.MappingProxyType({})
 _EMPTY_OCCURRENCES: frozenset[int] = frozenset()
 _EMPTY_IDS: frozenset[str] = frozenset()
+_EMPTY_SERVICE_GROUPS: frozenset[ServiceGroup] = frozenset()
 
 
 class _Compiler:
@@ -8171,16 +8172,19 @@ class _Compiler:
         self._specialized_factories[key] = specialized
         if self._profile is not None:
             self._profile.count("factory specialization materializations")
-        self._specialized_service_groups[specialized.id] = layer.service_groups.get(registration.id, frozenset())
+        self._specialized_service_groups[specialized.id] = layer.service_groups.get(
+            registration.id, _EMPTY_SERVICE_GROUPS
+        )
         if is_pattern:
             self._pattern_sources[specialized.id] = registration.id
         return specialized
 
     def _service_groups_for(self, registration: legacy._Registration, layer: _Layer) -> frozenset[ServiceGroup]:
         """Resolve membership for either a definition or its specialized copy."""
+        registration_id = registration.id
         return self._specialized_service_groups.get(
-            registration.id,
-            layer.service_groups.get(registration.id, frozenset()),
+            registration_id,
+            layer.service_groups.get(registration_id, _EMPTY_SERVICE_GROUPS),
         )
 
     def _template_label(self, value: Any) -> str:
@@ -8197,11 +8201,16 @@ class _Compiler:
         source = self._specialized_registration_sources.get(registration.id, registration)
         groups = self._service_groups_for(registration, layer)
         selector_identity = selector if isinstance(selector, ServiceGroup) else selector.service_type
-        inputs = (selector_identity, registration, source, source.service_type, layer, requested_service_type)
+        source_type = source.service_type
         key = (
             isinstance(selector, ServiceGroup),
-            *(id(value) for value in inputs),
-            tuple(sorted(id(group) for group in groups)),
+            id(selector_identity),
+            id(registration),
+            id(source),
+            id(source_type),
+            id(layer),
+            id(requested_service_type),
+            tuple(sorted(id(group) for group in groups)) if groups else (),
             self._area,
         )
         cached = self._service_target_cache.get(key)
@@ -8218,7 +8227,8 @@ class _Compiler:
             # Keep all identity-keyed inputs alive, including negative requests.
             # Only pure membership/projection is cached; predicates still run for
             # each occurrence, after the ordinary visibility/candidate pipeline.
-            self._service_target_cache[key] = (*inputs, groups), result
+            inputs = (selector_identity, registration, source, source_type, layer, requested_service_type, groups)
+            self._service_target_cache[key] = inputs, result
             return result
         except (TypeError, ValueError) as error:
             label = (

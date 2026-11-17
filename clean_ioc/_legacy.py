@@ -43,6 +43,7 @@ from typetoolbox.generics import (
 )
 
 from clean_ioc.generic_utils import constructor_type, map_type_vars_to_parent, resolve_typevar_bindings
+from clean_ioc.type_aliases import is_type_alias
 from clean_ioc.utils import send_deprecation_warning, singleton
 
 from ._legacy_configuration import (
@@ -115,6 +116,9 @@ class ArgInfo:
 
 def _get_arg_info(subject: Callable, local_ns: dict = {}, global_ns: dict | None = None) -> dict[str, ArgInfo]:
     subject = constructor_type(subject) or subject
+    # Forward aliases can remain unresolved until the compiler rebuilds their dependencies.
+    if not callable(subject) and is_type_alias(subject):
+        return {}
     arg_spec_fn = subject if inspect.isfunction(subject) else subject.__init__
     args = get_type_hints(arg_spec_fn, global_ns, local_ns)
     signature = inspect.signature(subject)

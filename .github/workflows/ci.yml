@@ -9,17 +9,11 @@ jobs:
   tests:
     name: py${{ matrix.python }} / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python: ["3.11", "3.12", "3.13", "3.14"]
-        experimental: [false]
-        include:
-          - os: ubuntu-latest
-            python: "3.15-dev"
-            experimental: true
+        python: ["3.11", "3.12", "3.13", "3.14", "3.15"]
 
     steps:
       - name: Check out the repository
@@ -29,7 +23,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-          check-latest: ${{ matrix.experimental }}
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
