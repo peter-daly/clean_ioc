@@ -1,0 +1,8 @@
+{
+  "returncode": 0,
+  "seconds": 359.59961633302737,
+  "runner": "uvicorn",
+  "python": "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/cop-env/bin/python",
+  "clean_source": "/Users/peter.daly/WS/pete/clean_ioc/clean_ioc/__init__.py",
+  "operation": "build"
+}

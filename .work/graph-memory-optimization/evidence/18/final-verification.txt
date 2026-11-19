@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "previous_source_hashes_unchanged": 55,
+  "runtime_source_changed_in_task18": false,
+  "measured_sample_function_asts_unchanged": true,
+  "source_archival_change": "Byte-identical .py captures renamed .py.txt; original filenames passed to compile",
+  "reproduction_changes": "Explicit output directory and overwrite guard; formatting/type comments only otherwise",
+  "final_manifest_entries": 175,
+  "python314_full_tests": 2409,
+  "focused_314_313": 739,
+  "focused_312": {
+    "passed": 736,
+    "skipped": 3
+  },
+  "focused_311": {
+    "passed": 735,
+    "skipped": 4
+  },
+  "strict_docs": true,
+  "main_build_processes": 36,
+  "resolution_processes": 18,
+  "diversity_processes": 36,
+  "census_processes": 6,
+  "phase_processes": 6,
+  "snapshot_processes": 24,
+  "inspection_processes": 12,
+  "rich_gc_diagnostic_processes": 12,
+  "separate_gc_observer_processes": 2,
+  "analysis_stage14_processes": 12,
+  "exclusive_measurement_interval": "ended",
+  "downstream_application_verification": "not run",
+  "source_patch_sha256": "b3b3fe270d7562c1641930f1cc77c7b21caa6a2bf6fd38abb6dda564475f8943"
+}

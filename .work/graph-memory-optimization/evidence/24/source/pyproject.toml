@@ -1,0 +1,167 @@
+[project]
+name = "clean_ioc"
+version = "2.0.0rc4"
+description = "Typed Python dependency injection with build-time plan compilation and immutable runtimes"
+authors = [{ name = "Peter Daly" }]
+requires-python = ">=3.11,<4"
+readme = "README.md"
+license = "MIT"
+keywords = [
+    "dependency",
+    "dependency injection",
+    "di container",
+    "injection",
+    "ioc",
+    "inversion of control",
+    "clean architecture",
+    "cqrs",
+    "fastapi",
+    "async",
+    "asgi",
+    "type",
+    "hints",
+    "typing",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+]
+dependencies = [
+    "funcie>=0.2.0",
+    "typetoolbox>=0.4.0",
+    "typing_extensions>=4.13.0",
+]
+
+[project.optional-dependencies]
+fastapi = ["fastapi>=0.121.0,<1"]
+
+[project.urls]
+Homepage = "https://peter-daly.github.io/clean_ioc/"
+Repository = "https://github.com/peter-daly/clean_ioc"
+Documentation = "https://peter-daly.github.io/clean_ioc/"
+Changelog = "https://github.com/peter-daly/clean_ioc/blob/main/CHANGES.rst"
+Issues = "https://github.com/peter-daly/clean_ioc/issues"
+
+[project.scripts]
+clean-ioc = "clean_ioc.cli:main"
+
+[dependency-groups]
+dev = [
+    "benchbro>=1.0.0,<2",
+    "pytest>=8.0.0,<10",
+    "pytest-cov>=5.0.0,<8",
+    "pytest-asyncio>=0.24.0,<2",
+    "assertive>=1.6.1",
+    "fastapi>=0.121.0,<1",
+    "httpx>=0.26.0,<0.27",
+    "ruff>=0.4.3,<0.5",
+    "mkdocs>=1.5.3,<2",
+    "mkdocstrings[python]>=0.25.0,<0.26",
+    "mkdocs-material>=9.5.9,<10",
+    "mkdocs-glightbox>=0.4.0,<0.5",
+    "pre-commit>=4.5.1,<5",
+    "ty>=0.0.21,<1",
+    "jsonschema>=4.18,<5",
+]
+
+[tool.uv]
+default-groups = [
+    "dev",
+]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/.work", "/.cache"]
+include = [
+    ".library-skills",
+    "clean_ioc",
+    "CHANGES.rst",
+    "clean_ioc/py.typed",
+    "clean_ioc/ext/asgi/py.typed",
+    "clean_ioc/ext/fastapi/py.typed",
+]
+
+[tool.hatch.build.targets.wheel]
+exclude = ["/.work", "/.cache"]
+include = [
+    "clean_ioc",
+    "CHANGES.rst",
+    "clean_ioc/py.typed",
+    "clean_ioc/ext/asgi/py.typed",
+    "clean_ioc/ext/fastapi/py.typed",
+]
+
+[tool.hatch.build.targets.wheel.force-include]
+".library-skills" = "clean_ioc/.agents/skills"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.coverage.paths]
+source = ["clean_ioc", "*/site-packages"]
+tests = ["tests"]
+
+[tool.black]
+
+[tool.isort]
+profile = "black"
+
+[tool.ruff]
+# Hash-verified historical evidence is immutable, not live package/test source.
+extend-exclude = ["docs", ".tox", ".work/graph-memory-optimization/evidence"]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle
+    "W",  # pycodestyle
+    "F",  # pyflakes
+    "I",  # isort
+    "N",  # pep8-naming
+    "S",  # flake8-bandit
+    "RUF",  # ruff-specific-rules
+]
+# Ignoring rules problematic with formatter
+# https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+ignore = [
+    "W191",
+    "E111",
+    "E114",
+    "E117",
+    "D206",
+    "D300",
+    "Q000",
+    "Q001",
+    "Q002",
+    "Q003",
+    "COM812",
+    "COM819",
+    "ISC001",
+    "ISC002",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]  # Ignore unused imports on init files
+"tests/**/*.py" = ["S101"]  # Allow assert usage on tests
+"examples/**/test_*.py" = ["S101"]
+# Preserve the exact source of hash-verified Task 08 evidence.
+".work/graph-memory-optimization/evidence/08-hash-counterexamples.py" = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+branch = true
+source = ["clean_ioc", "tests"]
+
+[tool.ty.src]
+# Preserve historical evidence and investigation probes at their recorded revision.
+exclude = [".work/**"]

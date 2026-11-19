@@ -1,0 +1,5237 @@
+[
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_composition_type",
+    "line": 161
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_group_type_has_unresolved",
+    "line": 170
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_known_group_type_conflict",
+    "line": 178
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_validate_service_groups",
+    "line": 213
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_materialize_service_groups",
+    "line": 235
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_source_location",
+    "line": 244
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_filter_description",
+    "line": 280
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_synthetic_origin",
+    "line": 291
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_legacy_lifespan",
+    "line": 303
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_component_lifespan",
+    "line": 311
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_component_policy",
+    "line": 315
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_normalize_build_args",
+    "line": 326
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_merge_build_args",
+    "line": 341
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_arguments_to_dependency_config",
+    "line": 353
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_validate_dependency_names",
+    "line": 378
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_AnalysisState",
+    "line": 402
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_analysis_active",
+    "line": 416
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_analysis_issue",
+    "line": 420
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_analysis_factory_compatibility",
+    "line": 450
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_analyse_check",
+    "line": 460
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "BuilderAlreadyBuiltError",
+    "line": 479
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "ContainerBuildError",
+    "line": 483
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_budget_build_error",
+    "line": 588
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_budget_callback",
+    "line": 703
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_TemplateExpansionReentryError",
+    "line": 723
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_RegistrationTemplateSourceGraphError",
+    "line": 730
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "CannotResolveError",
+    "line": 741
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "UndeclaredScopeSlotError",
+    "line": 749
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "ScopeProvisionError",
+    "line": 753
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "ScopeClosedError",
+    "line": 757
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "ProviderScopeClosedError",
+    "line": 761
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "ResolutionContext",
+    "line": 765
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ResolutionRequest",
+    "line": 822
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_EntryPoint",
+    "line": 829
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_DecoratorDefinition",
+    "line": 836
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_PreConfigurationDefinition",
+    "line": 851
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ValidationRuleDefinition",
+    "line": 863
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ProviderMapDefinition",
+    "line": 869
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_provider_map_factory",
+    "line": 875
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_missing_activation_factory",
+    "line": 881
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_validate_parent_precedence",
+    "line": 886
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_DecoratorUnset",
+    "line": 891
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_Layer",
+    "line": 904
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_VisibilityTarget",
+    "line": 942
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_BoundaryBlueprint",
+    "line": 955
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_Blueprint",
+    "line": 966
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_census_inventory",
+    "line": 1206
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_clone_registry",
+    "line": 1365
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_normalize_dependency_aliases",
+    "line": 1382
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_normalize_layer_aliases",
+    "line": 1389
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_normalize_blueprint_aliases",
+    "line": 1520
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_blueprint_alias_errors",
+    "line": 1545
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_alias_error_report",
+    "line": 1580
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_service_definition_matches",
+    "line": 1600
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_public_service_matches",
+    "line": 1611
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_tag_sort_key",
+    "line": 1627
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_exposure_target",
+    "line": 1631
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_source_request_for_visibility",
+    "line": 1650
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_boundary_component",
+    "line": 1681
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compiled_boundary_component",
+    "line": 1716
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_boundary_registrations",
+    "line": 1772
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_winning_patterns",
+    "line": 1794
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_select_boundary_registrations",
+    "line": 1820
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_preparation_filter",
+    "line": 1868
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_boundary_cycle",
+    "line": 1878
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_prepare_boundary_visibility",
+    "line": 1907
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_runtime_type_key",
+    "line": 2314
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_decorator_service_matches",
+    "line": 2329
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_specialized_component_id",
+    "line": 2340
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_typevars_in",
+    "line": 2350
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_unsupported_factory_type_parameters",
+    "line": 2368
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_merge_factory_binding",
+    "line": 2392
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_infer_factory_bindings",
+    "line": 2416
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_factory_result_annotation",
+    "line": 2454
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_specialized_factory_dependencies",
+    "line": 2477
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_specialized_fallback_dependencies",
+    "line": 2636
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_index_registration",
+    "line": 2670
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_create_discovered_registration",
+    "line": 2675
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_unique_subclasses",
+    "line": 2698
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_module_imports",
+    "line": 2710
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ensure_discovery_imports",
+    "line": 2717
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_RegistrationDiscovery",
+    "line": 2759
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_CompiledDependency",
+    "line": 2842
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_Step",
+    "line": 2847
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_CleanupOwnerDescriptor",
+    "line": 2858
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ActivationContext",
+    "line": 2870
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_CompiledResolutionRequest",
+    "line": 2882
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ValueStep",
+    "line": 2898
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ProvidedStep",
+    "line": 2909
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ScopeStep",
+    "line": 2921
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_CollectionStep",
+    "line": 2937
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_managed_collection_values",
+    "line": 2950
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ManagedCollectionStep",
+    "line": 2957
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_managed_target_step",
+    "line": 2965
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_FrozenProvider",
+    "line": 3015
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_FrozenAsyncProvider",
+    "line": 3038
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ProviderStep",
+    "line": 3060
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_FrozenContextProvider",
+    "line": 3084
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ContextProviderStep",
+    "line": 3133
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedContextProviderStep",
+    "line": 3140
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ManagedAcquisition",
+    "line": 3147
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_AsyncManagedAcquisition",
+    "line": 3222
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_FrozenManagedProvider",
+    "line": 3246
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ManagedProviderStep",
+    "line": 3269
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedManagedProviderStep",
+    "line": 3278
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_per_call_methods",
+    "line": 3287
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_per_call_classvar_annotation",
+    "line": 3432
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_per_call_annotation_expression",
+    "line": 3449
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_per_call_fluent_expression",
+    "line": 3463
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_per_call_fluent_annotation",
+    "line": 3497
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_per_call_stream_expression",
+    "line": 3523
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_per_call_stream_annotation",
+    "line": 3560
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_checked_per_call_result",
+    "line": 3584
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_per_call_proxy_type",
+    "line": 3611
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_validate_per_call_implementation",
+    "line": 3767
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_PerCallStep",
+    "line": 3833
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_PreConfigurationOutcome",
+    "line": 3850
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_PreConfigurationState",
+    "line": 3855
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_CompiledPreConfiguration",
+    "line": 3885
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_DecoratorActivation",
+    "line": 3971
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_decorated_dependency_matches",
+    "line": 3979
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_specialize_decorator_implementation",
+    "line": 3989
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_decorator_result_matches_service",
+    "line": 4008
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_materialize_decorator",
+    "line": 4024
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_GeneratedDecoratorValidationError",
+    "line": 4178
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_resolve_decorator_defaults",
+    "line": 4182
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_materialize_generated_decorator",
+    "line": 4216
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_CompiledDecorator",
+    "line": 4380
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_RegistrationStep",
+    "line": 4416
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_TransientRegistrationStep",
+    "line": 4470
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_FrozenProviderMap",
+    "line": 4490
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ProviderMapStep",
+    "line": 4510
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_PerResolutionRegistrationStep",
+    "line": 4534
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ScopedRegistrationStep",
+    "line": 4566
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_PerCallTargetRegistrationStep",
+    "line": 4626
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_SingletonRegistrationStep",
+    "line": 4674
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_profile_key",
+    "line": 4746
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_cache_profile_key",
+    "line": 4750
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedRegistrationMixin",
+    "line": 4760
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedTransientStep",
+    "line": 4848
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedProviderMapStep",
+    "line": 4852
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedPerResolutionStep",
+    "line": 4886
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedScopedCacheMixin",
+    "line": 4906
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedScopedStep",
+    "line": 4916
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedPerCallTargetStep",
+    "line": 4920
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedSingletonStep",
+    "line": 4924
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_observed_cached_resolve",
+    "line": 4934
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_observed_cached_resolve_async",
+    "line": 4986
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedCallSiteStep",
+    "line": 5051
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_RootPlan",
+    "line": 5078
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_preferred_root_plans",
+    "line": 5084
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_OccurrenceLayers",
+    "line": 5091
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_PlanSet",
+    "line": 5107
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_GraphExplanationSidecars",
+    "line": 5153
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ExplanationCloneContext",
+    "line": 5164
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_graph_explanation_sidecars",
+    "line": 5252
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_RuntimeRegistration",
+    "line": 5264
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_RuntimePreConfigurationDefinition",
+    "line": 5273
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_release_execution_composition",
+    "line": 5279
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_retain_runtime_graph",
+    "line": 5348
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_reduce_explanation_metadata",
+    "line": 5416
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_requires_async",
+    "line": 5463
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_registration_activation",
+    "line": 5470
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_callable_activation",
+    "line": 5478
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_manages_cleanup",
+    "line": 5484
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_provider_request",
+    "line": 5491
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_managed_async_cleanup",
+    "line": 5503
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_is_managed_provider",
+    "line": 5515
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_provider_target_collection",
+    "line": 5519
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_CompilerFrame",
+    "line": 5532
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_EligibilityPreview",
+    "line": 5541
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_CompiledCandidate",
+    "line": 5557
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_frame_description",
+    "line": 5572
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_InvariantSubplan",
+    "line": 5581
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ActivationTemplateCache",
+    "line": 5589
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_activation_key_is_inert",
+    "line": 5619
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_activation_type_key_is_stable",
+    "line": 5651
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_scalar_activation_closure",
+    "line": 5678
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_Compiler",
+    "line": 5720
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_Outcome",
+    "line": 10949
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_Coordinator",
+    "line": 10953
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_RuntimeOwner",
+    "line": 10978
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_collection_request",
+    "line": 11040
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_provider_selection_component",
+    "line": 11051
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_iter_registration_steps",
+    "line": 11060
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_anchored_singletons",
+    "line": 11086
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_anchored_pre_configurations",
+    "line": 11103
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_graph_roots",
+    "line": 11115
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_prune_orphan_registrations",
+    "line": 11137
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_component_tree",
+    "line": 11209
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_selected_registration_catalogue",
+    "line": 11219
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_valid_build_issue",
+    "line": 11274
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_located_rule_issue",
+    "line": 11288
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_issue_failure_evidence",
+    "line": 11299
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_reduce_run_failure",
+    "line": 11312
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_run_validation_rules",
+    "line": 11372
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_build_error_code",
+    "line": 11457
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_safe_error_message",
+    "line": 11465
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_error_report",
+    "line": 11472
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_recorded_root_selection",
+    "line": 11635
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_unreachable_component_issues",
+    "line": 11718
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_analysis_root_selection",
+    "line": 11751
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_finalize_plan",
+    "line": 11793
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_registration_template_definitions",
+    "line": 12133
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_template_definitions",
+    "line": 12152
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_source_registration_info",
+    "line": 12169
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_source_binding_labels",
+    "line": 12190
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_generic_binding_label",
+    "line": 12214
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_static_instance_implementation_type",
+    "line": 12225
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_template_sources",
+    "line": 12238
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_remove_generated_registrations",
+    "line": 12258
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_materialize_registration_template",
+    "line": 12295
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_registration_template_source",
+    "line": 12353
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_expand_registration_templates",
+    "line": 12416
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_check_registration_template_sources",
+    "line": 12616
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_expand_decorator_templates",
+    "line": 12641
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_check_template_boundary_visibility",
+    "line": 12836
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_warmup_build_error",
+    "line": 12895
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_validate_warmup_declarations",
+    "line": 12909
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_warmup_async_cleanup",
+    "line": 12953
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compile_warmup_plans",
+    "line": 12965
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_declared_entry_point_labels",
+    "line": 13050
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_retry_outcomes_differ",
+    "line": 13065
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compile_with_report",
+    "line": 13078
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_RuntimeResolutionContext",
+    "line": 13513
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ManagedResolutionContext",
+    "line": 13573
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_PerCallResolutionContext",
+    "line": 13632
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedFinalizerAwaitable",
+    "line": 13640
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedResolutionContext",
+    "line": 13681
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedManagedResolutionContext",
+    "line": 13763
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedPerCallResolutionContext",
+    "line": 13767
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "Scope",
+    "line": 13771
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "Container",
+    "line": 14178
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedProvider",
+    "line": 14204
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedAsyncProvider",
+    "line": 14226
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedProviderStep",
+    "line": 14246
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_observed_call",
+    "line": 14260
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_observed_call_async",
+    "line": 14279
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedScopeMixin",
+    "line": 14298
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedScope",
+    "line": 14396
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedContainer",
+    "line": 14400
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedDecorator",
+    "line": 14404
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ObservedPreConfiguration",
+    "line": 14462
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_observe_plan",
+    "line": 14594
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_observe_plan_impl",
+    "line": 14610
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_CompilationInputs",
+    "line": 14925
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_BuilderBase",
+    "line": 14937
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_WarmupBuilder",
+    "line": 16287
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "AnalysisRuntimeUnavailableError",
+    "line": 16324
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "AnalysisResult",
+    "line": 16330
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "ContainerBuilder",
+    "line": 16423
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "ScopeBuilder",
+    "line": 16545
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "BoundaryBuilder",
+    "line": 16704
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 486
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "to_sarif",
+    "line": 528
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "triage_report",
+    "line": 541
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "selection_census",
+    "line": 578
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "invoke",
+    "line": 713
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 726
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 731
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 744
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 770
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_request",
+    "line": 778
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 794
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 805
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__repr__",
+    "line": 894
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "slots",
+    "line": 973
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "entrypoints",
+    "line": 977
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "validation_rules",
+    "line": 981
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "boundary",
+    "line": 986
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "registration_area",
+    "line": 989
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_root_layers_for",
+    "line": 992
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_registrations_in",
+    "line": 996
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "local_registrations",
+    "line": 1007
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "registrations",
+    "line": 1016
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "visible_registrations",
+    "line": 1026
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "registration_definition",
+    "line": 1058
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "visibility_targets",
+    "line": 1066
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "visibility_reason",
+    "line": 1083
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "registration_origin",
+    "line": 1093
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "slot_definitions",
+    "line": 1096
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "decorators",
+    "line": 1124
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "decorator_definition",
+    "line": 1149
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "pre_configurations",
+    "line": 1155
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "service_types",
+    "line": 1172
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "root_service_types",
+    "line": 1185
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "add",
+    "line": 1213
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "visit",
+    "line": 1885
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "visit",
+    "line": 2353
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "visit",
+    "line": 2376
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "ensure",
+    "line": 2724
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_filter",
+    "line": 2777
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_registration_for",
+    "line": 2782
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "materialize",
+    "line": 2796
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "find_registration",
+    "line": 2833
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 2850
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 2853
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "add_finalizer",
+    "line": 2876
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 2901
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 2904
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 2913
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 2916
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 2925
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 2932
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 2942
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 2945
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 2960
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "dependency",
+    "line": 2971
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 3020
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__call__",
+    "line": 3024
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 3043
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__call__",
+    "line": 3047
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_bound_scope",
+    "line": 3066
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 3074
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 3080
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 3089
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_context",
+    "line": 3092
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_resolve",
+    "line": 3103
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_resolve_async",
+    "line": 3112
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__call__",
+    "line": 3119
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 3136
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 3143
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 3152
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_begin",
+    "line": 3162
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_resolve",
+    "line": 3186
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_resolve_async",
+    "line": 3197
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__enter__",
+    "line": 3206
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__exit__",
+    "line": 3216
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__enter__",
+    "line": 3225
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__aenter__",
+    "line": 3228
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__aexit__",
+    "line": 3240
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 3249
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__call__",
+    "line": 3263
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 3272
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 3281
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "name_of",
+    "line": 3470
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "fluent",
+    "line": 3477
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "name_of",
+    "line": 3531
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "contains_stream",
+    "line": 3538
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "init",
+    "line": 3614
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "replace",
+    "line": 3618
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "make_forward",
+    "line": 3631
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "private_stub",
+    "line": 3712
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 3838
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 3845
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "begin",
+    "line": 3860
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "finish",
+    "line": 3870
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "run",
+    "line": 3895
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "run_async",
+    "line": 3932
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 4195
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "decorate",
+    "line": 4387
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "decorate_async",
+    "line": 4397
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_activate",
+    "line": 4427
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_activate_async",
+    "line": 4445
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 4463
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 4466
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 4473
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 4481
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 4495
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__getitem__",
+    "line": 4499
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__iter__",
+    "line": 4502
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__len__",
+    "line": 4505
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_activate",
+    "line": 4513
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_activate_async",
+    "line": 4523
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 4537
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 4551
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 4569
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 4597
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_activate",
+    "line": 4631
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_activate_async",
+    "line": 4652
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 4677
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 4707
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_activate",
+    "line": 4763
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_activate_async",
+    "line": 4805
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_activate",
+    "line": 4855
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_activate_async",
+    "line": 4870
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 4889
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 4897
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 4909
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 4912
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 4927
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 4930
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_profile_key",
+    "line": 5059
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 5062
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 5069
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__getitem__",
+    "line": 5095
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__iter__",
+    "line": 5099
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__len__",
+    "line": 5102
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "blueprint",
+    "line": 5145
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 5167
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "remap",
+    "line": 5172
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "remap_decorators",
+    "line": 5214
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "generic_mapping",
+    "line": 5549
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "has_tag",
+    "line": 5552
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 5596
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "get",
+    "line": 5600
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__setitem__",
+    "line": 5604
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 5721
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_record_issue",
+    "line": 5834
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_record_callback_failure",
+    "line": 5861
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_admit_preparation",
+    "line": 5883
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_missing_evidence",
+    "line": 5893
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_captive_evidence",
+    "line": 5946
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_record_partial_candidate",
+    "line": 5967
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_record_partial_edge",
+    "line": 5975
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_record_partial_declaration_edge",
+    "line": 5984
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "partial_attempt",
+    "line": 5992
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "partial_success_attempt",
+    "line": 6271
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_current_path",
+    "line": 6276
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_visibility_error",
+    "line": 6279
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_retention_frames",
+    "line": 6372
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_validate_captive_lifespan",
+    "line": 6390
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_runtime_context_lifespan",
+    "line": 6431
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_validate_runtime_context_dependency",
+    "line": 6446
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compiled_ownership",
+    "line": 6466
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_cleanup_descriptor",
+    "line": 6565
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compile_source_core",
+    "line": 6596
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "compile",
+    "line": 6655
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_provider_subtree_depth",
+    "line": 6913
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_provider_view",
+    "line": 6924
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_managed_adapter_target",
+    "line": 6945
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_provider_root_component",
+    "line": 6951
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_provider_collection_root",
+    "line": 6996
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compile_provider_roots",
+    "line": 7061
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_specialize_registration",
+    "line": 7220
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_service_groups_for",
+    "line": 7385
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_template_label",
+    "line": 7392
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_select_service_target",
+    "line": 7395
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_select_service_targets",
+    "line": 7444
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_pattern_candidates",
+    "line": 7466
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_draft",
+    "line": 7540
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_count_candidate_definition",
+    "line": 7623
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compile_candidates",
+    "line": 7632
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_select_candidates",
+    "line": 8152
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_select_without_diagnostics",
+    "line": 8386
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_apply_preferences",
+    "line": 8527
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_record_component_decision",
+    "line": 8705
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_dependency_alias_result",
+    "line": 8732
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compile_registration",
+    "line": 8758
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compile_provider_map",
+    "line": 9137
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_clone_component_tree",
+    "line": 9299
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compile_dependencies",
+    "line": 9467
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_record_parameter_explanation",
+    "line": 9512
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_record_generic_explanation",
+    "line": 9556
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compile_resolution_requests",
+    "line": 9603
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_bind_resolution_requests",
+    "line": 9668
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_provider_forbidden_path",
+    "line": 9694
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_validate_provider_target",
+    "line": 9730
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compile_provider_dependency",
+    "line": 9765
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compile_dependency",
+    "line": 9940
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_matching_slot",
+    "line": 10231
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compile_pre_configurations",
+    "line": 10279
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_capture_decorator_pattern",
+    "line": 10500
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compile_decorators",
+    "line": 10517
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 10954
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "begin",
+    "line": 10958
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "finish",
+    "line": 10966
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 10979
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ensure_owner_open",
+    "line": 10986
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_add_finalizer",
+    "line": 10990
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_raise_cleanup_failures",
+    "line": 10996
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_begin_close",
+    "line": 11005
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_close",
+    "line": 11014
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_close_async",
+    "line": 11028
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "prune_layer",
+    "line": 11158
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "checked",
+    "line": 11755
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "inspect_source",
+    "line": 12392
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "retain",
+    "line": 12430
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 13516
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "ensure_active",
+    "line": 13522
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "finish",
+    "line": 13527
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_root",
+    "line": 13531
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_root_async",
+    "line": 13544
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "assert_allowed",
+    "line": 13553
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "add_finalizer",
+    "line": 13559
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_provider_for_plan",
+    "line": 13576
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_root",
+    "line": 13592
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_root_async",
+    "line": 13604
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 13635
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 13645
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__await__",
+    "line": 13652
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "close",
+    "line": 13669
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_resolve_observed_plan",
+    "line": 13684
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_resolve_observed_plan_async",
+    "line": 13694
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_root",
+    "line": 13704
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_root_async",
+    "line": 13717
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "add_finalizer",
+    "line": 13726
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 13778
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_ensure_open",
+    "line": 13802
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "id",
+    "line": 13807
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "build_mode",
+    "line": 13818
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "explain_metadata_enabled",
+    "line": 13823
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "components",
+    "line": 13828
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "selected_registrations",
+    "line": 13832
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "graph",
+    "line": 13845
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "warmup_plans",
+    "line": 13856
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_warmup_plan",
+    "line": 13860
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "warmup",
+    "line": 13867
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "warmup_async",
+    "line": 13903
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "build_report",
+    "line": 13929
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "validation_report",
+    "line": 13934
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "build_args",
+    "line": 13941
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "ensured_import_modules",
+    "line": 13947
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "has_component",
+    "line": 13952
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "has_scope_slot",
+    "line": 13965
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "has_provision",
+    "line": 13971
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_select_root",
+    "line": 13984
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_select_roots",
+    "line": 14015
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 14047
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 14082
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "provide",
+    "line": 14115
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_find_provision",
+    "line": 14130
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_find_scoped",
+    "line": 14138
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "new_scope",
+    "line": 14145
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "allow_scope_builders",
+    "line": 14155
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "new_scope_builder",
+    "line": 14159
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__enter__",
+    "line": 14163
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__exit__",
+    "line": 14167
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__aenter__",
+    "line": 14170
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__aexit__",
+    "line": 14174
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 14181
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "new_scope",
+    "line": 14194
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__call__",
+    "line": 14209
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__call__",
+    "line": 14231
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 14249
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_install_observation",
+    "line": 14304
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_request_key",
+    "line": 14312
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve",
+    "line": 14324
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "resolve_async",
+    "line": 14337
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "new_scope",
+    "line": 14352
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_close",
+    "line": 14359
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_close_async",
+    "line": 14377
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "decorate",
+    "line": 14407
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "decorate_async",
+    "line": 14434
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_cache_key",
+    "line": 14469
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "run",
+    "line": 14475
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "run_async",
+    "line": 14534
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "current_path",
+    "line": 14638
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "owner_key",
+    "line": 14643
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "observe_edge",
+    "line": 14693
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "observed_dependencies",
+    "line": 14706
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "matching_child",
+    "line": 14730
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "observe",
+    "line": 14733
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "observe_decorator",
+    "line": 14850
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "observe_pre_configuration",
+    "line": 14860
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "roots",
+    "line": 14889
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 14938
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_assert_mutable",
+    "line": 14995
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "bundle_run_key",
+    "line": 15001
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_build_plan",
+    "line": 15010
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_analyse",
+    "line": 15149
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_effective_build_args",
+    "line": 15249
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compilation_snapshot",
+    "line": 15255
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_definition_origin",
+    "line": 15298
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_layer",
+    "line": 15308
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "create_boundary",
+    "line": 15373
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "add_validation_rule",
+    "line": 15402
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_new_decorator_order",
+    "line": 15422
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_new_pre_configuration_order",
+    "line": 15427
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "register",
+    "line": 15432
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "register_fallback",
+    "line": 15529
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "register_pattern",
+    "line": 15578
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "register_provider_map",
+    "line": 15616
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "register_provider_map",
+    "line": 15627
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "register_provider_map",
+    "line": 15639
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "patch_component",
+    "line": 15678
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "register_registration_template",
+    "line": 15816
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_find_registration_template",
+    "line": 15841
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "patch_registration_template",
+    "line": 15859
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "remove_registration_template",
+    "line": 15890
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "register_decorator_template",
+    "line": 15897
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_find_decorator_template",
+    "line": 15923
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "patch_decorator_template",
+    "line": 15941
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "remove_decorator_template",
+    "line": 15973
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_expand_decorator_templates",
+    "line": 15985
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "register_decorator",
+    "line": 15995
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_find_decorator_definition",
+    "line": 16029
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "patch_decorator",
+    "line": 16050
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "remove_decorator",
+    "line": 16096
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "pre_configure",
+    "line": 16105
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "declare_scope_slot",
+    "line": 16143
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "mark_entrypoint",
+    "line": 16151
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "register_subclasses",
+    "line": 16170
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "apply_bundle",
+    "line": 16220
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_preview_components",
+    "line": 16228
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "has_component",
+    "line": 16253
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "get_component_ids",
+    "line": 16262
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "get_component_id",
+    "line": 16274
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "set_provider_roots",
+    "line": 16288
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "add_warmup_plan",
+    "line": 16306
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "remove_warmup_plan",
+    "line": 16313
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 16325
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 16333
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "emission_complete",
+    "line": 16346
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "selected_registrations",
+    "line": 16350
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "create_runtime",
+    "line": 16353
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "close",
+    "line": 16384
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "aclose",
+    "line": 16396
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__enter__",
+    "line": 16408
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__exit__",
+    "line": 16413
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__aenter__",
+    "line": 16416
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__aexit__",
+    "line": 16419
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "build",
+    "line": 16426
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "analyse",
+    "line": 16453
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_build",
+    "line": 16463
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 16548
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "build",
+    "line": 16558
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "analyse",
+    "line": 16585
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_build",
+    "line": 16595
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "__init__",
+    "line": 16712
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "name",
+    "line": 16732
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "uses",
+    "line": 16736
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "uses",
+    "line": 16740
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "exposes",
+    "line": 16745
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "exposes",
+    "line": 16749
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_assert_mutable",
+    "line": 16753
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_snapshot",
+    "line": 16757
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "_compilation_snapshot",
+    "line": 16760
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "remap_decision",
+    "line": 5199
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "remove",
+    "line": 5610
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "semantic_paths_for",
+    "line": 6045
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "local",
+    "line": 6288
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "visit",
+    "line": 9704
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "template_fact",
+    "line": 10538
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "order_key",
+    "line": 10654
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "without",
+    "line": 11176
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "run",
+    "line": 13653
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "wrapped",
+    "line": 13737
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "call",
+    "line": 14210
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "call",
+    "line": 14232
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "call",
+    "line": 14328
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "call",
+    "line": 14343
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "forward",
+    "line": 3634
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "forward",
+    "line": 3671
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "stub",
+    "line": 3716
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "stub",
+    "line": 3721
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "witness",
+    "line": 7569
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "check_expanded",
+    "line": 13186
+  },
+  {
+    "file": "clean_ioc/container.py",
+    "symbol": "retry",
+    "line": 13393
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "RuntimeOwnerKind",
+    "line": 53
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "ComponentKind",
+    "line": 63
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "ComponentActivation",
+    "line": 79
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "_ComponentDefinition",
+    "line": 92
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "_ComponentRecord",
+    "line": 109
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "_DraftDefinitionPool",
+    "line": 185
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "_ComponentDraft",
+    "line": 205
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "normalize_implementation_type",
+    "line": 452
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "_ComponentGraph",
+    "line": 476
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "_ComponentViewContext",
+    "line": 533
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "_ComponentViewRecord",
+    "line": 542
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "Component",
+    "line": 605
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "_undecorated_component_view",
+    "line": 817
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "all_components",
+    "line": 855
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "default_component_filter",
+    "line": 859
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "ComponentBuilder",
+    "line": 863
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "service_type",
+    "line": 130
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "implementation",
+    "line": 134
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "implementation_type",
+    "line": 138
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "lifespan",
+    "line": 142
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "name",
+    "line": 146
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "tags",
+    "line": 150
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "build_args",
+    "line": 154
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "kind",
+    "line": 158
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "activation",
+    "line": 162
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "boundary",
+    "line": 166
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "declared_service_type",
+    "line": 170
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "generic_mapping",
+    "line": 174
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "__init__",
+    "line": 190
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "intern",
+    "line": 193
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "__init__",
+    "line": 225
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "_replace_definition",
+    "line": 303
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "service_type",
+    "line": 314
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "service_type",
+    "line": 318
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "implementation",
+    "line": 322
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "implementation",
+    "line": 326
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "implementation_type",
+    "line": 330
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "implementation_type",
+    "line": 334
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "lifespan",
+    "line": 338
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "lifespan",
+    "line": 342
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "name",
+    "line": 346
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "name",
+    "line": 350
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "tags",
+    "line": 354
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "tags",
+    "line": 358
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "build_args",
+    "line": 362
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "build_args",
+    "line": 366
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "kind",
+    "line": 370
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "kind",
+    "line": 374
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "activation",
+    "line": 378
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "activation",
+    "line": 382
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "boundary",
+    "line": 386
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "boundary",
+    "line": 390
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "declared_service_type",
+    "line": 394
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "declared_service_type",
+    "line": 398
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "freeze",
+    "line": 401
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "__init__",
+    "line": 479
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "add",
+    "line": 486
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "view",
+    "line": 493
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "view_source",
+    "line": 498
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "record",
+    "line": 506
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "freeze",
+    "line": 517
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "remap",
+    "line": 538
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "__init__",
+    "line": 547
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "__getattr__",
+    "line": 552
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "freeze",
+    "line": 583
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "__init__",
+    "line": 615
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "_record",
+    "line": 620
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "id",
+    "line": 624
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "occurrence_id",
+    "line": 628
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "service_type",
+    "line": 632
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "declared_service_type",
+    "line": 636
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "implementation",
+    "line": 643
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "implementation_type",
+    "line": 647
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "lifespan",
+    "line": 651
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "name",
+    "line": 655
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "registration_name",
+    "line": 659
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "tags",
+    "line": 665
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "build_args",
+    "line": 669
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "boundary",
+    "line": 675
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "registration_tags",
+    "line": 681
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "kind",
+    "line": 687
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "activation",
+    "line": 691
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "activation_kind",
+    "line": 695
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "requires_async",
+    "line": 701
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "manages_cleanup",
+    "line": 705
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "cache_owner",
+    "line": 709
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "cleanup_owner",
+    "line": 715
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "owner_occurrence_id",
+    "line": 721
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "ownership_reason",
+    "line": 727
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "provider_mode",
+    "line": 731
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "position",
+    "line": 737
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "argument",
+    "line": 743
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "generic_mapping",
+    "line": 747
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "parent",
+    "line": 754
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "dependencies",
+    "line": 759
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "children",
+    "line": 763
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "decorators",
+    "line": 769
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "decorator",
+    "line": 773
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "decorated",
+    "line": 777
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "pre_configurations",
+    "line": 782
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "has_tag",
+    "line": 785
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "has_registration_tag",
+    "line": 788
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "descendants",
+    "line": 791
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "has_descendant",
+    "line": 802
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "has_dependant_service_type",
+    "line": 805
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "has_dependant_implementation_type",
+    "line": 809
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "__repr__",
+    "line": 813
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "apply_bundle",
+    "line": 872
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "create_boundary",
+    "line": 874
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "bundle_run_key",
+    "line": 882
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "add_validation_rule",
+    "line": 884
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "register",
+    "line": 886
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "register_fallback",
+    "line": 908
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "register_pattern",
+    "line": 930
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "register_provider_map",
+    "line": 948
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "register_provider_map",
+    "line": 959
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "register_provider_map",
+    "line": 971
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "register_subclasses",
+    "line": 983
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "register_registration_template",
+    "line": 1000
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "patch_registration_template",
+    "line": 1008
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "remove_registration_template",
+    "line": 1017
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "register_decorator_template",
+    "line": 1019
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "patch_decorator_template",
+    "line": 1027
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "remove_decorator_template",
+    "line": 1036
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "register_decorator",
+    "line": 1038
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "patch_component",
+    "line": 1051
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "patch_decorator",
+    "line": 1064
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "remove_decorator",
+    "line": 1077
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "pre_configure",
+    "line": 1079
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "declare_scope_slot",
+    "line": 1089
+  },
+  {
+    "file": "clean_ioc/components.py",
+    "symbol": "mark_entrypoint",
+    "line": 1091
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "_validate_callback",
+    "line": 49
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "_matches",
+    "line": 64
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "_compiled_decorator_type",
+    "line": 73
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "_packed_rule",
+    "line": 84
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "PolicyPack",
+    "line": 100
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "Layer",
+    "line": 121
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "layering",
+    "line": 145
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "_forbidden_paths",
+    "line": 219
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "forbid_dependency",
+    "line": 259
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "require_decorator",
+    "line": 281
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "require_lifespan",
+    "line": 311
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "forbid_runtime_access",
+    "line": 331
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "require_tags",
+    "line": 352
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "capability_boundary",
+    "line": 373
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "wrapped",
+    "line": 86
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "__init__",
+    "line": 106
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "__call__",
+    "line": 115
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "__post_init__",
+    "line": 131
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "layer_of",
+    "line": 176
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "rule",
+    "line": 193
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "rule",
+    "line": 274
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "rule",
+    "line": 296
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "rule",
+    "line": 319
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "runtime_context",
+    "line": 338
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "rule",
+    "line": 345
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "rule",
+    "line": 360
+  },
+  {
+    "file": "clean_ioc/policies.py",
+    "symbol": "rule",
+    "line": 387
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "IssueSeverity",
+    "line": 62
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "SourceLocation",
+    "line": 70
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "DefinitionOrigin",
+    "line": 88
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "DecisionOutcome",
+    "line": 109
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "PreferenceStageDecision",
+    "line": 118
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "CandidateDecision",
+    "line": 140
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "TemplateDecision",
+    "line": 176
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "TemplateSourceDecision",
+    "line": 227
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "CompilationExplanation",
+    "line": 275
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_RemappedDecoratorExplanation",
+    "line": 332
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "ParameterExplanation",
+    "line": 376
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "GenericBindingExplanation",
+    "line": 410
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_CandidateRecord",
+    "line": 435
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "BuildIssue",
+    "line": 444
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "AnalysisRuleOutcome",
+    "line": 478
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "AnalysisStageOutcome",
+    "line": 500
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "AnalysisReport",
+    "line": 510
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "FailureEvidence",
+    "line": 622
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "TriageGroup",
+    "line": 677
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "BuildTriage",
+    "line": 736
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_triage_reason",
+    "line": 990
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_triage_hint",
+    "line": 1004
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "PartialState",
+    "line": 1022
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "PartialNode",
+    "line": 1032
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "PartialEdge",
+    "line": 1058
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "CompilationAttempt",
+    "line": 1080
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "PartialGraph",
+    "line": 1110
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "OwnershipRecord",
+    "line": 1209
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "OwnershipReport",
+    "line": 1244
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "TypeAst",
+    "line": 1289
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_DiagnosticNames",
+    "line": 1298
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "qualified_name",
+    "line": 1323
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_render_qualified_name",
+    "line": 1329
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "GraphRoot",
+    "line": 1380
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_issue_path_name",
+    "line": 1393
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "GraphVisit",
+    "line": 1400
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_implementation_name",
+    "line": 1449
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_component_description",
+    "line": 1455
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_dependency_relationship",
+    "line": 1475
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_node_dict",
+    "line": 1497
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "GraphChange",
+    "line": 1570
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "GraphDiff",
+    "line": 1590
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_flatten_nodes",
+    "line": 1653
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "GraphManifest",
+    "line": 1671
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_OccurrencePaths",
+    "line": 1860
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_CompiledSelectionDecision",
+    "line": 1867
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_CapturedSelectionFacts",
+    "line": 1894
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_SelectionExplanation",
+    "line": 1916
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_InspectionLifetime",
+    "line": 1933
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "CompiledGraph",
+    "line": 1979
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_type_ast",
+    "line": 2645
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "ValidationContext",
+    "line": 2679
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 78
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 98
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 128
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 152
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 194
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_text",
+    "line": 212
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 242
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_json",
+    "line": 257
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_text",
+    "line": 260
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 283
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_json",
+    "line": 291
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_text",
+    "line": 294
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__str__",
+    "line": 327
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "subject",
+    "line": 345
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "path",
+    "line": 349
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_decisions",
+    "line": 352
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "selected",
+    "line": 361
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "rejected",
+    "line": 365
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "materialize",
+    "line": 368
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 391
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 420
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 459
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__str__",
+    "line": 471
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 487
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 505
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "errors",
+    "line": 528
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "warnings",
+    "line": 532
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "is_valid",
+    "line": 536
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 539
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_json",
+    "line": 552
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_sarif",
+    "line": 555
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "assert_valid",
+    "line": 581
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_text",
+    "line": 602
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__str__",
+    "line": 614
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__post_init__",
+    "line": 647
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 655
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 705
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_issue_boundary",
+    "line": 752
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_affected_root_count",
+    "line": 758
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_affected_root_count_status",
+    "line": 767
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "from_report",
+    "line": 778
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 907
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_json",
+    "line": 942
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_text",
+    "line": 945
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 1044
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 1068
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 1095
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 1123
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_json",
+    "line": 1137
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_text",
+    "line": 1140
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_mermaid",
+    "line": 1164
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 1219
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "is_valid",
+    "line": 1251
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 1254
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_json",
+    "line": 1261
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_text",
+    "line": 1264
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__str__",
+    "line": 1281
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__init__",
+    "line": 1306
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__call__",
+    "line": 1310
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "boundary",
+    "line": 1389
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__post_init__",
+    "line": 1407
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "component",
+    "line": 1412
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "root_name",
+    "line": 1416
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "boundary",
+    "line": 1420
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "path",
+    "line": 1426
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "issue",
+    "line": 1429
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 1579
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "is_empty",
+    "line": 1600
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 1603
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_json",
+    "line": 1612
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_semantic_dict",
+    "line": 1615
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_semantic_json",
+    "line": 1620
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_semantic_text",
+    "line": 1623
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "evaluate",
+    "line": 1628
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_text",
+    "line": 1633
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__str__",
+    "line": 1649
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "visit",
+    "line": 1656
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "fingerprint",
+    "line": 1681
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_dict",
+    "line": 1685
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_json",
+    "line": 1688
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "from_json",
+    "line": 1692
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "diff",
+    "line": 1701
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__getattribute__",
+    "line": 1872
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__repr__",
+    "line": 1877
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__eq__",
+    "line": 1880
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__hash__",
+    "line": 1890
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__repr__",
+    "line": 1899
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__eq__",
+    "line": 1902
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__hash__",
+    "line": 1907
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__getattribute__",
+    "line": 1910
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__getattribute__",
+    "line": 1919
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__eq__",
+    "line": 1924
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__hash__",
+    "line": 1929
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__init__",
+    "line": 1936
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "track",
+    "line": 1939
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "expire",
+    "line": 1950
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__post_init__",
+    "line": 2032
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "__getattribute__",
+    "line": 2037
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "selection_census",
+    "line": 2043
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_require_component",
+    "line": 2051
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_require_diagnostics",
+    "line": 2061
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "ownership_report",
+    "line": 2065
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "analysis_index",
+    "line": 2088
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "dependents",
+    "line": 2095
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "paths_between",
+    "line": 2109
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "shared_dependencies",
+    "line": 2131
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "sharing_report",
+    "line": 2151
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "activation_report",
+    "line": 2158
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_component_paths",
+    "line": 2170
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "component_at_path",
+    "line": 2192
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_occurrence_paths",
+    "line": 2202
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_path_for_component",
+    "line": 2220
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_decision",
+    "line": 2230
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_root_explanation",
+    "line": 2245
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "explain",
+    "line": 2343
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "explain",
+    "line": 2351
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "explain",
+    "line": 2358
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_component_evidence",
+    "line": 2428
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "explain_arguments",
+    "line": 2457
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "explain_specialization",
+    "line": 2481
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "explain_template_sources",
+    "line": 2490
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "explain_decorators",
+    "line": 2498
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "walk",
+    "line": 2512
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "_selected_roots",
+    "line": 2528
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "manifest",
+    "line": 2533
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "diff",
+    "line": 2565
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_text",
+    "line": 2597
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "to_mermaid",
+    "line": 2620
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "type_ast",
+    "line": 2686
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "add_group",
+    "line": 299
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "quote",
+    "line": 1165
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "literal_label",
+    "line": 1345
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "boundary_bypasses",
+    "line": 1781
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "released",
+    "line": 1943
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "visit",
+    "line": 2174
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "selected_path",
+    "line": 2467
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "visit",
+    "line": 2515
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "visit",
+    "line": 2578
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "visit",
+    "line": 2600
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "visit",
+    "line": 2624
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "rendered_id",
+    "line": 1183
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "identity",
+    "line": 1785
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "declared",
+    "line": 1789
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "visit",
+    "line": 1797
+  },
+  {
+    "file": "clean_ioc/tooling.py",
+    "symbol": "decision",
+    "line": 2441
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "_issue",
+    "line": 43
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "_synchronous",
+    "line": 47
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "BuildVariant",
+    "line": 57
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "VariantReport",
+    "line": 78
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "MatrixContext",
+    "line": 101
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "_require_valid",
+    "line": 133
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "require_valid_variants",
+    "line": 139
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "same_entrypoints",
+    "line": 145
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "semantic_drift",
+    "line": 161
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "_policy_issues",
+    "line": 184
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "MatrixReport",
+    "line": 199
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "_redacted_manifest",
+    "line": 286
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "_capture",
+    "line": 304
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "_build_variant",
+    "line": 369
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "BuildMatrix",
+    "line": 405
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "__post_init__",
+    "line": 65
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "is_valid",
+    "line": 86
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "to_dict",
+    "line": 89
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "reference_report",
+    "line": 109
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "manifest",
+    "line": 112
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "issue",
+    "line": 116
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "rule",
+    "line": 148
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "rule",
+    "line": 167
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "is_valid",
+    "line": 207
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "exit_code",
+    "line": 213
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "to_dict",
+    "line": 220
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "to_json",
+    "line": 228
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "to_text",
+    "line": 231
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "to_sarif",
+    "line": 248
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "assert_valid",
+    "line": 281
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "visit",
+    "line": 289
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "__init__",
+    "line": 410
+  },
+  {
+    "file": "clean_ioc/matrix.py",
+    "symbol": "check",
+    "line": 432
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_load_object",
+    "line": 19
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_load_scope",
+    "line": 29
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_load_analysis",
+    "line": 44
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_write",
+    "line": 55
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_filtered_report",
+    "line": 62
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_sarif_error",
+    "line": 79
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_check",
+    "line": 85
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_profile",
+    "line": 119
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_graph",
+    "line": 139
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_ownership",
+    "line": 163
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_census",
+    "line": 169
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_diff",
+    "line": 182
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_matrix",
+    "line": 204
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_explain",
+    "line": 235
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_analysis_subject",
+    "line": 305
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_impact",
+    "line": 315
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_sharing",
+    "line": 330
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_activation",
+    "line": 344
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "_parser",
+    "line": 358
+  },
+  {
+    "file": "clean_ioc/cli.py",
+    "symbol": "main",
+    "line": 480
+  }
+]

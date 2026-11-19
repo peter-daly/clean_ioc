@@ -1,0 +1,437 @@
+{
+  "configured_linux_image_check": {
+    "architecture": "arm64",
+    "exit_code": 1,
+    "failure": "ModuleNotFoundError: No module named _zstd from direct compression.zstd import, before container compilation",
+    "image": "ghcr.io/bark-com/ubuntu:3.14.4",
+    "image_id": "sha256:b80e1db51da5cde244cb0aae087c7e6a992f8d691747a704630ab1a370ff6160",
+    "production_architecture_established": false,
+    "repo_digests": [
+      "ghcr.io/bark-com/ubuntu@sha256:b80e1db51da5cde244cb0aae087c7e6a992f8d691747a704630ab1a370ff6160"
+    ]
+  },
+  "date": "2026-10-07",
+  "development_wheels": {
+    "bark_core_stage4": {
+      "filename": "bark_core-1.0.0b1-py3-none-any.whl",
+      "sha256": "047d046561f219b331cd812feb2c52fe9883de070226e1b4ed602222012bf758"
+    },
+    "clean_ioc_stage2": {
+      "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+      "sha256": "c5ff629bff6902d70f75793dc6aa372b65da077335d42f30b48a9e003c55cc84"
+    },
+    "clean_ioc_stage5": {
+      "filename": "clean_ioc-2.0.0rc2-py3-none-any.whl",
+      "sha256": "845779a6cab18b147d7558cbd5363b3f308650c5b1709acd14999edf8e312531"
+    }
+  },
+  "independent_final_worker_profile": {
+    "app": "worker",
+    "bark_core": "1.0.0b1",
+    "clean_ioc": "2.0.0rc2",
+    "clean_ioc_module_routing": "installed site-packages/clean_ioc/__init__.py",
+    "counters": {
+      "build validation rule calls": 6,
+      "candidate compilation attempts": 37935,
+      "candidate definitions considered": 63280,
+      "candidate plan steps returned": 37935,
+      "early eligibility evaluations": 32311,
+      "early excluded candidates": 25345,
+      "factory specialization requests": 6565,
+      "graph occurrences": 95790,
+      "invariant subplan cache hits": 20514,
+      "invariant subplans cached": 138,
+      "parameter processing attempts": 34910,
+      "physical component records": 91570,
+      "provider adapters": 3992,
+      "provider induced component copies": 0,
+      "provider target views": 4220,
+      "registration selection callback calls": 82558,
+      "registration subplans compiled": 17421,
+      "retained early rejection records": 25345,
+      "reused activation templates": 64,
+      "unique activation templates": 17357
+    },
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 503447552,
+    "phases_seconds": {
+      "alias and boundary preparation": 0.005923209,
+      "decorator-template expansion": 3.2917e-05,
+      "discovery and blueprint preparation": 0.000158458,
+      "final validation": 0.554758959,
+      "other build work": 0.100494832,
+      "primary compilation": 6.425744917
+    },
+    "physical_component_records": 91570,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 3840,
+    "provider_view_contexts": 4220,
+    "python": "3.14.4",
+    "seconds": 7.087120624957606
+  },
+  "kind": "combined development-wheel verification; release/deployment acceptance outstanding",
+  "paired_installed_wheel_probes": [
+    {
+      "app": "api",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "clean_ioc_module_routing": "installed site-packages/clean_ioc/__init__.py",
+      "instrumentation": "none",
+      "peak_rss_bytes": 203440128,
+      "physical_component_records": 11910,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_root_keys": 2656,
+      "provider_view_contexts": 3220,
+      "python": "3.14.4",
+      "sample": 1,
+      "seconds": 0.8647014999296516,
+      "stage": "stage4"
+    },
+    {
+      "app": "worker",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "clean_ioc_module_routing": "installed site-packages/clean_ioc/__init__.py",
+      "instrumentation": "none",
+      "peak_rss_bytes": 516096000,
+      "physical_component_records": 91570,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_root_keys": 3840,
+      "provider_view_contexts": 4220,
+      "python": "3.14.4",
+      "sample": 1,
+      "seconds": 6.896050916984677,
+      "stage": "stage4"
+    },
+    {
+      "app": "api",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "clean_ioc_module_routing": "installed site-packages/clean_ioc/__init__.py",
+      "instrumentation": "none",
+      "peak_rss_bytes": 253689856,
+      "physical_component_records": 11910,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_root_keys": 2656,
+      "provider_view_contexts": 3220,
+      "python": "3.14.4",
+      "sample": 1,
+      "seconds": 0.8204433750361204,
+      "stage": "stage5"
+    },
+    {
+      "app": "worker",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "clean_ioc_module_routing": "installed site-packages/clean_ioc/__init__.py",
+      "instrumentation": "none",
+      "peak_rss_bytes": 536002560,
+      "physical_component_records": 91570,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_root_keys": 3840,
+      "provider_view_contexts": 4220,
+      "python": "3.14.4",
+      "sample": 1,
+      "seconds": 6.320767209050246,
+      "stage": "stage5"
+    },
+    {
+      "app": "api",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "clean_ioc_module_routing": "installed site-packages/clean_ioc/__init__.py",
+      "instrumentation": "none",
+      "peak_rss_bytes": 205783040,
+      "physical_component_records": 11910,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_root_keys": 2656,
+      "provider_view_contexts": 3220,
+      "python": "3.14.4",
+      "sample": 2,
+      "seconds": 0.8326602500164881,
+      "stage": "stage5"
+    },
+    {
+      "app": "worker",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "clean_ioc_module_routing": "installed site-packages/clean_ioc/__init__.py",
+      "instrumentation": "none",
+      "peak_rss_bytes": 501874688,
+      "physical_component_records": 91570,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_root_keys": 3840,
+      "provider_view_contexts": 4220,
+      "python": "3.14.4",
+      "sample": 2,
+      "seconds": 6.231190708000213,
+      "stage": "stage5"
+    },
+    {
+      "app": "api",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "clean_ioc_module_routing": "installed site-packages/clean_ioc/__init__.py",
+      "instrumentation": "none",
+      "peak_rss_bytes": 203554816,
+      "physical_component_records": 11910,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_root_keys": 2656,
+      "provider_view_contexts": 3220,
+      "python": "3.14.4",
+      "sample": 2,
+      "seconds": 0.8666493750642985,
+      "stage": "stage4"
+    },
+    {
+      "app": "worker",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "clean_ioc_module_routing": "installed site-packages/clean_ioc/__init__.py",
+      "instrumentation": "none",
+      "peak_rss_bytes": 514277376,
+      "physical_component_records": 91570,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_root_keys": 3840,
+      "provider_view_contexts": 4220,
+      "python": "3.14.4",
+      "sample": 2,
+      "seconds": 6.831717583932914,
+      "stage": "stage4"
+    },
+    {
+      "app": "api",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "clean_ioc_module_routing": "installed site-packages/clean_ioc/__init__.py",
+      "instrumentation": "none",
+      "peak_rss_bytes": 203849728,
+      "physical_component_records": 11910,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_root_keys": 2656,
+      "provider_view_contexts": 3220,
+      "python": "3.14.4",
+      "sample": 3,
+      "seconds": 0.8774709579301998,
+      "stage": "stage4"
+    },
+    {
+      "app": "worker",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "clean_ioc_module_routing": "installed site-packages/clean_ioc/__init__.py",
+      "instrumentation": "none",
+      "peak_rss_bytes": 611106816,
+      "physical_component_records": 91570,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_root_keys": 3840,
+      "provider_view_contexts": 4220,
+      "python": "3.14.4",
+      "sample": 3,
+      "seconds": 6.831839208025485,
+      "stage": "stage4"
+    },
+    {
+      "app": "api",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "clean_ioc_module_routing": "installed site-packages/clean_ioc/__init__.py",
+      "instrumentation": "none",
+      "peak_rss_bytes": 205733888,
+      "physical_component_records": 11910,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_root_keys": 2656,
+      "provider_view_contexts": 3220,
+      "python": "3.14.4",
+      "sample": 3,
+      "seconds": 0.8279505000682548,
+      "stage": "stage5"
+    },
+    {
+      "app": "worker",
+      "bark_core": "1.0.0b1",
+      "clean_ioc": "2.0.0rc2",
+      "clean_ioc_module_routing": "installed site-packages/clean_ioc/__init__.py",
+      "instrumentation": "none",
+      "peak_rss_bytes": 589938688,
+      "physical_component_records": 91570,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "provider_root_keys": 3840,
+      "provider_view_contexts": 4220,
+      "python": "3.14.4",
+      "sample": 3,
+      "seconds": 6.217663166928105,
+      "stage": "stage5"
+    }
+  ],
+  "reference_linux_gunicorn": [
+    {
+      "app": "api",
+      "architecture": "arm64",
+      "cgroup": {
+        "cpu.max": "10000 100000",
+        "cpu.stat": {
+          "burst_usec": 0,
+          "nice_usec": 0,
+          "nr_bursts": 0,
+          "nr_periods": 907,
+          "nr_throttled": 907,
+          "system_usec": 913833,
+          "throttled_usec": 84531206,
+          "usage_usec": 9076835,
+          "user_usec": 8163001
+        },
+        "memory.current": 351080448,
+        "memory.events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory.max": 536870912,
+        "memory.peak": 354549760,
+        "memory.swap.max": 0
+      },
+      "cpu_limit": 0.1,
+      "deployment_acceptance": false,
+      "image": "cop-ioc-verification:stage5-reference",
+      "memory_limit_bytes": 536870912,
+      "observed_seconds": 89.8174093751004,
+      "readiness_seconds": 89.81736708409153,
+      "ready": true,
+      "reference_base_image": "python:3.14.4-slim",
+      "runner": "gunicorn",
+      "stage": "stage5-reference",
+      "state": {
+        "ExitCode": 0,
+        "OOMKilled": false,
+        "Running": true,
+        "Status": "running"
+      },
+      "timeout_seconds": 120
+    },
+    {
+      "app": "worker",
+      "architecture": "arm64",
+      "cgroup": {
+        "cpu.max": "10000 100000",
+        "cpu.stat": {
+          "burst_usec": 0,
+          "nice_usec": 0,
+          "nr_bursts": 0,
+          "nr_periods": 1241,
+          "nr_throttled": 1240,
+          "system_usec": 1131620,
+          "throttled_usec": 119084161,
+          "usage_usec": 12400637,
+          "user_usec": 11269016
+        },
+        "memory.current": 527355904,
+        "memory.events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "memory.max": 536870912,
+        "memory.peak": 530903040,
+        "memory.swap.max": 0
+      },
+      "cpu_limit": 0.1,
+      "deployment_acceptance": false,
+      "image": "cop-ioc-verification:stage5-reference",
+      "memory_limit_bytes": 536870912,
+      "observed_seconds": 121.3682600420434,
+      "ready": false,
+      "reference_base_image": "python:3.14.4-slim",
+      "runner": "gunicorn",
+      "stage": "stage5-reference",
+      "state": {
+        "ExitCode": 0,
+        "OOMKilled": false,
+        "Running": true,
+        "Status": "running"
+      },
+      "timeout_seconds": 120
+    }
+  ],
+  "release_gate": {
+    "bark_cop_manifests_and_locks": "still rc1 and original Bark pin",
+    "clean_ioc_rc2_published": false,
+    "released_lock_acceptance": false
+  },
+  "repository_provenance": {
+    "bark_core": {
+      "base_head": "beb28b53bbee725cb70cb9d44c0388b5cbcb868a",
+      "branch": "v1_rc",
+      "tracked_diff_sha256": "a82477d6b5dfba685ab537b4b04f87b04fb7ae63a264aab1e5797577dfe18ba5"
+    },
+    "clean_ioc": {
+      "base_head": "3d576f10427d506b414889af21ad95291c39cccf",
+      "branch": "version2",
+      "tracked_diff_sha256": "d196f95e837171438b6012ed7dc01c1a27bc456d160562a48d869a94367bbee1"
+    },
+    "cop": {
+      "base_head": "97011b424a439297eaf7e90c73023e2a7f89573c",
+      "branch": "codex/registration-partitions-main",
+      "tracked_diff_sha256": "ae125649bfc04e40c478a654b98837598135e76ab4e206dfef1b24f0985bd7e5"
+    }
+  },
+  "repository_state": "implementation and composition edits uncommitted; status filenames omitted",
+  "verification": {
+    "bark_broad_typing": {
+      "status": "five pre-existing errors; changed production and new tests clean"
+    },
+    "bark_public_api": {
+      "formatter_on_path": true,
+      "status": "passed"
+    },
+    "bark_route_saga_budget": {
+      "actual": 5670,
+      "maximum": 6000,
+      "routes": 28,
+      "sagas": 7,
+      "unit": "graph_occurrences: physical component records plus provider-view contexts"
+    },
+    "clean_ioc_make_ci": {
+      "passed": 1805,
+      "status": "passed"
+    },
+    "final_bark_unit": {
+      "existing_skips": 26,
+      "passed": 5941,
+      "seconds": 92.91,
+      "status": "passed"
+    },
+    "final_cop_integration": {
+      "application_hosts_started": 5,
+      "catalogue_memory_assertions_unchanged": true,
+      "original_catalogue_memory_assertions": 4,
+      "passed": 64,
+      "seconds": 405.62,
+      "status": "passed",
+      "workflows_passed": [
+        "access",
+        "deletion",
+        "inventory"
+      ]
+    },
+    "final_cop_unit": {
+      "new_tests": 2,
+      "passed": 494,
+      "seconds": 41.47,
+      "status": "passed"
+    },
+    "stage4_cop_integration": {
+      "passed": 64,
+      "seconds": 396.51,
+      "status": "passed; prior changes1-4 run"
+    }
+  }
+}

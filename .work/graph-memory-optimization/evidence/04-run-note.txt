@@ -1,0 +1,4 @@
+The initial attempted 04-before capture was cancelled without writing a result:
+a preliminary two-route fixture build inadvertently overlapped a traced sample.
+It is excluded. The replacement 04-before six-process capture is serial and has
+no concurrent fixture builds, tests or benchmark workloads.

@@ -1,0 +1,272 @@
+{
+  "activations": {
+    "branch": 682,
+    "endpoint": 2,
+    "endpoint_decorator": 2,
+    "leaf": 704,
+    "policy": 2,
+    "route_dependency": 10,
+    "route_source": 10,
+    "state": 9,
+    "worker": 22,
+    "worker_decorator": 44
+  },
+  "before": {
+    "peak_rss_bytes": 42467328,
+    "rss_bytes": 42106880
+  },
+  "build_seconds": 0.26771754201035947,
+  "diagnostics": true,
+  "eager_decorator_facts": false,
+  "graph": {
+    "activation_kinds": {
+      "collection": 4,
+      "constructor": 2038,
+      "deferred": 32,
+      "supplied": 294
+    },
+    "component_metadata": {
+      "definition_identity_patterns": 44,
+      "identity_patterns": 351,
+      "patterns_by_kind": {
+        "decorator": 4,
+        "managed_provider": 14,
+        "provider": 18,
+        "provider_map": 4,
+        "registration": 17,
+        "value": 294
+      },
+      "retained_definition_index_bytes": 0,
+      "shared_definition_bytes": 5280,
+      "shared_definition_objects": 44,
+      "unique_field_objects": {
+        "activation": 4,
+        "boundary": 1,
+        "build_args": 1,
+        "declared_service_type": 15,
+        "id": 349,
+        "implementation": 20,
+        "implementation_type": 20,
+        "kind": 6,
+        "lifespan": 3,
+        "name": 5,
+        "service_type": 27,
+        "tags": 1
+      }
+    },
+    "concrete_component_records": 793,
+    "contextual_projection_records": 1575,
+    "decorator_objects": {
+      "logical_outcomes_by_entry": {
+        "rejected": 7898,
+        "selected": 54
+      },
+      "logical_reason_codes_by_entry": {
+        "decorator-filter-matched": 54,
+        "decorator-filter-rejected": 2,
+        "template-target-not-selected": 7896
+      },
+      "outcomes": {
+        "rejected": 7898,
+        "selected": 54
+      },
+      "reason_codes": {
+        "decorator-filter-matched": 54,
+        "decorator-filter-rejected": 2,
+        "template-target-not-selected": 7896
+      },
+      "shallow_storage_bytes": {
+        "decision_tuples": 160432,
+        "decisions": 763392,
+        "explanations": 127232,
+        "template_facts": 1145088
+      },
+      "unique_objects": {
+        "decision_tuples": 2017,
+        "decisions": 7952,
+        "explanations": 1988,
+        "template_facts": 7952
+      },
+      "unique_patterns": 1988
+    },
+    "executable_helpers": {
+      "_CompiledDecorator": 36,
+      "_CompiledDependency": 240
+    },
+    "execution_step_kinds": {
+      "_ContextProviderStep": 14,
+      "_ManagedProviderStep": 14,
+      "_ProviderMapStep": 8,
+      "_ProviderStep": 18,
+      "_ScopedRegistrationStep": 25,
+      "_SingletonRegistrationStep": 34,
+      "_TransientRegistrationStep": 50,
+      "_ValueStep": 84
+    },
+    "logical_graph_visits": 1264,
+    "logical_occurrence_records": 2368,
+    "metadata_entries": {
+      "census_definitions": 27,
+      "census_sources": 0,
+      "decorator_explanations": 1988,
+      "generic_explanations": 0,
+      "occurrence_explanations": 2216,
+      "parameter_explanations": 1180,
+      "root_candidates": 18
+    },
+    "physical_records": 2368,
+    "provider_view_contexts": 14,
+    "record_kinds": {
+      "decorator": 54,
+      "managed_provider": 14,
+      "provider": 18,
+      "provider_map": 4,
+      "registration": 1984,
+      "value": 294
+    },
+    "selected_registrations": 21,
+    "shallow_storage_bytes": {
+      "component_records": 227768,
+      "execution_steps": 22600,
+      "link_tuples": 27824,
+      "occurrence_integers": 66808,
+      "origin_indexes": 73808,
+      "record_index": 73808,
+      "registration_objects": 3192,
+      "subtree_contexts_and_maps": 59000
+    },
+    "subtree_remapping_entries": 1575,
+    "subtree_view_contexts": 25,
+    "unique_execution_steps": 247,
+    "unique_origins": 21,
+    "unique_registration_objects": 19
+  },
+  "inspection": {
+    "before": {
+      "peak_rss_bytes": 51494912,
+      "rss_bytes": 51494912,
+      "traced_peak_bytes": 184815,
+      "traced_retained_bytes": 2456
+    },
+    "explanation_sample_size": 128,
+    "passes": [
+      {
+        "after_census": {
+          "peak_rss_bytes": 58032128,
+          "rss_bytes": 57606144,
+          "traced_peak_bytes": 4411393,
+          "traced_retained_bytes": 1252200
+        },
+        "after_explanations": {
+          "peak_rss_bytes": 51658752,
+          "rss_bytes": 51658752,
+          "traced_peak_bytes": 506583,
+          "traced_retained_bytes": 324224
+        },
+        "after_manifest": {
+          "peak_rss_bytes": 59457536,
+          "rss_bytes": 59457536,
+          "traced_peak_bytes": 4990778,
+          "traced_retained_bytes": 3188121
+        },
+        "after_traversal": {
+          "peak_rss_bytes": 58032128,
+          "rss_bytes": 57606144,
+          "traced_peak_bytes": 4411393,
+          "traced_retained_bytes": 1252928
+        },
+        "census_seconds": 0.1537528750486672,
+        "explain_seconds": 0.016456249984912574,
+        "manifest_fingerprint": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+        "manifest_seconds": 0.09370412502903491,
+        "pass": "first",
+        "sample_decisions": 512,
+        "traversal_seconds": 0.020667083095759153,
+        "traversal_visits": 1264
+      },
+      {
+        "after_census": {
+          "peak_rss_bytes": 60227584,
+          "rss_bytes": 59555840,
+          "traced_peak_bytes": 5367932,
+          "traced_retained_bytes": 3189041
+        },
+        "after_explanations": {
+          "peak_rss_bytes": 59457536,
+          "rss_bytes": 59457536,
+          "traced_peak_bytes": 4990778,
+          "traced_retained_bytes": 3188705
+        },
+        "after_manifest": {
+          "peak_rss_bytes": 60227584,
+          "rss_bytes": 59703296,
+          "traced_peak_bytes": 5367932,
+          "traced_retained_bytes": 3190130
+        },
+        "after_traversal": {
+          "peak_rss_bytes": 60227584,
+          "rss_bytes": 59555840,
+          "traced_peak_bytes": 5367932,
+          "traced_retained_bytes": 3189497
+        },
+        "census_seconds": 0.09672870894428343,
+        "explain_seconds": 0.0013919159537181258,
+        "manifest_fingerprint": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+        "manifest_seconds": 1.0208925232291222e-05,
+        "pass": "repeated",
+        "sample_decisions": 512,
+        "traversal_seconds": 0.021106624975800514,
+        "traversal_visits": 1264
+      }
+    ]
+  },
+  "instrumentation": "none",
+  "lazy_activations": {
+    "endpoint": 2,
+    "endpoint_decorator": 2,
+    "route_dependency": 2,
+    "route_source": 2
+  },
+  "machine": "arm64",
+  "pid": 54622,
+  "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "prepared": {
+    "peak_rss_bytes": 49987584,
+    "rss_bytes": 49987584
+  },
+  "python": "3.14.4",
+  "resolve_seconds": 0.0025461670011281967,
+  "resolved": {
+    "peak_rss_bytes": 49987584,
+    "rss_bytes": 49987584
+  },
+  "routes": 2,
+  "source": {
+    "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n M tests/test_graph_artifact_experiment.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_artifact_evidence.py\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? benchmarks/graph_reachability_audit.py\n?? benchmarks/graph_subtree_experiment.py\n?? clean_ioc/_component_subtrees.py\n?? docs/graph-memory-fixture.md\n?? tests/test_contextual_subtrees.py\n?? tests/test_graph_memory_fixture.py\n?? tests/test_graph_reachability_audit.py\n?? tests/test_shared_component_definitions.py\n",
+    "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "6a4b40b37a61aba503382526c99b244e56278532774b7d6ddce59a4d155894a5",
+      "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+      "clean_ioc/_component_subtrees.py": "4e083e821d84a6ac37cfa62e7f6a3c8bd244ce35e0d412c4dc8fc49a72eb1346",
+      "clean_ioc/components.py": "81a54da74f53539dcbe33de050737bb6ff72b21c1675ff1bd137e3a387d5e88f",
+      "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+    }
+  },
+  "template_calls": {
+    "generated_worker_to_endpoint_decorator": 2,
+    "generated_worker_to_source": 2,
+    "policy_to_worker_decorator": 2,
+    "source_to_generated_dependency": 2
+  },
+  "validated": {
+    "leaves": 704,
+    "managed_scopes": 8,
+    "ordinary_scopes": 1,
+    "payload_bytes": 90112,
+    "source_map_calls": 4,
+    "tree_objects": 1386,
+    "workers": 22
+  }
+}

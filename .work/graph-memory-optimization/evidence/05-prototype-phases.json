@@ -1,0 +1,48 @@
+{
+  "observations": [
+    {
+      "function": "_finalize_plan",
+      "event": "call",
+      "memory": {
+        "rss_bytes": 130220032,
+        "peak_rss_bytes": 130236416
+      }
+    },
+    {
+      "function": "_finalize_plan",
+      "event": "return",
+      "memory": {
+        "rss_bytes": 130236416,
+        "peak_rss_bytes": 130236416
+      }
+    },
+    {
+      "function": "_reduce_explanation_metadata",
+      "event": "call",
+      "memory": {
+        "rss_bytes": 130236416,
+        "peak_rss_bytes": 130236416
+      }
+    },
+    {
+      "function": "_reduce_explanation_metadata",
+      "event": "return",
+      "memory": {
+        "rss_bytes": 130465792,
+        "peak_rss_bytes": 130465792
+      },
+      "lengths": {
+        "pending": 0,
+        "seen_objects": 6739,
+        "seeds": 0,
+        "live": 8982,
+        "seen_occurrences": 19714,
+        "records": 88558
+      }
+    }
+  ],
+  "final": {
+    "rss_bytes": 130465792,
+    "peak_rss_bytes": 130465792
+  }
+}

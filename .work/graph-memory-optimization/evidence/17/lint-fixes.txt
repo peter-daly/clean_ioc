@@ -1,0 +1,2 @@
+tests/test_intermediate_occurrence_lifetimes.py:39:121: E501 Line too long (121 > 120)
+Found 2 errors (1 fixed, 1 remaining).

@@ -1,0 +1,47 @@
+{
+  "samples": [
+    {
+      "policy": "before",
+      "executed_source": {
+        "clean_ioc.components": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+        "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc.container": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+        "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+        "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+      },
+      "validated": {
+        "workers": 22,
+        "tree_objects": 1386,
+        "leaves": 704,
+        "payload_bytes": 90112,
+        "ordinary_scopes": 1,
+        "managed_scopes": 8,
+        "source_map_calls": 4
+      },
+      "purpose": "archival-path smoke only; timings excluded"
+    },
+    {
+      "policy": "after",
+      "executed_source": {
+        "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+        "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+        "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+        "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+        "benchmarks.graph_memory_evidence": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+        "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+      },
+      "validated": {
+        "workers": 22,
+        "tree_objects": 1386,
+        "leaves": 704,
+        "payload_bytes": 90112,
+        "ordinary_scopes": 1,
+        "managed_scopes": 8,
+        "source_map_calls": 4
+      },
+      "purpose": "archival-path smoke only; timings excluded"
+    }
+  ],
+  "existing_output_guard": true
+}

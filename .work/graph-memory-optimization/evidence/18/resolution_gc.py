@@ -1,0 +1,109 @@
+"""Rich-only diagnostic: reproduce prepared-memory GC state and isolate automatic GC."""
+
+# ruff: noqa: E402, S101, S603
+import asyncio
+import gc
+import hashlib
+import json
+import statistics
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+from grid import prepare
+from source_loader import HERE, LOADED
+
+
+async def sample(policy, control):
+    prepare(policy, "rich-run")
+    from benchmarks.graph_memory_evidence import _memory
+    from benchmarks.graph_memory_fixture import ACTIVATIONS, TEMPLATE_CALLS, build, resolve_workload, validate
+
+    fixture = build(8, mode="run")
+    # Reproduce the shared runner's exact forced-collection/RSS-subprocess boundary.
+    prepared = _memory(False)
+    template_calls = dict(TEMPLATE_CALLS)
+    elapsed, cpu, results, gc_events = [], [], [], []
+    for iteration in range(8):
+        ACTIVATIONS.clear()
+        events = []
+
+        def observe(phase, info):
+            events.append({"phase": phase, **info})
+
+        if control == "events":
+            gc.callbacks.append(observe)
+        enabled = gc.isenabled()
+        if control == "disabled":
+            gc.disable()
+        started_cpu, started = time.process_time(), time.perf_counter()
+        try:
+            held = await resolve_workload(fixture)
+            seconds = time.perf_counter() - started
+            cpu_seconds = time.process_time() - started_cpu
+        finally:
+            if enabled:
+                gc.enable()
+            if control == "events":
+                gc.callbacks.remove(observe)
+        elapsed.append(seconds)
+        cpu.append(cpu_seconds)
+        gc_events.append({"iteration": iteration, "events": events})
+        results.append(validate(fixture, held))
+        await held.scope.__aexit__(None, None, None)
+        del held
+    await fixture.runtime.__aexit__(None, None, None)
+    assert all(result == results[0] for result in results)
+    assert TEMPLATE_CALLS == template_calls
+    return {
+        "policy": policy,
+        "control": control,
+        "prepared": prepared,
+        "executed_source": LOADED,
+        "wall_seconds": elapsed,
+        "cpu_seconds": cpu,
+        "cold_seconds": elapsed[0],
+        "steady_median_seconds": statistics.median(elapsed[1:]),
+        "cold_cpu_seconds": cpu[0],
+        "steady_median_cpu_seconds": statistics.median(cpu[1:]),
+        "validated": results[0],
+        "gc_events": gc_events if control == "events" else None,
+        "interpretation": "Separate intrusive GC observer; timings not accepted"
+        if control == "events"
+        else "Diagnostic control; disabling GC is not an application recommendation",
+    }
+
+
+if __name__ == "__main__":
+    if sys.argv[1] == "sample":
+        print(json.dumps(asyncio.run(sample(*sys.argv[2:]))))
+    else:
+        if len(sys.argv) != 3:
+            raise SystemExit("Usage: resolution_gc.py repeat OUTPUT_DIRECTORY")
+        output = Path(sys.argv[2])
+        output.mkdir(parents=True, exist_ok=True)
+        if (output / "resolution-gc.json").exists():
+            raise FileExistsError("Use a fresh diagnostic output file")
+        (output / "resolution-gc-source.json").write_text(
+            json.dumps(
+                {
+                    "resolution_gc.py": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                    "grid.py": hashlib.sha256((HERE / "grid.py").read_bytes()).hexdigest(),
+                    "source_loader.py": hashlib.sha256((HERE / "source_loader.py").read_bytes()).hexdigest(),
+                },
+                indent=2,
+            )
+            + "\n"
+        )
+        rows = []
+        for control in ("prepared", "disabled", "events"):
+            for repeat in range(1 if control == "events" else 3):
+                for policy in ("before", "after") if repeat % 2 == 0 else ("after", "before"):
+                    row = json.loads(
+                        subprocess.check_output([sys.executable, __file__, "sample", policy, control], text=True)
+                    )
+                    row["repeat"] = repeat + 1
+                    rows.append(row)
+                    (output / "resolution-gc.json").write_text(json.dumps(rows, indent=2) + "\n")
+                    print(control, repeat + 1, policy, row["cold_seconds"], row["steady_median_seconds"], flush=True)

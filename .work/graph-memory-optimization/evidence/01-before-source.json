@@ -1,0 +1,11 @@
+{
+  "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+  "local_changes": " M .work/README.md\n M benchmarks/README.md\n M docs/graph-artifact-experiment.md\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? docs/graph-memory-fixture.md\n?? tests/test_graph_memory_fixture.py\n",
+  "source_sha256": {
+    "clean_ioc/container.py": "bec3656bc278e5dff775f453f428f451ff0db3f3eb1b141f076e4d031af43195",
+    "clean_ioc/tooling.py": "ffcb155b0e7787dc1015fec06f12d26fab5359e9aaf31a6b5959e265f0438446",
+    "clean_ioc/selection_census.py": "bc2537527620e3a07b399282296fdf6158cdaccbee4e99d1bee46f9f9e115015",
+    "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+    "benchmarks/graph_memory_evidence.py": "d5ff29c1d892cf1d723661eb579f121d977a9b63492530fcc6fe38fdfd1bec5b"
+  }
+}

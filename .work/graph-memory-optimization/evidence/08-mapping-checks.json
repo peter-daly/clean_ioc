@@ -1,0 +1,91 @@
+{
+  "differential_checks": 10093,
+  "capacity": [
+    {
+      "case": "dense",
+      "entries": 10000,
+      "dense_length": 10000,
+      "sparse_entries": 0,
+      "promoted": false,
+      "shallow_bytes": 170480,
+      "after_deletion": {
+        "entries": 1,
+        "dense_length": 0,
+        "sparse_entries": 0,
+        "promoted": true,
+        "shallow_bytes": 295232
+      }
+    },
+    {
+      "case": "gapped",
+      "entries": 10000,
+      "dense_length": 39997,
+      "sparse_entries": 0,
+      "promoted": false,
+      "shallow_bytes": 436368,
+      "after_deletion": {
+        "entries": 1,
+        "dense_length": 0,
+        "sparse_entries": 0,
+        "promoted": true,
+        "shallow_bytes": 295232
+      }
+    },
+    {
+      "case": "reverse",
+      "entries": 10000,
+      "dense_length": 8000,
+      "sparse_entries": 2000,
+      "promoted": false,
+      "shallow_bytes": 223104,
+      "after_deletion": {
+        "entries": 1,
+        "dense_length": 0,
+        "sparse_entries": 0,
+        "promoted": true,
+        "shallow_bytes": 295232
+      }
+    },
+    {
+      "case": "negative",
+      "entries": 10000,
+      "dense_length": 0,
+      "sparse_entries": 10000,
+      "promoted": false,
+      "shallow_bytes": 380288,
+      "after_deletion": {
+        "entries": 1,
+        "dense_length": 0,
+        "sparse_entries": 0,
+        "promoted": true,
+        "shallow_bytes": 295232
+      }
+    },
+    {
+      "case": "huge",
+      "entries": 10000,
+      "dense_length": 0,
+      "sparse_entries": 10000,
+      "promoted": false,
+      "shallow_bytes": 380288,
+      "after_deletion": {
+        "entries": 1,
+        "dense_length": 0,
+        "sparse_entries": 0,
+        "promoted": true,
+        "shallow_bytes": 295232
+      }
+    }
+  ],
+  "conversion_seconds": 0.17469370795879513,
+  "conversion_retained_peak": [
+    1423904,
+    1423992
+  ],
+  "promotion_seconds": 0.04224195796996355,
+  "promotion_retained_peak": [
+    5243144,
+    9288632
+  ],
+  "codec_sharing": true
+}

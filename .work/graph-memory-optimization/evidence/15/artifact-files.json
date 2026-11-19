@@ -1,0 +1,51 @@
+{
+  "files": {
+    "before": {
+      "path": "/Users/peter.daly/WS/pete/clean_ioc/.cache/graph-memory-task15/before.jsonl",
+      "sha256": "296453e207e1ec72faec5cdfc50d5a8ada32376ffa78b24140d926dc24677c90",
+      "bytes": 29484153,
+      "header": {
+        "compatibility": {
+          "schema": 7,
+          "python": [
+            3,
+            14,
+            4
+          ],
+          "implementation": "cpython",
+          "source_sha256": "46f9066459634df5500d8d7954fd883e6e420176e73bfba9bf551c153c5673a2"
+        }
+      },
+      "actual_loaded_source": {
+        "clean_ioc.container": "317b5fdc607ffe86ed5356e70592b391f66c77e57568eb5250b2e659ac8a9ca7",
+        "benchmarks.graph_artifact": "2b884185a650ea0cf3ebab6c263a30f815195a4ae5177ed139bd586c553703b1"
+      },
+      "loader_source_sha256": "3cee25279bd4b19ccf69c9ce570540b8c272ea8f0a43657b953237021e7e3931"
+    },
+    "after": {
+      "path": "/Users/peter.daly/WS/pete/clean_ioc/.cache/graph-memory-task15/after.jsonl",
+      "sha256": "36bfaa602f9dd9c44d35b66c6f5cbdcfebac7b113a11fd4e0c57b55c3ae89ce9",
+      "bytes": 29484171,
+      "header": {
+        "compatibility": {
+          "schema": 8,
+          "python": [
+            3,
+            14,
+            4
+          ],
+          "implementation": "cpython",
+          "source_sha256": "46f9066459634df5500d8d7954fd883e6e420176e73bfba9bf551c153c5673a2"
+        }
+      },
+      "actual_loaded_source": {
+        "clean_ioc.container": "b8b7695e3bf8df7b44cfad8bffadd37f6478d674184789859c13c3a59ff58a5e",
+        "benchmarks.graph_artifact": "70d3745c9204385ff70aa02957248f0f7686b411d6792dfc7c638736d3fe9723"
+      },
+      "loader_source_sha256": "3cee25279bd4b19ccf69c9ce570540b8c272ea8f0a43657b953237021e7e3931"
+    }
+  },
+  "fresh_processes": 24,
+  "source_and_values_verified": true,
+  "baseline_header_note": "The unchanged codec compatibility digest reads current filesystem source. Baseline SourceLoader overrides are identified by the policy-specific actual_loaded_source hashes here and in every sample; schema7/8 and separate paths distinguish controls. No archived artifacts reused."
+}

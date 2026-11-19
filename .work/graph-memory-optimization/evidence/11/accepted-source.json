@@ -1,0 +1,22 @@
+{
+  "head": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+  "branch": "version2",
+  "production_change_files": [
+    "clean_ioc/container.py",
+    "clean_ioc/tooling.py",
+    "clean_ioc/sarif.py",
+    "benchmarks/graph_artifact.py"
+  ],
+  "source_hashes": {
+    "clean_ioc/container.py": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+    "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+    "clean_ioc/sarif.py": "ceb70a672d9bc4009dfb96e537820a2e56d43ec1199d9e9319738761cb15dc88",
+    "benchmarks/graph_artifact.py": "fe5d534078cc256a1678b56725a84d72539fcae87ce5441e7146a518140a5189"
+  },
+  "tests": [
+    "make ci: 2229 tests passed",
+    "strict MkDocs passed",
+    "25 focused tests passed on Python 3.11, 3.12, 3.13; Python 3.14 covered by CI"
+  ],
+  "scope": "Bounded escaped validation graph lifetime and run failure evidence; no broad performance claim"
+}

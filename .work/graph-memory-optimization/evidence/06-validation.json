@@ -1,0 +1,298 @@
+{
+  "repeated_comparisons": {
+    "baseline": {
+      "runs": 6,
+      "fields": [
+        "activations",
+        "lazy_activations",
+        "template_calls",
+        "validated",
+        "graph",
+        "retained_graph_inventory",
+        "ownership",
+        "routes",
+        "diagnostics",
+        "explain_metadata",
+        "allow_scope_builders"
+      ],
+      "comparisons": [
+        {
+          "run_index": 0,
+          "instrumentation": "none",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 1,
+          "instrumentation": "tracemalloc",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 2,
+          "instrumentation": "none",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 3,
+          "instrumentation": "tracemalloc",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 4,
+          "instrumentation": "none",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 5,
+          "instrumentation": "tracemalloc",
+          "mismatched_fields": []
+        }
+      ]
+    },
+    "weak-activation-cache": {
+      "runs": 6,
+      "fields": [
+        "activations",
+        "lazy_activations",
+        "template_calls",
+        "validated",
+        "graph",
+        "retained_graph_inventory",
+        "ownership",
+        "routes",
+        "diagnostics",
+        "explain_metadata",
+        "allow_scope_builders"
+      ],
+      "comparisons": [
+        {
+          "run_index": 0,
+          "instrumentation": "none",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 1,
+          "instrumentation": "tracemalloc",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 2,
+          "instrumentation": "none",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 3,
+          "instrumentation": "tracemalloc",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 4,
+          "instrumentation": "none",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 5,
+          "instrumentation": "tracemalloc",
+          "mismatched_fields": []
+        }
+      ]
+    },
+    "intern-template-facts": {
+      "runs": 6,
+      "fields": [
+        "activations",
+        "lazy_activations",
+        "template_calls",
+        "validated",
+        "graph",
+        "retained_graph_inventory",
+        "ownership",
+        "routes",
+        "diagnostics",
+        "explain_metadata",
+        "allow_scope_builders"
+      ],
+      "comparisons": [
+        {
+          "run_index": 0,
+          "instrumentation": "none",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 1,
+          "instrumentation": "tracemalloc",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 2,
+          "instrumentation": "none",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 3,
+          "instrumentation": "tracemalloc",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 4,
+          "instrumentation": "none",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 5,
+          "instrumentation": "tracemalloc",
+          "mismatched_fields": []
+        }
+      ]
+    },
+    "scalar-weak-cache": {
+      "runs": 6,
+      "fields": [
+        "activations",
+        "lazy_activations",
+        "template_calls",
+        "validated",
+        "graph",
+        "retained_graph_inventory",
+        "ownership",
+        "routes",
+        "diagnostics",
+        "explain_metadata",
+        "allow_scope_builders"
+      ],
+      "comparisons": [
+        {
+          "run_index": 0,
+          "instrumentation": "none",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 1,
+          "instrumentation": "tracemalloc",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 2,
+          "instrumentation": "none",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 3,
+          "instrumentation": "tracemalloc",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 4,
+          "instrumentation": "none",
+          "mismatched_fields": []
+        },
+        {
+          "run_index": 5,
+          "instrumentation": "tracemalloc",
+          "mismatched_fields": []
+        }
+      ]
+    }
+  },
+  "final_semantics": {
+    "weak-activation-cache-full": {
+      "fields": [
+        "decorator_facts_count",
+        "decorator_facts_sha256",
+        "failed_finalization_decorator_facts",
+        "full",
+        "manifest_fingerprint",
+        "physical_records",
+        "source_attribution",
+        "template_calls"
+      ],
+      "equal": true
+    },
+    "intern-template-facts-full": {
+      "fields": [
+        "decorator_facts_count",
+        "decorator_facts_sha256",
+        "failed_finalization_decorator_facts",
+        "full",
+        "manifest_fingerprint",
+        "physical_records",
+        "source_attribution",
+        "template_calls"
+      ],
+      "equal": true
+    },
+    "scalar-weak-cache-full": {
+      "fields": [
+        "decorator_facts_count",
+        "decorator_facts_sha256",
+        "failed_finalization_decorator_facts",
+        "full",
+        "manifest_fingerprint",
+        "physical_records",
+        "source_attribution",
+        "template_calls"
+      ],
+      "equal": true
+    },
+    "weak-activation-cache-reduced": {
+      "fields": [
+        "failed_finalization_decorator_facts",
+        "full",
+        "physical_records",
+        "source_attribution",
+        "template_calls"
+      ],
+      "equal": true
+    },
+    "intern-template-facts-reduced": {
+      "fields": [
+        "failed_finalization_decorator_facts",
+        "full",
+        "physical_records",
+        "source_attribution",
+        "template_calls"
+      ],
+      "equal": true
+    },
+    "scalar-weak-cache-reduced": {
+      "fields": [
+        "failed_finalization_decorator_facts",
+        "full",
+        "physical_records",
+        "source_attribution",
+        "template_calls"
+      ],
+      "equal": true
+    }
+  },
+  "opaque_value_cases": {
+    "baseline": {
+      "case_count": 16,
+      "matches_baseline": true,
+      "alive_argument_count": 16,
+      "callback_sequences_match": true
+    },
+    "plain-weak": {
+      "case_count": 16,
+      "matches_baseline": false,
+      "alive_argument_count": 0,
+      "callback_sequences_match": true
+    },
+    "scalar-weak": {
+      "case_count": 16,
+      "matches_baseline": true,
+      "alive_argument_count": 16,
+      "callback_sequences_match": true
+    }
+  },
+  "full_test_suites": {
+    "weak-activation-cache": "2132 passed, 1 warning in 30.28s",
+    "intern-template-facts": "2132 passed, 1 warning in 28.42s",
+    "scalar-weak-cache": "2132 passed, 1 warning in 29.48s"
+  },
+  "tooling": {
+    "lint": "All checks passed!",
+    "format": "6 files already formatted",
+    "types": "All checks passed!",
+    "byte_compilation": "All six retained Python scripts compiled successfully."
+  }
+}

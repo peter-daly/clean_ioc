@@ -1,0 +1,1477 @@
+{
+  "mode": "storage",
+  "probe": "both",
+  "rows": [
+    {
+      "compact": {
+        "construct_seconds": 1.125037670135498e-06,
+        "get_seconds_batches": [
+          4.159519448876381e-07,
+          5.00003807246685e-07,
+          3.3294782042503357e-07
+        ],
+        "get_seconds_median": 4.159519448876381e-07,
+        "storage": {
+          "dense_length": 0,
+          "entries": 0,
+          "promoted": false,
+          "shallow_bytes": 240,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 1.750071533024311e-06,
+      "dict": {
+        "construct_seconds": 4.5902561396360397e-07,
+        "get_seconds_batches": [
+          7.499475032091141e-07,
+          6.249174475669861e-07,
+          3.7497375160455704e-07
+        ],
+        "get_seconds_median": 6.249174475669861e-07,
+        "storage": {
+          "shallow_bytes": 64
+        }
+      },
+      "dict_iteration_seconds": 1.2919772416353226e-06,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 0,
+        "promoted": true,
+        "shallow_bytes": 304,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 2.0420411601662636e-06,
+      "shape": "dense",
+      "size": 0
+    },
+    {
+      "compact": {
+        "construct_seconds": 5.830079317092896e-07,
+        "get_seconds_batches": [
+          3.7497375160455704e-07,
+          3.33995558321476e-07,
+          3.7497375160455704e-07
+        ],
+        "get_seconds_median": 3.7497375160455704e-07,
+        "storage": {
+          "dense_length": 0,
+          "entries": 0,
+          "promoted": false,
+          "shallow_bytes": 240,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 8.33999365568161e-07,
+      "dict": {
+        "construct_seconds": 4.5902561396360397e-07,
+        "get_seconds_batches": [
+          4.1606836020946503e-07,
+          3.7497375160455704e-07,
+          3.330642357468605e-07
+        ],
+        "get_seconds_median": 3.7497375160455704e-07,
+        "storage": {
+          "shallow_bytes": 64
+        }
+      },
+      "dict_iteration_seconds": 7.499475032091141e-07,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 0,
+        "promoted": true,
+        "shallow_bytes": 304,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 1.3329554349184036e-06,
+      "shape": "gapped",
+      "size": 0
+    },
+    {
+      "compact": {
+        "construct_seconds": 3.7509016692638397e-07,
+        "get_seconds_batches": [
+          3.33995558321476e-07,
+          3.7497375160455704e-07,
+          3.330642357468605e-07
+        ],
+        "get_seconds_median": 3.33995558321476e-07,
+        "storage": {
+          "dense_length": 0,
+          "entries": 0,
+          "promoted": false,
+          "shallow_bytes": 240,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 8.329516276717186e-07,
+      "dict": {
+        "construct_seconds": 2.919696271419525e-07,
+        "get_seconds_batches": [
+          4.5797787606716156e-07,
+          3.7497375160455704e-07,
+          3.33995558321476e-07
+        ],
+        "get_seconds_median": 3.7497375160455704e-07,
+        "storage": {
+          "shallow_bytes": 64
+        }
+      },
+      "dict_iteration_seconds": 6.669433787465096e-07,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 0,
+        "promoted": true,
+        "shallow_bytes": 304,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 7.50063918530941e-07,
+      "shape": "reverse",
+      "size": 0
+    },
+    {
+      "compact": {
+        "construct_seconds": 2.919696271419525e-07,
+        "get_seconds_batches": [
+          3.7497375160455704e-07,
+          4.5902561396360397e-07,
+          3.3294782042503357e-07
+        ],
+        "get_seconds_median": 3.7497375160455704e-07,
+        "storage": {
+          "dense_length": 0,
+          "entries": 0,
+          "promoted": false,
+          "shallow_bytes": 240,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 7.499475032091141e-07,
+      "dict": {
+        "construct_seconds": 2.50060111284256e-07,
+        "get_seconds_batches": [
+          4.1606836020946503e-07,
+          3.7497375160455704e-07,
+          4.169996827840805e-07
+        ],
+        "get_seconds_median": 4.1606836020946503e-07,
+        "storage": {
+          "shallow_bytes": 64
+        }
+      },
+      "dict_iteration_seconds": 7.50063918530941e-07,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 0,
+        "promoted": true,
+        "shallow_bytes": 304,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 5.420297384262085e-07,
+      "shape": "negative",
+      "size": 0
+    },
+    {
+      "compact": {
+        "construct_seconds": 2.4994369596242905e-07,
+        "get_seconds_batches": [
+          3.7497375160455704e-07,
+          3.3294782042503357e-07,
+          4.169996827840805e-07
+        ],
+        "get_seconds_median": 3.7497375160455704e-07,
+        "storage": {
+          "dense_length": 0,
+          "entries": 0,
+          "promoted": false,
+          "shallow_bytes": 240,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 8.749775588512421e-07,
+      "dict": {
+        "construct_seconds": 2.08965502679348e-07,
+        "get_seconds_batches": [
+          3.7497375160455704e-07,
+          3.3294782042503357e-07,
+          3.7497375160455704e-07
+        ],
+        "get_seconds_median": 3.7497375160455704e-07,
+        "storage": {
+          "shallow_bytes": 64
+        }
+      },
+      "dict_iteration_seconds": 6.670597940683365e-07,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 0,
+        "promoted": true,
+        "shallow_bytes": 304,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 5.84055669605732e-07,
+      "shape": "huge",
+      "size": 0
+    },
+    {
+      "compact": {
+        "construct_seconds": 2.8329668566584587e-06,
+        "get_seconds_batches": [
+          1.9170111045241356e-06,
+          1.0830117389559746e-06,
+          1.041102223098278e-06
+        ],
+        "get_seconds_median": 1.0830117389559746e-06,
+        "storage": {
+          "dense_length": 1,
+          "entries": 1,
+          "promoted": false,
+          "shallow_bytes": 288,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 2.750079147517681e-06,
+      "dict": {
+        "construct_seconds": 4.5902561396360397e-07,
+        "get_seconds_batches": [
+          1.125037670135498e-06,
+          5.830079317092896e-07,
+          5.420297384262085e-07
+        ],
+        "get_seconds_median": 5.830079317092896e-07,
+        "storage": {
+          "shallow_bytes": 224
+        }
+      },
+      "dict_iteration_seconds": 1.291045919060707e-06,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 1,
+        "promoted": true,
+        "shallow_bytes": 464,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 1.00000761449337e-06,
+      "shape": "dense",
+      "size": 1
+    },
+    {
+      "compact": {
+        "construct_seconds": 2.2080494090914726e-06,
+        "get_seconds_batches": [
+          1.250067725777626e-06,
+          1.0420335456728935e-06,
+          1.1249212548136711e-06
+        ],
+        "get_seconds_median": 1.1249212548136711e-06,
+        "storage": {
+          "dense_length": 1,
+          "entries": 1,
+          "promoted": false,
+          "shallow_bytes": 288,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 1.708976924419403e-06,
+      "dict": {
+        "construct_seconds": 3.7497375160455704e-07,
+        "get_seconds_batches": [
+          6.669433787465096e-07,
+          5.83939254283905e-07,
+          5.420297384262085e-07
+        ],
+        "get_seconds_median": 5.83939254283905e-07,
+        "storage": {
+          "shallow_bytes": 224
+        }
+      },
+      "dict_iteration_seconds": 9.170034900307655e-07,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 1,
+        "promoted": true,
+        "shallow_bytes": 464,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 7.50063918530941e-07,
+      "shape": "gapped",
+      "size": 1
+    },
+    {
+      "compact": {
+        "construct_seconds": 1.166015863418579e-06,
+        "get_seconds_batches": [
+          1.1669471859931946e-06,
+          1.00000761449337e-06,
+          1.0409858077764511e-06
+        ],
+        "get_seconds_median": 1.0409858077764511e-06,
+        "storage": {
+          "dense_length": 1,
+          "entries": 1,
+          "promoted": false,
+          "shallow_bytes": 288,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 1.584063284099102e-06,
+      "dict": {
+        "construct_seconds": 3.7497375160455704e-07,
+        "get_seconds_batches": [
+          6.660120561718941e-07,
+          5.830079317092896e-07,
+          5.419133231043816e-07
+        ],
+        "get_seconds_median": 5.830079317092896e-07,
+        "storage": {
+          "shallow_bytes": 224
+        }
+      },
+      "dict_iteration_seconds": 8.749775588512421e-07,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 1,
+        "promoted": true,
+        "shallow_bytes": 464,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 7.080379873514175e-07,
+      "shape": "reverse",
+      "size": 1
+    },
+    {
+      "compact": {
+        "construct_seconds": 7.08969309926033e-07,
+        "get_seconds_batches": [
+          1.125037670135498e-06,
+          1.125037670135498e-06,
+          9.170034900307655e-07
+        ],
+        "get_seconds_median": 1.125037670135498e-06,
+        "storage": {
+          "dense_length": 0,
+          "entries": 1,
+          "promoted": false,
+          "shallow_bytes": 432,
+          "sparse_entries": 1
+        }
+      },
+      "compact_raw_iteration_seconds": 1.6670674085617065e-06,
+      "dict": {
+        "construct_seconds": 2.919696271419525e-07,
+        "get_seconds_batches": [
+          6.669433787465096e-07,
+          5.84055669605732e-07,
+          5.830079317092896e-07
+        ],
+        "get_seconds_median": 5.84055669605732e-07,
+        "storage": {
+          "shallow_bytes": 224
+        }
+      },
+      "dict_iteration_seconds": 9.170034900307655e-07,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 1,
+        "promoted": true,
+        "shallow_bytes": 464,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 2.040993422269821e-06,
+      "shape": "negative",
+      "size": 1
+    },
+    {
+      "compact": {
+        "construct_seconds": 1.1670636013150215e-06,
+        "get_seconds_batches": [
+          1.291045919060707e-06,
+          1.125037670135498e-06,
+          1.0830117389559746e-06
+        ],
+        "get_seconds_median": 1.125037670135498e-06,
+        "storage": {
+          "dense_length": 0,
+          "entries": 1,
+          "promoted": false,
+          "shallow_bytes": 432,
+          "sparse_entries": 1
+        }
+      },
+      "compact_raw_iteration_seconds": 1.91607978194952e-06,
+      "dict": {
+        "construct_seconds": 5.00003807246685e-07,
+        "get_seconds_batches": [
+          9.170034900307655e-07,
+          7.499475032091141e-07,
+          6.670597940683365e-07
+        ],
+        "get_seconds_median": 7.499475032091141e-07,
+        "storage": {
+          "shallow_bytes": 224
+        }
+      },
+      "dict_iteration_seconds": 1.0409858077764511e-06,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 1,
+        "promoted": true,
+        "shallow_bytes": 464,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 8.33999365568161e-07,
+      "shape": "huge",
+      "size": 1
+    },
+    {
+      "compact": {
+        "construct_seconds": 5.332985892891884e-06,
+        "get_seconds_batches": [
+          7.125083357095718e-06,
+          6.625079549849033e-06,
+          6.624963134527206e-06
+        ],
+        "get_seconds_median": 6.625079549849033e-06,
+        "storage": {
+          "dense_length": 10,
+          "entries": 10,
+          "promoted": false,
+          "shallow_bytes": 496,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 8.416012860834599e-06,
+      "dict": {
+        "construct_seconds": 1.1669471859931946e-06,
+        "get_seconds_batches": [
+          3.1670788303017616e-06,
+          2.4168984964489937e-06,
+          2.374988980591297e-06
+        ],
+        "get_seconds_median": 2.4168984964489937e-06,
+        "storage": {
+          "shallow_bytes": 352
+        }
+      },
+      "dict_iteration_seconds": 2.7080532163381577e-06,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 10,
+        "promoted": true,
+        "shallow_bytes": 592,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 2.2921012714505196e-06,
+      "shape": "dense",
+      "size": 10
+    },
+    {
+      "compact": {
+        "construct_seconds": 5.332985892891884e-06,
+        "get_seconds_batches": [
+          7.166992872953415e-06,
+          6.707967258989811e-06,
+          6.500049494206905e-06
+        ],
+        "get_seconds_median": 6.707967258989811e-06,
+        "storage": {
+          "dense_length": 37,
+          "entries": 10,
+          "promoted": false,
+          "shallow_bytes": 688,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 8.25000461190939e-06,
+      "dict": {
+        "construct_seconds": 1.250067725777626e-06,
+        "get_seconds_batches": [
+          3.3329706639051437e-06,
+          2.749962732195854e-06,
+          2.540997229516506e-06
+        ],
+        "get_seconds_median": 2.749962732195854e-06,
+        "storage": {
+          "shallow_bytes": 352
+        }
+      },
+      "dict_iteration_seconds": 2.4579931050539017e-06,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 10,
+        "promoted": true,
+        "shallow_bytes": 592,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 2.250075340270996e-06,
+      "shape": "gapped",
+      "size": 10
+    },
+    {
+      "compact": {
+        "construct_seconds": 4.416098818182945e-06,
+        "get_seconds_batches": [
+          7.125083357095718e-06,
+          6.709014996886253e-06,
+          6.625079549849033e-06
+        ],
+        "get_seconds_median": 6.709014996886253e-06,
+        "storage": {
+          "dense_length": 10,
+          "entries": 10,
+          "promoted": false,
+          "shallow_bytes": 448,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 8.25000461190939e-06,
+      "dict": {
+        "construct_seconds": 8.330680429935455e-07,
+        "get_seconds_batches": [
+          3.08395829051733e-06,
+          2.624932676553726e-06,
+          2.4170149117708206e-06
+        ],
+        "get_seconds_median": 2.624932676553726e-06,
+        "storage": {
+          "shallow_bytes": 352
+        }
+      },
+      "dict_iteration_seconds": 2.458924427628517e-06,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 10,
+        "promoted": true,
+        "shallow_bytes": 592,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 2.00001522898674e-06,
+      "shape": "reverse",
+      "size": 10
+    },
+    {
+      "compact": {
+        "construct_seconds": 3.5410048440098763e-06,
+        "get_seconds_batches": [
+          7.08398874849081e-06,
+          6.542075425386429e-06,
+          6.249989382922649e-06
+        ],
+        "get_seconds_median": 6.542075425386429e-06,
+        "storage": {
+          "dense_length": 0,
+          "entries": 10,
+          "promoted": false,
+          "shallow_bytes": 656,
+          "sparse_entries": 10
+        }
+      },
+      "compact_raw_iteration_seconds": 8.167000487446785e-06,
+      "dict": {
+        "construct_seconds": 1.208973117172718e-06,
+        "get_seconds_batches": [
+          3.7499703466892242e-06,
+          3.374996595084667e-06,
+          2.9579969123005867e-06
+        ],
+        "get_seconds_median": 3.374996595084667e-06,
+        "storage": {
+          "shallow_bytes": 352
+        }
+      },
+      "dict_iteration_seconds": 2.874992787837982e-06,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 10,
+        "promoted": true,
+        "shallow_bytes": 592,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 2.416083589196205e-06,
+      "shape": "negative",
+      "size": 10
+    },
+    {
+      "compact": {
+        "construct_seconds": 4.417030140757561e-06,
+        "get_seconds_batches": [
+          9.040930308401585e-06,
+          7.95791856944561e-06,
+          7.625087164342403e-06
+        ],
+        "get_seconds_median": 7.95791856944561e-06,
+        "storage": {
+          "dense_length": 0,
+          "entries": 10,
+          "promoted": false,
+          "shallow_bytes": 656,
+          "sparse_entries": 10
+        }
+      },
+      "compact_raw_iteration_seconds": 9.58307646214962e-06,
+      "dict": {
+        "construct_seconds": 1.2080417945981026e-06,
+        "get_seconds_batches": [
+          3.625056706368923e-06,
+          3.208988346159458e-06,
+          3.0830269679427147e-06
+        ],
+        "get_seconds_median": 3.208988346159458e-06,
+        "storage": {
+          "shallow_bytes": 352
+        }
+      },
+      "dict_iteration_seconds": 2.500019036233425e-06,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 10,
+        "promoted": true,
+        "shallow_bytes": 592,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 2.5830231606960297e-06,
+      "shape": "huge",
+      "size": 10
+    },
+    {
+      "compact": {
+        "construct_seconds": 4.691700451076031e-05,
+        "get_seconds_batches": [
+          6.295798812061548e-05,
+          6.179208867251873e-05,
+          6.17919722571969e-05
+        ],
+        "get_seconds_median": 6.179208867251873e-05,
+        "storage": {
+          "dense_length": 100,
+          "entries": 100,
+          "promoted": false,
+          "shallow_bytes": 1968,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 7.404095958918333e-05,
+      "dict": {
+        "construct_seconds": 6.9160014390945435e-06,
+        "get_seconds_batches": [
+          2.1332991309463978e-05,
+          2.062495332211256e-05,
+          2.0415987819433212e-05
+        ],
+        "get_seconds_median": 2.062495332211256e-05,
+        "storage": {
+          "shallow_bytes": 4688
+        }
+      },
+      "dict_iteration_seconds": 1.7874990589916706e-05,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 100,
+        "promoted": true,
+        "shallow_bytes": 4928,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 1.5208031982183456e-05,
+      "shape": "dense",
+      "size": 100
+    },
+    {
+      "compact": {
+        "construct_seconds": 4.879198968410492e-05,
+        "get_seconds_batches": [
+          6.433401722460985e-05,
+          6.350001785904169e-05,
+          6.341596599668264e-05
+        ],
+        "get_seconds_median": 6.350001785904169e-05,
+        "storage": {
+          "dense_length": 397,
+          "entries": 100,
+          "promoted": false,
+          "shallow_bytes": 4304,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 7.662491407245398e-05,
+      "dict": {
+        "construct_seconds": 7.833004929125309e-06,
+        "get_seconds_batches": [
+          2.2124964743852615e-05,
+          2.1459069103002548e-05,
+          2.12501036003232e-05
+        ],
+        "get_seconds_median": 2.1459069103002548e-05,
+        "storage": {
+          "shallow_bytes": 4688
+        }
+      },
+      "dict_iteration_seconds": 1.76670728251338e-05,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 100,
+        "promoted": true,
+        "shallow_bytes": 4928,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 1.7083948478102684e-05,
+      "shape": "gapped",
+      "size": 100
+    },
+    {
+      "compact": {
+        "construct_seconds": 3.8082944229245186e-05,
+        "get_seconds_batches": [
+          6.29170099273324e-05,
+          6.183306686580181e-05,
+          6.187497638165951e-05
+        ],
+        "get_seconds_median": 6.187497638165951e-05,
+        "storage": {
+          "dense_length": 80,
+          "entries": 100,
+          "promoted": false,
+          "shallow_bytes": 2312,
+          "sparse_entries": 20
+        }
+      },
+      "compact_raw_iteration_seconds": 7.329101208597422e-05,
+      "dict": {
+        "construct_seconds": 6.6659413278102875e-06,
+        "get_seconds_batches": [
+          2.120796125382185e-05,
+          2.0459061488509178e-05,
+          2.0415987819433212e-05
+        ],
+        "get_seconds_median": 2.0459061488509178e-05,
+        "storage": {
+          "shallow_bytes": 4688
+        }
+      },
+      "dict_iteration_seconds": 1.7874990589916706e-05,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 100,
+        "promoted": true,
+        "shallow_bytes": 4928,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 1.4874967746436596e-05,
+      "shape": "reverse",
+      "size": 100
+    },
+    {
+      "compact": {
+        "construct_seconds": 2.616702113300562e-05,
+        "get_seconds_batches": [
+          5.458400119096041e-05,
+          5.3750001825392246e-05,
+          5.3582945838570595e-05
+        ],
+        "get_seconds_median": 5.3750001825392246e-05,
+        "storage": {
+          "dense_length": 0,
+          "entries": 100,
+          "promoted": false,
+          "shallow_bytes": 5728,
+          "sparse_entries": 100
+        }
+      },
+      "compact_raw_iteration_seconds": 6.129196844995022e-05,
+      "dict": {
+        "construct_seconds": 6.375019438564777e-06,
+        "get_seconds_batches": [
+          2.174999099224806e-05,
+          2.0833918824791908e-05,
+          2.0832987502217293e-05
+        ],
+        "get_seconds_median": 2.0833918824791908e-05,
+        "storage": {
+          "shallow_bytes": 4688
+        }
+      },
+      "dict_iteration_seconds": 1.720909494906664e-05,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 100,
+        "promoted": true,
+        "shallow_bytes": 4928,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 1.2791948392987251e-05,
+      "shape": "negative",
+      "size": 100
+    },
+    {
+      "compact": {
+        "construct_seconds": 3.925000783056021e-05,
+        "get_seconds_batches": [
+          7.345795165747404e-05,
+          7.241591811180115e-05,
+          7.237493991851807e-05
+        ],
+        "get_seconds_median": 7.241591811180115e-05,
+        "storage": {
+          "dense_length": 0,
+          "entries": 100,
+          "promoted": false,
+          "shallow_bytes": 5728,
+          "sparse_entries": 100
+        }
+      },
+      "compact_raw_iteration_seconds": 8.191599044948816e-05,
+      "dict": {
+        "construct_seconds": 7.2089023888111115e-06,
+        "get_seconds_batches": [
+          2.7374946512281895e-05,
+          2.675002906471491e-05,
+          2.662499900907278e-05
+        ],
+        "get_seconds_median": 2.675002906471491e-05,
+        "storage": {
+          "shallow_bytes": 4688
+        }
+      },
+      "dict_iteration_seconds": 1.7000013031065464e-05,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 100,
+        "promoted": true,
+        "shallow_bytes": 4928,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 1.708290074020624e-05,
+      "shape": "huge",
+      "size": 100
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.0004700000863522291,
+        "get_seconds_batches": [
+          0.0006301660323515534,
+          0.0006301249377429485,
+          0.0006293340120464563
+        ],
+        "get_seconds_median": 0.0006301249377429485,
+        "storage": {
+          "dense_length": 1000,
+          "entries": 1000,
+          "promoted": false,
+          "shallow_bytes": 17840,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 0.0007511250441893935,
+      "dict": {
+        "construct_seconds": 5.429191514849663e-05,
+        "get_seconds_batches": [
+          0.0002006670692935586,
+          0.0001996669452637434,
+          0.0002001670654863119
+        ],
+        "get_seconds_median": 0.0002001670654863119,
+        "storage": {
+          "shallow_bytes": 36952
+        }
+      },
+      "dict_iteration_seconds": 0.00016437505837529898,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 1000,
+        "promoted": true,
+        "shallow_bytes": 37192,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.00014641694724559784,
+      "shape": "dense",
+      "size": 1000
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.0004961669910699129,
+        "get_seconds_batches": [
+          0.000657708034850657,
+          0.0006297921063378453,
+          0.0006329170428216457
+        ],
+        "get_seconds_median": 0.0006329170428216457,
+        "storage": {
+          "dense_length": 3997,
+          "entries": 1000,
+          "promoted": false,
+          "shallow_bytes": 42032,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 0.0007413339335471392,
+      "dict": {
+        "construct_seconds": 6.787502206861973e-05,
+        "get_seconds_batches": [
+          0.00021416693925857544,
+          0.00021116703283041716,
+          0.0002108750632032752
+        ],
+        "get_seconds_median": 0.00021116703283041716,
+        "storage": {
+          "shallow_bytes": 36952
+        }
+      },
+      "dict_iteration_seconds": 0.00016312499064952135,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 1000,
+        "promoted": true,
+        "shallow_bytes": 37192,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.00015891704242676497,
+      "shape": "gapped",
+      "size": 1000
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.0003791250055655837,
+        "get_seconds_batches": [
+          0.0006277079228311777,
+          0.0006261670496314764,
+          0.0006257910281419754
+        ],
+        "get_seconds_median": 0.0006261670496314764,
+        "storage": {
+          "dense_length": 800,
+          "entries": 1000,
+          "promoted": false,
+          "shallow_bytes": 24680,
+          "sparse_entries": 200
+        }
+      },
+      "compact_raw_iteration_seconds": 0.0007335830014199018,
+      "dict": {
+        "construct_seconds": 5.8125006034970284e-05,
+        "get_seconds_batches": [
+          0.00020091701298952103,
+          0.00020029197912663221,
+          0.00020054203923791647
+        ],
+        "get_seconds_median": 0.00020054203923791647,
+        "storage": {
+          "shallow_bytes": 36952
+        }
+      },
+      "dict_iteration_seconds": 0.00016449997201561928,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 1000,
+        "promoted": true,
+        "shallow_bytes": 37192,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.00014283391647040844,
+      "shape": "reverse",
+      "size": 1000
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.00024395808577537537,
+        "get_seconds_batches": [
+          0.000536999898031354,
+          0.0005280410405248404,
+          0.0005280830664560199
+        ],
+        "get_seconds_median": 0.0005280830664560199,
+        "storage": {
+          "dense_length": 0,
+          "entries": 1000,
+          "promoted": false,
+          "shallow_bytes": 45928,
+          "sparse_entries": 1000
+        }
+      },
+      "compact_raw_iteration_seconds": 0.0005927080055698752,
+      "dict": {
+        "construct_seconds": 5.7124998420476913e-05,
+        "get_seconds_batches": [
+          0.00020104204304516315,
+          0.00020037498325109482,
+          0.0002002499531954527
+        ],
+        "get_seconds_median": 0.00020037498325109482,
+        "storage": {
+          "shallow_bytes": 36952
+        }
+      },
+      "dict_iteration_seconds": 0.0001627919264137745,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 1000,
+        "promoted": true,
+        "shallow_bytes": 37192,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.00011491705663502216,
+      "shape": "negative",
+      "size": 1000
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.00038308301009237766,
+        "get_seconds_batches": [
+          0.0007227499736472964,
+          0.0007216670783236623,
+          0.0007200419204309583
+        ],
+        "get_seconds_median": 0.0007216670783236623,
+        "storage": {
+          "dense_length": 0,
+          "entries": 1000,
+          "promoted": false,
+          "shallow_bytes": 45928,
+          "sparse_entries": 1000
+        }
+      },
+      "compact_raw_iteration_seconds": 0.0008001669775694609,
+      "dict": {
+        "construct_seconds": 6.620795466005802e-05,
+        "get_seconds_batches": [
+          0.0002613330725580454,
+          0.0002592499367892742,
+          0.00026074994821101427
+        ],
+        "get_seconds_median": 0.00026074994821101427,
+        "storage": {
+          "shallow_bytes": 36952
+        }
+      },
+      "dict_iteration_seconds": 0.00016249995678663254,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 1000,
+        "promoted": true,
+        "shallow_bytes": 37192,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.00015333399642258883,
+      "shape": "huge",
+      "size": 1000
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.004602834000252187,
+        "get_seconds_batches": [
+          0.006312916986644268,
+          0.006321707973256707,
+          0.006351125077344477
+        ],
+        "get_seconds_median": 0.006321707973256707,
+        "storage": {
+          "dense_length": 10000,
+          "entries": 10000,
+          "promoted": false,
+          "shallow_bytes": 170480,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 0.0074845419730991125,
+      "dict": {
+        "construct_seconds": 0.0005339590134099126,
+        "get_seconds_batches": [
+          0.002029833965934813,
+          0.001993749989196658,
+          0.0019938750192523003
+        ],
+        "get_seconds_median": 0.0019938750192523003,
+        "storage": {
+          "shallow_bytes": 294992
+        }
+      },
+      "dict_iteration_seconds": 0.0016144580440595746,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 10000,
+        "promoted": true,
+        "shallow_bytes": 295232,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.0014680830063298345,
+      "shape": "dense",
+      "size": 10000
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.004866624949499965,
+        "get_seconds_batches": [
+          0.006411500042304397,
+          0.0064015829702839255,
+          0.0064238749910146
+        ],
+        "get_seconds_median": 0.006411500042304397,
+        "storage": {
+          "dense_length": 39997,
+          "entries": 10000,
+          "promoted": false,
+          "shallow_bytes": 436368,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 0.007436082931235433,
+      "dict": {
+        "construct_seconds": 0.000673583010211587,
+        "get_seconds_batches": [
+          0.0021817919332534075,
+          0.0021904580062255263,
+          0.0021960409358143806
+        ],
+        "get_seconds_median": 0.0021904580062255263,
+        "storage": {
+          "shallow_bytes": 294992
+        }
+      },
+      "dict_iteration_seconds": 0.0016124580288305879,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 10000,
+        "promoted": true,
+        "shallow_bytes": 295232,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.0015724579570814967,
+      "shape": "gapped",
+      "size": 10000
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.0037774170050397515,
+        "get_seconds_batches": [
+          0.006278750021010637,
+          0.006321375025436282,
+          0.00627074996009469
+        ],
+        "get_seconds_median": 0.006278750021010637,
+        "storage": {
+          "dense_length": 8000,
+          "entries": 10000,
+          "promoted": false,
+          "shallow_bytes": 223104,
+          "sparse_entries": 2000
+        }
+      },
+      "compact_raw_iteration_seconds": 0.007313209003768861,
+      "dict": {
+        "construct_seconds": 0.0005622500320896506,
+        "get_seconds_batches": [
+          0.0020163750741630793,
+          0.0019934159936383367,
+          0.001991500030271709
+        ],
+        "get_seconds_median": 0.0019934159936383367,
+        "storage": {
+          "shallow_bytes": 294992
+        }
+      },
+      "dict_iteration_seconds": 0.001614667009562254,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 10000,
+        "promoted": true,
+        "shallow_bytes": 295232,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.0014099580002948642,
+      "shape": "reverse",
+      "size": 10000
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.002399333054199815,
+        "get_seconds_batches": [
+          0.005306834005750716,
+          0.0054460830288007855,
+          0.005453167017549276
+        ],
+        "get_seconds_median": 0.0054460830288007855,
+        "storage": {
+          "dense_length": 0,
+          "entries": 10000,
+          "promoted": false,
+          "shallow_bytes": 380288,
+          "sparse_entries": 10000
+        }
+      },
+      "compact_raw_iteration_seconds": 0.006141124991700053,
+      "dict": {
+        "construct_seconds": 0.0005615410627797246,
+        "get_seconds_batches": [
+          0.002000083914026618,
+          0.00201595900580287,
+          0.0019911249401047826
+        ],
+        "get_seconds_median": 0.002000083914026618,
+        "storage": {
+          "shallow_bytes": 294992
+        }
+      },
+      "dict_iteration_seconds": 0.0016198750818148255,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 10000,
+        "promoted": true,
+        "shallow_bytes": 295232,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.0011986249592155218,
+      "shape": "negative",
+      "size": 10000
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.004056666977703571,
+        "get_seconds_batches": [
+          0.00734241702593863,
+          0.007734457962214947,
+          0.0076333750039339066
+        ],
+        "get_seconds_median": 0.0076333750039339066,
+        "storage": {
+          "dense_length": 0,
+          "entries": 10000,
+          "promoted": false,
+          "shallow_bytes": 380288,
+          "sparse_entries": 10000
+        }
+      },
+      "compact_raw_iteration_seconds": 0.008172583067789674,
+      "dict": {
+        "construct_seconds": 0.0006795419612899423,
+        "get_seconds_batches": [
+          0.002711959066800773,
+          0.0027207090752199292,
+          0.0028231251053512096
+        ],
+        "get_seconds_median": 0.0027207090752199292,
+        "storage": {
+          "shallow_bytes": 294992
+        }
+      },
+      "dict_iteration_seconds": 0.0017078339587897062,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 10000,
+        "promoted": true,
+        "shallow_bytes": 295232,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.0015743330586701632,
+      "shape": "huge",
+      "size": 10000
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.04652854194864631,
+        "get_seconds_batches": [
+          0.06357825000304729,
+          0.06313587492331862,
+          0.06303529092110693
+        ],
+        "get_seconds_median": 0.06313587492331862,
+        "storage": {
+          "dense_length": 100000,
+          "entries": 100000,
+          "promoted": false,
+          "shallow_bytes": 1602096,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 0.074067790992558,
+      "dict": {
+        "construct_seconds": 0.006220499984920025,
+        "get_seconds_batches": [
+          0.020311374915763736,
+          0.020587416947819293,
+          0.020326124969869852
+        ],
+        "get_seconds_median": 0.020326124969869852,
+        "storage": {
+          "shallow_bytes": 5242960
+        }
+      },
+      "dict_iteration_seconds": 0.016609625075943768,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 100000,
+        "promoted": true,
+        "shallow_bytes": 5243200,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.015265333000570536,
+      "shape": "dense",
+      "size": 100000
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.04625625000335276,
+        "get_seconds_batches": [
+          0.06311595800798386,
+          0.06315004092175514,
+          0.06440079095773399
+        ],
+        "get_seconds_median": 0.06315004092175514,
+        "storage": {
+          "dense_length": 399997,
+          "entries": 100000,
+          "promoted": false,
+          "shallow_bytes": 4093776,
+          "sparse_entries": 0
+        }
+      },
+      "compact_raw_iteration_seconds": 0.07416349998675287,
+      "dict": {
+        "construct_seconds": 0.007241124985739589,
+        "get_seconds_batches": [
+          0.022592958062887192,
+          0.020991083001717925,
+          0.02125062490813434
+        ],
+        "get_seconds_median": 0.02125062490813434,
+        "storage": {
+          "shallow_bytes": 5242960
+        }
+      },
+      "dict_iteration_seconds": 0.01615787495393306,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 100000,
+        "promoted": true,
+        "shallow_bytes": 5243200,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.016384666902013123,
+      "shape": "gapped",
+      "size": 100000
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.03801170806400478,
+        "get_seconds_batches": [
+          0.06315216596703976,
+          0.06281299993861467,
+          0.06277758302167058
+        ],
+        "get_seconds_median": 0.06281299993861467,
+        "storage": {
+          "dense_length": 80000,
+          "entries": 100000,
+          "promoted": false,
+          "shallow_bytes": 2031016,
+          "sparse_entries": 20000
+        }
+      },
+      "compact_raw_iteration_seconds": 0.07856470800470561,
+      "dict": {
+        "construct_seconds": 0.005894916946999729,
+        "get_seconds_batches": [
+          0.022337375092320144,
+          0.02227595797739923,
+          0.021217208937741816
+        ],
+        "get_seconds_median": 0.02227595797739923,
+        "storage": {
+          "shallow_bytes": 5242960
+        }
+      },
+      "dict_iteration_seconds": 0.01619154098443687,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 100000,
+        "promoted": true,
+        "shallow_bytes": 5243200,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.014962792047299445,
+      "shape": "reverse",
+      "size": 100000
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.024484542082063854,
+        "get_seconds_batches": [
+          0.05380116694141179,
+          0.05295712500810623,
+          0.05299941706471145
+        ],
+        "get_seconds_median": 0.05299941706471145,
+        "storage": {
+          "dense_length": 0,
+          "entries": 100000,
+          "promoted": false,
+          "shallow_bytes": 6044064,
+          "sparse_entries": 100000
+        }
+      },
+      "compact_raw_iteration_seconds": 0.05928433407098055,
+      "dict": {
+        "construct_seconds": 0.006003750022500753,
+        "get_seconds_batches": [
+          0.02195229206699878,
+          0.020745999994687736,
+          0.02009583404287696
+        ],
+        "get_seconds_median": 0.020745999994687736,
+        "storage": {
+          "shallow_bytes": 5242960
+        }
+      },
+      "dict_iteration_seconds": 0.016175625030882657,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 100000,
+        "promoted": true,
+        "shallow_bytes": 5243200,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.01171412505209446,
+      "shape": "negative",
+      "size": 100000
+    },
+    {
+      "compact": {
+        "construct_seconds": 0.03866612503770739,
+        "get_seconds_batches": [
+          0.07318350009154528,
+          0.07284883304964751,
+          0.07276466698385775
+        ],
+        "get_seconds_median": 0.07284883304964751,
+        "storage": {
+          "dense_length": 0,
+          "entries": 100000,
+          "promoted": false,
+          "shallow_bytes": 6044064,
+          "sparse_entries": 100000
+        }
+      },
+      "compact_raw_iteration_seconds": 0.08012174989562482,
+      "dict": {
+        "construct_seconds": 0.006607708055526018,
+        "get_seconds_batches": [
+          0.02653387503232807,
+          0.026517624966800213,
+          0.02636949997395277
+        ],
+        "get_seconds_median": 0.026517624966800213,
+        "storage": {
+          "shallow_bytes": 5242960
+        }
+      },
+      "dict_iteration_seconds": 0.01619174994993955,
+      "promoted_storage": {
+        "dense_length": 0,
+        "entries": 100000,
+        "promoted": true,
+        "shallow_bytes": 5243200,
+        "sparse_entries": 0
+      },
+      "promotion_seconds": 0.015542082954198122,
+      "shape": "huge",
+      "size": 100000
+    }
+  ],
+  "script_sha256": "bbc3938e6b4a22c0f7bf0d356e77994a7ef2a6640f110acb4eb1a7c0ae28d6cf"
+}

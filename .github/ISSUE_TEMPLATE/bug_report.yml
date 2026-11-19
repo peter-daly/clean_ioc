@@ -1,0 +1,56 @@
+name: Bug report
+description: Report reproducible behavior that differs from Clean IoC's documented behavior.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to make Clean IoC better.
+  - type: input
+    id: version
+    attributes:
+      label: Clean IoC version
+      placeholder: 1.25.0
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: 3.12.5
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Registration or resolution
+        - Lifespans or cleanup
+        - Validation or explanation
+        - Generics or decorators
+        - FastAPI integration
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include complete registrations, type annotations, and the resolve/validate call.
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and traceback
+    validations:
+      required: true

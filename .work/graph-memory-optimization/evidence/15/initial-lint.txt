@@ -1,0 +1,5 @@
+.work/graph-memory-optimization/evidence/15/census.py:61:75: RUF007 Prefer `itertools.pairwise()` over `zip()` when iterating over successive pairs
+.work/graph-memory-optimization/evidence/15/mapping-checks.py:189:57: RUF100 [*] Unused `noqa` directive (unused: `E402`)
+.work/graph-memory-optimization/evidence/15/operation-audit.py:186:57: RUF100 [*] Unused `noqa` directive (unused: `E402`)
+Found 3 errors.
+[*] 2 fixable with the `--fix` option.

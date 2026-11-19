@@ -1,0 +1,41 @@
+{
+  "run": {
+    "processes": 12,
+    "identical": [
+      "validated",
+      "template_calls",
+      "activations",
+      "lazy_activations",
+      "graph",
+      "retained_graph_inventory"
+    ],
+    "before_source_hashes_consistent": true,
+    "after_source_hashes_consistent": true
+  },
+  "rich-run": {
+    "processes": 12,
+    "identical": [
+      "validated",
+      "template_calls",
+      "activations",
+      "lazy_activations",
+      "graph",
+      "retained_graph_inventory"
+    ],
+    "before_source_hashes_consistent": true,
+    "after_source_hashes_consistent": true
+  },
+  "analysis": {
+    "processes": 12,
+    "identical": [
+      "validated",
+      "template_calls",
+      "activations",
+      "lazy_activations",
+      "graph",
+      "retained_graph_inventory"
+    ],
+    "before_source_hashes_consistent": true,
+    "after_source_hashes_consistent": true
+  }
+}

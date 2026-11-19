@@ -1,0 +1,246 @@
+--- a/README.md
++++ b/README.md
+@@ -77,7 +77,16 @@
+ ## Build and runtime model
+ 
+ `ContainerBuilder.build()` performs registration discovery, contextual selection, structural validation, and activation-plan
+-compilation at an explicit application boundary.
++compilation at an explicit application boundary. The default `build(mode="run")` retains execution plans,
++complete selected-registration discovery, ordinary scopes, providers/maps, cleanup, slots and warmups. It discards
++optional graph inspection and future overlay composition after mandatory structural checks and build rules finish.
++
++Use a fresh builder from the same composition factory with `build(mode="analysis")` for graph inspection, full
++`validation_report()`, unused dependency-only validation, and `new_scope_builder()` overlays. Both modes preserve
++application wiring and execution semantics; analysis additionally captures diagnostic history and aggregates
++independent build failures. A successful builder is single-use, so a run runtime cannot be upgraded in place.
++The old fine-grained build flags are removed; declare public provider roots separately with
++`builder.set_provider_roots(...)`. See the [migration guide](V1_TO_V2_UPGRADE.md).
+ 
+ | Build time | Runtime |
+ | --- | --- |
+@@ -206,7 +215,9 @@
+ clean-ioc explain my_app.composition:application_builder my_app.ports:PaymentGateway
+ ```
+ 
+-Each target can be a builder, a built container or scope, or a zero-argument factory function returning one.
++Each target can be a builder, an analysis-built container or scope, or a zero-argument factory returning one.
++The CLI builds builder targets in analysis mode. A run runtime cannot recover discarded inspection evidence;
++point the CLI at a fresh composition factory instead.
+ 
+ [Graph-change policies](docs/graph-change-policies.md) classify wiring changes by meaning, risk, and affected entry
+ point. Use `container.graph.diff(baseline).evaluate(DiffPolicy(...))` in tests, or `diff --classify`, `--fail-on`, and
+--- a/V1_TO_V2_UPGRADE.md
++++ b/V1_TO_V2_UPGRADE.md
+@@ -355,15 +355,19 @@
+ 
+ ### Child registration or decorator override
+ 
+-Use an explicit overlay build:
+-
+-```python
+-test_builder = container.new_scope_builder()
+-test_builder.register(PaymentGateway, FakePaymentGateway)
+-
+-with test_builder.build(mode="analysis") as test_scope:
+-    service = test_scope.resolve(Checkout)
+-```
++Create a fresh analysis parent from the same composition factory, then build the overlay:
++
++```python
++with application_builder().build(mode="analysis") as parent:
++    test_builder = parent.new_scope_builder()
++    test_builder.register(PaymentGateway, FakePaymentGateway)
++
++    with test_builder.build() as test_scope:
++        service = test_scope.resolve(Checkout)
++```
++
++The child defaults to run mode. Use `test_builder.build(mode="analysis")` when the child also needs inspection or
++further overlays; an existing run parent cannot provide discarded composition metadata.
+ 
+ A built overlay starts a fresh scoped cache boundary. New overlay singletons belong to the overlay scope. Inherited root singletons remain anchored to their root activation plan and cannot be rewired by overlay dependencies or decorators.
+ 
+@@ -546,11 +550,16 @@
+         print(issue.code, issue.path, issue.message)
+ ```
+ 
+-Independent root failures are aggregated. Fix all reported paths, then call `build()` again on the same failed builder. After a successful build the builder is intentionally closed.
+-
+-For inspection after success:
+-
+-```python
++The default run build preserves mandatory structural checks and build-mode rules, but does not aggregate all
++independent root failures. `builder.build(mode="analysis")` captures rich diagnostic history and aggregates independent
++failures. Run errors preserve their original code, message and path plus bounded evidence where available; they do
++not retain a complete inspectable graph. Fix the reported paths, then retry the same failed builder. After a successful
++build the builder is intentionally closed.
++
++For inspection, create a fresh builder from the same composition factory and explicitly build in analysis mode:
++
++```python
++container = application_builder().build(mode="analysis")
+ print(container.build_report.to_text())
+ print(container.graph.to_text())
+ print(container.graph.to_mermaid())
+@@ -564,8 +573,10 @@
+ Use `container.graph.explain(Service)` to inspect recorded root selection, or pass an exact compiled `Component` to
+ explain an occurrence. The query does not rerun selection callbacks. Definite factory return-annotation mismatches now
+ fail build with `factory-return-type-mismatch`; correct the annotation, registered service, or factory result type.
+-Custom rules registered with `mode="validation"` run through `container.validation_report()` or `clean-ioc check`; they
+-are separate from the mandatory structural build checks.
++Custom rules registered with `mode="validation"` are accepted but deferred by normal builds. They run through an
++analysis runtime's `validation_report()` or `clean-ioc check`; they are separate from mandatory structural build checks.
++The CLI builds builder targets in analysis mode. Pass a fresh builder/factory or an analysis runtime to inspection
++commands; a successful run runtime cannot be upgraded or replay callbacks to restore discarded evidence.
+ 
+ Do not replace `resolve_dependency_graph()` with runtime bookkeeping. If V1 code inspects nodes or instances after resolution, migrate it to static `Component`/`CompiledGraph` metadata or explicit application instrumentation.
+ 
+--- a/docs/graph-memory-fixture.md
++++ b/docs/graph-memory-fixture.md
+@@ -44,7 +44,11 @@
+ selection paths. This remains a controlled synthetic workload, not a substitute
+ for an application measurement.
+ 
+-## Recorded results
++## Recorded results (historical baseline)
++
++The numerical results below predate the public run/analysis modes and compiler optimizations. They remain an archived
++baseline, not measurements of the current checkout. Final combined public-mode evidence is recorded in
++`.work/graph-memory-optimization/18-result.md`.
+ 
+ Measured on 8 October 2026 with eight routes, Python 3.14.4, macOS 26.7.1 and
+ ARM64. These are medians of three fresh normal processes and three separate
+@@ -90,9 +94,9 @@
+ From the repository root:
+ 
+ ```sh
+-.venv/bin/python -m benchmarks.graph_memory_evidence measure --routes 8
+-.venv/bin/python -m benchmarks.graph_memory_evidence measure --routes 8 --heap
+-.venv/bin/python -m benchmarks.graph_memory_evidence repeat --routes 8 --repeats 3 --output benchmarks/graph_memory_results.json
++.venv/bin/python -m benchmarks.graph_memory_evidence measure --routes 8 --build-mode run
++.venv/bin/python -m benchmarks.graph_memory_evidence measure --routes 8 --build-mode run --heap
++.venv/bin/python -m benchmarks.graph_memory_evidence repeat --routes 8 --build-mode run --repeats 3 --output /tmp/clean-ioc-current-run.json
+ ```
+ 
+ The default is eight routes. `--routes` accepts 1–128; the requested dependency
+@@ -100,13 +104,18 @@
+ template candidates interact. A first 32-route run exceeded 4 GiB current RSS
+ before completion and was stopped. That observation is not a completed benchmark
+ or a claim about an application. Start small when increasing the route count.
+-`--diagnostics` enables full diagnostic capture for a separate comparison.
++Use `--build-mode analysis` for a separate full-diagnostics comparison (start with two routes).
+ `repeat` launches separate normal and traced processes for each repetition and
+ requires their graph counts and resolution checks to agree.
+ 
+-Build options are `allow_scope_builders=False`, `check_unreachable=False`, and
+-`aggregate_errors=False`. Diagnostics default to false. The four worker provider
+-forms are explicitly requested; injected maps and providers are compiled as usual.
++The public API is `builder.build(mode="run")` (the default) or `builder.build(mode="analysis")`.
++The four worker provider forms are declared separately with `set_provider_roots()`; injected maps and providers are
++compiled as usual. Run retains execution and discovery, while analysis also retains inspection and overlay composition.
++
++The archived results used private historical settings: `allow_scope_builders=False`, `check_unreachable=False`,
++`aggregate_errors=False`, and diagnostics disabled. The evidence runner still supports that private reproduction path
++when `--build-mode` is omitted, including its historical diagnostic switch. These are not current public build options;
++use the explicit mode commands above for new measurements. Preserve archived result files when recording new samples.
+ 
+ ## Measurements and checks
+ 
+--- /dev/null
++++ b/tests/test_combined_mode_acceptance.py
+@@ -0,0 +1,95 @@
++"""Application-style bundle acceptance across the final public build modes."""
++
++import pytest
++
++from clean_ioc import (
++    BuildIssue,
++    ComponentBuilder,
++    ContainerBuilder,
++    Expose,
++    IssueSeverity,
++    Provider,
++)
++from clean_ioc.bundles import BaseBundle
++
++
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++def test_private_deferred_command_and_saga_bundle_discovery_and_validation(mode):
++    activations = []
++    selections = []
++    rules = []
++
++    class CommandHandler:
++        def __init__(self):
++            activations.append("handler")
++
++        def handle(self):
++            return "handled"
++
++    class AuditedHandler:
++        def __init__(self, inner: CommandHandler):
++            activations.append("audit")
++            self.inner = inner
++
++        def handle(self):
++            return "audited:" + self.inner.handle()
++
++    class Saga:
++        def __init__(self, handler: Provider[CommandHandler]):
++            activations.append("saga")
++            self.handler = handler
++
++        def run(self):
++            return self.handler().handle()
++
++    def selected(component):
++        selections.append(component.id)
++        return True
++
++    def required(context):
++        rules.append("build")
++        assert context.boundary == "commands"
++        assert context.graph.diagnostics_enabled
++        assert context.graph.manifest(all_roots=True).fingerprint
++        return ()
++
++    def full(context):
++        rules.append("validation")
++        assert context.boundary == "commands"
++        return (BuildIssue("application-policy", IssueSeverity.error, "Explicit full validation finding"),)
++
++    class CommandSagaBundle(BaseBundle):
++        def apply(self, builder: ComponentBuilder):
++            builder.register(CommandHandler, root_policy="dependency_only")
++            builder.register_decorator(CommandHandler, AuditedHandler, when=selected)
++            builder.register(Saga)
++            builder.add_validation_rule(required)
++            builder.add_validation_rule(full, mode="validation")
++
++    builder = ContainerBuilder().set_provider_roots(())
++    builder.create_boundary("commands", exposes=(Expose(Saga),)).apply_bundle(CommandSagaBundle())
++    with builder.build(mode=mode) as runtime:
++        assert activations == []
++        assert rules == ["build"]
++        assert runtime.build_report.is_valid
++        assert not runtime.has_component(CommandHandler)
++        catalogue = runtime.selected_registrations
++        assert {item.implementation_type for item in catalogue} == {Saga, CommandHandler, AuditedHandler}
++        captured_selections = tuple(selections)
++        with runtime.new_scope() as scope:
++            assert scope.selected_registrations is catalogue
++            saga = scope.resolve(Saga)
++            assert activations == ["saga"]
++            assert saga.run() == "audited:handled"
++        assert activations == ["saga", "handler", "audit"]
++        if mode == "analysis":
++            for _ in range(2):
++                report = runtime.validation_report()
++                assert [issue.code for issue in report.errors] == ["application-policy"]
++            assert rules == ["build", "validation", "validation"]
++        else:
++            with pytest.raises(RuntimeError, match="analysis"):
++                runtime.validation_report()
++            assert rules == ["build"]
++        assert tuple(selections) == captured_selections
++        assert runtime.selected_registrations is catalogue

@@ -1,0 +1,33 @@
+"""Symmetric captured-source loader with original filenames and executed hashes."""
+
+import hashlib
+import importlib.abc
+import importlib.machinery
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[4]
+HERE = Path(__file__).parent
+LOADED = {}
+
+
+def install(policy):
+    class Loader(importlib.machinery.SourceFileLoader):
+        def get_code(self, fullname):
+            source = (HERE / "sources" / policy / (fullname.replace(".", "/") + ".py")).read_bytes()
+            LOADED[fullname] = hashlib.sha256(source).hexdigest()
+            return compile(source, self.path, "exec")
+
+    class Finder(importlib.abc.MetaPathFinder):
+        def find_spec(self, fullname, path=None, target=None):
+            source = HERE / "sources" / policy / (fullname.replace(".", "/") + ".py")
+            if not source.exists():
+                return None
+            spec = importlib.machinery.PathFinder.find_spec(fullname, path)
+            if spec is None or spec.origin is None:
+                raise RuntimeError(f"Missing source for {fullname}")
+            spec.loader = Loader(fullname, spec.origin)
+            return spec
+
+    sys.path.insert(0, str(ROOT))
+    sys.meta_path.insert(0, Finder())

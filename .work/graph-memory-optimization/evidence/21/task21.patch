@@ -1,0 +1,1857 @@
+--- a/clean_ioc/container.py
++++ b/clean_ioc/container.py
+@@ -407,7 +407,7 @@
+     failed_checks: list[str] = field(default_factory=list)
+     definitions: tuple[_ValidationRuleDefinition, ...] = ()
+     graph: CompiledGraph | None = None
+-    plan: _PlanSet | None = None
++    plan: _ExecutionPlan | None = None
+ 
+ 
+ _ANALYSIS_STATE: ContextVar[_AnalysisState | None] = ContextVar("clean_ioc_analysis", default=None)
+@@ -5104,13 +5104,26 @@
+ 
+ 
+ @dataclass(frozen=True, slots=True)
+-class _PlanSet:
++class _ExecutionPlan:
+     graph: _ComponentGraph
+     roots: dict[Any, tuple[_RootPlan, ...]]
+     default_roots: dict[Any, _RootPlan]
+     default_root_groups: dict[Any, tuple[_RootPlan, ...]]
+-    _blueprint: _Blueprint | None
+     build_args: Mapping[str, Any]
++    provider_roots: Mapping[Any, tuple[_RootPlan, ...]] = field(default_factory=dict)
++    managed_provider_roots: Mapping[Any, tuple[_RootPlan, ...]] = field(default_factory=dict)
++    warmup_steps: Mapping[str, tuple[_RootPlan, ...]] = field(default_factory=lambda: types.MappingProxyType({}))
++    warmup_infos: tuple[WarmupPlanInfo, ...] = ()
++    warmup_fingerprint: str = ""
++    selected_registrations: tuple[RegistrationInfo, ...] = ()
++    slots: frozenset[tuple[Any, str | None]] = frozenset()
++    ensured_import_modules: tuple[str, ...] = ()
++    identity: str = field(default_factory=lambda: str(uuid4()))
++
++
++@dataclass(frozen=True, slots=True)
++class _PlanSet(_ExecutionPlan):
++    _blueprint: _Blueprint | None = None
+     diagnostics: bool = False
+     explain_metadata: bool = True
+     unreachable_checked: bool = True
+@@ -5126,19 +5139,11 @@
+     parameter_explanations: Mapping[int, Mapping[str, ParameterExplanation]] = field(default_factory=dict)
+     generic_explanations: Mapping[int, GenericBindingExplanation] = field(default_factory=dict)
+     occurrence_layers: Mapping[int, str] = field(default_factory=dict)
+-    provider_roots: Mapping[Any, tuple[_RootPlan, ...]] = field(default_factory=dict)
+-    managed_provider_roots: Mapping[Any, tuple[_RootPlan, ...]] = field(default_factory=dict)
+     architecture_roots: tuple[tuple[str | None, Any, _RootPlan], ...] = ()
+     area_root_candidates: Mapping[str, Mapping[Any, tuple[_CandidateRecord, ...]]] = field(default_factory=dict)
+     census_sources: Mapping[str, str] = field(default_factory=dict)
+     census_definitions: tuple[DefinitionReference, ...] = ()
+     census_ids: Mapping[str, str] = field(default_factory=dict)
+-    warmup_steps: Mapping[str, tuple[_RootPlan, ...]] = field(default_factory=lambda: types.MappingProxyType({}))
+-    warmup_infos: tuple[WarmupPlanInfo, ...] = ()
+-    warmup_fingerprint: str = ""
+-    selected_registrations: tuple[RegistrationInfo, ...] = ()
+-    slots: frozenset[tuple[Any, str | None]] = frozenset()
+-    ensured_import_modules: tuple[str, ...] = ()
+     validation_rules: tuple[_ValidationRuleDefinition, ...] = ()
+ 
+     @property
+@@ -5276,7 +5281,7 @@
+     continue_on_failure: bool
+ 
+ 
+-def _release_execution_composition(plan: _PlanSet) -> None:
++def _release_execution_composition(plan: _ExecutionPlan) -> None:
+     """Trim fresh executable carriers without changing steps or ancestor plans.
+ 
+     Carrier identity is not cache identity; IDs and owner tokens are unchanged.
+@@ -5288,7 +5293,7 @@
+         plan.provider_roots,
+         plan.managed_provider_roots,
+         plan.warmup_steps,
+-        plan.architecture_roots if plan._blueprint is not None else (),
++        plan.architecture_roots if isinstance(plan, _PlanSet) and plan._blueprint is not None else (),
+     ]
+     seen: set[int] = set()
+     registrations: dict[int, _RuntimeRegistration] = {}
+@@ -5345,11 +5350,15 @@
+             )
+ 
+ 
+-def _retain_runtime_graph(plan: _PlanSet, *, include_architecture: bool = False) -> None:
++def _retain_runtime_graph(plan: _ExecutionPlan, *, include_architecture: bool = False) -> None:
+     """Freeze only the successful plan's required runtime records."""
+     if plan.graph._reduced:
+         return
+-    architecture = plan.architecture_roots if include_architecture or plan._blueprint is not None else ()
++    architecture = (
++        plan.architecture_roots
++        if isinstance(plan, _PlanSet) and (include_architecture or plan._blueprint is not None)
++        else ()
++    )
+     pending: list[Any] = [plan.roots, plan.provider_roots, plan.managed_provider_roots, plan.warmup_steps, architecture]
+     seen_objects: set[int] = set()
+     seeds: list[int] = []
+@@ -5413,16 +5422,114 @@
+     plan.graph._reduced = not include_architecture
+ 
+ 
+-def _reduce_explanation_metadata(plan: _PlanSet) -> _PlanSet:
++def _project_execution_plan(plan: _ExecutionPlan, *, clone_graph: bool = False) -> _ExecutionPlan:
++    """Copy library-owned executable carriers, preserving all opaque application values.
++
++    Only this plan's graph and preconfiguration state are projected. Parent graphs
++    and their singleton/preconfiguration steps remain the actual borrowed anchors.
++    """
++    graph = plan.graph
++    if clone_graph:
++        graph = _ComponentGraph()
++        graph._views = list(plan.graph._views)
++        if plan.graph._records is None:
++            graph._drafts = dict(plan.graph._drafts)
++        else:
++            graph._records = dict(plan.graph._records)
++    memo: dict[int, Any] = {}
++    states: dict[int, _PreConfigurationState] = {}
++    executable = (
++        _RootPlan,
++        _Step,
++        _CompiledDependency,
++        _CompiledDecorator,
++        _CompiledPreConfiguration,
++        _CompiledResolutionRequest,
++    )
++
++    def project(value: Any) -> Any:
++        if isinstance(value, Component):
++            return Component(graph, value.occurrence_id) if value._graph is plan.graph else value
++        if (
++            isinstance(value, (_RegistrationStep, _CompiledPreConfiguration))
++            and value.component._graph is not plan.graph
++        ):
++            return value
++        identity = id(value)
++        if identity in memo:
++            return memo[identity]
++        if isinstance(value, executable):
++            result = replace(value)
++            memo[identity] = result
++            for item in fields(value):
++                if item.name not in {
++                    "component",
++                    "step",
++                    "target",
++                    "dependencies",
++                    "pre_configurations",
++                    "decorators",
++                    "members",
++                    "resolution_requests",
++                    "state",
++                }:
++                    continue
++                original = getattr(value, item.name)
++                if isinstance(value, _CompiledPreConfiguration) and item.name == "state":
++                    replacement = states.get(id(original))
++                    if replacement is None:
++                        replacement = states[id(original)] = _PreConfigurationState()
++                else:
++                    replacement = project(original)
++                object.__setattr__(result, item.name, replacement)
++            return result
++        if type(value) is tuple:
++            result = tuple(project(item) for item in value)
++            memo[identity] = result
++            return result
++        if type(value) in (dict, types.MappingProxyType):
++            result = {key: project(item) for key, item in value.items()}
++            memo[identity] = result
++            return result
++        return value
++
++    values: dict[str, Any] = {item.name: getattr(plan, item.name) for item in fields(_ExecutionPlan)}
++    values["graph"] = graph
++    for name in (
++        "roots",
++        "default_roots",
++        "default_root_groups",
++        "provider_roots",
++        "managed_provider_roots",
++        "warmup_steps",
++    ):
++        values[name] = project(values[name])
++    projected = _ExecutionPlan(**values)
++    if clone_graph:
++        _retain_runtime_graph(projected)
++    _release_execution_composition(projected)
++    if not projected.selected_registrations:
++        projected = replace(projected, selected_registrations=_selected_registration_catalogue(projected))
++    return projected
++
++
++def _finalize_execution(plan: _ExecutionPlan) -> _ExecutionPlan:
++    selected = _selected_registration_catalogue(plan)
++    _retain_runtime_graph(plan)
++    _release_execution_composition(plan)
++    return replace(plan, selected_registrations=selected)
++
++
++def _reduce_explanation_metadata(plan: _ExecutionPlan) -> _ExecutionPlan:
+     """Release successful-build evidence, retaining all executable relationships.
+ 
+     Run once, after validation, warmup planning and observation. Only the new
+     plan's primary graph is changed; inherited execution graphs belong to their
+     ancestors. Application-owned callback snapshots are outside this ownership.
+     """
+-    if plan.explain_metadata:
++    if not isinstance(plan, _PlanSet) or plan.explain_metadata:
+         return plan
+-    architecture = plan.architecture_roots if plan._blueprint is not None else ()
++    architecture = plan.architecture_roots if isinstance(plan, _PlanSet) and plan._blueprint is not None else ()
+     _retain_runtime_graph(plan)
+     _release_execution_composition(plan)
+ 
+@@ -6652,19 +6759,17 @@
+             self._profile.call(self._profile_phase, "graph freezing", self.graph.freeze, attempt=self._profile_attempt)
+         return component
+ 
+-    def compile(
+-        self,
+-        service_types: Iterable[Any] | None = None,
+-        *,
+-        area: str | None = None,
+-        include_boundaries: bool = True,
+-        clean_orphans: bool = True,
+-    ) -> _PlanSet:
++    def compile_execution(self) -> _ExecutionPlan:
++        plan, _ = self._compile_execution_roots()
++        return plan
++
++    def _compile_execution_roots(
++        self, service_types: Iterable[Any] | None = None, *, area: str | None = None
++    ) -> tuple[_ExecutionPlan, dict[str, dict[Any, tuple[_CandidateRecord, ...]]]]:
+         if self._source_inspection:
+             raise RuntimeError("Source inspection cannot publish runtime plans")
+         self._area = area
+         roots: dict[Any, tuple[_RootPlan, ...]] = {}
+-        architecture_roots: list[tuple[str | None, Any, _RootPlan]] = []
+         area_records: dict[str, dict[Any, tuple[_CandidateRecord, ...]]] = {}
+         selected_service_types = list(
+             tuple(service_types)
+@@ -6710,7 +6815,6 @@
+                 _RootPlan(component=candidate.component, step=candidate.step, is_fallback=candidate.is_fallback)
+                 for candidate in eligible
+             )
+-            architecture_roots.extend((area, service_type, plan) for plan in roots[service_type])
+             records = tuple(
+                 _CandidateRecord(
+                     component=candidate.component,
+@@ -6792,8 +6896,47 @@
+                     path=(self._qualified_name(entrypoint.service_type),),
+                 )
+             roots[entrypoint.service_type] = plans
+-            architecture_roots.extend((area, entrypoint.service_type, plan) for plan in plans)
+-
++
++        default_root_groups = {
++            service_type: _preferred_root_plans(plan for plan in plans if plan.component.name is None)
++            for service_type, plans in roots.items()
++        }
++        return _ExecutionPlan(
++            graph=self.graph,
++            roots=roots,
++            default_roots={service_type: plans[0] for service_type, plans in default_root_groups.items() if plans},
++            default_root_groups=default_root_groups,
++            build_args=self.build_args,
++            provider_roots=types.MappingProxyType(provider_roots),
++            managed_provider_roots=types.MappingProxyType(dict(self._managed_provider_roots)),
++            slots=self.blueprint.slots,
++            ensured_import_modules=tuple(
++                dict.fromkeys(
++                    name
++                    for layer in (*self.blueprint.layers, *(b.layer for b in self.blueprint.boundaries))
++                    for name in layer.ensured_import_modules
++                )
++            ),
++        ), area_records
++
++    def compile(
++        self,
++        service_types: Iterable[Any] | None = None,
++        *,
++        area: str | None = None,
++        include_boundaries: bool = True,
++        clean_orphans: bool = True,
++    ) -> _PlanSet:
++        execution, area_records = self._compile_execution_roots(service_types, area=area)
++        roots = execution.roots
++        provider_roots = execution.provider_roots
++        architecture_roots = [(area, service, root) for service, plans in roots.items() for root in plans]
++        analysis = _ANALYSIS_STATE.get()
++        if analysis is not None and service_types is None and area is None:
++            execution = _compile_warmup_plans(execution, self._budget, blueprint=self.blueprint)
++            # Capture the primary emitted plan before inspection-only roots can fail.
++            # The detached graph also prevents later inspection mutations leaking in.
++            analysis.plan = _project_execution_plan(execution, clone_graph=True)
+         if service_types is None and area is None and include_boundaries:
+             for boundary in self.blueprint.boundaries:
+                 self._area = boundary.name
+@@ -6876,6 +7019,10 @@
+         }
+         return _PlanSet(
+             graph=self.graph,
++            warmup_steps=execution.warmup_steps,
++            warmup_infos=execution.warmup_infos,
++            warmup_fingerprint=execution.warmup_fingerprint,
++            identity=execution.identity,
+             diagnostics=self._diagnostics,
+             fallback_ids=frozenset(self._fallback_component_ids),
+             roots=roots,
+@@ -11084,11 +11231,18 @@
+ 
+ 
+ def _anchored_singletons(
+-    plan: _PlanSet,
++    plan: _ExecutionPlan,
+ ) -> dict[tuple[str, tuple[Any, ...]], _RegistrationStep]:
+     anchored: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] = {}
+-    all_plans = tuple(root for _, _, root in plan.architecture_roots) or tuple(
+-        root for plans in plan.roots.values() for root in plans
++    all_plans = (
++        tuple(root for _, _, root in plan.architecture_roots)
++        if isinstance(plan, _PlanSet) and plan.architecture_roots
++        else tuple(
++            root
++            for groups in (plan.roots, plan.provider_roots, plan.managed_provider_roots, plan.warmup_steps)
++            for plans in groups.values()
++            for root in plans
++        )
+     )
+     for root in all_plans:
+         for step in _iter_registration_steps(root.step):
+@@ -11100,10 +11254,17 @@
+     return anchored
+ 
+ 
+-def _anchored_pre_configurations(plan: _PlanSet) -> dict[str, _CompiledPreConfiguration]:
++def _anchored_pre_configurations(plan: _ExecutionPlan) -> dict[str, _CompiledPreConfiguration]:
+     anchored: dict[str, _CompiledPreConfiguration] = {}
+-    all_plans = tuple(root for _, _, root in plan.architecture_roots) or tuple(
+-        root for plans in plan.roots.values() for root in plans
++    all_plans = (
++        tuple(root for _, _, root in plan.architecture_roots)
++        if isinstance(plan, _PlanSet) and plan.architecture_roots
++        else tuple(
++            root
++            for groups in (plan.roots, plan.provider_roots, plan.managed_provider_roots, plan.warmup_steps)
++            for plans in groups.values()
++            for root in plans
++        )
+     )
+     for root in all_plans:
+         for step in _iter_registration_steps(root.step):
+@@ -11216,7 +11377,7 @@
+         yield from _component_tree(decorator)
+ 
+ 
+-def _selected_registration_catalogue(plan: _PlanSet) -> tuple[RegistrationInfo, ...]:
++def _selected_registration_catalogue(plan: _ExecutionPlan) -> tuple[RegistrationInfo, ...]:
+     """Capture selected metadata without retaining occurrences or compiling discovery roots."""
+     roots = (
+         root.component
+@@ -11799,9 +11960,6 @@
+     inspection_lifetime: _InspectionLifetime | None = None,
+ ) -> _PlanSet:
+     all_roots = _graph_roots(plan)
+-    if not _analysis_active():
+-        # Temporary support for warmup/observation until tasks21/23 replace these readers.
+-        return replace(plan, compiled_graph=CompiledGraph(roots=all_roots, build_args=plan.build_args))
+     entrypoints: list[GraphRoot] = []
+     issues: list[BuildIssue] = list(plan.compiler_issues)
+     if budget_state is not None:
+@@ -12962,18 +13120,16 @@
+     )
+ 
+ 
+-def _compile_warmup_plans(plan: _PlanSet, budget_state: _BudgetState | None = None) -> _PlanSet:
+-    if not any(layer.warmup_declarations for layer in plan.blueprint.layers):
++def _compile_warmup_plans(
++    plan: _ExecutionPlan, budget_state: _BudgetState | None = None, *, blueprint: _Blueprint
++) -> _ExecutionPlan:
++    if not any(layer.warmup_declarations for layer in blueprint.layers):
+         return plan
+-    graph = cast(CompiledGraph, plan.compiled_graph)
+-    paths = {component.occurrence_id: path for path, component in graph._component_paths(all_roots=True).items()}
+     steps: dict[str, tuple[_RootPlan, ...]] = {}
+     infos: list[WarmupPlanInfo] = []
+-    layer_ranks = {layer.owner_token: index for index, layer in enumerate(plan.blueprint.layers)}
+-    layer_ranks.update(
+-        {boundary.layer.owner_token: boundary.root_layer_offset for boundary in plan.blueprint.boundaries}
+-    )
+-    for layer in plan.blueprint.layers:
++    layer_ranks = {layer.owner_token: index for index, layer in enumerate(blueprint.layers)}
++    layer_ranks.update({boundary.layer.owner_token: boundary.root_layer_offset for boundary in blueprint.boundaries})
++    for layer in blueprint.layers:
+         for declaration, source in layer.warmup_declarations:
+             selected: list[_RootPlan] = []
+             targets: list[WarmupTargetInfo] = []
+@@ -13031,7 +13187,7 @@
+                     WarmupTargetInfo(
+                         service,
+                         qualified_name(root.component.implementation_type),
+-                        paths[root.component.occurrence_id],
++                        f"component:{root.component.occurrence_id}",
+                         not root.step.sync_supported or _warmup_async_cleanup(root.component),
+                         source,
+                     )
+@@ -13042,8 +13198,7 @@
+         plan,
+         warmup_steps=types.MappingProxyType(steps),
+         warmup_infos=tuple(infos),
+-        compiled_graph=replace(graph, warmup_plans=tuple(infos)),
+-        warmup_fingerprint=graph.manifest(all_roots=True).fingerprint,
++        warmup_fingerprint=plan.identity,
+     )
+ 
+ 
+@@ -13075,26 +13230,20 @@
+     )
+ 
+ 
+-def _compile_with_report(
++def _prepare_compilation(
+     blueprint: _Blueprint,
+     *,
+     build_args: Mapping[str, Any] = _EMPTY_BUILD_ARGS,
+-    preview: bool = False,
+-    preview_request: tuple[str, Any] | None = None,
+     anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
+     anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
+     anchored_owner_tokens: frozenset[str] = frozenset(),
+     inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
+     profile: CompilationProfiler | None = None,
+     budget_state: _BudgetState | None = None,
+-    clean_orphans: bool = True,
+     diagnostics: bool = False,
+     explain_metadata: bool = True,
+     provider_roots: tuple[Any, ...] | None = None,
+-    check_unreachable: bool = True,
+-    aggregate_errors: bool = True,
+-    inspection_lifetime: _InspectionLifetime | None = None,
+-) -> _PlanSet:
++) -> tuple[_Blueprint, _CompilationInputs]:
+     compilation_inputs: _CompilationInputs = {
+         "build_args": build_args,
+         "budget_state": budget_state,
+@@ -13249,6 +13398,105 @@
+             census_ids=census_ids,
+             diagnostics_enabled=diagnostics,
+         ) from error
++    return blueprint, compilation_inputs
++
++
++def _compile_execution(
++    blueprint: _Blueprint,
++    *,
++    profile: CompilationProfiler | None = None,
++    build_args: Mapping[str, Any] = _EMPTY_BUILD_ARGS,
++    budget_state: _BudgetState | None = None,
++    anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
++    anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
++    anchored_owner_tokens: frozenset[str] = frozenset(),
++    inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
++    provider_roots: tuple[Any, ...] | None = None,
++) -> _ExecutionPlan:
++    blueprint, _ = _prepare_compilation(
++        blueprint,
++        build_args=build_args,
++        profile=profile,
++        budget_state=budget_state,
++        anchored_singleton_steps=anchored_singleton_steps,
++        anchored_pre_configuration_steps=anchored_pre_configuration_steps,
++        anchored_owner_tokens=anchored_owner_tokens,
++        inherited_graph_sidecars=inherited_graph_sidecars,
++        diagnostics=False,
++        explain_metadata=False,
++        provider_roots=provider_roots,
++    )
++    compiler = _Compiler(
++        blueprint,
++        build_args=build_args,
++        profile=profile,
++        budget_state=budget_state,
++        anchored_singletons=anchored_singleton_steps,
++        anchored_pre_configurations=anchored_pre_configuration_steps,
++        anchored_owner_tokens=anchored_owner_tokens,
++        inherited_graph_sidecars=inherited_graph_sidecars,
++        diagnostics=False,
++        explain_metadata=False,
++        provider_roots=provider_roots,
++    )
++    try:
++        plan = (
++            compiler.compile_execution()
++            if profile is None
++            else profile.call("primary compilation", "phase", compiler.compile_execution, attempt="primary")
++        )
++        plan = _compile_warmup_plans(plan, budget_state, blueprint=blueprint)
++        return (
++            _finalize_execution(plan)
++            if profile is None
++            else profile.call("runtime graph finalization", "graph freezing", _finalize_execution, plan)
++        )
++    except MemoryError:
++        raise
++    except Exception as error:
++        if isinstance(error, ContainerBuildError):
++            raise ContainerBuildError(_safe_error_message(error), code=error.code, path=error.path) from None
++        if getattr(compiler, "_callback_failure_path", ()):
++            raise ContainerBuildError(
++                _safe_error_message(error), code="compile-error", path=compiler._callback_failure_path
++            ) from None
++        raise
++
++
++def _compile_with_report(
++    blueprint: _Blueprint,
++    *,
++    build_args: Mapping[str, Any] = _EMPTY_BUILD_ARGS,
++    preview: bool = False,
++    preview_request: tuple[str, Any] | None = None,
++    anchored_singleton_steps: dict[tuple[str, tuple[Any, ...]], _RegistrationStep] | None = None,
++    anchored_pre_configuration_steps: dict[str, _CompiledPreConfiguration] | None = None,
++    anchored_owner_tokens: frozenset[str] = frozenset(),
++    inherited_graph_sidecars: Mapping[_ComponentGraph, _GraphExplanationSidecars] = types.MappingProxyType({}),
++    profile: CompilationProfiler | None = None,
++    budget_state: _BudgetState | None = None,
++    clean_orphans: bool = True,
++    diagnostics: bool = False,
++    explain_metadata: bool = True,
++    provider_roots: tuple[Any, ...] | None = None,
++    check_unreachable: bool = True,
++    aggregate_errors: bool = True,
++    inspection_lifetime: _InspectionLifetime | None = None,
++) -> _PlanSet:
++    blueprint, compilation_inputs = _prepare_compilation(
++        blueprint,
++        build_args=build_args,
++        anchored_singleton_steps=anchored_singleton_steps,
++        anchored_pre_configuration_steps=anchored_pre_configuration_steps,
++        anchored_owner_tokens=anchored_owner_tokens,
++        inherited_graph_sidecars=inherited_graph_sidecars,
++        profile=profile,
++        budget_state=budget_state,
++        diagnostics=diagnostics,
++        explain_metadata=explain_metadata,
++        provider_roots=provider_roots,
++    )
++    entry_points = _declared_entry_point_labels(blueprint) if _analysis_active() else ()
+     compiler = _Compiler(
+         blueprint,
+         build_args=build_args,
+@@ -13279,30 +13527,19 @@
+         plan = replace(compiled, census_definitions=census_definitions, census_ids=census_ids)
+         if preview:
+             return plan
+-        finalized = _compile_warmup_plans(
+-            _finalize_plan(
+-                plan,
+-                profile,
+-                budget_state,
+-                check_unreachable=check_unreachable,
+-                inspection_lifetime=inspection_lifetime,
+-            ),
++        finalized = _finalize_plan(
++            plan,
++            profile,
+             budget_state,
+-        )
++            check_unreachable=check_unreachable,
++            inspection_lifetime=inspection_lifetime,
++        )
++        if finalized.compiled_graph is not None and finalized.warmup_infos:
++            finalized = replace(
++                finalized, compiled_graph=replace(finalized.compiled_graph, warmup_plans=finalized.warmup_infos)
++            )
+         analysis = _ANALYSIS_STATE.get()
+         if analysis is not None:
+-            analysis.plan = replace(
+-                finalized,
+-                selected_registrations=_selected_registration_catalogue(finalized),
+-                slots=blueprint.slots,
+-                ensured_import_modules=tuple(
+-                    dict.fromkeys(
+-                        name
+-                        for layer in (*blueprint.layers, *(b.layer for b in blueprint.boundaries))
+-                        for name in layer.ensured_import_modules
+-                    )
+-                ),
+-            )
+             analysis.graph = finalized.compiled_graph
+             _run_validation_rules(
+                 cast(CompiledGraph, finalized.compiled_graph),
+@@ -13342,7 +13579,6 @@
+                     compiled_roots=len(_graph_roots(finalized)),
+                 ),
+             )
+-            analysis.plan = finalized
+         retained = _prune_orphan_registrations(finalized) if clean_orphans else finalized
+         return replace(
+             retained,
+@@ -13777,7 +14013,7 @@
+ 
+     def __init__(
+         self,
+-        plan: _PlanSet,
++        plan: _ExecutionPlan,
+         *,
+         container: Container,
+         parent: Scope | None,
+@@ -13817,12 +14053,12 @@
+     @property
+     def build_mode(self) -> Literal["run", "analysis"]:
+         """The run or analysis capability contract inherited by ordinary scopes."""
+-        return "analysis" if self._plan.explain_metadata else "run"
++        return "analysis" if isinstance(self._plan, _PlanSet) and self._plan.explain_metadata else "run"
+ 
+     @property
+     def explain_metadata_enabled(self) -> bool:
+         """Whether this plan retains complete graph inspection metadata."""
+-        return self._plan.explain_metadata
++        return isinstance(self._plan, _PlanSet) and self._plan.explain_metadata
+ 
+     @property
+     def components(self) -> tuple[Component, ...]:
+@@ -13843,7 +14079,7 @@
+ 
+     @property
+     def graph(self) -> CompiledGraph:
+-        if not self._plan.explain_metadata:
++        if not isinstance(self._plan, _PlanSet) or not self._plan.explain_metadata:
+             raise RuntimeError(
+                 "explain-metadata-disabled: graph inspection requires an analysis build (mode='analysis')"
+             )
+@@ -13927,13 +14163,13 @@
+ 
+     @property
+     def build_report(self) -> AnalysisReport:
+-        if self._plan.build_report is None:
++        if not isinstance(self._plan, _PlanSet) or self._plan.build_report is None:
+             raise RuntimeError("Execution runtimes have no analysis report; use a fresh builder.analyse()")
+         return self._plan.build_report
+ 
+     def validation_report(self) -> AnalysisReport:
+         """Read already captured findings; use analyse() to perform validation."""
+-        if self._plan.build_report is None:
++        if not isinstance(self._plan, _PlanSet) or self._plan.build_report is None:
+             raise RuntimeError("Execution runtimes have no analysis report; use a fresh builder.analyse()")
+         return self._plan.build_report
+ 
+@@ -14154,7 +14390,7 @@
+     @property
+     def allow_scope_builders(self) -> bool:
+         """Whether this runtime retains composition for compiling overlays."""
+-        return self._plan._blueprint is not None
++        return isinstance(self._plan, _PlanSet) and self._plan._blueprint is not None
+ 
+     def new_scope_builder(self) -> ScopeBuilder:
+         self._ensure_open()
+@@ -14178,7 +14414,7 @@
+ class Container(Scope):
+     """The immutable root runtime and owner of root singletons."""
+ 
+-    def __init__(self, plan: _PlanSet, root_owner_token: str):
++    def __init__(self, plan: _ExecutionPlan, root_owner_token: str):
+         _RuntimeOwner.__init__(self)
+         self._id: str | None = None
+         self._plan = plan
+@@ -14605,6 +14841,31 @@
+         if not plan.explain_metadata and plan.compiled_graph is not None:
+             plan.compiled_graph._inspection_lifetime.expire()
+         raise
++
++
++def _observe_execution_bridge(
++    plan: _ExecutionPlan, instrumentation: Instrumentation, binding_token: str, parent_scope: Scope | None = None
++) -> tuple[_ExecutionPlan, str, dict[Any, str], dict[int, str]]:
++    """Temporary graph-based observer adapter; task23 removes this allocation."""
++    bridge = _PlanSet(
++        **{item.name: getattr(plan, item.name) for item in fields(_ExecutionPlan)},
++        compiled_graph=CompiledGraph(
++            roots=tuple(
++                GraphRoot(service, root.component)
++                for groups in (plan.roots, plan.provider_roots, plan.managed_provider_roots, plan.warmup_steps)
++                for service, roots in groups.items()
++                for root in roots
++            ),
++            build_args=plan.build_args,
++        ),
++    )
++    observed, fingerprint, labels, paths = _observe_plan(bridge, instrumentation, binding_token, parent_scope)
++    return (
++        _ExecutionPlan(**{item.name: getattr(observed, item.name) for item in fields(_ExecutionPlan)}),
++        fingerprint,
++        labels,
++        paths,
++    )
+ 
+ 
+ def _observe_plan_impl(
+@@ -14990,6 +15251,7 @@
+         self._boundaries: list[BoundaryBuilder] = []
+         self._built = False
+         self._compiling = False
++        self._operation_lock = threading.Lock()
+         self._declared_provider_roots: tuple[Any, ...] | None = None
+ 
+     def _assert_mutable(self) -> None:
+@@ -14997,6 +15259,120 @@
+             raise _TemplateExpansionReentryError()
+         if self._built or self._compiling:
+             raise BuilderAlreadyBuiltError("Builders are consumed by one admitted compilation attempt")
++
++    @property
++    def _source_blueprint(self) -> _Blueprint:
++        blueprint = getattr(self, "_composition_blueprint", None)
++        if blueprint is None:
++            raise RuntimeError("No retained composition is available")
++        return blueprint
++
++    def _release_declarations(self) -> None:
++        """Drop only builder-owned containers after the single admitted attempt."""
++        for boundary in self._boundaries:
++            boundary._release_declarations()
++            boundary._uses = ()
++            boundary._exposes = ()
++            boundary._built = True
++        self._composition = cast(legacy.Container, None)
++        for name in (
++            "_registration_when",
++            "_candidate_when",
++            "_registration_preferences",
++            "_registration_parent_precedence",
++            "_registration_policies",
++            "_root_policies",
++            "_registration_origins",
++            "_factory_ids",
++            "_factory_specializations",
++            "_provider_maps",
++            "_contributions",
++            "_service_groups",
++            "_pattern_ids",
++            "_fallback_ids",
++            "_decorators",
++            "_decorator_templates",
++            "_registration_templates",
++            "_removed_registration_template_ids",
++            "_decorator_declaration_ids",
++            "_removed_template_ids",
++            "_instance_implementation_types",
++            "_removed_decorator_ids",
++            "_pre_configurations",
++            "_pre_configuration_states",
++            "_registration_discoveries",
++            "_slots",
++            "_slot_origins",
++            "_entrypoints",
++            "_warmup_declarations",
++            "_validation_rules",
++            "_boundaries",
++        ):
++            getattr(self, name).clear()
++        self._declared_provider_roots = None
++        if hasattr(self, "_composition_blueprint"):
++            self._composition_blueprint = None
++
++    def _build_execution(self, *, build_args=None, profile=None, budget=None, instrumentation=None):
++        self._assert_mutable()
++        if instrumentation is not None and not isinstance(instrumentation, Instrumentation):
++            raise TypeError("instrumentation must be an Instrumentation instance or None")
++        if profile is not None and not isinstance(profile, CompilationProfiler):
++            raise TypeError("profile must be a CompilationProfiler instance or None")
++        parent = getattr(self, "_parent", None)
++        parent_profiler = None if parent is None else getattr(parent, "_profiler", None)
++        if parent_profiler is not None and instrumentation is None:
++            instrumentation = Instrumentation(parent_profiler)
++        if (
++            parent is not None
++            and (None if instrumentation is None else instrumentation.profiler) is not parent_profiler
++        ):
++            raise ValueError("overlay instrumentation must match its parent runtime")
++        if profile is not None:
++            profile._begin()
++        status = "interrupted"
++        try:
++            plan = self._build_plan(
++                build_args,
++                profile,
++                True,
++                budget,
++                False,
++                False,
++                self._declared_provider_roots,
++                False,
++                False,
++                False,
++                operation=_compile_execution,
++            )
++            if instrumentation is not None:
++                plan, fingerprint, labels, paths = _observe_execution_bridge(
++                    plan,
++                    instrumentation,
++                    self._owner_token if parent is None else cast(str, parent.container._owned_token),
++                    parent,
++                )
++            if parent is None:
++                runtime = (_ObservedContainer if instrumentation is not None else Container)(plan, self._owner_token)
++            else:
++                runtime = (_ObservedScope if instrumentation is not None else Scope)(
++                    plan,
++                    container=parent.container,
++                    parent=parent,
++                    owners=parent._owners,
++                    owned_token=self._owner_token,
++                    inherit_scoped=False,
++                )
++            if instrumentation is not None:
++                cast(_ObservedScope, runtime)._install_observation(instrumentation.profiler, fingerprint, labels, paths)
++            status = "completed"
++            return runtime
++        except Exception:
++            status = "failed"
++            raise
++        finally:
++            if profile is not None:
++                profile._finish(status)
+ 
+     def bundle_run_key(self, per: BundleRunScope) -> str:
+         if per == "boundary":
+@@ -15019,7 +15395,9 @@
+         allow_scope_builders: bool,
+         check_unreachable: bool,
+         aggregate_errors: bool,
+-    ) -> _PlanSet:
++        *,
++        operation: Callable[..., _ExecutionPlan] = _compile_with_report,
++    ) -> _ExecutionPlan:
+         self._assert_mutable()
+         if profile is not None and not isinstance(profile, CompilationProfiler):
+             raise TypeError("profile must be a CompilationProfiler instance or None")
+@@ -15045,6 +15423,15 @@
+         inspection_lifetime = None
+         inspection_token = _BUILD_INSPECTION_LIFETIME.set(inspection_lifetime)
+         completed = False
++        if not self._operation_lock.acquire(blocking=False):
++            _BUILD_INSPECTION_LIFETIME.reset(inspection_token)
++            raise BuilderAlreadyBuiltError("Builders are consumed by one admitted compilation attempt")
++        try:
++            self._assert_mutable()
++        except BaseException:
++            self._operation_lock.release()
++            _BUILD_INSPECTION_LIFETIME.reset(inspection_token)
++            raise
+         self._compiling = True
+         try:
+             if profile is None:
+@@ -15053,6 +15440,13 @@
+                 blueprint, inputs = profile.call(
+                     "discovery and blueprint preparation", "phase", self._compilation_snapshot, build_args, state
+                 )
++            if operation is _compile_execution:
++                inputs["provider_roots"] = requested_providers
++                execution = operation(blueprint, profile=profile, **inputs)
++                if state is not None:
++                    state.check()
++                completed = True
++                return execution
+             inputs["diagnostics"] = diagnostics
+             inputs["explain_metadata"] = explain_metadata
+             inputs["provider_roots"] = requested_providers
+@@ -15103,6 +15497,8 @@
+                 error = _reduce_run_failure(error, inspection_lifetime)
+             raise error from None
+         except Exception as error:
++            if operation is _compile_execution and isinstance(error, ContainerBuildError):
++                raise ContainerBuildError(_safe_error_message(error), code=error.code, path=error.path) from None
+             original_error = error
+             if inspection_lifetime is not None and isinstance(error, ContainerBuildError):
+                 error = _reduce_run_failure(error, inspection_lifetime)
+@@ -15129,8 +15525,10 @@
+                 raise error from original_error
+             raise
+         finally:
++            self._built = True
+             self._compiling = False
+-            self._built = True
++            self._operation_lock.release()
++            self._release_declarations()
+             _BUILD_INSPECTION_LIFETIME.reset(inspection_token)
+             if inspection_lifetime is not None and not completed:
+                 inspection_lifetime.expire()
+@@ -15151,7 +15549,7 @@
+         if profile is not None and not isinstance(profile, CompilationProfiler):
+             raise TypeError("profile must be a CompilationProfiler instance or None")
+         parent = getattr(self, "_parent", None)
+-        inherited = () if parent is None else parent._plan.blueprint.validation_rules
++        inherited = () if parent is None else self._source_blueprint.validation_rules
+         state = _AnalysisState(
+             definitions=(
+                 *inherited,
+@@ -15164,17 +15562,21 @@
+             profile._begin()
+         profile_state = "interrupted"
+         try:
+-            plan = self._build_plan(
+-                build_args, profile, False, budget, True, True, self._declared_provider_roots, True, True, True
++            plan = cast(
++                _PlanSet,
++                self._build_plan(
++                    build_args, profile, False, budget, True, True, self._declared_provider_roots, True, True, True
++                ),
+             )
+             result = AnalysisResult(
+                 cast(AnalysisReport, plan.build_report),
+                 plan.compiled_graph,
+                 None,
+-                plan,
++                state.plan,
+                 self._owner_token,
+                 getattr(self, "_parent", None),
+             )
++            result._composition_blueprint = plan.blueprint
+             profile_state = "completed"
+             return result
+         except ContainerBuildError as error:
+@@ -15276,16 +15678,17 @@
+             return _Blueprint((layer,), boundaries), inputs
+         inherited_boundaries = tuple(
+             replace(boundary, root_layer_offset=boundary.root_layer_offset + 1)
+-            for boundary in parent._plan.blueprint.boundaries
++            for boundary in self._source_blueprint.boundaries
+         )
+         blueprint = _Blueprint(
+-            (layer, *parent._plan.blueprint.layers),
++            (layer, *self._source_blueprint.layers),
+             (*boundaries, *inherited_boundaries),
+         )
+         sidecars: dict[_ComponentGraph, _GraphExplanationSidecars] = {}
+         ancestor: Scope | None = parent
+         while ancestor is not None:
+-            sidecars.setdefault(ancestor._plan.graph, _graph_explanation_sidecars(ancestor._plan))
++            if isinstance(ancestor._plan, _PlanSet):
++                sidecars.setdefault(ancestor._plan.graph, _graph_explanation_sidecars(ancestor._plan))
+             ancestor = ancestor.parent
+         inputs.update(
+             anchored_singleton_steps=_anchored_singletons(parent._plan),
+@@ -15388,7 +15791,7 @@
+                 path=(str(name),),
+             )
+         parent = getattr(self, "_parent", None)
+-        inherited = parent is not None and parent._plan.blueprint.boundary(name) is not None
++        inherited = parent is not None and self._source_blueprint.boundary(name) is not None
+         if inherited or any(boundary.name == name for boundary in self._boundaries):
+             raise ContainerBuildError(
+                 f"Boundary {name!r} already exists; retain its composition handle to configure it",
+@@ -15787,10 +16190,10 @@
+                 private = next(
+                     (
+                         boundary.name
+-                        for boundary in parent._plan.blueprint.boundaries
++                        for boundary in self._source_blueprint.boundaries
+                         if any(
+                             candidate.id == component_id
+-                            for candidate, _ in parent._plan.blueprint.local_registrations(boundary.name, service_type)
++                            for candidate, _ in self._source_blueprint.local_registrations(boundary.name, service_type)
+                         )
+                     ),
+                     None,
+@@ -15850,7 +16253,7 @@
+         return next(
+             (
+                 item
+-                for item, _, area in _registration_template_definitions(parent._plan.blueprint)
++                for item, _, area in _registration_template_definitions(self._source_blueprint)
+                 if item.id == template_id and area is None
+             ),
+             None,
+@@ -15932,7 +16335,7 @@
+         return next(
+             (
+                 item
+-                for item, _, area in _template_definitions(parent._plan.blueprint)
++                for item, _, area in _template_definitions(self._source_blueprint)
+                 if item.id == template_id and area is None
+             ),
+             None,
+@@ -16045,7 +16448,7 @@
+         parent = getattr(self, "_parent", None)
+         if parent is None:
+             return None
+-        return parent._plan.blueprint.decorator_definition(service_type, decorator_id)
++        return self._source_blueprint.decorator_definition(service_type, decorator_id)
+ 
+     def patch_decorator(
+         self,
+@@ -16341,6 +16744,7 @@
+         self._closed = False
+         # External immutable composition ownership is implemented by task23.
+         self.composition = None
++        self._composition_blueprint: _Blueprint | None = None
+ 
+     @property
+     def emission_complete(self) -> bool:
+@@ -16357,14 +16761,16 @@
+             raise AnalysisRuntimeUnavailableError(self.report)
+         if instrumentation is not None and not isinstance(instrumentation, Instrumentation):
+             raise TypeError("instrumentation must be an Instrumentation instance or None")
+-        plan = self._plan
++        plan = _project_execution_plan(self._plan)
+         if self._parent is not None:
+             self._parent._ensure_open()
+         if instrumentation is not None:
+-            plan, fingerprint, labels, paths = _observe_plan(plan, instrumentation, self._owner_token, self._parent)
+-        # Do not reduce the graph in place: the result still owns its captured facts.
+-        # Execution-only projection and independent preconfiguration state are task21 work.
+-        plan = replace(plan, build_report=None, validation_rules=())
++            plan, fingerprint, labels, paths = _observe_execution_bridge(
++                plan,
++                instrumentation,
++                self._owner_token if self._parent is None else cast(str, self._parent.container._owned_token),
++                self._parent,
++            )
+         if self._parent is None:
+             runtime = (_ObservedContainer if instrumentation is not None else Container)(plan, self._owner_token)
+         else:
+@@ -16383,27 +16789,25 @@
+ 
+     def close(self) -> None:
+         self._closed = True
+-        errors = []
++        errors: list[BaseException] = []
+         for runtime in reversed(self._runtimes):
+             try:
+                 runtime.__exit__(None, None, None)
+-            except Exception as error:
++            except BaseException as error:
+                 errors.append(error)
+         self._runtimes.clear()
+-        if errors:
+-            raise ExceptionGroup("Analysis test runtime cleanup failed", errors)
++        _RuntimeOwner._raise_cleanup_failures(errors)
+ 
+     async def aclose(self) -> None:
+         self._closed = True
+-        errors = []
++        errors: list[BaseException] = []
+         for runtime in reversed(self._runtimes):
+             try:
+                 await runtime.__aexit__(None, None, None)
+-            except Exception as error:
++            except BaseException as error:
+                 errors.append(error)
+         self._runtimes.clear()
+-        if errors:
+-            raise ExceptionGroup("Analysis test runtime cleanup failed", errors)
++        _RuntimeOwner._raise_cleanup_failures(errors)
+ 
+     def __enter__(self):
+         if self._closed:
+@@ -16434,18 +16838,11 @@
+         """Emit execution instructions without running validation or policy audits."""
+         token = _ANALYSIS_STATE.set(None)
+         try:
+-            return self._build(
++            return self._build_execution(
+                 build_args=build_args,
+                 profile=profile,
+                 budget=budget,
+                 instrumentation=instrumentation,
+-                clean_orphans=True,
+-                diagnostics=False,
+-                explain_metadata=False,
+-                provider_roots=self._declared_provider_roots,
+-                allow_scope_builders=False,
+-                check_unreachable=False,
+-                aggregate_errors=False,
+             )
+         finally:
+             _ANALYSIS_STATE.reset(token)
+@@ -16506,7 +16903,9 @@
+             if instrumentation is None:
+                 container = Container(_reduce_explanation_metadata(plan), self._owner_token)
+             else:
+-                plan, fingerprint, labels, paths = _observe_plan(plan, instrumentation, self._owner_token)
++                plan, fingerprint, labels, paths = _observe_plan(
++                    cast(_PlanSet, plan), instrumentation, self._owner_token
++                )
+                 container = _ObservedContainer(_reduce_explanation_metadata(plan), self._owner_token)
+                 container._install_observation(instrumentation.profiler, fingerprint, labels, paths)
+             self._built = True
+@@ -16529,7 +16928,9 @@
+             if instrumentation is None:
+                 container = Container(_reduce_explanation_metadata(plan), self._owner_token)
+             else:
+-                plan, fingerprint, labels, paths = _observe_plan(plan, instrumentation, self._owner_token)
++                plan, fingerprint, labels, paths = _observe_plan(
++                    cast(_PlanSet, plan), instrumentation, self._owner_token
++                )
+                 container = _ObservedContainer(_reduce_explanation_metadata(plan), self._owner_token)
+                 container._install_observation(instrumentation.profiler, fingerprint, labels, paths)
+             self._built = True
+@@ -16547,13 +16948,23 @@
+ 
+     def __init__(self, parent: Scope):
+         parent._ensure_open()
+-        # Guard the direct public constructor as well as new_scope_builder(),
+-        # before allocating mutable composition state.
+-        if parent._plan._blueprint is None:
+-            raise RuntimeError('Scope builders are unavailable in run mode; build the parent with mode="analysis"')
++        if not isinstance(parent._plan, _PlanSet) or parent._plan._blueprint is None:
++            raise RuntimeError("Scope overlays require an explicitly retained composition")
++        self._initialize(parent, parent._plan.blueprint)
++
++    def _initialize(self, parent: Scope, blueprint: _Blueprint) -> None:
++        parent._ensure_open()
+         super().__init__()
+         self._parent = parent
++        self._composition_blueprint = blueprint
+         self._bundle_container_id = parent.container._owned_token
++
++    @classmethod
++    def _from_blueprint(cls, parent: Scope, blueprint: _Blueprint) -> ScopeBuilder:
++        # Temporary task21 test seam; task23 replaces this with Composition matching.
++        builder = cls.__new__(cls)
++        builder._initialize(parent, blueprint)
++        return builder
+ 
+     def build(
+         self,
+@@ -16566,18 +16977,11 @@
+         """Emit execution instructions without running validation or policy audits."""
+         token = _ANALYSIS_STATE.set(None)
+         try:
+-            return self._build(
++            return self._build_execution(
+                 build_args=build_args,
+                 profile=profile,
+                 budget=budget,
+                 instrumentation=instrumentation,
+-                clean_orphans=True,
+-                diagnostics=False,
+-                explain_metadata=False,
+-                provider_roots=self._declared_provider_roots,
+-                allow_scope_builders=False,
+-                check_unreachable=False,
+-                aggregate_errors=False,
+             )
+         finally:
+             _ANALYSIS_STATE.reset(token)
+@@ -16620,7 +17024,7 @@
+             raise TypeError("diagnostics must be a bool")
+         if not isinstance(clean_orphans, bool):
+             raise TypeError("clean_orphans must be a bool")
+-        if explain_metadata and not self._parent._plan.explain_metadata:
++        if explain_metadata and not self._parent.explain_metadata_enabled:
+             raise ValueError(
+                 "explain-metadata-disabled: an overlay of a reduced parent requires explain_metadata=False"
+             )
+@@ -16646,7 +17050,7 @@
+             )
+             if instrumentation is not None:
+                 plan, fingerprint, labels, paths = _observe_plan(
+-                    plan, instrumentation, cast(str, self._parent.container._owned_token), self._parent
++                    cast(_PlanSet, plan), instrumentation, cast(str, self._parent.container._owned_token), self._parent
+                 )
+             scope_class = _ObservedScope if instrumentation is not None else Scope
+             scope = scope_class(
+@@ -16678,7 +17082,7 @@
+             )
+             if instrumentation is not None:
+                 plan, fingerprint, labels, paths = _observe_plan(
+-                    plan, instrumentation, cast(str, self._parent.container._owned_token), self._parent
++                    cast(_PlanSet, plan), instrumentation, cast(str, self._parent.container._owned_token), self._parent
+                 )
+             scope_class = _ObservedScope if instrumentation is not None else Scope
+             scope = scope_class(
+--- a/tests/test_analysis_pipeline.py
++++ b/tests/test_analysis_pipeline.py
+@@ -69,8 +69,8 @@
+     with builder.build() as runtime:
+         assert isinstance(runtime, Container)
+         assert isinstance(runtime.resolve(Service).leaf, Leaf)
+-        assert runtime._plan.build_report is None
+-        assert runtime._plan.validation_rules == ()
++        assert not hasattr(runtime._plan, "build_report")
++        assert not hasattr(runtime._plan, "validation_rules")
+     assert events == []
+ 
+ 
+@@ -181,10 +181,10 @@
+     with builder.analyse() as parent_result:
+         parent = parent_result.create_runtime()
+         assert events == ["parent"]
+-        with ScopeBuilder(parent).build():
++        with ScopeBuilder._from_blueprint(parent, parent_result._composition_blueprint).build():
+             pass
+         assert events == ["parent"]
+-        overlay = ScopeBuilder(parent)
++        overlay = ScopeBuilder._from_blueprint(parent, parent_result._composition_blueprint)
+         overlay.add_validation_rule(lambda ctx: events.append("child") or ())
+         result = overlay.analyse()
+         assert result.report.complete
+@@ -513,7 +513,7 @@
+     def fail(*args, **kwargs):
+         raise error
+ 
+-    monkeypatch.setattr(compiler._Compiler, "compile", fail)
++    monkeypatch.setattr(compiler._Compiler, "compile_execution" if operation == "build" else "compile", fail)
+     builder = make_valid()
+     with pytest.raises(error_type) as raised:
+         getattr(builder, operation)()
+--- a/tests/test_policies.py
++++ b/tests/test_policies.py
+@@ -19,6 +19,7 @@
+     ProviderMapGroup,
+     ResolutionContext,
+     Scope,
++    ScopeBuilder,
+     Tag,
+     ValidationContext,
+     select,
+@@ -90,7 +91,7 @@
+     builder.register(Service)
+     builder.apply_bundle(PolicyPack("parent", [finding("parent")]))
+     with builder.analyse() as parent:
+-        overlay = parent.create_runtime().new_scope_builder()
++        overlay = ScopeBuilder._from_blueprint(parent.create_runtime(), parent._composition_blueprint)
+         overlay.apply_bundle(PolicyPack("child", [finding("child"), finding("extra")]))
+         with overlay.analyse() as child:
+             assert [issue.code for issue in child.report.warnings] == ["parent", "child", "extra"]
+@@ -104,7 +105,7 @@
+     builder.register(Service, lifespan="singleton")
+     builder.apply_bundle(PolicyPack("lifespans", [require_lifespan(cf.service_type_is(Service), "singleton")]))
+     with builder.analyse() as parent:
+-        overlay = parent.create_runtime().new_scope_builder()
++        overlay = ScopeBuilder._from_blueprint(parent.create_runtime(), parent._composition_blueprint)
+         overlay.register(Service, lifespan="scoped")
+         assert [issue.code for issue in overlay.analyse().report.errors] == ["policy-invalid-lifespan"]
+ 
+--- a/tests/test_factory_return_types.py
++++ b/tests/test_factory_return_types.py
+@@ -304,7 +304,7 @@
+     parent = ContainerBuilder()
+     parent.register(Service, lifespan="singleton")
+     with parent.analyse() as analysis:
+-        overlay = analysis.create_runtime().new_scope_builder()
++        overlay = ScopeBuilder._from_blueprint(analysis.create_runtime(), analysis._composition_blueprint)
+         overlay.register(Service, factory=factory_with_annotation(str), lifespan="singleton")
+         assert rejected(overlay).report.errors[0].code == "factory-return-type-mismatch"
+ 
+--- a/tests/test_build_matrix.py
++++ b/tests/test_build_matrix.py
+@@ -662,7 +662,7 @@
+             return scope
+ 
+     def create():
+-        overlay = TrackedScopeBuilder(parent)
++        overlay = TrackedScopeBuilder._from_blueprint(parent, parent_result._composition_blueprint)
+         overlay.register(OtherApplication)
+         return overlay
+ 
+--- /dev/null
++++ b/tests/test_execution_plan.py
+@@ -0,0 +1,593 @@
++"""Direct execution finalization, detached analysis projection and owner lifetimes."""
++
++import gc
++import weakref
++from collections.abc import Mapping
++from contextlib import asynccontextmanager, contextmanager
++from dataclasses import fields
++from typing import Generic, TypeVar
++
++import pytest
++
++import clean_ioc.container as compiler
++from clean_ioc import (
++    AnalysisRuntimeUnavailableError,
++    BuilderAlreadyBuiltError,
++    CompilationBudget,
++    CompilationProfiler,
++    ContainerBuilder,
++    ContainerBuildError,
++    Expose,
++    Provider,
++    ProviderMapGroup,
++    ScopeBuilder,
++    ScopeClosedError,
++    Tag,
++    WarmupPlan,
++    WarmupTarget,
++)
++
++
++class Leaf:
++    pass
++
++
++class Service:
++    def __init__(self, leaf: Leaf):
++        self.leaf = leaf
++
++
++def builder():
++    result = ContainerBuilder().set_provider_roots(())
++    result.register(Leaf, lifespan="singleton", root_policy="dependency_only")
++    result.register(Service)
++    return result
++
++
++def forbid(*args, **kwargs):
++    raise AssertionError("An analysis owner or finalizer was constructed during execution")
++
++
++@pytest.mark.parametrize("rules", [False, True])
++@pytest.mark.parametrize("profile", [False, True])
++def test_ordinary_build_does_not_construct_rich_plan_graph_report_or_finalize(monkeypatch, rules, profile):
++    source = builder()
++    source.create_boundary("private").register(bytes, instance=b"private")
++    if rules:
++        source.add_validation_rule(forbid)
++    for cls in (compiler._PlanSet, compiler.CompiledGraph, compiler.AnalysisReport):
++        monkeypatch.setattr(cls, "__init__", forbid)
++    for name in ("_finalize_plan", "_compile_with_report", "_graph_roots", "_census_inventory"):
++        monkeypatch.setattr(compiler, name, forbid)
++    with source.build(profile=CompilationProfiler() if profile else None) as runtime:
++        assert type(runtime._plan) is compiler._ExecutionPlan
++        assert isinstance(runtime.resolve(Service).leaf, Leaf)
++        with runtime.new_scope() as scope:
++            assert scope._plan is runtime._plan
++            assert scope.resolve(Service).leaf is runtime.resolve(Service).leaf
++        assert not {"compiled_graph", "build_report", "_blueprint", "validation_rules", "root_candidates"} & {
++            field.name for field in fields(runtime._plan)
++        }
++
++
++def test_selected_catalogue_includes_private_map_decorator_and_deferred_targets():
++    item = TypeVar("item")
++
++    class Handler:
++        pass
++
++    class ClosedHandler(Handler, Generic[item]):
++        pass
++
++    class Wrapper:
++        def __init__(self, inner: Handler, leaf: Leaf):
++            self.inner, self.leaf = inner, leaf
++
++    class Dispatcher:
++        def __init__(self, handlers: Mapping[str, Provider[Handler]]):
++            self.handlers = handlers
++
++    group = ProviderMapGroup("handlers", str, Handler)
++    source = ContainerBuilder().set_provider_roots(())
++    boundary = source.create_boundary("private", exposes=(Expose(Dispatcher),))
++    selected = boundary.register(
++        Handler,
++        ClosedHandler[int],
++        name="chosen",
++        tags=[Tag("kind", "selected")],
++        root_policy="dependency_only",
++        contributes={group: "chosen"},
++    )
++    unused = boundary.register(Handler, ClosedHandler[str], root_policy="dependency_only")
++    leaf = boundary.register(Leaf, root_policy="dependency_only")
++    wrapper = boundary.register_decorator(Handler, Wrapper, decorated_arg="inner")
++    boundary.register_provider_map(group, root_policy="dependency_only")
++    boundary.register(Dispatcher)
++    with source.build() as runtime:
++        catalogue = runtime.selected_registrations
++        ids = {record.id for record in catalogue}
++        assert {selected, leaf, wrapper} <= ids
++        assert unused not in ids
++        info = next(record for record in catalogue if record.id == selected)
++        assert info.implementation_type == ClosedHandler[int]
++        assert info.name == "chosen"
++        assert info.tags == (Tag("kind", "selected"),)
++        assert not runtime.has_component(Handler)
++        target = runtime.resolve(Dispatcher).handlers["chosen"]()
++        assert isinstance(target, Wrapper)
++        assert isinstance(target.inner, ClosedHandler)
++        assert isinstance(target.leaf, Leaf)
++
++
++def test_warmup_binding_needs_no_rich_graph_and_never_activates_implicitly(monkeypatch):
++    calls = []
++    source = builder()
++    source.pre_configure(Service, lambda: calls.append("configure"))
++    source.add_warmup_plan(WarmupPlan("start", [WarmupTarget(Service), WarmupTarget(Service)]))
++    monkeypatch.setattr(compiler.CompiledGraph, "__init__", forbid)
++    monkeypatch.setattr(compiler, "_finalize_plan", forbid)
++    with source.build() as runtime:
++        assert calls == []
++        report = runtime.warmup("start")
++        assert report.is_valid
++        assert calls == ["configure"]
++
++
++def test_analysis_projection_outlives_rich_result_without_retaining_it():
++    source = builder()
++    result = source.analyse()
++    graph = weakref.ref(result.graph)
++    result_ref = weakref.ref(result)
++    runtime = result.create_runtime()
++    assert runtime._plan.graph is not result.graph.roots[0].component._graph
++    assert runtime.components[0].dependencies[0].parent.occurrence_id == runtime.components[0].occurrence_id
++    assert runtime.components[0].dependencies[0].parent._graph is runtime._plan.graph
++    del result
++    gc.collect()
++    assert result_ref() is None
++    assert graph() is None
++    assert isinstance(runtime.resolve(Service).leaf, Leaf)
++    runtime.__exit__(None, None, None)
++
++
++def test_each_analysis_runtime_has_independent_singleton_and_shared_local_preconfiguration_state():
++    calls = []
++
++    class Other:
++        pass
++
++    source = builder()
++    source.register(Other)
++    source.pre_configure((Service, Other), lambda: calls.append("configure"))
++    with source.analyse() as result:
++        first, second = result.create_runtime(), result.create_runtime()
++        assert calls == []
++        assert first.resolve(Service).leaf is not second.resolve(Service).leaf
++        assert calls == ["configure", "configure"]
++        first.resolve(Other)
++        second.resolve(Other)
++        with first.new_scope() as child:
++            child.resolve(Service)
++            child.resolve(Other)
++        assert calls == ["configure", "configure"]
++        assert first._plan.graph is second._plan.graph is result._plan.graph
++
++
++def test_scope_analysis_borrows_actual_parent_owners_and_keeps_child_state_independent():
++    calls, closed = [], []
++
++    class Child:
++        def __init__(self, leaf: Leaf):
++            self.leaf = leaf
++
++    @contextmanager
++    def leaf():
++        try:
++            yield Leaf()
++        finally:
++            closed.append("parent")
++
++    source = ContainerBuilder().set_provider_roots(())
++    source.register(Leaf, factory=leaf, lifespan="singleton")
++    source.pre_configure(Leaf, lambda: calls.append("parent"))
++    with source.analyse() as parent_result:
++        parent = parent_result.create_runtime()
++        overlay = ScopeBuilder._from_blueprint(parent, parent_result._composition_blueprint)
++        overlay.set_provider_roots(())
++        overlay.register(Child, lifespan="scoped")
++        overlay.pre_configure(Child, lambda: calls.append("child"))
++        with overlay.analyse() as result:
++            assert calls == []
++            first, second = result.create_runtime(), result.create_runtime()
++            one, two = first.resolve(Child), second.resolve(Child)
++            assert one is not two
++            assert one.leaf is two.leaf is parent.resolve(Leaf)
++            assert calls == ["child", "parent", "child"]
++            assert closed == []
++        assert not parent._closed
++        assert closed == []
++    assert closed == ["parent"]
++
++
++def test_completed_execution_survives_inspection_only_boundary_failure():
++    class Missing:
++        pass
++
++    class Broken:
++        def __init__(self, missing: Missing):
++            pass
++
++    source = builder()
++    source.create_boundary("private").register(Broken)
++    source.add_validation_rule(forbid)
++    with source.analyse() as result:
++        assert result.emission_complete
++        assert not result.report.complete
++        assert result.graph is None
++        assert result.partial_graph is not None
++        assert [outcome.status for outcome in result.report.rule_outcomes] == ["unavailable"]
++        assert Broken not in {entry.service_type for entry in result.selected_registrations}
++        with result.create_runtime() as runtime:
++            assert isinstance(runtime.resolve(Service).leaf, Leaf)
++            assert not runtime.has_component(Broken)
++
++
++def test_primary_emission_failure_cannot_be_replaced_by_diagnostic_retry():
++    calls = []
++
++    def select(component):
++        calls.append(component)
++        if len(calls) == 1:
++            raise ValueError("first attempt")
++        return True
++
++    source = ContainerBuilder().set_provider_roots(())
++    source.register(Leaf, when=select)
++    result = source.analyse()
++    assert not result.emission_complete
++    assert result.partial_graph.inconsistent_retries
++    with pytest.raises(AnalysisRuntimeUnavailableError):
++        result.create_runtime()
++
++
++def test_runtime_creation_and_report_reads_do_not_replay_selection_or_warmup_filters():
++    calls = []
++    source = ContainerBuilder().set_provider_roots(())
++    source.register(Leaf, when=lambda component: calls.append("selection") or True)
++    source.add_warmup_plan(WarmupPlan("start", [WarmupTarget(Leaf, filter=lambda c: calls.append("warmup") or True)]))
++    result = source.analyse()
++    captured = tuple(calls)
++    assert captured.count("warmup") == 1
++    for _ in range(2):
++        result.report.to_json()
++        result.report.to_text()
++        with result.create_runtime() as runtime:
++            runtime.resolve(Leaf)
++    assert tuple(calls) == captured
++    result.close()
++
++
++@pytest.mark.parametrize("operation", ["build", "analyse"])
++def test_consumed_builder_and_retained_boundary_release_declaration_callbacks(operation):
++    class Rule:
++        def __call__(self, context):
++            return ()
++
++    source = builder()
++    boundary = source.create_boundary("private")
++    rule = Rule()
++    reference = weakref.ref(rule)
++    source.add_validation_rule(rule)
++    boundary.add_validation_rule(rule)
++    del rule
++    result = getattr(source, operation)()
++    if operation == "analyse":
++        result.close()
++        del result
++    gc.collect()
++    assert reference() is None
++    assert source._composition is None
++    assert boundary._composition is None
++    assert source._boundaries == []
++    with pytest.raises(BuilderAlreadyBuiltError):
++        boundary.register(bytes)
++
++
++@pytest.mark.parametrize("failure", ["wiring", "budget", "cancel"])
++def test_failed_admitted_build_releases_declarations_and_never_allocates_a_report(monkeypatch, failure):
++    class Payload:
++        pass
++
++    source = builder()
++    boundary = source.create_boundary("private")
++    payload = Payload()
++    reference = weakref.ref(payload)
++    boundary.register(Payload, instance=payload)
++    del payload
++    monkeypatch.setattr(compiler.CompiledGraph, "__init__", forbid)
++    monkeypatch.setattr(compiler.AnalysisReport, "__init__", forbid)
++    if failure == "wiring":
++
++        class Missing:
++            pass
++
++        class Broken:
++            def __init__(self, missing: Missing):
++                pass
++
++        source.register(Broken)
++        expected, options = ContainerBuildError, {}
++    elif failure == "budget":
++        expected, options = ContainerBuildError, {"budget": CompilationBudget(graph_occurrences=0)}
++    else:
++
++        def cancel(*args, **kwargs):
++            raise KeyboardInterrupt()
++
++        monkeypatch.setattr(compiler._Compiler, "compile_execution", cancel)
++        expected, options = KeyboardInterrupt, {}
++    with pytest.raises(expected) as caught:
++        source.build(**options)
++    if isinstance(caught.value, ContainerBuildError):
++        assert caught.value.report is None
++        assert caught.value.compiled_graph is None
++    # Tracebacks are legitimate independent owners; release that test-owned error.
++    del caught
++    gc.collect()
++    assert reference() is None
++    assert source._composition is boundary._composition is None
++    with pytest.raises(BuilderAlreadyBuiltError):
++        source.analyse()
++
++
++def test_build_wraps_foreign_rich_error_without_mutating_it():
++    foreign = builder().analyse()
++    error = ContainerBuildError(report=foreign.report, compiled_graph=foreign.graph)
++    original_report = error.report
++
++    def fail(component):
++        raise error
++
++    source = ContainerBuilder().set_provider_roots(())
++    source.register(Leaf, when=fail)
++    with pytest.raises(ContainerBuildError) as caught:
++        source.build()
++    assert caught.value is not error
++    assert caught.value.report is None
++    assert error.report is original_report
++    assert error.compiled_graph is foreign.graph
++
++
++def test_opaque_instance_and_derived_value_identity_survive_builder_release():
++    instance, payload = Leaf(), {"opaque": object()}
++    source = ContainerBuilder().set_provider_roots(())
++    source.register(Leaf, instance=instance)
++    source.register(Service, arguments={"leaf": payload})
++    with source.analyse() as result:
++        for _ in range(2):
++            runtime = result.create_runtime()
++            assert runtime.resolve(Leaf) is instance
++            assert runtime.resolve(Service).leaf is payload
++
++
++def test_closed_parent_is_pre_admission_and_scope_failure_consumes_once():
++    with builder().analyse() as result:
++        parent = result.create_runtime()
++        source = ScopeBuilder._from_blueprint(parent, result._composition_blueprint)
++        source.set_provider_roots(())
++        parent.__exit__(None, None, None)
++        with pytest.raises(ScopeClosedError):
++            source.build()
++        assert not source._built
++
++
++def test_result_cleanup_preserves_one_failure_identity_and_reverse_runtime_order():
++    events = []
++    error = ValueError("cleanup")
++    result = builder().analyse()
++    first, second = result.create_runtime(), result.create_runtime()
++    first._add_finalizer(lambda: events.append("first"))
++
++    def close_second():
++        events.append("second")
++        raise error
++
++    second._add_finalizer(close_second)
++    with pytest.raises(ValueError) as caught:
++        result.close()
++    assert caught.value is error
++    assert events == ["second", "first"]
++    result.close()
++    with pytest.raises(RuntimeError, match="closed"):
++        result.create_runtime()
++
++
++@pytest.mark.asyncio
++async def test_result_async_cleanup_and_fatal_error_aggregation():
++    events = []
++    result = builder().analyse()
++    first, second = result.create_runtime(), result.create_runtime()
++
++    async def close_first():
++        events.append("first")
++        raise ValueError("first")
++
++    async def close_second():
++        events.append("second")
++        raise KeyboardInterrupt("second")
++
++    first._add_finalizer(close_first)
++    second._add_finalizer(close_second)
++    with pytest.raises(BaseExceptionGroup) as caught:
++        await result.aclose()
++    assert events == ["second", "first"]
++    assert [type(error) for error in caught.value.exceptions] == [KeyboardInterrupt, ValueError]
++
++
++@pytest.mark.asyncio
++async def test_result_sync_close_preserves_async_cleanup_error():
++    @asynccontextmanager
++    async def resource():
++        yield Leaf()
++
++    source = ContainerBuilder().set_provider_roots(())
++    source.register(Leaf, factory=resource, lifespan="singleton")
++    result = source.analyse()
++    await result.create_runtime().resolve_async(Leaf)
++    with pytest.raises(RuntimeError, match="Async finalizer"):
++        result.close()
++
++
++def test_projection_preserves_provider_map_key_table_without_hashing_opaque_keys():
++    hashing_allowed = True
++
++    class Key:
++        def __hash__(self):
++            assert hashing_allowed, "Runtime projection must not rebuild the frozen key table"
++            return 17
++
++    class Dispatcher:
++        def __init__(self, handlers: Mapping[Key, Provider[Leaf]]):
++            self.handlers = handlers
++
++    key = Key()
++    source = ContainerBuilder().set_provider_roots(())
++    source.register(Leaf, root_policy="dependency_only")
++    source.register_provider_map(Leaf, key=lambda component: key, key_type=Key, root_policy="dependency_only")
++    source.register(Dispatcher)
++    with source.analyse() as result:
++        hashing_allowed = False
++        for _ in range(2):
++            runtime = result.create_runtime()
++            handlers = runtime.resolve(Dispatcher).handlers
++            assert next(iter(handlers)) is key
++
++
++def test_scope_failure_consumes_builder_and_retained_boundary_and_preserves_parent():
++    class Missing:
++        pass
++
++    class Broken:
++        def __init__(self, missing: Missing):
++            pass
++
++    with builder().analyse() as result:
++        parent = result.create_runtime()
++        source = ScopeBuilder._from_blueprint(parent, result._composition_blueprint)
++        boundary = source.create_boundary("child")
++        source.register(Broken)
++        with pytest.raises(ContainerBuildError):
++            source.build()
++        assert source._composition is boundary._composition is None
++        with pytest.raises(BuilderAlreadyBuiltError):
++            source.build()
++        with pytest.raises(BuilderAlreadyBuiltError):
++            boundary.register(Leaf)
++        assert isinstance(parent.resolve(Service).leaf, Leaf)
++
++
++def test_caller_owned_component_snapshot_preserves_opaque_identity_and_relationships():
++    saved = []
++    source = builder()
++
++    def observe(component):
++        saved.append(compiler._undecorated_component_view(component))
++        return True
++
++    source.register(Service, when=observe)
++    with source.build() as runtime:
++        assert source._composition is None
++        for component in saved:
++            dependency = component.dependencies[0]
++            assert dependency.parent.occurrence_id == component.occurrence_id
++            assert dependency.implementation is Leaf
++            assert dependency.parent._graph is component._graph
++        assert isinstance(runtime.resolve(Service).leaf, Leaf)
++
++
++@pytest.mark.parametrize("operation", ["build", "analyse"])
++def test_optional_observer_bridge_preserves_execution_without_rich_runtime_ownership(operation):
++    from clean_ioc import Instrumentation, ResolutionProfiler
++
++    source = builder()
++    source.add_warmup_plan(WarmupPlan("start", [WarmupTarget(Service)]))
++    profiler = ResolutionProfiler(sample_durations=0)
++    instrumentation = Instrumentation(profiler)
++    if operation == "build":
++        result = None
++        runtime = source.build(instrumentation=instrumentation)
++    else:
++        result = source.analyse()
++        runtime = result.create_runtime(instrumentation=instrumentation)
++    with runtime:
++        assert type(runtime._plan) is compiler._ExecutionPlan
++        assert runtime.warmup("start").is_valid
++        assert isinstance(runtime.resolve(Service).leaf, Leaf)
++        assert any(record.attempts for record in profiler.report().records)
++    if result is not None:
++        result.close()
++
++
++def test_local_failure_does_not_freeze_discarded_graph_or_retry_callbacks(monkeypatch):
++    calls = []
++
++    def fail(component):
++        calls.append(component)
++        raise ValueError("failed once")
++
++    source = ContainerBuilder().set_provider_roots(())
++    source.register(Leaf, when=fail)
++    monkeypatch.setattr(compiler._ComponentGraph, "freeze", forbid)
++    monkeypatch.setattr(compiler, "_error_report", forbid)
++    with pytest.raises(ContainerBuildError) as caught:
++        source.build()
++    assert len(calls) == 1
++    assert caught.value.report is None
++    assert caught.value.partial_graph is None
++
++
++def test_concurrent_pre_admission_callers_cannot_start_two_compilations(monkeypatch):
++    import threading
++
++    source = builder()
++    ready = threading.Barrier(2)
++    compiling = threading.Event()
++    other_finished = threading.Event()
++    original_inputs = source._effective_build_args
++    original_compile = compiler._Compiler.compile_execution
++    outcomes = []
++    calls = []
++
++    def inputs(values):
++        result = original_inputs(values)
++        if not source._compiling:
++            ready.wait(timeout=3)
++        return result
++
++    def compile_once(self):
++        calls.append("compile")
++        compiling.set()
++        assert other_finished.wait(timeout=3)
++        return original_compile(self)
++
++    def run():
++        try:
++            outcomes.append(source.build())
++        except BuilderAlreadyBuiltError as error:
++            outcomes.append(error)
++            other_finished.set()
++
++    monkeypatch.setattr(source, "_effective_build_args", inputs)
++    monkeypatch.setattr(compiler._Compiler, "compile_execution", compile_once)
++    first, second = threading.Thread(target=run), threading.Thread(target=run)
++    first.start()
++    second.start()
++    assert compiling.wait(timeout=3)
++    first.join(timeout=3)
++    second.join(timeout=3)
++    assert not first.is_alive() and not second.is_alive()
++    assert calls == ["compile"]
++    assert sum(isinstance(outcome, BuilderAlreadyBuiltError) for outcome in outcomes) == 1
++    runtime = next(outcome for outcome in outcomes if not isinstance(outcome, BuilderAlreadyBuiltError))
++    assert isinstance(runtime.resolve(Service).leaf, Leaf)
++    runtime.__exit__(None, None, None)

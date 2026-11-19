@@ -1,0 +1,8 @@
+{
+  "clean_ioc/components.py": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+  "clean_ioc/container.py": "b8b7695e3bf8df7b44cfad8bffadd37f6478d674184789859c13c3a59ff58a5e",
+  "clean_ioc/_compact_index.py": "15ac9a0881546c380e6c0bad7bdf74b6ac14cd2943f47c2eee640cd61d307aaa",
+  "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+  "benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+  ".work/graph-memory-optimization/evidence/12/measure.py": "b37cf520032337ce6ed264135ecd5c5493863a2df5cb8692f3732a5ca53857e5"
+}

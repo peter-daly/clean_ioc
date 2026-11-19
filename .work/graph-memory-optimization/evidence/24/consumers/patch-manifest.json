@@ -1,0 +1,88 @@
+{
+  "bark-from-preserved-consumer.patch": {
+    "sha256": "192861221c10b340489fa501873475e8cac0462934b546adcc8323f291808e00",
+    "base": "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/bark-source",
+    "changed_files": [
+      "bark_core/bootstrapping/build.py",
+      "bark_core/unit_of_work/bundles.py",
+      "tests/unit/application/commands/test_clean_ioc.py",
+      "tests/unit/application/events/test_clean_ioc.py",
+      "tests/unit/bootstrapping/test_build.py",
+      "tests/unit/bundles/test_application.py",
+      "tests/unit/bundles/test_compiled_dispatcher_routes.py",
+      "tests/unit/bundles/test_compiled_dispatchers.py",
+      "tests/unit/bundles/test_component_selectors.py",
+      "tests/unit/bundles/test_datadog.py",
+      "tests/unit/bundles/test_decorator_templates.py",
+      "tests/unit/bundles/test_dispatcher_compilation_budget.py",
+      "tests/unit/bundles/test_event_sourcing.py",
+      "tests/unit/bundles/test_event_store.py",
+      "tests/unit/bundles/test_fastapi.py",
+      "tests/unit/bundles/test_http.py",
+      "tests/unit/bundles/test_locking_policy.py",
+      "tests/unit/bundles/test_messaging.py",
+      "tests/unit/bundles/test_outbox.py",
+      "tests/unit/bundles/test_outbox_daemon.py",
+      "tests/unit/bundles/test_outbox_dynamodb.py",
+      "tests/unit/bundles/test_outbox_sqlalchemy.py",
+      "tests/unit/bundles/test_redis_composition.py",
+      "tests/unit/bundles/test_sagas.py",
+      "tests/unit/bundles/test_unit_of_work.py"
+    ]
+  },
+  "bark-from-original-checkout.patch": {
+    "sha256": "2550ae665278278172b362c56d173ee747f83a65cb465fd29bedbd5d9913f092",
+    "base": "/Users/peter.daly/WS/bark/bark-core",
+    "changed_files": [
+      "bark_core/bootstrapping/build.py",
+      "bark_core/unit_of_work/bundles.py",
+      "tests/unit/application/commands/test_clean_ioc.py",
+      "tests/unit/application/events/test_clean_ioc.py",
+      "tests/unit/bootstrapping/test_build.py",
+      "tests/unit/bootstrapping/test_fastapi.py",
+      "tests/unit/bootstrapping/test_job.py",
+      "tests/unit/bundles/test_application.py",
+      "tests/unit/bundles/test_compiled_dispatcher_routes.py",
+      "tests/unit/bundles/test_compiled_dispatchers.py",
+      "tests/unit/bundles/test_component_selectors.py",
+      "tests/unit/bundles/test_datadog.py",
+      "tests/unit/bundles/test_decorator_templates.py",
+      "tests/unit/bundles/test_dispatcher_compilation_budget.py",
+      "tests/unit/bundles/test_event_sourcing.py",
+      "tests/unit/bundles/test_event_store.py",
+      "tests/unit/bundles/test_fastapi.py",
+      "tests/unit/bundles/test_http.py",
+      "tests/unit/bundles/test_locking_policy.py",
+      "tests/unit/bundles/test_messaging.py",
+      "tests/unit/bundles/test_outbox.py",
+      "tests/unit/bundles/test_outbox_daemon.py",
+      "tests/unit/bundles/test_outbox_dynamodb.py",
+      "tests/unit/bundles/test_outbox_sqlalchemy.py",
+      "tests/unit/bundles/test_redis_composition.py",
+      "tests/unit/bundles/test_sagas.py",
+      "tests/unit/bundles/test_unit_of_work.py"
+    ]
+  },
+  "cop-from-preserved-consumer.patch": {
+    "sha256": "9563ffbfc34854d893eca1388b56b3b2b646c1663f0d7e878f39bcdba1ec43e8",
+    "base": "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/cop-source",
+    "changed_files": [
+      "data_protection_cop/common/dependencies/build.py",
+      "tests/compiled_modes_probe.py",
+      "tests/unit/test_compiled_build_modes.py",
+      "tests/unit/test_host_composition.py"
+    ]
+  },
+  "cop-from-original-checkout.patch": {
+    "sha256": "54090db4ec294652abffddd21439d57bcf6e23cd6962c5b89d939e7fe8e733a7",
+    "base": "/Users/peter.daly/.codex/worktrees/registration-partitions-main/data-protection-cop",
+    "changed_files": [
+      "data_protection_cop/common/dependencies/build.py",
+      "tests/compiled_modes_probe.py",
+      "tests/unit/test_compiled_build_modes.py",
+      "tests/unit/test_host_composition.py",
+      "tests/unit/test_response_processor_foundation.py",
+      "tests/unit/test_worker_foundation.py"
+    ]
+  }
+}

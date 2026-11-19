@@ -1,0 +1,155 @@
+FFFF.F.................................................................. [ 58%]
+....................................................                     [100%]
+=================================== FAILURES ===================================
+_____ test_snapshot_generic_cache_keeps_conditional_identity[False-draft] ______
+
+source_kind = 'draft', populate = False
+
+    @pytest.mark.parametrize("source_kind", ["draft", "frozen", "projection"])
+    @pytest.mark.parametrize("populate", [False, True])
+    def test_snapshot_generic_cache_keeps_conditional_identity(source_kind, populate):
+        graph = _ComponentGraph()
+        component = graph.add(draft(1, service_type=GenericService[int]))
+        parent = graph.add(draft(2))
+        if source_kind != "draft":
+            graph.freeze()
+        initial = component.generic_mapping if populate else None
+        if source_kind == "projection":
+            component = graph.view(component, parent)
+        first = _undecorated_component_view(component)
+        second = _undecorated_component_view(component)
+        assert first._record is not second._record
+        assert first.generic_mapping[T] is second.generic_mapping[T] is int
+        assert first.generic_mapping is first.generic_mapping
+        if source_kind == "frozen" and populate:
+            assert first.generic_mapping is second.generic_mapping is initial
+        else:
+>           assert first.generic_mapping is not second.generic_mapping
+E           AssertionError: assert GenericTypeMap({'T': <class 'int'>}) is not GenericTypeMap({'T': <class 'int'>})
+E            +  where GenericTypeMap({'T': <class 'int'>}) = Component(tests.test_callback_snapshot_sharing.GenericService[int] -> <class 'object'>, occurrence=1).generic_mapping
+E            +  and   GenericTypeMap({'T': <class 'int'>}) = Component(tests.test_callback_snapshot_sharing.GenericService[int] -> <class 'object'>, occurrence=1).generic_mapping
+
+tests/test_callback_snapshot_sharing.py:38: AssertionError
+_____ test_snapshot_generic_cache_keeps_conditional_identity[False-frozen] _____
+
+source_kind = 'frozen', populate = False
+
+    @pytest.mark.parametrize("source_kind", ["draft", "frozen", "projection"])
+    @pytest.mark.parametrize("populate", [False, True])
+    def test_snapshot_generic_cache_keeps_conditional_identity(source_kind, populate):
+        graph = _ComponentGraph()
+        component = graph.add(draft(1, service_type=GenericService[int]))
+        parent = graph.add(draft(2))
+        if source_kind != "draft":
+            graph.freeze()
+        initial = component.generic_mapping if populate else None
+        if source_kind == "projection":
+            component = graph.view(component, parent)
+        first = _undecorated_component_view(component)
+        second = _undecorated_component_view(component)
+        assert first._record is not second._record
+        assert first.generic_mapping[T] is second.generic_mapping[T] is int
+        assert first.generic_mapping is first.generic_mapping
+        if source_kind == "frozen" and populate:
+            assert first.generic_mapping is second.generic_mapping is initial
+        else:
+>           assert first.generic_mapping is not second.generic_mapping
+E           AssertionError: assert GenericTypeMap({'T': <class 'int'>}) is not GenericTypeMap({'T': <class 'int'>})
+E            +  where GenericTypeMap({'T': <class 'int'>}) = Component(tests.test_callback_snapshot_sharing.GenericService[int] -> <class 'object'>, occurrence=1).generic_mapping
+E            +  and   GenericTypeMap({'T': <class 'int'>}) = Component(tests.test_callback_snapshot_sharing.GenericService[int] -> <class 'object'>, occurrence=1).generic_mapping
+
+tests/test_callback_snapshot_sharing.py:38: AssertionError
+___ test_snapshot_generic_cache_keeps_conditional_identity[False-projection] ___
+
+source_kind = 'projection', populate = False
+
+    @pytest.mark.parametrize("source_kind", ["draft", "frozen", "projection"])
+    @pytest.mark.parametrize("populate", [False, True])
+    def test_snapshot_generic_cache_keeps_conditional_identity(source_kind, populate):
+        graph = _ComponentGraph()
+        component = graph.add(draft(1, service_type=GenericService[int]))
+        parent = graph.add(draft(2))
+        if source_kind != "draft":
+            graph.freeze()
+        initial = component.generic_mapping if populate else None
+        if source_kind == "projection":
+            component = graph.view(component, parent)
+        first = _undecorated_component_view(component)
+        second = _undecorated_component_view(component)
+        assert first._record is not second._record
+        assert first.generic_mapping[T] is second.generic_mapping[T] is int
+        assert first.generic_mapping is first.generic_mapping
+        if source_kind == "frozen" and populate:
+            assert first.generic_mapping is second.generic_mapping is initial
+        else:
+>           assert first.generic_mapping is not second.generic_mapping
+E           AssertionError: assert GenericTypeMap({'T': <class 'int'>}) is not GenericTypeMap({'T': <class 'int'>})
+E            +  where GenericTypeMap({'T': <class 'int'>}) = Component(tests.test_callback_snapshot_sharing.GenericService[int] -> <class 'object'>, occurrence=-18446744073709551617).generic_mapping
+E            +  and   GenericTypeMap({'T': <class 'int'>}) = Component(tests.test_callback_snapshot_sharing.GenericService[int] -> <class 'object'>, occurrence=-18446744073709551617).generic_mapping
+
+tests/test_callback_snapshot_sharing.py:38: AssertionError
+______ test_snapshot_generic_cache_keeps_conditional_identity[True-draft] ______
+
+source_kind = 'draft', populate = True
+
+    @pytest.mark.parametrize("source_kind", ["draft", "frozen", "projection"])
+    @pytest.mark.parametrize("populate", [False, True])
+    def test_snapshot_generic_cache_keeps_conditional_identity(source_kind, populate):
+        graph = _ComponentGraph()
+        component = graph.add(draft(1, service_type=GenericService[int]))
+        parent = graph.add(draft(2))
+        if source_kind != "draft":
+            graph.freeze()
+        initial = component.generic_mapping if populate else None
+        if source_kind == "projection":
+            component = graph.view(component, parent)
+        first = _undecorated_component_view(component)
+        second = _undecorated_component_view(component)
+        assert first._record is not second._record
+        assert first.generic_mapping[T] is second.generic_mapping[T] is int
+        assert first.generic_mapping is first.generic_mapping
+        if source_kind == "frozen" and populate:
+            assert first.generic_mapping is second.generic_mapping is initial
+        else:
+>           assert first.generic_mapping is not second.generic_mapping
+E           AssertionError: assert GenericTypeMap({'T': <class 'int'>}) is not GenericTypeMap({'T': <class 'int'>})
+E            +  where GenericTypeMap({'T': <class 'int'>}) = Component(tests.test_callback_snapshot_sharing.GenericService[int] -> <class 'object'>, occurrence=1).generic_mapping
+E            +  and   GenericTypeMap({'T': <class 'int'>}) = Component(tests.test_callback_snapshot_sharing.GenericService[int] -> <class 'object'>, occurrence=1).generic_mapping
+
+tests/test_callback_snapshot_sharing.py:38: AssertionError
+___ test_snapshot_generic_cache_keeps_conditional_identity[True-projection] ____
+
+source_kind = 'projection', populate = True
+
+    @pytest.mark.parametrize("source_kind", ["draft", "frozen", "projection"])
+    @pytest.mark.parametrize("populate", [False, True])
+    def test_snapshot_generic_cache_keeps_conditional_identity(source_kind, populate):
+        graph = _ComponentGraph()
+        component = graph.add(draft(1, service_type=GenericService[int]))
+        parent = graph.add(draft(2))
+        if source_kind != "draft":
+            graph.freeze()
+        initial = component.generic_mapping if populate else None
+        if source_kind == "projection":
+            component = graph.view(component, parent)
+        first = _undecorated_component_view(component)
+        second = _undecorated_component_view(component)
+        assert first._record is not second._record
+        assert first.generic_mapping[T] is second.generic_mapping[T] is int
+        assert first.generic_mapping is first.generic_mapping
+        if source_kind == "frozen" and populate:
+            assert first.generic_mapping is second.generic_mapping is initial
+        else:
+>           assert first.generic_mapping is not second.generic_mapping
+E           AssertionError: assert GenericTypeMap({'T': <class 'int'>}) is not GenericTypeMap({'T': <class 'int'>})
+E            +  where GenericTypeMap({'T': <class 'int'>}) = Component(tests.test_callback_snapshot_sharing.GenericService[int] -> <class 'object'>, occurrence=-18446744073709551617).generic_mapping
+E            +  and   GenericTypeMap({'T': <class 'int'>}) = Component(tests.test_callback_snapshot_sharing.GenericService[int] -> <class 'object'>, occurrence=-18446744073709551617).generic_mapping
+
+tests/test_callback_snapshot_sharing.py:38: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_callback_snapshot_sharing.py::test_snapshot_generic_cache_keeps_conditional_identity[False-draft]
+FAILED tests/test_callback_snapshot_sharing.py::test_snapshot_generic_cache_keeps_conditional_identity[False-frozen]
+FAILED tests/test_callback_snapshot_sharing.py::test_snapshot_generic_cache_keeps_conditional_identity[False-projection]
+FAILED tests/test_callback_snapshot_sharing.py::test_snapshot_generic_cache_keeps_conditional_identity[True-draft]
+FAILED tests/test_callback_snapshot_sharing.py::test_snapshot_generic_cache_keeps_conditional_identity[True-projection]
+5 failed, 119 passed in 0.59s

@@ -1,0 +1,129 @@
+{
+  "source": {
+    "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+    "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n M tests/test_graph_artifact_experiment.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_artifact_evidence.py\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? benchmarks/graph_reachability_audit.py\n?? docs/graph-memory-fixture.md\n?? tests/test_graph_memory_fixture.py\n?? tests/test_graph_reachability_audit.py\n?? tests/test_shared_component_definitions.py\n",
+    "source_sha256": {
+      "clean_ioc/components.py": "1778cf2598e54d2f87f9dd271535e2f586893dec370ef3c2066f1d156696ce0d",
+      "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+      "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+      "benchmarks/graph_memory_evidence.py": "c8bc3c7b631241f256b0325d925bc21c4a80595d9e5b47460404af3c6cf5e6fa"
+    }
+  },
+  "routes": 8,
+  "diagnostics": false,
+  "audit_source_sha256": "a0475923b9c5b6260f1cf6df0962c7179699e300c86eebd2c3d018aaea2325e6",
+  "audit": {
+    "audit_seconds": 0.7740631659980863,
+    "physical_records": 88558,
+    "graph_count_including_inherited_execution_graphs": 1,
+    "all_graph_physical_records": 88558,
+    "overlapping_reachability": {
+      "public_roots": {
+        "physical_records": 8932,
+        "logical_ids": 8932
+      },
+      "provider_roots": {
+        "physical_records": 632,
+        "logical_ids": 3032
+      },
+      "managed_provider_roots": {
+        "physical_records": 8958,
+        "logical_ids": 17890
+      },
+      "warmup_roots": {
+        "physical_records": 0,
+        "logical_ids": 0
+      },
+      "architecture_roots": {
+        "physical_records": 8932,
+        "logical_ids": 8932
+      },
+      "public_graph_roots": {
+        "physical_records": 8932,
+        "logical_ids": 8932
+      },
+      "execution_components_including_map_targets": {
+        "physical_records": 8932,
+        "logical_ids": 8932
+      },
+      "eligible_root_candidates": {
+        "physical_records": 8964,
+        "logical_ids": 11364
+      },
+      "rejected_root_candidates": {
+        "physical_records": 0,
+        "logical_ids": 0
+      },
+      "evidence_index_owners": {
+        "physical_records": 88508,
+        "logical_ids": 88508
+      },
+      "contextual_view_sources_and_parents": {
+        "physical_records": 8982,
+        "logical_ids": 19714
+      },
+      "externally_retained_components": {
+        "physical_records": 0,
+        "logical_ids": 0
+      },
+      "captured_template_source_graphs": {
+        "physical_records": 0,
+        "logical_ids": 0
+      }
+    },
+    "disjoint_categories": {
+      "public_relationship_closure": 8932,
+      "additional_execution_or_other_roots": 50,
+      "additional_candidate_evidence": 0,
+      "additional_explanation_evidence": 79576,
+      "additional_view_sources": 0,
+      "outside_all_audited_roots": 0
+    },
+    "externally_reachable_outside_runtime_roots": 0,
+    "outside_runtime_roots_by_kind": {
+      "value": 30408,
+      "registration": 48608,
+      "decorator": 560
+    },
+    "outside_runtime_root_sample_ids": [
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      25,
+      26,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      43,
+      44,
+      45,
+      46
+    ],
+    "outside_roots_by_kind": {},
+    "missing_graph_qualified_links": [],
+    "outside_roots_occurrence_ids": [],
+    "captured_selection_view_count": 0
+  }
+}

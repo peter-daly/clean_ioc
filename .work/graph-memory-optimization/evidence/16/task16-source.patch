@@ -1,0 +1,280 @@
+--- a/clean_ioc/components.py
++++ b/clean_ioc/components.py
+@@ -399,7 +399,12 @@
+     def declared_service_type(self, value: Any | None) -> None:
+         self._replace_definition("declared_service_type", value)
+ 
+-    def freeze(self, definitions: dict[tuple[Any, ...], _ComponentDefinition] | None = None) -> _ComponentRecord:
++    def freeze(
++        self,
++        definitions: dict[tuple[Any, ...], _ComponentDefinition] | None = None,
++        *,
++        include_decorators: bool = True,
++    ) -> _ComponentRecord:
+         definition = self._definition
+         if definitions is not None:
+             # The established final-graph contract normalizes equal ordered tag
+@@ -424,7 +429,7 @@
+             argument=self.argument,
+             parent_id=self.parent_id,
+             dependency_ids=self.dependency_ids,
+-            decorator_ids=self.decorator_ids,
++            decorator_ids=self.decorator_ids if include_decorators else (),
+             decorated_id=self.decorated_id,
+             pre_configuration_ids=self.pre_configuration_ids,
+         )
+@@ -829,8 +834,14 @@
+         if key in records:
+             continue
+         value = source.record(key)
+-        record = value if isinstance(value, _ComponentRecord) else value.freeze()
+-        records[key] = replace(record, decorator_ids=())
++        if isinstance(value, _ComponentDraft):
++            # Freeze once into an unpublished detached record. Sharing existing
++            # records would also share their lazily populated generic caches.
++            record = value.freeze(include_decorators=False)
++        else:
++            record = value if isinstance(value, _ComponentRecord) else value.freeze()
++            record = replace(record, decorator_ids=())
++        records[key] = record
+         pending.extend(record.dependency_ids)
+         pending.extend(record.pre_configuration_ids)
+         pending.extend(item for item in (record.parent_id, record.decorated_id, record.owner_id) if item is not None)
+--- /dev/null
++++ b/tests/test_callback_snapshot_sharing.py
+@@ -0,0 +1,235 @@
++"""Detached callback records preserve facts, cache identity and caller ownership."""
++
++from dataclasses import fields
++from typing import Generic, TypeVar
++
++import pytest
++
++from clean_ioc import ContainerBuilder, ContainerBuildError, DecoratorTemplate, DerivedServices
++from clean_ioc.components import _ComponentGraph, _ComponentRecord, _undecorated_component_view
++from tests.test_shared_component_definitions import draft
++
++T = TypeVar("T")
++
++
++class GenericService(Generic[T]):
++    pass
++
++
++@pytest.mark.parametrize("source_kind", ["draft", "frozen", "projection"])
++@pytest.mark.parametrize("populate", [False, True])
++def test_snapshot_generic_cache_keeps_conditional_identity(source_kind, populate):
++    graph = _ComponentGraph()
++    component = graph.add(draft(1, service_type=GenericService[int]))
++    parent = graph.add(draft(2))
++    if source_kind != "draft":
++        graph.freeze()
++    initial = component.generic_mapping if populate else None
++    if source_kind == "projection":
++        component = graph.view(component, parent)
++    first = _undecorated_component_view(component)
++    second = _undecorated_component_view(component)
++    first_record, second_record = first._record, second._record
++    assert isinstance(first_record, _ComponentRecord)
++    assert isinstance(second_record, _ComponentRecord)
++    assert first_record is not second_record
++    if source_kind == "frozen" and populate:
++        assert first.generic_mapping is second.generic_mapping is initial
++    else:
++        assert first_record._generic_mapping is second_record._generic_mapping is None
++        assert first.generic_mapping[T] is int
++        assert second_record._generic_mapping is None
++    assert first.generic_mapping[T] is second.generic_mapping[T] is int
++    assert first.generic_mapping is first.generic_mapping
++    if source_kind == "projection":
++        assert first.parent is not None and first.parent.occurrence_id == parent.occurrence_id
++
++
++def test_draft_snapshot_preserves_every_field_without_second_record(monkeypatch):
++    graph = _ComponentGraph()
++    parent = graph.add(draft(1))
++    component = graph.add(
++        draft(2, parent_id=1, owner_id=1, dependency_ids=(3,), decorator_ids=(4,), pre_configuration_ids=(5,))
++    )
++    graph.add(draft(3, parent_id=2))
++    graph.add(draft(4, decorated_id=2))
++    graph.add(draft(5, parent_id=2))
++    original = _ComponentRecord.__init__
++    created = []
++
++    def capture(self, *args, **kwargs):
++        original(self, *args, **kwargs)
++        created.append(self)
++
++    monkeypatch.setattr(_ComponentRecord, "__init__", capture)
++    snapshot = _undecorated_component_view(component)
++    assert len(created) == 4
++    records = snapshot._graph._records
++    assert records is not None and set(records) == {1, 2, 3, 5}
++    for record in created:
++        source = graph.record(record.occurrence_id)
++        for field in fields(record):
++            if field.name not in ("decorator_ids", "_generic_mapping"):
++                assert getattr(record, field.name) is getattr(source, field.name)
++        assert record.decorator_ids == ()
++        assert record._generic_mapping is None
++    graph._drafts[2].dependency_ids = ()
++    graph._drafts[2].name = "later"
++    graph._drafts[1].boundary = "later-parent"
++    graph.freeze()
++    assert snapshot.name is None
++    assert snapshot.parent is not None and snapshot.parent.boundary is None
++    assert snapshot.dependencies[0].occurrence_id == 3
++    assert snapshot.owner_occurrence_id == parent.occurrence_id
++
++
++class Resource:
++    pass
++
++
++class Source:
++    def __init__(self, resource: Resource):
++        self.resource = resource
++
++
++class Target(Generic[T]):
++    def __init__(self, resource: Resource):
++        self.resource = resource
++
++
++class Wrapper:
++    def __init__(self, inner: Target[int]):
++        self.inner = inner
++
++
++class Consumer:
++    def __init__(self, target: Target[int]):
++        self.target = target
++
++
++def snapshot_facts(component):
++    return (
++        component.id,
++        component.occurrence_id,
++        component.service_type,
++        component.implementation,
++        component.name,
++        component.tags,
++        component.boundary,
++        component.owner_occurrence_id,
++        component.cache_owner,
++        component.cleanup_owner,
++        component.argument,
++        component.position,
++        tuple(item.occurrence_id for item in component.dependencies),
++        tuple(item.occurrence_id for item in component.decorators),
++        component.parent.occurrence_id if component.parent is not None else None,
++        tuple(component.generic_mapping.items()),
++    )
++
++
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++@pytest.mark.parametrize("failure", [None, "when", "position"])
++def test_escaped_source_target_and_position_views_survive_build_failure_and_retry(mode, failure):
++    builder = ContainerBuilder()
++    builder.set_provider_roots(())
++    builder.register(Resource)
++    builder.register(Source)
++    builder.register(Target[int])
++    builder.register(Consumer)
++    saved = []
++    fail = failure
++    calls = []
++
++    def save(component, kind):
++        for earlier, facts in saved:
++            assert snapshot_facts(earlier) == facts
++        saved.append((component, snapshot_facts(component)))
++        calls.append(kind)
++
++    def source_filter(component):
++        assert component.dependencies[0].service_type is Resource
++        save(component, "source")
++        return True
++
++    def when(component):
++        assert component.generic_mapping[T] is int
++        assert component.decorators == ()
++        save(component, "when")
++        if fail == "when":
++            raise ValueError("snapshot failure")
++        return True
++
++    def position(decorator, component):
++        assert decorator.decorated is not None
++        assert decorator.decorated.occurrence_id == component.occurrence_id
++        assert decorator.position is None
++        assert component.generic_mapping[T] is int
++        save(decorator, "preview")
++        save(component, "position-target")
++        if fail == "position":
++            raise ValueError("snapshot failure")
++        return 7
++
++    builder.register_decorator_template(
++        for_each=Source,
++        source_filter=source_filter,
++        template=lambda _: DecoratorTemplate(DerivedServices(Target[int]), Wrapper, when=when, position=position),
++    )
++    if failure:
++        with pytest.raises(ContainerBuildError):
++            builder.build(mode=mode)
++        assert saved
++        for component, facts in saved:
++            assert snapshot_facts(component) == facts
++        fail = None
++    with builder.build(mode=mode) as runtime:
++        before = list(calls)
++        assert isinstance(runtime.resolve(Consumer).target, Wrapper)
++        assert calls == before
++    assert {kind for kind in calls} == {"source", "when", "preview", "position-target"}
++    assert any(component.parent is not None for component, _ in saved)
++    for component, facts in saved:
++        assert snapshot_facts(component) == facts
++        assert component.decorators == ()
++        assert not component._graph._drafts
++
++
++@pytest.mark.parametrize("mode", ["run", "analysis"])
++def test_saved_overlay_source_keeps_boundary_and_parent_singleton_dependencies(mode):
++    from clean_ioc import Expose, Tag
++
++    builder = ContainerBuilder()
++    builder.set_provider_roots(())
++    boundary = builder.create_boundary("provider", exposes=(Expose(Source),))
++    resource_id = boundary.register(Resource, lifespan="singleton", tags=(Tag("owner", "parent"),))
++    boundary.register(Source, lifespan="singleton")
++    saved = []
++    with builder.build(mode="analysis") as parent:
++        existing = parent.resolve(Source)
++        overlay = parent.new_scope_builder()
++        overlay.set_provider_roots(())
++        overlay.register(Resource, lifespan="singleton", tags=(Tag("owner", "child"),))
++        overlay.register(Target[int])
++
++        def source_filter(component):
++            assert component.boundary == "provider"
++            assert component.dependencies[0].id == resource_id
++            assert component.dependencies[0].has_tag("owner", "parent")
++            saved.append((component, snapshot_facts(component)))
++            return True
++
++        overlay.register_decorator_template(
++            for_each=Source,
++            source_filter=source_filter,
++            template=lambda _: DecoratorTemplate(DerivedServices(Target[int]), Wrapper),
++        )
++        with overlay.build(mode=mode) as child:
++            assert child.resolve(Source) is existing
++            assert isinstance(child.resolve(Target[int]), Wrapper)
++    assert saved
++    for component, facts in saved:
++        assert snapshot_facts(component) == facts
++        assert component.dependencies[0].id == resource_id
++        assert component.dependencies[0].boundary == "provider"
++        assert component.decorators == ()

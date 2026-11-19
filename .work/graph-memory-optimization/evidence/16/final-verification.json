@@ -1,0 +1,34 @@
+{
+  "status": "PASS",
+  "runtime_matches_measurement_manifest": true,
+  "all_task15_unchanged_source_hashes_preserved": true,
+  "task15_manifest_and_patch_preserved": true,
+  "main_processes": 18,
+  "main_baseline": "Verified task15 AFTER",
+  "escaped_processes": 24,
+  "constructor_census_processes": 6,
+  "phase_observer_processes": 2,
+  "all_escaped_graphs_and_records_released": true,
+  "python314_full_tests": 2401,
+  "python314_focused_tests": 248,
+  "supported_focused_tests": {
+    "3.11": {
+      "passed": 245,
+      "skipped": 3
+    },
+    "3.12": {
+      "passed": 245,
+      "skipped": 3
+    },
+    "3.13": {
+      "passed": 248,
+      "skipped": 0
+    }
+  },
+  "strict_docs": true,
+  "final_lint_format_types": true,
+  "git_diff_check": true,
+  "artifact_tests": 18,
+  "exclusive_benchmark_interval": "ended",
+  "editing": "stopped"
+}

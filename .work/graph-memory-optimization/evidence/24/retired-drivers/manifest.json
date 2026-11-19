@@ -1,0 +1,46 @@
+{
+  "source": "/tmp/clean-ioc-task24-start/benchmarks",
+  "meaning": "Task24 start source snapshots, historical private compiler policy harnesses. Archived as text; unsupported against the new API. Prior measurement evidence remains unchanged.",
+  "files": {
+    "diagnostic_names_evidence.py": {
+      "archived_as": "diagnostic_names_evidence.py.txt",
+      "sha256": "9e85148efa776441e338e2994d24d7840dad7a0605b597788794b19ef965c99c"
+    },
+    "optional_diagnostics_evidence.py": {
+      "archived_as": "optional_diagnostics_evidence.py.txt",
+      "sha256": "e99a44643290f1f14354b7228dd9499a93098e682b978c724f9059700d9560fc"
+    },
+    "deferred_advisories_evidence.py": {
+      "archived_as": "deferred_advisories_evidence.py.txt",
+      "sha256": "e9b2996f6ef1911d9888505f3e87a9f84638f686863999edddde2c32ef30e940"
+    },
+    "early_rejection_records_evidence.py": {
+      "archived_as": "early_rejection_records_evidence.py.txt",
+      "sha256": "086432794170995f39a28f0e270ac98f53bf586c94d63ddc57b6919e6ab92843"
+    },
+    "declared_provider_roots_evidence.py": {
+      "archived_as": "declared_provider_roots_evidence.py.txt",
+      "sha256": "1f6f768f50d6dced58f34507b9f210736d25285c99f30d4842f0d93ff12e4645"
+    },
+    "empty_dependency_validation_evidence.py": {
+      "archived_as": "empty_dependency_validation_evidence.py.txt",
+      "sha256": "cc9b3c290dc3d5a8c8f879815fc91b1a8e13aed634c88d5e1fad6d9cb2ac387a"
+    },
+    "frozen_draft_capacity_evidence.py": {
+      "archived_as": "frozen_draft_capacity_evidence.py.txt",
+      "sha256": "498f170d718667e3943941c0ffe78c95a7bb2caa11663b4951b694fb1edebb55"
+    },
+    "invariant_subplan_evidence.py": {
+      "archived_as": "invariant_subplan_evidence.py.txt",
+      "sha256": "ecff16319666743c267fa3d1d1c46482c7b018bf595aea6fb333440022d88d18"
+    },
+    "failure_aggregation_evidence.py": {
+      "archived_as": "failure_aggregation_evidence.py.txt",
+      "sha256": "6d3c112c2f4048e81009c074d493a7493f1ba870d5b3dc99fa05236ff7eec602"
+    },
+    "compact_runtime_evidence.py": {
+      "archived_as": "compact_runtime_evidence.py.txt",
+      "sha256": "56cbe7ac383cc4ed991ebe9418f1859dccb28e2e8cba1e7f776a9afe59431ecd"
+    }
+  }
+}

@@ -1,0 +1,97 @@
+error[call-non-callable]: Object of type `Literal["contains"]` is not callable
+  --> .work/graph-memory-optimization/evidence/15/adapter-boundaries.py:48:45
+   |
+48 |         rows[name][label] = outcome(lambda: operation(mapping))
+   |                                             ^^^^^^^^^^^^^^^^^^
+info: Union variant `Literal["contains"]` is incompatible with this call site
+info: Attempted to call union type `((d) -> Unknown) | Literal["set", "get", "getitem", "contains", "set-new"]`
+
+error[call-non-callable]: Object of type `Literal["get"]` is not callable
+  --> .work/graph-memory-optimization/evidence/15/adapter-boundaries.py:48:45
+   |
+48 |         rows[name][label] = outcome(lambda: operation(mapping))
+   |                                             ^^^^^^^^^^^^^^^^^^
+info: Union variant `Literal["get"]` is incompatible with this call site
+info: Attempted to call union type `((d) -> Unknown) | Literal["set", "get", "getitem", "contains", "set-new"]`
+
+error[call-non-callable]: Object of type `Literal["getitem"]` is not callable
+  --> .work/graph-memory-optimization/evidence/15/adapter-boundaries.py:48:45
+   |
+48 |         rows[name][label] = outcome(lambda: operation(mapping))
+   |                                             ^^^^^^^^^^^^^^^^^^
+info: Union variant `Literal["getitem"]` is incompatible with this call site
+info: Attempted to call union type `((d) -> Unknown) | Literal["set", "get", "getitem", "contains", "set-new"]`
+
+error[call-non-callable]: Object of type `Literal["set"]` is not callable
+  --> .work/graph-memory-optimization/evidence/15/adapter-boundaries.py:48:45
+   |
+48 |         rows[name][label] = outcome(lambda: operation(mapping))
+   |                                             ^^^^^^^^^^^^^^^^^^
+info: Union variant `Literal["set"]` is incompatible with this call site
+info: Attempted to call union type `((d) -> Unknown) | Literal["set", "get", "getitem", "contains", "set-new"]`
+
+error[call-non-callable]: Object of type `Literal["set-new"]` is not callable
+  --> .work/graph-memory-optimization/evidence/15/adapter-boundaries.py:48:45
+   |
+48 |         rows[name][label] = outcome(lambda: operation(mapping))
+   |                                             ^^^^^^^^^^^^^^^^^^
+info: Union variant `Literal["set-new"]` is incompatible with this call site
+info: Attempted to call union type `((d) -> Unknown) | Literal["set", "get", "getitem", "contains", "set-new"]`
+
+error[invalid-argument-type]: Argument is incorrect
+  --> .work/graph-memory-optimization/evidence/15/artifact-measure.py:55:41
+   |
+55 |         fixture = code.Fixture(runtime, sources, {}, dict(code.TEMPLATE_CALLS))
+   |                                         ^^^^^^^ Expected `dict[str, str]`, found `dict[str | None, str]`
+info: element `None` of union `str | None` is not assignable to `str`
+
+error[unresolved-attribute]: Unresolved attribute `__del__` on type `<class '_CompactIndex'>`.
+  --> .work/graph-memory-optimization/evidence/15/census.py:32:1
+   |
+32 | _CompactIndex.__del__ = finalize
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error[invalid-assignment]: Object of type `def retain(plan, **kwargs) -> Unknown` is not assignable to attribute `_retain_runtime_graph` of type `def _retain_runtime_graph(plan: _PlanSet, *, include_architecture: bool = False) -> None`
+   --> .work/graph-memory-optimization/evidence/15/census.py:128:1
+    |
+128 | container._retain_runtime_graph = retain
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[unresolved-import]: Cannot resolve imported module `measure`
+   --> .work/graph-memory-optimization/evidence/15/census.py:130:6
+    |
+130 | from measure import sample
+    |      ^^^^^^^
+info: Searched in the following paths during module resolution:
+info:   1. /Users/peter.daly/WS/pete/clean_ioc (first-party code)
+info:   2. vendored://stdlib (stdlib typeshed stubs vendored by ty)
+info:   3. /Users/peter.daly/WS/pete/clean_ioc/.venv/lib/python3.14/site-packages (site-packages)
+info: make sure your Python environment is properly configured: https://docs.astral.sh/ty/modules/#python-environment
+
+error[no-matching-overload]: No overload of bound method `MutableMapping.update` matches arguments
+   --> tests/test_compact_compilation_indexes.py:154:13
+    |
+154 |             source.update({number: "value" for number in range(5000) if number != 4000})
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+info: First overload defined here
+    --> stdlib/typing.pyi:1943:5
+     |
+1943 | /     @overload
+1944 | |     def update(self, m: SupportsKeysAndGetItem[_KT, _VT], /) -> None:
+1945 | |         """D.update([E, ]**F) -> None.  Update D from mapping/iterable E and F.
+1946 | |         If E present and has a .keys() method, does:
+1947 | |             for k in E.keys(): D[k] = E[k]
+1948 | |         If E present and lacks .keys() method, does:
+1949 | |             for (k, v) in E: D[k] = v
+1950 | |         In either case, this is followed by:
+1951 | |             for k, v in F.items(): D[k] = v
+1952 | |         """
+     | |___________^ First overload defined here
+info: Possible overloads for bound method `update`:
+info:   (self, m: SupportsKeysAndGetItem[_KT@MutableMapping, _VT@MutableMapping], /) -> None
+info:   (self: SupportsGetItem[str, _VT@MutableMapping], m: SupportsKeysAndGetItem[str, _VT@MutableMapping], /, **kwargs: _VT@MutableMapping) -> None
+info:   (self, m: Iterable[tuple[_KT@MutableMapping, _VT@MutableMapping]], /) -> None
+info:   (self: SupportsGetItem[str, _VT@MutableMapping], m: Iterable[tuple[str, _VT@MutableMapping]], /, **kwargs: _VT@MutableMapping) -> None
+info:   (self: SupportsGetItem[str, _VT@MutableMapping], /, **kwargs: _VT@MutableMapping) -> None
+
+Found 10 diagnostics

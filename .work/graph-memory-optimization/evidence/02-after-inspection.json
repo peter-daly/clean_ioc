@@ -1,0 +1,251 @@
+{
+  "activations": {
+    "branch": 3844,
+    "endpoint": 8,
+    "endpoint_decorator": 8,
+    "leaf": 3968,
+    "policy": 2,
+    "route_dependency": 34,
+    "route_source": 34,
+    "state": 27,
+    "worker": 124,
+    "worker_decorator": 248
+  },
+  "before": {
+    "peak_rss_bytes": 42647552,
+    "rss_bytes": 42270720
+  },
+  "build_seconds": 11.267067832988687,
+  "diagnostics": false,
+  "eager_decorator_facts": false,
+  "graph": {
+    "activation_kinds": {
+      "collection": 16,
+      "constructor": 57298,
+      "deferred": 218,
+      "supplied": 31026
+    },
+    "component_metadata": {
+      "definition_identity_patterns": 116,
+      "identity_patterns": 31311,
+      "patterns_by_kind": {
+        "decorator": 10,
+        "managed_provider": 50,
+        "provider": 168,
+        "provider_map": 16,
+        "registration": 41,
+        "value": 31026
+      },
+      "retained_definition_index_bytes": 0,
+      "shared_definition_bytes": 13920,
+      "shared_definition_objects": 116,
+      "unique_field_objects": {
+        "activation": 4,
+        "boundary": 1,
+        "build_args": 1,
+        "declared_service_type": 15,
+        "id": 31297,
+        "implementation": 20,
+        "implementation_type": 20,
+        "kind": 6,
+        "lifespan": 3,
+        "name": 11,
+        "service_type": 45,
+        "tags": 1
+      }
+    },
+    "decorator_objects": {
+      "logical_outcomes_by_entry": {
+        "rejected": 564428,
+        "selected": 792
+      },
+      "logical_reason_codes_by_entry": {
+        "decorator-filter-matched": 792,
+        "decorator-filter-rejected": 56,
+        "template-target-not-selected": 564372
+      },
+      "outcomes": {
+        "rejected": 406,
+        "selected": 24
+      },
+      "reason_codes": {
+        "decorator-filter-matched": 24,
+        "decorator-filter-rejected": 56,
+        "template-target-not-selected": 350
+      },
+      "shallow_storage_bytes": {
+        "decision_tuples": 6320,
+        "decisions": 41280,
+        "explanations": 3167984,
+        "template_facts": 61920
+      },
+      "unique_objects": {
+        "decision_tuples": 60,
+        "decisions": 430,
+        "explanations": 56565,
+        "template_facts": 430
+      },
+      "unique_patterns": 43
+    },
+    "executable_helpers": {
+      "_CompiledDecorator": 240,
+      "_CompiledDependency": 1740
+    },
+    "execution_step_kinds": {
+      "_ContextProviderStep": 152,
+      "_ManagedProviderStep": 50,
+      "_ProviderMapStep": 32,
+      "_ProviderStep": 168,
+      "_ScopedRegistrationStep": 193,
+      "_SingletonRegistrationStep": 226,
+      "_TransientRegistrationStep": 326,
+      "_ValueStep": 618
+    },
+    "logical_graph_visits": 8932,
+    "metadata_entries": {
+      "census_definitions": 0,
+      "census_sources": 0,
+      "decorator_explanations": 56522,
+      "generic_explanations": 0,
+      "occurrence_explanations": 0,
+      "parameter_explanations": 0,
+      "root_candidates": 18
+    },
+    "physical_records": 88558,
+    "provider_view_contexts": 50,
+    "record_kinds": {
+      "decorator": 792,
+      "managed_provider": 50,
+      "provider": 168,
+      "provider_map": 16,
+      "registration": 56506,
+      "value": 31026
+    },
+    "selected_registrations": 51,
+    "shallow_storage_bytes": {
+      "component_records": 15586208,
+      "execution_steps": 158104,
+      "link_tuples": 2653968,
+      "occurrence_integers": 2481424,
+      "origin_indexes": 5242960,
+      "record_index": 5242960,
+      "registration_objects": 7224
+    },
+    "unique_execution_steps": 1765,
+    "unique_origins": 45,
+    "unique_registration_objects": 43
+  },
+  "inspection": {
+    "before": {
+      "peak_rss_bytes": 145932288,
+      "rss_bytes": 144900096,
+      "traced_peak_bytes": 184815,
+      "traced_retained_bytes": 2488
+    },
+    "explanation_sample_size": 128,
+    "passes": [
+      {
+        "after_explanations": {
+          "peak_rss_bytes": 145932288,
+          "rss_bytes": 144965632,
+          "traced_peak_bytes": 710039,
+          "traced_retained_bytes": 527712
+        },
+        "after_manifest": {
+          "peak_rss_bytes": 165609472,
+          "rss_bytes": 165609472,
+          "traced_peak_bytes": 26876324,
+          "traced_retained_bytes": 14207399
+        },
+        "after_traversal": {
+          "peak_rss_bytes": 145932288,
+          "rss_bytes": 144965632,
+          "traced_peak_bytes": 710767,
+          "traced_retained_bytes": 528440
+        },
+        "explain_seconds": 0.09959324996452779,
+        "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+        "manifest_seconds": 0.6099376670317724,
+        "pass": "first",
+        "sample_decisions": 1280,
+        "traversal_seconds": 0.09467350004706532,
+        "traversal_visits": 8932
+      },
+      {
+        "after_explanations": {
+          "peak_rss_bytes": 165609472,
+          "rss_bytes": 165609472,
+          "traced_peak_bytes": 26876324,
+          "traced_retained_bytes": 14207983
+        },
+        "after_manifest": {
+          "peak_rss_bytes": 166658048,
+          "rss_bytes": 166658048,
+          "traced_peak_bytes": 26877637,
+          "traced_retained_bytes": 14208880
+        },
+        "after_traversal": {
+          "peak_rss_bytes": 165609472,
+          "rss_bytes": 165609472,
+          "traced_peak_bytes": 26876324,
+          "traced_retained_bytes": 14208439
+        },
+        "explain_seconds": 0.02844033297151327,
+        "manifest_fingerprint": "fa06427a9c823d18961ba2d173294ce206f38c516f2478dd229e7d1bebaaa722",
+        "manifest_seconds": 2.820801455527544e-05,
+        "pass": "repeated",
+        "sample_decisions": 1280,
+        "traversal_seconds": 0.10171075002290308,
+        "traversal_visits": 8932
+      }
+    ]
+  },
+  "instrumentation": "none",
+  "lazy_activations": {
+    "endpoint": 8,
+    "endpoint_decorator": 8,
+    "route_dependency": 8,
+    "route_source": 8
+  },
+  "machine": "arm64",
+  "pid": 46544,
+  "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "prepared": {
+    "peak_rss_bytes": 137510912,
+    "rss_bytes": 137510912
+  },
+  "python": "3.14.4",
+  "resolve_seconds": 0.024860290926881135,
+  "resolved": {
+    "peak_rss_bytes": 137510912,
+    "rss_bytes": 137510912
+  },
+  "routes": 8,
+  "source": {
+    "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? docs/graph-memory-fixture.md\n?? tests/test_graph_memory_fixture.py\n?? tests/test_shared_component_definitions.py\n",
+    "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "c8bc3c7b631241f256b0325d925bc21c4a80595d9e5b47460404af3c6cf5e6fa",
+      "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+      "clean_ioc/components.py": "1778cf2598e54d2f87f9dd271535e2f586893dec370ef3c2066f1d156696ce0d",
+      "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+    }
+  },
+  "template_calls": {
+    "generated_worker_to_endpoint_decorator": 8,
+    "generated_worker_to_source": 8,
+    "policy_to_worker_decorator": 2,
+    "source_to_generated_dependency": 8
+  },
+  "validated": {
+    "leaves": 3968,
+    "managed_scopes": 26,
+    "ordinary_scopes": 1,
+    "payload_bytes": 507904,
+    "source_map_calls": 64,
+    "tree_objects": 7812,
+    "workers": 124
+  }
+}

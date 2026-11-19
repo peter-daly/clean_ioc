@@ -1,0 +1,16 @@
+{
+  "clean_ioc/container.py": "a56e8a96846706ba88d8c47b4050f0828897e14407d46b5b32f7b1197567c208",
+  "clean_ioc/components.py": "d7ad050b2db336aee71ccd9454e110025e75a344f6c37bc576bba31fd7540fa5",
+  "clean_ioc/ext/asgi/dependencies.py": "b39fe9e4a13b27233da867468d5e05f04a4a1c36a400cfbdc153094ac4184727",
+  "clean_ioc/ext/fastapi/dependencies.py": "cc73b25c0c1fb1e33f2109021636837919a46d83bad2616178627d4c0d362729",
+  "tests/test_unified_slots.py": "8a39c3a4dab8a82c7d58edcd4d20142fd283fa678545f65a33a89704c1c3d0b4",
+  "tests/ext/fast_api/test_dependencies.py": "3884d683fbc532ce6b564b3d9e20022028e68e24f98c8b5419ff16e3856cd97e",
+  "docs/slots.md": "06314ede69f83573be303cfcf288d0fe2ef34de68d554b756d9ce6e2282ca632",
+  "README.md": "c9dbe1a04cee024bd17c7ca488634cf8d99f829839e87cdf5bef06fd3ae89456",
+  "V1_TO_V2_UPGRADE.md": "361880431c19bb44f4e83e8d1f49e90bdee8229fdd132659559f338318474ad1",
+  "benchmarks/bench_clean_ioc.py": "fb73bf8958cf1bc47d9755a75eb0d4b94c27cdb4db5673dc3bfcb25c9388c739",
+  "scripts/validate_docs_examples.py": "c053d04606a522b18219a650570b84c749ac438612998ee74fc203f31f0ff3e9",
+  "marketing/LAUNCH_PLAN.md": "cf7b9a6bb946838bf156c866ca6f0ce90cad35ea3f57dae31ed1762d54510cc8",
+  ".library-skills/use-clean-ioc/SKILL.md": "5b248f0e70b7016faeac691639483a52697c63e26dedf08f8b396e98cebdadce",
+  ".library-skills/migrate-clean-ioc/references/migration-map.md": "fe17f748156eceda112e6b68263b42a98820bff1cc2ec095a63a9ce762eb7d5c"
+}

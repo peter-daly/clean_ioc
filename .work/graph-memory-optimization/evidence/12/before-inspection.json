@@ -1,0 +1,36 @@
+{
+  "source": {
+    "revision": "34d1ea02840afe6f23f0693b32651028ec7d9128",
+    "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n M CHANGES.rst\n M README.md\n M V1_TO_V2_UPGRADE.md\n M V2_DEVELOPMENT.md\n M benchmarks/bench_clean_ioc.py\n M benchmarks/bench_compiler_optimization.py\n M benchmarks/compact_runtime_evidence.py\n M benchmarks/compilation_budget_experiment.py\n M benchmarks/compiler_memory_evidence.py\n M benchmarks/compiler_optimization_evidence.py\n M benchmarks/cop_compiler_memory_evidence.py\n M benchmarks/declared_provider_roots_evidence.py\n M benchmarks/deferred_advisories_evidence.py\n M benchmarks/diagnostic_names_evidence.py\n M benchmarks/early_rejection_records_evidence.py\n M benchmarks/empty_dependency_validation_evidence.py\n M benchmarks/failure_aggregation_evidence.py\n M benchmarks/frozen_draft_capacity_evidence.py\n M benchmarks/graph_artifact.py\n M benchmarks/graph_artifact_fixture.py\n M benchmarks/graph_memory_evidence.py\n M benchmarks/graph_memory_fixture.py\n M benchmarks/graph_resolution_only_checks.py\n M benchmarks/invariant_subplan_evidence.py\n M benchmarks/optional_diagnostics_evidence.py\n M benchmarks/selected_registration_catalogue_evidence.py\n M clean_ioc/__init__.py\n M clean_ioc/cli.py\n M clean_ioc/container.py\n M clean_ioc/matrix.py\n M clean_ioc/sarif.py\n M clean_ioc/semantic_diff.py\n M clean_ioc/tooling.py\n M docs/compact-runtime-evidence.md\n M docs/compilation-budgets.md\n M docs/compiler-tooling.md\n M docs/custom-validation.md\n M docs/declared-provider-roots-evidence.md\n M docs/deferred-advisories-evidence.md\n M docs/early-rejection-records-evidence.md\n M docs/empty-dependency-validation-evidence.md\n M docs/extensions/fastapi.md\n M docs/failure-aggregation-evidence.md\n M docs/graph-change-policies.md\n M docs/optional-diagnostics-evidence.md\n M docs/policies.md\n M docs/runtime-build-series-evidence.md\n M docs/sarif.md\n M docs/scopes.md\n M docs/selected-registration-catalogue-evidence.md\n M scripts/validate_docs_examples.py\n M tests/ext/fast_api/test_dependencies.py\n M tests/test_boundaries.py\n M tests/test_boundary_composition.py\n M tests/test_build_matrix.py\n M tests/test_build_triage.py\n M tests/test_bundles.py\n M tests/test_clone_metadata.py\n M tests/test_closed_generic_constructors.py\n M tests/test_compact_runtime.py\n M tests/test_compilation_budget.py\n M tests/test_compilation_profile.py\n M tests/test_compiler_memory.py\n M tests/test_compiler_tooling.py\n M tests/test_component_preferences.py\n M tests/test_component_selector.py\n M tests/test_container.py\n M tests/test_declared_provider_roots.py\n M tests/test_decorator_template_compilation.py\n M tests/test_decorator_template_composition.py\n M tests/test_decorator_template_diagnostics.py\n M tests/test_decorator_template_expansion.py\n M tests/test_decorator_template_feasibility.py\n M tests/test_deferred_advisories.py\n M tests/test_diagnostic_names.py\n M tests/test_empty_dependency_validation.py\n M tests/test_factory_return_types.py\n M tests/test_failure_aggregation.py\n M tests/test_fallbacks.py\n M tests/test_graph_artifact_experiment.py\n M tests/test_graph_reachability_audit.py\n M tests/test_incremental_analysis_probe.py\n M tests/test_invariant_subplans.py\n M tests/test_managed_providers.py\n M tests/test_optional_diagnostics.py\n M tests/test_optional_explanation_metadata.py\n M tests/test_parent_precedence.py\n M tests/test_per_call_scope_acceptance.py\n M tests/test_per_call_scopes.py\n M tests/test_policies.py\n M tests/test_provider_maps.py\n M tests/test_registration_patterns.py\n M tests/test_registration_templates.py\n M tests/test_resolution_profiler.py\n M tests/test_resource_ownership.py\n M tests/test_sarif.py\n M tests/test_selected_registrations.py\n M tests/test_selection_census.py\n M tests/test_semantic_graph_policy.py\n M tests/test_service_groups.py\n M tests/test_service_targets.py\n M tests/test_type_alias_lookup_paths.py\n M tests/test_type_aliases.py\n M tests/test_typed_providers.py\n M tests/test_union_services.py\n M tests/test_warmup_plans.py\n M tests/tooling_targets.py\n?? .work/graph-memory-optimization/10-contract.md\n?? .work/graph-memory-optimization/10-result.md\n?? .work/graph-memory-optimization/10-run-and-analysis-modes.md\n?? .work/graph-memory-optimization/11-inventory.md\n?? .work/graph-memory-optimization/11-result.md\n?? .work/graph-memory-optimization/11-validation-and-failure-contract.md\n?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md\n?? .work/graph-memory-optimization/12-inventory.md\n?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md\n?? .work/graph-memory-optimization/14-shared-draft-definitions.md\n?? .work/graph-memory-optimization/15-compact-compilation-tables.md\n?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md\n?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md\n?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md\n?? .work/graph-memory-optimization/evidence/10/\n?? .work/graph-memory-optimization/evidence/11/\n?? .work/graph-memory-optimization/evidence/12/\n?? tests/test_build_modes.py\n?? tests/test_validation_evidence_lifetime.py\n",
+    "source_sha256": {
+      "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc/container.py": "4a6c447812f7b313b96d2ce3bf09aab54207f24d88764b830a4c24010be5b683",
+      "clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+      "benchmarks/graph_memory_evidence.py": "e9779a13df7312b5db68652755a87f7f00b47f49112302b0340932b08f033591"
+    }
+  },
+  "inspection": [
+    {
+      "components": 64,
+      "start_retained_bytes": 32,
+      "passes": [
+        {
+          "label": "first",
+          "seconds": 0.01118729100562632,
+          "decisions": 256,
+          "retained_bytes": 321328,
+          "peak_bytes": 429224
+        },
+        {
+          "label": "repeated",
+          "seconds": 0.0009655000176280737,
+          "decisions": 256,
+          "retained_bytes": 321600,
+          "peak_bytes": 429224
+        }
+      ]
+    }
+  ]
+}

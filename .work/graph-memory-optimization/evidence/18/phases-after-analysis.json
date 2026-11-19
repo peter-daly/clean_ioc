@@ -1,0 +1,139 @@
+{
+  "policy": "after",
+  "variant": "analysis",
+  "source": {
+    "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f",
+    "clean_ioc.tooling": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+    "clean_ioc.container": "1a60386b392058ac47143b3acf4fc82b1034b95f360854dae2e98ff6cde42223",
+    "clean_ioc.selection_census": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+    "benchmarks.graph_memory_fixture": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf"
+  },
+  "phases": [
+    {
+      "phase": "fixture:imported",
+      "elapsed_seconds": 0.008323124959133565,
+      "current_bytes": 1100103,
+      "preceding_segment_peak_bytes": 2130824
+    },
+    {
+      "phase": "build:begin",
+      "elapsed_seconds": 0.013820166932418942,
+      "current_bytes": 1175844,
+      "preceding_segment_peak_bytes": 1201961
+    },
+    {
+      "phase": "_expand_registration_templates:begin",
+      "elapsed_seconds": 0.014176499913446605,
+      "current_bytes": 1197153,
+      "preceding_segment_peak_bytes": 1198748
+    },
+    {
+      "phase": "_expand_registration_templates:end",
+      "elapsed_seconds": 0.019236083957366645,
+      "current_bytes": 1293461,
+      "preceding_segment_peak_bytes": 1358499
+    },
+    {
+      "phase": "_expand_decorator_templates:begin",
+      "elapsed_seconds": 0.020145584014244378,
+      "current_bytes": 1310463,
+      "preceding_segment_peak_bytes": 1341149
+    },
+    {
+      "phase": "_expand_decorator_templates:end",
+      "elapsed_seconds": 0.06669416697695851,
+      "current_bytes": 1387041,
+      "preceding_segment_peak_bytes": 1457113
+    },
+    {
+      "phase": "compile:begin",
+      "elapsed_seconds": 0.06831066694576293,
+      "current_bytes": 1433147,
+      "preceding_segment_peak_bytes": 1436837
+    },
+    {
+      "phase": "freeze:begin",
+      "elapsed_seconds": 2.3448132089106366,
+      "current_bytes": 8028590,
+      "preceding_segment_peak_bytes": 8032138
+    },
+    {
+      "phase": "freeze:end",
+      "elapsed_seconds": 2.394019083934836,
+      "current_bytes": 8014521,
+      "preceding_segment_peak_bytes": 8174030
+    },
+    {
+      "phase": "compile:end",
+      "elapsed_seconds": 2.4032306669978425,
+      "current_bytes": 8105005,
+      "preceding_segment_peak_bytes": 8107353
+    },
+    {
+      "phase": "_finalize_plan:begin",
+      "elapsed_seconds": 2.403288958943449,
+      "current_bytes": 8105562,
+      "preceding_segment_peak_bytes": 8107949
+    },
+    {
+      "phase": "_finalize_plan:end",
+      "elapsed_seconds": 2.4037728749681264,
+      "current_bytes": 8111686,
+      "preceding_segment_peak_bytes": 8114291
+    },
+    {
+      "phase": "_compile_warmup_plans:begin",
+      "elapsed_seconds": 2.40377658396028,
+      "current_bytes": 8111818,
+      "preceding_segment_peak_bytes": 8111818
+    },
+    {
+      "phase": "_compile_warmup_plans:end",
+      "elapsed_seconds": 2.4037818749202415,
+      "current_bytes": 8111948,
+      "preceding_segment_peak_bytes": 8112330
+    },
+    {
+      "phase": "_reduce_explanation_metadata:begin",
+      "elapsed_seconds": 2.4164838339202106,
+      "current_bytes": 7938709,
+      "preceding_segment_peak_bytes": 8399428
+    },
+    {
+      "phase": "_reduce_explanation_metadata:end",
+      "elapsed_seconds": 2.4164855839917436,
+      "current_bytes": 7938782,
+      "preceding_segment_peak_bytes": 7938782
+    },
+    {
+      "phase": "build:end",
+      "elapsed_seconds": 2.416501083993353,
+      "current_bytes": 7940297,
+      "preceding_segment_peak_bytes": 7940297
+    },
+    {
+      "phase": "build:return",
+      "elapsed_seconds": 2.4165210420032963,
+      "current_bytes": 7933620,
+      "preceding_segment_peak_bytes": 7941105
+    },
+    {
+      "phase": "build:collected",
+      "elapsed_seconds": 2.4240297499345616,
+      "current_bytes": 7709096,
+      "preceding_segment_peak_bytes": 7933666
+    },
+    {
+      "phase": "validation_report:begin",
+      "elapsed_seconds": 2.424032083945349,
+      "current_bytes": 7709432,
+      "preceding_segment_peak_bytes": 7709432
+    },
+    {
+      "phase": "validation_report:end",
+      "elapsed_seconds": 2.4240480839507654,
+      "current_bytes": 7710384,
+      "preceding_segment_peak_bytes": 7710424
+    }
+  ]
+}

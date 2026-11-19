@@ -1,75 +1,40 @@
-# Accessing Container, Scope, and Resolver Inside Dependencies
+# Runtime container access
 
-You can inject `Container`, `Scope`, and `Resolver` directly.
+Constructor injection is the default. A component that selects among compiled roots at runtime can inject
+`ResolutionContext`:
 
 ```python
-from clean_ioc import Container, Resolver, Scope
+import clean_ioc.component_filters as cf
+from clean_ioc import ResolutionContext
+
+
+class ClientSelector:
+    def __init__(self, context: ResolutionContext):
+        self.context = context
+
+    def get(self, name: str) -> Client:
+        return self.context.resolve(Client, filter=cf.with_name(name))
 ```
 
-## Accessing `Container`
+The selected plans were compiled during `build()`. This API does not bring back runtime graph discovery.
+
+## Nested scopes
+
+Framework infrastructure may inject `Scope` to create a nested cache boundary:
 
 ```python
-class Client:
-    def __init__(self, container: Container):
-        self.container = container
-
-    def get_number(self) -> int:
-        return self.container.resolve(int)
+from clean_ioc import Scope
 
 
-container = Container()
-container.register(int, instance=2)
-container.register(Client)
-
-client = container.resolve(Client)
-print(client.get_number())  # 2
-```
-
-## Accessing `Resolver`
-
-```python
-class Client:
-    def __init__(self, resolver: Resolver):
-        self.resolver = resolver
-
-    def get_number(self) -> int:
-        return self.resolver.resolve(int)
-
-
-container = Container()
-container.register(int, instance=2)
-container.register(Client)
-
-print(container.resolve(Client).get_number())  # 2
-```
-
-## `Resolver` inside a scope
-
-When resolved inside a scope, `Resolver` resolves against that scope.
-
-```python
-container = Container()
-container.register(int, instance=2)
-container.register(Client)
-
-with container.new_scope() as scope:
-    scope.register(int, instance=10)
-    scoped_client = scope.resolve(Client)
-    print(scoped_client.get_number())  # 10
-```
-
-## Accessing `Scope`
-
-```python
-class ScopeAwareClient:
+class BatchRunner:
     def __init__(self, scope: Scope):
         self.scope = scope
 
-
-container = Container()
-container.register(ScopeAwareClient)
-
-with container.new_scope() as scope:
-    client = scope.resolve(ScopeAwareClient)
-    print(client.scope is scope)  # True
+    def run(self):
+        with self.scope.new_scope() as batch_scope:
+            return batch_scope.resolve(BatchHandler).run()
 ```
+
+## Composition restrictions
+
+Runtime dependencies cannot register components, patch components, apply bundles, or create a `ScopeBuilder`. Composition belongs at an explicit application boundary, not inside activation.

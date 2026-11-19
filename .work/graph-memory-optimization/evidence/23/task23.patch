@@ -1,0 +1,1894 @@
+--- a/clean_ioc/__init__.py
++++ b/clean_ioc/__init__.py
+@@ -34,6 +34,7 @@
+     BoundaryBuilder,
+     BuilderAlreadyBuiltError,
+     CannotResolveError,
++    Composition,
+     Container,
+     ContainerBuilder,
+     ContainerBuildError,
+@@ -192,6 +193,7 @@
+     "ComponentKind",
+     "ComponentSelector",
+     "Undefined",
++    "Composition",
+     "Container",
+     "ContainerBuildError",
+     "ContainerBuilder",
+--- a/clean_ioc/container.py
++++ b/clean_ioc/container.py
+@@ -461,6 +461,7 @@
+     definitions: tuple[_ValidationRuleDefinition, ...] = ()
+     graph: CompiledGraph | None = None
+     plan: _ExecutionPlan | None = None
++    composition: Composition | None = None
+ 
+ 
+ _ANALYSIS_STATE: ContextVar[_AnalysisState | None] = ContextVar("clean_ioc_analysis", default=None)
+@@ -1414,6 +1415,160 @@
+                 boundary=boundary.name,
+             )
+     return tuple(definitions), types.MappingProxyType(dict(references))
++
++
++@dataclass(frozen=True, slots=True)
++class _CapturedDependency:
++    values: tuple[tuple[str, Any], ...]
++    settings: tuple[tuple[str, Any], ...]
++
++    @classmethod
++    def capture(cls, dependency: legacy.Dependency) -> _CapturedDependency:
++        return cls(
++            tuple((name, getattr(dependency, name)) for name in legacy.Dependency.__slots__ if name != "settings"),
++            tuple((item.name, getattr(dependency.settings, item.name)) for item in fields(dependency.settings)),
++        )
++
++    def restore(self) -> legacy.Dependency:
++        dependency = object.__new__(legacy.Dependency)
++        for name, value in self.values:
++            setattr(dependency, name, value)
++        dependency.settings = legacy.DependencySettings(**dict(self.settings))
++        return dependency
++
++
++@dataclass(frozen=True, slots=True)
++class _CapturedRegistration:
++    values: tuple[tuple[str, Any], ...]
++    dependencies: tuple[tuple[str, _CapturedDependency], ...]
++
++    @classmethod
++    def capture(cls, registration: legacy._Registration) -> _CapturedRegistration:
++        return cls(
++            tuple(
++                (name, getattr(registration, name))
++                for name in legacy._Registration.__slots__
++                if name not in ("dependencies", "_generic_mapping")
++            ),
++            tuple((name, _CapturedDependency.capture(value)) for name, value in registration.dependencies.items()),
++        )
++
++    def restore(self) -> legacy._Registration:
++        registration = object.__new__(legacy._Registration)
++        for name, value in self.values:
++            setattr(registration, name, value)
++        registration.dependencies = {name: value.restore() for name, value in self.dependencies}
++        registration._generic_mapping = None
++        return registration
++
++
++@dataclass(frozen=True, slots=True)
++class _CapturedLayer:
++    values: tuple[tuple[str, Any], ...]
++    registrations: tuple[tuple[Any, tuple[_CapturedRegistration, ...]], ...]
++    pre_configuration_ids: tuple[str, ...]
++
++    @classmethod
++    def capture(cls, layer: _Layer) -> _CapturedLayer:
++        memo: dict[int, _CapturedRegistration] = {}
++        registrations = []
++        for service, sources in layer.registry._registrations.items():
++            captured = []
++            for source in sources:
++                if id(source) not in memo:
++                    memo[id(source)] = _CapturedRegistration.capture(source)
++                captured.append(memo[id(source)])
++            registrations.append((service, tuple(captured)))
++        values = []
++        for item in fields(layer):
++            if item.name in ("registry", "pre_configuration_states"):
++                continue
++            value = getattr(layer, item.name)
++            if isinstance(value, Mapping):
++                # Only declaration maps are copied. Their values (including fixed
++                # values, map keys and callback closures) remain opaque referents.
++                value = types.MappingProxyType(dict(value))
++            values.append((item.name, value))
++        return cls(tuple(values), tuple(registrations), tuple(layer.pre_configuration_states))
++
++    def restore(self) -> _Layer:
++        registry = legacy._Registry()
++        memo: dict[int, legacy._Registration] = {}
++        for service, sources in self.registrations:
++            for source in sources:
++                if id(source) not in memo:
++                    memo[id(source)] = source.restore()
++                registry._registrations[service].append(memo[id(source)])
++        return _Layer(
++            **dict(self.values),
++            registry=registry,
++            pre_configuration_states={key: _PreConfigurationState() for key in self.pre_configuration_ids},
++        )
++
++
++@dataclass(frozen=True, slots=True)
++class _CapturedComposition:
++    layers: tuple[_CapturedLayer, ...]
++    boundaries: tuple[tuple[tuple[tuple[str, Any], ...], _CapturedLayer], ...]
++    build_args: Mapping[str, Any]
++
++    @classmethod
++    def capture(cls, blueprint: _Blueprint, build_args: Mapping[str, Any]) -> _CapturedComposition:
++        return cls(
++            tuple(_CapturedLayer.capture(layer) for layer in blueprint.layers),
++            tuple(
++                (
++                    tuple(
++                        (item.name, getattr(boundary, item.name)) for item in fields(boundary) if item.name != "layer"
++                    ),
++                    _CapturedLayer.capture(boundary.layer),
++                )
++                for boundary in blueprint.boundaries
++            ),
++            types.MappingProxyType(dict(build_args)),
++        )
++
++    def restore(self) -> _Blueprint:
++        return _Blueprint(
++            tuple(layer.restore() for layer in self.layers),
++            tuple(_BoundaryBlueprint(**dict(values), layer=layer.restore()) for values, layer in self.boundaries),
++        )
++
++
++@dataclass(frozen=True, slots=True, weakref_slot=True, init=False, eq=False, repr=False)
++class Composition:
++    """External immutable declarations for overlays of a matching live runtime.
++
++    Obtain with ``builder.retain_composition()`` before compilation, or through
++    ``analysis.composition``. Pending handles cannot build overlays. Application
++    values and callbacks retain their identity; this handle owns no resources.
++    """
++
++    _snapshot: _CapturedComposition | None
++    _identity: str | None
++
++    def __init__(self) -> None:
++        object.__setattr__(self, "_snapshot", None)
++        object.__setattr__(self, "_identity", None)
++
++    @property
++    def is_ready(self) -> bool:
++        return self._snapshot is not None
++
++    def _seal(self, blueprint: _Blueprint, identity: str, build_args: Mapping[str, Any]) -> None:
++        if self.is_ready:
++            raise RuntimeError("Composition is already sealed")
++        snapshot = _CapturedComposition.capture(blueprint, build_args)
++        object.__setattr__(self, "_snapshot", snapshot)
++        object.__setattr__(self, "_identity", identity)
++
++    def _for_parent(self, parent: Scope) -> _Blueprint:
++        parent._ensure_open()
++        if self._snapshot is None:
++            raise RuntimeError("Composition has no complete emitted composition")
++        if self._identity != parent._plan.identity:
++            raise ValueError("Composition does not match the parent runtime's owner lineage")
++        return self._snapshot.restore()
+ 
+ 
+ def _clone_registry(source: legacy._Registry) -> legacy._Registry:
+@@ -7037,6 +7192,8 @@
+             # Capture the primary emitted plan before inspection-only roots can fail.
+             # The detached graph also prevents later inspection mutations leaking in.
+             analysis.plan = _project_execution_plan(execution, clone_graph=True)
++            if analysis.composition is not None:
++                analysis.composition._seal(self.blueprint, execution.identity, execution.build_args)
+         if service_types is None and area is None and include_boundaries:
+             for boundary in self.blueprint.boundaries:
+                 self._area = boundary.name
+@@ -13625,6 +13782,7 @@
+ def _compile_execution(
+     blueprint: _Blueprint,
+     *,
++    composition: Composition | None = None,
+     profile: CompilationProfiler | None = None,
+     build_args: Mapping[str, Any] = _EMPTY_BUILD_ARGS,
+     budget_state: _BudgetState | None = None,
+@@ -13667,11 +13825,14 @@
+             else profile.call("primary compilation", "phase", compiler.compile_execution, attempt="primary")
+         )
+         plan = _compile_warmup_plans(plan, budget_state, blueprint=blueprint)
+-        return (
++        plan = (
+             _finalize_execution(plan)
+             if profile is None
+             else profile.call("runtime graph finalization", "graph freezing", _finalize_execution, plan)
+         )
++        if composition is not None:
++            composition._seal(blueprint, plan.identity, plan.build_args)
++        return plan
+     except MemoryError:
+         raise
+     except Exception as error:
+@@ -14613,10 +14774,6 @@
+         """Whether this runtime retains composition for compiling overlays."""
+         return isinstance(self._plan, _PlanSet) and self._plan._blueprint is not None
+ 
+-    def new_scope_builder(self) -> ScopeBuilder:
+-        self._ensure_open()
+-        return ScopeBuilder(self)
+-
+     def __enter__(self) -> Scope:
+         self._ensure_open()
+         return self
+@@ -14917,22 +15074,21 @@
+ 
+ 
+ class _ObservedPreConfiguration(_CompiledPreConfiguration):
+-    __slots__ = ("_profile_key", "_caller_key", "_caller_paths", "_parent_step_id")
++    __slots__ = ("_profile_key", "_caller_key")
+     _profile_key: tuple[str, str]
+     _caller_key: tuple[str, str]
+-    _caller_paths: dict[str, tuple[str, str]]
+-    _parent_step_id: int
+-
+-    def _cache_key(self) -> tuple[str, str]:
++
++    def _cache_key(self, profiler: ResolutionProfiler) -> tuple[str, str]:
+         caller = _CALLING_PROFILE_KEY.get()
+-        if caller is not None and caller[0] == self._parent_step_id:
+-            return self._caller_paths.get(caller[1][1], self._caller_key)
++        if caller is not None:
++            key = (*caller[1], id(self.state))
++            return profiler._pre_configuration_callers.get(key, self._caller_key)
+         return self._caller_key
+ 
+     def run(self, context: _RuntimeResolutionContext) -> None:
+         profiler = context.scope._profiler
+         key = _profile_key(self)
+-        caller_key = self._cache_key()
++        caller_key = self._cache_key(profiler)
+         future, builder = self.state.begin()
+         if future is None:
+             profiler._safe_record(caller_key, "cache_hits")
+@@ -14991,7 +15147,7 @@
+     async def run_async(self, context: _RuntimeResolutionContext) -> None:
+         profiler = context.scope._profiler
+         key = _profile_key(self)
+-        caller_key = self._cache_key()
++        caller_key = self._cache_key(profiler)
+         future, builder = self.state.begin()
+         if future is None:
+             profiler._safe_record(caller_key, "cache_hits")
+@@ -15055,7 +15211,10 @@
+     parent_scope: Scope | None = None,
+ ) -> tuple[_PlanSet, str, dict[Any, str], dict[int, str]]:
+     try:
+-        return _observe_plan_impl(plan, instrumentation, binding_token, parent_scope)
++        return cast(
++            tuple[_PlanSet, str, dict[Any, str], dict[int, str]],
++            _observe_execution_plan(plan, instrumentation, binding_token, parent_scope),
++        )
+     except BaseException:
+         # Profiler binding can fail after compilation has returned its plan.
+         # This build still owns every temporary inspection view in run mode.
+@@ -15064,49 +15223,41 @@
+         raise
+ 
+ 
+-def _observe_execution_bridge(
+-    plan: _ExecutionPlan, instrumentation: Instrumentation, binding_token: str, parent_scope: Scope | None = None
+-) -> tuple[_ExecutionPlan, str, dict[Any, str], dict[int, str]]:
+-    """Temporary graph-based observer adapter; task23 removes this allocation."""
+-    bridge = _PlanSet(
+-        **{item.name: getattr(plan, item.name) for item in fields(_ExecutionPlan)},
+-        compiled_graph=CompiledGraph(
+-            roots=tuple(
+-                GraphRoot(service, root.component)
+-                for groups in (plan.roots, plan.provider_roots, plan.managed_provider_roots, plan.warmup_steps)
+-                for service, roots in groups.items()
+-                for root in roots
+-            ),
+-            build_args=plan.build_args,
+-        ),
+-    )
+-    observed, fingerprint, labels, paths = _observe_plan(bridge, instrumentation, binding_token, parent_scope)
+-    return (
+-        _ExecutionPlan(**{item.name: getattr(observed, item.name) for item in fields(_ExecutionPlan)}),
+-        fingerprint,
+-        labels,
+-        paths,
+-    )
+-
+-
+-def _observe_plan_impl(
+-    plan: _PlanSet,
++def _observe_execution_plan(
++    plan: _ExecutionPlan,
+     instrumentation: Instrumentation,
+     binding_token: str,
+     parent_scope: Scope | None = None,
+-) -> tuple[_PlanSet, str, dict[Any, str], dict[int, str]]:
+-    from .graph_analysis import graph_index
+-
+-    graph = plan.compiled_graph
+-    if graph is None:
+-        raise RuntimeError("Cannot profile a plan without a compiled graph")
+-    fingerprint = graph.manifest(all_roots=True).fingerprint
+-    index = graph_index(graph)
+-    path_by_occurrence = {
+-        occurrence: references[0].path
+-        for occurrence, references in index.references_by_occurrence.items()
+-        if references
+-    }
++) -> tuple[_ExecutionPlan, str, dict[Any, str], dict[int, str]]:
++    """Instrument emitted occurrences using process-local execution identities."""
++    fingerprint = f"{plan.identity}/{uuid4()}"
++    components: dict[int, Component] = {}
++    pending = [
++        root.component
++        for groups in (plan.roots, plan.provider_roots, plan.managed_provider_roots, plan.warmup_steps)
++        for roots in groups.values()
++        for root in roots
++    ]
++    while pending:
++        component = pending.pop()
++        if component._graph is not plan.graph or component.occurrence_id in components:
++            continue
++        components[component.occurrence_id] = component
++        pending.extend((*component.dependencies, *component.decorators, *component.pre_configurations))
++    path_by_occurrence = {identity: f"component:{identity}" for identity in components}
++    component_labels = {}
++    for identity, component in components.items():
++        label = qualified_name(component.service_type)
++        if component.name is not None:
++            label += f" [{component.name}]"
++        if component.argument is not None:
++            label += f" argument:{component.argument}"
++        parent = component.parent
++        if parent is not None:
++            label += " parent:" + qualified_name(parent.service_type)
++            if parent.argument is not None:
++                label += f" argument:{parent.argument}"
++        component_labels[path_by_occurrence[identity]] = label
+     parent_graphs: dict[int, tuple[str, dict[int, str]]] = {}
+     current_parent = parent_scope
+     while current_parent is not None:
+@@ -15134,33 +15285,25 @@
+         path = current_path(fallback)
+         return fingerprint, path or "<unresolved request>"
+ 
+-    sharing_by_path = {
+-        path: group.reference for group in graph.sharing_report().groups for path in group.occurrence_paths
+-    }
++    # These groups describe actual executable cache ownership, not static graph
++    # sharing analysis. IDs are local to this emitted plan and its owner lineage.
++    sharing_by_path: dict[str, str] = {}
+     registration_paths: dict[str, set[str]] = defaultdict(set)
+-    for references in index.references_by_occurrence.values():
+-        for reference in references:
+-            registration_paths[reference.component.id].add(reference.path)
+-    ambiguous_registrations = frozenset(
+-        registration for registration, paths in registration_paths.items() if len(paths) > 1
+-    )
+     catalog: dict[str, tuple[str | None, str]] = {
+         "<unresolved request>": (None, "request"),
+         "<owner cleanup>": (None, "cleanup"),
+         "<owner cleanup> [cleanup]": (None, "cleanup"),
+     }
+-    for references in index.references_by_occurrence.values():
+-        if not references:
+-            continue
+-        component = references[0].component
+-        for reference in references:
+-            path = reference.path
+-            catalog[path] = (component.id, component.kind.value)
+-            catalog[path + " [cleanup]"] = (component.id, "cleanup")
+-            catalog[path + " [cache caller unresolved]"] = (component.id, "cache consumer")
+-            catalog["per-call request " + path] = (None, "request")
+-            if path in sharing_by_path:
+-                sharing_by_path[path + " [cache caller unresolved]"] = sharing_by_path[path]
++    for identity, component in components.items():
++        path = path_by_occurrence[identity]
++        registration_paths[component.id].add(path)
++        catalog[path] = (component.id, component.kind.value)
++        catalog[path + " [cleanup]"] = (component.id, "cleanup")
++        catalog[path + " [cache caller unresolved]"] = (component.id, "cache consumer")
++        catalog["per-call request " + path] = (None, "request")
++    ambiguous_registrations = frozenset(
++        registration for registration, paths in registration_paths.items() if len(paths) > 1
++    )
+     request_labels: dict[Any, str] = {}
+     for service_type in (*plan.roots, *plan.provider_roots):
+         label = "request " + qualified_name(service_type)
+@@ -15171,6 +15314,7 @@
+             request_labels[(origin, service_type)] = collection_label
+             catalog[collection_label] = (None, "request")
+     memo: dict[Any, _Step] = {}
++    configuration_callers: dict[tuple[str, str, int], tuple[str, str]] = {}
+ 
+     def observe_edge(step: _Step, component: Component | None) -> _Step:
+         target = observe(step, component)
+@@ -15213,6 +15357,17 @@
+         return next((child for child in children if child.id == source.id), None)
+ 
+     def observe(step: _Step, occurrence: Component | None = None) -> _Step:
++        if isinstance(step, _RegistrationStep) and occurrence is not None:
++            caller_path = current_path(occurrence)
++            if caller_path is not None:
++                for configuration in step.pre_configurations:
++                    call_path = f"{caller_path}/configuration:{configuration.component.id}"
++                    catalog[call_path] = (configuration.component.id, "pre_configuration")
++                    component_labels[call_path] = "pre-configuration for " + component_labels[caller_path]
++                    configuration_callers[(fingerprint, caller_path, id(configuration.state))] = (
++                        fingerprint,
++                        call_path,
++                    )
+         # Shared activation templates still need occurrence-specific observation.
+         memo_key = (
+             (id(step), occurrence.occurrence_id)
+@@ -15234,6 +15389,12 @@
+             current_component = (
+                 occurrence if occurrence is not None and current_path(occurrence) is not None else step.component
+             )
++            path = current_path(current_component)
++            if path is not None and step.registration.lifespan != legacy.Lifespan.transient:
++                sharing_by_path[path] = (
++                    f"owner:{step.owner_token}:{step.registration.lifespan.name}:{step.registration.id}"
++                )
++                sharing_by_path[path + " [cache caller unresolved]"] = sharing_by_path[path]
+             object.__setattr__(result, "dependencies", observed_dependencies(step.dependencies, current_component))
+             object.__setattr__(
+                 result,
+@@ -15241,7 +15402,6 @@
+                 tuple(
+                     observe_pre_configuration(
+                         item,
+-                        result,
+                         matching_child(current_component.pre_configurations, item.component),
+                     )
+                     for item in step.pre_configurations
+@@ -15341,7 +15501,6 @@
+ 
+     def observe_pre_configuration(
+         configuration: _CompiledPreConfiguration,
+-        parent_step: _Step,
+         occurrence: Component | None,
+     ) -> _CompiledPreConfiguration:
+         values = {item.name: getattr(configuration, item.name) for item in fields(configuration)}
+@@ -15352,20 +15511,9 @@
+         result = _ObservedPreConfiguration(**values)
+         activation_key = owner_key(configuration.component, occurrence)
+         current_occurrence_path = current_path(current_component)
+-        caller_paths = (
+-            {
+-                reference.path.rsplit("/pre_configuration:", 1)[0]: (fingerprint, reference.path)
+-                for reference in index.references_by_occurrence.get(current_component.occurrence_id, ())
+-                if "/pre_configuration:" in reference.path
+-            }
+-            if current_occurrence_path is not None
+-            else {}
+-        )
+         caller_key = (fingerprint, current_occurrence_path) if current_occurrence_path is not None else activation_key
+         object.__setattr__(result, "_profile_key", activation_key)
+         object.__setattr__(result, "_caller_key", caller_key)
+-        object.__setattr__(result, "_caller_paths", caller_paths)
+-        object.__setattr__(result, "_parent_step_id", id(parent_step))
+         return result
+ 
+     def roots(values: Mapping[Any, tuple[_RootPlan, ...]]) -> dict[Any, tuple[_RootPlan, ...]]:
+@@ -15400,7 +15548,15 @@
+             for key, values in plan.default_root_groups.items()
+         },
+     )
+-    instrumentation.profiler._bind(fingerprint, catalog, sharing_by_path, ambiguous_registrations, binding_token)
++    instrumentation.profiler._bind(
++        fingerprint,
++        catalog,
++        sharing_by_path,
++        ambiguous_registrations,
++        binding_token,
++        component_labels,
++        configuration_callers,
++    )
+     return observed, fingerprint, request_labels, path_by_occurrence
+ 
+ 
+@@ -15474,6 +15630,7 @@
+         self._compiling = False
+         self._operation_lock = threading.Lock()
+         self._declared_provider_roots: tuple[Any, ...] | None = None
++        self._retained_composition: Composition | None = None
+ 
+     def _assert_mutable(self) -> None:
+         if self._owner_token in _EXPANDING_TEMPLATE_OWNERS.get():
+@@ -15481,9 +15638,16 @@
+         if self._built or self._compiling:
+             raise BuilderAlreadyBuiltError("Builders are consumed by one admitted compilation attempt")
+ 
++    def retain_composition(self) -> Composition:
++        """Request the same pending external owner before this operation starts."""
++        self._assert_mutable()
++        if self._retained_composition is None:
++            self._retained_composition = Composition()
++        return self._retained_composition
++
+     @property
+     def _source_blueprint(self) -> _Blueprint:
+-        blueprint = getattr(self, "_composition_blueprint", None)
++        blueprint = getattr(self, "_inherited_blueprint", None)
+         if blueprint is None:
+             raise RuntimeError("No retained composition is available")
+         return blueprint
+@@ -15531,8 +15695,9 @@
+         ):
+             getattr(self, name).clear()
+         self._declared_provider_roots = None
+-        if hasattr(self, "_composition_blueprint"):
+-            self._composition_blueprint = None
++        self._retained_composition = None
++        if hasattr(self, "_inherited_blueprint"):
++            self._inherited_blueprint = None
+ 
+     def _build_execution(self, *, build_args=None, profile=None, budget=None, instrumentation=None):
+         self._assert_mutable()
+@@ -15567,7 +15732,7 @@
+                 operation=_compile_execution,
+             )
+             if instrumentation is not None:
+-                plan, fingerprint, labels, paths = _observe_execution_bridge(
++                plan, fingerprint, labels, paths = _observe_execution_plan(
+                     plan,
+                     instrumentation,
+                     self._owner_token if parent is None else cast(str, parent.container._owned_token),
+@@ -15663,7 +15828,7 @@
+                 )
+             if operation is _compile_execution:
+                 inputs["provider_roots"] = requested_providers
+-                execution = operation(blueprint, profile=profile, **inputs)
++                execution = operation(blueprint, profile=profile, composition=self._retained_composition, **inputs)
+                 if state is not None:
+                     state.check()
+                 completed = True
+@@ -15771,12 +15936,14 @@
+             raise TypeError("profile must be a CompilationProfiler instance or None")
+         parent = getattr(self, "_parent", None)
+         inherited = () if parent is None else self._source_blueprint.validation_rules
++        composition = self.retain_composition()
+         state = _AnalysisState(
++            composition=composition,
+             definitions=(
+                 *inherited,
+                 *self._validation_rules,
+                 *(rule for boundary in self._boundaries for rule in boundary._validation_rules),
+-            )
++            ),
+         )
+         token = _ANALYSIS_STATE.set(state)
+         if profile is not None:
+@@ -15797,7 +15964,7 @@
+                 self._owner_token,
+                 getattr(self, "_parent", None),
+             )
+-            result._composition_blueprint = plan.blueprint
++            result.composition = composition if composition.is_ready else None
+             profile_state = "completed"
+             return result
+         except ContainerBuildError as error:
+@@ -15856,7 +16023,7 @@
+                 ),
+             )
+             profile_state = "completed"
+-            return AnalysisResult(
++            result = AnalysisResult(
+                 report,
+                 completed_graph,
+                 error.partial_graph,
+@@ -15864,6 +16031,8 @@
+                 self._owner_token,
+                 getattr(self, "_parent", None),
+             )
++            result.composition = composition if composition.is_ready else None
++            return result
+         finally:
+             _ANALYSIS_STATE.reset(token)
+             if profile is not None:
+@@ -16964,9 +17133,7 @@
+         self._parent = parent
+         self._runtimes: list[Scope] = []
+         self._closed = False
+-        # External immutable composition ownership is implemented by task23.
+-        self.composition = None
+-        self._composition_blueprint: _Blueprint | None = None
++        self.composition: Composition | None = None
+ 
+     @property
+     def emission_complete(self) -> bool:
+@@ -16983,11 +17150,16 @@
+             raise AnalysisRuntimeUnavailableError(self.report)
+         if instrumentation is not None and not isinstance(instrumentation, Instrumentation):
+             raise TypeError("instrumentation must be an Instrumentation instance or None")
+-        plan = _project_execution_plan(self._plan)
+         if self._parent is not None:
+             self._parent._ensure_open()
++            parent_profiler = getattr(self._parent, "_profiler", None)
++            if instrumentation is None and parent_profiler is not None:
++                instrumentation = Instrumentation(parent_profiler)
++            if (None if instrumentation is None else instrumentation.profiler) is not parent_profiler:
++                raise ValueError("overlay instrumentation must match its parent runtime")
++        plan = _project_execution_plan(self._plan)
+         if instrumentation is not None:
+-            plan, fingerprint, labels, paths = _observe_execution_bridge(
++            plan, fingerprint, labels, paths = _observe_execution_plan(
+                 plan,
+                 instrumentation,
+                 self._owner_token if self._parent is None else cast(str, self._parent.container._owned_token),
+@@ -17180,25 +17352,14 @@
+ class ScopeBuilder(_WarmupBuilder):
+     """Compile a child scope with registrations layered over a runtime parent."""
+ 
+-    def __init__(self, parent: Scope):
+-        parent._ensure_open()
+-        if not isinstance(parent._plan, _PlanSet) or parent._plan._blueprint is None:
+-            raise RuntimeError("Scope overlays require an explicitly retained composition")
+-        self._initialize(parent, parent._plan.blueprint)
+-
+-    def _initialize(self, parent: Scope, blueprint: _Blueprint) -> None:
+-        parent._ensure_open()
++    def __init__(self, parent: Scope, *, composition: Composition):
++        if not isinstance(composition, Composition):
++            raise TypeError("composition must be a Composition handle")
++        blueprint = composition._for_parent(parent)
+         super().__init__()
+         self._parent = parent
+-        self._composition_blueprint = blueprint
++        self._inherited_blueprint = blueprint
+         self._bundle_container_id = parent.container._owned_token
+-
+-    @classmethod
+-    def _from_blueprint(cls, parent: Scope, blueprint: _Blueprint) -> ScopeBuilder:
+-        # Temporary task21 test seam; task23 replaces this with Composition matching.
+-        builder = cls.__new__(cls)
+-        builder._initialize(parent, blueprint)
+-        return builder
+ 
+     def build(
+         self,
+--- a/clean_ioc/instrumentation.py
++++ b/clean_ioc/instrumentation.py
+@@ -1,4 +1,12 @@
+-"""Opt-in, bounded measurements of compiled runtime resolution."""
++"""Opt-in, bounded measurements of emitted runtime resolution.
++
++Execution IDs combine a process-local plan identity and an observation-instance
++identity. Occurrence paths are compact IDs, accompanied by display labels. They
++are not graph paths or semantic manifest fingerprints and cannot compare wiring
++across processes. Cache groups aggregate executable owner/cache keys within one
++observed execution; ordinary child scopes share that execution's observations.
++The optional catalog, labels, caller mappings and counters have their own cost.
++"""
+ 
+ from __future__ import annotations
+ 
+@@ -46,10 +54,11 @@
+ 
+ @dataclass(frozen=True, slots=True)
+ class ProfileRecord:
+-    graph_fingerprint: str
++    execution_id: str
+     path: str
++    label: str
+     registration: str | None
+-    sharing_group: str | None
++    cache_group: str | None
+     kind: str
+     attempts: int
+     completed: int
+@@ -62,10 +71,11 @@
+ 
+     def to_dict(self) -> dict[str, Any]:
+         return {
+-            "graph_fingerprint": self.graph_fingerprint,
++            "execution_id": self.execution_id,
+             "path": self.path,
++            "label": self.label,
+             "registration": self.registration,
+-            "sharing_group": self.sharing_group,
++            "cache_group": self.cache_group,
+             "kind": self.kind,
+             "attempts": self.attempts,
+             "completed": self.completed,
+@@ -82,7 +92,7 @@
+ class ResolutionProfile:
+     """Immutable, deterministic view of completed operations at snapshot time."""
+ 
+-    graphs: tuple[str, ...]
++    executions: tuple[str, ...]
+     started_ns: int
+     captured_ns: int
+     sample_durations: float
+@@ -91,12 +101,12 @@
+     in_flight: int
+     records: tuple[ProfileRecord, ...]
+     groups: tuple[ProfileRecord, ...]
+-    sharing_groups: tuple[ProfileRecord, ...]
++    cache_groups: tuple[ProfileRecord, ...]
+ 
+     def to_dict(self) -> dict[str, Any]:
+         return {
+             "evidence": "runtime observations",
+-            "graphs": list(self.graphs),
++            "executions": list(self.executions),
+             "started_ns": self.started_ns,
+             "captured_ns": self.captured_ns,
+             "sample_durations": self.sample_durations,
+@@ -105,7 +115,7 @@
+             "in_flight": self.in_flight,
+             "records": [record.to_dict() for record in self.records],
+             "registration_groups": [record.to_dict() for record in self.groups],
+-            "sharing_groups": [record.to_dict() for record in self.sharing_groups],
++            "cache_groups": [record.to_dict() for record in self.cache_groups],
+         }
+ 
+     def to_json(self, *, indent: int | None = 2) -> str:
+@@ -114,7 +124,7 @@
+     def to_text(self) -> str:
+         lines = [
+             "Runtime resolution profile (observations)",
+-            f"Graphs: {', '.join(self.graphs)}",
++            f"Executions: {', '.join(self.executions)}",
+             f"Duration sampling: {self.sample_durations:g}; in flight: {self.in_flight}; "
+             f"incomplete: {self.incomplete}; dropped updates: {self.dropped_updates}",
+         ]
+@@ -124,12 +134,12 @@
+             if record.registration is not None
+             and record.attempts == record.cache_hits == record.cache_misses == record.cache_waits == 0
+         )
+-        lines.append(f"Compiled component paths not observed: {unobserved}")
++        lines.append(f"Emitted component occurrences not observed: {unobserved}")
+         for record in self.records:
+             if record.attempts == record.cache_hits == record.cache_misses == record.cache_waits == 0:
+                 continue
+             lines.append(
+-                f"{record.path} [{record.kind}]: {record.attempts} attempts, "
++                f"{record.label} ({record.path}) [{record.kind}]: {record.attempts} attempts, "
+                 f"{record.completed} completed, {record.failed} failed, "
+                 f"{record.cache_hits} hits, {record.cache_misses} misses, {record.cache_waits} waits"
+             )
+@@ -205,7 +215,7 @@
+                 return record.cache_waits
+             return record.failed
+ 
+-        return tuple(sorted(self.records, key=lambda record: (-score(record), record.graph_fingerprint, record.path)))
++        return tuple(sorted(self.records, key=lambda record: (-score(record), record.execution_id, record.path)))
+ 
+ 
+ class _MutableRecord:
+@@ -240,6 +250,8 @@
+         self._lock = threading.Lock()
+         self._started_ns = time.time_ns()
+         self._catalog: dict[tuple[str, str], tuple[str | None, str]] = {}
++        self._labels: dict[tuple[str, str], str] = {}
++        self._pre_configuration_callers: dict[tuple[str, str, int], tuple[str, str]] = {}
+         self._sharing: dict[tuple[str, str], str] = {}
+         self._ambiguous: dict[str, frozenset[str]] = {}
+         self._bindings: dict[str, str] = {}
+@@ -257,11 +269,13 @@
+         sharing: dict[str, str],
+         ambiguous: frozenset[str],
+         binding_token: str,
++        labels: dict[str, str] | None = None,
++        configuration_callers: dict[tuple[str, str, int], tuple[str, str]] | None = None,
+     ) -> None:
+         with self._lock:
+             bound = self._bindings.get(fingerprint)
+             if bound is not None and bound != binding_token:
+-                raise ValueError("resolution profiler is already bound to a different runtime with this graph")
++                raise ValueError("resolution profiler is already bound to a different runtime with this execution")
+             if bound is not None:
+                 existing_catalog = {
+                     path: detail for (graph, path), detail in self._catalog.items() if graph == fingerprint
+@@ -274,13 +288,15 @@
+                     or existing_sharing != sharing
+                     or self._ambiguous[fingerprint] != ambiguous
+                 ):
+-                    raise ValueError("resolution profiler has conflicting catalogs for the same graph")
++                    raise ValueError("resolution profiler has conflicting catalogs for the same execution")
+             for path, detail in catalog.items():
+                 key = (fingerprint, path)
+                 self._catalog.setdefault(key, detail)
++                self._labels.setdefault(key, (labels or {}).get(path, path))
+                 self._records.setdefault(key, _MutableRecord())
+                 if path in sharing:
+                     self._sharing[key] = sharing[path]
++            self._pre_configuration_callers.update(configuration_callers or {})
+             self._graphs.add(fingerprint)
+             self._ambiguous[fingerprint] = ambiguous
+             self._bindings[fingerprint] = binding_token
+@@ -380,12 +396,12 @@
+                 raise RuntimeError("resolution profiler is not bound to a successfully built runtime")
+             records: list[ProfileRecord] = []
+             groups: dict[tuple[str, str], _MutableRecord] = {}
+-            sharing_groups: dict[tuple[str, str], _MutableRecord] = {}
++            cache_groups: dict[tuple[str, str], _MutableRecord] = {}
+ 
+             def snapshot(
+                 key: tuple[str, str],
+                 registration: str | None,
+-                sharing_group: str | None,
++                cache_group: str | None,
+                 kind: str,
+                 item: _MutableRecord,
+             ) -> ProfileRecord:
+@@ -404,8 +420,9 @@
+                 return ProfileRecord(
+                     key[0],
+                     key[1],
++                    self._labels.get(key, key[1]),
+                     registration,
+-                    sharing_group,
++                    cache_group,
+                     kind,
+                     item.attempts,
+                     item.completed,
+@@ -440,21 +457,21 @@
+             for key in sorted(self._catalog):
+                 registration, kind = self._catalog[key]
+                 item = self._records[key]
+-                sharing_group = self._sharing.get(key)
+-                records.append(snapshot(key, registration, sharing_group, kind, item))
++                cache_group = self._sharing.get(key)
++                records.append(snapshot(key, registration, cache_group, kind, item))
+                 if registration is not None and kind != "cleanup":
+                     group = groups.setdefault((key[0], registration), _MutableRecord())
+                     merge(group, item)
+-                if sharing_group is not None:
+-                    group = sharing_groups.setdefault((key[0], sharing_group), _MutableRecord())
++                if cache_group is not None:
++                    group = cache_groups.setdefault((key[0], cache_group), _MutableRecord())
+                     merge(group, item)
+             group_records = tuple(
+                 snapshot((graph, "registration " + registration), registration, None, "registration group", item)
+                 for (graph, registration), item in sorted(groups.items())
+             )
+             sharing_records = tuple(
+-                snapshot((graph, "sharing " + reference), None, reference, "sharing group", item)
+-                for (graph, reference), item in sorted(sharing_groups.items())
++                snapshot((graph, "cache " + reference), None, reference, "cache group", item)
++                for (graph, reference), item in sorted(cache_groups.items())
+             )
+             return ResolutionProfile(
+                 tuple(sorted(self._graphs)),
+--- a/clean_ioc/warmup.py
++++ b/clean_ioc/warmup.py
+@@ -88,8 +88,10 @@
+ 
+ @dataclass(frozen=True, slots=True)
+ class WarmupReport:
++    """Explicit activation outcomes identified by a process-local execution plan."""
++
+     name: str
+-    graph_fingerprint: str
++    plan_id: str
+     results: tuple[WarmupResult, ...]
+ 
+     @property
+@@ -99,7 +101,7 @@
+     def to_dict(self) -> dict[str, Any]:
+         return {
+             "name": self.name,
+-            "graph_fingerprint": self.graph_fingerprint,
++            "plan_id": self.plan_id,
+             "valid": self.is_valid,
+             "targets": [result.to_dict() for result in self.results],
+         }
+@@ -142,7 +144,7 @@
+             for result in failures
+         )
+         document = json.loads(report.to_sarif(evidence=evidence))
+-        document["runs"][0]["properties"]["graphFingerprint"] = self.graph_fingerprint
++        document["runs"][0]["properties"]["executionPlanId"] = self.plan_id
+         document["runs"][0]["properties"]["warmupPlan"] = self.name
+         for finding, result in zip(document["runs"][0]["results"], failures, strict=True):
+             finding["properties"]["exceptionType"] = result.exception_type
+--- a/tests/test_analysis_pipeline.py
++++ b/tests/test_analysis_pipeline.py
+@@ -181,10 +181,10 @@
+     with builder.analyse() as parent_result:
+         parent = parent_result.create_runtime()
+         assert events == ["parent"]
+-        with ScopeBuilder._from_blueprint(parent, parent_result._composition_blueprint).build():
++        with ScopeBuilder(parent, composition=parent_result.composition).build():
+             pass
+         assert events == ["parent"]
+-        overlay = ScopeBuilder._from_blueprint(parent, parent_result._composition_blueprint)
++        overlay = ScopeBuilder(parent, composition=parent_result.composition)
+         overlay.add_validation_rule(lambda ctx: events.append("child") or ())
+         result = overlay.analyse()
+         assert result.report.complete
+--- a/tests/test_build_matrix.py
++++ b/tests/test_build_matrix.py
+@@ -662,7 +662,7 @@
+             return scope
+ 
+     def create():
+-        overlay = TrackedScopeBuilder._from_blueprint(parent, parent_result._composition_blueprint)
++        overlay = TrackedScopeBuilder(parent, composition=parent_result.composition)
+         overlay.register(OtherApplication)
+         return overlay
+ 
+--- a/tests/test_execution_evidence_capture.py
++++ b/tests/test_execution_evidence_capture.py
+@@ -308,7 +308,7 @@
+     source.register(Resource, lifespan="singleton")
+     with source.analyse() as analysis:
+         parent = analysis.create_runtime()
+-        child = ScopeBuilder._from_blueprint(parent, analysis._composition_blueprint).set_provider_roots(())
++        child = ScopeBuilder(parent, composition=analysis.composition).set_provider_roots(())
+         child.register(Source)
+         forbid_evidence(monkeypatch)
+         with child.build() as runtime:
+--- a/tests/test_execution_plan.py
++++ b/tests/test_execution_plan.py
+@@ -192,7 +192,7 @@
+     source.pre_configure(Leaf, lambda: calls.append("parent"))
+     with source.analyse() as parent_result:
+         parent = parent_result.create_runtime()
+-        overlay = ScopeBuilder._from_blueprint(parent, parent_result._composition_blueprint)
++        overlay = ScopeBuilder(parent, composition=parent_result.composition)
+         overlay.set_provider_roots(())
+         overlay.register(Child, lifespan="scoped")
+         overlay.pre_configure(Child, lambda: calls.append("child"))
+@@ -373,7 +373,7 @@
+ def test_closed_parent_is_pre_admission_and_scope_failure_consumes_once():
+     with builder().analyse() as result:
+         parent = result.create_runtime()
+-        source = ScopeBuilder._from_blueprint(parent, result._composition_blueprint)
++        source = ScopeBuilder(parent, composition=result.composition)
+         source.set_provider_roots(())
+         parent.__exit__(None, None, None)
+         with pytest.raises(ScopeClosedError):
+@@ -473,7 +473,7 @@
+ 
+     with builder().analyse() as result:
+         parent = result.create_runtime()
+-        source = ScopeBuilder._from_blueprint(parent, result._composition_blueprint)
++        source = ScopeBuilder(parent, composition=result.composition)
+         boundary = source.create_boundary("child")
+         source.register(Broken)
+         with pytest.raises(ContainerBuildError):
+@@ -506,7 +506,7 @@
+ 
+ 
+ @pytest.mark.parametrize("operation", ["build", "analyse"])
+-def test_optional_observer_bridge_preserves_execution_without_rich_runtime_ownership(operation):
++def test_optional_observer_preserves_execution_without_rich_runtime_ownership(operation):
+     from clean_ioc import Instrumentation, ResolutionProfiler
+ 
+     source = builder()
+--- a/tests/test_factory_return_types.py
++++ b/tests/test_factory_return_types.py
+@@ -304,7 +304,7 @@
+     parent = ContainerBuilder()
+     parent.register(Service, lifespan="singleton")
+     with parent.analyse() as analysis:
+-        overlay = ScopeBuilder._from_blueprint(analysis.create_runtime(), analysis._composition_blueprint)
++        overlay = ScopeBuilder(analysis.create_runtime(), composition=analysis.composition)
+         overlay.register(Service, factory=factory_with_annotation(str), lifespan="singleton")
+         assert rejected(overlay).report.errors[0].code == "factory-return-type-mismatch"
+ 
+--- a/tests/test_policies.py
++++ b/tests/test_policies.py
+@@ -91,7 +91,7 @@
+     builder.register(Service)
+     builder.apply_bundle(PolicyPack("parent", [finding("parent")]))
+     with builder.analyse() as parent:
+-        overlay = ScopeBuilder._from_blueprint(parent.create_runtime(), parent._composition_blueprint)
++        overlay = ScopeBuilder(parent.create_runtime(), composition=parent.composition)
+         overlay.apply_bundle(PolicyPack("child", [finding("child"), finding("extra")]))
+         with overlay.analyse() as child:
+             assert [issue.code for issue in child.report.warnings] == ["parent", "child", "extra"]
+@@ -105,7 +105,7 @@
+     builder.register(Service, lifespan="singleton")
+     builder.apply_bundle(PolicyPack("lifespans", [require_lifespan(cf.service_type_is(Service), "singleton")]))
+     with builder.analyse() as parent:
+-        overlay = ScopeBuilder._from_blueprint(parent.create_runtime(), parent._composition_blueprint)
++        overlay = ScopeBuilder(parent.create_runtime(), composition=parent.composition)
+         overlay.register(Service, lifespan="scoped")
+         assert [issue.code for issue in overlay.analyse().report.errors] == ["policy-invalid-lifespan"]
+ 
+--- a/tests/test_resolution_profiler.py
++++ b/tests/test_resolution_profiler.py
+@@ -17,6 +17,7 @@
+     ResolutionContext,
+     ResolutionProfiler,
+     Scope,
++    ScopeBuilder,
+ )
+ from clean_ioc import component_filters as cf
+ from clean_ioc.container import _ResolutionRequest, default_component_filter
+@@ -33,14 +34,14 @@
+     builder = ContainerBuilder()
+     builder.register(Service, lifespan="singleton")
+     profiler = ResolutionProfiler(sample_durations=0.5)
+-    container = builder.build(mode="analysis", instrumentation=Instrumentation(profiler))
+-    fingerprint = container.graph.manifest(all_roots=True).fingerprint
++    container = builder.build(instrumentation=Instrumentation(profiler))
++    fingerprint = container._profile_fingerprint
+     first = container.resolve(Service)
+     assert container.resolve(Service) is first
+     assert container.new_scope().resolve(Service) is first
+ 
+     report = profiler.report()
+-    assert report.graphs == (fingerprint,)
++    assert report.executions == (fingerprint,)
+     assert report.in_flight == 0 and not report.incomplete
+     request = _record(report, "request", "Service")
+     registration = next(record for record in report.records if record.registration and record.attempts)
+@@ -63,23 +64,23 @@
+     builder.register(Service)
+     compiler = CompilationProfiler()
+     profiler = ResolutionProfiler()
+-    container = builder.build(mode="analysis", profile=compiler, instrumentation=Instrumentation(profiler))
++    container = builder.build(profile=compiler, instrumentation=Instrumentation(profiler))
+     assert compiler.report().state == "completed"
+     assert isinstance(container.resolve(Service), Service)
+-    assert profiler.report().graphs == (container.graph.manifest(all_roots=True).fingerprint,)
++    assert profiler.report().executions == (container._profile_fingerprint,)
+     plain_builder = ContainerBuilder()
+     plain_builder.register(Service)
+-    plain = plain_builder.build(
+-        mode="analysis",
+-    )
+-    assert plain.graph.manifest(all_roots=True).to_json() == container.graph.manifest(all_roots=True).to_json()
++    plain = plain_builder.build()
++    assert isinstance(plain.resolve(Service), Service)
++    assert isinstance(container.resolve(Service), Service)
++    assert plain._plan.identity != container._plan.identity
+     assert not hasattr(plain._plan.default_roots[Service].step, "_profile_key")
+     assert "_profiler" not in Scope.resolve.__code__.co_names
+     assert "_profiler" not in Scope.resolve_async.__code__.co_names
+     assert "_profiler" not in Scope.new_scope.__code__.co_names
+ 
+ 
+-def test_profiler_rejects_equivalent_second_runtime_without_mixing_catalogs():
++def test_profiler_separates_equivalent_second_runtime_without_mixing_catalogs():
+     class Service:
+         pass
+ 
+@@ -91,25 +92,29 @@
+     baseline = profiler.report()
+     second_builder = ContainerBuilder()
+     second_builder.register(Service, lifespan="singleton")
+-    with pytest.raises(ValueError, match="already bound to a different runtime"):
+-        second_builder.build(instrumentation=Instrumentation(profiler))
+-    assert profiler.report().records == baseline.records
+-
+-
+-def test_same_fingerprint_overlay_reuses_parent_profiler_and_catalog():
++    second = second_builder.build(instrumentation=Instrumentation(profiler))
++    assert first._profile_fingerprint != second._profile_fingerprint
++    assert second.resolve(Service) is not first.resolve(Service)
++    report = profiler.report()
++    records = report.records
++    assert all(record.execution_id in report.executions for record in records)
++    assert sum(record.attempts for record in records if record.kind == "registration") == 2
++    assert len(baseline.executions) == 1 and len(profiler.report().executions) == 2
++
++
++def test_overlay_has_distinct_execution_identity_and_reuses_parent_profiler():
+     class Service:
+         pass
+ 
+     builder = ContainerBuilder()
+     builder.register(Service, lifespan="singleton")
+     profiler = ResolutionProfiler()
+-    container = builder.build(mode="analysis", instrumentation=Instrumentation(profiler))
+-    overlay = container.new_scope_builder().build(
+-        mode="analysis",
+-    )
++    composition = builder.retain_composition()
++    container = builder.build(instrumentation=Instrumentation(profiler))
++    overlay = ScopeBuilder(container, composition=composition).build()
+     assert overlay.resolve(Service) is container.resolve(Service)
+     report = profiler.report()
+-    assert len(report.graphs) == 1
++    assert len(report.executions) == 2
+     assert not report.incomplete
+ 
+ 
+@@ -130,7 +135,9 @@
+     assert isinstance(container.resolve(Root).shared, Shared)
+     records = profiler.report().records
+     edge = next(
+-        record for record in records if record.kind == "registration" and "dependency:resolution" in record.path
++        record
++        for record in records
++        if record.kind == "registration" and "argument:resolution" in record.label and record.attempts
+     )
+     assert (edge.attempts, edge.cache_misses) == (1, 1)
+     assert not any(
+@@ -157,9 +164,7 @@
+     assert isinstance(provider(), Service)
+     report = profiler.report()
+     service = next(
+-        record
+-        for record in report.records
+-        if record.registration and record.path.endswith("Service:default:0") and record.attempts
++        record for record in report.records if record.registration and "Service" in record.label and record.attempts
+     )
+     assert service.attempts == 2
+     durations = dict(service.durations)
+@@ -248,12 +253,18 @@
+     first_edge = next(
+         record
+         for record in report.records
+-        if record.kind == "registration" and "First:default" in record.path and "dependency:shared" in record.path
++        if record.kind == "registration"
++        and "First" in record.label
++        and "argument:shared" in record.label
++        and (record.cache_hits or record.cache_misses)
+     )
+     second_edge = next(
+         record
+         for record in report.records
+-        if record.kind == "registration" and "Second:default" in record.path and "dependency:shared" in record.path
++        if record.kind == "registration"
++        and "Second" in record.label
++        and "argument:shared" in record.label
++        and (record.cache_hits or record.cache_misses)
+     )
+     assert (first_edge.cache_misses, first_edge.cache_waits) == (1, 0)
+     assert (second_edge.cache_misses, second_edge.cache_waits) == (1, 1)
+@@ -329,21 +340,20 @@
+     builder.register(Service, contributes={group: "private-key"})
+     builder.register_provider_map(group)
+     profiler = ResolutionProfiler()
+-    container = builder.build(mode="analysis", instrumentation=Instrumentation(profiler))
+-    overlay_builder = container.new_scope_builder()
++    composition = builder.retain_composition()
++    container = builder.build(instrumentation=Instrumentation(profiler))
++    overlay_builder = ScopeBuilder(container, composition=composition)
+ 
+     class Extra:
+         pass
+ 
+     overlay_builder.register(Extra)
+-    overlay = overlay_builder.build(
+-        mode="analysis",
+-    )
++    overlay = overlay_builder.build()
+     mapping = overlay.resolve(Mapping[str, Provider[Service]])
+     assert isinstance(mapping["private-key"](), Service)
+     assert isinstance(overlay.resolve(Extra), Extra)
+     report = profiler.report()
+-    assert len(report.graphs) == 2
++    assert len(report.executions) == 2
+     assert "private-key" not in report.to_json()
+     assert any(
+         record.kind == "request" and record.path.startswith("provider request ") and record.attempts
+@@ -357,9 +367,10 @@
+ 
+     builder = ContainerBuilder()
+     builder.register(Service)
+-    container = builder.build(mode="analysis", instrumentation=Instrumentation(ResolutionProfiler()))
++    composition = builder.retain_composition()
++    container = builder.build(instrumentation=Instrumentation(ResolutionProfiler()))
+     with pytest.raises(ValueError, match="must match"):
+-        container.new_scope_builder().build(mode="analysis", instrumentation=Instrumentation(ResolutionProfiler()))
++        ScopeBuilder(container, composition=composition).build(instrumentation=Instrumentation(ResolutionProfiler()))
+ 
+ 
+ def test_anchored_singleton_activation_stays_with_parent_and_hit_uses_overlay_path():
+@@ -372,24 +383,23 @@
+     builder = ContainerBuilder()
+     builder.register(Service, lifespan="singleton")
+     profiler = ResolutionProfiler()
+-    container = builder.build(mode="analysis", instrumentation=Instrumentation(profiler))
++    composition = builder.retain_composition()
++    container = builder.build(instrumentation=Instrumentation(profiler))
+     instance = container.resolve(Service)
+-    overlay_builder = container.new_scope_builder()
++    overlay_builder = ScopeBuilder(container, composition=composition)
+     overlay_builder.register(Extra)
+-    overlay = overlay_builder.build(
+-        mode="analysis",
+-    )
++    overlay = overlay_builder.build()
+     assert overlay.resolve(Service) is instance
+     report = profiler.report()
+-    parent_fingerprint = container.graph.manifest(all_roots=True).fingerprint
+-    overlay_fingerprint = overlay.graph.manifest(all_roots=True).fingerprint
++    parent_fingerprint = container._profile_fingerprint
++    overlay_fingerprint = overlay._profile_fingerprint
+     assert parent_fingerprint != overlay_fingerprint
+     assert any(
+-        record.graph_fingerprint == parent_fingerprint and record.registration and record.attempts == 1
+-        for record in report.records
+-    )
+-    assert any(
+-        record.graph_fingerprint == overlay_fingerprint and record.registration and record.cache_hits == 1
++        record.execution_id == parent_fingerprint and record.registration and record.attempts == 1
++        for record in report.records
++    )
++    assert any(
++        record.execution_id == overlay_fingerprint and record.registration and record.cache_hits == 1
+         for record in report.records
+     )
+ 
+@@ -410,42 +420,39 @@
+     builder.register(Service, lifespan="singleton")
+     builder.pre_configure(Service, configure)
+     profiler = ResolutionProfiler()
+-    container = builder.build(mode="analysis", instrumentation=Instrumentation(profiler))
+-    overlay_builder = container.new_scope_builder()
++    composition = builder.retain_composition()
++    container = builder.build(instrumentation=Instrumentation(profiler))
++    overlay_builder = ScopeBuilder(container, composition=composition)
+     overlay_builder.register(Extra)
+-    overlay = overlay_builder.build(
+-        mode="analysis",
+-    )
++    overlay = overlay_builder.build()
+     assert isinstance(overlay.resolve(Service), Service)
+     assert configured == [True]
+-    parent_graph = container.graph.manifest(all_roots=True).fingerprint
+-    overlay_graph = overlay.graph.manifest(all_roots=True).fingerprint
++    parent_graph = container._profile_fingerprint
++    overlay_graph = overlay._profile_fingerprint
+     records = profiler.report().records
+     assert any(
+-        record.graph_fingerprint == parent_graph
++        record.execution_id == parent_graph
+         and record.kind == "registration"
+-        and "Service:default" in record.path
++        and "Service" in record.label
+         and record.attempts == 1
+         for record in records
+     )
+     assert any(
+-        record.graph_fingerprint == parent_graph and record.kind == "pre_configuration" and record.attempts == 1
++        record.execution_id == parent_graph and record.kind == "pre_configuration" and record.attempts == 1
+         for record in records
+     )
+     assert any(
+-        record.graph_fingerprint == overlay_graph
++        record.execution_id == overlay_graph
+         and record.kind == "registration"
+-        and "Service:default" in record.path
++        and "Service" in record.label
+         and record.cache_misses == 1
+         for record in records
+     )
+     assert any(
+-        record.graph_fingerprint == overlay_graph and record.kind == "pre_configuration" and record.cache_misses == 1
++        record.execution_id == overlay_graph and record.kind == "pre_configuration" and record.cache_misses == 1
+         for record in records
+     )
+-    assert not any(
+-        record.kind == "registration" and "Extra:default" in record.path and record.attempts for record in records
+-    )
++    assert not any(record.kind == "registration" and "Extra" in record.label and record.attempts for record in records)
+ 
+ 
+ def test_named_registrations_and_closed_generic_have_separate_paths():
+@@ -503,12 +510,18 @@
+     first_edge = next(
+         record
+         for record in report.records
+-        if record.kind == "registration" and "First:default" in record.path and "dependency:shared" in record.path
++        if record.kind == "registration"
++        and "First" in record.label
++        and "argument:shared" in record.label
++        and (record.cache_hits or record.cache_misses)
+     )
+     second_edge = next(
+         record
+         for record in report.records
+-        if record.kind == "registration" and "Second:default" in record.path and "dependency:shared" in record.path
++        if record.kind == "registration"
++        and "Second" in record.label
++        and "argument:shared" in record.label
++        and (record.cache_hits or record.cache_misses)
+     )
+     assert (first_edge.cache_misses, first_edge.cache_hits) == (1, 0)
+     assert (second_edge.cache_misses, second_edge.cache_hits) == (0, 1)
+@@ -520,7 +533,7 @@
+         )
+         == 1
+     )
+-    assert any(group.cache_hits == 1 and group.cache_misses == 1 for group in report.sharing_groups)
++    assert any(group.cache_hits == 1 and group.cache_misses == 1 for group in report.cache_groups)
+ 
+ 
+ def test_collection_and_deferred_provider_cache_edges_keep_compiled_paths():
+@@ -544,15 +557,12 @@
+     collection_edge = next(
+         record
+         for record in records
+-        if record.kind == "registration" and "dependency:items" in record.path and record.cache_misses
++        if record.kind == "registration" and "argument:items" in record.label and record.cache_misses
+     )
+     provider_edge = next(
+         record
+         for record in records
+-        if record.kind == "registration"
+-        and "Holder:default" in record.path
+-        and "dependency:deferred" in record.path
+-        and record.cache_hits
++        if record.kind == "registration" and "argument:deferred" in record.label and record.cache_hits
+     )
+     assert collection_edge.cache_misses == 1
+     assert provider_edge.cache_hits == 2
+@@ -604,10 +614,9 @@
+     assert isinstance(container.resolve(Service), Decorator)
+     assert calls == ["configured"]
+     report = profiler.report()
+-    assert any(
+-        record.kind == "pre_configuration" and record.attempts == 1 and record.cache_hits == 1
+-        for record in report.records
+-    )
++    configuration_records = [record for record in report.records if record.kind == "pre_configuration"]
++    assert sum(record.attempts for record in configuration_records) == 1
++    assert sum(record.cache_hits for record in configuration_records) == 1
+     assert any(
+         record.kind == "decorator" and record.attempts == 2 and dict(record.durations)["body"].samples == 2
+         for record in report.records
+@@ -636,8 +645,10 @@
+     container.resolve(First)
+     assert calls == [True]
+     records = [record for record in profiler.report().records if record.kind == "pre_configuration"]
+-    first = next(record for record in records if "First:default" in record.path)
+-    second = next(record for record in records if "Second:default" in record.path)
++    first = next(record for record in records if "First" in record.label and (record.cache_hits or record.cache_misses))
++    second = next(
++        record for record in records if "Second" in record.label and (record.cache_hits or record.cache_misses)
++    )
+     assert (first.cache_hits, first.cache_misses) == (1, 0)
+     assert (second.cache_hits, second.cache_misses) == (0, 1)
+     assert sum(record.attempts for record in records) == 1
+@@ -673,8 +684,10 @@
+         return profiler.report()
+ 
+     records = [record for record in asyncio.run(exercise()).records if record.kind == "pre_configuration"]
+-    first = next(record for record in records if "First:default" in record.path)
+-    second = next(record for record in records if "Second:default" in record.path)
++    first = next(record for record in records if "First" in record.label and (record.cache_hits or record.cache_misses))
++    second = next(
++        record for record in records if "Second" in record.label and (record.cache_hits or record.cache_misses)
++    )
+     assert (first.cache_misses, first.cache_waits) == (1, 0)
+     assert (second.cache_misses, second.cache_waits) == (1, 1)
+     assert sum(record.attempts for record in records) == 1
+@@ -701,7 +714,7 @@
+     )
+     assert any(record.kind == "registration" and record.attempts == 2 for record in report.records)
+     assert any(
+-        record.kind == "registration" and "dependency:per_call_target" in record.path and record.attempts == 2
++        record.kind == "registration" and "argument:per_call_target" in record.label and record.attempts == 2
+         for record in report.records
+     )
+     assert not any(
+--- a/tests/test_resource_ownership.py
++++ b/tests/test_resource_ownership.py
+@@ -14,6 +14,7 @@
+     ResolutionContext,
+     RuntimeOwnerKind,
+     Scope,
++    ScopeBuilder,
+     ScopeClosedError,
+     all_components,
+ )
+@@ -514,6 +515,7 @@
+     builder = ContainerBuilder()
+     builder.declare_scope_slot(Request)
+     builder.register(Service, lifespan="transient")
++    composition = builder.retain_composition()
+     scope = builder.build().new_scope().provide(Request, Request())
+     context = scope.resolve(Service).context
+     scope._close()
+@@ -523,7 +525,7 @@
+         lambda: asyncio.run(scope.resolve_async(Service)),
+         lambda: scope.provide(Request, Request()),
+         scope.new_scope,
+-        scope.new_scope_builder,
++        lambda: ScopeBuilder(scope, composition=composition),
+         lambda: context.resolve(Service),
+         lambda: asyncio.run(context.resolve_async(Service)),
+     )
+--- /dev/null
++++ b/tests/test_execution_features.py
+@@ -0,0 +1,483 @@
++"""Compact optional execution features and external composition ownership."""
++
++import gc
++import weakref
++from dataclasses import FrozenInstanceError
++from typing import Generic, TypeVar
++
++import pytest
++
++import clean_ioc.container as compiler
++import clean_ioc.graph_analysis as graph_analysis
++from clean_ioc import (
++    BuilderAlreadyBuiltError,
++    CompilationProfiler,
++    Composition,
++    ContainerBuilder,
++    ContainerBuildError,
++    Instrumentation,
++    RegistrationTemplate,
++    ResolutionProfiler,
++    ScopeBuilder,
++    ScopeClosedError,
++    WarmupPlan,
++    WarmupTarget,
++)
++from clean_ioc import component_filters as cf
++
++
++class Service:
++    pass
++
++
++class Missing:
++    pass
++
++
++def forbidden(*args, **kwargs):
++    raise AssertionError("Execution allocated an analysis owner")
++
++
++def forbid_analysis(monkeypatch):
++    for cls in (compiler._PlanSet, compiler.CompiledGraph, compiler.AnalysisReport, compiler.ValidationContext):
++        monkeypatch.setattr(cls, "__init__", forbidden)
++    for name in ("_compile_with_report", "_finalize_plan", "_census_inventory"):
++        monkeypatch.setattr(compiler, name, forbidden)
++    monkeypatch.setattr(graph_analysis, "graph_index", forbidden)
++    monkeypatch.setattr(compiler.CompiledGraph, "manifest", forbidden)
++    monkeypatch.setattr(compiler.CompiledGraph, "sharing_report", forbidden)
++
++
++@pytest.mark.parametrize("warmup,observed", [(True, False), (False, True), (True, True)])
++@pytest.mark.parametrize("overlay", [False, True])
++def test_optional_features_never_allocate_analysis_even_with_retained_composition(
++    monkeypatch, warmup, observed, overlay
++):
++    events = []
++    builder = ContainerBuilder().set_provider_roots(())
++    builder.register(Service, factory=lambda: events.append("activated") or Service(), lifespan="singleton")
++    builder.add_validation_rule(forbidden)
++    if warmup:
++        builder.add_warmup_plan(WarmupPlan("start", [WarmupTarget(Service), WarmupTarget(Service)]))
++    composition = builder.retain_composition()
++    profiler = ResolutionProfiler(sample_durations=0)
++    forbid_analysis(monkeypatch)
++    with builder.build(
++        instrumentation=Instrumentation(profiler) if observed else None, profile=CompilationProfiler()
++    ) as parent:
++        assert events == []
++        if overlay:
++            child_builder = ScopeBuilder(parent.new_scope(), composition=composition)
++            child_builder.retain_composition()
++            runtime = child_builder.build(profile=CompilationProfiler())
++        else:
++            runtime = parent.new_scope()
++        with runtime:
++            if warmup:
++                assert runtime.warmup("start").is_valid
++                assert runtime.warmup("start").plan_id == runtime._plan.identity
++            assert runtime.resolve(Service) is parent.resolve(Service)
++        assert events == ["activated"]
++        if observed:
++            report = profiler.report()
++            assert not report.incomplete
++            assert sum(record.attempts for record in report.records if record.kind == "registration") == 1
++
++
++def test_pending_handle_identity_and_admission():
++    builder = ContainerBuilder().set_provider_roots(())
++    handle = builder.retain_composition()
++    assert isinstance(handle, Composition)
++    assert builder.retain_composition() is handle
++    assert not handle.is_ready
++    with ContainerBuilder().build() as foreign:
++        with pytest.raises(RuntimeError, match="complete emitted"):
++            ScopeBuilder(foreign, composition=handle)
++    with pytest.raises(TypeError):
++        builder.build(instrumentation=object())
++    assert builder.retain_composition() is handle
++    builder.register(Service)
++    with builder.build() as parent:
++        assert handle.is_ready
++        with pytest.raises(BuilderAlreadyBuiltError):
++            builder.retain_composition()
++        with ScopeBuilder(parent, composition=handle).build() as child:
++            assert isinstance(child.resolve(Service), Service)
++    for name in ("close", "aclose", "__enter__", "__exit__", "__aenter__", "__aexit__"):
++        assert not hasattr(handle, name)
++    assert not hasattr(parent, "new_scope_builder")
++
++
++@pytest.mark.parametrize("operation", ["build", "analyse"])
++def test_failed_emission_leaves_requested_handle_unusable(operation):
++    class Root:
++        def __init__(self, missing: Missing):
++            pass
++
++    builder = ContainerBuilder().set_provider_roots(())
++    builder.register(Root)
++    handle = builder.retain_composition()
++    if operation == "build":
++        with pytest.raises(ContainerBuildError):
++            builder.build()
++    else:
++        result = builder.analyse()
++        assert not result.emission_complete
++        assert result.composition is None
++    assert not handle.is_ready
++    with pytest.raises(BuilderAlreadyBuiltError):
++        builder.register(Service)
++
++
++def test_matching_parent_and_ordinary_descendants_and_new_overlay_handle():
++    first = ContainerBuilder().set_provider_roots(())
++    first.register(Service, lifespan="singleton")
++    first_handle = first.retain_composition()
++    second = ContainerBuilder().set_provider_roots(())
++    second.register(Service, lifespan="singleton")
++    with first.build() as parent, second.build() as foreign:
++        with pytest.raises(ValueError, match="owner lineage"):
++            ScopeBuilder(foreign, composition=first_handle)
++        with parent.new_scope() as ordinary:
++            child_builder = ScopeBuilder(ordinary, composition=first_handle)
++            child_builder.register(Missing)
++            child_handle = child_builder.retain_composition()
++            with child_builder.build() as child:
++                with pytest.raises(ValueError, match="owner lineage"):
++                    ScopeBuilder(child, composition=first_handle)
++                with child.new_scope() as ordinary_child:
++                    with ScopeBuilder(ordinary_child, composition=child_handle).build() as grandchild:
++                        assert grandchild.resolve(Service) is parent.resolve(Service)
++                        assert isinstance(grandchild.resolve(Missing), Missing)
++    with pytest.raises(ScopeClosedError):
++        ScopeBuilder(parent, composition=first_handle)
++
++
++def test_sealed_declaration_structure_is_immutable_and_opaque_values_keep_identity():
++    fixed = {"opaque": []}
++    instance = Service()
++
++    class Root:
++        def __init__(self, value: dict, service: Service):
++            self.value, self.service = value, service
++
++    builder = ContainerBuilder().set_provider_roots(())
++    builder.register(Service, instance=instance)
++    builder.register(Root, arguments={"value": fixed})
++    handle = builder.retain_composition()
++    with builder.build(build_args={"opaque": fixed}) as parent:
++        with pytest.raises(FrozenInstanceError):
++            handle._identity = "changed"
++        snapshot = handle._snapshot
++        assert snapshot.build_args["opaque"] is fixed
++        with pytest.raises(TypeError):
++            snapshot.build_args["changed"] = fixed
++        with pytest.raises(FrozenInstanceError):
++            snapshot.layers = ()
++        layer = snapshot.layers[0]
++        with pytest.raises(TypeError):
++            dict(layer.values)["registration_when"]["changed"] = lambda _: True
++        registration = next(source for _, sources in layer.registrations for source in sources)
++        with pytest.raises(FrozenInstanceError):
++            registration.dependencies = ()
++        with ScopeBuilder(parent, composition=handle).build() as child:
++            value = child.resolve(Root)
++            assert value.value is fixed
++            assert value.service is instance
++        assert parent.resolve(Root).value is fixed
++
++
++def test_consumed_builder_and_runtime_do_not_retain_handle_or_unselected_source():
++    class Rule:
++        def __call__(self, context):
++            return ()
++
++    builder = ContainerBuilder().set_provider_roots(())
++    builder.register(Service)
++    rule = Rule()
++    rule_ref = weakref.ref(rule)
++    builder.add_validation_rule(rule)
++    del rule
++    handle = builder.retain_composition()
++    handle_ref = weakref.ref(handle)
++    with builder.build() as parent:
++        assert rule_ref() is not None
++        active = ScopeBuilder(parent, composition=handle)
++        del handle
++        gc.collect()
++        assert handle_ref() is None
++        assert rule_ref() is not None  # the active builder owns its reconstructed source
++        with active.build() as child:
++            gc.collect()
++            assert rule_ref() is None
++            assert isinstance(child.resolve(Service), Service)
++            assert isinstance(parent.resolve(Service), Service)
++
++
++def test_analysis_composition_is_independent_of_result_and_multiple_test_runtime_states():
++    calls = []
++    builder = ContainerBuilder().set_provider_roots(())
++    builder.register(Service, lifespan="singleton")
++    builder.pre_configure(Service, lambda: calls.append("configure"))
++    handle = builder.retain_composition()
++    result = builder.analyse()
++    assert result.composition is handle
++    profiler = ResolutionProfiler(sample_durations=0)
++    first = result.create_runtime(instrumentation=Instrumentation(profiler))
++    second = result.create_runtime(instrumentation=Instrumentation(profiler))
++    assert first.resolve(Service) is not second.resolve(Service)
++    assert calls == ["configure", "configure"]
++    assert len(profiler.report().executions) == 2
++    for runtime in (first, second):
++        with ScopeBuilder(runtime, composition=handle).build() as child:
++            assert child.resolve(Service) is runtime.resolve(Service)
++    result.close()
++    assert handle.is_ready
++    assert result.composition is handle
++    with pytest.raises(ScopeClosedError):
++        ScopeBuilder(first, composition=handle)
++
++
++def test_capture_does_not_replay_discovery_or_realized_registration_templates():
++    class Base:
++        pass
++
++    class Original(Base):
++        pass
++
++    class Generated:
++        def __init__(self, value):
++            self.value = value
++
++    calls = []
++    builder = ContainerBuilder().set_provider_roots(())
++    builder.register_subclasses(Base)
++
++    def template(source):
++        calls.append(source.id)
++        return RegistrationTemplate(Generated, factory=lambda: Generated(source.id), name=source.id)
++
++    builder.register_registration_template(for_each=Base, template=template)
++    handle = builder.retain_composition()
++    assert calls == []
++    with builder.build() as parent:
++        before = list(calls)
++        assert len(before) == 1
++
++        class Later(Base):
++            pass
++
++        child_builder = ScopeBuilder(parent, composition=handle)
++        assert calls == before
++        with child_builder.build() as child:
++            assert calls == before  # existing generated registration is reused
++            assert [info.implementation_type for info in child.selected_registrations if info.service_type is Base] == [
++                Original
++            ]
++            assert child.resolve(Generated, cf.with_name(before[0])).value == before[0]
++
++
++def test_closed_generic_cache_groups_use_specialized_executable_keys():
++    item = TypeVar("item")
++
++    class Box(Generic[item]):
++        def __init__(self, value: item):
++            self.value = value
++
++    builder = ContainerBuilder().set_provider_roots(())
++    builder.register(int, instance=1)
++    builder.register(str, instance="text")
++
++    def factory(value: item) -> Box[item]:
++        return Box(value)
++
++    declaration_id = builder.register_pattern(Box[item], factory=factory, lifespan="singleton")
++    builder.register(Service, arguments={})
++    builder.add_warmup_plan(WarmupPlan("start", [WarmupTarget(Box[int]), WarmupTarget(Box[str])]))
++    profiler = ResolutionProfiler(sample_durations=0)
++    with builder.build(instrumentation=Instrumentation(profiler)) as runtime:
++        runtime.warmup("start").assert_valid()
++        assert runtime.resolve(Box[int]) is not runtime.resolve(Box[str])
++        paths = {target.path for target in runtime.warmup_plans[0].targets}
++        records = [record for record in profiler.report().records if record.path in paths]
++        assert len(records) == 2
++        assert declaration_id not in {record.registration for record in records}
++        group_ids = {record.cache_group for record in records}
++        groups = [group for group in profiler.report().cache_groups if group.cache_group in group_ids]
++        assert len(groups) == 2
++        assert all(group.cache_misses == 1 and group.cache_hits == 1 for group in groups)
++
++
++@pytest.mark.parametrize("lifespan,expected", [("transient", 4), ("per_resolution", 4), ("scoped", 1)])
++def test_repeated_warmups_keep_order_and_declared_cache_and_cleanup(lifespan, expected):
++    events = []
++
++    def factory():
++        events.append("acquire")
++        try:
++            yield Service()
++        finally:
++            events.append("release")
++
++    builder = ContainerBuilder().set_provider_roots(())
++    builder.register(Service, factory=factory, lifespan=lifespan)
++    builder.add_warmup_plan(WarmupPlan("repeat", [WarmupTarget(Service), WarmupTarget(Service)]))
++    profiler = ResolutionProfiler(sample_durations=0)
++    with builder.build(instrumentation=Instrumentation(profiler)) as runtime:
++        assert events == []
++        for _ in range(2):
++            report = runtime.warmup("repeat")
++            assert [value.status for value in report.results] == ["succeeded", "succeeded"]
++            assert report.plan_id == runtime._plan.identity
++            assert "graph_fingerprint" not in report.to_json()
++        assert events == ["acquire"] * expected
++        assert sum(record.attempts for record in profiler.report().records if record.kind == "registration") == expected
++    assert events == ["acquire"] * expected + ["release"] * expected
++
++
++@pytest.mark.parametrize("missing", [False, True])
++def test_warmup_unbindable_target_raises_minimal_error_without_analysis(monkeypatch, missing):
++    builder = ContainerBuilder().set_provider_roots(())
++    if not missing:
++        builder.register(Service)
++        builder.register(Service)
++    builder.add_warmup_plan(WarmupPlan("start", [WarmupTarget(Service)]))
++    handle = builder.retain_composition()
++    forbid_analysis(monkeypatch)
++    with pytest.raises(ContainerBuildError) as caught:
++        builder.build(instrumentation=Instrumentation(ResolutionProfiler(sample_durations=0)))
++    assert caught.value.code == ("warmup-missing-component" if missing else "warmup-ambiguous-component")
++    assert caught.value.report is None
++    assert not handle.is_ready
++
++
++@pytest.mark.asyncio
++async def test_async_warmup_guard_failure_aggregation_and_overlay_cleanup(monkeypatch):
++    import json
++
++    events = []
++
++    async def resource():
++        events.append("acquire")
++        try:
++            yield Service()
++        finally:
++            events.append("release")
++
++    def fail():
++        raise ValueError("private application text")
++
++    builder = ContainerBuilder().set_provider_roots(())
++    builder.register(Service, factory=resource, lifespan="transient")
++    builder.register(Missing, factory=fail)
++    builder.add_warmup_plan(WarmupPlan("start", [WarmupTarget(Service), WarmupTarget(Missing)]))
++    composition = builder.retain_composition()
++    profiler = ResolutionProfiler(sample_durations=0)
++    forbid_analysis(monkeypatch)
++    async with builder.build(instrumentation=Instrumentation(profiler)) as parent:
++        async with ScopeBuilder(parent, composition=composition).build() as child:
++            report = child.warmup("start")
++            assert [item.status for item in report.results] == ["not_executed", "not_executed"]
++            assert events == []
++            report = await child.warmup_async("start")
++            assert [item.status for item in report.results] == ["succeeded", "failed"]
++            assert events == ["acquire"]
++            assert "private application text" not in report.to_json()
++        assert events == ["acquire", "release"]
++        assert not parent._closed
++        assert not profiler.report().incomplete
++    # Export intentionally constructs a report; compilation and execution did not.
++    monkeypatch.undo()
++    sarif = json.loads(report.to_sarif())
++    assert sarif["runs"][0]["properties"]["executionPlanId"] == report.plan_id
++    assert "graphFingerprint" not in sarif["runs"][0]["properties"]
++
++
++def test_instrumented_overlay_slots_maps_managed_and_per_call_cleanup(monkeypatch):
++    from collections.abc import Mapping
++    from typing import Protocol
++
++    from clean_ioc import ManagedProvider, Provider, ProviderMapGroup
++
++    class Request:
++        pass
++
++    class Resource:
++        def __init__(self, request: Request):
++            self.request = request
++
++    class Call(Protocol):
++        def run(self) -> Request: ...
++
++    class Target:
++        def __init__(self, resource: Resource):
++            self.resource = resource
++
++        def run(self):
++            return self.resource.request
++
++    events = []
++
++    def resource(request: Request):
++        events.append("acquire")
++        try:
++            yield Resource(request)
++        finally:
++            events.append("release")
++
++    group = ProviderMapGroup("resources", str, Resource)
++    builder = ContainerBuilder().set_provider_roots((ManagedProvider[Resource],))
++    builder.declare_scope_slot(Request)
++    builder.register(Resource, factory=resource, lifespan="scoped", contributes={group: "resource"})
++    builder.register_provider_map(group)
++    builder.register(Call, Target, scope="per_call")
++    composition = builder.retain_composition()
++    profiler = ResolutionProfiler(sample_durations=0)
++    forbid_analysis(monkeypatch)
++    with builder.build(instrumentation=Instrumentation(profiler)) as parent:
++        ordinary = parent.new_scope()
++        request = Request()
++        ordinary.provide(Request, request)
++        with ScopeBuilder(ordinary, composition=composition).build() as child:
++            assert child.resolve(Mapping[str, Provider[Resource]])["resource"]().request is request
++            managed = child.resolve(ManagedProvider[Resource])
++            with managed() as acquired:
++                assert acquired.request is request
++            call = child.resolve(Call)
++            assert call.run() is request
++            assert call.run() is request
++            assert events.count("acquire") == 4
++            assert events.count("release") == 3
++        assert events.count("release") == 4
++        assert not profiler.report().incomplete
++        ordinary._close()
++
++
++def test_unrequested_composition_is_not_allocated_and_plain_scopes_still_work(monkeypatch):
++    builder = ContainerBuilder().set_provider_roots(())
++    builder.register(Service)
++    builder.add_warmup_plan(WarmupPlan("start", [WarmupTarget(Service)]))
++    monkeypatch.setattr(Composition, "__init__", forbidden)
++    monkeypatch.setattr(compiler._CapturedComposition, "capture", forbidden)
++    with builder.build(instrumentation=Instrumentation(ResolutionProfiler(sample_durations=0))) as runtime:
++        with runtime.new_scope() as child:
++            assert child.warmup("start").is_valid
++            assert isinstance(child.resolve(Service), Service)
++
++
++def test_analysis_only_failure_still_exposes_completed_execution_composition():
++    class Broken:
++        def __init__(self, missing: Missing):
++            pass
++
++    builder = ContainerBuilder().set_provider_roots(())
++    builder.register(Service)
++    builder.create_boundary("unused").register(Broken)
++    result = builder.analyse()
++    assert not result.report.complete
++    assert result.emission_complete
++    assert result.composition.is_ready
++    with result:
++        parent = result.create_runtime()
++        with ScopeBuilder(parent, composition=result.composition).build() as child:
++            assert isinstance(child.resolve(Service), Service)

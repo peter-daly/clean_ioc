@@ -1,0 +1,347 @@
+error[invalid-argument-type]: Argument to function `module_from_spec` is incorrect
+  --> .work/graph-memory-optimization/evidence/09-operation-audit.py:13:41
+   |
+13 | probe = importlib.util.module_from_spec(spec)
+   |                                         ^^^^ Expected `ModuleSpec`, found `ModuleSpec | None`
+info: element `None` of union `ModuleSpec | None` is not assignable to `ModuleSpec`
+info: Function defined here
+  --> stdlib/_frozen_importlib.pyi:44:5
+   |
+44 | def module_from_spec(spec: importlib.machinery.ModuleSpec) -> types.ModuleType:
+   |     ^^^^^^^^^^^^^^^^ ------------------------------------ Parameter declared here
+
+error[unresolved-attribute]: Attribute `exec_module` is not defined on `None` in union `Loader | None`
+  --> .work/graph-memory-optimization/evidence/09-operation-audit.py:14:1
+   |
+14 | spec.loader.exec_module(probe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `loader` is not defined on `None` in union `ModuleSpec | None`
+  --> .work/graph-memory-optimization/evidence/09-operation-audit.py:14:1
+   |
+14 | spec.loader.exec_module(probe)
+   | ^^^^^^^^^^^
+
+error[not-iterable]: Object of type `None | list[_T@list]` may not be iterable
+  --> .work/graph-memory-optimization/evidence/09-probe.py:42:24
+   |
+42 |             for key in self._keys:
+   |                        ^^^^^^^^^^
+info: It may not have an `__iter__` method or a `__getitem__` method
+info: `None` does not implement `__iter__`
+
+error[invalid-argument-type]: Argument to function `len` is incorrect
+  --> .work/graph-memory-optimization/evidence/09-probe.py:54:16
+   |
+54 |         if len(mapping) < self._eligible:
+   |                ^^^^^^^ Expected `Sized`, found `dict[Unknown, Unknown] | None`
+info: element `None` of union `dict[Unknown, Unknown] | None` is not assignable to `Sized`
+info: └── type `None` is not assignable to protocol `Sized`
+info:     └── protocol member `__len__` is not defined on type `None`
+info: Function defined here
+    --> stdlib/builtins.pyi:4141:5
+     |
+4141 | def len(obj: Sized, /) -> int:
+     |     ^^^ ---------- Parameter declared here
+
+error[invalid-argument-type]: Argument to function `min` is incorrect
+  --> .work/graph-memory-optimization/evidence/09-probe.py:58:32
+   |
+58 |         minimum, maximum = min(mapping), max(mapping)
+   |                                ^^^^^^^ Expected `Iterable[Unknown]`, found `dict[Unknown, Unknown] | None`
+info: element `None` of union `dict[Unknown, Unknown] | None` is not assignable to `Iterable[Unknown]`
+info: └── type `None` is not assignable to protocol `Iterable[Unknown]`
+info:     └── protocol member `__iter__` is not defined on type `None`
+info: Matching overload defined here
+    --> stdlib/builtins.pyi:4310:5
+     |
+4310 | def min(iterable: Iterable[SupportsRichComparisonT], /, *, key: None = None) -> SupportsRichComparisonT: ...
+     |     ^^^ ------------------------------------------- Parameter declared here
+info: Non-matching overloads for function `min`:
+info:   [SupportsRichComparisonT](arg1: SupportsRichComparisonT, arg2: SupportsRichComparisonT, /, *_args: SupportsRichComparisonT, *, key: None = None) -> SupportsRichComparisonT
+info:   [_T](arg1: _T, arg2: _T, /, *_args: _T, *, key: (_T, /) -> SupportsDunderLT[Any] | SupportsDunderGT[Any]) -> _T
+info:   [_T](iterable: Iterable[_T], /, *, key: (_T, /) -> SupportsDunderLT[Any] | SupportsDunderGT[Any]) -> _T
+info:   [SupportsRichComparisonT, _T](iterable: Iterable[SupportsRichComparisonT], /, *, key: None = None, default: _T) -> SupportsRichComparisonT | _T
+info:   [_T1, _T2](iterable: Iterable[_T1], /, *, key: (_T1, /) -> SupportsDunderLT[Any] | SupportsDunderGT[Any], default: _T2) -> _T1 | _T2
+
+error[invalid-argument-type]: Argument to function `max` is incorrect
+  --> .work/graph-memory-optimization/evidence/09-probe.py:58:46
+   |
+58 |         minimum, maximum = min(mapping), max(mapping)
+   |                                              ^^^^^^^ Expected `Iterable[Unknown]`, found `dict[Unknown, Unknown] | None`
+info: element `None` of union `dict[Unknown, Unknown] | None` is not assignable to `Iterable[Unknown]`
+info: └── type `None` is not assignable to protocol `Iterable[Unknown]`
+info:     └── protocol member `__iter__` is not defined on type `None`
+info: Matching overload defined here
+    --> stdlib/builtins.pyi:4287:5
+     |
+4287 | def max(iterable: Iterable[SupportsRichComparisonT], /, *, key: None = None) -> SupportsRichComparisonT: ...
+     |     ^^^ ------------------------------------------- Parameter declared here
+info: Non-matching overloads for function `max`:
+info:   [SupportsRichComparisonT](arg1: SupportsRichComparisonT, arg2: SupportsRichComparisonT, /, *_args: SupportsRichComparisonT, *, key: None = None) -> SupportsRichComparisonT
+info:   [_T](arg1: _T, arg2: _T, /, *_args: _T, *, key: (_T, /) -> SupportsDunderLT[Any] | SupportsDunderGT[Any]) -> _T
+info:   [_T](iterable: Iterable[_T], /, *, key: (_T, /) -> SupportsDunderLT[Any] | SupportsDunderGT[Any]) -> _T
+info:   [SupportsRichComparisonT, _T](iterable: Iterable[SupportsRichComparisonT], /, *, key: None = None, default: _T) -> SupportsRichComparisonT | _T
+info:   [_T1, _T2](iterable: Iterable[_T1], /, *, key: (_T1, /) -> SupportsDunderLT[Any] | SupportsDunderGT[Any], default: _T2) -> _T1 | _T2
+
+error[invalid-argument-type]: Argument to function `len` is incorrect
+  --> .work/graph-memory-optimization/evidence/09-probe.py:59:62
+   |
+59 |         if minimum < 0 or maximum >= min(self.LIMIT, 2 * len(mapping)):
+   |                                                              ^^^^^^^ Expected `Sized`, found `dict[Unknown, Unknown] | None`
+info: element `None` of union `dict[Unknown, Unknown] | None` is not assignable to `Sized`
+info: └── type `None` is not assignable to protocol `Sized`
+info:     └── protocol member `__len__` is not defined on type `None`
+info: Function defined here
+    --> stdlib/builtins.pyi:4141:5
+     |
+4141 | def len(obj: Sized, /) -> int:
+     |     ^^^ ---------- Parameter declared here
+
+error[invalid-argument-type]: Argument to `list.__init__` is incorrect
+  --> .work/graph-memory-optimization/evidence/09-probe.py:63:27
+   |
+63 |         self._keys = list(mapping)
+   |                           ^^^^^^^ Expected `Iterable[Unknown]`, found `dict[Unknown, Unknown] | None`
+info: element `None` of union `dict[Unknown, Unknown] | None` is not assignable to `Iterable[Unknown]`
+info: └── type `None` is not assignable to protocol `Iterable[Unknown]`
+info:     └── protocol member `__iter__` is not defined on type `None`
+info: Matching overload defined here
+    --> stdlib/builtins.pyi:2976:9
+     |
+2976 |     def __init__(self, iterable: Iterable[_T], /) -> None: ...
+     |         ^^^^^^^^       ---------------------- Parameter declared here
+info: Non-matching overloads for bound method `__init__`:
+info:   (self) -> None
+
+error[unresolved-attribute]: Attribute `items` is not defined on `None` in union `dict[Unknown, Unknown] | None`
+  --> .work/graph-memory-optimization/evidence/09-probe.py:66:27
+   |
+66 |         for key, value in mapping.items():
+   |                           ^^^^^^^^^^^^^
+
+error[invalid-argument-type]: Argument to function `len` is incorrect
+  --> .work/graph-memory-optimization/evidence/09-probe.py:75:27
+   |
+75 |         if 0 <= key < len(self._values):
+   |                           ^^^^^^^^^^^^ Expected `Sized`, found `None | Unknown`
+info: element `None` of union `None | Unknown` is not assignable to `Sized`
+info: └── type `None` is not assignable to protocol `Sized`
+info:     └── protocol member `__len__` is not defined on type `None`
+info: Function defined here
+    --> stdlib/builtins.pyi:4141:5
+     |
+4141 | def len(obj: Sized, /) -> int:
+     |     ^^^ ---------- Parameter declared here
+
+error[not-subscriptable]: Cannot subscript object of type `None` with no `__getitem__` method
+  --> .work/graph-memory-optimization/evidence/09-probe.py:76:21
+   |
+76 |             value = self._values[key]
+   |                     ^^^^^^^^^^^^^^^^^
+
+error[not-subscriptable]: Cannot subscript object of type `None` with no `__getitem__` method
+  --> .work/graph-memory-optimization/evidence/09-probe.py:76:21
+   |
+76 |             value = self._values[key]
+   |                     ^^^^^^^^^^^^^^^^^
+
+error[not-subscriptable]: Cannot subscript object of type `None` with no `__getitem__` method
+  --> .work/graph-memory-optimization/evidence/09-probe.py:79:16
+   |
+79 |         return self._sparse[key]
+   |                ^^^^^^^^^^^^^^^^^
+
+error[not-subscriptable]: Cannot subscript object of type `None` with no `__getitem__` method
+  --> .work/graph-memory-optimization/evidence/09-probe.py:79:16
+   |
+79 |         return self._sparse[key]
+   |                ^^^^^^^^^^^^^^^^^
+
+error[invalid-argument-type]: Argument to function `len` is incorrect
+  --> .work/graph-memory-optimization/evidence/09-probe.py:86:27
+   |
+86 |         if 0 <= key < len(self._values):
+   |                           ^^^^^^^^^^^^ Expected `Sized`, found `None | Unknown`
+info: element `None` of union `None | Unknown` is not assignable to `Sized`
+info: └── type `None` is not assignable to protocol `Sized`
+info:     └── protocol member `__len__` is not defined on type `None`
+info: Function defined here
+    --> stdlib/builtins.pyi:4141:5
+     |
+4141 | def len(obj: Sized, /) -> int:
+     |     ^^^ ---------- Parameter declared here
+
+error[not-subscriptable]: Cannot subscript object of type `None` with no `__getitem__` method
+  --> .work/graph-memory-optimization/evidence/09-probe.py:87:21
+   |
+87 |             value = self._values[key]
+   |                     ^^^^^^^^^^^^^^^^^
+
+error[not-subscriptable]: Cannot subscript object of type `None` with no `__getitem__` method
+  --> .work/graph-memory-optimization/evidence/09-probe.py:87:21
+   |
+87 |             value = self._values[key]
+   |                     ^^^^^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `get` is not defined on `None` in union `None | dict[Unknown, Unknown]`
+  --> .work/graph-memory-optimization/evidence/09-probe.py:90:16
+   |
+90 |         return self._sparse.get(key, default)
+   |                ^^^^^^^^^^^^^^^^
+
+error[invalid-argument-type]: Argument to function `len` is incorrect
+   --> .work/graph-memory-optimization/evidence/09-probe.py:113:31
+    |
+113 |             if 0 <= key < len(self._values) and self._values[key] is not MISSING:
+    |                               ^^^^^^^^^^^^ Expected `Sized`, found `None | Unknown`
+info: element `None` of union `None | Unknown` is not assignable to `Sized`
+info: └── type `None` is not assignable to protocol `Sized`
+info:     └── protocol member `__len__` is not defined on type `None`
+info: Function defined here
+    --> stdlib/builtins.pyi:4141:5
+     |
+4141 | def len(obj: Sized, /) -> int:
+     |     ^^^ ---------- Parameter declared here
+
+error[not-subscriptable]: Cannot subscript object of type `None` with no `__getitem__` method
+   --> .work/graph-memory-optimization/evidence/09-probe.py:113:49
+    |
+113 |             if 0 <= key < len(self._values) and self._values[key] is not MISSING:
+    |                                                 ^^^^^^^^^^^^^^^^^
+
+error[not-subscriptable]: Cannot subscript object of type `None` with no `__getitem__` method
+   --> .work/graph-memory-optimization/evidence/09-probe.py:113:49
+    |
+113 |             if 0 <= key < len(self._values) and self._values[key] is not MISSING:
+    |                                                 ^^^^^^^^^^^^^^^^^
+
+error[invalid-assignment]: Cannot assign to a subscript on an object of type `None`
+   --> .work/graph-memory-optimization/evidence/09-probe.py:114:17
+    |
+114 |                 self._values[key] = value
+    |                 ^^^^^^^^^^^^^^^^^
+info: The full type of the subscripted object is `None | Unknown`
+info: `None` does not have a `__setitem__` method.
+
+error[invalid-assignment]: Cannot assign to a subscript on an object of type `None`
+   --> .work/graph-memory-optimization/evidence/09-probe.py:116:17
+    |
+116 |                 self._sparse[key] = value
+    |                 ^^^^^^^^^^^^^^^^^
+info: The full type of the subscripted object is `None | dict[Unknown, Unknown]`
+info: `None` does not have a `__setitem__` method.
+
+error[unresolved-attribute]: Attribute `append` is not defined on `None` in union `None | list[_T@list]`
+   --> .work/graph-memory-optimization/evidence/09-probe.py:118:9
+    |
+118 |         self._keys.append(key)
+    |         ^^^^^^^^^^^^^^^^^
+
+error[invalid-argument-type]: Argument to function `len` is incorrect
+   --> .work/graph-memory-optimization/evidence/09-probe.py:119:47
+    |
+119 |         if 0 <= key < min(self.LIMIT, 2 * len(self._keys)):
+    |                                               ^^^^^^^^^^ Expected `Sized`, found `None | list[_T@list]`
+info: element `None` of union `None | list[_T@list]` is not assignable to `Sized`
+info: └── type `None` is not assignable to protocol `Sized`
+info:     └── protocol member `__len__` is not defined on type `None`
+info: Function defined here
+    --> stdlib/builtins.pyi:4141:5
+     |
+4141 | def len(obj: Sized, /) -> int:
+     |     ^^^ ---------- Parameter declared here
+
+error[invalid-argument-type]: Argument to function `len` is incorrect
+   --> .work/graph-memory-optimization/evidence/09-probe.py:120:27
+    |
+120 |             if key >= len(self._values):
+    |                           ^^^^^^^^^^^^ Expected `Sized`, found `None | Unknown`
+info: element `None` of union `None | Unknown` is not assignable to `Sized`
+info: └── type `None` is not assignable to protocol `Sized`
+info:     └── protocol member `__len__` is not defined on type `None`
+info: Function defined here
+    --> stdlib/builtins.pyi:4141:5
+     |
+4141 | def len(obj: Sized, /) -> int:
+     |     ^^^ ---------- Parameter declared here
+
+error[unresolved-attribute]: Attribute `extend` is not defined on `None` in union `None | Unknown`
+   --> .work/graph-memory-optimization/evidence/09-probe.py:121:17
+    |
+121 |                 self._values.extend([MISSING] * (key + 1 - len(self._values)))
+    |                 ^^^^^^^^^^^^^^^^^^^
+
+error[invalid-argument-type]: Argument to function `len` is incorrect
+   --> .work/graph-memory-optimization/evidence/09-probe.py:121:64
+    |
+121 |                 self._values.extend([MISSING] * (key + 1 - len(self._values)))
+    |                                                                ^^^^^^^^^^^^ Expected `Sized`, found `None | Unknown`
+info: element `None` of union `None | Unknown` is not assignable to `Sized`
+info: └── type `None` is not assignable to protocol `Sized`
+info:     └── protocol member `__len__` is not defined on type `None`
+info: Function defined here
+    --> stdlib/builtins.pyi:4141:5
+     |
+4141 | def len(obj: Sized, /) -> int:
+     |     ^^^ ---------- Parameter declared here
+
+error[invalid-assignment]: Cannot assign to a subscript on an object of type `None`
+   --> .work/graph-memory-optimization/evidence/09-probe.py:122:13
+    |
+122 |             self._values[key] = value
+    |             ^^^^^^^^^^^^^^^^^
+info: The full type of the subscripted object is `None | Unknown`
+info: `None` does not have a `__setitem__` method.
+
+error[invalid-assignment]: Cannot assign to a subscript on an object of type `None`
+   --> .work/graph-memory-optimization/evidence/09-probe.py:124:13
+    |
+124 |             self._sparse[key] = value
+    |             ^^^^^^^^^^^^^^^^^
+info: The full type of the subscripted object is `None | dict[Unknown, Unknown]`
+info: `None` does not have a `__setitem__` method.
+
+error[invalid-argument-type]: Argument to function `len` is incorrect
+   --> .work/graph-memory-optimization/evidence/09-probe.py:125:20
+    |
+125 |             if len(self._sparse) > max(32, len(self._keys) // 8):
+    |                    ^^^^^^^^^^^^ Expected `Sized`, found `None | dict[Unknown, Unknown]`
+info: element `None` of union `None | dict[Unknown, Unknown]` is not assignable to `Sized`
+info: └── type `None` is not assignable to protocol `Sized`
+info:     └── protocol member `__len__` is not defined on type `None`
+info: Function defined here
+    --> stdlib/builtins.pyi:4141:5
+     |
+4141 | def len(obj: Sized, /) -> int:
+     |     ^^^ ---------- Parameter declared here
+
+error[invalid-argument-type]: Argument to function `len` is incorrect
+   --> .work/graph-memory-optimization/evidence/09-probe.py:125:48
+    |
+125 |             if len(self._sparse) > max(32, len(self._keys) // 8):
+    |                                                ^^^^^^^^^^ Expected `Sized`, found `None | list[_T@list]`
+info: element `None` of union `None | list[_T@list]` is not assignable to `Sized`
+info: └── type `None` is not assignable to protocol `Sized`
+info:     └── protocol member `__len__` is not defined on type `None`
+info: Function defined here
+    --> stdlib/builtins.pyi:4141:5
+     |
+4141 | def len(obj: Sized, /) -> int:
+     |     ^^^ ---------- Parameter declared here
+
+error[invalid-argument-type]: Argument to function `len` is incorrect
+   --> .work/graph-memory-optimization/evidence/09-probe.py:147:67
+    |
+147 |         return len(self._dict) if self._dict is not None else len(self._keys)
+    |                                                                   ^^^^^^^^^^ Expected `Sized`, found `None | list[_T@list]`
+info: element `None` of union `None | list[_T@list]` is not assignable to `Sized`
+info: └── type `None` is not assignable to protocol `Sized`
+info:     └── protocol member `__len__` is not defined on type `None`
+info: Function defined here
+    --> stdlib/builtins.pyi:4141:5
+     |
+4141 | def len(obj: Sized, /) -> int:
+     |     ^^^ ---------- Parameter declared here
+
+Found 34 diagnostics

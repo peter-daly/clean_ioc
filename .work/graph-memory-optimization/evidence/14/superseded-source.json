@@ -1,0 +1,9 @@
+{
+  "status": "Rejected early tag-tuple normalization; interrupted after one normal sample. Not acceptance evidence.",
+  "sha256": {
+    "superseded-components.py.txt": "6051ae751a048fe7f6d5d7cac6ee9949dd2c0050451c63dbe10959ce0ba4bd15",
+    "container.py": "317b5fdc607ffe86ed5356e70592b391f66c77e57568eb5250b2e659ac8a9ca7",
+    "graph_artifact.py.measured.txt": "c753c7365812971e353c1c4de4c7f8a0d04a6f64fb35ffaefacccc14910f4686"
+  },
+  "fixture_harness": "Unchanged accepted task13 fixture and evidence12 shared measure.py"
+}

@@ -1,0 +1,540 @@
+{
+  "driver_sha256": "7635bc6be51c90b45bc7a9b3b5226cfdea9499dcd9ec0220cb88bc3b35ca99ac",
+  "runs": [
+    {
+      "before": {
+        "peak_rss_bytes": 45170688,
+        "rss_bytes": 45170688
+      },
+      "build_seconds": 0.2827961250441149,
+      "command": [
+        "/Users/peter.daly/WS/pete/clean_ioc/.venv/bin/python",
+        "/Users/peter.daly/WS/pete/clean_ioc/.work/graph-memory-optimization/evidence/08-failure.py",
+        "--probe",
+        "baseline"
+      ],
+      "compatibility": {
+        "hashes": {
+          "clean_ioc.container": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc"
+        },
+        "probe": "baseline",
+        "probe_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+      },
+      "decorator_selected": 6,
+      "diagnostics": false,
+      "failed": {
+        "peak_rss_bytes": 47824896,
+        "rss_bytes": 47824896
+      },
+      "instrumentation": "none",
+      "issues": [
+        "task08-refused"
+      ],
+      "machine": "arm64",
+      "manifest": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 38400,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "probe": "baseline",
+      "python": "3.14.4",
+      "repeat": 1,
+      "roots": 8,
+      "script_sha256": "4884d6d5c1d1c6e0c6ffa5cde599d21ba945085cd5ecef2290e0a4753821ceb1"
+    },
+    {
+      "before": {
+        "peak_rss_bytes": 44662784,
+        "rss_bytes": 44662784
+      },
+      "build_seconds": 0.2801333329407498,
+      "command": [
+        "/Users/peter.daly/WS/pete/clean_ioc/.venv/bin/python",
+        "/Users/peter.daly/WS/pete/clean_ioc/.work/graph-memory-optimization/evidence/08-failure.py",
+        "--probe",
+        "both"
+      ],
+      "compatibility": {
+        "hashes": {
+          "clean_ioc.container": "c20311357fd7180a5a4cfecc7b26eb931c34072d6e01db4df192934d058a15dc"
+        },
+        "probe": "both",
+        "probe_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+      },
+      "decorator_selected": 6,
+      "diagnostics": false,
+      "failed": {
+        "peak_rss_bytes": 47464448,
+        "rss_bytes": 47464448
+      },
+      "instrumentation": "none",
+      "issues": [
+        "task08-refused"
+      ],
+      "machine": "arm64",
+      "manifest": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 38442,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "probe": "both",
+      "python": "3.14.4",
+      "repeat": 1,
+      "roots": 8,
+      "script_sha256": "4884d6d5c1d1c6e0c6ffa5cde599d21ba945085cd5ecef2290e0a4753821ceb1"
+    },
+    {
+      "before": {
+        "peak_rss_bytes": 44843008,
+        "rss_bytes": 44843008
+      },
+      "build_seconds": 0.31809862493537366,
+      "command": [
+        "/Users/peter.daly/WS/pete/clean_ioc/.venv/bin/python",
+        "/Users/peter.daly/WS/pete/clean_ioc/.work/graph-memory-optimization/evidence/08-failure.py",
+        "--probe",
+        "both"
+      ],
+      "compatibility": {
+        "hashes": {
+          "clean_ioc.container": "c20311357fd7180a5a4cfecc7b26eb931c34072d6e01db4df192934d058a15dc"
+        },
+        "probe": "both",
+        "probe_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+      },
+      "decorator_selected": 6,
+      "diagnostics": false,
+      "failed": {
+        "peak_rss_bytes": 47431680,
+        "rss_bytes": 47431680
+      },
+      "instrumentation": "none",
+      "issues": [
+        "task08-refused"
+      ],
+      "machine": "arm64",
+      "manifest": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 38447,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "probe": "both",
+      "python": "3.14.4",
+      "repeat": 2,
+      "roots": 8,
+      "script_sha256": "4884d6d5c1d1c6e0c6ffa5cde599d21ba945085cd5ecef2290e0a4753821ceb1"
+    },
+    {
+      "before": {
+        "peak_rss_bytes": 44875776,
+        "rss_bytes": 44875776
+      },
+      "build_seconds": 0.32437766599468887,
+      "command": [
+        "/Users/peter.daly/WS/pete/clean_ioc/.venv/bin/python",
+        "/Users/peter.daly/WS/pete/clean_ioc/.work/graph-memory-optimization/evidence/08-failure.py",
+        "--probe",
+        "baseline"
+      ],
+      "compatibility": {
+        "hashes": {
+          "clean_ioc.container": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc"
+        },
+        "probe": "baseline",
+        "probe_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+      },
+      "decorator_selected": 6,
+      "diagnostics": false,
+      "failed": {
+        "peak_rss_bytes": 47267840,
+        "rss_bytes": 47267840
+      },
+      "instrumentation": "none",
+      "issues": [
+        "task08-refused"
+      ],
+      "machine": "arm64",
+      "manifest": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 38480,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "probe": "baseline",
+      "python": "3.14.4",
+      "repeat": 2,
+      "roots": 8,
+      "script_sha256": "4884d6d5c1d1c6e0c6ffa5cde599d21ba945085cd5ecef2290e0a4753821ceb1"
+    },
+    {
+      "before": {
+        "peak_rss_bytes": 44892160,
+        "rss_bytes": 44892160
+      },
+      "build_seconds": 0.32377187500242144,
+      "command": [
+        "/Users/peter.daly/WS/pete/clean_ioc/.venv/bin/python",
+        "/Users/peter.daly/WS/pete/clean_ioc/.work/graph-memory-optimization/evidence/08-failure.py",
+        "--probe",
+        "baseline"
+      ],
+      "compatibility": {
+        "hashes": {
+          "clean_ioc.container": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc"
+        },
+        "probe": "baseline",
+        "probe_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+      },
+      "decorator_selected": 6,
+      "diagnostics": false,
+      "failed": {
+        "peak_rss_bytes": 47431680,
+        "rss_bytes": 47415296
+      },
+      "instrumentation": "none",
+      "issues": [
+        "task08-refused"
+      ],
+      "machine": "arm64",
+      "manifest": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 38554,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "probe": "baseline",
+      "python": "3.14.4",
+      "repeat": 3,
+      "roots": 8,
+      "script_sha256": "4884d6d5c1d1c6e0c6ffa5cde599d21ba945085cd5ecef2290e0a4753821ceb1"
+    },
+    {
+      "before": {
+        "peak_rss_bytes": 44646400,
+        "rss_bytes": 44630016
+      },
+      "build_seconds": 0.32141974999103695,
+      "command": [
+        "/Users/peter.daly/WS/pete/clean_ioc/.venv/bin/python",
+        "/Users/peter.daly/WS/pete/clean_ioc/.work/graph-memory-optimization/evidence/08-failure.py",
+        "--probe",
+        "both"
+      ],
+      "compatibility": {
+        "hashes": {
+          "clean_ioc.container": "c20311357fd7180a5a4cfecc7b26eb931c34072d6e01db4df192934d058a15dc"
+        },
+        "probe": "both",
+        "probe_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+      },
+      "decorator_selected": 6,
+      "diagnostics": false,
+      "failed": {
+        "peak_rss_bytes": 47202304,
+        "rss_bytes": 47202304
+      },
+      "instrumentation": "none",
+      "issues": [
+        "task08-refused"
+      ],
+      "machine": "arm64",
+      "manifest": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 38591,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "probe": "both",
+      "python": "3.14.4",
+      "repeat": 3,
+      "roots": 8,
+      "script_sha256": "4884d6d5c1d1c6e0c6ffa5cde599d21ba945085cd5ecef2290e0a4753821ceb1"
+    },
+    {
+      "before": {
+        "peak_rss_bytes": 44613632,
+        "rss_bytes": 44613632
+      },
+      "build_seconds": 2.4439430420752615,
+      "command": [
+        "/Users/peter.daly/WS/pete/clean_ioc/.venv/bin/python",
+        "/Users/peter.daly/WS/pete/clean_ioc/.work/graph-memory-optimization/evidence/08-failure.py",
+        "--probe",
+        "baseline",
+        "--heap"
+      ],
+      "compatibility": {
+        "hashes": {
+          "clean_ioc.container": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc"
+        },
+        "probe": "baseline",
+        "probe_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+      },
+      "decorator_selected": 6,
+      "diagnostics": false,
+      "failed": {
+        "peak_rss_bytes": 49070080,
+        "rss_bytes": 49070080,
+        "traced_peak_bytes": 2556653,
+        "traced_retained_bytes": 1132506
+      },
+      "instrumentation": "tracemalloc",
+      "issues": [
+        "task08-refused"
+      ],
+      "machine": "arm64",
+      "manifest": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 38634,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "probe": "baseline",
+      "python": "3.14.4",
+      "repeat": 1,
+      "roots": 8,
+      "script_sha256": "4884d6d5c1d1c6e0c6ffa5cde599d21ba945085cd5ecef2290e0a4753821ceb1"
+    },
+    {
+      "before": {
+        "peak_rss_bytes": 44875776,
+        "rss_bytes": 44875776
+      },
+      "build_seconds": 2.306612042011693,
+      "command": [
+        "/Users/peter.daly/WS/pete/clean_ioc/.venv/bin/python",
+        "/Users/peter.daly/WS/pete/clean_ioc/.work/graph-memory-optimization/evidence/08-failure.py",
+        "--probe",
+        "both",
+        "--heap"
+      ],
+      "compatibility": {
+        "hashes": {
+          "clean_ioc.container": "c20311357fd7180a5a4cfecc7b26eb931c34072d6e01db4df192934d058a15dc"
+        },
+        "probe": "both",
+        "probe_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+      },
+      "decorator_selected": 6,
+      "diagnostics": false,
+      "failed": {
+        "peak_rss_bytes": 49594368,
+        "rss_bytes": 49594368,
+        "traced_peak_bytes": 2480932,
+        "traced_retained_bytes": 1063626
+      },
+      "instrumentation": "tracemalloc",
+      "issues": [
+        "task08-refused"
+      ],
+      "machine": "arm64",
+      "manifest": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 38812,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "probe": "both",
+      "python": "3.14.4",
+      "repeat": 1,
+      "roots": 8,
+      "script_sha256": "4884d6d5c1d1c6e0c6ffa5cde599d21ba945085cd5ecef2290e0a4753821ceb1"
+    },
+    {
+      "before": {
+        "peak_rss_bytes": 44679168,
+        "rss_bytes": 44679168
+      },
+      "build_seconds": 2.314042125013657,
+      "command": [
+        "/Users/peter.daly/WS/pete/clean_ioc/.venv/bin/python",
+        "/Users/peter.daly/WS/pete/clean_ioc/.work/graph-memory-optimization/evidence/08-failure.py",
+        "--probe",
+        "both",
+        "--heap"
+      ],
+      "compatibility": {
+        "hashes": {
+          "clean_ioc.container": "c20311357fd7180a5a4cfecc7b26eb931c34072d6e01db4df192934d058a15dc"
+        },
+        "probe": "both",
+        "probe_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+      },
+      "decorator_selected": 6,
+      "diagnostics": false,
+      "failed": {
+        "peak_rss_bytes": 49922048,
+        "rss_bytes": 49922048,
+        "traced_peak_bytes": 2480843,
+        "traced_retained_bytes": 1063700
+      },
+      "instrumentation": "tracemalloc",
+      "issues": [
+        "task08-refused"
+      ],
+      "machine": "arm64",
+      "manifest": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 38945,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "probe": "both",
+      "python": "3.14.4",
+      "repeat": 2,
+      "roots": 8,
+      "script_sha256": "4884d6d5c1d1c6e0c6ffa5cde599d21ba945085cd5ecef2290e0a4753821ceb1"
+    },
+    {
+      "before": {
+        "peak_rss_bytes": 44580864,
+        "rss_bytes": 44580864
+      },
+      "build_seconds": 2.3060817919904366,
+      "command": [
+        "/Users/peter.daly/WS/pete/clean_ioc/.venv/bin/python",
+        "/Users/peter.daly/WS/pete/clean_ioc/.work/graph-memory-optimization/evidence/08-failure.py",
+        "--probe",
+        "baseline",
+        "--heap"
+      ],
+      "compatibility": {
+        "hashes": {
+          "clean_ioc.container": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc"
+        },
+        "probe": "baseline",
+        "probe_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+      },
+      "decorator_selected": 6,
+      "diagnostics": false,
+      "failed": {
+        "peak_rss_bytes": 49856512,
+        "rss_bytes": 49856512,
+        "traced_peak_bytes": 2556869,
+        "traced_retained_bytes": 1132838
+      },
+      "instrumentation": "tracemalloc",
+      "issues": [
+        "task08-refused"
+      ],
+      "machine": "arm64",
+      "manifest": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 39052,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "probe": "baseline",
+      "python": "3.14.4",
+      "repeat": 2,
+      "roots": 8,
+      "script_sha256": "4884d6d5c1d1c6e0c6ffa5cde599d21ba945085cd5ecef2290e0a4753821ceb1"
+    },
+    {
+      "before": {
+        "peak_rss_bytes": 44548096,
+        "rss_bytes": 44531712
+      },
+      "build_seconds": 2.331165875075385,
+      "command": [
+        "/Users/peter.daly/WS/pete/clean_ioc/.venv/bin/python",
+        "/Users/peter.daly/WS/pete/clean_ioc/.work/graph-memory-optimization/evidence/08-failure.py",
+        "--probe",
+        "baseline",
+        "--heap"
+      ],
+      "compatibility": {
+        "hashes": {
+          "clean_ioc.container": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc"
+        },
+        "probe": "baseline",
+        "probe_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+      },
+      "decorator_selected": 6,
+      "diagnostics": false,
+      "failed": {
+        "peak_rss_bytes": 49725440,
+        "rss_bytes": 49725440,
+        "traced_peak_bytes": 2556751,
+        "traced_retained_bytes": 1133035
+      },
+      "instrumentation": "tracemalloc",
+      "issues": [
+        "task08-refused"
+      ],
+      "machine": "arm64",
+      "manifest": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 39160,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "probe": "baseline",
+      "python": "3.14.4",
+      "repeat": 3,
+      "roots": 8,
+      "script_sha256": "4884d6d5c1d1c6e0c6ffa5cde599d21ba945085cd5ecef2290e0a4753821ceb1"
+    },
+    {
+      "before": {
+        "peak_rss_bytes": 44564480,
+        "rss_bytes": 44564480
+      },
+      "build_seconds": 2.3193131249863654,
+      "command": [
+        "/Users/peter.daly/WS/pete/clean_ioc/.venv/bin/python",
+        "/Users/peter.daly/WS/pete/clean_ioc/.work/graph-memory-optimization/evidence/08-failure.py",
+        "--probe",
+        "both",
+        "--heap"
+      ],
+      "compatibility": {
+        "hashes": {
+          "clean_ioc.container": "c20311357fd7180a5a4cfecc7b26eb931c34072d6e01db4df192934d058a15dc"
+        },
+        "probe": "both",
+        "probe_sha256": "0f8019cee3b019c8d09518fcdef5bdbbc2057de58e13e4621f4e1d715e8c4567"
+      },
+      "decorator_selected": 6,
+      "diagnostics": false,
+      "failed": {
+        "peak_rss_bytes": 49856512,
+        "rss_bytes": 49856512,
+        "traced_peak_bytes": 2480796,
+        "traced_retained_bytes": 1063456
+      },
+      "instrumentation": "tracemalloc",
+      "issues": [
+        "task08-refused"
+      ],
+      "machine": "arm64",
+      "manifest": "8ee9f28f572d94828aa80468cd456d54251a6ed5cff148da8ff21039b0a02527",
+      "ownership": {
+        "captured_selection_views": false,
+        "retained_builder": false
+      },
+      "pid": 39292,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "probe": "both",
+      "python": "3.14.4",
+      "repeat": 3,
+      "roots": 8,
+      "script_sha256": "4884d6d5c1d1c6e0c6ffa5cde599d21ba945085cd5ecef2290e0a4753821ceb1"
+    }
+  ],
+  "suite": "failure"
+}

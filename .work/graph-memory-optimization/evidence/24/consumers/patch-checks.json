@@ -1,0 +1,22 @@
+{
+  "bark-from-preserved-consumer.patch": {
+    "check": "git apply --check",
+    "base": "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/bark-source",
+    "returncode": 0
+  },
+  "bark-from-original-checkout.patch": {
+    "check": "git apply --check",
+    "base": "/Users/peter.daly/WS/bark/bark-core",
+    "returncode": 0
+  },
+  "cop-from-preserved-consumer.patch": {
+    "check": "git apply --check",
+    "base": "/Users/peter.daly/.codex/task-baselines/clean-ioc-task20-20261010-v2/consumer-current/cop-source",
+    "returncode": 0
+  },
+  "cop-from-original-checkout.patch": {
+    "check": "git apply --check",
+    "base": "/Users/peter.daly/.codex/worktrees/registration-partitions-main/data-protection-cop",
+    "returncode": 0
+  }
+}

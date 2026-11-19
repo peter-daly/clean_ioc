@@ -1,0 +1,170 @@
+{
+  "run": {
+    "before": {
+      "build_seconds": {
+        "median": 0.5686186250532046,
+        "min": 0.5683280419325456,
+        "max": 0.6045200420776382
+      },
+      "resolve_seconds": {
+        "median": 0.005312874913215637,
+        "min": 0.005274959024973214,
+        "max": 0.005440416047349572
+      },
+      "peak_rss_bytes": {
+        "median": 82804736,
+        "min": 82329600,
+        "max": 82952192
+      },
+      "traced_retained_bytes": {
+        "median": 21500893,
+        "min": 21500640,
+        "max": 21503732
+      },
+      "traced_peak_bytes": {
+        "median": 39793559,
+        "min": 39792725,
+        "max": 39793678
+      }
+    },
+    "after": {
+      "build_seconds": {
+        "median": 0.5848733750171959,
+        "min": 0.5784710000734776,
+        "max": 0.584976457990706
+      },
+      "resolve_seconds": {
+        "median": 0.005085958982817829,
+        "min": 0.005082875024527311,
+        "max": 0.005114582949317992
+      },
+      "peak_rss_bytes": {
+        "median": 84803584,
+        "min": 84721664,
+        "max": 84934656
+      },
+      "traced_retained_bytes": {
+        "median": 21672026,
+        "min": 21653552,
+        "max": 21679625
+      },
+      "traced_peak_bytes": {
+        "median": 41592897,
+        "min": 41592841,
+        "max": 41593410
+      }
+    }
+  },
+  "rich-run": {
+    "before": {
+      "build_seconds": {
+        "median": 0.616606792085804,
+        "min": 0.6128808750072494,
+        "max": 0.6233461659867316
+      },
+      "resolve_seconds": {
+        "median": 0.0052325420547276735,
+        "min": 0.005187332979403436,
+        "max": 0.005248333094641566
+      },
+      "peak_rss_bytes": {
+        "median": 85164032,
+        "min": 85131264,
+        "max": 85180416
+      },
+      "traced_retained_bytes": {
+        "median": 22065525,
+        "min": 22065100,
+        "max": 22065651
+      },
+      "traced_peak_bytes": {
+        "median": 39792509,
+        "min": 39792462,
+        "max": 39792509
+      }
+    },
+    "after": {
+      "build_seconds": {
+        "median": 0.6286168750375509,
+        "min": 0.6183843750040978,
+        "max": 0.6314091669628397
+      },
+      "resolve_seconds": {
+        "median": 0.005164874950423837,
+        "min": 0.0051581659354269505,
+        "max": 0.005188875016756356
+      },
+      "peak_rss_bytes": {
+        "median": 88293376,
+        "min": 87408640,
+        "max": 88522752
+      },
+      "traced_retained_bytes": {
+        "median": 22195523,
+        "min": 22175907,
+        "max": 22195915
+      },
+      "traced_peak_bytes": {
+        "median": 41594804,
+        "min": 41592527,
+        "max": 41595167
+      }
+    }
+  },
+  "analysis": {
+    "before": {
+      "build_seconds": {
+        "median": 0.577995583997108,
+        "min": 0.5744842919521034,
+        "max": 0.5781231250148267
+      },
+      "resolve_seconds": {
+        "median": 0.0062133329920470715,
+        "min": 0.006185292033478618,
+        "max": 0.0062324999598786235
+      },
+      "peak_rss_bytes": {
+        "median": 84705280,
+        "min": 84344832,
+        "max": 85016576
+      },
+      "traced_retained_bytes": {
+        "median": 30636454,
+        "min": 30636391,
+        "max": 30642056
+      },
+      "traced_peak_bytes": {
+        "median": 39792499,
+        "min": 39792454,
+        "max": 39796519
+      }
+    },
+    "after": {
+      "build_seconds": {
+        "median": 0.6004690000554547,
+        "min": 0.5854894999647513,
+        "max": 0.6028490839526057
+      },
+      "resolve_seconds": {
+        "median": 0.006109582958742976,
+        "min": 0.006096958066336811,
+        "max": 0.006124874926172197
+      },
+      "peak_rss_bytes": {
+        "median": 86228992,
+        "min": 86065152,
+        "max": 86589440
+      },
+      "traced_retained_bytes": {
+        "median": 30747791,
+        "min": 30747540,
+        "max": 30748074
+      },
+      "traced_peak_bytes": {
+        "median": 41592527,
+        "min": 41592527,
+        "max": 41592572
+      }
+    }
+  }
+}

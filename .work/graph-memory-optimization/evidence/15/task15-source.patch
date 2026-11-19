@@ -1,0 +1,543 @@
+--- a/clean_ioc/container.py
++++ b/clean_ioc/container.py
+@@ -41,6 +41,7 @@
+ 
+ from . import _legacy as legacy
+ from . import registration_patterns as patterns
++from ._compact_index import _CompactIndex
+ from ._decorator_templates import (
+     DecoratorTemplate,
+     RegistrationInfo,
+@@ -5566,7 +5567,7 @@
+         # collection providers, even when no rejected occurrence is allocated.
+         self._early_rejected_root_services: set[Any] = set()
+         self.occurrence_explanations: dict[int, CompilationExplanation] = {}
+-        self.decorator_explanations: dict[int, _DecoratorExplanation] = {}
++        self.decorator_explanations: _CompactIndex[_DecoratorExplanation] = _CompactIndex()
+         self._decorator_patterns: dict[
+             tuple[str, tuple[CandidateDecision, ...], tuple[CandidateDecision, ...]], CompilationExplanation
+         ] = {}
+@@ -5580,7 +5581,7 @@
+         self.generic_explanations: dict[int, GenericBindingExplanation] = {}
+         self._factory_pattern_bindings: dict[str, tuple[tuple[str, str], ...]] = {}
+         self._specialized_dependency_annotations: dict[str, tuple[tuple[str, Any, Any], ...]] = {}
+-        self.origins: dict[int, DefinitionOrigin] = {}
++        self.origins: _CompactIndex[DefinitionOrigin] = _CompactIndex()
+         self.decision_history: list[CompilationExplanation] = []
+         # This is diagnostic-only evidence.  It never participates in steps or graph freezing.
+         self._partial_edges: list[tuple[int, str, str, int | None]] = []
+--- a/benchmarks/graph_artifact.py
++++ b/benchmarks/graph_artifact.py
+@@ -21,9 +21,10 @@
+ from clean_ioc import _decorator_templates as templates
+ from clean_ioc import _legacy as legacy
+ from clean_ioc import _legacy_configuration as configuration
++from clean_ioc._compact_index import _CompactIndex
+ 
+ # Schema 6 belonged to the reverted subtree experiment; do not reuse it.
+-SCHEMA = 7
++SCHEMA = 8
+ _REPO = Path(__file__).resolve().parents[1]
+ _DATACLASSES = (
+     container._PlanSet,
+@@ -199,9 +200,13 @@
+             # Separate read-only views can share one backing dictionary. Saving
+             # their items independently duplicates large metadata maps on load.
+             referents = gc.get_referents(value)
+-            if len(referents) != 1 or not isinstance(referents[0], dict):
++            if len(referents) != 1 or not (type(referents[0]) is dict or type(referents[0]) is _CompactIndex):  # noqa: E721
+                 raise ValueError("Expected a mapping proxy backed by a dictionary")
+             return "mapping", self.ref(referents[0])
++        if cls is _CompactIndex:
++            if value._dict is not None:
++                return "dict", [[self.ref(key), self.ref(item)] for key, item in value.raw_items()]
++            return "compact-index", [[self.ref(key), self.ref(item)] for key, item in value.raw_items()]
+         if cls is dict:
+             return "dict", [[self.ref(key), self.ref(item)] for key, item in value.items()]
+         if cls in (tuple, list, frozenset):
+@@ -272,6 +277,18 @@
+                 object.__setattr__(obj, "_inspection_lifetime", lifetime)
+                 lifetime.track(cast(tooling.CompiledGraph, obj))
+             return obj
++        if kind == "compact-index":
++            result = _CompactIndex()
++            if not isinstance(payload, list):
++                raise ValueError("Invalid compact index payload")
++            for pair in payload:
++                if not isinstance(pair, list) or len(pair) != 2:
++                    raise ValueError("Invalid compact index pair")
++                key, value = self.deref(pair[0]), self.deref(pair[1])
++                if type(key) is not int or key in result:  # noqa: E721
++                    raise ValueError("Invalid compact index key")
++                result[key] = value
++            return result
+         if kind == "mapping":
+             return MappingProxyType(self.deref(payload))
+         if kind == "dict":
+--- /dev/null
++++ b/clean_ioc/_compact_index.py
+@@ -0,0 +1,195 @@
++"""Private graph sidecars with bounded compact integer storage.
++
++General mapping operations permanently delegate to one native dictionary. Borrowed
++keys and values retain identity; public live views never detach from their backing.
++This is not a general-purpose dictionary replacement or public persistence format.
++"""
++
++# Exact type identity must not invoke application __class__ or metaclass equality.
++# ruff: noqa: E721
++import sys
++from collections.abc import MutableMapping
++from typing import Any, TypeVar
++
++_V = TypeVar("_V")
++_MISSING = object()
++
++
++class _CompactIndex(MutableMapping[int, _V]):
++    """Private typed index: bounded dense storage with native mapping adapters."""
++
++    __slots__ = ("_values", "_keys", "_sparse", "_dict", "_eligible")
++    LIMIT = 1 << 20
++    THRESHOLD = 128
++
++    def __init__(self):
++        self._values: Any = None
++        self._keys: Any = None
++        self._sparse: Any = None
++        self._dict: Any = {}
++        self._eligible = self.THRESHOLD
++
++    def raw_items(self):
++        if self._dict is not None:
++            yield from self._dict.items()
++        else:
++            for key in self._keys:
++                yield key, self[key]
++
++    def promote(self):
++        self._eligible = False
++        if self._dict is None:
++            self._dict = dict(self.raw_items())
++            self._values = self._keys = self._sparse = None
++        return self._dict
++
++    def _consider_compact(self):
++        mapping = self._dict
++        if len(mapping) < self._eligible:
++            return
++        checkpoint = self._eligible
++        self._eligible = False
++        minimum, maximum = min(mapping), max(mapping)
++        if minimum < 0 or maximum >= min(self.LIMIT, 2 * len(mapping)):
++            if checkpoint < 4096:
++                self._eligible = checkpoint * 2
++            return
++        self._keys = list(mapping)
++        self._values = [_MISSING] * (maximum + 1)
++        self._sparse = {}
++        for key, value in mapping.items():
++            self._values[key] = value
++        self._dict = None
++
++    def __getitem__(self, key, /):
++        if type(key) is not int:
++            return self.promote()[key]
++        if self._dict is not None:
++            return self._dict[key]
++        if 0 <= key < len(self._values):
++            value = self._values[key]
++            if value is not _MISSING:
++                return value
++        return self._sparse[key]
++
++    def get(self, key, default=None, /):
++        if type(key) is not int:
++            return self.promote().get(key, default)
++        if self._dict is not None:
++            return self._dict.get(key, default)
++        if 0 <= key < len(self._values):
++            value = self._values[key]
++            if value is not _MISSING:
++                return value
++        return self._sparse.get(key, default)
++
++    def __contains__(self, key, /):
++        if type(key) is not int:
++            return key in self.promote()
++        if self._dict is not None:
++            return key in self._dict
++        return self.get(key, _MISSING) is not _MISSING
++
++    def __setitem__(self, key, value, /):
++        # Lock backing before application hashing/equality can reenter this index.
++        if type(key) is not int:
++            self.promote()[key] = value
++            return
++        if self._dict is not None:
++            self._dict[key] = value
++            if self._eligible:
++                self._consider_compact()
++            return
++        previous = self.get(key, _MISSING)
++        if previous is not _MISSING:
++            if 0 <= key < len(self._values) and self._values[key] is not _MISSING:
++                self._values[key] = value
++            else:
++                self._sparse[key] = value
++            return
++        self._keys.append(key)
++        if 0 <= key < min(self.LIMIT, 2 * len(self._keys)):
++            if key >= len(self._values):
++                self._values.extend([_MISSING] * (key + 1 - len(self._values)))
++            self._values[key] = value
++        else:
++            self._sparse[key] = value
++            if len(self._sparse) > max(32, len(self._keys) // 8):
++                self.promote()
++
++    def __delitem__(self, key, /):
++        del self.promote()[key]
++
++    def __iter__(self, /):
++        return iter(self.promote())
++
++    def keys(self, /):
++        return self.promote().keys()
++
++    def values(self, /):
++        return self.promote().values()
++
++    def items(self, /):
++        return self.promote().items()
++
++    def __reversed__(self, /):
++        return reversed(self.promote())
++
++    def __len__(self, /):
++        return len(self._dict) if self._dict is not None else len(self._keys)
++
++    def popitem(self, /):
++        return self.promote().popitem()
++
++    def clear(self, /):
++        return self.promote().clear()
++
++    def setdefault(self, key, default=None, /):
++        return self.promote().setdefault(key, default)
++
++    def pop(self, key, /, *default):
++        return self.promote().pop(key, *default)
++
++    def copy(self, /):
++        return self.promote().copy()
++
++    def __eq__(self, other, /):
++        if type(other) is _CompactIndex:
++            other = other.promote()
++        return self.promote().__eq__(other)
++
++    def update(self, /, *arguments, **keywords):
++        if len(arguments) == 1 and type(arguments[0]) is _CompactIndex:
++            arguments = (arguments[0].promote(),)
++        return self.promote().update(*arguments, **keywords)
++
++    def __or__(self, other, /):
++        if type(other) is _CompactIndex:
++            other = other.promote()
++        return self.promote().__or__(other)
++
++    def __ror__(self, other, /):
++        if type(other) is _CompactIndex:
++            other = other.promote()
++        return self.promote().__ror__(other)
++
++    def __ior__(self, other, /):
++        if type(other) is _CompactIndex:
++            other = other.promote()
++        self.promote().__ior__(other)
++        return self
++
++    def capacity(self):
++        return {
++            "entries": len(self),
++            "dense_length": len(self._values or ()),
++            "sparse_entries": len(self._sparse or ()),
++            "promoted": self._dict is not None,
++            "eligible": self._eligible,
++            "shallow_bytes": sys.getsizeof(self)
++            + sum(
++                sys.getsizeof(value)
++                for value in (self._values, self._keys, self._sparse, self._dict)
++                if value is not None
++            ),
++        }
+--- /dev/null
++++ b/tests/test_compact_compilation_indexes.py
+@@ -0,0 +1,239 @@
++"""Native adapter boundaries, bounded storage, graph/codec integration."""
++
++import gc
++import io
++import json
++from types import MappingProxyType
++
++import pytest
++
++from benchmarks.graph_artifact import _Reader, _Writer
++from clean_ioc._compact_index import _CompactIndex
++
++
++def outcome(call):
++    try:
++        return ("value", call())
++    except Exception as error:
++        return (type(error).__name__,)
++
++
++class ClassOperand:
++    @property
++    def __class__(self):
++        raise AssertionError("application __class__ callback")
++
++
++@pytest.mark.parametrize("operation", ("__eq__", "__or__", "__ror__", "__ior__", "update"))
++def test_general_operations_do_not_inspect_foreign_class_attribute(operation):
++    operand = ClassOperand()
++    assert outcome(lambda: getattr(_CompactIndex(), operation)(operand)) == outcome(
++        lambda: getattr({}, operation)(operand)
++    )
++
++
++@pytest.mark.parametrize(
++    "method,keywords",
++    (
++        ("__getitem__", {"key": 1}),
++        ("__setitem__", {"key": 1, "value": 2}),
++        ("__delitem__", {"key": 1}),
++        ("__contains__", {"key": 1}),
++        ("__eq__", {"other": {}}),
++        ("__or__", {"other": {}}),
++        ("__ror__", {"other": {}}),
++        ("__ior__", {"other": {}}),
++        ("get", {"key": 1}),
++        ("pop", {"key": 1}),
++        ("setdefault", {"key": 1}),
++    ),
++)
++def test_native_methods_reject_keyword_arguments(method, keywords):
++    assert outcome(lambda: getattr(_CompactIndex(), method)(**keywords)) == outcome(
++        lambda: getattr({}, method)(**keywords)
++    )
++
++
++def test_update_self_keyword_is_a_mapping_entry():
++    index = _CompactIndex()
++    index.update(self=42)
++    assert index.copy() == {"self": 42}
++
++
++@pytest.mark.parametrize("state", ("tiny", "compact", "promoted", "sparse"))
++def test_codec_keeps_shared_proxy_backing_and_original_value_identity(state):
++    index = _CompactIndex()
++    keys = range(300) if state in ("compact", "promoted") else range(3) if state == "tiny" else range(-300, 0)
++    for key in keys:
++        index[key] = ("same",)
++    if state == "promoted":
++        index.promote()
++    stream = io.StringIO()
++    _Writer(stream).ref((MappingProxyType(index), MappingProxyType(index)))
++    reader = _Reader()
++    for line in stream.getvalue().splitlines():
++        _, kind, payload = json.loads(line)
++        reader.objects.append(reader.decode(kind, payload))
++    left, right = reader.objects[-1]
++    assert gc.get_referents(left)[0] is gc.get_referents(right)[0]
++    assert left == right == dict(index.raw_items())
++    assert left[next(iter(keys))] is right[next(iter(keys))]
++
++
++@pytest.mark.parametrize("payload", (None, [None], [[1]], [[True, None]], [[1, None], [1, None]]))
++def test_codec_rejects_malformed_compact_rows(payload):
++    with pytest.raises(ValueError):
++        _Reader().decode("compact-index", payload)
++
++
++def test_live_views_lock_one_native_backing_after_clear_and_growth():
++    index = _CompactIndex()
++    index[1] = "first"
++    view = MappingProxyType(index).items()
++    iterator = iter(view)
++    assert next(iterator) == (1, "first")
++    backing = index._dict
++    index.clear()
++    for key in range(512):
++        index[key] = key
++    assert index._dict is backing
++    assert list(view) == list(index.items())
++    with pytest.raises(RuntimeError):
++        next(iterator)
++
++
++@pytest.mark.parametrize("keys", (range(-300, 0), range(10000, 0, -1), range(0, 10000, 20), (10**100, -(10**100))))
++def test_sparse_or_reverse_indexes_keep_bounded_backing(keys):
++    index = _CompactIndex()
++    for key in keys:
++        index[key] = key
++    assert index._dict is not None
++    assert index._values is None
++    assert list(index) == list(keys)
++
++
++def test_dense_conversion_and_promotion_release_old_containers():
++    index = _CompactIndex()
++    for key in range(512):
++        index[key] = key
++    assert index._dict is None
++    for key in range(100):
++        index[10**100 + key] = key
++    assert index._dict is not None
++    assert index._values is index._keys is index._sparse is None
++
++
++class CountedHash:
++    def __init__(self):
++        self.calls = 0
++        self.limit = 100
++
++    def __hash__(self):
++        self.calls += 1
++        if self.calls > self.limit:
++            raise RuntimeError("extra hash")
++        return 4000
++
++    def __eq__(self, other):
++        return other == 4000
++
++
++@pytest.mark.parametrize("operation", ("pop", "copy", "equality", "update", "setdefault", "proxy-equality"))
++def test_original_six_custom_hash_regressions(operation):
++    def run(factory):
++        key = CountedHash()
++        mapping = factory()
++        if operation in ("pop", "copy", "equality"):
++            mapping[key] = "value"
++        if operation == "proxy-equality":
++            for number in range(5000):
++                mapping[number] = "value"
++        source: dict[object, str] | None = {key: "value"} if operation in ("update", "proxy-equality") else None
++        if operation == "proxy-equality":
++            assert source is not None
++            source.update({number: "value" for number in range(5000) if number != 4000})
++        key.calls = 0
++        key.limit = 1 if operation in ("pop", "setdefault") else 0
++
++        def apply():
++            if operation == "pop":
++                mapping.pop(key)
++            elif operation == "copy":
++                mapping.copy()
++            elif operation == "equality":
++                return mapping == mapping
++            elif operation == "update":
++                mapping.update(source)
++            elif operation == "proxy-equality":
++                return MappingProxyType(mapping) == source
++            else:
++                mapping.setdefault(key, "value")
++            return None
++
++        return outcome(apply), key.calls
++
++    assert run(_CompactIndex) == run(dict)
++
++
++@pytest.mark.parametrize("operation", ("set", "get", "getitem", "contains"))
++@pytest.mark.parametrize("raises", (False, True))
++def test_foreign_hash_reentrancy_cannot_detach_an_in_progress_native_operation(operation, raises):
++    def run(factory):
++        mapping = factory()
++        for number in range(127):
++            mapping[number] = number
++
++        class Key:
++            def __hash__(self):
++                mapping[127] = 127
++                mapping[126] = "changed"
++                if raises:
++                    raise RuntimeError("hash failure")
++                return 126
++
++            def __eq__(self, other):
++                return other == 126
++
++        key = Key()
++
++        def apply():
++            if operation == "set":
++                mapping[key] = "inserted"
++                return None
++            if operation == "get":
++                return mapping.get(key)
++            if operation == "getitem":
++                return mapping[key]
++            return key in mapping
++
++        result = outcome(apply)
++        return result, dict(mapping)
++
++    assert run(_CompactIndex) == run(dict)
++
++
++@pytest.mark.parametrize("mode", ("run", "analysis"))
++def test_caller_held_sidecar_proxy_survives_build_and_native_promotion(mode):
++    from clean_ioc import ContainerBuilder
++
++    saved = []
++
++    def rule(context):
++        mapping = context.graph._occurrence_origins
++        backing = gc.get_referents(mapping)[0]
++        assert type(backing) is _CompactIndex
++        assert backing._dict is None
++        saved.append((mapping, mapping.items(), len(mapping), backing._dict))
++        return ()
++
++    builder = ContainerBuilder()
++    for number in range(140):
++        builder.register(type(f"Service{number}", (), {}))
++    builder.set_provider_roots(())
++    builder.add_validation_rule(rule)
++    with builder.build(mode=mode) as runtime:
++        mapping, view, count, backing = saved[0]
++        assert len(mapping) == len(view) == count
++        assert gc.get_referents(mapping)[0]._dict is backing
++        assert len(runtime.selected_registrations) == 140
++    assert len(mapping) == len(view) == count
+--- a/benchmarks/README.md
++++ b/benchmarks/README.md
+@@ -295,3 +295,9 @@
+ compares compilation and separate-process loading with explanation metadata on
+ and off. The private schema-7 codec accepts the reduced fixture runtime; add
+ `--no-explain-metadata` to `benchmarks.graph_memory_artifact_evidence` to select it.
++
++
++The current source-coupled artifact codec uses schema 8 for compact origin/decorator
++indexes and preserves shared proxy backing. Regenerate prior experimental artifacts.
++This remains a parked benchmark experiment; complete public analysis plans are
++outside its supported subset.
+--- a/docs/graph-artifact-experiment.md
++++ b/docs/graph-artifact-experiment.md
+@@ -13,6 +13,12 @@
+ in `.work/graph-memory-optimization/artifact-retest-post05.md`. The local schema-7
+ codec supports both full and reduced fixture plans; it does not change production
+ compiler or runtime code.
++
++The current source-coupled codec uses schema 8 to preserve compact origin and
++decorator indexes and shared mapping-proxy backing. Older experimental files must
++be regenerated. The supported public build subset remains run mode; complete
++analysis plans exceed this parked codec's exclusions. Historical full-metadata
++comparisons use private fixture controls and do not define another public mode.
+ 
+ For the subsequent memory investigation with decorator/registration templates,
+ providers and maps, see the [richer graph fixture](graph-memory-fixture.md).

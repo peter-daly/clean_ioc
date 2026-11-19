@@ -1,0 +1,14 @@
+{
+  "bark": {
+    "changed_original_files": [],
+    "changed_preserved_files": [],
+    "original_python_files": 750,
+    "preserved_task24_python_files": 750
+  },
+  "cop": {
+    "changed_original_files": [],
+    "changed_preserved_files": [],
+    "original_python_files": 150,
+    "preserved_task24_python_files": 152
+  }
+}

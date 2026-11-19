@@ -1,0 +1,378 @@
+{
+  "activations": {
+    "branch": 3844,
+    "endpoint": 8,
+    "endpoint_decorator": 8,
+    "leaf": 3968,
+    "policy": 2,
+    "route_dependency": 34,
+    "route_source": 34,
+    "state": 27,
+    "worker": 124,
+    "worker_decorator": 248
+  },
+  "allow_scope_builders": false,
+  "before": {
+    "peak_rss_bytes": 111181824,
+    "rss_bytes": 100188160
+  },
+  "build_seconds": 86.81040979200043,
+  "diagnostics": false,
+  "explain_metadata": false,
+  "graph": {
+    "activation_kinds": {
+      "collection": 16,
+      "constructor": 8130,
+      "deferred": 218,
+      "supplied": 618
+    },
+    "component_metadata": {
+      "definition_identity_patterns": 116,
+      "identity_patterns": 903,
+      "patterns_by_kind": {
+        "decorator": 10,
+        "managed_provider": 50,
+        "provider": 168,
+        "provider_map": 16,
+        "registration": 41,
+        "value": 618
+      },
+      "retained_definition_index_bytes": 0,
+      "shared_definition_bytes": 13920,
+      "shared_definition_objects": 116,
+      "unique_field_objects": {
+        "activation": 4,
+        "boundary": 1,
+        "build_args": 1,
+        "declared_service_type": 15,
+        "id": 889,
+        "implementation": 20,
+        "implementation_type": 20,
+        "kind": 6,
+        "lifespan": 3,
+        "name": 11,
+        "service_type": 45,
+        "tags": 1
+      }
+    },
+    "decorator_objects": {
+      "logical_outcomes_by_entry": {},
+      "logical_reason_codes_by_entry": {},
+      "outcomes": {},
+      "reason_codes": {},
+      "shallow_storage_bytes": {
+        "decision_tuples": 0,
+        "decisions": 0,
+        "explanations": 0,
+        "template_facts": 0
+      },
+      "unique_objects": {
+        "decision_tuples": 0,
+        "decisions": 0,
+        "explanations": 0,
+        "template_facts": 0
+      },
+      "unique_patterns": 0
+    },
+    "executable_helpers": {
+      "_CompiledDecorator": 240,
+      "_CompiledDependency": 1740
+    },
+    "execution_step_kinds": {
+      "_ContextProviderStep": 152,
+      "_ManagedProviderStep": 50,
+      "_ProviderMapStep": 32,
+      "_ProviderStep": 168,
+      "_ScopedRegistrationStep": 193,
+      "_SingletonRegistrationStep": 226,
+      "_TransientRegistrationStep": 326,
+      "_ValueStep": 618
+    },
+    "logical_graph_visits": null,
+    "metadata_entries": {
+      "census_definitions": 0,
+      "census_sources": 0,
+      "decorator_explanations": 0,
+      "generic_explanations": 0,
+      "occurrence_explanations": 0,
+      "parameter_explanations": 0,
+      "root_candidates": 0
+    },
+    "physical_records": 8982,
+    "provider_view_contexts": 50,
+    "record_kinds": {
+      "decorator": 232,
+      "managed_provider": 50,
+      "provider": 168,
+      "provider_map": 16,
+      "registration": 7898,
+      "value": 618
+    },
+    "registration_carrier_kinds": {
+      "_RuntimeRegistration": 43
+    },
+    "retained_execution_composition": {
+      "decorator_definitions": 0,
+      "decorator_dependency_settings": 0,
+      "registration_dependency_settings": 0
+    },
+    "retained_plan_fields": {
+      "_blueprint": {
+        "entries": null,
+        "shallow_bytes": 16,
+        "type": "NoneType"
+      },
+      "architecture_roots": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "area_root_candidates": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "build_args": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "build_report": {
+        "entries": null,
+        "shallow_bytes": 72,
+        "type": "BuildReport"
+      },
+      "census_definitions": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "census_ids": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "census_sources": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "compiled_graph": {
+        "entries": null,
+        "shallow_bytes": 16,
+        "type": "NoneType"
+      },
+      "compiler_issues": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "decorator_explanations": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "default_root_groups": {
+        "entries": 14,
+        "shallow_bytes": 632,
+        "type": "dict"
+      },
+      "default_roots": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "dict"
+      },
+      "diagnostics": {
+        "entries": null,
+        "shallow_bytes": 28,
+        "type": "bool"
+      },
+      "ensured_import_modules": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "explain_metadata": {
+        "entries": null,
+        "shallow_bytes": 28,
+        "type": "bool"
+      },
+      "fallback_ids": {
+        "entries": 0,
+        "shallow_bytes": 216,
+        "type": "frozenset"
+      },
+      "generic_explanations": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "graph": {
+        "entries": null,
+        "shallow_bytes": 64,
+        "type": "_ComponentGraph"
+      },
+      "managed_provider_roots": {
+        "entries": 4,
+        "shallow_bytes": 224,
+        "type": "mappingproxy"
+      },
+      "occurrence_explanations": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "occurrence_layers": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "occurrence_origins": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "parameter_explanations": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "provider_roots": {
+        "entries": 4,
+        "shallow_bytes": 224,
+        "type": "mappingproxy"
+      },
+      "root_candidates": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "roots": {
+        "entries": 14,
+        "shallow_bytes": 632,
+        "type": "dict"
+      },
+      "selected_registrations": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "slots": {
+        "entries": 0,
+        "shallow_bytes": 216,
+        "type": "frozenset"
+      },
+      "unreachable_checked": {
+        "entries": null,
+        "shallow_bytes": 28,
+        "type": "bool"
+      },
+      "unreachable_issue_offset": {
+        "entries": null,
+        "shallow_bytes": 28,
+        "type": "int"
+      },
+      "validation_rules": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "warmup_fingerprint": {
+        "entries": null,
+        "shallow_bytes": 41,
+        "type": "str"
+      },
+      "warmup_infos": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "warmup_steps": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      }
+    },
+    "selected_registrations": 0,
+    "shallow_storage_bytes": {
+      "component_records": 1580832,
+      "execution_steps": 158104,
+      "link_tuples": 301520,
+      "occurrence_integers": 253744,
+      "origin_indexes": 128,
+      "record_index": 294992,
+      "registration_objects": 3096
+    },
+    "unique_execution_steps": 1765,
+    "unique_origins": 0,
+    "unique_registration_objects": 43
+  },
+  "instrumentation": "tracemalloc",
+  "lazy_activations": {
+    "endpoint": 8,
+    "endpoint_decorator": 8,
+    "route_dependency": 8,
+    "route_source": 8
+  },
+  "machine": "arm64",
+  "ownership": {
+    "captured_selection_views": false,
+    "retained_builder": false
+  },
+  "pid": 38555,
+  "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "prepared": {
+    "peak_rss_bytes": 229834752,
+    "rss_bytes": 229834752,
+    "traced_peak_bytes": 71147403,
+    "traced_retained_bytes": 3248651
+  },
+  "probe": "indexes",
+  "probe_source_sha256": "44696d418e71f00db0940efcfa2395799bfaf5fdbef653f3f070a6830cbd2fcd",
+  "python": "3.14.4",
+  "resolve_seconds": 0.04912262503057718,
+  "resolved": {
+    "peak_rss_bytes": 229851136,
+    "rss_bytes": 229851136,
+    "traced_peak_bytes": 71147403,
+    "traced_retained_bytes": 4425700
+  },
+  "retained_graph_inventory": {
+    "captured_views": 0,
+    "graphs": 1,
+    "records": 8982,
+    "saved_views_in_primary_graph": 0,
+    "saved_views_in_separate_snapshots": 0
+  },
+  "routes": 8,
+  "source": {
+    "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n?? .work/graph-memory-optimization/06-avoid-metadata-creation.md\n?? .work/graph-memory-optimization/06-inventory.md\n?? .work/graph-memory-optimization/06-result.md\n?? .work/graph-memory-optimization/07-inventory.md\n?? .work/graph-memory-optimization/07-object-layout-and-allocation.md\n?? .work/graph-memory-optimization/evidence/06-allocator-stats.txt\n?? .work/graph-memory-optimization/evidence/06-allocator.json\n?? .work/graph-memory-optimization/evidence/06-allocator.py\n?? .work/graph-memory-optimization/evidence/06-baseline.json\n?? .work/graph-memory-optimization/evidence/06-cache-lifetime.py\n?? .work/graph-memory-optimization/evidence/06-cache-strong.json\n?? .work/graph-memory-optimization/evidence/06-cache-weak.json\n?? .work/graph-memory-optimization/evidence/06-count-baseline.json\n?? .work/graph-memory-optimization/evidence/06-count-intern-template-facts.json\n?? .work/graph-memory-optimization/evidence/06-evidence-index.json\n?? .work/graph-memory-optimization/evidence/06-final-check-exit-codes.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-baseline-full.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-baseline-reduced.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-intern-template-facts-full.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-intern-template-facts-reduced.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-scalar-weak-cache-full.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-scalar-weak-cache-reduced.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-weak-activation-cache-full.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-weak-activation-cache-reduced.json\n?? .work/graph-memory-optimization/evidence/06-full-tests-intern-template-facts.txt\n?? .work/graph-memory-optimization/evidence/06-full-tests-scalar-weak-cache.txt\n?? .work/graph-memory-optimization/evidence/06-full-tests-weak-activation-cache.txt\n?? .work/graph-memory-optimization/evidence/06-payload-baseline.json\n?? .work/graph-memory-optimization/evidence/06-payload-lifetime.py\n?? .work/graph-memory-optimization/evidence/06-payload-scalar-weak-cache.json\n?? .work/graph-memory-optimization/evidence/06-payload-weak-cache.json\n?? .work/graph-memory-optimization/evidence/06-probe-small-original.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-timeline-original.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v1.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v2.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v3.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v4-typed.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v4.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe.py\n?? .work/graph-memory-optimization/evidence/06-repeat-baseline.json\n?? .work/graph-memory-optimization/evidence/06-repeat-intern-template-facts.json\n?? .work/graph-memory-optimization/evidence/06-repeat-scalar-weak-cache.json\n?? .work/graph-memory-optimization/evidence/06-repeat-weak-activation-cache.json\n?? .work/graph-memory-optimization/evidence/06-screen-no-decorator-evidence-heap.json\n?? .work/graph-memory-optimization/evidence/06-screen-no-decorator-evidence-normal.json\n?? .work/graph-memory-optimization/evidence/06-screen-release-source-graphs-heap.json\n?? .work/graph-memory-optimization/evidence/06-screen-release-source-graphs-normal.json\n?? .work/graph-memory-optimization/evidence/06-screen-snapshot-intern-heap.json\n?? .work/graph-memory-optimization/evidence/06-screen-snapshot-intern-normal.json\n?? .work/graph-memory-optimization/evidence/06-screen-snapshot-reuse-heap.json\n?? .work/graph-memory-optimization/evidence/06-screen-snapshot-reuse-normal.json\n?? .work/graph-memory-optimization/evidence/06-semantics-baseline.json\n?? .work/graph-memory-optimization/evidence/06-semantics-intern-template-facts.json\n?? .work/graph-memory-optimization/evidence/06-semantics-no-decorator-evidence.json\n?? .work/graph-memory-optimization/evidence/06-semantics-release-source-graphs.json\n?? .work/graph-memory-optimization/evidence/06-semantics-snapshot-intern.json\n?? .work/graph-memory-optimization/evidence/06-semantics-snapshot-reuse.json\n?? .work/graph-memory-optimization/evidence/06-semantics-weak-activation-cache.json\n?? .work/graph-memory-optimization/evidence/06-semantics.py\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-no-decorator-evidence.json\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-release-source-graphs.json\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-snapshot-intern.json\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-snapshot-reuse.json\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-weak-activation-cache.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-baseline.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-intern-template-facts.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-no-decorator-evidence.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-release-source-graphs.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-scalar-weak-cache.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-snapshot-intern.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-snapshot-reuse.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-weak-activation-cache.json\n?? .work/graph-memory-optimization/evidence/06-source-check.json\n?? .work/graph-memory-optimization/evidence/06-test-exit-codes.json\n?? .work/graph-memory-optimization/evidence/06-tests-intern-template-facts-corrected.txt\n?? .work/graph-memory-optimization/evidence/06-tests-intern-template-facts.txt\n?? .work/graph-memory-optimization/evidence/06-tests-no-decorator-evidence.txt\n?? .work/graph-memory-optimization/evidence/06-tests-release-source-graphs.txt\n?? .work/graph-memory-optimization/evidence/06-tests-snapshot-intern.txt\n?? .work/graph-memory-optimization/evidence/06-tests-snapshot-reuse.txt\n?? .work/graph-memory-optimization/evidence/06-tests-weak-activation-cache.txt\n?? .work/graph-memory-optimization/evidence/06-timeline-diagnostics.json\n?? .work/graph-memory-optimization/evidence/06-timeline.json\n?? .work/graph-memory-optimization/evidence/06-tooling-format.txt\n?? .work/graph-memory-optimization/evidence/06-tooling-lint.txt\n?? .work/graph-memory-optimization/evidence/06-tooling-types-initial.txt\n?? .work/graph-memory-optimization/evidence/06-tooling-types.txt\n?? .work/graph-memory-optimization/evidence/06-validation.json\n?? .work/graph-memory-optimization/evidence/06-value-kinds-baseline.json\n?? .work/graph-memory-optimization/evidence/06-value-kinds-plain-weak.json\n?? .work/graph-memory-optimization/evidence/06-value-kinds-scalar-weak.json\n?? .work/graph-memory-optimization/evidence/06-value-kinds.py\n?? .work/graph-memory-optimization/evidence/07-indexes-focused-tests.txt\n?? .work/graph-memory-optimization/evidence/07-inventory-baseline.json\n?? .work/graph-memory-optimization/evidence/07-layout-micro.py\n?? .work/graph-memory-optimization/evidence/07-prelookup-focused-tests.txt\n?? .work/graph-memory-optimization/evidence/07-probe-v1.py.txt\n?? .work/graph-memory-optimization/evidence/07-probe.py\n?? .work/graph-memory-optimization/evidence/07-repeat-baseline.json\n?? .work/graph-memory-optimization/evidence/07-screen-indexes.json\n?? .work/graph-memory-optimization/evidence/07-screen-prelookup.json\n?? .work/graph-memory-optimization/evidence/07-screen-slots.json\n?? .work/graph-memory-optimization/evidence/07-semantics.py\n?? .work/graph-memory-optimization/evidence/07-slots-focused-tests.txt\n?? .work/pre-compilation/\n",
+    "revision": "d51b6f569e67891e72e022b35aa5590c1c0fda46",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81",
+      "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+      "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211"
+    }
+  },
+  "template_calls": {
+    "generated_worker_to_endpoint_decorator": 8,
+    "generated_worker_to_source": 8,
+    "policy_to_worker_decorator": 2,
+    "source_to_generated_dependency": 8
+  },
+  "transformed_source_sha256": {
+    "clean_ioc.container": "3c5379ea98eea6699ab0e12a1f64bc821e6163c161177266c9bbcf901a95be15"
+  },
+  "validated": {
+    "leaves": 3968,
+    "managed_scopes": 26,
+    "ordinary_scopes": 1,
+    "payload_bytes": 507904,
+    "source_map_calls": 64,
+    "tree_objects": 7812,
+    "workers": 124
+  }
+}

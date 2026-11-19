@@ -1,0 +1,87 @@
+{
+  "policy": "before",
+  "variant": "analysis",
+  "freezes": [
+    {
+      "drafts": 1,
+      "pool_entries": 0,
+      "before_current": 3375731,
+      "previous_peak": 3705113,
+      "freeze_peak": 3377787,
+      "after_current": 3376363,
+      "seconds": 4.658394027501345e-05
+    },
+    {
+      "drafts": 1,
+      "pool_entries": 0,
+      "before_current": 3418030,
+      "previous_peak": 3432001,
+      "freeze_peak": 3419502,
+      "after_current": 3418078,
+      "seconds": 3.795791417360306e-05
+    },
+    {
+      "drafts": 1,
+      "pool_entries": 0,
+      "before_current": 3436318,
+      "previous_peak": 3467740,
+      "freeze_peak": 3437790,
+      "after_current": 3436366,
+      "seconds": 3.4958007745444775e-05
+    },
+    {
+      "drafts": 1,
+      "pool_entries": 0,
+      "before_current": 3456734,
+      "previous_peak": 3488636,
+      "freeze_peak": 3458206,
+      "after_current": 3456782,
+      "seconds": 3.316707443445921e-05
+    },
+    {
+      "drafts": 2,
+      "pool_entries": 0,
+      "before_current": 3473253,
+      "previous_peak": 3507764,
+      "freeze_peak": 3475637,
+      "after_current": 3473757,
+      "seconds": 6.379198748618364e-05
+    },
+    {
+      "drafts": 2,
+      "pool_entries": 0,
+      "before_current": 3478148,
+      "previous_peak": 3481238,
+      "freeze_peak": 3480396,
+      "after_current": 3478516,
+      "seconds": 6.174994632601738e-05
+    },
+    {
+      "drafts": 77,
+      "pool_entries": 0,
+      "before_current": 3578415,
+      "previous_peak": 3583864,
+      "freeze_peak": 3587855,
+      "after_current": 3576231,
+      "seconds": 0.001601249910891056
+    },
+    {
+      "drafts": 77,
+      "pool_entries": 0,
+      "before_current": 3606809,
+      "previous_peak": 3612450,
+      "freeze_peak": 3614753,
+      "after_current": 3603129,
+      "seconds": 0.0015725409612059593
+    },
+    {
+      "drafts": 2685,
+      "pool_entries": 0,
+      "before_current": 10915151,
+      "previous_peak": 10918752,
+      "freeze_peak": 10965511,
+      "after_current": 10733527,
+      "seconds": 0.0546148749999702
+    }
+  ]
+}

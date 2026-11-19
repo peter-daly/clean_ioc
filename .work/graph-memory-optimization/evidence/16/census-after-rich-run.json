@@ -1,0 +1,387 @@
+{
+  "policy": "after",
+  "source": {
+    "clean_ioc.components": "e1ad53b2cd773238c7118fc54498c56d398d09326fa3f630d7b2b2b69983d41f"
+  },
+  "counts_after_teardown": {
+    "_ComponentRecord": {
+      "created": 102490,
+      "live": 0,
+      "maximum_live": 10674
+    },
+    "_ComponentDraft": {
+      "created": 90250,
+      "live": 0,
+      "maximum_live": 88558
+    },
+    "_ComponentDefinition": {
+      "created": 304,
+      "live": 0,
+      "maximum_live": 288
+    },
+    "_ComponentGraph": {
+      "created": 427,
+      "live": 0,
+      "maximum_live": 29
+    }
+  },
+  "snapshots_after_teardown": {
+    "created": 400,
+    "live": 0,
+    "maximum_live": 2,
+    "published_records": 91816
+  },
+  "phases": [
+    {
+      "phase": "primary compilation",
+      "counts": {
+        "_ComponentRecord": {
+          "created": 93508,
+          "live": 1692,
+          "maximum_live": 3539
+        },
+        "_ComponentDraft": {
+          "created": 90250,
+          "live": 88558,
+          "maximum_live": 88558
+        },
+        "_ComponentDefinition": {
+          "created": 304,
+          "live": 288,
+          "maximum_live": 288
+        },
+        "_ComponentGraph": {
+          "created": 427,
+          "live": 27,
+          "maximum_live": 29
+        }
+      },
+      "snapshots": {
+        "created": 400,
+        "live": 0,
+        "maximum_live": 2,
+        "published_records": 91816
+      }
+    }
+  ],
+  "retained": [
+    {
+      "counts": {
+        "_ComponentRecord": {
+          "created": 102490,
+          "live": 8982,
+          "maximum_live": 10674
+        },
+        "_ComponentDraft": {
+          "created": 90250,
+          "live": 0,
+          "maximum_live": 88558
+        },
+        "_ComponentDefinition": {
+          "created": 304,
+          "live": 116,
+          "maximum_live": 288
+        },
+        "_ComponentGraph": {
+          "created": 427,
+          "live": 1,
+          "maximum_live": 29
+        }
+      },
+      "snapshots": {
+        "created": 400,
+        "live": 0,
+        "maximum_live": 2,
+        "published_records": 91816
+      }
+    }
+  ],
+  "graph": {
+    "decorator_objects": {
+      "unique_objects": {
+        "explanations": 0,
+        "decisions": 0,
+        "template_facts": 0,
+        "decision_tuples": 0
+      },
+      "unique_patterns": 0,
+      "logical_outcomes_by_entry": {},
+      "logical_reason_codes_by_entry": {},
+      "shallow_storage_bytes": {
+        "explanations": 0,
+        "decisions": 0,
+        "template_facts": 0,
+        "decision_tuples": 0
+      },
+      "outcomes": {},
+      "reason_codes": {}
+    },
+    "component_metadata": {
+      "identity_patterns": 903,
+      "definition_identity_patterns": 116,
+      "patterns_by_kind": {
+        "registration": 41,
+        "value": 618,
+        "provider": 168,
+        "decorator": 10,
+        "provider_map": 16,
+        "managed_provider": 50
+      },
+      "unique_field_objects": {
+        "id": 889,
+        "service_type": 45,
+        "implementation": 20,
+        "implementation_type": 20,
+        "lifespan": 3,
+        "name": 11,
+        "tags": 1,
+        "build_args": 1,
+        "kind": 6,
+        "activation": 4,
+        "boundary": 1,
+        "declared_service_type": 15
+      },
+      "shared_definition_objects": 116,
+      "shared_definition_bytes": 15776,
+      "retained_definition_index_bytes": 0
+    },
+    "physical_records": 8982,
+    "logical_graph_visits": null,
+    "provider_view_contexts": 50,
+    "record_kinds": {
+      "registration": 7898,
+      "value": 618,
+      "provider": 168,
+      "decorator": 232,
+      "provider_map": 16,
+      "managed_provider": 50
+    },
+    "activation_kinds": {
+      "constructor": 8130,
+      "supplied": 618,
+      "deferred": 218,
+      "collection": 16
+    },
+    "unique_execution_steps": 1765,
+    "execution_step_kinds": {
+      "_ManagedProviderStep": 50,
+      "_TransientRegistrationStep": 326,
+      "_SingletonRegistrationStep": 226,
+      "_ValueStep": 618,
+      "_ScopedRegistrationStep": 193,
+      "_ContextProviderStep": 152,
+      "_ProviderMapStep": 32,
+      "_ProviderStep": 168
+    },
+    "unique_registration_objects": 43,
+    "registration_carrier_kinds": {
+      "_RuntimeRegistration": 43
+    },
+    "retained_execution_composition": {
+      "decorator_definitions": 0,
+      "decorator_dependency_settings": 0,
+      "registration_dependency_settings": 0
+    },
+    "retained_plan_fields": {
+      "graph": {
+        "type": "_ComponentGraph",
+        "entries": null,
+        "shallow_bytes": 72
+      },
+      "roots": {
+        "type": "dict",
+        "entries": 14,
+        "shallow_bytes": 632
+      },
+      "default_roots": {
+        "type": "dict",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "default_root_groups": {
+        "type": "dict",
+        "entries": 14,
+        "shallow_bytes": 632
+      },
+      "_blueprint": {
+        "type": "NoneType",
+        "entries": null,
+        "shallow_bytes": 16
+      },
+      "build_args": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "diagnostics": {
+        "type": "bool",
+        "entries": null,
+        "shallow_bytes": 28
+      },
+      "explain_metadata": {
+        "type": "bool",
+        "entries": null,
+        "shallow_bytes": 28
+      },
+      "unreachable_checked": {
+        "type": "bool",
+        "entries": null,
+        "shallow_bytes": 28
+      },
+      "unreachable_issue_offset": {
+        "type": "int",
+        "entries": null,
+        "shallow_bytes": 28
+      },
+      "fallback_ids": {
+        "type": "frozenset",
+        "entries": 0,
+        "shallow_bytes": 216
+      },
+      "compiled_graph": {
+        "type": "NoneType",
+        "entries": null,
+        "shallow_bytes": 16
+      },
+      "build_report": {
+        "type": "BuildReport",
+        "entries": null,
+        "shallow_bytes": 72
+      },
+      "compiler_issues": {
+        "type": "tuple",
+        "entries": 0,
+        "shallow_bytes": 48
+      },
+      "root_candidates": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "occurrence_explanations": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "occurrence_origins": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "decorator_explanations": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "parameter_explanations": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "generic_explanations": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "occurrence_layers": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "provider_roots": {
+        "type": "mappingproxy",
+        "entries": 4,
+        "shallow_bytes": 224
+      },
+      "managed_provider_roots": {
+        "type": "mappingproxy",
+        "entries": 4,
+        "shallow_bytes": 224
+      },
+      "architecture_roots": {
+        "type": "tuple",
+        "entries": 0,
+        "shallow_bytes": 48
+      },
+      "area_root_candidates": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "census_sources": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "census_definitions": {
+        "type": "tuple",
+        "entries": 0,
+        "shallow_bytes": 48
+      },
+      "census_ids": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "warmup_steps": {
+        "type": "mappingproxy",
+        "entries": 0,
+        "shallow_bytes": 64
+      },
+      "warmup_infos": {
+        "type": "tuple",
+        "entries": 0,
+        "shallow_bytes": 48
+      },
+      "warmup_fingerprint": {
+        "type": "str",
+        "entries": null,
+        "shallow_bytes": 41
+      },
+      "selected_registrations": {
+        "type": "tuple",
+        "entries": 51,
+        "shallow_bytes": 456
+      },
+      "slots": {
+        "type": "frozenset",
+        "entries": 0,
+        "shallow_bytes": 216
+      },
+      "ensured_import_modules": {
+        "type": "tuple",
+        "entries": 0,
+        "shallow_bytes": 48
+      },
+      "validation_rules": {
+        "type": "tuple",
+        "entries": 0,
+        "shallow_bytes": 48
+      }
+    },
+    "executable_helpers": {
+      "_CompiledDecorator": 240,
+      "_CompiledDependency": 1740
+    },
+    "selected_registrations": 51,
+    "unique_origins": 0,
+    "shallow_storage_bytes": {
+      "component_records": 1580832,
+      "record_index": 294992,
+      "link_tuples": 301520,
+      "occurrence_integers": 253744,
+      "origin_indexes": 128,
+      "execution_steps": 158104,
+      "registration_objects": 3096
+    },
+    "metadata_entries": {
+      "occurrence_explanations": 0,
+      "parameter_explanations": 0,
+      "generic_explanations": 0,
+      "decorator_explanations": 0,
+      "root_candidates": 0,
+      "census_sources": 0,
+      "census_definitions": 0
+    }
+  }
+}

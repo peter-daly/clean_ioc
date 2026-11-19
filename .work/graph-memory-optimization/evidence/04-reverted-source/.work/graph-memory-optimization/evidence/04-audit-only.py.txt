@@ -1,0 +1,23 @@
+"""Fresh-process candidate-audit cost; excluded from production measurements."""
+
+import json
+import sys
+import time
+import tracemalloc
+from pathlib import Path
+from unittest.mock import patch
+
+from benchmarks.graph_memory_evidence import _memory, source_provenance
+from benchmarks.graph_memory_fixture import build
+from benchmarks.graph_subtree_experiment import experiment
+
+with patch("clean_ioc._component_subtrees.share_subtrees", lambda records: None):
+    fixture = build(8)
+with fixture.runtime:
+    tracemalloc.start()
+    started = time.perf_counter()
+    audit = experiment(fixture.runtime._plan.graph)
+    result = {"source": source_provenance(), "audit": audit, "seconds": time.perf_counter() - started}
+    result["memory"] = _memory(True)
+    tracemalloc.stop()
+Path(sys.argv[1]).write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")

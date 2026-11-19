@@ -1,0 +1,67 @@
+"""Observe explicit lazy generic-cache access separately from public traversal."""
+
+import gc
+import json
+import sys
+import time
+import tracemalloc
+from pathlib import Path
+
+from benchmarks.graph_memory_evidence import _memory, source_provenance
+from benchmarks.graph_memory_fixture import TEMPLATE_CALLS, build
+from clean_ioc.components import Component, _ComponentGraph, _ComponentSubtreeRecord
+
+fixture = build(8)
+with fixture.runtime:
+    graph = fixture.runtime._plan.graph
+    records = graph._records
+    if records is None:
+        raise RuntimeError("Frozen graph required")
+    sample = [Component(graph, key) for key, value in records.items() if isinstance(value, _ComponentSubtreeRecord)][
+        :256
+    ]
+    gc.collect()
+    inventory = []
+    for value in gc.get_objects():
+        if type(value) is _ComponentGraph and value._records is not None:
+            projections = [record for record in value._records.values() if isinstance(record, _ComponentSubtreeRecord)]
+            contexts = {id(record.context): record.context for record in projections}
+            inventory.append(
+                {
+                    "primary": value is graph,
+                    "occurrence_objects": len(value._records),
+                    "projection_objects": len(projections),
+                    "subtree_contexts": len(contexts),
+                    "remapping_entries": sum(len(context.remapping) for context in contexts.values()),
+                }
+            )
+    del value, projections, contexts
+    observations = []
+    tracemalloc.start()
+    before = _memory(True)
+    for label in ("first", "repeated"):
+        started = time.perf_counter()
+        for component in sample:
+            component.generic_mapping
+        observations.append(
+            {
+                "pass": label,
+                "seconds": time.perf_counter() - started,
+                "memory": _memory(True),
+                "initialized_projection_slots": sum(
+                    record._generic_mapping is not None
+                    for record in records.values()
+                    if isinstance(record, _ComponentSubtreeRecord)
+                ),
+            }
+        )
+    tracemalloc.stop()
+    result = {
+        "source": source_provenance(),
+        "sample": len(sample),
+        "retained_graph_inventory": inventory,
+        "before": before,
+        "passes": observations,
+        "callbacks_unchanged": TEMPLATE_CALLS == fixture.callbacks_after_build,
+    }
+Path(sys.argv[1]).write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")

@@ -1,0 +1,6012 @@
+[
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 40714240,
+    "physical_component_records": 186,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 48,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 47616,
+    "retained_registration_templates": 6,
+    "retained_step_records": 90,
+    "seconds": 0.006223791046068072,
+    "shape": "small-chain",
+    "size": 4,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 6,
+      "candidate plan steps returned": 6,
+      "graph occurrences": 186,
+      "parameter processing attempts": 3,
+      "registration selection callback calls": 9
+    },
+    "definition_counts": {},
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 40484864,
+    "physical_component_records": 186,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 48,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 47616,
+    "retained_registration_templates": 6,
+    "retained_step_records": 90,
+    "seconds": 0.006782792042940855,
+    "shape": "small-chain",
+    "size": 4,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 41189376,
+    "physical_component_records": 282,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 112,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 72192,
+    "retained_registration_templates": 6,
+    "retained_step_records": 182,
+    "seconds": 0.011826999951153994,
+    "shape": "two-transports",
+    "size": 2,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 10,
+      "candidate plan steps returned": 10,
+      "graph occurrences": 282,
+      "parameter processing attempts": 6,
+      "registration selection callback calls": 16
+    },
+    "definition_counts": {},
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 41025536,
+    "physical_component_records": 282,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 112,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 72192,
+    "retained_registration_templates": 6,
+    "retained_step_records": 182,
+    "seconds": 0.010698374942876399,
+    "shape": "two-transports",
+    "size": 2,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 40697856,
+    "physical_component_records": 209,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 80,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 53504,
+    "retained_registration_templates": 5,
+    "retained_step_records": 129,
+    "seconds": 0.00759795808698982,
+    "shape": "chain",
+    "size": 4,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 5,
+      "candidate plan steps returned": 5,
+      "graph occurrences": 209,
+      "parameter processing attempts": 4,
+      "registration selection callback calls": 9
+    },
+    "definition_counts": {},
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 40812544,
+    "physical_component_records": 209,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 80,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 53504,
+    "retained_registration_templates": 5,
+    "retained_step_records": 129,
+    "seconds": 0.008136666961945593,
+    "shape": "chain",
+    "size": 4,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 41320448,
+    "physical_component_records": 373,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 144,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 95488,
+    "retained_registration_templates": 9,
+    "retained_step_records": 229,
+    "seconds": 0.014589749975129962,
+    "shape": "chain",
+    "size": 8,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 9,
+      "candidate plan steps returned": 9,
+      "graph occurrences": 373,
+      "parameter processing attempts": 8,
+      "registration selection callback calls": 17
+    },
+    "definition_counts": {},
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 41205760,
+    "physical_component_records": 373,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 144,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 95488,
+    "retained_registration_templates": 9,
+    "retained_step_records": 229,
+    "seconds": 0.013433458050712943,
+    "shape": "chain",
+    "size": 8,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 41910272,
+    "physical_component_records": 701,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 272,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 179456,
+    "retained_registration_templates": 17,
+    "retained_step_records": 429,
+    "seconds": 0.025168041000142694,
+    "shape": "chain",
+    "size": 16,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 17,
+      "candidate plan steps returned": 17,
+      "graph occurrences": 701,
+      "parameter processing attempts": 16,
+      "registration selection callback calls": 33
+    },
+    "definition_counts": {},
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 41730048,
+    "physical_component_records": 701,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 272,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 179456,
+    "retained_registration_templates": 17,
+    "retained_step_records": 429,
+    "seconds": 0.024732458987273276,
+    "shape": "chain",
+    "size": 16,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 43499520,
+    "physical_component_records": 1357,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 528,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 347392,
+    "retained_registration_templates": 33,
+    "retained_step_records": 829,
+    "seconds": 0.04904879198875278,
+    "shape": "chain",
+    "size": 32,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 33,
+      "candidate plan steps returned": 33,
+      "graph occurrences": 1357,
+      "parameter processing attempts": 32,
+      "registration selection callback calls": 65
+    },
+    "definition_counts": {},
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 43204608,
+    "physical_component_records": 1357,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 528,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 347392,
+    "retained_registration_templates": 33,
+    "retained_step_records": 829,
+    "seconds": 0.05099629203323275,
+    "shape": "chain",
+    "size": 32,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 41582592,
+    "physical_component_records": 548,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 128,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 140288,
+    "retained_registration_templates": 20,
+    "retained_step_records": 228,
+    "seconds": 0.01800074998755008,
+    "shape": "routes",
+    "size": 4,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 20,
+      "candidate plan steps returned": 20,
+      "graph occurrences": 548,
+      "parameter processing attempts": 16,
+      "registration selection callback calls": 36
+    },
+    "definition_counts": {},
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 41730048,
+    "physical_component_records": 548,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 128,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 140288,
+    "retained_registration_templates": 20,
+    "retained_step_records": 228,
+    "seconds": 0.018401583889499307,
+    "shape": "routes",
+    "size": 4,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 42090496,
+    "physical_component_records": 1000,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 192,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 256000,
+    "retained_registration_templates": 40,
+    "retained_step_records": 360,
+    "seconds": 0.030064292019233108,
+    "shape": "routes",
+    "size": 8,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 40,
+      "candidate plan steps returned": 40,
+      "graph occurrences": 1000,
+      "parameter processing attempts": 32,
+      "registration selection callback calls": 72
+    },
+    "definition_counts": {},
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 42008576,
+    "physical_component_records": 1000,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 192,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 256000,
+    "retained_registration_templates": 40,
+    "retained_step_records": 360,
+    "seconds": 0.030764291994273663,
+    "shape": "routes",
+    "size": 8,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 43778048,
+    "physical_component_records": 1904,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 320,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 487424,
+    "retained_registration_templates": 80,
+    "retained_step_records": 624,
+    "seconds": 0.05596054089255631,
+    "shape": "routes",
+    "size": 16,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 80,
+      "candidate plan steps returned": 80,
+      "graph occurrences": 1904,
+      "parameter processing attempts": 64,
+      "registration selection callback calls": 144
+    },
+    "definition_counts": {},
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 44154880,
+    "physical_component_records": 1904,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 320,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 487424,
+    "retained_registration_templates": 80,
+    "retained_step_records": 624,
+    "seconds": 0.059086124994792044,
+    "shape": "routes",
+    "size": 16,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 47366144,
+    "physical_component_records": 3712,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 576,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 950272,
+    "retained_registration_templates": 160,
+    "retained_step_records": 1152,
+    "seconds": 0.12021504098083824,
+    "shape": "routes",
+    "size": 32,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 160,
+      "candidate plan steps returned": 160,
+      "graph occurrences": 3712,
+      "parameter processing attempts": 128,
+      "registration selection callback calls": 288
+    },
+    "definition_counts": {},
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 48480256,
+    "physical_component_records": 3712,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 576,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 950272,
+    "retained_registration_templates": 160,
+    "retained_step_records": 1152,
+    "seconds": 0.11095962510444224,
+    "shape": "routes",
+    "size": 32,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 42041344,
+    "physical_component_records": 796,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 208,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 203776,
+    "retained_registration_templates": 24,
+    "retained_step_records": 352,
+    "seconds": 0.029079332947731018,
+    "shape": "senders",
+    "size": 4,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 84,
+      "candidate plan steps returned": 84,
+      "graph occurrences": 796,
+      "parameter processing attempts": 68,
+      "registration selection callback calls": 152
+    },
+    "definition_counts": {},
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 42172416,
+    "physical_component_records": 796,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 208,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 203776,
+    "retained_registration_templates": 24,
+    "retained_step_records": 352,
+    "seconds": 0.029508583014830947,
+    "shape": "senders",
+    "size": 4,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 44630016,
+    "physical_component_records": 1632,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 336,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 417792,
+    "retained_registration_templates": 48,
+    "retained_step_records": 584,
+    "seconds": 0.06664920900948346,
+    "shape": "senders",
+    "size": 8,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 328,
+      "candidate plan steps returned": 328,
+      "graph occurrences": 1632,
+      "parameter processing attempts": 264,
+      "registration selection callback calls": 592
+    },
+    "definition_counts": {},
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 44482560,
+    "physical_component_records": 1632,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 336,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 417792,
+    "retained_registration_templates": 48,
+    "retained_step_records": 584,
+    "seconds": 0.06897000002209097,
+    "shape": "senders",
+    "size": 8,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 52740096,
+    "physical_component_records": 3784,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 592,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 968704,
+    "retained_registration_templates": 96,
+    "retained_step_records": 1048,
+    "seconds": 0.1895029169972986,
+    "shape": "senders",
+    "size": 16,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 1296,
+      "candidate plan steps returned": 1296,
+      "graph occurrences": 3784,
+      "parameter processing attempts": 1040,
+      "registration selection callback calls": 2336
+    },
+    "definition_counts": {},
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 52822016,
+    "physical_component_records": 3784,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 592,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 968704,
+    "retained_registration_templates": 96,
+    "retained_step_records": 1048,
+    "seconds": 0.19882791698910296,
+    "shape": "senders",
+    "size": 16,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 70189056,
+    "physical_component_records": 10008,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 1104,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 2562048,
+    "retained_registration_templates": 192,
+    "retained_step_records": 1976,
+    "seconds": 0.592036291025579,
+    "shape": "senders",
+    "size": 32,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 5152,
+      "candidate plan steps returned": 5152,
+      "graph occurrences": 10008,
+      "parameter processing attempts": 4128,
+      "registration selection callback calls": 9280
+    },
+    "definition_counts": {},
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 69943296,
+    "physical_component_records": 10008,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 1104,
+    "provider_view_contexts": 0,
+    "python": "3.14.4",
+    "record_shallow_bytes": 2562048,
+    "retained_registration_templates": 192,
+    "retained_step_records": 1976,
+    "seconds": 0.6408348750555888,
+    "shape": "senders",
+    "size": 32,
+    "view_context_shallow_bytes": 0,
+    "revision": "ee00bf9"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 40402944,
+    "physical_component_records": 90,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 48,
+    "provider_view_contexts": 48,
+    "python": "3.14.4",
+    "record_shallow_bytes": 23040,
+    "retained_registration_templates": 3,
+    "retained_step_records": 87,
+    "seconds": 0.004275124985724688,
+    "shape": "small-chain",
+    "size": 4,
+    "view_context_shallow_bytes": 2688,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 6,
+      "candidate definitions considered": 6,
+      "candidate plan steps returned": 6,
+      "graph occurrences": 138,
+      "parameter processing attempts": 3,
+      "physical component records": 90,
+      "provider adapters": 48,
+      "provider induced component copies": 0,
+      "provider target views": 48,
+      "registration selection callback calls": 9,
+      "reused activation templates": 3,
+      "unique activation templates": 3
+    },
+    "definition_counts": {
+      "__main__.Leaf": [
+        [
+          "considered",
+          3
+        ],
+        [
+          "subtrees compiled",
+          3
+        ]
+      ],
+      "__main__.Middle": [
+        [
+          "considered",
+          2
+        ],
+        [
+          "subtrees compiled",
+          2
+        ]
+      ],
+      "__main__.Root": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ]
+    },
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 40828928,
+    "physical_component_records": 90,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 48,
+    "provider_view_contexts": 48,
+    "python": "3.14.4",
+    "record_shallow_bytes": 23040,
+    "retained_registration_templates": 3,
+    "retained_step_records": 87,
+    "seconds": 0.004351207986474037,
+    "shape": "small-chain",
+    "size": 4,
+    "view_context_shallow_bytes": 2688,
+    "revision": "candidate"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 41172992,
+    "physical_component_records": 66,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 32,
+    "provider_view_contexts": 32,
+    "python": "3.14.4",
+    "record_shallow_bytes": 16896,
+    "retained_registration_templates": 6,
+    "retained_step_records": 62,
+    "seconds": 0.003779791994020343,
+    "shape": "two-transports",
+    "size": 2,
+    "view_context_shallow_bytes": 1792,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 10,
+      "candidate definitions considered": 10,
+      "candidate plan steps returned": 10,
+      "graph occurrences": 98,
+      "parameter processing attempts": 6,
+      "physical component records": 66,
+      "provider adapters": 32,
+      "provider induced component copies": 0,
+      "provider target views": 32,
+      "registration selection callback calls": 16,
+      "reused activation templates": 4,
+      "unique activation templates": 6
+    },
+    "definition_counts": {
+      "__main__.HttpClient": [
+        [
+          "considered",
+          2
+        ],
+        [
+          "subtrees compiled",
+          2
+        ]
+      ],
+      "__main__.HttpTransport": [
+        [
+          "considered",
+          2
+        ],
+        [
+          "subtrees compiled",
+          2
+        ]
+      ],
+      "__main__.QueueSender": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.SqsClient": [
+        [
+          "considered",
+          2
+        ],
+        [
+          "subtrees compiled",
+          2
+        ]
+      ],
+      "__main__.SqsTransport": [
+        [
+          "considered",
+          2
+        ],
+        [
+          "subtrees compiled",
+          2
+        ]
+      ],
+      "__main__.WebhookSender": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ]
+    },
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 40845312,
+    "physical_component_records": 66,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 32,
+    "provider_view_contexts": 32,
+    "python": "3.14.4",
+    "record_shallow_bytes": 16896,
+    "retained_registration_templates": 6,
+    "retained_step_records": 62,
+    "seconds": 0.004097208031453192,
+    "shape": "two-transports",
+    "size": 2,
+    "view_context_shallow_bytes": 1792,
+    "revision": "candidate"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 40550400,
+    "physical_component_records": 33,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 16,
+    "provider_view_contexts": 16,
+    "python": "3.14.4",
+    "record_shallow_bytes": 8448,
+    "retained_registration_templates": 5,
+    "retained_step_records": 33,
+    "seconds": 0.002460082992911339,
+    "shape": "chain",
+    "size": 4,
+    "view_context_shallow_bytes": 896,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 5,
+      "candidate definitions considered": 5,
+      "candidate plan steps returned": 5,
+      "graph occurrences": 49,
+      "parameter processing attempts": 4,
+      "physical component records": 33,
+      "provider adapters": 16,
+      "provider induced component copies": 0,
+      "provider target views": 16,
+      "registration selection callback calls": 9,
+      "unique activation templates": 5
+    },
+    "definition_counts": {
+      "__main__.Leaf": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ]
+    },
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 40845312,
+    "physical_component_records": 33,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 16,
+    "provider_view_contexts": 16,
+    "python": "3.14.4",
+    "record_shallow_bytes": 8448,
+    "retained_registration_templates": 5,
+    "retained_step_records": 33,
+    "seconds": 0.00800025009084493,
+    "shape": "chain",
+    "size": 4,
+    "view_context_shallow_bytes": 896,
+    "revision": "candidate"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 40583168,
+    "physical_component_records": 37,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 16,
+    "provider_view_contexts": 16,
+    "python": "3.14.4",
+    "record_shallow_bytes": 9472,
+    "retained_registration_templates": 9,
+    "retained_step_records": 37,
+    "seconds": 0.0027909999480471015,
+    "shape": "chain",
+    "size": 8,
+    "view_context_shallow_bytes": 896,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 9,
+      "candidate definitions considered": 9,
+      "candidate plan steps returned": 9,
+      "graph occurrences": 53,
+      "parameter processing attempts": 8,
+      "physical component records": 37,
+      "provider adapters": 16,
+      "provider induced component copies": 0,
+      "provider target views": 16,
+      "registration selection callback calls": 17,
+      "unique activation templates": 9
+    },
+    "definition_counts": {
+      "__main__.Leaf": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node4": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node5": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node6": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node7": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ]
+    },
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 40534016,
+    "physical_component_records": 37,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 16,
+    "provider_view_contexts": 16,
+    "python": "3.14.4",
+    "record_shallow_bytes": 9472,
+    "retained_registration_templates": 9,
+    "retained_step_records": 37,
+    "seconds": 0.0030046249739825726,
+    "shape": "chain",
+    "size": 8,
+    "view_context_shallow_bytes": 896,
+    "revision": "candidate"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 40681472,
+    "physical_component_records": 45,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 16,
+    "provider_view_contexts": 16,
+    "python": "3.14.4",
+    "record_shallow_bytes": 11520,
+    "retained_registration_templates": 17,
+    "retained_step_records": 45,
+    "seconds": 0.0043022079626098275,
+    "shape": "chain",
+    "size": 16,
+    "view_context_shallow_bytes": 896,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 17,
+      "candidate definitions considered": 17,
+      "candidate plan steps returned": 17,
+      "graph occurrences": 61,
+      "parameter processing attempts": 16,
+      "physical component records": 45,
+      "provider adapters": 16,
+      "provider induced component copies": 0,
+      "provider target views": 16,
+      "registration selection callback calls": 33,
+      "unique activation templates": 17
+    },
+    "definition_counts": {
+      "__main__.Leaf": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node10": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node11": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node12": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node13": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node14": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node15": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node4": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node5": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node6": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node7": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node8": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node9": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ]
+    },
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 40697856,
+    "physical_component_records": 45,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 16,
+    "provider_view_contexts": 16,
+    "python": "3.14.4",
+    "record_shallow_bytes": 11520,
+    "retained_registration_templates": 17,
+    "retained_step_records": 45,
+    "seconds": 0.004346666042692959,
+    "shape": "chain",
+    "size": 16,
+    "view_context_shallow_bytes": 896,
+    "revision": "candidate"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 40828928,
+    "physical_component_records": 61,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 16,
+    "provider_view_contexts": 16,
+    "python": "3.14.4",
+    "record_shallow_bytes": 15616,
+    "retained_registration_templates": 33,
+    "retained_step_records": 61,
+    "seconds": 0.007240916951559484,
+    "shape": "chain",
+    "size": 32,
+    "view_context_shallow_bytes": 896,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 33,
+      "candidate definitions considered": 33,
+      "candidate plan steps returned": 33,
+      "graph occurrences": 77,
+      "parameter processing attempts": 32,
+      "physical component records": 61,
+      "provider adapters": 16,
+      "provider induced component copies": 0,
+      "provider target views": 16,
+      "registration selection callback calls": 65,
+      "unique activation templates": 33
+    },
+    "definition_counts": {
+      "__main__.Leaf": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node10": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node11": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node12": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node13": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node14": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node15": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node16": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node17": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node18": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node19": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node20": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node21": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node22": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node23": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node24": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node25": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node26": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node27": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node28": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node29": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node30": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node31": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node4": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node5": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node6": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node7": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node8": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Node9": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ]
+    },
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 41271296,
+    "physical_component_records": 61,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 16,
+    "provider_view_contexts": 16,
+    "python": "3.14.4",
+    "record_shallow_bytes": 15616,
+    "retained_registration_templates": 33,
+    "retained_step_records": 61,
+    "seconds": 0.008481208002194762,
+    "shape": "chain",
+    "size": 32,
+    "view_context_shallow_bytes": 896,
+    "revision": "candidate"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 41041920,
+    "physical_component_records": 132,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 64,
+    "provider_view_contexts": 64,
+    "python": "3.14.4",
+    "record_shallow_bytes": 33792,
+    "retained_registration_templates": 8,
+    "retained_step_records": 120,
+    "seconds": 0.0068137499038130045,
+    "shape": "routes",
+    "size": 4,
+    "view_context_shallow_bytes": 3584,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 20,
+      "candidate definitions considered": 20,
+      "candidate plan steps returned": 20,
+      "graph occurrences": 196,
+      "parameter processing attempts": 16,
+      "physical component records": 132,
+      "provider adapters": 64,
+      "provider induced component copies": 0,
+      "provider target views": 64,
+      "registration selection callback calls": 36,
+      "reused activation templates": 12,
+      "unique activation templates": 8
+    },
+    "definition_counts": {
+      "__main__.Infrastructure0": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "subtrees compiled",
+          4
+        ]
+      ],
+      "__main__.Infrastructure1": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "subtrees compiled",
+          4
+        ]
+      ],
+      "__main__.Infrastructure2": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "subtrees compiled",
+          4
+        ]
+      ],
+      "__main__.Leaf": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "subtrees compiled",
+          4
+        ]
+      ],
+      "__main__.Route0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ]
+    },
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 40943616,
+    "physical_component_records": 132,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 64,
+    "provider_view_contexts": 64,
+    "python": "3.14.4",
+    "record_shallow_bytes": 33792,
+    "retained_registration_templates": 8,
+    "retained_step_records": 120,
+    "seconds": 0.007569083943963051,
+    "shape": "routes",
+    "size": 4,
+    "view_context_shallow_bytes": 3584,
+    "revision": "candidate"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 41041920,
+    "physical_component_records": 264,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 128,
+    "provider_view_contexts": 128,
+    "python": "3.14.4",
+    "record_shallow_bytes": 67584,
+    "retained_registration_templates": 12,
+    "retained_step_records": 236,
+    "seconds": 0.013598749996162951,
+    "shape": "routes",
+    "size": 8,
+    "view_context_shallow_bytes": 7168,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 40,
+      "candidate definitions considered": 40,
+      "candidate plan steps returned": 40,
+      "graph occurrences": 392,
+      "parameter processing attempts": 32,
+      "physical component records": 264,
+      "provider adapters": 128,
+      "provider induced component copies": 0,
+      "provider target views": 128,
+      "registration selection callback calls": 72,
+      "reused activation templates": 28,
+      "unique activation templates": 12
+    },
+    "definition_counts": {
+      "__main__.Infrastructure0": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Infrastructure1": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Infrastructure2": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Leaf": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Route0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route4": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route5": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route6": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route7": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ]
+    },
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 41451520,
+    "physical_component_records": 264,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 128,
+    "provider_view_contexts": 128,
+    "python": "3.14.4",
+    "record_shallow_bytes": 67584,
+    "retained_registration_templates": 12,
+    "retained_step_records": 236,
+    "seconds": 0.01403883402235806,
+    "shape": "routes",
+    "size": 8,
+    "view_context_shallow_bytes": 7168,
+    "revision": "candidate"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 42106880,
+    "physical_component_records": 528,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 256,
+    "provider_view_contexts": 256,
+    "python": "3.14.4",
+    "record_shallow_bytes": 135168,
+    "retained_registration_templates": 20,
+    "retained_step_records": 468,
+    "seconds": 0.025933707947842777,
+    "shape": "routes",
+    "size": 16,
+    "view_context_shallow_bytes": 14336,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 80,
+      "candidate definitions considered": 80,
+      "candidate plan steps returned": 80,
+      "graph occurrences": 784,
+      "parameter processing attempts": 64,
+      "physical component records": 528,
+      "provider adapters": 256,
+      "provider induced component copies": 0,
+      "provider target views": 256,
+      "registration selection callback calls": 144,
+      "reused activation templates": 60,
+      "unique activation templates": 20
+    },
+    "definition_counts": {
+      "__main__.Infrastructure0": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Infrastructure1": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Infrastructure2": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Leaf": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Route0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route10": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route11": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route12": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route13": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route14": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route15": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route4": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route5": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route6": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route7": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route8": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route9": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ]
+    },
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 41975808,
+    "physical_component_records": 528,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 256,
+    "provider_view_contexts": 256,
+    "python": "3.14.4",
+    "record_shallow_bytes": 135168,
+    "retained_registration_templates": 20,
+    "retained_step_records": 468,
+    "seconds": 0.0272892500506714,
+    "shape": "routes",
+    "size": 16,
+    "view_context_shallow_bytes": 14336,
+    "revision": "candidate"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 43466752,
+    "physical_component_records": 1056,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 512,
+    "provider_view_contexts": 512,
+    "python": "3.14.4",
+    "record_shallow_bytes": 270336,
+    "retained_registration_templates": 36,
+    "retained_step_records": 932,
+    "seconds": 0.05255383299663663,
+    "shape": "routes",
+    "size": 32,
+    "view_context_shallow_bytes": 28672,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 160,
+      "candidate definitions considered": 160,
+      "candidate plan steps returned": 160,
+      "graph occurrences": 1568,
+      "parameter processing attempts": 128,
+      "physical component records": 1056,
+      "provider adapters": 512,
+      "provider induced component copies": 0,
+      "provider target views": 512,
+      "registration selection callback calls": 288,
+      "reused activation templates": 124,
+      "unique activation templates": 36
+    },
+    "definition_counts": {
+      "__main__.Infrastructure0": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Infrastructure1": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Infrastructure2": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Leaf": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Route0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route10": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route11": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route12": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route13": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route14": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route15": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route16": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route17": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route18": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route19": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route20": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route21": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route22": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route23": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route24": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route25": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route26": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route27": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route28": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route29": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route30": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route31": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route4": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route5": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route6": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route7": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route8": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Route9": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ]
+    },
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 43401216,
+    "physical_component_records": 1056,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 512,
+    "provider_view_contexts": 512,
+    "python": "3.14.4",
+    "record_shallow_bytes": 270336,
+    "retained_registration_templates": 36,
+    "retained_step_records": 932,
+    "seconds": 0.054663042072206736,
+    "shape": "routes",
+    "size": 32,
+    "view_context_shallow_bytes": 28672,
+    "revision": "candidate"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 41418752,
+    "physical_component_records": 196,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 64,
+    "provider_view_contexts": 64,
+    "python": "3.14.4",
+    "record_shallow_bytes": 50176,
+    "retained_registration_templates": 12,
+    "retained_step_records": 124,
+    "seconds": 0.012530708103440702,
+    "shape": "senders",
+    "size": 4,
+    "view_context_shallow_bytes": 3584,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 84,
+      "candidate definitions considered": 84,
+      "candidate plan steps returned": 84,
+      "graph occurrences": 260,
+      "parameter processing attempts": 68,
+      "physical component records": 196,
+      "provider adapters": 64,
+      "provider induced component copies": 0,
+      "provider target views": 64,
+      "registration selection callback calls": 152,
+      "reused activation templates": 72,
+      "unique activation templates": 12
+    },
+    "definition_counts": {
+      "__main__.Infrastructure0": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Infrastructure1": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Infrastructure2": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Leaf": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Sender0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport0": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "subtrees compiled",
+          4
+        ]
+      ],
+      "__main__.Transport1": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "subtrees compiled",
+          4
+        ]
+      ],
+      "__main__.Transport2": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "subtrees compiled",
+          4
+        ]
+      ],
+      "__main__.Transport3": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "subtrees compiled",
+          4
+        ]
+      ]
+    },
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 41287680,
+    "physical_component_records": 196,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 64,
+    "provider_view_contexts": 64,
+    "python": "3.14.4",
+    "record_shallow_bytes": 50176,
+    "retained_registration_templates": 12,
+    "retained_step_records": 124,
+    "seconds": 0.015010792063549161,
+    "shape": "senders",
+    "size": 4,
+    "view_context_shallow_bytes": 3584,
+    "revision": "candidate"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 43106304,
+    "physical_component_records": 552,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 128,
+    "provider_view_contexts": 128,
+    "python": "3.14.4",
+    "record_shallow_bytes": 141312,
+    "retained_registration_templates": 20,
+    "retained_step_records": 244,
+    "seconds": 0.03806579194497317,
+    "shape": "senders",
+    "size": 8,
+    "view_context_shallow_bytes": 7168,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 328,
+      "candidate definitions considered": 328,
+      "candidate plan steps returned": 328,
+      "graph occurrences": 680,
+      "parameter processing attempts": 264,
+      "physical component records": 552,
+      "provider adapters": 128,
+      "provider induced component copies": 0,
+      "provider target views": 128,
+      "registration selection callback calls": 592,
+      "reused activation templates": 308,
+      "unique activation templates": 20
+    },
+    "definition_counts": {
+      "__main__.Infrastructure0": [
+        [
+          "considered",
+          64
+        ],
+        [
+          "subtrees compiled",
+          64
+        ]
+      ],
+      "__main__.Infrastructure1": [
+        [
+          "considered",
+          64
+        ],
+        [
+          "subtrees compiled",
+          64
+        ]
+      ],
+      "__main__.Infrastructure2": [
+        [
+          "considered",
+          64
+        ],
+        [
+          "subtrees compiled",
+          64
+        ]
+      ],
+      "__main__.Leaf": [
+        [
+          "considered",
+          64
+        ],
+        [
+          "subtrees compiled",
+          64
+        ]
+      ],
+      "__main__.Sender0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender4": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender5": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender6": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender7": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport0": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Transport1": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Transport2": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Transport3": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Transport4": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Transport5": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Transport6": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Transport7": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ]
+    },
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 42811392,
+    "physical_component_records": 552,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 128,
+    "provider_view_contexts": 128,
+    "python": "3.14.4",
+    "record_shallow_bytes": 141312,
+    "retained_registration_templates": 20,
+    "retained_step_records": 244,
+    "seconds": 0.04232045798562467,
+    "shape": "senders",
+    "size": 8,
+    "view_context_shallow_bytes": 7168,
+    "revision": "candidate"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 48775168,
+    "physical_component_records": 1744,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 256,
+    "provider_view_contexts": 256,
+    "python": "3.14.4",
+    "record_shallow_bytes": 446464,
+    "retained_registration_templates": 36,
+    "retained_step_records": 484,
+    "seconds": 0.13063374999910593,
+    "shape": "senders",
+    "size": 16,
+    "view_context_shallow_bytes": 14336,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 1296,
+      "candidate definitions considered": 1296,
+      "candidate plan steps returned": 1296,
+      "graph occurrences": 2000,
+      "parameter processing attempts": 1040,
+      "physical component records": 1744,
+      "provider adapters": 256,
+      "provider induced component copies": 0,
+      "provider target views": 256,
+      "registration selection callback calls": 2336,
+      "reused activation templates": 1260,
+      "unique activation templates": 36
+    },
+    "definition_counts": {
+      "__main__.Infrastructure0": [
+        [
+          "considered",
+          256
+        ],
+        [
+          "subtrees compiled",
+          256
+        ]
+      ],
+      "__main__.Infrastructure1": [
+        [
+          "considered",
+          256
+        ],
+        [
+          "subtrees compiled",
+          256
+        ]
+      ],
+      "__main__.Infrastructure2": [
+        [
+          "considered",
+          256
+        ],
+        [
+          "subtrees compiled",
+          256
+        ]
+      ],
+      "__main__.Leaf": [
+        [
+          "considered",
+          256
+        ],
+        [
+          "subtrees compiled",
+          256
+        ]
+      ],
+      "__main__.Sender0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender10": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender11": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender12": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender13": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender14": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender15": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender4": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender5": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender6": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender7": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender8": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender9": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport0": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport1": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport10": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport11": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport12": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport13": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport14": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport15": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport2": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport3": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport4": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport5": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport6": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport7": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport8": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Transport9": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ]
+    },
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 48840704,
+    "physical_component_records": 1744,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 256,
+    "provider_view_contexts": 256,
+    "python": "3.14.4",
+    "record_shallow_bytes": 446464,
+    "retained_registration_templates": 36,
+    "retained_step_records": 484,
+    "seconds": 0.14831945800688118,
+    "shape": "senders",
+    "size": 16,
+    "view_context_shallow_bytes": 14336,
+    "revision": "candidate"
+  },
+  {
+    "early": false,
+    "instrumentation": "none",
+    "peak_rss_bytes": 62210048,
+    "physical_component_records": 6048,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 512,
+    "provider_view_contexts": 512,
+    "python": "3.14.4",
+    "record_shallow_bytes": 1548288,
+    "retained_registration_templates": 68,
+    "retained_step_records": 964,
+    "seconds": 0.48459045798517764,
+    "shape": "senders",
+    "size": 32,
+    "view_context_shallow_bytes": 28672,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 5152,
+      "candidate definitions considered": 5152,
+      "candidate plan steps returned": 5152,
+      "graph occurrences": 6560,
+      "parameter processing attempts": 4128,
+      "physical component records": 6048,
+      "provider adapters": 512,
+      "provider induced component copies": 0,
+      "provider target views": 512,
+      "registration selection callback calls": 9280,
+      "reused activation templates": 5084,
+      "unique activation templates": 68
+    },
+    "definition_counts": {
+      "__main__.Infrastructure0": [
+        [
+          "considered",
+          1024
+        ],
+        [
+          "subtrees compiled",
+          1024
+        ]
+      ],
+      "__main__.Infrastructure1": [
+        [
+          "considered",
+          1024
+        ],
+        [
+          "subtrees compiled",
+          1024
+        ]
+      ],
+      "__main__.Infrastructure2": [
+        [
+          "considered",
+          1024
+        ],
+        [
+          "subtrees compiled",
+          1024
+        ]
+      ],
+      "__main__.Leaf": [
+        [
+          "considered",
+          1024
+        ],
+        [
+          "subtrees compiled",
+          1024
+        ]
+      ],
+      "__main__.Sender0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender10": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender11": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender12": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender13": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender14": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender15": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender16": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender17": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender18": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender19": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender20": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender21": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender22": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender23": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender24": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender25": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender26": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender27": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender28": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender29": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender30": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender31": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender4": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender5": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender6": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender7": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender8": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender9": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport0": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport1": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport10": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport11": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport12": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport13": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport14": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport15": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport16": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport17": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport18": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport19": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport2": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport20": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport21": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport22": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport23": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport24": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport25": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport26": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport27": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport28": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport29": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport3": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport30": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport31": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport4": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport5": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport6": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport7": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport8": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Transport9": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ]
+    },
+    "early": false,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 61636608,
+    "physical_component_records": 6048,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 512,
+    "provider_view_contexts": 512,
+    "python": "3.14.4",
+    "record_shallow_bytes": 1548288,
+    "retained_registration_templates": 68,
+    "retained_step_records": 964,
+    "seconds": 0.5703906250419095,
+    "shape": "senders",
+    "size": 32,
+    "view_context_shallow_bytes": 28672,
+    "revision": "candidate"
+  },
+  {
+    "early": true,
+    "instrumentation": "none",
+    "peak_rss_bytes": 40747008,
+    "physical_component_records": 148,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 64,
+    "provider_view_contexts": 64,
+    "python": "3.14.4",
+    "record_shallow_bytes": 37888,
+    "retained_registration_templates": 12,
+    "retained_step_records": 124,
+    "seconds": 0.007920957985334098,
+    "shape": "senders",
+    "size": 4,
+    "view_context_shallow_bytes": 3584,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 24,
+      "candidate definitions considered": 36,
+      "candidate plan steps returned": 24,
+      "early eligibility evaluations": 16,
+      "early excluded candidates": 12,
+      "graph occurrences": 212,
+      "parameter processing attempts": 20,
+      "physical component records": 148,
+      "provider adapters": 64,
+      "provider induced component copies": 0,
+      "provider target views": 64,
+      "registration selection callback calls": 48,
+      "retained early rejection records": 12,
+      "reused activation templates": 12,
+      "unique activation templates": 12
+    },
+    "definition_counts": {
+      "__main__.Infrastructure0": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "subtrees compiled",
+          4
+        ]
+      ],
+      "__main__.Infrastructure1": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "subtrees compiled",
+          4
+        ]
+      ],
+      "__main__.Infrastructure2": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "subtrees compiled",
+          4
+        ]
+      ],
+      "__main__.Leaf": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "subtrees compiled",
+          4
+        ]
+      ],
+      "__main__.Sender0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport0": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "early excluded",
+          3
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport1": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "early excluded",
+          3
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport2": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "early excluded",
+          3
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport3": [
+        [
+          "considered",
+          4
+        ],
+        [
+          "early excluded",
+          3
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ]
+    },
+    "early": true,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 41140224,
+    "physical_component_records": 148,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 64,
+    "provider_view_contexts": 64,
+    "python": "3.14.4",
+    "record_shallow_bytes": 37888,
+    "retained_registration_templates": 12,
+    "retained_step_records": 124,
+    "seconds": 0.008426417014561594,
+    "shape": "senders",
+    "size": 4,
+    "view_context_shallow_bytes": 3584,
+    "revision": "candidate"
+  },
+  {
+    "early": true,
+    "instrumentation": "none",
+    "peak_rss_bytes": 41287680,
+    "physical_component_records": 328,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 128,
+    "provider_view_contexts": 128,
+    "python": "3.14.4",
+    "record_shallow_bytes": 83968,
+    "retained_registration_templates": 20,
+    "retained_step_records": 244,
+    "seconds": 0.015678333002142608,
+    "shape": "senders",
+    "size": 8,
+    "view_context_shallow_bytes": 7168,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 48,
+      "candidate definitions considered": 104,
+      "candidate plan steps returned": 48,
+      "early eligibility evaluations": 64,
+      "early excluded candidates": 56,
+      "graph occurrences": 456,
+      "parameter processing attempts": 40,
+      "physical component records": 328,
+      "provider adapters": 128,
+      "provider induced component copies": 0,
+      "provider target views": 128,
+      "registration selection callback calls": 96,
+      "retained early rejection records": 56,
+      "reused activation templates": 28,
+      "unique activation templates": 20
+    },
+    "definition_counts": {
+      "__main__.Infrastructure0": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Infrastructure1": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Infrastructure2": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Leaf": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "subtrees compiled",
+          8
+        ]
+      ],
+      "__main__.Sender0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender4": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender5": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender6": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender7": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport0": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "early excluded",
+          7
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport1": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "early excluded",
+          7
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport2": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "early excluded",
+          7
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport3": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "early excluded",
+          7
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport4": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "early excluded",
+          7
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport5": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "early excluded",
+          7
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport6": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "early excluded",
+          7
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport7": [
+        [
+          "considered",
+          8
+        ],
+        [
+          "early excluded",
+          7
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ]
+    },
+    "early": true,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 41353216,
+    "physical_component_records": 328,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 128,
+    "provider_view_contexts": 128,
+    "python": "3.14.4",
+    "record_shallow_bytes": 83968,
+    "retained_registration_templates": 20,
+    "retained_step_records": 244,
+    "seconds": 0.016611709026619792,
+    "shape": "senders",
+    "size": 8,
+    "view_context_shallow_bytes": 7168,
+    "revision": "candidate"
+  },
+  {
+    "early": true,
+    "instrumentation": "none",
+    "peak_rss_bytes": 42467328,
+    "physical_component_records": 784,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 256,
+    "provider_view_contexts": 256,
+    "python": "3.14.4",
+    "record_shallow_bytes": 200704,
+    "retained_registration_templates": 36,
+    "retained_step_records": 484,
+    "seconds": 0.03126129205338657,
+    "shape": "senders",
+    "size": 16,
+    "view_context_shallow_bytes": 14336,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 96,
+      "candidate definitions considered": 336,
+      "candidate plan steps returned": 96,
+      "early eligibility evaluations": 256,
+      "early excluded candidates": 240,
+      "graph occurrences": 1040,
+      "parameter processing attempts": 80,
+      "physical component records": 784,
+      "provider adapters": 256,
+      "provider induced component copies": 0,
+      "provider target views": 256,
+      "registration selection callback calls": 192,
+      "retained early rejection records": 240,
+      "reused activation templates": 60,
+      "unique activation templates": 36
+    },
+    "definition_counts": {
+      "__main__.Infrastructure0": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Infrastructure1": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Infrastructure2": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Leaf": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "subtrees compiled",
+          16
+        ]
+      ],
+      "__main__.Sender0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender10": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender11": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender12": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender13": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender14": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender15": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender4": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender5": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender6": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender7": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender8": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender9": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport0": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport1": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport10": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport11": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport12": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport13": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport14": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport15": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport2": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport3": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport4": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport5": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport6": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport7": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport8": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport9": [
+        [
+          "considered",
+          16
+        ],
+        [
+          "early excluded",
+          15
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ]
+    },
+    "early": true,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 42385408,
+    "physical_component_records": 784,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 256,
+    "provider_view_contexts": 256,
+    "python": "3.14.4",
+    "record_shallow_bytes": 200704,
+    "retained_registration_templates": 36,
+    "retained_step_records": 484,
+    "seconds": 0.036782000097446144,
+    "shape": "senders",
+    "size": 16,
+    "view_context_shallow_bytes": 14336,
+    "revision": "candidate"
+  },
+  {
+    "early": true,
+    "instrumentation": "none",
+    "peak_rss_bytes": 44433408,
+    "physical_component_records": 2080,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 512,
+    "provider_view_contexts": 512,
+    "python": "3.14.4",
+    "record_shallow_bytes": 532480,
+    "retained_registration_templates": 68,
+    "retained_step_records": 964,
+    "seconds": 0.06873345805797726,
+    "shape": "senders",
+    "size": 32,
+    "view_context_shallow_bytes": 28672,
+    "revision": "candidate"
+  },
+  {
+    "counters": {
+      "candidate compilation attempts": 192,
+      "candidate definitions considered": 1184,
+      "candidate plan steps returned": 192,
+      "early eligibility evaluations": 1024,
+      "early excluded candidates": 992,
+      "graph occurrences": 2592,
+      "parameter processing attempts": 160,
+      "physical component records": 2080,
+      "provider adapters": 512,
+      "provider induced component copies": 0,
+      "provider target views": 512,
+      "registration selection callback calls": 384,
+      "retained early rejection records": 992,
+      "reused activation templates": 124,
+      "unique activation templates": 68
+    },
+    "definition_counts": {
+      "__main__.Infrastructure0": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Infrastructure1": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Infrastructure2": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Leaf": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "subtrees compiled",
+          32
+        ]
+      ],
+      "__main__.Sender0": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender1": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender10": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender11": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender12": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender13": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender14": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender15": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender16": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender17": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender18": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender19": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender2": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender20": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender21": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender22": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender23": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender24": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender25": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender26": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender27": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender28": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender29": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender3": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender30": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender31": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender4": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender5": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender6": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender7": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender8": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Sender9": [
+        [
+          "considered",
+          1
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport0": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport1": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport10": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport11": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport12": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport13": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport14": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport15": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport16": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport17": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport18": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport19": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport2": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport20": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport21": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport22": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport23": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport24": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport25": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport26": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport27": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport28": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport29": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport3": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport30": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport31": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport4": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport5": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport6": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport7": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport8": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ],
+      "__main__.Transport9": [
+        [
+          "considered",
+          32
+        ],
+        [
+          "early excluded",
+          31
+        ],
+        [
+          "subtrees compiled",
+          1
+        ]
+      ]
+    },
+    "early": true,
+    "instrumentation": "CompilationProfiler(max_records=0)",
+    "peak_rss_bytes": 44548096,
+    "physical_component_records": 2080,
+    "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "provider_root_keys": 512,
+    "provider_view_contexts": 512,
+    "python": "3.14.4",
+    "record_shallow_bytes": 532480,
+    "retained_registration_templates": 68,
+    "retained_step_records": 964,
+    "seconds": 0.08060874999500811,
+    "shape": "senders",
+    "size": 32,
+    "view_context_shallow_bytes": 28672,
+    "revision": "candidate"
+  }
+]

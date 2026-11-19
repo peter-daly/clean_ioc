@@ -1,0 +1,52 @@
+{
+  "correctness_only": true,
+  "imports": [
+    {
+      "path": "/Users/peter.daly/WS/pete/clean_ioc/clean_ioc/container.py",
+      "sha256": "f63fce1615aa2614d747d0caa318b99e881d26d72a7c10943069679205641896"
+    },
+    {
+      "path": "/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/bark-source/bark_core/unit_of_work/bundles.py",
+      "sha256": "986a891aaac4176633fc35fbf955bfbd684578758337db965f290ad5353ff4c1"
+    },
+    {
+      "path": "/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/bark-source/tests/unit/bundles/test_unit_of_work.py",
+      "sha256": "06b51c4a898738ff4386c5ac78b72040e6c08965e6f51292c4f0c58d19aec94f"
+    }
+  ],
+  "results": [
+    {
+      "fixture": "wrong_lifespan",
+      "build_calls": 0,
+      "analysis_calls": [
+        "validate_unit_of_work_graph",
+        "validate_unit_of_work_graph_on_validation"
+      ],
+      "errors": [
+        "uow-scope-mismatch"
+      ]
+    },
+    {
+      "fixture": "wrong_sql_write",
+      "build_calls": 0,
+      "analysis_calls": [
+        "validate_unit_of_work_graph",
+        "validate_unit_of_work_graph_on_validation"
+      ],
+      "errors": [
+        "uow-sqlalchemy-write-without-boundary"
+      ]
+    },
+    {
+      "fixture": "wrong_sql_begin",
+      "build_calls": 0,
+      "analysis_calls": [
+        "validate_unit_of_work_graph",
+        "validate_unit_of_work_graph_on_validation"
+      ],
+      "errors": [
+        "uow-sqlalchemy-begin-inside-boundary"
+      ]
+    }
+  ]
+}

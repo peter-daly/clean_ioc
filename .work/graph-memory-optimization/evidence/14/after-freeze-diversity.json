@@ -1,0 +1,15 @@
+{
+  "policy": "after",
+  "variant": "diversity",
+  "freezes": [
+    {
+      "drafts": 2000,
+      "pool_entries": 2000,
+      "before_current": 19493579,
+      "previous_peak": 25506019,
+      "freeze_peak": 20920891,
+      "after_current": 18964579,
+      "seconds": 0.036005457979626954
+    }
+  ]
+}

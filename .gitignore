@@ -41,6 +41,8 @@ pip-delete-this-directory.txt
 htmlcov/
 .tox/
 .nox/
+.benchbro/*
+!.benchbro/baseline.ci.json
 .coverage
 .coverage.*
 .cache
@@ -130,4 +132,3 @@ dmypy.json
 
 #vscode settings
 .vscode/
-

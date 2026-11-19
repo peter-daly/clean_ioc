@@ -1,0 +1,6 @@
+ 5961   0.0 /opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python .work/graph-memory-optimization/evidence/08-run.py --suite build
+14401  99.9 /opt/homebrew/Cellar/python@3.14/3.14.4/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python /Users/peter.daly/WS/pete/clean_ioc/.work/graph-memory-optimization/evidence/08-probe.py measure --probe both --routes 8 --heap
+68699   0.0 /Users/peter.daly/.vscode/extensions/ms-python.vscode-python-envs-1.38.0-darwin-arm64/python-env-tools/bin/pet server
+68788   0.0 /Users/peter.daly/.vscode/extensions/ms-python.vscode-python-envs-1.38.0-darwin-arm64/python-env-tools/bin/pet server
+68792   0.0 /Users/peter.daly/.vscode/extensions/ms-python.vscode-python-envs-1.38.0-darwin-arm64/python-env-tools/bin/pet server
+69094   0.0 /Applications/Visual Studio Code.app/Contents/Frameworks/Code Helper (Plugin).app/Contents/MacOS/Code Helper (Plugin) /Users/peter.daly/.vscode/extensions/ms-python.vscode-pylance-2026.4.1/dist/server.bundle.js --cancellationReceive=file:6fef92ba83d6acc77c8e600def499715989cf398a3 --node-ipc --clientProcessId=68649

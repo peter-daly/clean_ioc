@@ -1,0 +1,8 @@
+{
+  ".work/graph-memory-optimization/evidence/18/sources/stage14/benchmarks/graph_memory_fixture.py": "9fa99c1ae3b8949a1aa46b0f40082810ea495f1eb58b0855c211cb1d250c6fdf",
+  ".work/graph-memory-optimization/evidence/18/sources/stage14/benchmarks/graph_memory_evidence.py": "99c0ea2c065bae66c423f747fc8a6c33d3cbf2b30a9e4b22fa28b85923105a5c",
+  ".work/graph-memory-optimization/evidence/18/sources/stage14/clean_ioc/container.py": "317b5fdc607ffe86ed5356e70592b391f66c77e57568eb5250b2e659ac8a9ca7",
+  ".work/graph-memory-optimization/evidence/18/sources/stage14/clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+  ".work/graph-memory-optimization/evidence/18/sources/stage14/clean_ioc/tooling.py": "79d452191cd0b405f1ba54ea081b43d6e185b593268b19dc55fcbf5ed74d4c8c",
+  ".work/graph-memory-optimization/evidence/18/sources/stage14/clean_ioc/components.py": "32656eac06b80347d025e82004e5fd2eeb894ac6c3524f68fc64fda09ac10adf"
+}

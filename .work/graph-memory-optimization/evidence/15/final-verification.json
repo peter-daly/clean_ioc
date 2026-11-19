@@ -1,0 +1,25 @@
+{
+  "status": "PASS",
+  "runtime_matches_measurement_manifest": true,
+  "prior_task14_unmodified_files_preserved": true,
+  "task14_manifest_and_patch_preserved": true,
+  "main_samples_verified": "evidence-validation.json",
+  "resolution_processes": 18,
+  "untimed_resolution_workloads": 24,
+  "index_accesses": 0,
+  "artifact_processes": 24,
+  "artifact_file_hashes_verified": true,
+  "full_inspection_fingerprint_and_capacities_match": true,
+  "opaque_lifetime_cases": 16,
+  "python314_full_tests": 2386,
+  "supported_python_focused_tests": {
+    "3.11": 263,
+    "3.12": 263,
+    "3.13": 263
+  },
+  "mapping_differentials_each_interpreter": 10093,
+  "native_codec_cases_each_interpreter": 103,
+  "strict_docs": true,
+  "final_lint_format_types": true,
+  "git_diff_check": true
+}

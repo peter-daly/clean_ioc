@@ -1,0 +1,92 @@
+{
+  "run": {
+    "before": {
+      "cold_seconds": 0.010006457916460931,
+      "steady_median_seconds": 0.009739874978549778,
+      "cold_cpu_seconds": 0.010010000000000296,
+      "steady_median_cpu_seconds": 0.00973999999999986,
+      "cold_range": [
+        0.009980415925383568,
+        0.010009458987042308
+      ],
+      "steady_median_range": [
+        0.009728666977025568,
+        0.009786125039681792
+      ]
+    },
+    "after": {
+      "cold_seconds": 0.010040541994385421,
+      "steady_median_seconds": 0.009766957955434918,
+      "cold_cpu_seconds": 0.010046,
+      "steady_median_cpu_seconds": 0.009763999999999662,
+      "cold_range": [
+        0.009978416957892478,
+        0.010490041924640536
+      ],
+      "steady_median_range": [
+        0.009762207977473736,
+        0.00978695903904736
+      ]
+    }
+  },
+  "rich-run": {
+    "before": {
+      "cold_seconds": 0.010155999916605651,
+      "steady_median_seconds": 0.009736458072438836,
+      "cold_cpu_seconds": 0.010165000000000646,
+      "steady_median_cpu_seconds": 0.00973899999999972,
+      "cold_range": [
+        0.010150332935154438,
+        0.010281500057317317
+      ],
+      "steady_median_range": [
+        0.009730707970447838,
+        0.009756583021953702
+      ]
+    },
+    "after": {
+      "cold_seconds": 0.010273666004650295,
+      "steady_median_seconds": 0.009755125036463141,
+      "cold_cpu_seconds": 0.010278999999998817,
+      "steady_median_cpu_seconds": 0.00975900000000074,
+      "cold_range": [
+        0.010073374956846237,
+        0.010356124956160784
+      ],
+      "steady_median_range": [
+        0.009740708046592772,
+        0.009919749922119081
+      ]
+    }
+  },
+  "analysis": {
+    "before": {
+      "cold_seconds": 0.0020957919768989086,
+      "steady_median_seconds": 0.001899917027913034,
+      "cold_cpu_seconds": 0.0021030000000000215,
+      "steady_median_cpu_seconds": 0.0019000000000000128,
+      "cold_range": [
+        0.0020557499956339598,
+        0.002551708952523768
+      ],
+      "steady_median_range": [
+        0.0018938329303637147,
+        0.0020803340012207627
+      ]
+    },
+    "after": {
+      "cold_seconds": 0.002072167000733316,
+      "steady_median_seconds": 0.0018959579756483436,
+      "cold_cpu_seconds": 0.0020749999999999935,
+      "steady_median_cpu_seconds": 0.0018960000000000088,
+      "cold_range": [
+        0.0020694159902632236,
+        0.002080832957290113
+      ],
+      "steady_median_range": [
+        0.0018902500160038471,
+        0.0019398750737309456
+      ]
+    }
+  }
+}

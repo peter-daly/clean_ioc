@@ -1,0 +1,54 @@
+[
+  {
+    "path": "clean_ioc/__init__.py",
+    "sha256": "f02251386f27f2fb2e9cd1f3239d8f8a4df5fb1574f0d7ebe7a5abc7feddf583"
+  },
+  {
+    "path": "clean_ioc/container.py",
+    "sha256": "5f610d45def38d9c536bb557650a1dd70d50eb721c0a32a3fd481f351c04f51b"
+  },
+  {
+    "path": "clean_ioc/instrumentation.py",
+    "sha256": "8f14936d4b94194a34fe403c199180f3358d52edae19dd9faadde71d6e247a7c"
+  },
+  {
+    "path": "clean_ioc/warmup.py",
+    "sha256": "725f01c41830f4aea5dac8009778e090d8eee982bfa339d720f3f1b5670371e6"
+  },
+  {
+    "path": "tests/test_analysis_pipeline.py",
+    "sha256": "e4afe5aa13f307a6661eb1debcd0df6e88f002a2caf0c3631ed5532a175af574"
+  },
+  {
+    "path": "tests/test_build_matrix.py",
+    "sha256": "4afbd4ac808626ccc36d094a957fe4810b2a4ebd92c6995992f6506db6b63c4e"
+  },
+  {
+    "path": "tests/test_execution_evidence_capture.py",
+    "sha256": "e390a58646d297a96782e275b5225b7c921b1cacc07db3a88cf21ecc9f21c385"
+  },
+  {
+    "path": "tests/test_execution_plan.py",
+    "sha256": "1f20f03af77b595633ad9c5ffa41149ab2ef72d52aaab7fc6177f9a76a1fc2f3"
+  },
+  {
+    "path": "tests/test_factory_return_types.py",
+    "sha256": "fed69edee19ebe125bd66f9c368a30813dfa99dc4f25f9f646333f34086f3c9a"
+  },
+  {
+    "path": "tests/test_policies.py",
+    "sha256": "24af841f2afa485354acddb6dd503bd986fc99de44de7b44e3c642893a852e5d"
+  },
+  {
+    "path": "tests/test_resolution_profiler.py",
+    "sha256": "e6965b60c3112c5c5f6772591f42c75735a85218b3dbdec8d69df1ab238b92c2"
+  },
+  {
+    "path": "tests/test_resource_ownership.py",
+    "sha256": "c5eb3edd1c56bf5b12b78e8cb44350834f87d052851689a704a1215ddb976efc"
+  },
+  {
+    "path": "tests/test_warmup_plans.py",
+    "sha256": "dfc82921a8fed274382ce01f8ded2a280f419ea33ce85c1e4f54260de242f2f6"
+  }
+]

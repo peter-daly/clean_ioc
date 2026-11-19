@@ -1,0 +1,405 @@
+{
+  "baseline_commit": "88a039ff7c1071d71ffccce24a859d23e76a9727",
+  "python": "3.14.4",
+  "source_sha256": {
+    "clean_ioc/container.py": "b8a5dddf3fa740a2a92a123cafd551d4956ed5f213fcb98c8bfbe0cfb7ba2b16",
+    "clean_ioc/components.py": "cdef20e9abe8ac53aedcf27dd26103e6838b8604e61d60712689deae70c62572",
+    "clean_ioc/graph_analysis.py": "2ce64a14778232b3adb3073b7c2a9e63213666ad252bf27a2b47477e90af82ab",
+    "tests/test_unified_slots.py": "b6177775710ac6c150e0ad1e1d0305bbffdb948b6b584d5d526f9e9191cdcc46",
+    "docs/slots.md": "0ee7a9e162041e415b4d70bb2383a9459474bfeebae52e7ecb510f7c05df5f70"
+  },
+  "method": "Seven timeit repeats; 100 builds or 10,000 scope/resolution calls per repeat. Same interpreter, locked dependencies, host and cost probe. Pair 3 before/after, pair 4 after/before.",
+  "samples": {
+    "3": {
+      "before": {
+        "build_no_slots": {
+          "median_us": 2751.4533302746713,
+          "min_us": 2489.146660082042,
+          "max_us": 3043.8245902769268
+        },
+        "build_scoped_slot": {
+          "median_us": 1503.8300002925098,
+          "min_us": 1472.7229112759233,
+          "max_us": 1604.0554083883762
+        },
+        "new_scope_no_slots": {
+          "median_us": 0.9080084040760994,
+          "min_us": 0.8818208007141948,
+          "max_us": 0.9215167025104165
+        },
+        "resolve_no_slots": {
+          "median_us": 1.5734791057184339,
+          "min_us": 1.5639124903827906,
+          "max_us": 1.5959291951730847
+        },
+        "resolve_scoped_slot": {
+          "median_us": 1.5740874921903014,
+          "min_us": 1.5578458085656166,
+          "max_us": 1.5852125128731132
+        }
+      },
+      "after": {
+        "build_no_slots": {
+          "median_us": 3008.2170898094773,
+          "min_us": 2965.920828282833,
+          "max_us": 3076.011249795556
+        },
+        "build_scoped_slot": {
+          "median_us": 3303.23165981099,
+          "min_us": 3228.03707793355,
+          "max_us": 3423.6779203638434
+        },
+        "new_scope_no_slots": {
+          "median_us": 0.919350003823638,
+          "min_us": 0.8863999973982573,
+          "max_us": 0.9347458835691214
+        },
+        "resolve_no_slots": {
+          "median_us": 1.6060750000178814,
+          "min_us": 1.572987507097423,
+          "max_us": 1.6462750034406781
+        },
+        "resolve_scoped_slot": {
+          "median_us": 1.6516375122591853,
+          "min_us": 1.6475375043228269,
+          "max_us": 1.743483287282288
+        }
+      }
+    },
+    "4": {
+      "before": {
+        "build_no_slots": {
+          "median_us": 2598.9333307370543,
+          "min_us": 2571.1075006984174,
+          "max_us": 2730.239590164274
+        },
+        "build_scoped_slot": {
+          "median_us": 1513.4212491102517,
+          "min_us": 1476.5641605481505,
+          "max_us": 1865.0537496432662
+        },
+        "new_scope_no_slots": {
+          "median_us": 0.9287958033382893,
+          "min_us": 0.9008500026538968,
+          "max_us": 1.068562502041459
+        },
+        "resolve_no_slots": {
+          "median_us": 1.6122957924380898,
+          "min_us": 1.5901332953944802,
+          "max_us": 1.6168874921277165
+        },
+        "resolve_scoped_slot": {
+          "median_us": 1.5833541983738542,
+          "min_us": 1.5594583004713058,
+          "max_us": 1.6364000039175153
+        }
+      },
+      "after": {
+        "build_no_slots": {
+          "median_us": 2984.2870798893273,
+          "min_us": 2888.574581593275,
+          "max_us": 3069.7000003419816
+        },
+        "build_scoped_slot": {
+          "median_us": 3259.2349988408387,
+          "min_us": 3196.4083295315504,
+          "max_us": 3294.3024998530746
+        },
+        "new_scope_no_slots": {
+          "median_us": 0.9260667022317648,
+          "min_us": 0.9108874946832657,
+          "max_us": 0.9431166807189584
+        },
+        "resolve_no_slots": {
+          "median_us": 1.5908792149275541,
+          "min_us": 1.565216714516282,
+          "max_us": 1.6080333152785897
+        },
+        "resolve_scoped_slot": {
+          "median_us": 1.6537250019609928,
+          "min_us": 1.6391042154282331,
+          "max_us": 1.6769083915278316
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Microprobe, not an application workload.",
+    "No process-isolated CPU pinning or randomized statistical benchmark.",
+    "Historical initial/repeat1/repeat2/final1/final2 samples predate review repairs/key-reuse adjustment. They are retained as preliminary evidence only.",
+    "No RSS or real consumer application measurement."
+  ],
+  "preliminary_samples": {
+    "23-slot-cost-after-repeat1": {
+      "build_no_slots": {
+        "median_us": 2960.467920638621,
+        "min_us": 2840.049162041396,
+        "max_us": 3362.9845804534853
+      },
+      "build_scoped_slot": {
+        "median_us": 3228.3862493932247,
+        "min_us": 3105.5762502364814,
+        "max_us": 3381.1829215846956
+      },
+      "new_scope_no_slots": {
+        "median_us": 0.9121750015765429,
+        "min_us": 0.878691696561873,
+        "max_us": 0.9362292010337114
+      },
+      "resolve_no_slots": {
+        "median_us": 1.6463082982227206,
+        "min_us": 1.591108413413167,
+        "max_us": 2.110245800577104
+      },
+      "resolve_scoped_slot": {
+        "median_us": 1.7446083948016167,
+        "min_us": 1.7298875143751502,
+        "max_us": 1.7795541789382696
+      }
+    },
+    "23-slot-cost-after-repeat2": {
+      "build_no_slots": {
+        "median_us": 3013.4295811876655,
+        "min_us": 2956.128749065101,
+        "max_us": 3036.9641701690853
+      },
+      "build_scoped_slot": {
+        "median_us": 3196.778749115765,
+        "min_us": 3165.087499655783,
+        "max_us": 3297.005828935653
+      },
+      "new_scope_no_slots": {
+        "median_us": 0.919366697780788,
+        "min_us": 0.9131542174145579,
+        "max_us": 0.9295541094616055
+      },
+      "resolve_no_slots": {
+        "median_us": 1.6269667074084282,
+        "min_us": 1.612900011241436,
+        "max_us": 1.6546500148251653
+      },
+      "resolve_scoped_slot": {
+        "median_us": 1.7534665996208787,
+        "min_us": 1.7287457827478647,
+        "max_us": 1.798145892098546
+      }
+    },
+    "23-slot-cost-after": {
+      "build_no_slots": {
+        "median_us": 2680.584997870028,
+        "min_us": 2606.8054093047976,
+        "max_us": 3067.6962505094707
+      },
+      "build_scoped_slot": {
+        "median_us": 2809.8441706970334,
+        "min_us": 2753.8983384147286,
+        "max_us": 2858.809579629451
+      },
+      "new_scope_no_slots": {
+        "median_us": 0.9031542111188173,
+        "min_us": 0.8753124857321382,
+        "max_us": 0.935749989002943
+      },
+      "resolve_no_slots": {
+        "median_us": 1.6066082986071706,
+        "min_us": 1.5602291096001863,
+        "max_us": 1.6433625016361475
+      },
+      "resolve_scoped_slot": {
+        "median_us": 1.712916698306799,
+        "min_us": 1.7031708033755422,
+        "max_us": 1.7345916014164686
+      }
+    },
+    "23-slot-cost-before-repeat1": {
+      "build_no_slots": {
+        "median_us": 2557.9100009053946,
+        "min_us": 2469.4258300587535,
+        "max_us": 2753.560000564903
+      },
+      "build_scoped_slot": {
+        "median_us": 1481.5258304588497,
+        "min_us": 1435.6637513265014,
+        "max_us": 1582.0491616614163
+      },
+      "new_scope_no_slots": {
+        "median_us": 0.8863958064466715,
+        "min_us": 0.8792416891083121,
+        "max_us": 0.8961499901488423
+      },
+      "resolve_no_slots": {
+        "median_us": 1.552562485449016,
+        "min_us": 1.5461166156455874,
+        "max_us": 1.5590832801535726
+      },
+      "resolve_scoped_slot": {
+        "median_us": 1.5625416999682784,
+        "min_us": 1.5457291854545474,
+        "max_us": 1.5743582975119352
+      }
+    },
+    "23-slot-cost-before-repeat2": {
+      "build_no_slots": {
+        "median_us": 2627.8699981048703,
+        "min_us": 2572.214580141008,
+        "max_us": 2728.8208389654756
+      },
+      "build_scoped_slot": {
+        "median_us": 1485.2600009180605,
+        "min_us": 1424.8870895244181,
+        "max_us": 1515.6345814466476
+      },
+      "new_scope_no_slots": {
+        "median_us": 0.8882208028808236,
+        "min_us": 0.8819249924272299,
+        "max_us": 0.9333750000223517
+      },
+      "resolve_no_slots": {
+        "median_us": 1.6150458017364144,
+        "min_us": 1.5778332948684692,
+        "max_us": 1.6619500005617738
+      },
+      "resolve_scoped_slot": {
+        "median_us": 1.5789084136486053,
+        "min_us": 1.5476084081456065,
+        "max_us": 1.597433304414153
+      }
+    },
+    "23-slot-cost-before": {
+      "build_no_slots": {
+        "median_us": 2559.0079207904637,
+        "min_us": 2451.365829911083,
+        "max_us": 2585.7429206371307
+      },
+      "build_scoped_slot": {
+        "median_us": 1472.1995894797146,
+        "min_us": 1430.7120791636407,
+        "max_us": 1529.6458406373858
+      },
+      "new_scope_no_slots": {
+        "median_us": 0.8615166880190372,
+        "min_us": 0.8569124853238463,
+        "max_us": 0.8771541994065046
+      },
+      "resolve_no_slots": {
+        "median_us": 1.5273625031113625,
+        "min_us": 1.5104499878361821,
+        "max_us": 1.5777416992932558
+      },
+      "resolve_scoped_slot": {
+        "median_us": 1.5519666019827127,
+        "min_us": 1.5372709138318896,
+        "max_us": 1.5760459005832672
+      }
+    },
+    "23-slot-cost-final-after1": {
+      "build_no_slots": {
+        "median_us": 2922.185829374939,
+        "min_us": 2862.5008300878108,
+        "max_us": 2998.57540987432
+      },
+      "build_scoped_slot": {
+        "median_us": 3367.016250267625,
+        "min_us": 3153.8487505167723,
+        "max_us": 4507.917498704046
+      },
+      "new_scope_no_slots": {
+        "median_us": 1.1261207982897758,
+        "min_us": 1.0239249793812633,
+        "max_us": 1.5175000065937638
+      },
+      "resolve_no_slots": {
+        "median_us": 1.930408296175301,
+        "min_us": 1.6447125002741814,
+        "max_us": 1.9691749941557646
+      },
+      "resolve_scoped_slot": {
+        "median_us": 1.77623329218477,
+        "min_us": 1.7374582821503282,
+        "max_us": 2.0708875032141805
+      }
+    },
+    "23-slot-cost-final-after2": {
+      "build_no_slots": {
+        "median_us": 3068.4500001370907,
+        "min_us": 2914.709171745926,
+        "max_us": 3258.977090008557
+      },
+      "build_scoped_slot": {
+        "median_us": 3231.233328115195,
+        "min_us": 3192.6033296622336,
+        "max_us": 3389.2900007776916
+      },
+      "new_scope_no_slots": {
+        "median_us": 0.9186041075736284,
+        "min_us": 0.9129083016887307,
+        "max_us": 0.9616832947358489
+      },
+      "resolve_no_slots": {
+        "median_us": 1.6621625050902367,
+        "min_us": 1.6180082922801375,
+        "max_us": 1.7970332875847816
+      },
+      "resolve_scoped_slot": {
+        "median_us": 1.7487875185906887,
+        "min_us": 1.6986790811643004,
+        "max_us": 1.9053541123867035
+      }
+    },
+    "23-slot-cost-final-before1": {
+      "build_no_slots": {
+        "median_us": 2549.0049994550645,
+        "min_us": 2500.019168946892,
+        "max_us": 2575.0095886178315
+      },
+      "build_scoped_slot": {
+        "median_us": 1463.8612512499094,
+        "min_us": 1434.1612509451807,
+        "max_us": 1549.3908408097923
+      },
+      "new_scope_no_slots": {
+        "median_us": 0.9003249928355217,
+        "min_us": 0.8914874866604805,
+        "max_us": 0.9240332990884781
+      },
+      "resolve_no_slots": {
+        "median_us": 1.5666165854781866,
+        "min_us": 1.5610166126862168,
+        "max_us": 1.6084499889984727
+      },
+      "resolve_scoped_slot": {
+        "median_us": 1.574604189954698,
+        "min_us": 1.5594708966091275,
+        "max_us": 1.5906000044196844
+      }
+    },
+    "23-slot-cost-final-before2": {
+      "build_no_slots": {
+        "median_us": 2641.7666696943343,
+        "min_us": 2504.421668127179,
+        "max_us": 2765.686248894781
+      },
+      "build_scoped_slot": {
+        "median_us": 1499.2024982348084,
+        "min_us": 1477.7616690844297,
+        "max_us": 1802.8008309192955
+      },
+      "new_scope_no_slots": {
+        "median_us": 0.9313708171248436,
+        "min_us": 0.9230958065018058,
+        "max_us": 1.0010542115196586
+      },
+      "resolve_no_slots": {
+        "median_us": 1.5887417132034898,
+        "min_us": 1.5402290970087051,
+        "max_us": 1.785133290104568
+      },
+      "resolve_scoped_slot": {
+        "median_us": 1.6324375057592988,
+        "min_us": 1.5498500084504485,
+        "max_us": 1.7492082901299
+      }
+    }
+  },
+  "raw_sample_preservation": "All per-run JSON data consolidated here; samples.3 and samples.4 are the final measured source. preliminary_samples are retained for audit, not final claims."
+}

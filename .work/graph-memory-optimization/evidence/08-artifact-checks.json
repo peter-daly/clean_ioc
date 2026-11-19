@@ -1,0 +1,12 @@
+{
+  "failed_before_publication": true,
+  "prior_output_preserved": true,
+  "malformed_loads_rejected": true,
+  "errors": [
+    "Expected a mapping proxy backed by a dictionary",
+    "Unsupported artifact value: builtins.object",
+    "Invalid compact index payload",
+    "Invalid compact index key",
+    "Invalid compact index key"
+  ]
+}

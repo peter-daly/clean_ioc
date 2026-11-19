@@ -1,0 +1,50 @@
+"""Serial observers and bounded caller-owned snapshot control, outside main samples."""
+
+# ruff: noqa: S603
+import hashlib
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).parent
+if len(sys.argv) != 2:
+    raise SystemExit("Usage: observers.py OUTPUT_DIRECTORY")
+OUTPUT = Path(sys.argv[1])
+OUTPUT.mkdir(parents=True, exist_ok=True)
+if (OUTPUT / "observer-source.json").exists():
+    raise FileExistsError("Use a fresh observer output directory")
+scripts = ("census.py", "phases.py", "escaped.py", "inspection.py", "inspection-full.py", "observers.py")
+(OUTPUT / "observer-source.json").write_text(
+    json.dumps({name: hashlib.sha256((HERE / name).read_bytes()).hexdigest() for name in scripts}, indent=2) + "\n"
+)
+for script in ("census", "phases"):
+    for variant in ("run", "rich-run", "analysis"):
+        for policy in ("before", "after"):
+            output = subprocess.check_output([sys.executable, str(HERE / f"{script}.py"), policy, variant], text=True)
+            (OUTPUT / f"{script}-{policy}-{variant}.json").write_text(output)
+            print(script, policy, variant, flush=True)
+rows = []
+for mode in ("run", "analysis"):
+    for repeat in range(3):
+        for kind in ("normal", "heap"):
+            for policy in ("before", "after") if repeat % 2 == 0 else ("after", "before"):
+                row = json.loads(
+                    subprocess.check_output([sys.executable, str(HERE / "escaped.py"), policy, mode, kind], text=True)
+                )
+                row["repeat"] = repeat + 1
+                rows.append(row)
+                (OUTPUT / "escaped.json").write_text(json.dumps(rows, indent=2) + "\n")
+                print("escaped", policy, mode, repeat, kind, flush=True)
+for script in ("inspection", "inspection-full"):
+    rows = []
+    for repeat in range(3):
+        for policy in ("before", "after") if repeat % 2 == 0 else ("after", "before"):
+            command = [sys.executable, str(HERE / f"{script}.py"), policy]
+            if script == "inspection":
+                command.append("rich-run")
+            row = json.loads(subprocess.check_output(command, text=True))
+            row["repeat"] = repeat + 1
+            rows.append(row)
+            (OUTPUT / f"{script}.json").write_text(json.dumps(rows, indent=2) + "\n")
+            print(script, policy, repeat, flush=True)

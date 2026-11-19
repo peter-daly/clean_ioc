@@ -1,0 +1,153 @@
+warning[unsupported-base]: Unsupported class base
+  --> .work/graph-memory-optimization/evidence/06-cache-lifetime.py:22:13
+   |
+22 | class Cache(base):
+   |             ^^^^ Has type `<class 'WeakValueDictionary'> | <class 'dict'>`
+info: ty cannot resolve a consistent method resolution order (MRO) for class `Cache` due to this base
+info: Only class objects or `Any` are supported as class bases
+
+error[invalid-argument-type]: Argument to function `module_from_spec` is incorrect
+  --> .work/graph-memory-optimization/evidence/06-payload-lifetime.py:11:41
+   |
+11 | probe = importlib.util.module_from_spec(spec)
+   |                                         ^^^^ Expected `ModuleSpec`, found `ModuleSpec | None`
+info: element `None` of union `ModuleSpec | None` is not assignable to `ModuleSpec`
+info: Function defined here
+  --> stdlib/_frozen_importlib.pyi:44:5
+   |
+44 | def module_from_spec(spec: importlib.machinery.ModuleSpec) -> types.ModuleType:
+   |     ^^^^^^^^^^^^^^^^ ------------------------------------ Parameter declared here
+
+error[unresolved-attribute]: Attribute `name` is not defined on `None` in union `ModuleSpec | None`
+  --> .work/graph-memory-optimization/evidence/06-payload-lifetime.py:12:13
+   |
+12 | sys.modules[spec.name] = probe
+   |             ^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `exec_module` is not defined on `None` in union `Loader | None`
+  --> .work/graph-memory-optimization/evidence/06-payload-lifetime.py:13:1
+   |
+13 | spec.loader.exec_module(probe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `loader` is not defined on `None` in union `ModuleSpec | None`
+  --> .work/graph-memory-optimization/evidence/06-payload-lifetime.py:13:1
+   |
+13 | spec.loader.exec_module(probe)
+   | ^^^^^^^^^^^
+
+error[invalid-assignment]: Object of type `def snapshot(component) -> Unknown` is not assignable to attribute `_undecorated_component_view` of type `def _undecorated_component_view(component: Component) -> Component`
+   --> .work/graph-memory-optimization/evidence/06-probe.py:276:9
+    |
+276 |         runtime._undecorated_component_view = snapshot
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[invalid-assignment]: Invalid subscript assignment with key of type `Literal["probe_source_sha256"]` and value of type `str` on object of type `dict[str, list[Any] | dict[str, Any]]`
+   --> .work/graph-memory-optimization/evidence/06-probe.py:506:5
+    |
+506 |     result["probe_source_sha256"] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------------------------------------------------
+    |                                     |
+    |                                     Expected value of type `list[Any] | dict[str, Any]`, got `str`
+info: The full type of the subscripted object is `dict[str, list[Any] | dict[str, Any]] | Unknown`
+
+error[invalid-argument-type]: Argument to function `module_from_spec` is incorrect
+  --> .work/graph-memory-optimization/evidence/06-semantics.py:14:41
+   |
+14 | probe = importlib.util.module_from_spec(spec)
+   |                                         ^^^^ Expected `ModuleSpec`, found `ModuleSpec | None`
+info: element `None` of union `ModuleSpec | None` is not assignable to `ModuleSpec`
+info: Function defined here
+  --> stdlib/_frozen_importlib.pyi:44:5
+   |
+44 | def module_from_spec(spec: importlib.machinery.ModuleSpec) -> types.ModuleType:
+   |     ^^^^^^^^^^^^^^^^ ------------------------------------ Parameter declared here
+
+error[unresolved-attribute]: Attribute `name` is not defined on `None` in union `ModuleSpec | None`
+  --> .work/graph-memory-optimization/evidence/06-semantics.py:15:13
+   |
+15 | sys.modules[spec.name] = probe
+   |             ^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `exec_module` is not defined on `None` in union `Loader | None`
+  --> .work/graph-memory-optimization/evidence/06-semantics.py:16:1
+   |
+16 | spec.loader.exec_module(probe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `loader` is not defined on `None` in union `ModuleSpec | None`
+  --> .work/graph-memory-optimization/evidence/06-semantics.py:16:1
+   |
+16 | spec.loader.exec_module(probe)
+   | ^^^^^^^^^^^
+
+error[invalid-argument-type]: Argument to bound method `list.extend` is incorrect
+  --> .work/graph-memory-optimization/evidence/06-semantics.py:51:24
+   |
+51 |         pending.extend(item)
+   |                        ^^^^ Expected `Iterable[_Step]`, found `(_Step & tuple[object, ...]) | (_Step & Top[list[Unknown]])`
+info: element `_Step & tuple[object, ...]` of union `(_Step & tuple[object, ...]) | (_Step & Top[list[Unknown]])` is not assignable to `Iterable[_Step]`
+info: └── no element of intersection `_Step & tuple[object, ...]` is assignable to `Iterable[_Step]`
+info:     ├── type `_Step` is not assignable to protocol `Iterable[_Step]`
+info:     │   └── protocol member `__iter__` is not defined on type `_Step`
+info:     └── type `tuple[object, ...]` is not assignable to protocol `Iterable[_Step]`
+info:         └── protocol member `__iter__` is incompatible
+info:             └── incompatible return types: `Iterator[object]` is not assignable to `Iterator[_Step]`
+info:                 └── protocol `Iterator[object]` is not assignable to protocol `Iterator[_Step]`
+info:                     └── protocol member `__next__` is incompatible
+info:                         └── incompatible return types: `object` is not assignable to `_Step`
+info: Method defined here
+    --> stdlib/builtins.pyi:2984:9
+     |
+2984 |     def extend(self, iterable: Iterable[_T], /) -> None:
+     |         ^^^^^^       ---------------------- Parameter declared here
+
+error[invalid-argument-type]: Argument to function `fields` is incorrect
+  --> .work/graph-memory-optimization/evidence/06-semantics.py:56:82
+   |
+56 |         pending.extend(getattr(item, field.name) for field in dataclasses.fields(item))
+   |                                                                                  ^^^^ Expected `DataclassInstance | type[DataclassInstance]`, found `_Step & ~tuple[object, ...] & ~Top[list[Unknown]]`
+info: type `_Step & ~tuple[object, ...] & ~Top[list[Unknown]]` is not assignable to any element of the union `DataclassInstance | type[DataclassInstance]`
+info: ├── no element of intersection `_Step & ~tuple[object, ...] & ~Top[list[Unknown]]` is assignable to `DataclassInstance`
+info: │   └── type `_Step` is not assignable to protocol `DataclassInstance`
+info: │       └── protocol member `__dataclass_fields__` is not defined on type `_Step`
+info: └── ... omitted 1 union element without additional context
+info: Function defined here
+   --> stdlib/dataclasses.pyi:396:5
+    |
+396 | def fields(class_or_instance: DataclassInstance | type[DataclassInstance]) -> tuple[Field[Any], ...]:
+    |     ^^^^^^ -------------------------------------------------------------- Parameter declared here
+
+error[invalid-argument-type]: Argument to function `len` is incorrect
+  --> .work/graph-memory-optimization/evidence/06-semantics.py:63:29
+   |
+63 |     "physical_records": len(plan.graph._records),
+   |                             ^^^^^^^^^^^^^^^^^^^ Expected `Sized`, found `dict[int, _ComponentRecord] | None`
+info: element `None` of union `dict[int, _ComponentRecord] | None` is not assignable to `Sized`
+info: └── type `None` is not assignable to protocol `Sized`
+info:     └── protocol member `__len__` is not defined on type `None`
+info: Function defined here
+    --> stdlib/builtins.pyi:4141:5
+     |
+4141 | def len(obj: Sized, /) -> int:
+     |     ^^^ ---------- Parameter declared here
+
+error[unresolved-attribute]: Object of type `ValidationContext` has no attribute `issue`
+   --> .work/graph-memory-optimization/evidence/06-semantics.py:118:46
+    |
+118 | builder.add_validation_rule(lambda context: [context.issue("refused", "refused")])
+    |                                              ^^^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `roots` is not defined on `None` in union `CompiledGraph | None`
+   --> .work/graph-memory-optimization/evidence/06-semantics.py:123:49
+    |
+123 |     component = next(root.component for root in graph.roots if root.requested_type is Service)
+    |                                                 ^^^^^^^^^^^
+
+error[unresolved-attribute]: Attribute `explain_decorators` is not defined on `None` in union `CompiledGraph | None`
+   --> .work/graph-memory-optimization/evidence/06-semantics.py:125:23
+    |
+125 |         explanation = graph.explain_decorators(component)
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^
+
+Found 17 diagnostics

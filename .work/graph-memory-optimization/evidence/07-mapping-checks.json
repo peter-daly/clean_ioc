@@ -1,0 +1,14 @@
+{
+  "checks": 9,
+  "keys": [
+    1,
+    -18446744073709551620,
+    1000000000000,
+    4,
+    null
+  ],
+  "dense_capacity": 5,
+  "sparse_entries": 3,
+  "insertion_order": "preserved",
+  "numeric_equivalence_preserved": false
+}

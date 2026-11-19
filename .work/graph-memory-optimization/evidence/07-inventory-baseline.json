@@ -1,0 +1,1349 @@
+{
+  "activations": {
+    "branch": 3844,
+    "endpoint": 8,
+    "endpoint_decorator": 8,
+    "leaf": 3968,
+    "policy": 2,
+    "route_dependency": 34,
+    "route_source": 34,
+    "state": 27,
+    "worker": 124,
+    "worker_decorator": 248
+  },
+  "allow_scope_builders": false,
+  "before": {
+    "peak_rss_bytes": 49840128,
+    "rss_bytes": 49446912
+  },
+  "build_seconds": 11.499339667032473,
+  "diagnostics": false,
+  "explain_metadata": false,
+  "graph": {
+    "activation_kinds": {
+      "collection": 16,
+      "constructor": 8130,
+      "deferred": 218,
+      "supplied": 618
+    },
+    "component_metadata": {
+      "definition_identity_patterns": 116,
+      "identity_patterns": 903,
+      "patterns_by_kind": {
+        "decorator": 10,
+        "managed_provider": 50,
+        "provider": 168,
+        "provider_map": 16,
+        "registration": 41,
+        "value": 618
+      },
+      "retained_definition_index_bytes": 0,
+      "shared_definition_bytes": 13920,
+      "shared_definition_objects": 116,
+      "unique_field_objects": {
+        "activation": 4,
+        "boundary": 1,
+        "build_args": 1,
+        "declared_service_type": 15,
+        "id": 889,
+        "implementation": 20,
+        "implementation_type": 20,
+        "kind": 6,
+        "lifespan": 3,
+        "name": 11,
+        "service_type": 45,
+        "tags": 1
+      }
+    },
+    "decorator_objects": {
+      "logical_outcomes_by_entry": {},
+      "logical_reason_codes_by_entry": {},
+      "outcomes": {},
+      "reason_codes": {},
+      "shallow_storage_bytes": {
+        "decision_tuples": 0,
+        "decisions": 0,
+        "explanations": 0,
+        "template_facts": 0
+      },
+      "unique_objects": {
+        "decision_tuples": 0,
+        "decisions": 0,
+        "explanations": 0,
+        "template_facts": 0
+      },
+      "unique_patterns": 0
+    },
+    "executable_helpers": {
+      "_CompiledDecorator": 240,
+      "_CompiledDependency": 1740
+    },
+    "execution_step_kinds": {
+      "_ContextProviderStep": 152,
+      "_ManagedProviderStep": 50,
+      "_ProviderMapStep": 32,
+      "_ProviderStep": 168,
+      "_ScopedRegistrationStep": 193,
+      "_SingletonRegistrationStep": 226,
+      "_TransientRegistrationStep": 326,
+      "_ValueStep": 618
+    },
+    "logical_graph_visits": null,
+    "metadata_entries": {
+      "census_definitions": 0,
+      "census_sources": 0,
+      "decorator_explanations": 0,
+      "generic_explanations": 0,
+      "occurrence_explanations": 0,
+      "parameter_explanations": 0,
+      "root_candidates": 0
+    },
+    "physical_records": 8982,
+    "provider_view_contexts": 50,
+    "record_kinds": {
+      "decorator": 232,
+      "managed_provider": 50,
+      "provider": 168,
+      "provider_map": 16,
+      "registration": 7898,
+      "value": 618
+    },
+    "registration_carrier_kinds": {
+      "_RuntimeRegistration": 43
+    },
+    "retained_execution_composition": {
+      "decorator_definitions": 0,
+      "decorator_dependency_settings": 0,
+      "registration_dependency_settings": 0
+    },
+    "retained_plan_fields": {
+      "_blueprint": {
+        "entries": null,
+        "shallow_bytes": 16,
+        "type": "NoneType"
+      },
+      "architecture_roots": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "area_root_candidates": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "build_args": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "build_report": {
+        "entries": null,
+        "shallow_bytes": 72,
+        "type": "BuildReport"
+      },
+      "census_definitions": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "census_ids": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "census_sources": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "compiled_graph": {
+        "entries": null,
+        "shallow_bytes": 16,
+        "type": "NoneType"
+      },
+      "compiler_issues": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "decorator_explanations": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "default_root_groups": {
+        "entries": 14,
+        "shallow_bytes": 632,
+        "type": "dict"
+      },
+      "default_roots": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "dict"
+      },
+      "diagnostics": {
+        "entries": null,
+        "shallow_bytes": 28,
+        "type": "bool"
+      },
+      "ensured_import_modules": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "explain_metadata": {
+        "entries": null,
+        "shallow_bytes": 28,
+        "type": "bool"
+      },
+      "fallback_ids": {
+        "entries": 0,
+        "shallow_bytes": 216,
+        "type": "frozenset"
+      },
+      "generic_explanations": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "graph": {
+        "entries": null,
+        "shallow_bytes": 64,
+        "type": "_ComponentGraph"
+      },
+      "managed_provider_roots": {
+        "entries": 4,
+        "shallow_bytes": 224,
+        "type": "mappingproxy"
+      },
+      "occurrence_explanations": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "occurrence_layers": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "occurrence_origins": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "parameter_explanations": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "provider_roots": {
+        "entries": 4,
+        "shallow_bytes": 224,
+        "type": "mappingproxy"
+      },
+      "root_candidates": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      },
+      "roots": {
+        "entries": 14,
+        "shallow_bytes": 632,
+        "type": "dict"
+      },
+      "selected_registrations": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "slots": {
+        "entries": 0,
+        "shallow_bytes": 216,
+        "type": "frozenset"
+      },
+      "unreachable_checked": {
+        "entries": null,
+        "shallow_bytes": 28,
+        "type": "bool"
+      },
+      "unreachable_issue_offset": {
+        "entries": null,
+        "shallow_bytes": 28,
+        "type": "int"
+      },
+      "validation_rules": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "warmup_fingerprint": {
+        "entries": null,
+        "shallow_bytes": 41,
+        "type": "str"
+      },
+      "warmup_infos": {
+        "entries": 0,
+        "shallow_bytes": 48,
+        "type": "tuple"
+      },
+      "warmup_steps": {
+        "entries": 0,
+        "shallow_bytes": 64,
+        "type": "mappingproxy"
+      }
+    },
+    "selected_registrations": 0,
+    "shallow_storage_bytes": {
+      "component_records": 1580832,
+      "execution_steps": 158104,
+      "link_tuples": 301520,
+      "occurrence_integers": 253744,
+      "origin_indexes": 128,
+      "record_index": 294992,
+      "registration_objects": 3096
+    },
+    "unique_execution_steps": 1765,
+    "unique_origins": 0,
+    "unique_registration_objects": 43
+  },
+  "instrumentation": "none",
+  "layout_inventory": {
+    "classes": [
+      {
+        "basicsize": 16,
+        "dict_offset": -1,
+        "mro": [
+          "_Step",
+          "object"
+        ],
+        "name": "_Step",
+        "slots": {
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 24,
+        "dict_offset": -1,
+        "mro": [
+          "_ValueStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ValueStep",
+        "slots": {
+          "_Step": null,
+          "_ValueStep": [
+            "value"
+          ],
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 32,
+        "dict_offset": -1,
+        "mro": [
+          "_ProvidedStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ProvidedStep",
+        "slots": {
+          "_ProvidedStep": [
+            "service_type",
+            "name"
+          ],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 32,
+        "dict_offset": -1,
+        "mro": [
+          "_ScopeStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ScopeStep",
+        "slots": {
+          "_ScopeStep": [
+            "requested_type",
+            "resolution_requests"
+          ],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 40,
+        "dict_offset": -1,
+        "mro": [
+          "_CollectionStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_CollectionStep",
+        "slots": {
+          "_CollectionStep": [
+            "collection_type",
+            "members",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 40,
+        "dict_offset": -1,
+        "mro": [
+          "_ManagedCollectionStep",
+          "_CollectionStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ManagedCollectionStep",
+        "slots": {
+          "_CollectionStep": [
+            "collection_type",
+            "members",
+            "sync_supported"
+          ],
+          "_ManagedCollectionStep": [],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 48,
+        "dict_offset": -1,
+        "mro": [
+          "_ProviderStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ProviderStep",
+        "slots": {
+          "_ProviderStep": [
+            "mode",
+            "target",
+            "bound_owner_token",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 48,
+        "dict_offset": -1,
+        "mro": [
+          "_ContextProviderStep",
+          "_ProviderStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ContextProviderStep",
+        "slots": {
+          "_ContextProviderStep": [],
+          "_ProviderStep": [
+            "mode",
+            "target",
+            "bound_owner_token",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 56,
+        "dict_offset": -1,
+        "mro": [
+          "_ObservedContextProviderStep",
+          "_ContextProviderStep",
+          "_ProviderStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ObservedContextProviderStep",
+        "slots": {
+          "_ContextProviderStep": [],
+          "_ObservedContextProviderStep": [
+            "_profile_key"
+          ],
+          "_ProviderStep": [
+            "mode",
+            "target",
+            "bound_owner_token",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 56,
+        "dict_offset": -1,
+        "mro": [
+          "_ManagedProviderStep",
+          "_ProviderStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ManagedProviderStep",
+        "slots": {
+          "_ManagedProviderStep": [
+            "cleanup_sync_supported"
+          ],
+          "_ProviderStep": [
+            "mode",
+            "target",
+            "bound_owner_token",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 64,
+        "dict_offset": -1,
+        "mro": [
+          "_ObservedManagedProviderStep",
+          "_ManagedProviderStep",
+          "_ProviderStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ObservedManagedProviderStep",
+        "slots": {
+          "_ManagedProviderStep": [
+            "cleanup_sync_supported"
+          ],
+          "_ObservedManagedProviderStep": [
+            "_profile_key"
+          ],
+          "_ProviderStep": [
+            "mode",
+            "target",
+            "bound_owner_token",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 40,
+        "dict_offset": -1,
+        "mro": [
+          "_PerCallStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_PerCallStep",
+        "slots": {
+          "_PerCallStep": [
+            "proxy_type",
+            "target",
+            "bound_owner_token"
+          ],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 88,
+        "dict_offset": -1,
+        "mro": [
+          "_RegistrationStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_RegistrationStep",
+        "slots": {
+          "_RegistrationStep": [
+            "registration",
+            "source_service_type",
+            "owner_token",
+            "component",
+            "dependencies",
+            "pre_configurations",
+            "decorators",
+            "cleanup_owner",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 88,
+        "dict_offset": -1,
+        "mro": [
+          "_TransientRegistrationStep",
+          "_RegistrationStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_TransientRegistrationStep",
+        "slots": {
+          "_RegistrationStep": [
+            "registration",
+            "source_service_type",
+            "owner_token",
+            "component",
+            "dependencies",
+            "pre_configurations",
+            "decorators",
+            "cleanup_owner",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "_TransientRegistrationStep": [],
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 96,
+        "dict_offset": -1,
+        "mro": [
+          "_ProviderMapStep",
+          "_TransientRegistrationStep",
+          "_RegistrationStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ProviderMapStep",
+        "slots": {
+          "_ProviderMapStep": [
+            "key_indices"
+          ],
+          "_RegistrationStep": [
+            "registration",
+            "source_service_type",
+            "owner_token",
+            "component",
+            "dependencies",
+            "pre_configurations",
+            "decorators",
+            "cleanup_owner",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "_TransientRegistrationStep": [],
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 88,
+        "dict_offset": -1,
+        "mro": [
+          "_PerResolutionRegistrationStep",
+          "_RegistrationStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_PerResolutionRegistrationStep",
+        "slots": {
+          "_PerResolutionRegistrationStep": [],
+          "_RegistrationStep": [
+            "registration",
+            "source_service_type",
+            "owner_token",
+            "component",
+            "dependencies",
+            "pre_configurations",
+            "decorators",
+            "cleanup_owner",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 88,
+        "dict_offset": -1,
+        "mro": [
+          "_ScopedRegistrationStep",
+          "_RegistrationStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ScopedRegistrationStep",
+        "slots": {
+          "_RegistrationStep": [
+            "registration",
+            "source_service_type",
+            "owner_token",
+            "component",
+            "dependencies",
+            "pre_configurations",
+            "decorators",
+            "cleanup_owner",
+            "sync_supported"
+          ],
+          "_ScopedRegistrationStep": [],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 88,
+        "dict_offset": -1,
+        "mro": [
+          "_PerCallTargetRegistrationStep",
+          "_ScopedRegistrationStep",
+          "_RegistrationStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_PerCallTargetRegistrationStep",
+        "slots": {
+          "_PerCallTargetRegistrationStep": [],
+          "_RegistrationStep": [
+            "registration",
+            "source_service_type",
+            "owner_token",
+            "component",
+            "dependencies",
+            "pre_configurations",
+            "decorators",
+            "cleanup_owner",
+            "sync_supported"
+          ],
+          "_ScopedRegistrationStep": [],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 88,
+        "dict_offset": -1,
+        "mro": [
+          "_SingletonRegistrationStep",
+          "_RegistrationStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_SingletonRegistrationStep",
+        "slots": {
+          "_RegistrationStep": [
+            "registration",
+            "source_service_type",
+            "owner_token",
+            "component",
+            "dependencies",
+            "pre_configurations",
+            "decorators",
+            "cleanup_owner",
+            "sync_supported"
+          ],
+          "_SingletonRegistrationStep": [],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 16,
+        "dict_offset": -1,
+        "mro": [
+          "_ObservedRegistrationMixin",
+          "object"
+        ],
+        "name": "_ObservedRegistrationMixin",
+        "slots": {
+          "_ObservedRegistrationMixin": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 96,
+        "dict_offset": -1,
+        "mro": [
+          "_ObservedTransientStep",
+          "_ObservedRegistrationMixin",
+          "_TransientRegistrationStep",
+          "_RegistrationStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ObservedTransientStep",
+        "slots": {
+          "_ObservedRegistrationMixin": null,
+          "_ObservedTransientStep": [
+            "_profile_key"
+          ],
+          "_RegistrationStep": [
+            "registration",
+            "source_service_type",
+            "owner_token",
+            "component",
+            "dependencies",
+            "pre_configurations",
+            "decorators",
+            "cleanup_owner",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "_TransientRegistrationStep": [],
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 104,
+        "dict_offset": -1,
+        "mro": [
+          "_ObservedProviderMapStep",
+          "_ObservedRegistrationMixin",
+          "_ProviderMapStep",
+          "_TransientRegistrationStep",
+          "_RegistrationStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ObservedProviderMapStep",
+        "slots": {
+          "_ObservedProviderMapStep": [
+            "_profile_key"
+          ],
+          "_ObservedRegistrationMixin": null,
+          "_ProviderMapStep": [
+            "key_indices"
+          ],
+          "_RegistrationStep": [
+            "registration",
+            "source_service_type",
+            "owner_token",
+            "component",
+            "dependencies",
+            "pre_configurations",
+            "decorators",
+            "cleanup_owner",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "_TransientRegistrationStep": [],
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 96,
+        "dict_offset": -1,
+        "mro": [
+          "_ObservedPerResolutionStep",
+          "_ObservedRegistrationMixin",
+          "_PerResolutionRegistrationStep",
+          "_RegistrationStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ObservedPerResolutionStep",
+        "slots": {
+          "_ObservedPerResolutionStep": [
+            "_profile_key"
+          ],
+          "_ObservedRegistrationMixin": null,
+          "_PerResolutionRegistrationStep": [],
+          "_RegistrationStep": [
+            "registration",
+            "source_service_type",
+            "owner_token",
+            "component",
+            "dependencies",
+            "pre_configurations",
+            "decorators",
+            "cleanup_owner",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 16,
+        "dict_offset": -1,
+        "mro": [
+          "_ObservedScopedCacheMixin",
+          "object"
+        ],
+        "name": "_ObservedScopedCacheMixin",
+        "slots": {
+          "_ObservedScopedCacheMixin": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 96,
+        "dict_offset": -1,
+        "mro": [
+          "_ObservedScopedStep",
+          "_ObservedScopedCacheMixin",
+          "_ObservedRegistrationMixin",
+          "_ScopedRegistrationStep",
+          "_RegistrationStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ObservedScopedStep",
+        "slots": {
+          "_ObservedRegistrationMixin": null,
+          "_ObservedScopedCacheMixin": null,
+          "_ObservedScopedStep": [
+            "_profile_key"
+          ],
+          "_RegistrationStep": [
+            "registration",
+            "source_service_type",
+            "owner_token",
+            "component",
+            "dependencies",
+            "pre_configurations",
+            "decorators",
+            "cleanup_owner",
+            "sync_supported"
+          ],
+          "_ScopedRegistrationStep": [],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 96,
+        "dict_offset": -1,
+        "mro": [
+          "_ObservedPerCallTargetStep",
+          "_ObservedScopedCacheMixin",
+          "_ObservedRegistrationMixin",
+          "_PerCallTargetRegistrationStep",
+          "_ScopedRegistrationStep",
+          "_RegistrationStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ObservedPerCallTargetStep",
+        "slots": {
+          "_ObservedPerCallTargetStep": [
+            "_profile_key"
+          ],
+          "_ObservedRegistrationMixin": null,
+          "_ObservedScopedCacheMixin": null,
+          "_PerCallTargetRegistrationStep": [],
+          "_RegistrationStep": [
+            "registration",
+            "source_service_type",
+            "owner_token",
+            "component",
+            "dependencies",
+            "pre_configurations",
+            "decorators",
+            "cleanup_owner",
+            "sync_supported"
+          ],
+          "_ScopedRegistrationStep": [],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 96,
+        "dict_offset": -1,
+        "mro": [
+          "_ObservedSingletonStep",
+          "_ObservedRegistrationMixin",
+          "_SingletonRegistrationStep",
+          "_RegistrationStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ObservedSingletonStep",
+        "slots": {
+          "_ObservedRegistrationMixin": null,
+          "_ObservedSingletonStep": [
+            "_profile_key"
+          ],
+          "_RegistrationStep": [
+            "registration",
+            "source_service_type",
+            "owner_token",
+            "component",
+            "dependencies",
+            "pre_configurations",
+            "decorators",
+            "cleanup_owner",
+            "sync_supported"
+          ],
+          "_SingletonRegistrationStep": [],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 40,
+        "dict_offset": -1,
+        "mro": [
+          "_ObservedCallSiteStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ObservedCallSiteStep",
+        "slots": {
+          "_ObservedCallSiteStep": [
+            "target",
+            "caller_key",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 56,
+        "dict_offset": -1,
+        "mro": [
+          "_ObservedProviderStep",
+          "_ProviderStep",
+          "_Step",
+          "object"
+        ],
+        "name": "_ObservedProviderStep",
+        "slots": {
+          "_ObservedProviderStep": [
+            "_profile_key"
+          ],
+          "_ProviderStep": [
+            "mode",
+            "target",
+            "bound_owner_token",
+            "sync_supported"
+          ],
+          "_Step": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 16,
+        "dict_offset": -1,
+        "mro": [
+          "_ObservedScopeMixin",
+          "object"
+        ],
+        "name": "_ObservedScopeMixin",
+        "slots": {
+          "_ObservedScopeMixin": null,
+          "object": null
+        },
+        "weakref_offset": -32
+      },
+      {
+        "basicsize": 104,
+        "dict_offset": 0,
+        "mro": [
+          "_ComponentDefinition",
+          "object"
+        ],
+        "name": "_ComponentDefinition",
+        "slots": {
+          "_ComponentDefinition": [
+            "service_type",
+            "implementation",
+            "implementation_type",
+            "lifespan",
+            "name",
+            "tags",
+            "build_args",
+            "kind",
+            "activation",
+            "boundary",
+            "declared_service_type"
+          ],
+          "object": null
+        },
+        "weakref_offset": 0
+      },
+      {
+        "basicsize": 160,
+        "dict_offset": 0,
+        "mro": [
+          "_ComponentRecord",
+          "object"
+        ],
+        "name": "_ComponentRecord",
+        "slots": {
+          "_ComponentRecord": [
+            "_definition",
+            "id",
+            "occurrence_id",
+            "requires_async",
+            "manages_cleanup",
+            "cache_owner",
+            "cleanup_owner",
+            "owner_id",
+            "ownership_reason",
+            "provider_mode",
+            "position",
+            "argument",
+            "parent_id",
+            "dependency_ids",
+            "decorator_ids",
+            "decorated_id",
+            "pre_configuration_ids",
+            "_generic_mapping"
+          ],
+          "object": null
+        },
+        "weakref_offset": 0
+      },
+      {
+        "basicsize": 232,
+        "dict_offset": 0,
+        "mro": [
+          "_ComponentDraft",
+          "object"
+        ],
+        "name": "_ComponentDraft",
+        "slots": {
+          "_ComponentDraft": [
+            "id",
+            "occurrence_id",
+            "service_type",
+            "implementation",
+            "implementation_type",
+            "lifespan",
+            "name",
+            "tags",
+            "build_args",
+            "kind",
+            "activation",
+            "requires_async",
+            "manages_cleanup",
+            "cache_owner",
+            "cleanup_owner",
+            "owner_id",
+            "ownership_reason",
+            "provider_mode",
+            "position",
+            "argument",
+            "parent_id",
+            "dependency_ids",
+            "decorator_ids",
+            "decorated_id",
+            "pre_configuration_ids",
+            "boundary",
+            "declared_service_type"
+          ],
+          "object": null
+        },
+        "weakref_offset": 0
+      },
+      {
+        "basicsize": 48,
+        "dict_offset": 0,
+        "mro": [
+          "_ComponentGraph",
+          "object"
+        ],
+        "name": "_ComponentGraph",
+        "slots": {
+          "_ComponentGraph": [
+            "_drafts",
+            "_records",
+            "_views",
+            "_reduced"
+          ],
+          "object": null
+        },
+        "weakref_offset": 0
+      },
+      {
+        "basicsize": 40,
+        "dict_offset": 0,
+        "mro": [
+          "_ComponentViewContext",
+          "object"
+        ],
+        "name": "_ComponentViewContext",
+        "slots": {
+          "_ComponentViewContext": [
+            "root",
+            "parent",
+            "index"
+          ],
+          "object": null
+        },
+        "weakref_offset": 0
+      },
+      {
+        "basicsize": 40,
+        "dict_offset": 0,
+        "mro": [
+          "_ComponentViewRecord",
+          "object"
+        ],
+        "name": "_ComponentViewRecord",
+        "slots": {
+          "_ComponentViewRecord": [
+            "graph",
+            "context",
+            "source"
+          ],
+          "object": null
+        },
+        "weakref_offset": 0
+      }
+    ],
+    "created_steps": {
+      "_ManagedProviderStep": 50,
+      "_ProviderMapStep": 32,
+      "_ProviderStep": 320,
+      "_RegistrationStep": 56708,
+      "_ValueStep": 31157
+    },
+    "primary": [
+      {
+        "draft_packing_seconds": 0.17052716598846018,
+        "draft_pool_shallow_bytes": 36240,
+        "draft_tuple_identity_definitions": 116,
+        "drafts": 88558,
+        "indexes": {
+          "decorator_explanations": {
+            "entries": 56522,
+            "insertion_order_sorted": false,
+            "max": 88507,
+            "min": 1,
+            "sequence_capacity_bytes": 708064,
+            "shallow_bytes": 2621528,
+            "unique_values": 56522
+          },
+          "origins": {
+            "entries": 88558,
+            "insertion_order_sorted": true,
+            "max": 88558,
+            "min": 1,
+            "sequence_capacity_bytes": 708472,
+            "shallow_bytes": 5242960,
+            "unique_values": 45
+          }
+        },
+        "live_steps": {
+          "_ContextProviderStep": 152,
+          "_ManagedProviderStep": 50,
+          "_ProviderMapStep": 32,
+          "_ProviderStep": 168,
+          "_ScopedRegistrationStep": 3273,
+          "_SingletonRegistrationStep": 1570,
+          "_TransientRegistrationStep": 26310,
+          "_ValueStep": 31026
+        },
+        "step_shallow_bytes": {
+          "_ContextProviderStep": 12160,
+          "_ManagedProviderStep": 4400,
+          "_ProviderMapStep": 4096,
+          "_ProviderStep": 13440,
+          "_ScopedRegistrationStep": 392760,
+          "_SingletonRegistrationStep": 188400,
+          "_TransientRegistrationStep": 3157200,
+          "_ValueStep": 1737456
+        }
+      }
+    ],
+    "value_step_shallow_bytes": 56,
+    "weakref_value_step": true
+  },
+  "lazy_activations": {
+    "endpoint": 8,
+    "endpoint_decorator": 8,
+    "route_dependency": 8,
+    "route_source": 8
+  },
+  "machine": "arm64",
+  "ownership": {
+    "captured_selection_views": false,
+    "retained_builder": false
+  },
+  "pid": 1986,
+  "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "prepared": {
+    "peak_rss_bytes": 140050432,
+    "rss_bytes": 140050432
+  },
+  "probe": "baseline",
+  "probe_source_sha256": "8fb174f5fe2861cdcd72bd933bd62226778e077b20609cd4e3df44600b39118e",
+  "python": "3.14.4",
+  "resolve_seconds": 0.014815541915595531,
+  "resolved": {
+    "peak_rss_bytes": 140050432,
+    "rss_bytes": 140050432
+  },
+  "retained_graph_inventory": {
+    "captured_views": 0,
+    "graphs": 1,
+    "records": 8982,
+    "saved_views_in_primary_graph": 0,
+    "saved_views_in_separate_snapshots": 0
+  },
+  "routes": 8,
+  "source": {
+    "local_changes": " M .work/README.md\n M .work/graph-memory-optimization/README.md\n?? .work/graph-memory-optimization/06-avoid-metadata-creation.md\n?? .work/graph-memory-optimization/06-inventory.md\n?? .work/graph-memory-optimization/06-result.md\n?? .work/graph-memory-optimization/07-inventory.md\n?? .work/graph-memory-optimization/07-object-layout-and-allocation.md\n?? .work/graph-memory-optimization/07-result.md\n?? .work/graph-memory-optimization/evidence/06-allocator-stats.txt\n?? .work/graph-memory-optimization/evidence/06-allocator.json\n?? .work/graph-memory-optimization/evidence/06-allocator.py\n?? .work/graph-memory-optimization/evidence/06-baseline.json\n?? .work/graph-memory-optimization/evidence/06-cache-lifetime.py\n?? .work/graph-memory-optimization/evidence/06-cache-strong.json\n?? .work/graph-memory-optimization/evidence/06-cache-weak.json\n?? .work/graph-memory-optimization/evidence/06-count-baseline.json\n?? .work/graph-memory-optimization/evidence/06-count-intern-template-facts.json\n?? .work/graph-memory-optimization/evidence/06-evidence-index.json\n?? .work/graph-memory-optimization/evidence/06-final-check-exit-codes.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-baseline-full.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-baseline-reduced.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-intern-template-facts-full.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-intern-template-facts-reduced.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-scalar-weak-cache-full.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-scalar-weak-cache-reduced.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-weak-activation-cache-full.json\n?? .work/graph-memory-optimization/evidence/06-final-semantics-weak-activation-cache-reduced.json\n?? .work/graph-memory-optimization/evidence/06-full-tests-intern-template-facts.txt\n?? .work/graph-memory-optimization/evidence/06-full-tests-scalar-weak-cache.txt\n?? .work/graph-memory-optimization/evidence/06-full-tests-weak-activation-cache.txt\n?? .work/graph-memory-optimization/evidence/06-payload-baseline.json\n?? .work/graph-memory-optimization/evidence/06-payload-lifetime.py\n?? .work/graph-memory-optimization/evidence/06-payload-scalar-weak-cache.json\n?? .work/graph-memory-optimization/evidence/06-payload-weak-cache.json\n?? .work/graph-memory-optimization/evidence/06-probe-small-original.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-timeline-original.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v1.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v2.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v3.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v4-typed.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe-v4.py.txt\n?? .work/graph-memory-optimization/evidence/06-probe.py\n?? .work/graph-memory-optimization/evidence/06-repeat-baseline.json\n?? .work/graph-memory-optimization/evidence/06-repeat-intern-template-facts.json\n?? .work/graph-memory-optimization/evidence/06-repeat-scalar-weak-cache.json\n?? .work/graph-memory-optimization/evidence/06-repeat-weak-activation-cache.json\n?? .work/graph-memory-optimization/evidence/06-screen-no-decorator-evidence-heap.json\n?? .work/graph-memory-optimization/evidence/06-screen-no-decorator-evidence-normal.json\n?? .work/graph-memory-optimization/evidence/06-screen-release-source-graphs-heap.json\n?? .work/graph-memory-optimization/evidence/06-screen-release-source-graphs-normal.json\n?? .work/graph-memory-optimization/evidence/06-screen-snapshot-intern-heap.json\n?? .work/graph-memory-optimization/evidence/06-screen-snapshot-intern-normal.json\n?? .work/graph-memory-optimization/evidence/06-screen-snapshot-reuse-heap.json\n?? .work/graph-memory-optimization/evidence/06-screen-snapshot-reuse-normal.json\n?? .work/graph-memory-optimization/evidence/06-semantics-baseline.json\n?? .work/graph-memory-optimization/evidence/06-semantics-intern-template-facts.json\n?? .work/graph-memory-optimization/evidence/06-semantics-no-decorator-evidence.json\n?? .work/graph-memory-optimization/evidence/06-semantics-release-source-graphs.json\n?? .work/graph-memory-optimization/evidence/06-semantics-snapshot-intern.json\n?? .work/graph-memory-optimization/evidence/06-semantics-snapshot-reuse.json\n?? .work/graph-memory-optimization/evidence/06-semantics-weak-activation-cache.json\n?? .work/graph-memory-optimization/evidence/06-semantics.py\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-no-decorator-evidence.json\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-release-source-graphs.json\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-snapshot-intern.json\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-snapshot-reuse.json\n?? .work/graph-memory-optimization/evidence/06-small-initial-full-weak-activation-cache.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-baseline.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-intern-template-facts.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-no-decorator-evidence.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-release-source-graphs.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-scalar-weak-cache.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-snapshot-intern.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-snapshot-reuse.json\n?? .work/graph-memory-optimization/evidence/06-small-reduced-weak-activation-cache.json\n?? .work/graph-memory-optimization/evidence/06-source-check.json\n?? .work/graph-memory-optimization/evidence/06-test-exit-codes.json\n?? .work/graph-memory-optimization/evidence/06-tests-intern-template-facts-corrected.txt\n?? .work/graph-memory-optimization/evidence/06-tests-intern-template-facts.txt\n?? .work/graph-memory-optimization/evidence/06-tests-no-decorator-evidence.txt\n?? .work/graph-memory-optimization/evidence/06-tests-release-source-graphs.txt\n?? .work/graph-memory-optimization/evidence/06-tests-snapshot-intern.txt\n?? .work/graph-memory-optimization/evidence/06-tests-snapshot-reuse.txt\n?? .work/graph-memory-optimization/evidence/06-tests-weak-activation-cache.txt\n?? .work/graph-memory-optimization/evidence/06-timeline-diagnostics.json\n?? .work/graph-memory-optimization/evidence/06-timeline.json\n?? .work/graph-memory-optimization/evidence/06-tooling-format.txt\n?? .work/graph-memory-optimization/evidence/06-tooling-lint.txt\n?? .work/graph-memory-optimization/evidence/06-tooling-types-initial.txt\n?? .work/graph-memory-optimization/evidence/06-tooling-types.txt\n?? .work/graph-memory-optimization/evidence/06-validation.json\n?? .work/graph-memory-optimization/evidence/06-value-kinds-baseline.json\n?? .work/graph-memory-optimization/evidence/06-value-kinds-plain-weak.json\n?? .work/graph-memory-optimization/evidence/06-value-kinds-scalar-weak.json\n?? .work/graph-memory-optimization/evidence/06-value-kinds.py\n?? .work/graph-memory-optimization/evidence/07-baseline-container.py.txt\n?? .work/graph-memory-optimization/evidence/07-baseline-cpython-314-container.code.bin\n?? .work/graph-memory-optimization/evidence/07-example-test-exits.json\n?? .work/graph-memory-optimization/evidence/07-example-tests-indexes.txt\n?? .work/graph-memory-optimization/evidence/07-example-tests-prelookup.txt\n?? .work/graph-memory-optimization/evidence/07-example-tests-slots.txt\n?? .work/graph-memory-optimization/evidence/07-extended-comparison.json\n?? .work/graph-memory-optimization/evidence/07-extra-normal.py\n?? .work/graph-memory-optimization/evidence/07-full-test-exits.json\n?? .work/graph-memory-optimization/evidence/07-full-tests-indexes.txt\n?? .work/graph-memory-optimization/evidence/07-full-tests-prelookup.txt\n?? .work/graph-memory-optimization/evidence/07-full-tests-slots.txt\n?? .work/graph-memory-optimization/evidence/07-index-accounting-final.json\n?? .work/graph-memory-optimization/evidence/07-index-accounting-v1.py.txt\n?? .work/graph-memory-optimization/evidence/07-index-accounting.json\n?? .work/graph-memory-optimization/evidence/07-index-accounting.py\n?? .work/graph-memory-optimization/evidence/07-indexes-container.py.txt\n?? .work/graph-memory-optimization/evidence/07-indexes-cpython-314-container.code.bin\n?? .work/graph-memory-optimization/evidence/07-indexes-focused-tests.txt\n?? .work/graph-memory-optimization/evidence/07-inventory-baseline-initial.json\n?? .work/graph-memory-optimization/evidence/07-inventory-indexes.json\n?? .work/graph-memory-optimization/evidence/07-inventory-prelookup.json\n?? .work/graph-memory-optimization/evidence/07-inventory-slots.json\n?? .work/graph-memory-optimization/evidence/07-layout-micro-baseline-314.json\n?? .work/graph-memory-optimization/evidence/07-layout-micro-slots-311.json\n?? .work/graph-memory-optimization/evidence/07-layout-micro-slots-312.json\n?? .work/graph-memory-optimization/evidence/07-layout-micro-slots-313.json\n?? .work/graph-memory-optimization/evidence/07-layout-micro-slots-314.json\n?? .work/graph-memory-optimization/evidence/07-layout-micro.py\n?? .work/graph-memory-optimization/evidence/07-lifetimes-baseline.json\n?? .work/graph-memory-optimization/evidence/07-lifetimes-indexes.json\n?? .work/graph-memory-optimization/evidence/07-lifetimes-prelookup.json\n?? .work/graph-memory-optimization/evidence/07-lifetimes-slots.json\n?? .work/graph-memory-optimization/evidence/07-mapping-checks.json\n?? .work/graph-memory-optimization/evidence/07-mapping-checks.py\n?? .work/graph-memory-optimization/evidence/07-pool-accounting.json\n?? .work/graph-memory-optimization/evidence/07-pool-accounting.py\n?? .work/graph-memory-optimization/evidence/07-prelookup-container.py.txt\n?? .work/graph-memory-optimization/evidence/07-prelookup-cpython-314-container.code.bin\n?? .work/graph-memory-optimization/evidence/07-prelookup-focused-tests.txt\n?? .work/graph-memory-optimization/evidence/07-prepare.py\n?? .work/graph-memory-optimization/evidence/07-prepared-sources.json\n?? .work/graph-memory-optimization/evidence/07-probe-source-loader.py.txt\n?? .work/graph-memory-optimization/evidence/07-probe-v1.py.txt\n?? .work/graph-memory-optimization/evidence/07-probe-v2.py.txt\n?? .work/graph-memory-optimization/evidence/07-probe.py\n?? .work/graph-memory-optimization/evidence/07-repeat-baseline-initial.json\n?? .work/graph-memory-optimization/evidence/07-repeat-baseline-source-loader.json\n?? .work/graph-memory-optimization/evidence/07-repeat-baseline.json\n?? .work/graph-memory-optimization/evidence/07-repeat-indexes.json\n?? .work/graph-memory-optimization/evidence/07-repeat-prelookup.json\n?? .work/graph-memory-optimization/evidence/07-repeat-slots.json\n?? .work/graph-memory-optimization/evidence/07-resolution-baseline-1.json\n?? .work/graph-memory-optimization/evidence/07-resolution-baseline-2.json\n?? .work/graph-memory-optimization/evidence/07-resolution-baseline-3.json\n?? .work/graph-memory-optimization/evidence/07-resolution-prelookup-1.json\n?? .work/graph-memory-optimization/evidence/07-resolution-prelookup-2.json\n?? .work/graph-memory-optimization/evidence/07-resolution-prelookup-3.json\n?? .work/graph-memory-optimization/evidence/07-resolution-slots-1.json\n?? .work/graph-memory-optimization/evidence/07-resolution-slots-2.json\n?? .work/graph-memory-optimization/evidence/07-resolution-slots-3.json\n?? .work/graph-memory-optimization/evidence/07-resolution-timing.py\n?? .work/graph-memory-optimization/evidence/07-screen-bytecode-baseline.json\n?? .work/graph-memory-optimization/evidence/07-screen-indexes-8.json\n?? .work/graph-memory-optimization/evidence/07-screen-indexes.json\n?? .work/graph-memory-optimization/evidence/07-screen-prelookup.json\n?? .work/graph-memory-optimization/evidence/07-screen-slots.json\n?? .work/graph-memory-optimization/evidence/07-semantics-baseline-full.json\n?? .work/graph-memory-optimization/evidence/07-semantics-baseline-reduced.json\n?? .work/graph-memory-optimization/evidence/07-semantics-indexes-full.json\n?? .work/graph-memory-optimization/evidence/07-semantics-indexes-reduced.json\n?? .work/graph-memory-optimization/evidence/07-semantics-prelookup-full.json\n?? .work/graph-memory-optimization/evidence/07-semantics-prelookup-reduced.json\n?? .work/graph-memory-optimization/evidence/07-semantics-slots-full.json\n?? .work/graph-memory-optimization/evidence/07-semantics-slots-reduced.json\n?? .work/graph-memory-optimization/evidence/07-semantics.py\n?? .work/graph-memory-optimization/evidence/07-slots-container.py.txt\n?? .work/graph-memory-optimization/evidence/07-slots-cpython-314-container.code.bin\n?? .work/graph-memory-optimization/evidence/07-slots-focused-tests.txt\n?? .work/graph-memory-optimization/evidence/07-slots-python311-tests.txt\n?? .work/graph-memory-optimization/evidence/07-slots-python312-tests.txt\n?? .work/graph-memory-optimization/evidence/07-slots-python313-tests.txt\n?? .work/graph-memory-optimization/evidence/07-source-check.json\n?? .work/graph-memory-optimization/evidence/07-supported-python.json\n?? .work/pre-compilation/\n",
+    "revision": "d51b6f569e67891e72e022b35aa5590c1c0fda46",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "a38fc86f8668c4d8b3c12450044705ef9be0145b0bada22045ed590415619c81",
+      "benchmarks/graph_memory_fixture.py": "ed308693a01e845e84962b588138f1640f92da53d0a8a804c0704fd1c616ff27",
+      "clean_ioc/components.py": "0fbadbc71772d8686d4956d96fa172ba27d4c47a2c92ebac93c8a79ec8c2bd94",
+      "clean_ioc/container.py": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "9a6fa21191871c2db24e7cae5acfc398b4a28418af918e51bec9f270026fa211"
+    }
+  },
+  "template_calls": {
+    "generated_worker_to_endpoint_decorator": 8,
+    "generated_worker_to_source": 8,
+    "policy_to_worker_decorator": 2,
+    "source_to_generated_dependency": 8
+  },
+  "transformed_source_sha256": {
+    "clean_ioc.container": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc"
+  },
+  "validated": {
+    "leaves": 3968,
+    "managed_scopes": 26,
+    "ordinary_scopes": 1,
+    "payload_bytes": 507904,
+    "source_map_calls": 64,
+    "tree_objects": 7812,
+    "workers": 124
+  }
+}

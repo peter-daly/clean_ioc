@@ -1,0 +1,1 @@
+PASS: executed source, six census/phase pairs, snapshot release, inspection, and resolution controls

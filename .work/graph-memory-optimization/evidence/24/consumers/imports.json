@@ -1,0 +1,8 @@
+{
+  "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+  "imports": {
+    "clean_ioc": "/Users/peter.daly/WS/pete/clean_ioc/clean_ioc/__init__.py",
+    "bark_core": "/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/bark-source/bark_core/__init__.py",
+    "data_protection_cop": "/private/var/folders/s1/8flp14pj3bv3jnzfk7_9n0lr0000gp/T/clean-ioc-task24-consumers-vq1x7j24/cop-source/data_protection_cop/__init__.py"
+  }
+}

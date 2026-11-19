@@ -1,0 +1,42 @@
+# ruff: noqa: E402, S101
+"""Fresh serial paired run samples, symmetric loaders before the shared measurement."""
+
+import hashlib
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+
+if len(sys.argv) > 1:
+    from source_loader import LOADED, install
+
+    install(sys.argv[1])
+    sys.path.insert(0, str(HERE.parent / "12"))
+    from measure import sample  # ty: ignore[unresolved-import]
+
+    result = sample("run", sys.argv[2] == "heap")
+    result["executed_source"] = LOADED
+    print(json.dumps(result))
+else:
+    rows = []
+    for repeat in range(3):
+        for kind in ("normal", "heap"):
+            for policy in ("before", "transfer") if repeat % 2 == 0 else ("transfer", "before"):
+                row = json.loads(
+                    subprocess.check_output([sys.executable, __file__, policy, kind], text=True)  # noqa: S603
+                )
+                rows.append({"repeat": repeat, "policy": policy, "kind": kind, "result": row})
+                print(policy, kind, repeat, row["build_seconds"], row["prepared"], flush=True)
+                (HERE / "screen.json").write_text(json.dumps(rows, indent=2) + "\n")
+    (HERE / "screen-identity.json").write_text(
+        json.dumps(
+            {
+                path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+                for path in (HERE / "source_loader.py", Path(__file__), HERE.parent / "12" / "measure.py")
+            },
+            indent=2,
+        )
+        + "\n"
+    )

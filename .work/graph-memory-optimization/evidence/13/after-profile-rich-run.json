@@ -1,0 +1,52 @@
+{
+  "policy": "after",
+  "variant": "rich-run",
+  "total_cpu_seconds": 19.325533467999986,
+  "functions": [
+    {
+      "file": "/Users/peter.daly/WS/pete/clean_ioc/clean_ioc/container.py",
+      "line": 5361,
+      "function": "get",
+      "primitive_calls": 56300,
+      "total_calls": 56300,
+      "own_seconds": 0.021165851000000003,
+      "cumulative_seconds": 0.06525618400000001
+    },
+    {
+      "file": "/Users/peter.daly/WS/pete/clean_ioc/clean_ioc/container.py",
+      "line": 5365,
+      "function": "__setitem__",
+      "primitive_calls": 31219,
+      "total_calls": 31219,
+      "own_seconds": 0.032709853000000004,
+      "cumulative_seconds": 0.388193706
+    },
+    {
+      "file": "/Users/peter.daly/WS/pete/clean_ioc/clean_ioc/container.py",
+      "line": 5371,
+      "function": "remove",
+      "primitive_calls": 30480,
+      "total_calls": 30480,
+      "own_seconds": 0.009331322000000001,
+      "cumulative_seconds": 0.012292476
+    },
+    {
+      "file": "/Users/peter.daly/WS/pete/clean_ioc/clean_ioc/container.py",
+      "line": 5380,
+      "function": "_activation_key_is_inert",
+      "primitive_calls": 31219,
+      "total_calls": 31219,
+      "own_seconds": 0.138143909,
+      "cumulative_seconds": 0.225913193
+    },
+    {
+      "file": "/Users/peter.daly/WS/pete/clean_ioc/clean_ioc/container.py",
+      "line": 5439,
+      "function": "_scalar_activation_closure",
+      "primitive_calls": 31219,
+      "total_calls": 31219,
+      "own_seconds": 0.082167219,
+      "cumulative_seconds": 0.12957066
+    }
+  ]
+}

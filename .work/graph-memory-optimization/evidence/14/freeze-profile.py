@@ -1,0 +1,65 @@
+# ruff: noqa: E402
+"""Separate traced freeze observations; resets peaks, not whole-build evidence."""
+
+import json
+import shutil
+import sys
+import tempfile
+import time
+import tracemalloc
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(ROOT))
+policy, variant = sys.argv[1:]
+if policy == "before":
+    baseline = Path(tempfile.mkdtemp(prefix="draft-freeze-before-"))
+    shutil.copytree(ROOT / "clean_ioc", baseline / "clean_ioc")
+    for name in ("components.py", "container.py"):
+        shutil.copyfile(Path(__file__).parent / (name + ".before.txt"), baseline / "clean_ioc" / name)
+    sys.path.insert(0, str(baseline))
+
+from clean_ioc import components
+
+freezes = []
+original = components._ComponentGraph.freeze
+
+
+def freeze(self):
+    count = len(self._drafts)
+    pool = getattr(self, "_definitions", None)
+    before_pool = len(pool.definitions) if pool is not None else 0
+    prior_current, prior_peak = tracemalloc.get_traced_memory()
+    tracemalloc.reset_peak()
+    started = time.perf_counter()
+    original(self)
+    elapsed = time.perf_counter() - started
+    after_current, freeze_peak = tracemalloc.get_traced_memory()
+    freezes.append(
+        {
+            "drafts": count,
+            "pool_entries": before_pool,
+            "before_current": prior_current,
+            "previous_peak": prior_peak,
+            "freeze_peak": freeze_peak,
+            "after_current": after_current,
+            "seconds": elapsed,
+        }
+    )
+
+
+components._ComponentGraph.freeze = freeze
+tracemalloc.start()
+if variant == "diversity":
+    sys.path.insert(0, str(Path(__file__).parent))
+    from diversity import sample
+
+    result = sample("run", True)
+else:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "12"))
+    from measure import sample  # ty: ignore[unresolved-import]
+
+    result = sample(variant, False)
+print(json.dumps({"policy": policy, "variant": variant, "freezes": freezes}, indent=2))
+if policy == "before":
+    shutil.rmtree(baseline)

@@ -1,0 +1,18 @@
+{
+  "_ExecutionPlan": 5107,
+  "_PlanSet": 5125,
+  "_project_execution_plan": 5425,
+  "_finalize_execution": 5516,
+  "_compile_warmup_plans": 13123,
+  "_prepare_compilation": 13233,
+  "_compile_execution": 13404,
+  "_compile_with_report": 13466,
+  "_observe_execution_bridge": 14846,
+  "AnalysisResult": 16733,
+  "compile_execution": 6762,
+  "_compile_execution_roots": 6766,
+  "_release_declarations": 15270,
+  "_build_execution": 15316,
+  "_build_plan": 15386,
+  "_from_blueprint": 16963
+}

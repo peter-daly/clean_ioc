@@ -1,0 +1,117 @@
+{
+  "additional_sha256": {
+    "benchmarks/graph_artifact.py": "17a7bb9a5f741f6f8878494feffa9802603ce63dbcfbfa6ebed5d763a1dad315",
+    "benchmarks/graph_subtree_experiment.py": "305eba56e96db265b3171d1495cfed3d9aa018035fb27263cf198d73e9cbc700",
+    "tests/test_contextual_subtrees.py": "3a7ebcb677b17a36b204b03c7aca30945cd8ce1fbfed09d4de1305438044b7d8"
+  },
+  "after": "04-kept-after.json",
+  "before": "04-before.json",
+  "fixture_hash_unchanged": true,
+  "medians": {
+    "after": {
+      "build_seconds": 11.195471208076924,
+      "prepared": {
+        "peak_rss_bytes": 141754368,
+        "rss_bytes": 141737984,
+        "traced_peak_bytes": 77670544,
+        "traced_retained_bytes": 37508938
+      },
+      "resolve_seconds": 0.021813667030073702,
+      "resolved": {
+        "peak_rss_bytes": 141754368,
+        "rss_bytes": 141754368,
+        "traced_peak_bytes": 77670544,
+        "traced_retained_bytes": 38686334
+      }
+    },
+    "before": {
+      "build_seconds": 11.226892792037688,
+      "prepared": {
+        "peak_rss_bytes": 138297344,
+        "rss_bytes": 138297344,
+        "traced_peak_bytes": 77152888,
+        "traced_retained_bytes": 40296555
+      },
+      "resolve_seconds": 0.023044959059916437,
+      "resolved": {
+        "peak_rss_bytes": 138297344,
+        "rss_bytes": 138297344,
+        "traced_peak_bytes": 77152888,
+        "traced_retained_bytes": 41473815
+      }
+    }
+  },
+  "new_counts": {
+    "concrete_component_records": 63925,
+    "contextual_projection_records": 24633,
+    "logical_occurrence_records": 88558,
+    "physical_records": 88558,
+    "subtree_remapping_entries": 24633,
+    "subtree_view_contexts": 391
+  },
+  "production_scope_unchanged_hashes": {
+    "clean_ioc/container.py": true,
+    "clean_ioc/selection_census.py": true,
+    "clean_ioc/tooling.py": true
+  },
+  "source": {
+    "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n M tests/test_graph_artifact_experiment.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_artifact_evidence.py\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? benchmarks/graph_reachability_audit.py\n?? benchmarks/graph_subtree_experiment.py\n?? clean_ioc/_component_subtrees.py\n?? docs/graph-memory-fixture.md\n?? tests/test_contextual_subtrees.py\n?? tests/test_graph_memory_fixture.py\n?? tests/test_graph_reachability_audit.py\n?? tests/test_shared_component_definitions.py\n",
+    "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+    "source_sha256": {
+      "benchmarks/graph_memory_evidence.py": "6a4b40b37a61aba503382526c99b244e56278532774b7d6ddce59a4d155894a5",
+      "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+      "clean_ioc/_component_subtrees.py": "4e083e821d84a6ac37cfa62e7f6a3c8bd244ce35e0d412c4dc8fc49a72eb1346",
+      "clean_ioc/components.py": "81a54da74f53539dcbe33de050737bb6ff72b21c1675ff1bd137e3a387d5e88f",
+      "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467"
+    }
+  },
+  "source_hashes_consistent_within_groups": {
+    "after": true,
+    "before": true
+  },
+  "storage": {
+    "after": {
+      "component_records": 12630248,
+      "execution_steps": 158104,
+      "link_tuples": 1878224,
+      "occurrence_integers": 2481424,
+      "origin_indexes": 5242960,
+      "record_index": 5242960,
+      "registration_objects": 7224,
+      "subtree_contexts_and_maps": 922760
+    },
+    "before": {
+      "component_records": 15586208,
+      "execution_steps": 158104,
+      "link_tuples": 2653968,
+      "occurrence_integers": 2481424,
+      "origin_indexes": 5242960,
+      "record_index": 5242960,
+      "registration_objects": 7224
+    }
+  },
+  "unchanged": {
+    "activations": true,
+    "graph_fields": {
+      "activation_kinds": true,
+      "component_metadata": true,
+      "decorator_objects": true,
+      "executable_helpers": true,
+      "execution_step_kinds": true,
+      "logical_graph_visits": true,
+      "metadata_entries": true,
+      "physical_records": true,
+      "provider_view_contexts": true,
+      "record_kinds": true,
+      "selected_registrations": true,
+      "unique_execution_steps": true,
+      "unique_origins": true,
+      "unique_registration_objects": true
+    },
+    "lazy_activations": true,
+    "template_calls": true,
+    "validated": true
+  }
+}

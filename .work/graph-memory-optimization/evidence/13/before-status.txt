@@ -1,0 +1,132 @@
+ M .work/README.md
+ M .work/graph-memory-optimization/README.md
+ M CHANGES.rst
+ M README.md
+ M V1_TO_V2_UPGRADE.md
+ M V2_DEVELOPMENT.md
+ M benchmarks/bench_clean_ioc.py
+ M benchmarks/bench_compiler_optimization.py
+ M benchmarks/compact_runtime_evidence.py
+ M benchmarks/compilation_budget_experiment.py
+ M benchmarks/compiler_memory_evidence.py
+ M benchmarks/compiler_optimization_evidence.py
+ M benchmarks/cop_compiler_memory_evidence.py
+ M benchmarks/declared_provider_roots_evidence.py
+ M benchmarks/deferred_advisories_evidence.py
+ M benchmarks/diagnostic_names_evidence.py
+ M benchmarks/early_rejection_records_evidence.py
+ M benchmarks/empty_dependency_validation_evidence.py
+ M benchmarks/failure_aggregation_evidence.py
+ M benchmarks/frozen_draft_capacity_evidence.py
+ M benchmarks/graph_artifact.py
+ M benchmarks/graph_artifact_fixture.py
+ M benchmarks/graph_memory_evidence.py
+ M benchmarks/graph_memory_fixture.py
+ M benchmarks/graph_resolution_only_checks.py
+ M benchmarks/invariant_subplan_evidence.py
+ M benchmarks/optional_diagnostics_evidence.py
+ M benchmarks/selected_registration_catalogue_evidence.py
+ M clean_ioc/__init__.py
+ M clean_ioc/cli.py
+ M clean_ioc/container.py
+ M clean_ioc/matrix.py
+ M clean_ioc/sarif.py
+ M clean_ioc/semantic_diff.py
+ M clean_ioc/tooling.py
+ M docs/compact-runtime-evidence.md
+ M docs/compilation-budgets.md
+ M docs/compiler-tooling.md
+ M docs/custom-validation.md
+ M docs/declared-provider-roots-evidence.md
+ M docs/deferred-advisories-evidence.md
+ M docs/early-rejection-records-evidence.md
+ M docs/empty-dependency-validation-evidence.md
+ M docs/extensions/fastapi.md
+ M docs/failure-aggregation-evidence.md
+ M docs/graph-change-policies.md
+ M docs/optional-diagnostics-evidence.md
+ M docs/policies.md
+ M docs/runtime-build-series-evidence.md
+ M docs/sarif.md
+ M docs/scopes.md
+ M docs/selected-registration-catalogue-evidence.md
+ M scripts/validate_docs_examples.py
+ M tests/ext/fast_api/test_dependencies.py
+ M tests/test_boundaries.py
+ M tests/test_boundary_composition.py
+ M tests/test_build_matrix.py
+ M tests/test_build_triage.py
+ M tests/test_bundles.py
+ M tests/test_clone_metadata.py
+ M tests/test_closed_generic_constructors.py
+ M tests/test_compact_runtime.py
+ M tests/test_compilation_budget.py
+ M tests/test_compilation_profile.py
+ M tests/test_compiler_memory.py
+ M tests/test_compiler_tooling.py
+ M tests/test_component_preferences.py
+ M tests/test_component_selector.py
+ M tests/test_container.py
+ M tests/test_declared_provider_roots.py
+ M tests/test_decorator_template_compilation.py
+ M tests/test_decorator_template_composition.py
+ M tests/test_decorator_template_diagnostics.py
+ M tests/test_decorator_template_expansion.py
+ M tests/test_decorator_template_feasibility.py
+ M tests/test_deferred_advisories.py
+ M tests/test_diagnostic_names.py
+ M tests/test_empty_dependency_validation.py
+ M tests/test_factory_return_types.py
+ M tests/test_failure_aggregation.py
+ M tests/test_fallbacks.py
+ M tests/test_graph_artifact_experiment.py
+ M tests/test_graph_memory_fixture.py
+ M tests/test_graph_reachability_audit.py
+ M tests/test_incremental_analysis_probe.py
+ M tests/test_invariant_subplans.py
+ M tests/test_managed_providers.py
+ M tests/test_optional_diagnostics.py
+ M tests/test_optional_explanation_metadata.py
+ M tests/test_parent_precedence.py
+ M tests/test_per_call_scope_acceptance.py
+ M tests/test_per_call_scopes.py
+ M tests/test_policies.py
+ M tests/test_provider_maps.py
+ M tests/test_registration_patterns.py
+ M tests/test_registration_templates.py
+ M tests/test_resolution_profiler.py
+ M tests/test_resource_ownership.py
+ M tests/test_sarif.py
+ M tests/test_selected_registrations.py
+ M tests/test_selection_census.py
+ M tests/test_semantic_graph_policy.py
+ M tests/test_service_groups.py
+ M tests/test_service_targets.py
+ M tests/test_type_alias_lookup_paths.py
+ M tests/test_type_aliases.py
+ M tests/test_typed_providers.py
+ M tests/test_union_services.py
+ M tests/test_warmup_plans.py
+ M tests/tooling_targets.py
+?? .work/graph-memory-optimization/10-contract.md
+?? .work/graph-memory-optimization/10-result.md
+?? .work/graph-memory-optimization/10-run-and-analysis-modes.md
+?? .work/graph-memory-optimization/11-inventory.md
+?? .work/graph-memory-optimization/11-result.md
+?? .work/graph-memory-optimization/11-validation-and-failure-contract.md
+?? .work/graph-memory-optimization/12-direct-compact-selection-facts.md
+?? .work/graph-memory-optimization/12-inventory.md
+?? .work/graph-memory-optimization/12-result.md
+?? .work/graph-memory-optimization/13-activation-cache-lifetimes.md
+?? .work/graph-memory-optimization/14-shared-draft-definitions.md
+?? .work/graph-memory-optimization/15-compact-compilation-tables.md
+?? .work/graph-memory-optimization/16-callback-snapshot-sharing.md
+?? .work/graph-memory-optimization/17-intermediate-occurrence-lifetimes.md
+?? .work/graph-memory-optimization/18-mode-equivalence-and-memory-acceptance.md
+?? .work/graph-memory-optimization/evidence/10/
+?? .work/graph-memory-optimization/evidence/11/
+?? .work/graph-memory-optimization/evidence/12/
+?? .work/graph-memory-optimization/evidence/13/
+?? tests/test_build_modes.py
+?? tests/test_direct_selection_facts.py
+?? tests/test_validation_evidence_lifetime.py

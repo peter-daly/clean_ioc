@@ -1,0 +1,87 @@
+{
+  "policy": "after",
+  "variant": "analysis",
+  "freezes": [
+    {
+      "drafts": 1,
+      "pool_entries": 1,
+      "before_current": 3382457,
+      "previous_peak": 3710506,
+      "freeze_peak": 3384073,
+      "after_current": 3382201,
+      "seconds": 4.1499966755509377e-05
+    },
+    {
+      "drafts": 1,
+      "pool_entries": 1,
+      "before_current": 3425124,
+      "previous_peak": 3437658,
+      "freeze_peak": 3426556,
+      "after_current": 3424684,
+      "seconds": 3.4542055800557137e-05
+    },
+    {
+      "drafts": 1,
+      "pool_entries": 1,
+      "before_current": 3444244,
+      "previous_peak": 3474346,
+      "freeze_peak": 3445676,
+      "after_current": 3443804,
+      "seconds": 3.166694659739733e-05
+    },
+    {
+      "drafts": 1,
+      "pool_entries": 1,
+      "before_current": 3465620,
+      "previous_peak": 3496138,
+      "freeze_peak": 3467052,
+      "after_current": 3465180,
+      "seconds": 3.479106817394495e-05
+    },
+    {
+      "drafts": 2,
+      "pool_entries": 2,
+      "before_current": 3483706,
+      "previous_peak": 3516154,
+      "freeze_peak": 3485930,
+      "after_current": 3483162,
+      "seconds": 5.425000563263893e-05
+    },
+    {
+      "drafts": 2,
+      "pool_entries": 2,
+      "before_current": 3489481,
+      "previous_peak": 3491339,
+      "freeze_peak": 3491569,
+      "after_current": 3488801,
+      "seconds": 5.320797208696604e-05
+    },
+    {
+      "drafts": 77,
+      "pool_entries": 13,
+      "before_current": 3593307,
+      "previous_peak": 3598756,
+      "freeze_peak": 3604011,
+      "after_current": 3589451,
+      "seconds": 0.0015279169892892241
+    },
+    {
+      "drafts": 77,
+      "pool_entries": 13,
+      "before_current": 3623285,
+      "previous_peak": 3628926,
+      "freeze_peak": 3632357,
+      "after_current": 3617797,
+      "seconds": 0.001516958000138402
+    },
+    {
+      "drafts": 2685,
+      "pool_entries": 46,
+      "before_current": 10770297,
+      "previous_peak": 10773898,
+      "freeze_peak": 10915769,
+      "after_current": 10756233,
+      "seconds": 0.05353408306837082
+    }
+  ]
+}

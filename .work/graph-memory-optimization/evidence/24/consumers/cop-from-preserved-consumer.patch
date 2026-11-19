@@ -1,0 +1,183 @@
+--- a/data_protection_cop/common/dependencies/build.py
++++ b/data_protection_cop/common/dependencies/build.py
+@@ -2,6 +2,5 @@
+ 
+ # The deployed hosts and direct builds share the same immutable compile choices.
+ CONTAINER_BUILD_OPTIONS = ContainerBuildOptions(
+-    mode="run",
+     provider_roots=(),
+ )
+--- a/tests/compiled_modes_probe.py
++++ b/tests/compiled_modes_probe.py
+@@ -4,7 +4,7 @@
+ import json
+ import sys
+ from collections import Counter
+-from dataclasses import replace
++from contextlib import nullcontext
+ from typing import get_args
+ 
+ import bark_core.unit_of_work.bundles as uow
+@@ -64,8 +64,19 @@
+             for registrations in builder._composition._registry._registrations.values()
+             for registration in registrations
+         } | {decorator.id for decorator in builder._decorators}
+-        with replace(CONTAINER_BUILD_OPTIONS, mode=mode).build(builder) as container:
+-            assert calls == ["mandatory"]
++        with (
++            (
++                CONTAINER_BUILD_OPTIONS.analyse(builder)
++                if mode == "analysis"
++                else nullcontext(None)
++            ) as analysis,
++            (
++                analysis.create_runtime()
++                if analysis is not None
++                else CONTAINER_BUILD_OPTIONS.build(builder)
++            ) as container,
++        ):
++            assert calls == (["mandatory", "deferred"] if mode == "analysis" else [])
+             selected = container.selected_registrations
+             assert {item.id for item in selected} <= declared
+             catalogue = sorted(
+@@ -94,26 +105,28 @@
+                 command_types = sorted(str(item) for item in commands.command_types)
+                 reply_types = sorted(str(item) for item in replies.reply_types)
+             graph_evidence = None
+-            report = container.build_report
++            report = None if analysis is None else analysis.report
+             if mode == "analysis":
+-                report = container.validation_report()
++                report = analysis.report
+                 assert calls == ["mandatory", "deferred"]
+                 graph_evidence = {
+                     "private_routes": sum(
+                         visit.component.service_type in routes
+-                        for visit in container.graph.walk()
++                        for visit in analysis.graph.walk()
+                     ),
+                     "deferred_providers": sum(
+                         visit.component.kind is ComponentKind.provider
+                         and visit.component.activation is ComponentActivation.deferred
+-                        for visit in container.graph.walk()
++                        for visit in analysis.graph.walk()
+                     ),
+                     "decorators": sum(
+                         visit.component.kind is ComponentKind.decorator
+-                        for visit in container.graph.walk()
++                        for visit in analysis.graph.walk()
+                     ),
+                 }
+-            assert not report.errors
++            assert report is None or not report.errors, [
++                (i.code, i.message) for i in report.errors
++            ]
+             rows.append(
+                 {
+                     "mode": mode,
+@@ -131,7 +144,10 @@
+                     },
+                     "uow_calls": list(calls),
+                     "validation_findings": dict(
+-                        Counter(issue.code for issue in report.issues)
++                        Counter(
++                            issue.code
++                            for issue in (() if report is None else report.issues)
++                        )
+                     ),
+                     "graph_evidence": graph_evidence,
+                 }
+--- a/tests/unit/test_compiled_build_modes.py
++++ b/tests/unit/test_compiled_build_modes.py
+@@ -1,14 +1,13 @@
+ import json
+ import subprocess
+ import sys
+-from dataclasses import replace
++from contextlib import nullcontext
+ from pathlib import Path
+ from unittest.mock import create_autospec
+ 
+ import pytest
+ from bark_core.application.commands import CommandDispatcher
+ from bark_core.bundles import unit_of_work_resource_tag
+-from clean_ioc import ContainerBuildError
+ 
+ from data_protection_cop.apps.api.container import get_builder as get_api_builder
+ from data_protection_cop.apps.worker.container import get_builder
+@@ -53,7 +52,7 @@
+     assert any(
+         "TerminateInventoryResultPartCommand" in name for name in run["commands"]
+     )
+-    assert run["uow_calls"] == ["mandatory"]
++    assert run["uow_calls"] == []
+     assert analysis["uow_calls"] == ["mandatory", "deferred"]
+     assert analysis["graph_evidence"]["private_routes"] > 0
+     assert analysis["graph_evidence"]["deferred_providers"] > 0
+@@ -81,9 +80,14 @@
+         lifespan="transient",
+         tags=[unit_of_work_resource_tag(None)],
+     )
+-    with pytest.raises(ContainerBuildError) as error:
+-        replace(CONTAINER_BUILD_OPTIONS, mode=mode).build(builder)
+-    assert "uow-scope-mismatch" in {issue.code for issue in error.value.report.errors}
++    if mode == "run":
++        with CONTAINER_BUILD_OPTIONS.build(builder) as runtime:
++            assert runtime.resolve(TransactionalResource) is not None
++    else:
++        with CONTAINER_BUILD_OPTIONS.analyse(builder) as analysis:
++            assert "uow-scope-mismatch" in {
++                issue.code for issue in analysis.report.errors
++            }
+ 
+ 
+ @pytest.mark.parametrize("mode", ["run", "analysis"])
+@@ -100,7 +104,18 @@
+     builder = get_api_builder(valid_api_config())
+     builder.register(ServiceRegistryRepository, instance=repository)
+ 
+-    async with replace(CONTAINER_BUILD_OPTIONS, mode=mode).build(builder) as container:
++    async with (
++        (
++            CONTAINER_BUILD_OPTIONS.analyse(builder)
++            if mode == "analysis"
++            else nullcontext(None)
++        ) as analysis,
++        (
++            analysis.create_runtime()
++            if analysis is not None
++            else CONTAINER_BUILD_OPTIONS.build(builder)
++        ) as container,
++    ):
+         async with container.new_scope() as scope:
+             provide_http_connection(scope)
+             dispatcher = await scope.resolve_async(CommandDispatcher)
+--- a/tests/unit/test_host_composition.py
++++ b/tests/unit/test_host_composition.py
+@@ -34,14 +34,12 @@
+     assert isinstance(app, CleanIocMiddleware)
+     container = app.root_scope
+     assert isinstance(container, Container)
+-    assert CONTAINER_BUILD_OPTIONS.mode == "run"
+-    assert container.build_mode == "run"
+     assert CONTAINER_BUILD_OPTIONS.provider_roots == ()
+     assert not container._plan.provider_roots
+-    assert container._plan._blueprint is None
+-    assert container._plan.unreachable_checked is False
+-    assert container._plan.diagnostics is False
+-    assert container.build_report.is_valid
++    for name in ("graph", "build_report", "validation_report", "new_scope_builder"):
++        assert not hasattr(container, name)
++    for name in ("compiled_graph", "diagnostics", "_blueprint", "occurrence_layers"):
++        assert not hasattr(container._plan, name)
+     for service_type in (DaemonHealthRegistry, ScopedMultiDaemonRunner):
+         assert (
+             len(
+@@ -53,5 +51,5 @@
+             )
+             == 1
+         )
+-    with pytest.raises(RuntimeError, match="analysis"):
+-        container.new_scope_builder()
++    with container:
++        pass

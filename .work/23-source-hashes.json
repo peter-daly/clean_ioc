@@ -1,0 +1,7 @@
+{
+  "clean_ioc/container.py": "b8a5dddf3fa740a2a92a123cafd551d4956ed5f213fcb98c8bfbe0cfb7ba2b16",
+  "clean_ioc/components.py": "cdef20e9abe8ac53aedcf27dd26103e6838b8604e61d60712689deae70c62572",
+  "clean_ioc/graph_analysis.py": "2ce64a14778232b3adb3073b7c2a9e63213666ad252bf27a2b47477e90af82ab",
+  "tests/test_unified_slots.py": "b6177775710ac6c150e0ad1e1d0305bbffdb948b6b584d5d526f9e9191cdcc46",
+  "docs/slots.md": "0ee7a9e162041e415b4d70bb2383a9459474bfeebae52e7ecb510f7c05df5f70"
+}

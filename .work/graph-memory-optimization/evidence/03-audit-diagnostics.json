@@ -1,0 +1,129 @@
+{
+  "source": {
+    "revision": "31f1682075b2c146de7672fa37cb5fb563a0ffc7",
+    "local_changes": " M .work/README.md\n M benchmarks/README.md\n M benchmarks/graph_artifact.py\n M clean_ioc/components.py\n M clean_ioc/container.py\n M clean_ioc/selection_census.py\n M clean_ioc/tooling.py\n M docs/graph-artifact-experiment.md\n M tests/test_decorator_template_diagnostics.py\n M tests/test_graph_artifact_experiment.py\n?? .work/graph-memory-optimization/\n?? benchmarks/graph_memory_artifact_evidence.py\n?? benchmarks/graph_memory_evidence.py\n?? benchmarks/graph_memory_fixture.py\n?? benchmarks/graph_memory_results.json\n?? benchmarks/graph_reachability_audit.py\n?? docs/graph-memory-fixture.md\n?? tests/test_graph_memory_fixture.py\n?? tests/test_graph_reachability_audit.py\n?? tests/test_shared_component_definitions.py\n",
+    "source_sha256": {
+      "clean_ioc/components.py": "1778cf2598e54d2f87f9dd271535e2f586893dec370ef3c2066f1d156696ce0d",
+      "clean_ioc/container.py": "bfb18d5afbac194820a14e7ffffc179daa9d20a9d18423c1dbdf0fe1305b661d",
+      "clean_ioc/tooling.py": "97a0fe5134c8c42e885cdb74d088bdec04c696a12a458f361ee63c943f191467",
+      "clean_ioc/selection_census.py": "8557f6f4d5eed73668df56916583c084e2f7829439f6a9504813729f849a4ab5",
+      "benchmarks/graph_memory_fixture.py": "22cd3199b77c3e5d3df94a37dd4dddca5b933009ab3c61f1eedb7bffed2a2ee1",
+      "benchmarks/graph_memory_evidence.py": "c8bc3c7b631241f256b0325d925bc21c4a80595d9e5b47460404af3c6cf5e6fa"
+    }
+  },
+  "routes": 2,
+  "diagnostics": true,
+  "audit_source_sha256": "a3f6ada3982f4ec2b1c663e9b2b8f29cd93130e73e82f78d9d90e178a0649c46",
+  "audit": {
+    "audit_seconds": 0.07093720801640302,
+    "physical_records": 2368,
+    "graph_count_including_inherited_execution_graphs": 1,
+    "all_graph_physical_records": 2368,
+    "overlapping_reachability": {
+      "public_roots": {
+        "physical_records": 1264,
+        "logical_ids": 1264
+      },
+      "provider_roots": {
+        "physical_records": 158,
+        "logical_ids": 758
+      },
+      "managed_provider_roots": {
+        "physical_records": 1272,
+        "logical_ids": 2536
+      },
+      "warmup_roots": {
+        "physical_records": 0,
+        "logical_ids": 0
+      },
+      "architecture_roots": {
+        "physical_records": 1264,
+        "logical_ids": 1264
+      },
+      "public_graph_roots": {
+        "physical_records": 1264,
+        "logical_ids": 1264
+      },
+      "execution_components_including_map_targets": {
+        "physical_records": 1264,
+        "logical_ids": 1264
+      },
+      "eligible_root_candidates": {
+        "physical_records": 1272,
+        "logical_ids": 1872
+      },
+      "rejected_root_candidates": {
+        "physical_records": 0,
+        "logical_ids": 0
+      },
+      "evidence_index_owners": {
+        "physical_records": 2368,
+        "logical_ids": 4082
+      },
+      "contextual_view_sources_and_parents": {
+        "physical_records": 1278,
+        "logical_ids": 2992
+      },
+      "externally_retained_components": {
+        "physical_records": 0,
+        "logical_ids": 0
+      },
+      "captured_template_source_graphs": {
+        "physical_records": 0,
+        "logical_ids": 0
+      }
+    },
+    "disjoint_categories": {
+      "public_relationship_closure": 1264,
+      "additional_execution_or_other_roots": 14,
+      "additional_candidate_evidence": 0,
+      "additional_explanation_evidence": 1090,
+      "additional_view_sources": 0,
+      "outside_all_audited_roots": 0
+    },
+    "externally_reachable_outside_runtime_roots": 0,
+    "outside_runtime_roots_by_kind": {
+      "decorator": 20,
+      "registration": 860,
+      "value": 210
+    },
+    "outside_runtime_root_sample_ids": [
+      9,
+      10,
+      13,
+      14,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      110,
+      111,
+      117,
+      118,
+      119,
+      120,
+      121,
+      122,
+      123,
+      124,
+      125,
+      126
+    ],
+    "outside_roots_by_kind": {},
+    "missing_graph_qualified_links": [],
+    "outside_roots_occurrence_ids": [],
+    "captured_selection_view_count": 0
+  }
+}

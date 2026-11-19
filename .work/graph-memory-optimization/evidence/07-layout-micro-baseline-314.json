@@ -1,0 +1,334 @@
+{
+  "probe": "baseline",
+  "python": "3.14.4 (main, Apr  7 2026, 13:13:20) [Clang 17.0.0 (clang-1700.6.4.2)]",
+  "transformed_hashes": {
+    "clean_ioc.container": "9eb688a3cf197120717699b56dc152bb1c9d482ed4b9d6639230f8002bc077cc"
+  },
+  "source_sha256": "bb64c24eef0297c92105871549724663acaa87d12730b7b392eb5d46cec9884f",
+  "values": [
+    {
+      "count": 100000,
+      "seconds": 0.05518991604913026,
+      "retained_bytes": 8805216,
+      "peak_bytes": 8805216,
+      "instance_shallow_bytes": 5600000,
+      "list_bytes": 800984,
+      "weakref_ok": true
+    },
+    {
+      "count": 100000,
+      "seconds": 0.055056291981600225,
+      "retained_bytes": 8801320,
+      "peak_bytes": 8801320,
+      "instance_shallow_bytes": 5600000,
+      "list_bytes": 800984,
+      "weakref_ok": true
+    },
+    {
+      "count": 100000,
+      "seconds": 0.05393499997444451,
+      "retained_bytes": 8801320,
+      "peak_bytes": 8801320,
+      "instance_shallow_bytes": 5600000,
+      "list_bytes": 800984,
+      "weakref_ok": true
+    }
+  ],
+  "cow_pool_lifetime": {
+    "unused_fact_alive_before_clear": true,
+    "unused_fact_alive_after_clear": false
+  },
+  "cow_checks": "shared fact tuple; replacement isolated; restoring previous fact reunites identity",
+  "draft_slots": 27,
+  "metadata_layouts": [
+    {
+      "name": "Component",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 48,
+      "slots": [
+        "_graph",
+        "_occurrence_id"
+      ]
+    },
+    {
+      "name": "_ComponentDraft",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 248,
+      "slots": [
+        "id",
+        "occurrence_id",
+        "service_type",
+        "implementation",
+        "implementation_type",
+        "lifespan",
+        "name",
+        "tags",
+        "build_args",
+        "kind",
+        "activation",
+        "requires_async",
+        "manages_cleanup",
+        "cache_owner",
+        "cleanup_owner",
+        "owner_id",
+        "ownership_reason",
+        "provider_mode",
+        "position",
+        "argument",
+        "parent_id",
+        "dependency_ids",
+        "decorator_ids",
+        "decorated_id",
+        "pre_configuration_ids",
+        "boundary",
+        "declared_service_type"
+      ]
+    },
+    {
+      "name": "_ComponentRecord",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 176,
+      "slots": [
+        "_definition",
+        "id",
+        "occurrence_id",
+        "requires_async",
+        "manages_cleanup",
+        "cache_owner",
+        "cleanup_owner",
+        "owner_id",
+        "ownership_reason",
+        "provider_mode",
+        "position",
+        "argument",
+        "parent_id",
+        "dependency_ids",
+        "decorator_ids",
+        "decorated_id",
+        "pre_configuration_ids",
+        "_generic_mapping"
+      ]
+    },
+    {
+      "name": "_ComponentDefinition",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 120,
+      "slots": [
+        "service_type",
+        "implementation",
+        "implementation_type",
+        "lifespan",
+        "name",
+        "tags",
+        "build_args",
+        "kind",
+        "activation",
+        "boundary",
+        "declared_service_type"
+      ]
+    },
+    {
+      "name": "_ComponentGraph",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 64,
+      "slots": [
+        "_drafts",
+        "_records",
+        "_views",
+        "_reduced"
+      ]
+    },
+    {
+      "name": "_ComponentViewContext",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 56,
+      "slots": [
+        "root",
+        "parent",
+        "index"
+      ]
+    },
+    {
+      "name": "_ComponentViewRecord",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 56,
+      "slots": [
+        "graph",
+        "context",
+        "source"
+      ]
+    },
+    {
+      "name": "CandidateDecision",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 96,
+      "slots": [
+        "component_id",
+        "outcome",
+        "reason_codes",
+        "reason",
+        "origin",
+        "template",
+        "parent_precedence",
+        "preferences"
+      ]
+    },
+    {
+      "name": "TemplateDecision",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 144,
+      "slots": [
+        "template_id",
+        "source_registration_id",
+        "generated_definition_id",
+        "target_registration_id",
+        "target_occurrence_id",
+        "selector_kind",
+        "selector_contract",
+        "source_service",
+        "source_implementation",
+        "source_bindings",
+        "target_service",
+        "projected_contract",
+        "target_bindings",
+        "boundary"
+      ]
+    },
+    {
+      "name": "CompilationExplanation",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 64,
+      "slots": [
+        "subject",
+        "path",
+        "selected",
+        "rejected"
+      ]
+    },
+    {
+      "name": "ParameterExplanation",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 120,
+      "slots": [
+        "owner",
+        "parameter",
+        "declared_annotation",
+        "canonical_annotation",
+        "has_default",
+        "policy_kind",
+        "evaluation_phase",
+        "result_category",
+        "result_type",
+        "selected_components",
+        "provenance"
+      ]
+    },
+    {
+      "name": "GenericBindingExplanation",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 80,
+      "slots": [
+        "requested_service",
+        "template_identity",
+        "selected_tier",
+        "service_bindings",
+        "factory_pattern_bindings",
+        "dependency_annotations"
+      ]
+    },
+    {
+      "name": "_RemappedDecoratorExplanation",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 56,
+      "slots": [
+        "source",
+        "target_occurrence_id",
+        "captured_path"
+      ]
+    },
+    {
+      "name": "_CompiledDependency",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 48,
+      "slots": [
+        "name",
+        "step"
+      ]
+    },
+    {
+      "name": "_CompiledDecorator",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "shallow_bytes": 72,
+      "slots": [
+        "source",
+        "dependencies",
+        "component",
+        "cleanup_owner",
+        "sync_supported"
+      ]
+    }
+  ],
+  "legacy_mro": [
+    {
+      "name": "_Registration",
+      "dict_offset": -1,
+      "weakref_offset": -32,
+      "slots": [
+        "_generic_mapping",
+        "activator_class",
+        "declared_service_type",
+        "dependencies",
+        "id",
+        "implementation",
+        "is_instance",
+        "is_root_owned_instance",
+        "is_named",
+        "lifespan",
+        "name",
+        "parent_node_filter",
+        "service_type",
+        "tags",
+        "was_used"
+      ]
+    },
+    {
+      "name": "Registration",
+      "dict_offset": -1,
+      "weakref_offset": -32,
+      "slots": null
+    },
+    {
+      "name": "Protocol",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "slots": []
+    },
+    {
+      "name": "Generic",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "slots": null
+    },
+    {
+      "name": "object",
+      "dict_offset": 0,
+      "weakref_offset": 0,
+      "slots": null
+    }
+  ]
+}

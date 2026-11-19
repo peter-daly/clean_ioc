@@ -1,0 +1,4 @@
+interface:
+  display_name: "Migrate Clean IoC"
+  short_description: "Upgrade Clean IoC 1 apps to 2"
+  default_prompt: "Use $migrate-clean-ioc to migrate this Python application from Clean IoC 1 to 2."

@@ -1,0 +1,752 @@
+{
+  "medians": {
+    "compile": {
+      "prepare_seconds": 1.4240014579845592,
+      "prepared": {
+        "peak_rss_bytes": 79740928,
+        "rss_bytes": 79740928,
+        "traced_peak_bytes": 32604042,
+        "traced_retained_bytes": 22839366
+      },
+      "resolve_seconds": 0.0743941250257194,
+      "resolved": {
+        "peak_rss_bytes": 82886656,
+        "rss_bytes": 82870272,
+        "traced_peak_bytes": 32604042,
+        "traced_retained_bytes": 31831012
+      }
+    },
+    "export": {
+      "prepare_seconds": 1.4265149580314755,
+      "prepared": {
+        "peak_rss_bytes": 79708160,
+        "rss_bytes": 79708160,
+        "traced_peak_bytes": 32599895,
+        "traced_retained_bytes": 22835062
+      },
+      "resolve_seconds": 0.07395412505138665,
+      "resolved": {
+        "peak_rss_bytes": 105693184,
+        "rss_bytes": 89178112,
+        "traced_peak_bytes": 55212494,
+        "traced_retained_bytes": 31830899
+      }
+    },
+    "load": {
+      "prepare_seconds": 0.6900569159770384,
+      "prepared": {
+        "peak_rss_bytes": 94863360,
+        "rss_bytes": 74956800,
+        "traced_peak_bytes": 47927122,
+        "traced_retained_bytes": 22386213
+      },
+      "resolve_seconds": 0.07515870907809585,
+      "resolved": {
+        "peak_rss_bytes": 94863360,
+        "rss_bytes": 81936384,
+        "traced_peak_bytes": 47927122,
+        "traced_retained_bytes": 31396217
+      }
+    }
+  },
+  "repeats": 3,
+  "roots": 256,
+  "runs": [
+    {
+      "activations": 65536,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42582016,
+        "rss_bytes": 42237952
+      },
+      "compilation_disabled": false,
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "none",
+      "machine": "arm64",
+      "mode": "compile",
+      "physical_records": 65536,
+      "pid": 69101,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 1.4240014579845592,
+      "prepared": {
+        "peak_rss_bytes": 79740928,
+        "rss_bytes": 79740928
+      },
+      "python": "3.14.4",
+      "repeat": 1,
+      "resolve_seconds": 0.074824208044447,
+      "resolved": {
+        "peak_rss_bytes": 82886656,
+        "rss_bytes": 82870272
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256
+    },
+    {
+      "activations": 65536,
+      "artifact_bytes": 15938450,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42483712,
+        "rss_bytes": 42139648
+      },
+      "compilation_disabled": false,
+      "export_seconds": 0.8976856250083074,
+      "exported": {
+        "peak_rss_bytes": 107724800,
+        "rss_bytes": 88178688
+      },
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "none",
+      "machine": "arm64",
+      "mode": "export",
+      "physical_records": 65536,
+      "pid": 69135,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 1.4265149580314755,
+      "prepared": {
+        "peak_rss_bytes": 82542592,
+        "rss_bytes": 82542592
+      },
+      "python": "3.14.4",
+      "repeat": 1,
+      "resolve_seconds": 0.07395412505138665,
+      "resolved": {
+        "peak_rss_bytes": 107724800,
+        "rss_bytes": 91209728
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256,
+      "serialized_objects": 170452
+    },
+    {
+      "activations": 65536,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42237952,
+        "rss_bytes": 41893888
+      },
+      "compilation_disabled": true,
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "none",
+      "machine": "arm64",
+      "mode": "load",
+      "physical_records": 65536,
+      "pid": 69199,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 0.6900569159770384,
+      "prepared": {
+        "peak_rss_bytes": 94863360,
+        "rss_bytes": 74956800
+      },
+      "python": "3.14.4",
+      "repeat": 1,
+      "resolve_seconds": 0.07785524998325855,
+      "resolved": {
+        "peak_rss_bytes": 94863360,
+        "rss_bytes": 81936384
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256
+    },
+    {
+      "activations": 65536,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42598400,
+        "rss_bytes": 42254336
+      },
+      "compilation_disabled": false,
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "none",
+      "machine": "arm64",
+      "mode": "compile",
+      "physical_records": 65536,
+      "pid": 69233,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 1.4274417919805273,
+      "prepared": {
+        "peak_rss_bytes": 79790080,
+        "rss_bytes": 79790080
+      },
+      "python": "3.14.4",
+      "repeat": 2,
+      "resolve_seconds": 0.0743941250257194,
+      "resolved": {
+        "peak_rss_bytes": 82903040,
+        "rss_bytes": 82903040
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256
+    },
+    {
+      "activations": 65536,
+      "artifact_bytes": 15938450,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42319872,
+        "rss_bytes": 41959424
+      },
+      "compilation_disabled": false,
+      "export_seconds": 0.9177957499632612,
+      "exported": {
+        "peak_rss_bytes": 105316352,
+        "rss_bytes": 85770240
+      },
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "none",
+      "machine": "arm64",
+      "mode": "export",
+      "physical_records": 65536,
+      "pid": 69299,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 1.4203033749945462,
+      "prepared": {
+        "peak_rss_bytes": 79675392,
+        "rss_bytes": 79675392
+      },
+      "python": "3.14.4",
+      "repeat": 2,
+      "resolve_seconds": 0.07419999991543591,
+      "resolved": {
+        "peak_rss_bytes": 105316352,
+        "rss_bytes": 88801280
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256,
+      "serialized_objects": 170452
+    },
+    {
+      "activations": 65536,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42647552,
+        "rss_bytes": 42319872
+      },
+      "compilation_disabled": true,
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "none",
+      "machine": "arm64",
+      "mode": "load",
+      "physical_records": 65536,
+      "pid": 69336,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 0.6936729999724776,
+      "prepared": {
+        "peak_rss_bytes": 94945280,
+        "rss_bytes": 75055104
+      },
+      "python": "3.14.4",
+      "repeat": 2,
+      "resolve_seconds": 0.07515870907809585,
+      "resolved": {
+        "peak_rss_bytes": 94945280,
+        "rss_bytes": 82067456
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256
+    },
+    {
+      "activations": 65536,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42385408,
+        "rss_bytes": 42041344
+      },
+      "compilation_disabled": false,
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "none",
+      "machine": "arm64",
+      "mode": "compile",
+      "physical_records": 65536,
+      "pid": 69372,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 1.4218717080075294,
+      "prepared": {
+        "peak_rss_bytes": 79462400,
+        "rss_bytes": 79462400
+      },
+      "python": "3.14.4",
+      "repeat": 3,
+      "resolve_seconds": 0.07394091703463346,
+      "resolved": {
+        "peak_rss_bytes": 82591744,
+        "rss_bytes": 82591744
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256
+    },
+    {
+      "activations": 65536,
+      "artifact_bytes": 15938450,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42631168,
+        "rss_bytes": 42287104
+      },
+      "compilation_disabled": false,
+      "export_seconds": 0.9335717079229653,
+      "exported": {
+        "peak_rss_bytes": 105693184,
+        "rss_bytes": 86147072
+      },
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "none",
+      "machine": "arm64",
+      "mode": "export",
+      "physical_records": 65536,
+      "pid": 69434,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 1.4269357080338523,
+      "prepared": {
+        "peak_rss_bytes": 79708160,
+        "rss_bytes": 79708160
+      },
+      "python": "3.14.4",
+      "repeat": 3,
+      "resolve_seconds": 0.07392091595102102,
+      "resolved": {
+        "peak_rss_bytes": 105693184,
+        "rss_bytes": 89178112
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256,
+      "serialized_objects": 170452
+    },
+    {
+      "activations": 65536,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42565632,
+        "rss_bytes": 42221568
+      },
+      "compilation_disabled": true,
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "none",
+      "machine": "arm64",
+      "mode": "load",
+      "physical_records": 65536,
+      "pid": 69500,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 0.689261749968864,
+      "prepared": {
+        "peak_rss_bytes": 94830592,
+        "rss_bytes": 74924032
+      },
+      "python": "3.14.4",
+      "repeat": 3,
+      "resolve_seconds": 0.0750509169884026,
+      "resolved": {
+        "peak_rss_bytes": 94830592,
+        "rss_bytes": 81936384
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256
+    },
+    {
+      "activations": 65536,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42483712,
+        "rss_bytes": 42139648
+      },
+      "compilation_disabled": false,
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "tracemalloc",
+      "machine": "arm64",
+      "mode": "compile",
+      "physical_records": 65536,
+      "pid": 69533,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 10.750916333985515,
+      "prepared": {
+        "peak_rss_bytes": 113819648,
+        "rss_bytes": 113819648,
+        "traced_peak_bytes": 32598943,
+        "traced_retained_bytes": 22834274
+      },
+      "python": "3.14.4",
+      "repeat": 1,
+      "resolve_seconds": 0.23999233299400657,
+      "resolved": {
+        "peak_rss_bytes": 116948992,
+        "rss_bytes": 116948992,
+        "traced_peak_bytes": 32598943,
+        "traced_retained_bytes": 31827915
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256
+    },
+    {
+      "activations": 65536,
+      "artifact_bytes": 15938450,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42483712,
+        "rss_bytes": 42139648
+      },
+      "compilation_disabled": false,
+      "export_seconds": 6.268039125017822,
+      "exported": {
+        "peak_rss_bytes": 179077120,
+        "rss_bytes": 161136640,
+        "traced_peak_bytes": 55212602,
+        "traced_retained_bytes": 22835997
+      },
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "tracemalloc",
+      "machine": "arm64",
+      "mode": "export",
+      "physical_records": 65536,
+      "pid": 69710,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 10.778735916945152,
+      "prepared": {
+        "peak_rss_bytes": 114032640,
+        "rss_bytes": 114032640,
+        "traced_peak_bytes": 32599895,
+        "traced_retained_bytes": 22835062
+      },
+      "python": "3.14.4",
+      "repeat": 1,
+      "resolve_seconds": 0.2465078749228269,
+      "resolved": {
+        "peak_rss_bytes": 179077120,
+        "rss_bytes": 164151296,
+        "traced_peak_bytes": 55212602,
+        "traced_retained_bytes": 31830899
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256,
+      "serialized_objects": 170452
+    },
+    {
+      "activations": 65536,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42418176,
+        "rss_bytes": 42074112
+      },
+      "compilation_disabled": true,
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "tracemalloc",
+      "machine": "arm64",
+      "mode": "load",
+      "physical_records": 65536,
+      "pid": 69973,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 3.4053373329807073,
+      "prepared": {
+        "peak_rss_bytes": 159432704,
+        "rss_bytes": 139526144,
+        "traced_peak_bytes": 47927122,
+        "traced_retained_bytes": 22386213
+      },
+      "python": "3.14.4",
+      "repeat": 1,
+      "resolve_seconds": 0.24060829204972833,
+      "resolved": {
+        "peak_rss_bytes": 159432704,
+        "rss_bytes": 146505728,
+        "traced_peak_bytes": 47927122,
+        "traced_retained_bytes": 31395787
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256
+    },
+    {
+      "activations": 65536,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42450944,
+        "rss_bytes": 42106880
+      },
+      "compilation_disabled": false,
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "tracemalloc",
+      "machine": "arm64",
+      "mode": "compile",
+      "physical_records": 65536,
+      "pid": 70064,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 10.78287224995438,
+      "prepared": {
+        "peak_rss_bytes": 114900992,
+        "rss_bytes": 114900992,
+        "traced_peak_bytes": 32604042,
+        "traced_retained_bytes": 22839366
+      },
+      "python": "3.14.4",
+      "repeat": 2,
+      "resolve_seconds": 0.24305991607252508,
+      "resolved": {
+        "peak_rss_bytes": 118030336,
+        "rss_bytes": 118030336,
+        "traced_peak_bytes": 32604042,
+        "traced_retained_bytes": 31831012
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256
+    },
+    {
+      "activations": 65536,
+      "artifact_bytes": 15938450,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 43171840,
+        "rss_bytes": 42827776
+      },
+      "compilation_disabled": false,
+      "export_seconds": 6.2444296249886975,
+      "exported": {
+        "peak_rss_bytes": 178651136,
+        "rss_bytes": 160710656,
+        "traced_peak_bytes": 55212494,
+        "traced_retained_bytes": 22835504
+      },
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "tracemalloc",
+      "machine": "arm64",
+      "mode": "export",
+      "physical_records": 65536,
+      "pid": 70246,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 10.784629666013643,
+      "prepared": {
+        "peak_rss_bytes": 113360896,
+        "rss_bytes": 113360896,
+        "traced_peak_bytes": 32603418,
+        "traced_retained_bytes": 22838584
+      },
+      "python": "3.14.4",
+      "repeat": 2,
+      "resolve_seconds": 0.24391658301465213,
+      "resolved": {
+        "peak_rss_bytes": 178651136,
+        "rss_bytes": 163725312,
+        "traced_peak_bytes": 55212494,
+        "traced_retained_bytes": 31831020
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256,
+      "serialized_objects": 170452
+    },
+    {
+      "activations": 65536,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42467328,
+        "rss_bytes": 42139648
+      },
+      "compilation_disabled": true,
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "tracemalloc",
+      "machine": "arm64",
+      "mode": "load",
+      "physical_records": 65536,
+      "pid": 70507,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 3.3992613749578595,
+      "prepared": {
+        "peak_rss_bytes": 156368896,
+        "rss_bytes": 136462336,
+        "traced_peak_bytes": 47927560,
+        "traced_retained_bytes": 22386605
+      },
+      "python": "3.14.4",
+      "repeat": 2,
+      "resolve_seconds": 0.24417179205920547,
+      "resolved": {
+        "peak_rss_bytes": 156368896,
+        "rss_bytes": 143458304,
+        "traced_peak_bytes": 47927560,
+        "traced_retained_bytes": 31396217
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256
+    },
+    {
+      "activations": 65536,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42549248,
+        "rss_bytes": 42221568
+      },
+      "compilation_disabled": false,
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "tracemalloc",
+      "machine": "arm64",
+      "mode": "compile",
+      "physical_records": 65536,
+      "pid": 70570,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 10.804516333038919,
+      "prepared": {
+        "peak_rss_bytes": 114180096,
+        "rss_bytes": 114180096,
+        "traced_peak_bytes": 32616021,
+        "traced_retained_bytes": 22850716
+      },
+      "python": "3.14.4",
+      "repeat": 3,
+      "resolve_seconds": 0.2434410830028355,
+      "resolved": {
+        "peak_rss_bytes": 117309440,
+        "rss_bytes": 117309440,
+        "traced_peak_bytes": 32616021,
+        "traced_retained_bytes": 31840201
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256
+    },
+    {
+      "activations": 65536,
+      "artifact_bytes": 15938450,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42516480,
+        "rss_bytes": 42188800
+      },
+      "compilation_disabled": false,
+      "export_seconds": 6.269196458044462,
+      "exported": {
+        "peak_rss_bytes": 177438720,
+        "rss_bytes": 159514624,
+        "traced_peak_bytes": 55210693,
+        "traced_retained_bytes": 22834017
+      },
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "tracemalloc",
+      "machine": "arm64",
+      "mode": "export",
+      "physical_records": 65536,
+      "pid": 70776,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 10.771647416986525,
+      "prepared": {
+        "peak_rss_bytes": 112394240,
+        "rss_bytes": 112394240,
+        "traced_peak_bytes": 32599357,
+        "traced_retained_bytes": 22834555
+      },
+      "python": "3.14.4",
+      "repeat": 3,
+      "resolve_seconds": 0.24083437491208315,
+      "resolved": {
+        "peak_rss_bytes": 177438720,
+        "rss_bytes": 162529280,
+        "traced_peak_bytes": 55210693,
+        "traced_retained_bytes": 31830217
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256,
+      "serialized_objects": 170452
+    },
+    {
+      "activations": 65536,
+      "artifact_schema": 5,
+      "before": {
+        "peak_rss_bytes": 42369024,
+        "rss_bytes": 42008576
+      },
+      "compilation_disabled": true,
+      "graph_fingerprint": "9b4ee242108323dbb9cf79d5749478f1a86d92f60333cea3d9dcee88a06c70c9",
+      "instrumentation": "tracemalloc",
+      "machine": "arm64",
+      "mode": "load",
+      "physical_records": 65536,
+      "pid": 71040,
+      "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+      "prepare_seconds": 3.39821062493138,
+      "prepared": {
+        "peak_rss_bytes": 156237824,
+        "rss_bytes": 136331264,
+        "traced_peak_bytes": 47926942,
+        "traced_retained_bytes": 22386079
+      },
+      "python": "3.14.4",
+      "repeat": 3,
+      "resolve_seconds": 0.24836625007446855,
+      "resolved": {
+        "peak_rss_bytes": 156237824,
+        "rss_bytes": 143310848,
+        "traced_peak_bytes": 47926942,
+        "traced_retained_bytes": 31396531
+      },
+      "resolved_graph": {
+        "leaves": 32768,
+        "objects": 65536,
+        "payload_bytes": 4194304
+      },
+      "roots": 256
+    }
+  ]
+}

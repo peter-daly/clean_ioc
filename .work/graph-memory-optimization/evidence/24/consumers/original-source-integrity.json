@@ -1,0 +1,12 @@
+{
+  "bark": {
+    "checked_original_python_files": 750,
+    "changed_files": [],
+    "path": "/Users/peter.daly/WS/bark/bark-core"
+  },
+  "cop": {
+    "checked_original_python_files": 150,
+    "changed_files": [],
+    "path": "/Users/peter.daly/.codex/worktrees/registration-partitions-main/data-protection-cop"
+  }
+}
