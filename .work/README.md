@@ -45,6 +45,19 @@ allowances for matrix variants. Sol High implemented and a separate Sol High age
 CI, Python 3.11–3.14, executable docs and strict documentation checks pass. Measurements establish exact work limits;
 machine noise prevents a reliable small overhead estimate. Runtime execution gains no budget work.
 
+## V2 performance and memory follow-up
+
+The [seven implementation work items](v2-performance/README.md), created on
+2026-11-18 after the pre-v2 review, cover lazy profiler histograms, shared scope
+owner maps, registration rescans, compiler subtree reuse, cached generic/provider
+resolution, cached async collections, and closed verification-runtime retention.
+Each item includes the exploratory evidence, behavioral guardrails and acceptance
+criteria. Items 01–03, 05 and 07 are complete, independently reviewed and accepted,
+with final implementation measurements. Items 04 and 06 were declined because
+review exposed observable behavior changes; their implementations are stashed,
+with immutable stash IDs and rejection evidence recorded in the individual items
+and shared index. The sequential implementation pass is complete.
+
 ## Graph memory optimization
 
 The separate [graph memory optimization plan](graph-memory-optimization/README.md),

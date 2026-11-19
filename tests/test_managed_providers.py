@@ -153,7 +153,8 @@ def test_singleton_target_keeps_parent_ownership():
     assert first.closed and len(created) == 1
 
 
-def test_provisions_use_bound_owner_not_first_child_values():
+@pytest.mark.parametrize("observed", [False, True])
+def test_provisions_use_bound_owner_not_first_child_values(observed):
     class Slot:
         pass
 
@@ -169,20 +170,24 @@ def test_provisions_use_bound_owner_not_first_child_values():
     builder.declare_slot(Slot, target="scoped")
     builder.register(UsesSlot, lifespan="scoped")
     builder.register(Consumer, lifespan="singleton")
-    with builder.build() as container:
+    instrumentation = Instrumentation(ResolutionProfiler(sample_durations=0)) if observed else None
+    with builder.build(instrumentation=instrumentation) as container:
         root_value, child_value = Slot(), Slot()
         container.provide(Slot, root_value)
         with container.new_scope() as child:
             child.provide(Slot, child_value)
+            warmed = child.resolve(UsesSlot)
             consumer = child.resolve(Consumer)
             local = child.resolve(ManagedProvider[UsesSlot])
-            with local() as value:
-                assert value.slot is child_value
+            with local() as first, local() as second:
+                assert first.slot is second.slot is child_value
+                assert len({warmed, first, second}) == 3
         with consumer.target() as value:
             assert value.slot is root_value
 
 
-def test_missing_provision_and_activation_failure_clean_up(composition):
+@pytest.mark.parametrize("observed", [False, True])
+def test_missing_provision_and_activation_failure_clean_up(composition, observed):
     builder, created = composition
 
     class Slot:
@@ -194,7 +199,8 @@ def test_missing_provision_and_activation_failure_clean_up(composition):
 
     builder.declare_slot(Slot, target="scoped")
     builder.register(Fails)
-    with builder.build() as container:
+    instrumentation = Instrumentation(ResolutionProfiler(sample_durations=0)) if observed else None
+    with builder.build(instrumentation=instrumentation) as container:
         handle = container.resolve(ManagedProvider[Fails])
         with pytest.raises(ScopeProvisionError):
             with handle():

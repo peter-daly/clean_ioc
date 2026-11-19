@@ -2,6 +2,26 @@ Unreleased
 ----------
 
 
+2.0.0rc8
+--------
+
+    Allocate runtime profiling duration histograms only when a metric receives
+    a timed sample. Counts-only and unobserved paths keep their complete reports.
+
+    Reuse singleton-owner maps to reduce allocations in ordinary child scopes,
+    managed-provider acquisitions, and per-call scopes.
+
+    Assign declaration metadata directly to new registrations to reduce
+    declaration time for large registries.
+
+    Avoid allocating a resolution context for cached closed generic roots and
+    ordinary provider calls. Reject access to cached singletons whose owner
+    has closed, even through a live child scope.
+
+    Release individually closed test runtimes from their verification report
+    after resource cleanup completes.
+
+
 2.0.0rc7
 --------
 

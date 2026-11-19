@@ -70,8 +70,10 @@ An async caller that waits for a shared initializer records both a cache miss an
 
 The JSON identifies `executions`; each record has `execution_id`, a `component:<occurrence>` path and a display label.
 Identifiers are process-local and do not imply stable semantic manifest identity. It omits configured and provided values, map keys, exception messages, runtime object IDs, and finalizer
-closures. The collector retains exact counters and fixed-size duration histograms per compiled reference. It retains
-no instances, arguments, traceback frames, per-request records, or unbounded event stream. A profiler failure is
+closures. The collector retains exact counters per compiled reference and allocates fixed-size duration histograms when
+metrics receive their first timed sample. Counts-only profiling (`sample_durations=0`)
+keeps the full catalog and exact counters without allocating histograms. The collector retains no instances, arguments,
+traceback frames, per-request records, or unbounded event stream. A profiler failure is
 marked by `incomplete` and `dropped_updates`; application resolution and cleanup continue to behave as before.
 The report is observational evidence independent of rich graphs and manifests. Installing or reading observation never
 constructs a graph, manifest, analysis index or sharing report.

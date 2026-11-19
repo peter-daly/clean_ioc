@@ -1,8 +1,12 @@
 """Runtime profiling exercises the actual compiled execution path."""
 
 import asyncio
+import json
 from collections.abc import Mapping
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, contextmanager
+from dataclasses import replace
+from threading import Barrier, Event
 from typing import Generic, Protocol, TypeVar
 
 import pytest
@@ -11,6 +15,7 @@ from typing_extensions import TypeAliasType
 from clean_ioc import (
     CompilationProfiler,
     ContainerBuilder,
+    DurationSummary,
     Instrumentation,
     Provider,
     ProviderMapGroup,
@@ -25,6 +30,96 @@ from clean_ioc.container import _ResolutionRequest, default_component_filter
 
 def _record(profile, kind, suffix):
     return next(record for record in profile.records if record.kind == kind and record.path.endswith(suffix))
+
+
+def test_counts_only_reports_keep_the_catalog_without_allocating_histograms():
+    class Service:
+        pass
+
+    closed = []
+
+    @contextmanager
+    def factory():
+        try:
+            yield Service()
+        finally:
+            closed.append(True)
+
+    builder = ContainerBuilder()
+    builder.register(Service, factory=factory, lifespan="singleton")
+    profiler = ResolutionProfiler(sample_durations=0)
+    with builder.build(instrumentation=Instrumentation(profiler)) as container:
+        before = profiler.report()
+        first = container.resolve(Service)
+        assert container.resolve(Service) is first
+        after_resolve = profiler.report()
+
+    assert closed == [True]
+    after_close = profiler.report()
+    repeated = profiler.report()
+    assert after_close == replace(repeated, captured_ns=after_close.captured_ns)
+    assert json.loads(after_close.to_json()) == after_close.to_dict()
+    assert not any(record.durations for record in profiler._records.values())
+    for snapshot in (before, after_resolve, after_close):
+        assert snapshot.groups and snapshot.cache_groups
+        assert [(record.path, record.kind) for record in snapshot.records] == [
+            (record.path, record.kind) for record in before.records
+        ]
+        assert all(
+            len(record.durations) == 8
+            and all(summary == DurationSummary(0, 0, 0, None) for _, summary in record.durations)
+            for record in (*snapshot.records, *snapshot.groups, *snapshot.cache_groups)
+        )
+    assert _record(before, "request", "Service").attempts == 0
+    assert _record(after_close, "request", "Service").completed == 2
+    assert _record(after_resolve, "cleanup", "<owner cleanup>").attempts == 0
+    assert _record(after_close, "cleanup", "<owner cleanup>").completed == 1
+    assert sum(group.attempts for group in after_close.groups) == 1
+    assert sum(group.cache_hits for group in after_close.cache_groups) == 1
+
+
+def test_timed_buckets_preserve_zero_boundaries_and_independent_aggregation(monkeypatch):
+    profiler = ResolutionProfiler()
+    paths = ("first", "second", "unobserved")
+    profiler._bind(
+        "execution",
+        dict.fromkeys(paths, ("service", "registration")),
+        dict.fromkeys(paths, "cache"),
+        frozenset(),
+        "binding",
+    )
+    clock = 1 << 64
+    monkeypatch.setattr("clean_ioc.instrumentation.time.perf_counter_ns", lambda: clock)
+    first, second, unobserved = (("execution", path) for path in paths)
+    profiler._safe_duration(first, "body", clock)
+    first_sample = profiler.report()
+    assert dict(first_sample.records[0].durations)["body"] == DurationSummary(1, 0, 0, 1)
+
+    for elapsed in (1, 2, 3, 4):
+        profiler._safe_duration(first, "body", clock - elapsed)
+    for elapsed in (*([0] * 19), 1 << 63):
+        profiler._safe_duration(second, "body", clock - elapsed)
+    profiler._safe_duration(second, "wait", clock - (1 << 63))
+
+    report = profiler.report()
+    first_record, second_record, inactive_record = report.records
+    assert dict(first_record.durations)["body"] == DurationSummary(5, 10, 4, 8)
+    assert dict(second_record.durations)["body"] == DurationSummary(20, 1 << 63, 1 << 63, 1)
+    assert dict(second_record.durations)["wait"] == DurationSummary(1, 1 << 63, 1 << 63, 1 << 63)
+    assert (
+        dict(first_record.durations)["wait"]
+        == dict(inactive_record.durations)["body"]
+        == DurationSummary(0, 0, 0, None)
+    )
+    for aggregate in (*report.groups, *report.cache_groups):
+        assert dict(aggregate.durations)["body"] == DurationSummary(25, (1 << 63) + 10, 1 << 63, 8)
+        assert dict(aggregate.durations)["wait"] == dict(second_record.durations)["wait"]
+    repeated = profiler.report()
+    assert report == replace(repeated, captured_ns=report.captured_ns)
+    assert dict(first_sample.records[0].durations)["body"] == DurationSummary(1, 0, 0, 1)
+    assert set(profiler._records[first].durations) == {"body"}
+    assert set(profiler._records[second].durations) == {"body", "wait"}
+    assert not profiler._records[unobserved].durations
 
 
 def test_exact_singleton_cache_counts_and_sampled_request_time():
@@ -53,6 +148,7 @@ def test_exact_singleton_cache_counts_and_sampled_request_time():
         2,
     )
     assert dict(request.durations)["request"].samples == 1
+    assert dict(registration.durations)["body"].samples == 0
     assert report.to_json() == report.to_json()
 
 
@@ -100,6 +196,11 @@ def test_profiler_separates_equivalent_second_runtime_without_mixing_catalogs():
     assert all(record.execution_id in report.executions for record in records)
     assert sum(record.attempts for record in records if record.kind == "registration") == 2
     assert len(baseline.executions) == 1 and len(profiler.report().executions) == 2
+    assert {
+        record.execution_id: dict(record.durations)["body"].samples
+        for record in records
+        if record.kind == "registration" and record.attempts
+    } == dict.fromkeys(report.executions, 1)
 
 
 def test_overlay_has_distinct_execution_identity_and_reuses_parent_profiler():
@@ -116,6 +217,11 @@ def test_overlay_has_distinct_execution_identity_and_reuses_parent_profiler():
     report = profiler.report()
     assert len(report.executions) == 2
     assert not report.incomplete
+    assert {
+        record.execution_id: dict(record.durations)["request"].samples
+        for record in report.records
+        if record.kind == "request" and record.attempts
+    } == dict.fromkeys(report.executions, 1)
 
 
 def test_declared_resolution_context_request_has_graph_activation_owner_and_call_edge():
@@ -329,6 +435,42 @@ def test_resource_cleanup_and_live_snapshot_are_separate_operations():
     assert calls == ["acquire", "release"]
     after = profiler.report()
     assert any(record.kind == "cleanup" and record.attempts == 1 and record.completed == 1 for record in after.records)
+
+
+def test_concurrent_first_samples_and_live_snapshots():
+    class Service:
+        pass
+
+    ready = Barrier(3)
+    release = Event()
+
+    def factory() -> Service:
+        ready.wait(timeout=10)
+        if not release.wait(timeout=10):
+            raise TimeoutError("Resolution was not released")
+        return Service()
+
+    profiler = ResolutionProfiler()
+    builder = ContainerBuilder().set_provider_roots(())
+    builder.register(Service, factory=factory)
+    with builder.build(instrumentation=Instrumentation(profiler)) as container, ThreadPoolExecutor(2) as pool:
+        pending = [pool.submit(container.resolve, Service) for _ in range(2)]
+        try:
+            ready.wait(timeout=10)
+            before = profiler.report()
+        finally:
+            release.set()
+        profiler.report()
+        assert all(isinstance(future.result(timeout=10), Service) for future in pending)
+        after = profiler.report()
+
+    before_request = _record(before, "request", "Service")
+    after_request = _record(after, "request", "Service")
+    assert (before_request.attempts, before_request.completed, before.in_flight) == (2, 0, 2)
+    assert dict(before_request.durations)["request"] == DurationSummary(0, 0, 0, None)
+    assert (after_request.attempts, after_request.completed, after.in_flight) == (2, 2, 0)
+    assert dict(after_request.durations)["request"].samples == 2
+    assert not after.incomplete
 
 
 def test_provider_map_and_overlay_use_same_profiler():
@@ -866,7 +1008,7 @@ def test_clock_failure_disables_timing_without_changing_resolution(monkeypatch):
     assert profiler.report().incomplete
 
 
-@pytest.mark.parametrize("failing_method", ["_choose_timing", "_record"])
+@pytest.mark.parametrize("failing_method", ["_choose_timing", "_record", "_duration"])
 def test_injected_collector_failure_cannot_change_resolve_cache_or_cleanup(monkeypatch, failing_method):
     class Service:
         pass

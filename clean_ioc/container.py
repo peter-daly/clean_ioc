@@ -3045,7 +3045,7 @@ def _create_discovered_registration(
         dependency_config={},
         tags=tags,
         parent_node_filter=legacy.default_parent_node_filter,
-    )
+    ).id
     return next(
         registration for registration in registry.get_registrations(service_type) if registration.id == component_id
     )
@@ -3379,15 +3379,28 @@ class _FrozenProvider:
         self._step = step
 
     def __call__(self) -> Any:
+        scope = self._scope
+        step = self._step
         try:
-            self._scope._ensure_open()
+            scope._ensure_open()
         except ScopeClosedError as error:
             raise ProviderScopeClosedError("The provider's bound scope is closed") from error
-        context = _RuntimeResolutionContext(self._scope)
+        if not step.sync_supported:
+            raise RuntimeError("The provider target requires AsyncProvider")
+        if type(step) is _SingletonRegistrationStep:
+            owner = scope._owners[step.owner_token]
+            if owner._closed:
+                owner._ensure_owner_open()
+            value = owner._singletons.get(step.registration.id, _CACHE_MISS)
+            if value is not _CACHE_MISS:
+                return value
+        elif type(step) is _ScopedRegistrationStep:
+            found, value = scope._find_scoped(step.registration.id)
+            if found:
+                return value
+        context = _RuntimeResolutionContext(scope)
         try:
-            if not self._step.sync_supported:
-                raise RuntimeError("The provider target requires AsyncProvider")
-            return self._step.resolve(context)
+            return step.resolve(context)
         finally:
             context.finish()
 
@@ -3402,13 +3415,26 @@ class _FrozenAsyncProvider:
         self._step = step
 
     async def __call__(self) -> Any:
+        scope = self._scope
+        step = self._step
         try:
-            self._scope._ensure_open()
+            scope._ensure_open()
         except ScopeClosedError as error:
             raise ProviderScopeClosedError("The provider's bound scope is closed") from error
-        context = _RuntimeResolutionContext(self._scope)
+        if type(step) is _SingletonRegistrationStep:
+            owner = scope._owners[step.owner_token]
+            if owner._closed:
+                owner._ensure_owner_open()
+            value = owner._singletons.get(step.registration.id, _CACHE_MISS)
+            if value is not _CACHE_MISS:
+                return value
+        elif type(step) is _ScopedRegistrationStep:
+            found, value = scope._find_scoped(step.registration.id)
+            if found:
+                return value
+        context = _RuntimeResolutionContext(scope)
         try:
-            return await self._step.resolve_async(context)
+            return await step.resolve_async(context)
         finally:
             context.finish()
 
@@ -14710,24 +14736,30 @@ class _RuntimeResolutionContext:
     def resolve_root(self, service_type: Any, filter: ComponentFilter) -> Any:
         collection = _collection_request(service_type)
         if collection is not None:
-            collection_type, element_type = collection
-            plans = self.scope._select_roots(element_type, filter)
-            if not all(plan.step.sync_supported for plan in plans):
-                raise RuntimeError(f"{service_type!r} requires resolve_async()")
-            return collection_type(plan.step.resolve(self) for plan in plans)
+            return self._resolve_collection(service_type, collection, filter)
         plan = self.scope._select_root(service_type, filter)
         if not plan.step.sync_supported:
             raise RuntimeError(f"{service_type!r} requires resolve_async()")
         return plan.step.resolve(self)
 
+    def _resolve_collection(self, service_type: Any, collection: tuple[type, Any], filter: ComponentFilter) -> Any:
+        collection_type, element_type = collection
+        plans = self.scope._select_roots(element_type, filter)
+        if not all(plan.step.sync_supported for plan in plans):
+            raise RuntimeError(f"{service_type!r} requires resolve_async()")
+        return collection_type(plan.step.resolve(self) for plan in plans)
+
     async def resolve_root_async(self, service_type: Any, filter: ComponentFilter) -> Any:
         collection = _collection_request(service_type)
         if collection is not None:
-            collection_type, element_type = collection
-            plans = self.scope._select_roots(element_type, filter)
-            values = await asyncio.gather(*(plan.step.resolve_async(self) for plan in plans))
-            return collection_type(values)
+            return await self._resolve_collection_async(collection, filter)
         return await self.scope._select_root(service_type, filter).step.resolve_async(self)
+
+    async def _resolve_collection_async(self, collection: tuple[type, Any], filter: ComponentFilter) -> Any:
+        collection_type, element_type = collection
+        plans = self.scope._select_roots(element_type, filter)
+        values = await asyncio.gather(*(plan.step.resolve_async(self) for plan in plans))
+        return collection_type(values)
 
     def assert_allowed(self, step: _RegistrationStep) -> None:
         registration = step.registration
@@ -14950,6 +14982,7 @@ class _ObservedPerCallResolutionContext(_ObservedResolutionContext, _PerCallReso
 class Scope(_RuntimeOwner):
     """An immutable runtime scope backed by a compiled component plan."""
 
+    _owners: Mapping[str, _RuntimeOwner]
     _profiler: ResolutionProfiler
     _profile_fingerprint: str
     _profile_paths: dict[int, str]
@@ -14960,7 +14993,7 @@ class Scope(_RuntimeOwner):
         *,
         container: Container,
         parent: Scope | None,
-        owners: dict[str, _RuntimeOwner],
+        owners: Mapping[str, _RuntimeOwner],
         owned_token: str | None = None,
         inherit_scoped: bool = True,
     ) -> None:
@@ -14969,9 +15002,12 @@ class Scope(_RuntimeOwner):
         self._plan = plan
         self.container = container
         self.parent = parent
-        self._owners = dict(owners)
+        # Owner maps are complete at construction and shared by ordinary descendants.
         if owned_token is not None:
-            self._owners[owned_token] = self
+            overlay_owners = dict(owners)
+            overlay_owners[owned_token] = self
+            owners = overlay_owners
+        self._owners = owners
         self._owned_token = owned_token
         self._inherit_scoped = inherit_scoped
         self._scoped: dict[str, Any] = {}
@@ -15250,25 +15286,38 @@ class Scope(_RuntimeOwner):
                 if (service_type, None) in self._plan.slots:
                     raise ScopeProvisionError(f"Scope slot {service_type!r} has no provided value")
                 raise CannotResolveError(service_type)
-            if not plan.step.sync_supported:
-                raise RuntimeError(f"{service_type!r} requires resolve_async()")
-            if isinstance(plan.step, _SingletonRegistrationStep):
-                owner = self._owners[plan.step.owner_token]
-                value = owner._singletons.get(plan.step.registration.id, _CACHE_MISS)
-                if value is not _CACHE_MISS:
-                    return cast(TService, value)
-            elif isinstance(plan.step, _ScopedRegistrationStep):
-                found, value = self._find_scoped(plan.step.registration.id)
-                if found:
-                    return cast(TService, value)
+        elif filter is not default_component_filter:
             context = _RuntimeResolutionContext(self)
             try:
-                return cast(TService, plan.step.resolve(context))
+                return cast(TService, context.resolve_root(service_type, filter))
             finally:
                 context.finish()
+        else:
+            collection = _collection_request(service_type)
+            if collection is not None:
+                context = _RuntimeResolutionContext(self)
+                try:
+                    return cast(TService, context._resolve_collection(service_type, collection, filter))
+                finally:
+                    context.finish()
+            plan = self._select_root(service_type, filter)
+        step = plan.step
+        if not step.sync_supported:
+            raise RuntimeError(f"{service_type!r} requires resolve_async()")
+        if type(step) is _SingletonRegistrationStep:
+            owner = self._owners[step.owner_token]
+            if owner._closed:
+                owner._ensure_owner_open()
+            value = owner._singletons.get(step.registration.id, _CACHE_MISS)
+            if value is not _CACHE_MISS:
+                return cast(TService, value)
+        elif type(step) is _ScopedRegistrationStep:
+            found, value = self._find_scoped(step.registration.id)
+            if found:
+                return cast(TService, value)
         context = _RuntimeResolutionContext(self)
         try:
-            return cast(TService, context.resolve_root(service_type, filter))
+            return cast(TService, step.resolve(context))
         finally:
             context.finish()
 
@@ -15286,23 +15335,36 @@ class Scope(_RuntimeOwner):
                 if (service_type, None) in self._plan.slots:
                     raise ScopeProvisionError(f"Scope slot {service_type!r} has no provided value")
                 raise CannotResolveError(service_type)
-            if isinstance(plan.step, _SingletonRegistrationStep):
-                owner = self._owners[plan.step.owner_token]
-                value = owner._singletons.get(plan.step.registration.id, _CACHE_MISS)
-                if value is not _CACHE_MISS:
-                    return cast(TService, value)
-            elif isinstance(plan.step, _ScopedRegistrationStep):
-                found, value = self._find_scoped(plan.step.registration.id)
-                if found:
-                    return cast(TService, value)
+        elif filter is not default_component_filter:
             context = _RuntimeResolutionContext(self)
             try:
-                return cast(TService, await plan.step.resolve_async(context))
+                return cast(TService, await context.resolve_root_async(service_type, filter))
             finally:
                 context.finish()
+        else:
+            collection = _collection_request(service_type)
+            if collection is not None:
+                context = _RuntimeResolutionContext(self)
+                try:
+                    return cast(TService, await context._resolve_collection_async(collection, filter))
+                finally:
+                    context.finish()
+            plan = self._select_root(service_type, filter)
+        step = plan.step
+        if type(step) is _SingletonRegistrationStep:
+            owner = self._owners[step.owner_token]
+            if owner._closed:
+                owner._ensure_owner_open()
+            value = owner._singletons.get(step.registration.id, _CACHE_MISS)
+            if value is not _CACHE_MISS:
+                return cast(TService, value)
+        elif type(step) is _ScopedRegistrationStep:
+            found, value = self._find_scoped(step.registration.id)
+            if found:
+                return cast(TService, value)
         context = _RuntimeResolutionContext(self)
         try:
-            return cast(TService, await context.resolve_root_async(service_type, filter))
+            return cast(TService, await step.resolve_async(context))
         finally:
             context.finish()
 
@@ -15431,7 +15493,7 @@ class Container(Scope):
             self._plan,
             container=self,
             parent=self,
-            owners=cast(dict[str, _RuntimeOwner], self._owners),
+            owners=self._owners,
         )
 
 
@@ -16907,7 +16969,7 @@ class _BuilderBase:
         ):
             activation_factory = _missing_activation_factory
         instance_implementation_type = None if instance is None else _static_instance_implementation_type(instance)
-        component_id = self._composition.register(
+        registration = self._composition._register(
             cast(type[TService], service_type),
             implementation_type,
             factory=activation_factory,
@@ -16918,6 +16980,7 @@ class _BuilderBase:
             tags=tags,
             parent_node_filter=legacy.default_parent_node_filter,
         )
+        component_id = registration.id
         self._registration_when[component_id] = when
         if candidate_when is not None:
             self._candidate_when[component_id] = candidate_when
@@ -16936,10 +16999,7 @@ class _BuilderBase:
             self._contributions[component_id] = types.MappingProxyType(normalized_contributions)
         self._service_groups[component_id] = service_groups
         self._registration_origins[component_id] = origin
-        for registrations in self._composition._registry._registrations.values():
-            for registration in registrations:
-                if registration.id == component_id:
-                    registration.declared_service_type = declared_service_type
+        registration.declared_service_type = declared_service_type
         if factory is not None:
             self._factory_ids.add(component_id)
             if factory_specialization is not None:
@@ -17774,7 +17834,8 @@ class _VerificationRuntime:
         self._plan = plan
         self._owner_token = owner_token
         self._parent = parent
-        self._runtimes: list[Scope] = []
+        self._runtimes: dict[object, Scope] = {}
+        self._runtimes_lock = threading.Lock()
         self._closed = False
         self.composition: Composition | None = None
         self._failed_census: Any = None
@@ -17814,29 +17875,48 @@ class _VerificationRuntime:
             )
         if instrumentation is not None:
             cast(_ObservedScope, runtime)._install_observation(instrumentation.profiler, fingerprint, labels, paths)
-        self._runtimes.append(runtime)
+        token = object()
+        report_ref = weakref.ref(self)
+
+        def release() -> None:
+            if (report := report_ref()) is not None:
+                with report._runtimes_lock:
+                    report._runtimes.pop(token, None)
+                    if not report._runtimes:
+                        report._runtimes.clear()
+
+        # Finalizers run in reverse order, including after failures. Install
+        # this before publication so release follows all resource cleanup.
+        runtime._add_finalizer(release)
+        with self._runtimes_lock:
+            self._runtimes[token] = runtime
         return runtime
+
+    def _remaining_runtimes(self) -> Iterator[Scope]:
+        # Snapshot keys; a suspended cleanup should not retain other runtimes
+        # that have finished closing in the meantime.
+        for token in reversed(tuple(self._runtimes.copy())):
+            if (runtime := self._runtimes.get(token)) is not None:
+                yield runtime
 
     def close(self) -> None:
         self._closed = True
         errors: list[BaseException] = []
-        for runtime in reversed(self._runtimes):
+        for runtime in self._remaining_runtimes():
             try:
                 runtime.__exit__(None, None, None)
             except BaseException as error:
                 errors.append(error)
-        self._runtimes.clear()
         _RuntimeOwner._raise_cleanup_failures(errors)
 
     async def aclose(self) -> None:
         self._closed = True
         errors: list[BaseException] = []
-        for runtime in reversed(self._runtimes):
+        for runtime in self._remaining_runtimes():
             try:
                 await runtime.__aexit__(None, None, None)
             except BaseException as error:
                 errors.append(error)
-        self._runtimes.clear()
         _RuntimeOwner._raise_cleanup_failures(errors)
 
     def __enter__(self):

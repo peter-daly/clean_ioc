@@ -1,7 +1,9 @@
 """Acceptance coverage for compiled resource ownership proofs."""
 
 import asyncio
+import gc
 import json
+import weakref
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, contextmanager
 
@@ -10,7 +12,9 @@ import pytest
 from clean_ioc import (
     ContainerBuilder,
     GraphManifest,
+    Instrumentation,
     ResolutionContext,
+    ResolutionProfiler,
     RuntimeOwnerKind,
     Scope,
     ScopeBuilder,
@@ -18,6 +22,7 @@ from clean_ioc import (
     all_components,
 )
 from clean_ioc.cli import main
+from clean_ioc.component_filters import with_name
 from tests.verification_helpers import present
 
 
@@ -168,6 +173,72 @@ def test_transient_cleanup_follows_overlay_singleton_owner_from_nested_scope():
     assert events == ["enter", "exit"]
 
 
+@pytest.mark.parametrize("observed", [False, True])
+def test_sibling_and_nested_overlays_keep_their_own_singleton_lifetimes(observed):
+    class RootSingleton:
+        pass
+
+    class LocalSingleton:
+        pass
+
+    class RequestState:
+        pass
+
+    closed = []
+
+    def make_overlay(parent, composition, label):
+        @contextmanager
+        def resource():
+            try:
+                yield LocalSingleton()
+            finally:
+                closed.append(label)
+
+        builder = ScopeBuilder(parent, composition=composition)
+        builder.register(LocalSingleton, factory=resource, lifespan="singleton", name=label)
+        overlay_composition = builder.retain_composition()
+        return builder.build(), overlay_composition
+
+    builder = ContainerBuilder().set_provider_roots(())
+    builder.register(RootSingleton, lifespan="singleton")
+    builder.register(RequestState, lifespan="scoped")
+    composition = builder.retain_composition()
+    instrumentation = Instrumentation(ResolutionProfiler(sample_durations=0)) if observed else None
+    with builder.build(instrumentation=instrumentation) as root, root.new_scope() as parent:
+        root_singleton = root.resolve(RootSingleton)
+        state = parent.resolve(RequestState)
+        with parent.new_scope() as existing_child:
+            left, left_composition = make_overlay(parent, composition, "left")
+            right, _ = make_overlay(parent, composition, "right")
+            with right, right.new_scope() as right_child:
+                right_value = right_child.resolve(LocalSingleton, filter=with_name("right"))
+                with left, left.new_scope() as left_child:
+                    left_value = left_child.resolve(LocalSingleton, filter=with_name("left"))
+                    nested, _ = make_overlay(left, left_composition, "nested")
+                    with nested, nested.new_scope() as nested_child:
+                        nested_value = nested_child.resolve(LocalSingleton, filter=with_name("nested"))
+                        assert len({left_value, right_value, nested_value}) == 3
+                        assert all(
+                            child.resolve(RootSingleton) is root_singleton
+                            for child in (left_child, right_child, nested_child)
+                        )
+                        assert set(nested.resolve(list[LocalSingleton], filter=all_components)) == {
+                            left_value,
+                            nested_value,
+                        }
+                    assert closed == ["nested"]
+                    assert left.resolve(list[LocalSingleton], filter=all_components) == [left_value]
+                left.__exit__()
+                assert closed == ["nested", "left"]
+                assert right.resolve(list[LocalSingleton], filter=all_components) == [right_value]
+                assert existing_child.resolve(RequestState) is state
+                left_ref, nested_ref = weakref.ref(left), weakref.ref(nested)
+                del left, left_child, nested, nested_child
+                gc.collect()
+                assert left_ref() is None and nested_ref() is None
+            assert closed == ["nested", "left", "right"]
+
+
 def test_scoped_component_owns_transient_cleanup_at_scope_boundary():
     class Resource:
         pass
@@ -229,7 +300,8 @@ async def test_async_transient_cleanup_is_promoted_to_singleton_owner():
 
 
 @pytest.mark.asyncio
-async def test_concurrent_async_root_activation_uses_each_compiled_singleton_owner():
+@pytest.mark.parametrize("observed", [False, True])
+async def test_concurrent_async_root_activation_uses_each_compiled_singleton_owner(observed):
     class Service:
         pass
 
@@ -249,7 +321,8 @@ async def test_concurrent_async_root_activation_uses_each_compiled_singleton_own
     root_builder = ContainerBuilder()
     root_builder.register(Service, factory=service_factory("root"), lifespan="singleton", name="root")
     root_composition = root_builder.retain_composition()
-    root = root_builder.build()
+    instrumentation = Instrumentation(ResolutionProfiler(sample_durations=0)) if observed else None
+    root = root_builder.build(instrumentation=instrumentation)
     overlay_builder = ScopeBuilder(root, composition=root_composition)
     overlay_builder.register(Service, factory=service_factory("overlay"), lifespan="singleton", name="overlay")
     overlay = overlay_builder.build()
@@ -263,6 +336,9 @@ async def test_concurrent_async_root_activation_uses_each_compiled_singleton_own
     assert "exit:root" not in events
     await root._close_async()
     assert events[-1] == "exit:root"
+    await overlay._close_async()
+    await root._close_async()
+    assert events.count("exit:overlay") == events.count("exit:root") == 1
 
 
 @pytest.mark.parametrize(
@@ -526,17 +602,17 @@ def test_closed_scope_rejects_runtime_operations_and_saved_resolution_context():
     scope._close()
 
 
-def test_parent_close_does_not_close_an_independent_child_scope():
+@pytest.mark.parametrize("observed", [False, True])
+def test_parent_close_does_not_close_an_independent_child_scope(observed):
     class Service:
         pass
 
     container = ContainerBuilder()
     container.register(Service, lifespan="transient")
-    parent = container.build()
-    child = parent.new_scope()
-    parent._close()
-
-    assert isinstance(child.resolve(Service), Service)
+    instrumentation = Instrumentation(ResolutionProfiler(sample_durations=0)) if observed else None
+    with container.build(instrumentation=instrumentation) as parent, parent.new_scope() as child:
+        parent.__exit__()
+        assert isinstance(child.resolve(Service), Service)
 
 
 def test_concurrent_singleton_activation_registers_one_promoted_finalizer():

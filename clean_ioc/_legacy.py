@@ -1381,7 +1381,7 @@ class _Registry:
         dependency_config: DependencyConfig,
         tags: Iterable[Tag] | None,
         parent_node_filter: NodeFilter,
-    ) -> str:
+    ) -> _Registration:
         registration = _Registration(
             activator_class=FactoryActivator,
             service_type=service_type,
@@ -1395,7 +1395,7 @@ class _Registry:
 
         self._registrations[service_type].appendleft(registration)
         self._registrations[implementation].appendleft(registration)
-        return registration.id
+        return registration
 
     def register_concrete(
         self,
@@ -1406,7 +1406,7 @@ class _Registry:
         dependency_config: DependencyConfig,
         tags: Iterable[Tag] | None,
         parent_node_filter: NodeFilter,
-    ) -> str:
+    ) -> _Registration:
         registration = _Registration(
             activator_class=FactoryActivator,
             service_type=service_type,
@@ -1419,7 +1419,7 @@ class _Registry:
         )
 
         self._registrations[service_type].appendleft(registration)
-        return registration.id
+        return registration
 
     def register_instance(
         self,
@@ -1432,7 +1432,7 @@ class _Registry:
         tags: Iterable[Tag] | None,
         parent_node_filter: NodeFilter,
         is_root_owned_instance: bool,
-    ) -> str:
+    ) -> _Registration:
         instance_lifespan = lifespan if lifespan == Lifespan.singleton else Lifespan.scoped
 
         registration = _Registration(
@@ -1448,7 +1448,7 @@ class _Registry:
             is_root_owned_instance=is_root_owned_instance,
         )
         self._registrations[service_type].appendleft(registration)
-        return registration.id
+        return registration
 
     @classmethod
     def _get_activator_class(cls, creator_function: Callable) -> type[Activator]:
@@ -1470,7 +1470,7 @@ class _Registry:
         dependency_config: DependencyConfig,
         tags: Iterable[Tag] | None,
         parent_node_filter: NodeFilter,
-    ) -> str:
+    ) -> _Registration:
         registration = _Registration(
             activator_class=self._get_activator_class(factory),
             service_type=service_type,
@@ -1484,7 +1484,7 @@ class _Registry:
 
         self._registrations[service_type].appendleft(registration)
 
-        return registration.id
+        return registration
 
     def patch_registration(
         self,
@@ -2202,6 +2202,31 @@ class Scope:
             container.register(AppConfig, instance=config)
             ```
         """
+        return self._register(
+            service_type,
+            implementation_type,
+            factory=factory,
+            instance=instance,
+            lifespan=lifespan,
+            name=name,
+            dependency_config=dependency_config,
+            tags=tags,
+            parent_node_filter=parent_node_filter,
+        ).id
+
+    def _register(
+        self,
+        service_type: type[TService],
+        implementation_type: type[TService] | None,
+        *,
+        factory: Callable[..., TService] | None,
+        instance: TService | None,
+        lifespan: Lifespan,
+        name: str | None,
+        dependency_config: DependencyConfig,
+        tags: Iterable[Tag] | None,
+        parent_node_filter: NodeFilter,
+    ) -> _Registration:
         if instance is not None:
             return self._registry.register_instance(
                 service_type=service_type,

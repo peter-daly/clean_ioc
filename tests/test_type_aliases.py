@@ -11,7 +11,7 @@ from typing import Any, Callable, Generic, NewType, ParamSpec, cast
 import pytest
 from typing_extensions import TypeAliasType, TypeVar
 
-from clean_ioc import ContainerBuilder, Expose, Provider, Use
+from clean_ioc import ContainerBuilder, Expose, Provider, RegistrationTemplate, ScopeBuilder, Use
 from clean_ioc import component_filters as cf
 from tests.verification_helpers import present
 
@@ -156,6 +156,122 @@ def test_class_valued_service_and_implementation_aliases_construct_the_canonical
         assert type(value) is Implementation
         assert container.resolve(ContractAlias) is value
         assert cf.implementation_type_is(ImplementationAlias)(container.components[0])
+
+
+@pytest.mark.parametrize("form", ["concrete", "implementation", "factory", "instance"])
+def test_repeated_alias_registrations_keep_their_metadata_and_order(form):
+    class Service:
+        pass
+
+    class Implementation(Service):
+        pass
+
+    first_alias = TypeAliasType("first_alias", Service)
+    second_alias = TypeAliasType("second_alias", Service)
+    instances = [Service(), Service()]
+    builder = ContainerBuilder()
+    component_ids = []
+    for alias, instance in zip((first_alias, second_alias), instances, strict=True):
+        if form == "implementation":
+            component_id = builder.register(alias, Implementation, lifespan="singleton")
+        elif form == "factory":
+            component_id = builder.register(alias, factory=Service, lifespan="singleton")
+        elif form == "instance":
+            component_id = builder.register(alias, instance=instance, lifespan="singleton")
+        else:
+            component_id = builder.register(alias, lifespan="singleton")
+        component_ids.append(component_id)
+
+    with builder.verify() as analysis, analysis.create_runtime() as container:
+        roots = present(analysis.graph).roots
+        expected_aliases = dict(zip(component_ids, (first_alias, second_alias), strict=True))
+        assert {
+            root.component.id: root.component.declared_service_type for root in roots if root.requested_type is Service
+        } == expected_aliases
+        registered = [container.resolve(Service, filter=cf.with_id(component_id)) for component_id in component_ids]
+        assert registered[0] is not registered[1]
+        assert container.resolve(list[Service]) == registered[::-1]
+        assert container.resolve(second_alias) is registered[1]
+        if form == "implementation":
+            assert {
+                root.component.id: root.component.declared_service_type
+                for root in roots
+                if root.requested_type is Implementation
+            } == expected_aliases
+            assert container.resolve(list[Implementation]) == registered[::-1]
+        elif form == "instance":
+            assert registered == instances
+
+
+def test_implementation_hash_can_register_another_alias_without_changing_outer_metadata():
+    builder = ContainerBuilder()
+    reenter = False
+    inner_id = None
+    forbid_service_hash = False
+
+    class ServiceMeta(type):
+        def __hash__(cls):
+            assert inner_id is None or not forbid_service_hash, "service key hashed after insertion"
+            return type.__hash__(cls)
+
+    class Service(metaclass=ServiceMeta):
+        pass
+
+    class ImplementationMeta(ServiceMeta):
+        def __hash__(self):
+            nonlocal reenter, inner_id
+            if reenter:
+                reenter = False
+                inner_id = builder.register(inner_alias, lifespan="singleton")
+            return type.__hash__(self)
+
+    class Implementation(Service, metaclass=ImplementationMeta):
+        pass
+
+    outer_alias = TypeAliasType("outer_alias", Service)
+    inner_alias = TypeAliasType("inner_alias", Service)
+    reenter = forbid_service_hash = True
+    outer_id = builder.register(outer_alias, Implementation, lifespan="singleton")
+    forbid_service_hash = False
+
+    with builder.verify() as analysis, analysis.create_runtime() as container:
+        aliases_by_id = {
+            root.component.id: root.component.declared_service_type
+            for root in present(analysis.graph).roots
+            if root.requested_type is Service
+        }
+        assert aliases_by_id == {outer_id: outer_alias, inner_id: inner_alias}
+        outer = container.resolve(Implementation)
+        inner = container.resolve(Service)
+        assert type(inner) is Service
+        assert container.resolve(list[Service]) == [inner, outer]
+
+
+def test_generated_registration_preserves_its_open_generic_alias_in_an_overlay():
+    class Source:
+        pass
+
+    generic_alias = TypeAliasType("generic_alias", Repository)
+    builder = ContainerBuilder()
+    composition = builder.retain_composition()
+    with builder.build() as parent:
+        overlay = ScopeBuilder(parent, composition=composition)
+        source_id = overlay.register(Source)
+        seen = []
+
+        def template(source):
+            seen.append(source.id)
+            return RegistrationTemplate(generic_alias, lifespan="singleton")
+
+        overlay.register_registration_template(for_each=Source, template=template)
+        overlay.mark_entrypoint(IntRepository)
+        with overlay.verify() as analysis, analysis.create_runtime() as scope:
+            component = next(
+                root.component for root in present(analysis.graph).roots if root.requested_type == Repository[int]
+            )
+            assert component.declared_service_type is generic_alias
+            assert scope.resolve(IntRepository) is scope.resolve(Repository[int])
+            assert seen == [source_id]
 
 
 def test_generator_factory_alias_result_and_cleanup_ownership():

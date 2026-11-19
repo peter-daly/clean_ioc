@@ -10,7 +10,14 @@ from typing import Protocol
 
 import pytest
 
-from clean_ioc import ContainerBuilder, ContainerBuildError, ScopeBuilder, ScopeClosedError
+from clean_ioc import (
+    ContainerBuilder,
+    ContainerBuildError,
+    Instrumentation,
+    ResolutionProfiler,
+    ScopeBuilder,
+    ScopeClosedError,
+)
 
 
 def test_long_lived_consumer_has_isolated_calls_after_first_resolving_child_closes(monkeypatch):
@@ -68,7 +75,8 @@ def test_long_lived_consumer_has_isolated_calls_after_first_resolving_child_clos
     assert all(resource.closed for resource in created)
 
 
-async def test_concurrent_calls_and_cancellation_keep_resource_ownership_separate():
+@pytest.mark.parametrize("observed", [False, True])
+async def test_concurrent_calls_and_cancellation_keep_resource_ownership_separate(observed):
     class Resource:
         closed = False
 
@@ -103,7 +111,8 @@ async def test_concurrent_calls_and_cancellation_keep_resource_ownership_separat
     builder = ContainerBuilder()
     builder.register(Resource, factory=resource_factory, lifespan="scoped")
     builder.register(Processor, Implementation, scope="per_call")
-    async with builder.build() as container:
+    instrumentation = Instrumentation(ResolutionProfiler(sample_durations=0)) if observed else None
+    async with builder.build(instrumentation=instrumentation) as container:
         processor = container.resolve(Processor)
         assert not created
         cancelled = asyncio.create_task(processor.process("cancel"))
@@ -166,7 +175,8 @@ def test_overlay_direct_calls_follow_overlay_but_inherited_singleton_keeps_root_
             direct()
 
 
-def test_direct_child_handle_inherits_scope_slots_and_expires_with_child():
+@pytest.mark.parametrize("observed", [False, True])
+def test_direct_child_handle_inherits_scope_slots_and_expires_with_child(observed):
     class Request:
         def __init__(self, name: str):
             self.name = name
@@ -174,22 +184,35 @@ def test_direct_child_handle_inherits_scope_slots_and_expires_with_child():
     class Operation(Protocol):
         def __call__(self) -> str: ...
 
+    class State:
+        pass
+
+    activations = []
+
     class Implementation:
-        def __init__(self, request: Request):
+        def __init__(self, request: Request, state: State):
             self.request = request
+            activations.append((request, state))
 
         def __call__(self) -> str:
             return self.request.name
 
     builder = ContainerBuilder()
     builder.declare_slot(Request, target="scoped")
+    builder.register(State, lifespan="scoped")
     builder.register(Operation, Implementation, scope="per_call")
 
-    with builder.build() as container:
+    instrumentation = Instrumentation(ResolutionProfiler(sample_durations=0)) if observed else None
+    with builder.build(instrumentation=instrumentation) as container:
         with container.new_scope() as child:
-            child.provide(Request, Request("request-one"))
+            request = Request("request-one")
+            child.provide(Request, request)
+            warmed = child.resolve(State)
             operation = child.resolve(Operation)
-            assert operation() == "request-one"
+            assert operation() == operation() == "request-one"
+            (first_request, first_state), (second_request, second_state) = activations
+            assert first_request is second_request is request
+            assert len({warmed, first_state, second_state}) == 3
         with pytest.raises(ScopeClosedError):
             operation()
 

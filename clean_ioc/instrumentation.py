@@ -15,6 +15,7 @@ import logging
 import math
 import threading
 import time
+from collections import defaultdict
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -50,6 +51,24 @@ class DurationSummary:
             "maximum_ns": self.maximum_ns,
             "approximate_p95_ns": self.approximate_p95_ns,
         }
+
+
+_EMPTY_DURATION = DurationSummary(0, 0, 0, None)
+_EMPTY_DURATIONS = tuple((name, _EMPTY_DURATION) for name in _METRICS)
+
+
+def _summarize_duration(data: list[int] | None) -> DurationSummary:
+    if data is None:
+        return _EMPTY_DURATION
+    threshold = math.ceil(data[0] * 0.95)
+    seen = 0
+    p95 = None
+    for index, count in enumerate(data[3:]):
+        seen += count
+        if threshold and seen >= threshold:
+            p95 = 1 << index
+            break
+    return DurationSummary(data[0], data[1], data[2], p95)
 
 
 @dataclass(frozen=True, slots=True)
@@ -233,7 +252,7 @@ class _MutableRecord:
     def __init__(self) -> None:
         self.attempts = self.completed = self.failed = self.cancelled = 0
         self.cache_hits = self.cache_misses = self.cache_waits = 0
-        self.durations: dict[str, list[int]] = {name: [0, 0, 0, *([0] * 64)] for name in _METRICS}
+        self.durations: dict[str, list[int]] = {}
 
 
 class ResolutionProfiler:
@@ -333,7 +352,13 @@ class ResolutionProfiler:
                 if self._incomplete:
                     self._dropped += 1
                     return
-                data = self._records[key].durations[category]
+                durations = self._records[key].durations
+                try:
+                    data = durations[category]
+                except KeyError:
+                    if category not in _METRICS:
+                        raise
+                    data = durations[category] = [0] * (3 + 64)
                 data[0] += 1
                 data[1] += elapsed
                 data[2] = max(data[2], elapsed)
@@ -395,8 +420,8 @@ class ResolutionProfiler:
             if not self._graphs:
                 raise RuntimeError("resolution profiler is not bound to a successfully built runtime")
             records: list[ProfileRecord] = []
-            groups: dict[tuple[str, str], _MutableRecord] = {}
-            cache_groups: dict[tuple[str, str], _MutableRecord] = {}
+            groups: defaultdict[tuple[str, str], _MutableRecord] = defaultdict(_MutableRecord)
+            cache_groups: defaultdict[tuple[str, str], _MutableRecord] = defaultdict(_MutableRecord)
 
             def snapshot(
                 key: tuple[str, str],
@@ -405,18 +430,9 @@ class ResolutionProfiler:
                 kind: str,
                 item: _MutableRecord,
             ) -> ProfileRecord:
-                durations = []
-                for name in _METRICS:
-                    data = item.durations[name]
-                    threshold = math.ceil(data[0] * 0.95)
-                    seen = 0
-                    p95 = None
-                    for index, count in enumerate(data[3:]):
-                        seen += count
-                        if threshold and seen >= threshold:
-                            p95 = 1 << index
-                            break
-                    durations.append((name, DurationSummary(data[0], data[1], data[2], p95)))
+                durations = _EMPTY_DURATIONS
+                if item.durations:
+                    durations = tuple((name, _summarize_duration(item.durations.get(name))) for name in _METRICS)
                 return ProfileRecord(
                     key[0],
                     key[1],
@@ -431,7 +447,7 @@ class ResolutionProfiler:
                     item.cache_hits,
                     item.cache_misses,
                     item.cache_waits,
-                    tuple(durations),
+                    durations,
                 )
 
             def merge(target: _MutableRecord, source: _MutableRecord) -> None:
@@ -445,9 +461,11 @@ class ResolutionProfiler:
                     "cache_waits",
                 ):
                     setattr(target, field, getattr(target, field) + getattr(source, field))
-                for name in _METRICS:
-                    source_duration = source.durations[name]
-                    target_duration = target.durations[name]
+                for name, source_duration in source.durations.items():
+                    target_duration = target.durations.get(name)
+                    if target_duration is None:
+                        target.durations[name] = source_duration.copy()
+                        continue
                     target_duration[0] += source_duration[0]
                     target_duration[1] += source_duration[1]
                     target_duration[2] = max(target_duration[2], source_duration[2])
@@ -460,11 +478,9 @@ class ResolutionProfiler:
                 cache_group = self._sharing.get(key)
                 records.append(snapshot(key, registration, cache_group, kind, item))
                 if registration is not None and kind != "cleanup":
-                    group = groups.setdefault((key[0], registration), _MutableRecord())
-                    merge(group, item)
+                    merge(groups[key[0], registration], item)
                 if cache_group is not None:
-                    group = cache_groups.setdefault((key[0], cache_group), _MutableRecord())
-                    merge(group, item)
+                    merge(cache_groups[key[0], cache_group], item)
             group_records = tuple(
                 snapshot((graph, "registration " + registration), registration, None, "registration group", item)
                 for (graph, registration), item in sorted(groups.items())
